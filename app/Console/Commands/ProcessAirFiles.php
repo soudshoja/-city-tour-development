@@ -12,6 +12,7 @@ use App\Models\Supplier;
 use App\Models\SupplierCompany;
 use App\Models\Task;
 use App\Models\TaskFlightDetail;
+use App\Models\FileUpload;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
@@ -475,130 +476,194 @@ class ProcessAirFiles extends Command
         $fileName,
         array $taskData,
         int $index
-    ): array
-    {
-        $agentName = $taskData['agent_name'] ?? null;
-        $agentEmail = $taskData['agent_email'] ?? null;
-        $agentAmadeusId = $taskData['agent_amadeus_id'] ?? null;
+    ): array {
+        try {
+            $agentName = $taskData['agent_name'] ?? null;
+            $agentEmail = $taskData['agent_email'] ?? null;
+            $agentAmadeusId = $taskData['agent_amadeus_id'] ?? null;
 
-        $this->logger->info("Processing file {$fileName} item {$index} with agent data: ", [
-            'agent_name' => $agentName,
-            'agent_email' => $agentEmail,
-            'amadeus_id_agent' => $agentAmadeusId
-        ]);
-        
-        $this->logger->info("Processing task data item", [
-            'file_name' => $fileName,
-            'item_index' => $index,
-            'has_agent_name' => !empty($agentName),
-            'has_agent_email' => !empty($agentEmail),
-            'has_agent_amadeus_id' => !empty($agentAmadeusId),
-            'task_status' => $taskData['status'] ?? 'unknown'
-        ]);
+            $this->logger->info("Processing file {$fileName} item {$index} with agent data: ", [
+                'agent_name' => $agentName,
+                'agent_email' => $agentEmail,
+                'amadeus_id_agent' => $agentAmadeusId
+            ]);
+            
+            $this->logger->info("Processing task data item", [
+                'file_name' => $fileName,
+                'item_index' => $index,
+                'has_agent_name' => !empty($agentName),
+                'has_agent_email' => !empty($agentEmail),
+                'has_agent_amadeus_id' => !empty($agentAmadeusId),
+                'task_status' => $taskData['status'] ?? 'unknown'
+            ]);
 
-        if (in_array($taskData['status'], ['reissued', 'refund', 'void', 'emd'])) {
-            $this->logger->info("Task status is not 'issued'. Checking original task for reference: {$taskData['reference']}");
+            if (in_array($taskData['status'], ['reissued', 'refund', 'void', 'emd'])) {
+                $this->logger->info("Task status is not 'issued'. Checking original task for reference: {$taskData['reference']}");
 
-            $originalTask = Task::where('reference', $taskData['reference'])
-                ->where('status', 'issued')
-                ->first();
+                $originalTask = Task::where('reference', $taskData['reference'])
+                    ->where('status', 'issued')
+                    ->first();
 
-            if (!$originalTask) {
-                $this->warn("Original task not found for reference: {$taskData['reference']} (item {$index})");
-                $this->logger->warning("Original task not found for reference in item {$index}: ", $taskData);
+                if (!$originalTask) {
+                    $this->warn("Original task not found for reference: {$taskData['reference']} (item {$index})");
+                    $this->logger->warning("Original task not found for reference in item {$index}: ", $taskData);
 
-                // Save to task directly with enabled = false
-                $taskData['enabled'] = false;
-                $taskData['file_name'] = $fileName;
-                $response = $this->saveTask($companyId, $taskData, $supplierId);
+                    // Save to task directly with enabled = false
+                    $taskData['enabled'] = false;
+                    $taskData['file_name'] = $fileName;
+                    $response = $this->saveTask($companyId, $taskData, $supplierId);
 
-                if ($response['status'] === 'error') {
+                    if ($response['status'] === 'error') {
+                        return [
+                            'success' => false,
+                            'index' => $index,
+                            'reason' => 'Failed to save task (original task not found)',
+                            'error' => $response['message']
+                        ];
+                    }
+
                     return [
-                        'success' => false,
+                        'success' => true,
                         'index' => $index,
-                        'reason' => 'Failed to save task (original task not found)',
-                        'error' => $response['message']
+                        'reason' => 'Task saved with but original task not found',
+                        'task_id' => $response['task']->id ?? null
                     ];
                 }
 
-                return [
-                    'success' => true,
-                    'index' => $index,
-                    'reason' => 'Task saved with but original task not found',
-                    'task_id' => $response['task']->id ?? null
-                ];
-            }
+                $taskData['original_task_id'] = $originalTask->id;
+                $this->logger->info("Original Task ID: " . $taskData['original_task_id']);
 
-            $taskData['original_task_id'] = $originalTask->id;
-            $this->logger->info("Original Task ID: " . $taskData['original_task_id']);
+                $flightDetails = TaskFlightDetail::where('task_id', $taskData['original_task_id'])->get();
 
-            $flightDetails = TaskFlightDetail::where('task_id', $taskData['original_task_id'])->get();
+                if ($flightDetails->isEmpty()) {
+                    $this->logger->warning("No flight details found for original task ID: {$taskData['original_task_id']} (item {$index})");
+                    
+                    // Save to task directly with enabled = false
+                    $taskData['enabled'] = false;
+                    $taskData['file_name'] = $fileName;
+                    $response = $this->saveTask($companyId, $taskData, $supplierId);
 
-            if ($flightDetails->isEmpty()) {
-                $this->logger->warning("No flight details found for original task ID: {$taskData['original_task_id']} (item {$index})");
-                
-                // Save to task directly with enabled = false
-                $taskData['enabled'] = false;
-                $taskData['file_name'] = $fileName;
-                $response = $this->saveTask($companyId, $taskData, $supplierId);
+                    if ($response['status'] === 'error') {
+                        return [
+                            'success' => false,
+                            'index' => $index,
+                            'reason' => 'Failed to save task (no flight details)',
+                            'error' => $response['message']
+                        ];
+                    }
 
-                if ($response['status'] === 'error') {
                     return [
-                        'success' => false,
+                        'success' => true,
                         'index' => $index,
-                        'reason' => 'Failed to save task (no flight details)',
-                        'error' => $response['message']
+                        'reason' => 'Task saved with but no flight details found',
+                        'task_id' => $response['task']->id ?? null
                     ];
                 }
 
-                return [
-                    'success' => true,
-                    'index' => $index,
-                    'reason' => 'Task saved with but no flight details found',
-                    'task_id' => $response['task']->id ?? null
-                ];
-            }
+                $flightDetailsArray = $flightDetails->toArray();
+                $this->logger->info("Flight Details for Task ID {$taskData['original_task_id']}: ", $flightDetailsArray);
+                $taskData['task_flight_details'] = $flightDetailsArray;
 
-            $flightDetailsArray = $flightDetails->toArray();
-            $this->logger->info("Flight Details for Task ID {$taskData['original_task_id']}: ", $flightDetailsArray);
-            $taskData['task_flight_details'] = $flightDetailsArray;
+                $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail);
 
-            $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail);
+                if (!$agent) {
+                    $this->logger->warning("AIR File Processing: Agent not found for {$fileName} item {$index}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
+                    $this->warn("Agent not found for {$fileName} item {$index}.");
 
-            if (!$agent) {
-                $this->logger->warning("AIR File Processing: Agent not found for {$fileName} item {$index}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
-                $this->warn("Agent not found for {$fileName} item {$index}.");
+                    // Save to task directly with enabled = false
+                    $taskData['enabled'] = false;
+                    $taskData['file_name'] = $fileName;
+                    $response = $this->saveTask($companyId, $taskData, $supplierId);
 
-                // Save to task directly with enabled = false
-                $taskData['enabled'] = false;
-                $taskData['file_name'] = $fileName;
-                $response = $this->saveTask($companyId, $taskData, $supplierId);
+                    if ($response['status'] === 'error') {
+                        return [
+                            'success' => false,
+                            'index' => $index,
+                            'reason' => 'Failed to save task (agent not found)',
+                            'error' => $response['message']
+                        ];
+                    }
 
-                if ($response['status'] === 'error') {
                     return [
-                        'success' => false,
+                        'success' => true,
                         'index' => $index,
-                        'reason' => 'Failed to save task (agent not found)',
-                        'error' => $response['message']
+                        'reason' => 'Task saved with but agent not found',
+                        'task_id' => $response['task']->id ?? null
                     ];
                 }
 
-                return [
-                    'success' => true,
-                    'index' => $index,
-                    'reason' => 'Task saved with but agent not found',
-                    'task_id' => $response['task']->id ?? null
-                ];
+                $taskData['agent_id'] = $agent->id;
+
+                $branchId = $agent->branch_id;
+                $branch = Branch::find($branchId);
+
+                if (!$branch) {
+                    $this->logger->error("AIR File Processing: Branch not found for agent {$agentName} in {$fileName} item {$index}.");
+
+                    // Save to task directly with enabled = false
+                    $taskData['enabled'] = false;
+                    $taskData['file_name'] = $fileName;
+                    $response = $this->saveTask($companyId, $taskData, $supplierId);
+
+                    if ($response['status'] === 'error') {
+                        return [
+                            'success' => false,
+                            'index' => $index,
+                            'reason' => 'Failed to save task (branch not found)',
+                            'error' => $response['message']
+                        ];
+                    }
+
+                    return [
+                        'success' => true,
+                        'index' => $index,
+                        'reason' => 'Task saved with but branch not found',
+                        'task_id' => $response['task']->id ?? null
+                    ];
+                }
+
+                $companyId = $branch->company_id;
+            } else {
+                $this->logger->info("Task is 'issued', checking agent using Amadeus ID, name, or email (item {$index})");
+
+                $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail);
+
+                if (!$agent) {
+                    $this->logger->warning("AIR File Processing: Agent not found for {$fileName} item {$index}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
+                    $this->warn("Agent not found for {$fileName} item {$index}.");
+
+                    // Save to task directly with enabled = false
+                    $taskData['enabled'] = false;
+                    $taskData['file_name'] = $fileName;
+                    $response = $this->saveTask($companyId, $taskData, $supplierId);
+
+                    if ($response['status'] === 'error') {
+                        return [
+                            'success' => false,
+                            'index' => $index,
+                            'reason' => 'Failed to save task (agent not found)',
+                            'error' => $response['message']
+                        ];
+                    }
+
+                    return [
+                        'success' => true,
+                        'index' => $index,
+                        'reason' => 'Task saved with but agent not found',
+                        'task_id' => $response['task']->id ?? null
+                    ];
+                }
+
+                $taskData['agent_id'] = $agent->id;
             }
 
-            $taskData['agent_id'] = $agent->id;
-
+            // Find branch and company for agent
             $branchId = $agent->branch_id;
             $branch = Branch::find($branchId);
 
             if (!$branch) {
                 $this->logger->error("AIR File Processing: Branch not found for agent {$agentName} in {$fileName} item {$index}.");
-
+                
                 // Save to task directly with enabled = false
                 $taskData['enabled'] = false;
                 $taskData['file_name'] = $fileName;
@@ -622,101 +687,52 @@ class ProcessAirFiles extends Command
             }
 
             $companyId = $branch->company_id;
-        } else {
-            $this->logger->info("Task is 'issued', checking agent using Amadeus ID, name, or email (item {$index})");
-
-            $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail);
-
-            if (!$agent) {
-                $this->logger->warning("AIR File Processing: Agent not found for {$fileName} item {$index}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
-                $this->warn("Agent not found for {$fileName} item {$index}.");
-
-                // Save to task directly with enabled = false
-                $taskData['enabled'] = false;
-                $taskData['file_name'] = $fileName;
-                $response = $this->saveTask($companyId, $taskData, $supplierId);
-
-                if ($response['status'] === 'error') {
-                    return [
-                        'success' => false,
-                        'index' => $index,
-                        'reason' => 'Failed to save task (agent not found)',
-                        'error' => $response['message']
-                    ];
-                }
-
-                return [
-                    'success' => true,
-                    'index' => $index,
-                    'reason' => 'Task saved with but agent not found',
-                    'task_id' => $response['task']->id ?? null
-                ];
-            }
-
-            $taskData['agent_id'] = $agent->id;
-        }
-
-        // Find branch and company for agent
-        $branchId = $agent->branch_id;
-        $branch = Branch::find($branchId);
-
-        if (!$branch) {
-            $this->logger->error("AIR File Processing: Branch not found for agent {$agentName} in {$fileName} item {$index}.");
             
-            // Save to task directly with enabled = false
             $taskData['enabled'] = false;
             $taskData['file_name'] = $fileName;
             $response = $this->saveTask($companyId, $taskData, $supplierId);
 
             if ($response['status'] === 'error') {
-                return [
-                    'success' => false,
-                    'index' => $index,
-                    'reason' => 'Failed to save task (branch not found)',
-                    'error' => $response['message']
-                ];
+                if (isset($response['code']) && $response['code'] === 409) {
+                    $this->logger->info("Task already exists for {$fileName} item {$index}. Skipping save.");
+                    return [
+                        'success' => false,
+                        'index' => $index,
+                        'reason' => 'Task already exists',
+                        'error' => 'Duplicate task'
+                    ];
+                } else {
+                    $this->logger->error("Failed to save task for {$fileName} item {$index}: " . $response['message']);
+                    return [
+                        'success' => false,
+                        'index' => $index,
+                        'reason' => 'Failed to save task',
+                        'error' => $response['message']
+                    ];
+                }
             }
 
             return [
                 'success' => true,
                 'index' => $index,
-                'reason' => 'Task saved with but branch not found',
+                'reason' => 'Task saved successfully',
                 'task_id' => $response['task']->id ?? null
             ];
+        } catch (\Throwable $e) {
+            $this->logger->error("Exception during task processing for file {$fileName}, item {$index}: " . $e->getMessage());
+            return [
+                'success' => false,
+                'index' => $index,
+                'reason' => 'Exception occurred during processing',
+                'error' => $e->getMessage()
+            ];
+        } finally {
+            FileUpload::where('file_name', $fileName)->update([
+                'status' => 'completed'
+            ]);
+
+            $this->logger->info("Marked file_upload as completed for {$fileName}");
         }
-
-        $companyId = $branch->company_id;
-        
-        $taskData['enabled'] = false;
-        $taskData['file_name'] = $fileName;
-        $response = $this->saveTask($companyId, $taskData, $supplierId);
-
-        if ($response['status'] === 'error') {
-            if (isset($response['code']) && $response['code'] === 409) {
-                $this->logger->info("Task already exists for {$fileName} item {$index}. Skipping save.");
-                return [
-                    'success' => false,
-                    'index' => $index,
-                    'reason' => 'Task already exists',
-                    'error' => 'Duplicate task'
-                ];
-            } else {
-                $this->logger->error("Failed to save task for {$fileName} item {$index}: " . $response['message']);
-                return [
-                    'success' => false,
-                    'index' => $index,
-                    'reason' => 'Failed to save task',
-                    'error' => $response['message']
-                ];
-            }
-        }
-
-        return [
-            'success' => true,
-            'index' => $index,
-            'reason' => 'Task saved successfully',
-            'task_id' => $response['task']->id ?? null
-        ];
     }
 
     /**

@@ -232,6 +232,38 @@ class TaskController extends Controller
             }
         }
 
+        if ($request->file_name) {
+            $fileUpload = FileUpload::where('file_name', $request->file_name)->first();
+            
+            if ($fileUpload && $fileUpload->user_id) {
+                Log::info("FileUpload found for {$request->file_name}", [
+                    'file_upload_id' => $fileUpload->id,
+                    'user_id' => $fileUpload->user_id,
+                    'supplier_id' => $fileUpload->supplier_id
+                ]);
+
+                $agent = Agent::where('user_id', $fileUpload->user_id)->first();
+                
+                if ($agent) {
+                    $request->merge(['agent_id' => $agent->id]);
+                    Log::info("Assigned agent_id from file uploader", [
+                        'file_name' => $request->file_name,
+                        'user_id' => $fileUpload->user_id,
+                        'agent_id' => $agent->id,
+                        'reason' => 'File uploader is an agent'
+                    ]);
+                } else {
+                    Log::info("File uploader is not an agent", [
+                        'file_name' => $request->file_name,
+                        'user_id' => $fileUpload->user_id,
+                        'user_type' => 'admin_or_company'
+                    ]);
+                }
+            } else {
+                Log::warning("FileUpload not found or no user_id for file: {$request->file_name}");
+            }
+        }
+
         DB::beginTransaction();
 
         try {

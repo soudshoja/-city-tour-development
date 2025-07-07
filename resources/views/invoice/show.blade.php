@@ -347,37 +347,30 @@
                 </div>
 
                 @if ($invoice->status === 'paid' || $invoice->payment_type === 'split')
-                @php
-                    $paidServiceCharge = $invoice->invoicePartials->sum('service_charge');
-                    $paidTotalAmount = $invoice->invoicePartials->sum('amount');
-                @endphp
-                @if ($paidServiceCharge > 0)
-                    <div class="flex justify-between py-2 border-b border-gray-200">
-                        <span>Service Charge:</span>
-                        <span>{{ number_format($paidServiceCharge, 2) }}</span>
-                    </div>
-                @endif
-                <div class="flex justify-between py-2 font-bold text-gray-800">
-                    <span>Total:</span>
-                    <span>
-                        {{ number_format($paidTotalAmount - abs($checkUtilizeCredit->sum('amount')), 2) }}
-                    </span>
-                </div>
+                    @php
+                        $paidServiceCharge = $invoice->invoicePartials->sum('service_charge');
+                        $paidTotalAmount = $invoice->invoicePartials->sum('amount');
+                    @endphp
+                    @if ($paidServiceCharge > 0)
+                        <div class="flex justify-between py-2 border-b border-gray-200">
+                            <span>Service Charge:</span>
+                            <span>{{ number_format($paidServiceCharge, 2) }}</span>
+                        </div>
+                    @endif
                 @else
-                @if(isset($totalGatewayFee['paid_by']) || $totalGatewayFee['paid_by'] !== 'Company')
-                <div class="flex justify-between py-2 border-b border-gray-200">
-                    <span>Service Charge @if(isset($totalGatewayFee['charge_type']) && $totalGatewayFee['charge_type'] === 'Percent') (%): @else: @endif</span>
-                    <span>{{ number_format($totalGatewayFee['fee'], 2) }}</span>
-                </div>
-                @endif
-
+                    @if(isset($totalGatewayFee['paid_by']) || $totalGatewayFee['paid_by'] !== 'Company')
+                    <div class="flex justify-between py-2 border-b border-gray-200">
+                        <span>Service Charge @if(isset($totalGatewayFee['charge_type']) && $totalGatewayFee['charge_type'] === 'Percent') (%): @else: @endif</span>
+                        <span>{{ number_format($totalGatewayFee['fee'], 2) }}</span>
+                    </div>
+                    @endif
+                @endif  
                 <div class="flex justify-between py-2 font-bold text-gray-800">
                     <span>Total:</span>
                     <span>
                         {{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}
                     </span>
                 </div>
-                @endif
             </div>
         </div>
 

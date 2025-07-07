@@ -1541,11 +1541,13 @@ class InvoiceController extends Controller
             'invoice_id' => 'required|integer',
             'selected_option' => 'required|string',
             'payment_gateway' => 'nullable|string',
+            'payment_method' => 'nullable|string',
         ]);
 
         $invoiceId = $request->input('invoice_id');
         $option = $request->input('selected_option');
         $gateway = $request->input('payment_gateway');
+        $method = $request->input('payment_method');
 
         $invoice = Invoice::find($invoiceId);
 
@@ -1564,7 +1566,7 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Client has no available credit balance.');
         }
         if ($balance > 0) {
-            $typePayment = 'partial';
+            $typePayment = 'split';
         } elseif ($balance == 0) {
             $typePayment = 'full';
         }
@@ -1580,7 +1582,8 @@ class InvoiceController extends Controller
                         'amount' => $amount,
                         'status' => 'paid',
                         'type' => $typePayment,
-                        'payment_gateway' => $gateway,
+                        'payment_gateway' => 'Credit',
+                        'service_charge' => 0,
                     ]);
 
                     // Save the invoice type
@@ -1590,7 +1593,7 @@ class InvoiceController extends Controller
                     $invoice->save();
                 }
 
-                if ($typePayment === 'partial') {
+                if ($typePayment === 'split') {
                     $invoicePartial = InvoicePartial::create([
                         'invoice_id' => $invoice->id,
                         'invoice_number' => $invoice->invoice_number,
@@ -1600,6 +1603,8 @@ class InvoiceController extends Controller
                         'status' => 'unpaid',
                         'type' => $typePayment,
                         'payment_gateway' => $gateway,
+                        'payment_method' => $method ?? null,
+                        'service_charge' => 0,
                     ]);
 
                     //2nd partial for credit utilization
@@ -1611,12 +1616,13 @@ class InvoiceController extends Controller
                         'amount' => $balanceCredit,
                         'status' => 'paid',
                         'type' => $typePayment,
-                        'payment_gateway' => $gateway,
+                        'payment_gateway' => 'Credit',
+                        'service_charge' => 0,
                     ]);
 
                     // Save the invoice type
                     $invoice->status = 'unpaid';
-                    $invoice->payment_type = 'partial';
+                    $invoice->payment_type = 'split';
                     $invoice->is_client_credit = 1;
                     $invoice->save();
 
@@ -1738,6 +1744,8 @@ class InvoiceController extends Controller
                         'status' => 'unpaid',
                         'type' => 'full',
                         'payment_gateway' => $gateway,
+                        'payment_method' => $method ?? null,
+                        'service_charge' => 0,
                     ]
                 );
 
@@ -1749,6 +1757,7 @@ class InvoiceController extends Controller
                     'amount' => $balance,
                     'type' => 'full',
                     'payment_gateway' => $gateway,
+                    'payment_method' => $method ?? null,
                     'notes' => 'Payment link created for invoice: ' . $newinvoice->invoice_number . ' for topup credit of: ' . $balance,
                 ]);
 
@@ -1839,6 +1848,7 @@ class InvoiceController extends Controller
                     'status' => 'paid',
                     'type' => 'full',
                     'payment_gateway' => $gateway,
+                    'service_charge' => 0,
                 ]);
 
                 // Record the transaction and journal entries

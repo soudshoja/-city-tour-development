@@ -267,6 +267,62 @@
         .clear-all-filters-btn:hover {
             background-color: #4b5563;
         }
+
+        @media (max-width: 640px) {
+            .filter-modal-content {
+                width: 95vw;
+                max-width: none;
+                padding: 16px;
+            }
+
+            .filter-modal-footer {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
+            }
+
+            .filter-row {
+                position: relative;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-row input, .value-input {
+                width: 90% !important;
+            }
+
+            .column-select {
+                width: 100% !important;
+            }
+
+            .filter-row .remove-filter-btn {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                align-self: unset;
+                margin-top: 60px;
+            }
+
+            .filter-modal-footer {
+                flex-direction: row !important;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+
+            .filter-modal-footer .flex {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+
+            .add-filter-btn,
+            .clear-all-filters-btn,
+            .apply-filters-btn {
+                flex: 1 1 auto;
+                width: auto;
+                min-width: 100px;
+            }
+        }
     </style>
 
     <div class="flex justify-between items-center gap-5 my-3 ">
@@ -291,7 +347,20 @@
                 </svg>
 
             </div>
-            <div x-cloak x-show="addTaskModal"
+            <div x-cloak x-show="addTaskModal" x-init="$watch('addTaskModal', value => {
+                    if (!value) {
+                        $nextTick(() => {
+                            if (typeof window.__resetTaskForm === 'function') {
+                                window.__resetTaskForm();
+                            }
+
+                            const formTaskContainer = document.getElementById('form-task-container');
+                            if (formTaskContainer) {
+                                formTaskContainer.innerHTML = '';
+                            }
+                        });
+                    }
+                })"
                 class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
                 <div @click.away="addTaskModal = false" class="bg-white rounded shadow w-96">
                     <div class="p-4 flex justify-between items-center">
@@ -326,10 +395,10 @@
                         <div id="form-task-container" class="mb-3"></div>
 
                         @unlessrole('agent')
-                        <div class="mb-4">
+                        <!-- <div class="mb-4">
                             <x-searchable-dropdown name="agent_id" :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])" placeholder="Select Agent"
                                 label="Select an Agent" />
-                        </div>
+                        </div> -->
                         @else
                         <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
                         @endunlessrole
@@ -377,7 +446,7 @@
                     </div>
                     <div class="flex customCenter gap-5 w-full justify-end">
                         <button id="toggleFilters"
-                            class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                            class="flex px-3 py-2 gap-2 w-full md:w-auto justify-center city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
                             <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 32 32">
                                 <path fill="#333333"
@@ -624,17 +693,13 @@
                                                             class="inline-flex flex-col gap-4 items-center">
                                                             <div @click.away="editTaskModal_{{ $task->id }} = false"
                                                                 class="bg-white rounded-md border-2 w-full sm:w-120">
-                                                                <!-- Responsive modal width -->
-                                                                <div class="flex justify-between p-4">
-                                                                    <p class="font-semibold text-lg">
-                                                                        Update the following information if
-                                                                        needed
-                                                                    </p>
-                                                                    <button type="button"
-                                                                        @click="editTaskModal_{{ $task->id }} = false"
-                                                                        class="text-red-500 font-bold">
-                                                                        &times;
-                                                                    </button>
+                                                                <!-- Header -->
+                                                                <div class="flex items-start justify-between p-6">
+                                                                    <div>
+                                                                        <h2 class="text-xl font-bold text-gray-800">Edit Task Details</h2>
+                                                                        <p class="text-gray-600 italic text-xs mt-1">Please update the task details to ensure accurate information</p>
+                                                                    </div>
+                                                                    <button type="button" @click="editTaskModal_{{ $task->id }} = false" class="text-red-500 text-2xl font-bold">&times;</button>
                                                                 </div>
                                                                 <hr>
                                                                 @csrf
@@ -804,6 +869,14 @@
                                                                     </div>
 
                                                                     <!-- Client Selection -->
+                                                                    @php
+                                                                    $selectedClient = \App\Models\Client::find(
+                                                                    $task->client_id,
+                                                                    );
+                                                                    $clientPlaceholder = $selectedClient
+                                                                    ? $selectedClient->name
+                                                                    : 'Select a Client';
+                                                                    @endphp
                                                                     <div class="flex items-center gap-4">
                                                                         <label for="client_id"
                                                                             class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
@@ -812,8 +885,10 @@
                                                                                 name="client_id"
                                                                                 :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
                                                                                 :selectedId="$task->client_id"
-                                                                                :selectedName="optional($task->client)->name"
-                                                                                placeholder="Select a Client" />
+                                                                                :selectedName="$selectedClient
+                                                                            ? $selectedClient->name
+                                                                            : null"
+                                                                                :placeholder="$clientPlaceholder" />
                                                                         </div>
                                                                     </div>
 
@@ -864,15 +939,23 @@
                                                                             value="{{ $task->supplier->id }}">
                                                                     </div>
                                                                 </div>
+                                                                <div class="flex space-x-4 mt-2 mb-4 px-4 justify-between items-center">
+                                                                    <!-- Cancel Button -->
+                                                                    <button type="button"
+                                                                        @click="editTaskModal_{{ $task->id }} = false"
+                                                                        class="px-6 py-2 text-gray-700 font-semibold rounded-full bg-gray-200 hover:bg-gray-300 transition">
+                                                                        Cancel
+                                                                    </button>
+
+                                                                    <!-- Update Button -->
+                                                                    <button type="submit"
+                                                                        class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-full bg-blue-600 hover:bg-blue-700 transition"
+                                                                        form="edit-task-form-{{ $task->id }}">
+                                                                        Update
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                            <div class="flex space-x-4 mt-2">
-                                                                <!-- Update Button -->
-                                                                <x-primary-button type="submit"
-                                                                    class="w-[200px] justify-center px-12 py-10 text-lg"
-                                                                    form="edit-task-form-{{ $task->id }}">
-                                                                    Update
-                                                                </x-primary-button>
-                                                            </div>
+
                                                         </form>
                                                     </div>
                                                 </div>
@@ -1462,7 +1545,6 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-
         const viewTaskLinks = document.querySelectorAll(".viewTask");
         viewTaskLinks.forEach(link => {
             link.addEventListener("click", function() {
@@ -1617,30 +1699,122 @@
                     'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
                     'dark:text-gray-300', 'p-3', 'mb-1');
                 formTaskContainer.appendChild(input);
-            } else if (supplier.name === 'TBO Holiday') {
-                let input = document.createElement('input');
-                input.type = 'text';
-                input.name = 'supplier_ref';
-                input.placeholder = 'Coming Soon...';
-                input.classList.add('input', 'w-full', 'mt-2', 'rounded-lg', 'border',
-                    'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
-                    'dark:text-gray-300', 'p-3', 'disabled:opacity-75',
-                    'disabled:cursor-not-allowed');
-                input.disabled = true;
-                formTaskContainer.appendChild(input);
-            } else if (supplier.name === 'Amadeus') {
+            } else {
+                const customFiles = [];
+
                 const fileInput = document.createElement('input');
                 fileInput.type = 'file';
-                fileInput.name = 'task_file';
-                fileInput.id = 'amadeus-upload-task';
-                fileInput.classList.add('bg-white', 'dark:bg-dark', 'p-2', 'shadow-md', 'rounded-md',
-                    'w-full', 'border', 'border-gray-200', 'focus:outline-none');
+                fileInput.multiple = true;
+                fileInput.classList.add('hidden');
+
+                const dropZone = document.createElement('div');
+                dropZone.classList.add('flex', 'flex-col', 'items-center', 'justify-center', 'border-2', 'border-dashed', 'border-gray-300', 'rounded-md', 'text-center', 'cursor-pointer', 'bg-white', 'hover:bg-gray-50', 'transition', 'duration-150', 'ease-in-out', 'text-sm', 'text-gray-500', 'mb-2', 'p-3', 'sm:p-4');
+                dropZone.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 64 64" fill="none" stroke="#5d5d5d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 48H16C9.37258 48 4 42.6274 4 36C4 29.7926 8.79161 24.6465 14.9268 24.0438C17.3056 16.5436 24.2807 11 32.5 11C42.165 11 50 18.835 50 28.5C50 29.6813 49.8904 30.8323 49.6816 31.9425C55.0597 33.3639 59 38.2443 59 44C59 50.6274 53.6274 56 47 56H44"/>
+                    <path d="M32 38V20" />
+                    <path d="M24 28L32 20L40 28" />
+                    </svg>
+                    <p class="font-medium text-gray-700 mt-1">Click or drag files here to upload</p>
+                    <p class="text-xs text-gray-500">Multiple files supported</p>
+                `;
+
+                const fileListDisplay = document.createElement('div');
+                fileListDisplay.id = 'file-list';
+                fileListDisplay.classList.add('text-sm', 'text-gray-700', 'border', 'border-gray-200', 'rounded', 'p-2', 'bg-white', 'max-h-[250px]', 'overflow-y-auto', 'hidden');
+
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dropZone.classList.add('border-blue-400', 'bg-blue-50');
+                    });
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dropZone.classList.remove('border-blue-400', 'bg-blue-50');
+                    });
+                });
+
+                dropZone.addEventListener('drop', (e) => {
+                    const droppedFiles = Array.from(e.dataTransfer.files);
+                    customFiles.push(...droppedFiles);
+                    renderFileList();
+                });
+
+                dropZone.addEventListener('click', () => fileInput.click());
+
+                fileInput.addEventListener('change', function () {
+                    customFiles.push(...Array.from(this.files));
+                    renderFileList();
+                    this.value = '';
+
+                    window.__resetTaskForm = function () {
+                        if (typeof customFiles !== 'undefined') {
+                            customFiles.length = 0;
+                        }
+                    };
+                });
+
+                function renderFileList() {
+                    fileListDisplay.innerHTML = '';
+
+                    if (customFiles.length === 0) {
+                        fileListDisplay.classList.add('hidden');
+                        return;
+                    }
+
+                    fileListDisplay.classList.remove('hidden');
+                    const wrapper = document.createElement('div');
+                    wrapper.classList.add('grid', 'grid-cols-2', 'gap-2', 'overflow-y-auto', 'max-h-[200px]', 'pr-1');
+
+                    customFiles.forEach((file, index) => {
+                        const container = document.createElement('div');
+                        container.classList.add('bg-gray-100', 'rounded', 'px-3', 'py-1', 'flex', 'items-center', 'justify-between');
+
+                        const name = document.createElement('span');
+                        name.textContent = file.name;
+                        name.classList.add('truncate', 'text-xs', 'max-w-[120px]');
+
+                        const removeBtn = document.createElement('button');
+                        removeBtn.textContent = '✕';
+                        removeBtn.classList.add('text-red-400', 'hover:text-red-600', 'text-xs', 'ml-2');
+                        removeBtn.addEventListener('click', () => {
+                            customFiles.splice(index, 1);
+                            renderFileList();
+                        });
+                        container.appendChild(name);
+                        container.appendChild(removeBtn);
+                        wrapper.appendChild(container);
+                    });
+                    fileListDisplay.appendChild(wrapper);
+                }
+
+                const form = document.getElementById('agent-supplier-task');
+                form.addEventListener('submit', function () {
+                    const oldHiddenInput = document.getElementById('task-upload');
+                    if (oldHiddenInput) oldHiddenInput.remove();
+
+                    const dataTransfer = new DataTransfer();
+                    customFiles.forEach(file => dataTransfer.items.add(file));
+
+                    const hiddenFileInput = document.createElement('input');
+                    hiddenFileInput.type = 'file';
+                    hiddenFileInput.name = 'task_file[]';
+                    hiddenFileInput.multiple = true;
+                    hiddenFileInput.id = 'task-upload';
+                    hiddenFileInput.files = dataTransfer.files;
+
+                    hiddenFileInput.style.display = 'none';
+                    form.appendChild(hiddenFileInput);
+                });
+
+                formTaskContainer.appendChild(dropZone);
                 formTaskContainer.appendChild(fileInput);
-            } else {
-                let div = document.createElement('div');
-                div.classList.add('text-red-500', 'text-sm', 'font-semibold', 'mt-2');
-                div.innerHTML = 'API not available for this supplier';
-                formTaskContainer.appendChild(div);
+                formTaskContainer.appendChild(fileListDisplay);
             }
         });
 

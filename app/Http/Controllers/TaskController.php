@@ -31,6 +31,9 @@ use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Date;
+use App\Models\FileUpload;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 
 // use Carbon\Carbon;
 
@@ -227,6 +230,38 @@ class TaskController extends Controller
 
             if ($originalTask) {
                 $request->merge(['original_task_id' => $originalTask->id]);
+            }
+        }
+
+        if ($request->file_name) {
+            $fileUpload = FileUpload::where('file_name', $request->file_name)->first();
+            
+            if ($fileUpload && $fileUpload->user_id) {
+                Log::info("FileUpload found for {$request->file_name}", [
+                    'file_upload_id' => $fileUpload->id,
+                    'user_id' => $fileUpload->user_id,
+                    'supplier_id' => $fileUpload->supplier_id
+                ]);
+
+                $agent = Agent::where('user_id', $fileUpload->user_id)->first();
+                
+                if ($agent) {
+                    $request->merge(['agent_id' => $agent->id]);
+                    Log::info("Assigned agent_id from file uploader", [
+                        'file_name' => $request->file_name,
+                        'user_id' => $fileUpload->user_id,
+                        'agent_id' => $agent->id,
+                        'reason' => 'File uploader is an agent'
+                    ]);
+                } else {
+                    Log::info("File uploader is not an agent", [
+                        'file_name' => $request->file_name,
+                        'user_id' => $fileUpload->user_id,
+                        'user_type' => 'admin_or_company'
+                    ]);
+                }
+            } else {
+                Log::warning("FileUpload not found or no user_id for file: {$request->file_name}");
             }
         }
 
@@ -806,242 +841,153 @@ class TaskController extends Controller
     }
 
     public function update(Request $request, $id)
-    {
+{
+    $request->validate([
+        'reference' => 'nullable|string',
+        'status' => 'required',
+        'price' => 'nullable|numeric',
+        'tax' => 'nullable|numeric',
+        'surcharge' => 'nullable|numeric',
+        'total' => 'required|numeric',
+        'agent_id' => 'required',
+        'client_id' => 'nullable|exists:clients,id', // no longer required
+        'supplier_id' => 'required',
+    ], [
+        'agent_id.required' => 'Please select an agent',
+        'supplier_id.required' => 'Please select a supplier',
+        'status.required' => 'Please select a status',
+        'total.required' => 'Please enter the total amount',
+    ]);
+
+    if (strtolower($request->status) !== 'issued' && strtolower($request->status) !== 'confirmed') {
         $request->validate([
-            'reference' => 'nullable|string',
-            'status' => 'required',
-            'price' => 'nullable|numeric',
-            'tax' => 'nullable|numeric',
-            'surcharge' => 'nullable|numeric',
-            'total' => 'nullable|numeric',
-            'total' => 'required',
-            'agent_id' => 'required',
-            'client_id' => 'nullable|exists:clients,id',
-            'supplier_id' => 'required',
+            'original_task_id' => 'required|exists:tasks,id',
         ], [
-            'client_id.required' => 'Please select a client',
-            'agent_id.required' => 'Please select an agent',
-            'supplier_id.required' => 'Please select a supplier',
-            'status.required' => 'Please select a status',
-            'total.required' => 'Please enter the total amount',
+            'original_task_id.required' => 'Task must be linked to an original task',
+        ]);
+    }
+
+    DB::beginTransaction();
+
+    try {
+        $task = Task::findOrFail($id);
+
+        Log::info('Before task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
+        Log::info('Incoming Request: agent_id: ' . $request->agent_id . ', client_id: ' . $request->client_id);
+
+        $prevClientName = $task->client_name;
+        $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
+
+        $data = $request->only([
+            'reference',
+            'status',
+            'price',
+            'tax',
+            'surcharge',
+            'total',
+            'agent_id',
+            'supplier_id',
+            'original_task_id',
         ]);
 
-        if (strtolower($request->status) !== 'issued' && strtolower($request->status) !== 'confirmed') {
-            $request->validate([
-                'original_task_id' => 'required|exists:tasks,id',
-            ], [
-                'original_task_id.required' => 'Task must be linked to an original task',
-            ]);
+        if ($request->filled('client_id')) {
+            $client = Client::findOrFail($request->client_id);
+            $data['client_id'] = $client->id;
+            $data['client_name'] = $client->name;
         }
 
-        // Find the task
-        $task = Task::findOrFail($id);
-        $prevClientName = $task->client_name;
-        $wasEnabled = false;
+        $task->update($data);
+        Log::info('After task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
 
-        $hasJournalEntries = JournalEntry::where('task_id', $task->id)->exists();
+        $shouldBeEnabled = $task->is_complete;
 
-        if ($hasJournalEntries) {
-            $wasEnabled = true;
+        if ($shouldBeEnabled && !$wasEnabled) {
+            $task->enabled = true;
+            $task->save();
+            $this->processTaskFinancial($task);
+        } elseif (!$shouldBeEnabled && $wasEnabled) {
+            $task->enabled = false;
+            $task->save();
+        } else {
+            $task->enabled = $shouldBeEnabled;
+            $task->save();
         }
 
-        $client = Client::findOrFail($request->client_id);
+        $transaction = Transaction::with('journalEntries')
+            ->where('description', 'like', '%' . $task->reference . '%')
+            ->first();
 
-        // If the request is an AJAX request, handle inline editing
-        // if ($request->ajax()) {
-        //     try {
-        //         $field = key($request->all()); // Get the field being updated
-        //         $value = $request->input($field);
-
-        //         // Update the specific field
-        //         $task->update([$field => $value]);
-
-        //         // Check if task should be enabled/disabled after the update
-        //         if ($task->is_complete && !$task->enabled) {
-        //             $task->enabled = true;
-        //             $task->save();
-
-        //             // Process financial transactions for newly enabled task
-        //             try {
-        //                 $this->processTaskFinancial($task);
-        //             } catch (Exception $e) {
-        //                 Log::error('Failed to process task financial after inline update: ' . $e->getMessage());
-        //                 return response()->json([
-        //                     'success' => false,
-        //                     'message' => 'Task updated but failed to process financials: ' . $e->getMessage()
-        //                 ], 500);
-        //             }
-        //         } elseif (!$task->is_complete && $task->enabled) {
-        //             $task->enabled = false;
-        //             $task->save();
-        //         }
-
-        //         return response()->json(['success' => true], 200);
-        //     } catch (Exception $e) {
-        //         return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        //     }
-        // } else {
-        DB::beginTransaction();
-
-        try {
-            $task->update($request->only(['reference', 'status', 'price', 'tax', 'surcharge', 'total', 'client_id' ,'agent_id', 'supplier_id', 'original_task_id']));
-            $task->client_name = $client->name;
-
-            // Determine if task should be enabled
-            $shouldBeEnabled = $task->is_complete;
-
-            if ($shouldBeEnabled && !$wasEnabled) {
-                // Task is now complete and wasn't enabled before - enable and process financials
-                $task->enabled = true;
-                $task->save();
-
-                $this->processTaskFinancial($task);
-            } elseif (!$shouldBeEnabled && $wasEnabled) {
-                // Task is no longer complete but was enabled - disable it
-                $task->enabled = false;
-                $task->save();
-            } else {
-                // Just save the enabled status
-                $task->enabled = $shouldBeEnabled;
-                $task->save();
-            }
-
-            // Update journal entries if client name changed
-            $transaction = Transaction::with('journalEntries')->where('description', 'like', '%' . $task->reference . '%')->first();
-
-            if ($transaction) {
-                $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
-                    if ($journalEntry->name == $prevClientName) {
-                        $journalEntry->name = $client->name;
-                        $journalEntry->save();
-                    }
-                });
-            }
-
-            DB::commit();
-           
-            return redirect()->back()->with('success', 'Task updated successfully.');
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Task update failed: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
+        if (isset($client) && $transaction) {
+            $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
+                if ($journalEntry->name === $prevClientName) {
+                    $journalEntry->name = $client->name;
+                    $journalEntry->save();
+                }
+            });
         }
-        // }
+
+        DB::commit();
+        return redirect()->back()->with('success', 'Task updated successfully.');
+    } catch (Exception $e) {
+        DB::rollBack();
+        Log::error('Task update failed: ' . $e->getMessage());
+        return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
     }
+}
+
 
     public function upload(Request $request)
     {
         $user = Auth::user();
 
         if ($user->role_id == Role::COMPANY) {
-            $companyId = $user->company->id;
+            $company = $user->company;
         } elseif ($user->role_id == Role::BRANCH) {
-            $companyId = $user->branch->company_id;
+            $company = $user->branch->company;
         } elseif ($user->role_id == Role::AGENT) {
-            $companyId = $user->agent->branch->company_id;
+            $company = $user->agent->branch->company;
         } else {
             return redirect()->back()->with('error', 'User not authorized to upload tasks.');
         }
 
         $request->validate([
-            'task_file' => 'required|mimes:pdf,txt',
-            'agent_id' => 'required|exists:agents,id',
+            'task_file' => 'required|array',
+            'task_file.*' => 'mimes:pdf,txt',
+            'agent_id' => 'nullable|exists:agents,id',
+            'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
-        $file = $request->file('task_file')->store('public/tasks');
-        if (!$file) {
-            return [
-                'status' => 'error',
-                'message' => 'File upload failed.'
-            ];
+        $files = $request->file('task_file');
+        $supplier = Supplier::find($request->supplier_id);
+
+        $companyName = strtolower(preg_replace('/\s+/', '_', $company->name));
+        $supplierName = strtolower(preg_replace('/\s+/', '_', $supplier->name));
+
+        $filePath = storage_path("app/{$companyName}/{$supplierName}/files_unprocessed");
+
+        if (!File::isDirectory($filePath)) {
+            Log::error("Source directory {$filePath} not found.");
+            File::makeDirectory($filePath, 0755, true, true);
+            Log::info("Created source directory: {$filePath}, please ensure files are pushed here.");
         }
 
-        $aiManager = new AIManager();
-        $filePath = storage_path('app/' . $file);
-        $fileName = $request->file('task_file')->getClientOriginalName();
+        foreach ($files as $file) {
+            $file->move($filePath, $file->getClientOriginalName());
+            Log::info("Uploading file: " . $file->getClientOriginalName() . " to: " . $filePath);
 
-        $extractedData = $aiManager->processWithAiTool($filePath, $fileName);
-
-        if ($extractedData['status'] === 'error') {
-            Log::error("AI tool processing error for {$fileName}: " . $extractedData['message']);
-            return [
-                'status' => 'error',
-                'message' => 'Something went wrong, please contact support.',
-            ];
-        }
-
-        $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
-
-        $responses = [];
-        $createdTasks = [];
-        $loop = 0;
-        foreach ($extractedData['data'] as $taskData) {
-
-            $newRequest = new Request($taskData);
-
-            $supplier = Supplier::where('name', 'like', $taskData['supplier_name'])->first();
-
-            $newRequest->merge([
-                'enabled' => false,
-                'agent_id' => (int)$request->agent_id,
+            FileUpload::create([
+                'file_name' => $file->getClientOriginalName(),
+                'destination_path' => $filePath . '/' . $file->getClientOriginalName(),
+                'user_id' => $user->id,
                 'supplier_id' => $supplier->id,
-                'company_id' => $companyId,
-                'refund_date' => $taskData['refund_date'] ?? null,
+                'status' => 'pending',
             ]);
-
-            $responseWithoutJson = $this->store($newRequest);
-            $response = json_decode($responseWithoutJson->getContent(), true);
-
-            if ($response['status'] == 'error') {
-                // Rollback all previously created tasks and related data
-                foreach ($createdTasks as $createdTask) {
-                    // Delete related flight/hotel details
-                    if ($createdTask->type === 'flight') {
-                        TaskFlightDetail::where('task_id', $createdTask->id)->delete();
-                    } elseif ($createdTask->type === 'hotel') {
-                        TaskHotelDetail::where('task_id', $createdTask->id)->delete();
-                    }
-                    // Delete related journal entries and transactions by finding journal entries via task_id
-                    $journalEntries = JournalEntry::where('task_id', $createdTask->id)->get();
-                    $transactionIds = $journalEntries->pluck('transaction_id')->unique();
-
-                    // Delete journal entries
-                    JournalEntry::where('task_id', $createdTask->id)->delete();
-
-                    // Delete related transactions
-                    Transaction::whereIn('id', $transactionIds)->delete();
-
-                    // Delete the task itself
-                    $createdTask->delete();
-                }
-
-                $responses = [
-                    'status' => 'error',
-                    'message' => 'Error occurred while saving task: ' . ($taskData['reference'] ?? '[unknown reference]') . ': ' . $response['message'] ?? 'Unknown error',
-                    'error_detail' => $response['message'] ?? 'Unknown error',
-                    'success_tasks' => array_map(function ($t) {
-                        return $t->reference;
-                    }, $createdTasks),
-                    'failed_task' => $taskData['reference'] ?? '[unknown reference]',
-                ];
-                break;
-            } else {
-                // Save the created task for possible rollback
-                $createdTask = Task::find($response['data']['id']);
-                if ($createdTask) {
-                    $createdTasks[] = $createdTask;
-                }
-            }
-            $responses = [
-                'status' => 'success',
-                'message' => 'Task saved for: ' . implode(', ', array_map(function ($t) {
-                    return $t->reference;
-                }, $createdTasks)),
-                'created_tasks' => $createdTasks,
-            ];
         }
 
-        return $responses;
+        return [
+            'status' => 'success',
+            'message' => 'Files uploaded successfully and are now in queue for processing',
+        ];
     }
 
     public function exportCsv()
@@ -1548,20 +1494,21 @@ class TaskController extends Controller
     {
         $request->validate([
             'supplier_ref' => 'nullable',
-            'task_file' => 'nullable|mimes:pdf,txt',
+            'task_file' => 'nullable|array',
+            'task_file.*' => 'mimes:pdf,txt',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
         $supplier = Supplier::findOrFail($request->supplier_id);
         $supplierController = new SupplierController();
 
-        if($supplier->name !== 'Magic Holiday'){
-            $request->validate([
-                'agent_id' => 'required|exists:agents,id',
-            ], [
-                'agent_id.required' => 'Please select an agent',
-            ]);
-        }
+        // if($supplier->name !== 'Magic Holiday'){
+        //     $request->validate([
+        //         'agent_id' => 'required|exists:agents,id',
+        //     ], [
+        //         'agent_id.required' => 'Please select an agent',
+        //     ]);
+        // }
 
         $user = Auth::user();
         $agentId = null;
@@ -1624,12 +1571,12 @@ class TaskController extends Controller
                 }
 
                 return redirect()->back()->with('success', 'Magic Holiday task received successfully');
-            case 'Amadeus':
+
+            default :
                 $response = $this->upload($request);
+                // Artisan::call('app:process-files', [], null, true);
 
                 return redirect()->back()->with($response['status'], $response['message']);
-            default:
-                return redirect()->back()->with('error', 'This supplier will be available soon');
         }
     }
 

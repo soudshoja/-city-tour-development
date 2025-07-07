@@ -804,6 +804,14 @@
                                                                     </div>
 
                                                                     <!-- Client Selection -->
+                                                                    @php
+                                                                    $selectedClient = \App\Models\Client::find(
+                                                                        $task->client_id,
+                                                                    );
+                                                                    $clientPlaceholder = $selectedClient
+                                                                        ? $selectedClient->name
+                                                                        : 'Select a Client';
+                                                                @endphp
                                                                     <div class="flex items-center gap-4">
                                                                         <label for="client_id"
                                                                             class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
@@ -812,8 +820,12 @@
                                                                                 name="client_id"
                                                                                 :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
                                                                                 :selectedId="$task->client_id"
-                                                                                :selectedName="optional($task->client)->name"
-                                                                                placeholder="Select a Client" />
+                                                                                :selectedName="$selectedClient
+                                                                            ? $selectedClient->name
+                                                                            : null" 
+                                                                                :placeholder="$clientPlaceholder" />
+                                                                                 <input type="hidden" name="fallback_client_id" value="{{ $task->client_id }}">
+
                                                                         </div>
                                                                     </div>
 

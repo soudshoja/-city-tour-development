@@ -267,6 +267,62 @@
         .clear-all-filters-btn:hover {
             background-color: #4b5563;
         }
+
+        @media (max-width: 640px) {
+            .filter-modal-content {
+                width: 95vw;
+                max-width: none;
+                padding: 16px;
+            }
+
+            .filter-modal-footer {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
+            }
+
+            .filter-row {
+                position: relative;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-row input, .value-input {
+                width: 90% !important;
+            }
+
+            .column-select {
+                width: 100% !important;
+            }
+
+            .filter-row .remove-filter-btn {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                align-self: unset;
+                margin-top: 60px;
+            }
+
+            .filter-modal-footer {
+                flex-direction: row !important;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+
+            .filter-modal-footer .flex {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+
+            .add-filter-btn,
+            .clear-all-filters-btn,
+            .apply-filters-btn {
+                flex: 1 1 auto;
+                width: auto;
+                min-width: 100px;
+            }
+        }
     </style>
 
     <div class="flex justify-between items-center gap-5 my-3 ">
@@ -294,6 +350,10 @@
             <div x-cloak x-show="addTaskModal" x-init="$watch('addTaskModal', value => {
                     if (!value) {
                         $nextTick(() => {
+                            if (typeof window.__resetTaskForm === 'function') {
+                                window.__resetTaskForm();
+                            }
+
                             const formTaskContainer = document.getElementById('form-task-container');
                             if (formTaskContainer) {
                                 formTaskContainer.innerHTML = '';
@@ -1689,6 +1749,12 @@
                     customFiles.push(...Array.from(this.files));
                     renderFileList();
                     this.value = '';
+
+                    window.__resetTaskForm = function () {
+                        if (typeof customFiles !== 'undefined') {
+                            customFiles.length = 0;
+                        }
+                    };
                 });
 
                 function renderFileList() {

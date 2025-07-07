@@ -1466,14 +1466,6 @@
             }
 
 
-            // let img = document.createElement('img');
-            // img.src = URL.createObjectURL(file);
-            // img.width = 100;
-            // img.height = 100;
-            // img.alt = "Uploaded File Preview";
-            // img.className = "rounded shadow"; // Add TailwindCSS styles
-            // previewContainer.appendChild(img);
-
             passport.show();
             // Create a FormData object to send the file via AJAX
             const formData = new FormData();

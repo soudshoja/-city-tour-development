@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Date;
 use App\Models\FileUpload;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 
 // use Carbon\Carbon;
@@ -1598,12 +1599,12 @@ class TaskController extends Controller
                 }
 
                 return redirect()->back()->with('success', 'Magic Holiday task received successfully');
-            case 'Amadeus':
+
+            default :
                 $response = $this->upload($request);
+                // Artisan::call('app:process-files', [], null, true);
 
                 return redirect()->back()->with($response['status'], $response['message']);
-            default:
-                return redirect()->back()->with('error', 'This supplier will be available soon');
         }
     }
 

@@ -13,6 +13,9 @@ use App\Models\SupplierCompany;
 use App\Models\Task;
 use App\Models\TaskFlightDetail;
 use App\Models\FileUpload;
+use App\Schema\TaskFlightSchema;
+use App\Schema\TaskSchema;
+use App\Services\AirFileParser;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
@@ -143,7 +146,7 @@ class ProcessAirFiles extends Command
                         'supplier' => $supplierName,
                         'file_count' => count($filesToProcess)
                     ]);
-                    
+
                     foreach ($filesToProcess as $file) {
                         $this->processSingleFile($company->id, $companyName, $supplierName, $supplierId, $file);
                     }
@@ -391,6 +394,22 @@ class ProcessAirFiles extends Command
             'company' => $companyName,
             'supplier' => $supplierName
         ]);
+
+        dump('Processing file: ' . $fileName);
+
+        $parser = new AirFileParser($fileRealPath);
+        $taskData = $parser->parseTaskSchema();
+
+        $normalizedTask = TaskSchema::normalize($taskData);
+
+        if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
+            $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
+        }
+
+        dump('Parsed task data:', $taskData);
+        dd('Normalized task:', $normalizedTask);
+
+        // Continue with AI processing...
 
         try {
             $extractedData = $this->aiManager->processWithAiTool($fileRealPath, $fileName);

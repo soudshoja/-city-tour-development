@@ -840,100 +840,101 @@ class TaskController extends Controller
         return view('tasks.update', compact('task'));
     }
 
-     public function update(Request $request, $id)
-    {
+    public function update(Request $request, $id)
+{
+    $request->validate([
+        'reference' => 'nullable|string',
+        'status' => 'required',
+        'price' => 'nullable|numeric',
+        'tax' => 'nullable|numeric',
+        'surcharge' => 'nullable|numeric',
+        'total' => 'required|numeric',
+        'agent_id' => 'required',
+        'client_id' => 'nullable|exists:clients,id', // no longer required
+        'supplier_id' => 'required',
+    ], [
+        'agent_id.required' => 'Please select an agent',
+        'supplier_id.required' => 'Please select a supplier',
+        'status.required' => 'Please select a status',
+        'total.required' => 'Please enter the total amount',
+    ]);
+
+    if (strtolower($request->status) !== 'issued' && strtolower($request->status) !== 'confirmed') {
         $request->validate([
-            'reference' => 'nullable|string',
-            'status' => 'required',
-            'price' => 'nullable|numeric',
-            'tax' => 'nullable|numeric',
-            'surcharge' => 'nullable|numeric',
-            'total' => 'nullable|numeric',
-            'total' => 'required',
-            'agent_id' => 'required',
-            'client_id' => 'nullable|exists:clients,id',
-            'supplier_id' => 'required',
+            'original_task_id' => 'required|exists:tasks,id',
         ], [
-            'client_id.required' => 'Please select a client',
-            'agent_id.required' => 'Please select an agent',
-            'supplier_id.required' => 'Please select a supplier',
-            'status.required' => 'Please select a status',
-            'total.required' => 'Please enter the total amount',
+            'original_task_id.required' => 'Task must be linked to an original task',
+        ]);
+    }
+
+    DB::beginTransaction();
+
+    try {
+        $task = Task::findOrFail($id);
+
+        Log::info('Before task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
+        Log::info('Incoming Request: agent_id: ' . $request->agent_id . ', client_id: ' . $request->client_id);
+
+        $prevClientName = $task->client_name;
+        $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
+
+        $data = $request->only([
+            'reference',
+            'status',
+            'price',
+            'tax',
+            'surcharge',
+            'total',
+            'agent_id',
+            'supplier_id',
+            'original_task_id',
         ]);
 
-        if (strtolower($request->status) !== 'issued' && strtolower($request->status) !== 'confirmed') {
-            $request->validate([
-                'original_task_id' => 'required|exists:tasks,id',
-            ], [
-                'original_task_id.required' => 'Task must be linked to an original task',
-            ]);
+        if ($request->filled('client_id')) {
+            $client = Client::findOrFail($request->client_id);
+            $data['client_id'] = $client->id;
+            $data['client_name'] = $client->name;
         }
-        try {
-            $task = Task::findOrFail($id);
-            $prevClientName = $task->client_name;
-            $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
 
-            if ($request->client_id) {
-                $client = Client::findOrFail($request->client_id);
-            } else {
-                $client = $task->client;
-                if (!$client) {
-                    return redirect()->back()->with('error', 'No client assigned to this task.');
+        $task->update($data);
+        Log::info('After task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
+
+        $shouldBeEnabled = $task->is_complete;
+
+        if ($shouldBeEnabled && !$wasEnabled) {
+            $task->enabled = true;
+            $task->save();
+            $this->processTaskFinancial($task);
+        } elseif (!$shouldBeEnabled && $wasEnabled) {
+            $task->enabled = false;
+            $task->save();
+        } else {
+            $task->enabled = $shouldBeEnabled;
+            $task->save();
+        }
+
+        $transaction = Transaction::with('journalEntries')
+            ->where('description', 'like', '%' . $task->reference . '%')
+            ->first();
+
+        if (isset($client) && $transaction) {
+            $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
+                if ($journalEntry->name === $prevClientName) {
+                    $journalEntry->name = $client->name;
+                    $journalEntry->save();
                 }
-            }
-
-            if ($request->agent_id) $task->agent_id = $request->agent_id;
-
-            $task->update($request->only([
-                'reference',
-                'status',
-                'price',
-                'tax',
-                'surcharge',
-                'total',
-                'agent_id',
-                'supplier_id',
-                'original_task_id'
-            ]));
-
-            $task->client_id = $client->id;
-            $task->client_name = $client->name;
-
-            $shouldBeEnabled = $task->is_complete;
-
-            if ($shouldBeEnabled && !$wasEnabled) {
-                $task->enabled = true;
-                $task->save();
-                $this->processTaskFinancial($task);
-            } elseif (!$shouldBeEnabled && $wasEnabled) {
-                $task->enabled = false;
-                $task->save();
-            } else {
-                $task->enabled = $shouldBeEnabled;
-                $task->save();
-            }
-
-            $transaction = Transaction::with('journalEntries')
-                ->where('description', 'like', '%' . $task->reference . '%')
-                ->first();
-
-            if ($transaction) {
-                $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
-                    if ($journalEntry->name == $prevClientName) {
-                        $journalEntry->name = $client->name;
-                        $journalEntry->save();
-                    }
-                });
-            }
-
-            DB::commit();
-            return redirect()->back()->with('success', 'Task updated successfully.');
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Task update failed: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
+            });
         }
+
+        DB::commit();
+        return redirect()->back()->with('success', 'Task updated successfully.');
+    } catch (Exception $e) {
+        DB::rollBack();
+        Log::error('Task update failed: ' . $e->getMessage());
+        return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
     }
+}
+
 
     public function upload(Request $request)
     {

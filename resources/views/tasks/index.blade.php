@@ -318,9 +318,9 @@
                         <!-- Hidden native select (logic only) -->
                         <select id="select-supplier-task" class="hidden">
                             @foreach ($suppliers as $supplier)
-                                <option value="{{ $supplier->id }}" data-supplier='@json(['name' => $supplier->name])'>
-                                    {{ $supplier->name }}
-                                </option>
+                            <option value="{{ $supplier->id }}" data-supplier='@json([' name'=> $supplier->name])'>
+                                {{ $supplier->name }}
+                            </option>
                             @endforeach
                         </select>
                         <div id="form-task-container" class="mb-3"></div>
@@ -624,17 +624,13 @@
                                                             class="inline-flex flex-col gap-4 items-center">
                                                             <div @click.away="editTaskModal_{{ $task->id }} = false"
                                                                 class="bg-white rounded-md border-2 w-full sm:w-120">
-                                                                <!-- Responsive modal width -->
-                                                                <div class="flex justify-between p-4">
-                                                                    <p class="font-semibold text-lg">
-                                                                        Update the following information if
-                                                                        needed
-                                                                    </p>
-                                                                    <button type="button"
-                                                                        @click="editTaskModal_{{ $task->id }} = false"
-                                                                        class="text-red-500 font-bold">
-                                                                        &times;
-                                                                    </button>
+                                                                <!-- Header -->
+                                                                <div class="flex items-start justify-between p-6">
+                                                                    <div>
+                                                                        <h2 class="text-xl font-bold text-gray-800">Edit Task Details</h2>
+                                                                        <p class="text-gray-600 italic text-xs mt-1">Please update the task details to ensure accurate information</p>
+                                                                    </div>
+                                                                    <button type="button" @click="editTaskModal_{{ $task->id }} = false" class="text-red-500 text-2xl font-bold">&times;</button>
                                                                 </div>
                                                                 <hr>
                                                                 @csrf
@@ -806,12 +802,12 @@
                                                                     <!-- Client Selection -->
                                                                     @php
                                                                     $selectedClient = \App\Models\Client::find(
-                                                                        $task->client_id,
+                                                                    $task->client_id,
                                                                     );
                                                                     $clientPlaceholder = $selectedClient
-                                                                        ? $selectedClient->name
-                                                                        : 'Select a Client';
-                                                                @endphp
+                                                                    ? $selectedClient->name
+                                                                    : 'Select a Client';
+                                                                    @endphp
                                                                     <div class="flex items-center gap-4">
                                                                         <label for="client_id"
                                                                             class="w-2/4 sm:w-1/3 text-left text-base">Client:</label>
@@ -822,10 +818,8 @@
                                                                                 :selectedId="$task->client_id"
                                                                                 :selectedName="$selectedClient
                                                                             ? $selectedClient->name
-                                                                            : null" 
+                                                                            : null"
                                                                                 :placeholder="$clientPlaceholder" />
-                                                                                 <input type="hidden" name="fallback_client_id" value="{{ $task->client_id }}">
-
                                                                         </div>
                                                                     </div>
 
@@ -876,15 +870,23 @@
                                                                             value="{{ $task->supplier->id }}">
                                                                     </div>
                                                                 </div>
+                                                                <div class="flex space-x-4 mt-2 mb-4 px-4 justify-between items-center">
+                                                                    <!-- Cancel Button -->
+                                                                    <button type="button"
+                                                                        @click="editTaskModal_{{ $task->id }} = false"
+                                                                        class="px-6 py-2 text-gray-700 font-semibold rounded-full bg-gray-200 hover:bg-gray-300 transition">
+                                                                        Cancel
+                                                                    </button>
+
+                                                                    <!-- Update Button -->
+                                                                    <button type="submit"
+                                                                        class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-full bg-blue-600 hover:bg-blue-700 transition"
+                                                                        form="edit-task-form-{{ $task->id }}">
+                                                                        Update
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                            <div class="flex space-x-4 mt-2">
-                                                                <!-- Update Button -->
-                                                                <x-primary-button type="submit"
-                                                                    class="w-[200px] justify-center px-12 py-10 text-lg"
-                                                                    form="edit-task-form-{{ $task->id }}">
-                                                                    Update
-                                                                </x-primary-button>
-                                                            </div>
+
                                                         </form>
                                                     </div>
                                                 </div>
@@ -1636,15 +1638,15 @@
                 fileInput.multiple = true;
                 fileInput.classList.add('bg-white', 'dark:bg-dark', 'p-2', 'shadow-md', 'rounded-md',
                     'w-full', 'border', 'border-gray-200', 'focus:outline-none');
-    
+
                 const fileNamesDisplay = document.createElement('div');
                 fileNamesDisplay.id = 'selected-files-display';
                 fileNamesDisplay.classList.add('mt-2', 'text-xs', 'text-gray-600');
-    
+
                 formTaskContainer.appendChild(fileInput);
                 formTaskContainer.appendChild(fileNamesDisplay);
-    
-                fileInput.addEventListener('change', function () {
+
+                fileInput.addEventListener('change', function() {
                     const fileNames = Array.from(this.files).map(file => file.name);
                     fileNamesDisplay.textContent = fileNames.length ? 'Selected files: ' + fileNames.join(', ') : 'No files selected.';
                 });

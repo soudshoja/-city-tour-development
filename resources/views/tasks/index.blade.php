@@ -291,7 +291,16 @@
                 </svg>
 
             </div>
-            <div x-cloak x-show="addTaskModal"
+            <div x-cloak x-show="addTaskModal" x-init="$watch('addTaskModal', value => {
+                    if (!value) {
+                        $nextTick(() => {
+                            const formTaskContainer = document.getElementById('form-task-container');
+                            if (formTaskContainer) {
+                                formTaskContainer.innerHTML = '';
+                            }
+                        });
+                    }
+                })"
                 class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
                 <div @click.away="addTaskModal = false" class="bg-white rounded shadow w-96">
                     <div class="p-4 flex justify-between items-center">
@@ -1631,25 +1640,115 @@
                     'dark:text-gray-300', 'p-3', 'mb-1');
                 formTaskContainer.appendChild(input);
             } else {
+                const customFiles = [];
+
                 const fileInput = document.createElement('input');
                 fileInput.type = 'file';
-                fileInput.name = 'task_file[]';
-                fileInput.id = 'upload-task';
                 fileInput.multiple = true;
-                fileInput.classList.add('bg-white', 'dark:bg-dark', 'p-2', 'shadow-md', 'rounded-md',
-                    'w-full', 'border', 'border-gray-200', 'focus:outline-none');
+                fileInput.classList.add('hidden');
 
-                const fileNamesDisplay = document.createElement('div');
-                fileNamesDisplay.id = 'selected-files-display';
-                fileNamesDisplay.classList.add('mt-2', 'text-xs', 'text-gray-600');
+                const dropZone = document.createElement('div');
+                dropZone.classList.add('flex', 'flex-col', 'items-center', 'justify-center', 'border-2', 'border-dashed', 'border-gray-300', 'rounded-md', 'text-center', 'cursor-pointer', 'bg-white', 'hover:bg-gray-50', 'transition', 'duration-150', 'ease-in-out', 'text-sm', 'text-gray-500', 'mb-2', 'p-3', 'sm:p-4');
+                dropZone.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 64 64" fill="none" stroke="#5d5d5d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 48H16C9.37258 48 4 42.6274 4 36C4 29.7926 8.79161 24.6465 14.9268 24.0438C17.3056 16.5436 24.2807 11 32.5 11C42.165 11 50 18.835 50 28.5C50 29.6813 49.8904 30.8323 49.6816 31.9425C55.0597 33.3639 59 38.2443 59 44C59 50.6274 53.6274 56 47 56H44"/>
+                    <path d="M32 38V20" />
+                    <path d="M24 28L32 20L40 28" />
+                    </svg>
+                    <p class="font-medium text-gray-700 mt-1">Click or drag files here to upload</p>
+                    <p class="text-xs text-gray-500">Multiple files supported</p>
+                `;
 
-                formTaskContainer.appendChild(fileInput);
-                formTaskContainer.appendChild(fileNamesDisplay);
+                const fileListDisplay = document.createElement('div');
+                fileListDisplay.id = 'file-list';
+                fileListDisplay.classList.add('text-sm', 'text-gray-700', 'border', 'border-gray-200', 'rounded', 'p-2', 'bg-white', 'max-h-[250px]', 'overflow-y-auto', 'hidden');
 
-                fileInput.addEventListener('change', function() {
-                    const fileNames = Array.from(this.files).map(file => file.name);
-                    fileNamesDisplay.textContent = fileNames.length ? 'Selected files: ' + fileNames.join(', ') : 'No files selected.';
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dropZone.classList.add('border-blue-400', 'bg-blue-50');
+                    });
                 });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dropZone.classList.remove('border-blue-400', 'bg-blue-50');
+                    });
+                });
+
+                dropZone.addEventListener('drop', (e) => {
+                    const droppedFiles = Array.from(e.dataTransfer.files);
+                    customFiles.push(...droppedFiles);
+                    renderFileList();
+                });
+
+                dropZone.addEventListener('click', () => fileInput.click());
+
+                fileInput.addEventListener('change', function () {
+                    customFiles.push(...Array.from(this.files));
+                    renderFileList();
+                    this.value = '';
+                });
+
+                function renderFileList() {
+                    fileListDisplay.innerHTML = '';
+
+                    if (customFiles.length === 0) {
+                        fileListDisplay.classList.add('hidden');
+                        return;
+                    }
+
+                    fileListDisplay.classList.remove('hidden');
+                    const wrapper = document.createElement('div');
+                    wrapper.classList.add('grid', 'grid-cols-2', 'gap-2', 'overflow-y-auto', 'max-h-[200px]', 'pr-1');
+
+                    customFiles.forEach((file, index) => {
+                        const container = document.createElement('div');
+                        container.classList.add('bg-gray-100', 'rounded', 'px-3', 'py-1', 'flex', 'items-center', 'justify-between');
+
+                        const name = document.createElement('span');
+                        name.textContent = file.name;
+                        name.classList.add('truncate', 'text-xs', 'max-w-[120px]');
+
+                        const removeBtn = document.createElement('button');
+                        removeBtn.textContent = '✕';
+                        removeBtn.classList.add('text-red-400', 'hover:text-red-600', 'text-xs', 'ml-2');
+                        removeBtn.addEventListener('click', () => {
+                            customFiles.splice(index, 1);
+                            renderFileList();
+                        });
+                        container.appendChild(name);
+                        container.appendChild(removeBtn);
+                        wrapper.appendChild(container);
+                    });
+                    fileListDisplay.appendChild(wrapper);
+                }
+
+                const form = document.getElementById('agent-supplier-task');
+                form.addEventListener('submit', function () {
+                    const oldHiddenInput = document.getElementById('task-upload');
+                    if (oldHiddenInput) oldHiddenInput.remove();
+
+                    const dataTransfer = new DataTransfer();
+                    customFiles.forEach(file => dataTransfer.items.add(file));
+
+                    const hiddenFileInput = document.createElement('input');
+                    hiddenFileInput.type = 'file';
+                    hiddenFileInput.name = 'task_file[]';
+                    hiddenFileInput.multiple = true;
+                    hiddenFileInput.id = 'task-upload';
+                    hiddenFileInput.files = dataTransfer.files;
+
+                    hiddenFileInput.style.display = 'none';
+                    form.appendChild(hiddenFileInput);
+                });
+
+                formTaskContainer.appendChild(dropZone);
+                formTaskContainer.appendChild(fileInput);
+                formTaskContainer.appendChild(fileListDisplay);
             }
         });
 

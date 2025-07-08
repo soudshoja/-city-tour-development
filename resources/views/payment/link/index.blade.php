@@ -158,7 +158,7 @@
                                                         Copy Link
                                                     </button>
                                                     <a href="{{ $paymentUrl }}" target="_blank"
-                                                        class="inline-flex text-center items-center justify-center w-full px-2 py-1 bg-green-100 text-green-700 rounded-md text-sm shadow-md hover:bg-green-200 transition font-medium transition-all duration-200 ease-in-out transform hover:scale-105">
+                                                        class="inline-flex text-center items-center justify-center w-full px-2 py-1 bg-green-100 text-green-700 rounded-full shadow-md text-sm shadow-md hover:bg-green-200 transition font-medium transition-all duration-200 ease-in-out transform hover:scale-105">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1"
                                                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -169,7 +169,7 @@
                                                 </div>
                                             @else
                                                 <span
-                                                    class="inline-block px-2 py-1 text-center bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-md text-xs shadow-sm transition-all duration-200 ease-in-out transform hover:scale-105 min-w-[120px]">
+                                                    class="inline-block px-2 py-1 text-center bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-full text-xs shadow-sm transition-all duration-200 ease-in-out transform hover:scale-105 min-w-[120px]">
                                                     Payment has been made
                                                 </span>
                                             @endif

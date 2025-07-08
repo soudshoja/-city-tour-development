@@ -518,25 +518,25 @@ class AirFileParser
         // Try refund format first (KNTI or KSTI line)
         $match = $this->findLine('/^K[NS]TI;(.+)/');
         if ($match) {
-            return $match[1];
+            return rtrim($match[1], "; \r\n");
         }
         
         // Try regular format (KFTF line)
-        $match = $this->findLine('/^KFTF;(.+)/');
+        $match = $this->findLine('/^KFTF;(.+?)(;*)$/');
         if ($match) {
-            return $match[1];
+            return rtrim($match[1], "; \r\n");
         }
         
         // Try TAX line
         $match = $this->findLine('/^TAX-(.+)/');
         if ($match) {
-            return $match[1];
+            return rtrim($match[1], "; \r\n");
         }
         
         // Fallback to KRF line
         $match = $this->findLine('/KRF:(.+)/');
         if ($match) {
-            return $match[1];
+            return rtrim($match[1], "; \r\n");
         }
         
         return '';

@@ -28,7 +28,9 @@ class ProcessAirFiles extends Command
     protected $signature = 'app:process-files 
                             {--batch : Use batch processing (upload all files first, then process together)[default]}
                             {--single : Use single file processing (process files one by one)}
-                            {--batch-size=10 : Maximum number of files to process in a single batch}';
+                            {--batch-size=10 : Maximum number of files to process in a single batch}
+                            {--export-debug : Export parsed data to CSV/Excel files for debugging}
+                            {--test-export : Test the export functionality with sample data}';
     protected $description = 'Scans the root air-files directory for new AIR files, processes them using existing logic, and moves them.';
     protected $aiManager;
     protected $companies;
@@ -43,6 +45,12 @@ class ProcessAirFiles extends Command
 
     public function handle()
     {
+        // Test export functionality if requested
+        if ($this->option('test-export')) {
+            $this->testExportFunctionality();
+            return 0;
+        }
+
         $this->companies = Company::all();
         $useBatch = $this->option('batch') || (!$this->option('single') && !$this->option('batch'));
         $batchSize = max(1, (int) $this->option('batch-size'));
@@ -170,7 +178,7 @@ class ProcessAirFiles extends Command
     }
 
     /**
-     * Process multiple AIR files in batch - handle all file types (PDFs, text files, etc.).
+     * Process multiple AIR files in batch using AirFileParser and export all data to single Excel file
      */
     protected function processBatchFiles($companyId, $companyName, $supplierName, $supplierId, array $files)
     {
@@ -184,129 +192,106 @@ class ProcessAirFiles extends Command
             'supplier' => $supplierName,
             'file_count' => count($files)
         ]);
-        
-        $this->logger->info("Batch processing started", [
-            'company' => $companyName,
-            'supplier' => $supplierName,
-            'file_count' => count($files)
-        ]);
 
-        // Step 1: Prepare file information for batch processing
-        $fileInfoArray = [];
-        $fileMap = [];
+        // Step 1: Process all files using AirFileParser and collect data
+        $allParsedData = [];
+        $processedFiles = [];
+        $errorFiles = [];
 
         foreach ($files as $file) {
             $fileRealPath = $file->getRealPath();
             $fileName = $file->getFilename();
             
-            $fileInfoArray[] = [
-                'path' => $fileRealPath,
-                'name' => $fileName
-            ];
+            $this->info("Processing file with AirFileParser: {$fileName}");
             
-            $fileMap[$fileName] = [
-                'file_path' => $fileRealPath,
-                'file_object' => $file
-            ];
-        }
+            try {
+                // Parse the file using AirFileParser
+                $parser = new AirFileParser($fileRealPath);
+                $taskData = $parser->parseTaskSchema();
 
-        // Step 2: Process all files in batch using the new mixed file type method
-        try {
-            $this->info("Processing " . count($fileInfoArray) . " files in batch...");
-            $this->logger->info("Starting AI batch processing", [
-                'company' => $companyName,
-                'supplier' => $supplierName,
-                'file_count' => count($fileInfoArray)
-            ]);
-            
-            $batchResults = $this->aiManager->processBatchFiles($fileInfoArray);
-            
-            if ($batchResults['status'] === 'error') {
-                $this->error("Batch AI processing failed: " . $batchResults['message']);
-                $this->logger->error("AIR File Processing: Batch AI processing failed", $batchResults);
-                $this->logger->error("Batch AI processing failed", [
-                    'company' => $companyName,
-                    'supplier' => $supplierName,
-                    'error' => $batchResults['message']
+                // Normalize the data
+                $normalizedTask = TaskSchema::normalize($taskData);
+                if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
+                    $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
+                }
+
+                // Add to collection
+                $allParsedData[] = $taskData;
+                $processedFiles[] = $fileName;
+                
+                $this->info("✓ Successfully parsed: {$fileName}");
+                
+            } catch (\Exception $e) {
+                $this->error("✗ Failed to parse {$fileName}: " . $e->getMessage());
+                $this->logger->error("AirFileParser failed for {$fileName}", [
+                    'error' => $e->getMessage(),
+                    'file_path' => $fileRealPath
                 ]);
                 
-                // Move all files to error directory
-                foreach ($fileMap as $fileName => $fileInfo) {
-                    $this->handleFileError($companyName, $supplierName, $fileInfo['file_path'], $fileName, 'Batch AI processing error', $batchResults['message']);
-                }
-                return;
-            }
-
-            // Step 3: Process results for each file
-            $batchResultsData = $batchResults['data'] ?? [];
-            $overallStats = ['total' => 0, 'success' => 0, 'error' => 0];
-
-            foreach ($fileMap as $fileName => $fileInfo) {
-                $filePath = $fileInfo['file_path'];
-                $file = $fileInfo['file_object'];
-
-                if (!isset($batchResultsData[$fileName])) {
-                    $this->handleFileError($companyName, $supplierName, $filePath, $fileName, 'No results in batch response', "File {$fileName} not found in batch results");
-                    $overallStats['error']++;
-                    continue;
-                }
-
-                $fileResult = $batchResultsData[$fileName];
-                
-                if ($fileResult['status'] === 'error') {
-                    $this->handleFileError($companyName, $supplierName, $filePath, $fileName, 'AI extraction error', $fileResult['message']);
-                    $overallStats['error']++;
-                    continue;
-                }
-
-                // Process the extracted data for this file
-                $extractedData = $fileResult['data'] ?? [];
-                $fileStats = $this->processExtractedDataForFile($companyId, $companyName, $supplierName, $supplierId, $fileName, $filePath, $extractedData);
-                
-                $overallStats['total'] += $fileStats['total'];
-                $overallStats['success'] += $fileStats['success'];
-                $overallStats['error'] += $fileStats['error'];
-
-                // Move file based on processing results
-                if ($fileStats['all_success']) {
-                    $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
-                    $this->moveFileWithLogging($filePath, $successPath, $fileName, "All {$fileStats['success']} items processed successfully");
-                } else {
-                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
-                    $this->moveFileWithLogging($filePath, $errorPath, $fileName, "Processing failed: {$fileStats['success']}/{$fileStats['total']} items successful");
-                }
-            }
-
-            // Log overall batch statistics
-            $this->info("Batch processing completed: {$overallStats['success']}/{$overallStats['total']} total items successful, {$overallStats['error']} files failed");
-            $this->logger->info("AIR File Processing: Batch processing completed", [
-                'company' => $companyName,
-                'supplier' => $supplierName,
-                'stats' => $overallStats
-            ]);
-            
-            $this->logger->info("Batch processing completed", [
-                'company' => $companyName,
-                'supplier' => $supplierName,
-                'total_items' => $overallStats['total'],
-                'successful_items' => $overallStats['success'],
-                'failed_files' => $overallStats['error']
-            ]);
-
-        } catch (\Exception $e) {
-            $this->error("Batch processing failed: " . $e->getMessage());
-            $this->logger->error("AIR File Processing: Batch processing exception: " . $e->getMessage());
-            $this->logger->error("Batch processing exception", [
-                'company' => $companyName,
-                'supplier' => $supplierName,
-                'error' => $e->getMessage()
-            ]);
-            
-            // Move all files to error directory
-            foreach ($fileMap as $fileName => $fileInfo) {
-                $this->handleFileError($companyName, $supplierName, $fileInfo['file_path'], $fileName, 'Batch processing exception', $e->getMessage());
+                $errorFiles[] = [
+                    'file_name' => $fileName,
+                    'file_path' => $fileRealPath,
+                    'error' => $e->getMessage()
+                ];
             }
         }
+
+        // Step 2: Export all data to single Excel file
+        if (!empty($allParsedData)) {
+            $this->info("Exporting " . count($allParsedData) . " parsed records to single Excel file...");
+            
+            try {
+                $batchExcelPath = $this->exportBatchDataToSingleExcel($allParsedData, $processedFiles, $companyName, $supplierName);
+                
+                if ($batchExcelPath) {
+                    $this->info("✓ Batch data exported to: {$batchExcelPath}");
+                } else {
+                    $this->error("✗ Failed to export batch data to Excel");
+                }
+                
+            } catch (\Exception $e) {
+                $this->error("✗ Failed to export batch data: " . $e->getMessage());
+                $this->logger->error("Batch export failed", [
+                    'error' => $e->getMessage(),
+                    'company' => $companyName,
+                    'supplier' => $supplierName
+                ]);
+            }
+        }
+
+        // Step 3: Move files based on processing results
+        foreach ($files as $file) {
+            $fileName = $file->getFilename();
+            $fileRealPath = $file->getRealPath();
+            
+            if (in_array($fileName, $processedFiles)) {
+                // Move to processed directory
+                $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
+                $this->moveFileWithLogging($fileRealPath, $successPath, $fileName, "Successfully parsed and exported");
+            } else {
+                // Move to error directory
+                $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                $errorInfo = collect($errorFiles)->firstWhere('file_name', $fileName);
+                $reason = $errorInfo ? $errorInfo['error'] : 'Unknown parsing error';
+                $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, "Parsing failed: {$reason}");
+            }
+        }
+
+        // Log summary
+        $successCount = count($processedFiles);
+        $errorCount = count($errorFiles);
+        $totalCount = count($files);
+        
+        $this->info("Batch processing completed: {$successCount}/{$totalCount} files parsed successfully, {$errorCount} files failed");
+        $this->logger->info("Batch processing summary", [
+            'company' => $companyName,
+            'supplier' => $supplierName,
+            'total_files' => $totalCount,
+            'successful_files' => $successCount,
+            'failed_files' => $errorCount,
+            'processed_files' => $processedFiles,
+            'error_files' => array_column($errorFiles, 'file_name')
+        ]);
     }
 
     /**
@@ -409,8 +394,21 @@ class ProcessAirFiles extends Command
             $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
         }
 
-        dump('Parsed task data:', $taskData);
+        // dump('Parsed task data:', $taskData);
         // dd('Normalized task:', $normalizedTask);
+
+        // Export parsed data to CSV and Excel for debugging (if enabled)
+        if ($this->option('export-debug')) {
+            $this->exportParsedDataToCsv($taskData, $fileName, $companyName, $supplierName);
+            $this->exportParsedDataToExcel($taskData, $fileName, $companyName, $supplierName);
+            
+            // Also export normalized data if different
+            if ($normalizedTask !== $taskData) {
+                $normalizedFileName = 'normalized_' . $fileName;
+                $this->exportParsedDataToCsv($normalizedTask, $normalizedFileName, $companyName, $supplierName);
+                $this->exportParsedDataToExcel($normalizedTask, $normalizedFileName, $companyName, $supplierName);
+            }
+        }
 
         // Continue with AI processing...
 
@@ -883,5 +881,375 @@ class ProcessAirFiles extends Command
             'reason' => $reason
         ]);
         $this->info($msg);
+    }
+
+    /**
+     * Export parsed data to CSV/Excel file for debugging
+     * Flattens nested arrays and includes the file name
+     */
+    protected function exportParsedDataToCsv($data, $fileName, $companyName, $supplierName)
+    {
+        try {
+            // Create export directory if it doesn't exist
+            $exportDir = storage_path("app/{$companyName}/{$supplierName}/debug_exports");
+            if (!File::isDirectory($exportDir)) {
+                File::makeDirectory($exportDir, 0755, true, true);
+            }
+
+            // Generate CSV filename with timestamp
+            $timestamp = now()->format('Y-m-d_H-i-s');
+            $csvFileName = "parsed_data_{$timestamp}_{$fileName}.csv";
+            $csvFilePath = $exportDir . '/' . $csvFileName;
+
+            // Flatten the data structure
+            $flattenedData = $this->flattenDataStructure($data, $fileName);
+
+            // Write to CSV
+            $handle = fopen($csvFilePath, 'w');
+            
+            if ($handle === false) {
+                throw new \Exception("Could not create CSV file: {$csvFilePath}");
+            }
+
+            // Write header row
+            if (!empty($flattenedData)) {
+                $headers = array_keys($flattenedData[0]);
+                fputcsv($handle, $headers);
+
+                // Write data rows
+                foreach ($flattenedData as $row) {
+                    fputcsv($handle, $row);
+                }
+            }
+
+            fclose($handle);
+
+            $this->info("Exported parsed data to: {$csvFilePath}");
+            $this->logger->info("Exported parsed data to CSV", [
+                'file_name' => $fileName,
+                'csv_path' => $csvFilePath,
+                'company' => $companyName,
+                'supplier' => $supplierName
+            ]);
+
+            return $csvFilePath;
+
+        } catch (\Exception $e) {
+            $this->error("Failed to export parsed data to CSV: " . $e->getMessage());
+            $this->logger->error("Failed to export parsed data to CSV", [
+                'file_name' => $fileName,
+                'error' => $e->getMessage(),
+                'company' => $companyName,
+                'supplier' => $supplierName
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Export parsed data to Excel file for debugging using Laravel Excel
+     * Flattens nested arrays and includes the file name
+     */
+    protected function exportParsedDataToExcel($data, $fileName, $companyName, $supplierName)
+    {
+        try {
+            // Create export directory if it doesn't exist
+            $exportDir = storage_path("app/{$companyName}/{$supplierName}/debug_exports");
+            if (!File::isDirectory($exportDir)) {
+                File::makeDirectory($exportDir, 0755, true, true);
+            }
+
+            // Generate Excel filename with timestamp
+            $timestamp = now()->format('Y-m-d_H-i-s');
+            $excelFileName = "parsed_data_{$timestamp}_{$fileName}.xlsx";
+            $excelFilePath = $exportDir . '/' . $excelFileName;
+
+            // Flatten the data structure
+            $flattenedData = $this->flattenDataStructure($data, $fileName);
+
+            // Create a simple Excel export class
+            $export = new class($flattenedData) implements \Maatwebsite\Excel\Concerns\FromArray, \Maatwebsite\Excel\Concerns\WithHeadings {
+                private $data;
+
+                public function __construct($data)
+                {
+                    $this->data = $data;
+                }
+
+                public function array(): array
+                {
+                    return array_values($this->data);
+                }
+
+                public function headings(): array
+                {
+                    return !empty($this->data) ? array_keys($this->data[0]) : [];
+                }
+            };
+
+            // Export to Excel
+            \Maatwebsite\Excel\Facades\Excel::store($export, "/{$companyName}/{$supplierName}/debug_exports/{$excelFileName}");
+
+            $this->info("Exported parsed data to Excel: {$excelFilePath}");
+            $this->logger->info("Exported parsed data to Excel", [
+                'file_name' => $fileName,
+                'excel_path' => $excelFilePath,
+                'company' => $companyName,
+                'supplier' => $supplierName
+            ]);
+
+            return $excelFilePath;
+
+        } catch (\Exception $e) {
+            $this->error("Failed to export parsed data to Excel: " . $e->getMessage());
+            $this->logger->error("Failed to export parsed data to Excel", [
+                'file_name' => $fileName,
+                'error' => $e->getMessage(),
+                'company' => $companyName,
+                'supplier' => $supplierName
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Flatten nested data structure for CSV export
+     * Converts nested arrays to flattened key-value pairs
+     */
+    protected function flattenDataStructure($data, $fileName)
+    {
+        if (!is_array($data)) {
+            return [];
+        }
+
+        $flattened = [];
+        
+        // Handle array of data items vs single data item
+        $dataItems = [];
+        if (isset($data[0]) && is_array($data[0])) {
+            // Array of items
+            $dataItems = $data;
+        } else {
+            // Single item
+            $dataItems = [$data];
+        }
+
+        foreach ($dataItems as $index => $item) {
+            $flatItem = [];
+            
+            // Add file name and item index
+            $flatItem['source_file'] = $fileName;
+            $flatItem['item_index'] = $index;
+            
+            // Flatten the main data
+            $this->flattenArray($item, $flatItem, '');
+            
+            $flattened[] = $flatItem;
+        }
+
+        return $flattened;
+    }
+
+    /**
+     * Recursively flatten an array with prefixed keys
+     */
+    protected function flattenArray($array, &$result, $prefix = '')
+    {
+        foreach ($array as $key => $value) {
+            $newKey = $prefix ? $prefix . '_' . $key : $key;
+            
+            if (is_array($value)) {
+                // Check if it's an empty array
+                if (empty($value)) {
+                    $result[$newKey] = '';
+                }
+                // If it's a numeric indexed array, handle each element
+                else if (array_keys($value) === range(0, count($value) - 1)) {
+                    // Check if elements are simple values or arrays
+                    $stringElements = [];
+                    foreach ($value as $element) {
+                        if (is_array($element)) {
+                            // Convert sub-array to JSON string for display
+                            $stringElements[] = json_encode($element);
+                        } else {
+                            $stringElements[] = $this->convertValueToString($element);
+                        }
+                    }
+                    $result[$newKey] = implode(' | ', $stringElements);
+                } else {
+                    // Recursively flatten associative arrays
+                    $this->flattenArray($value, $result, $newKey);
+                }
+            } else {
+                // Convert values to strings for CSV compatibility
+                $result[$newKey] = $this->convertValueToString($value);
+            }
+        }
+    }
+
+    /**
+     * Convert a value to string for CSV export
+     */
+    protected function convertValueToString($value)
+    {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        } else if (is_null($value)) {
+            return '';
+        } else if (is_numeric($value)) {
+            return (string) $value;
+        } else if (is_string($value)) {
+            return $value;
+        } else {
+            // For objects or other types, convert to JSON
+            return json_encode($value);
+        }
+    }
+
+    /**
+     * Test the export functionality with sample data
+     */
+    protected function testExportFunctionality()
+    {
+        $this->info("Testing export functionality with sample data...");
+        
+        // Create sample parsed data structure similar to what AirFileParser would produce
+        $sampleData = [
+            'id' => '12345',
+            'pnr' => 'ABC123',
+            'price' => 1250.00,
+            'currency' => 'USD',
+            'base_fare' => 1000.00,
+            'total_fare' => 1250.00,
+            'taxes' => [
+                ['code' => 'YQ', 'amount' => 150.00],
+                ['code' => 'US', 'amount' => 100.00]
+            ],
+            'task_flight_details' => [
+                [
+                    'from' => 'JFK',
+                    'to' => 'LAX',
+                    'date' => '2024-01-15',
+                    'flight_number' => 'AA123',
+                    'airline' => 'American Airlines'
+                ],
+                [
+                    'from' => 'LAX',
+                    'to' => 'JFK',
+                    'date' => '2024-01-22',
+                    'flight_number' => 'AA456',
+                    'airline' => 'American Airlines'
+                ]
+            ],
+            'passenger_info' => [
+                'name' => 'John Doe',
+                'email' => 'john.doe@example.com',
+                'phone' => '+1234567890'
+            ],
+            'booking_status' => 'confirmed',
+            'is_refund' => false,
+            'exchange_rate' => null
+        ];
+
+        // Test with a sample company and supplier
+        $testCompany = 'TestCompany';
+        $testSupplier = 'TestSupplier';
+        $testFileName = 'sample_air_file.txt';
+
+        // Export the sample data
+        $csvPath = $this->exportParsedDataToCsv($sampleData, $testFileName, $testCompany, $testSupplier);
+        $excelPath = $this->exportParsedDataToExcel($sampleData, $testFileName, $testCompany, $testSupplier);
+
+        if ($csvPath && $excelPath) {
+            $this->info("✓ Export test completed successfully!");
+            $this->info("CSV file: {$csvPath}");
+            $this->info("Excel file: {$excelPath}");
+        } else {
+            $this->error("✗ Export test failed!");
+        }
+    }
+
+    /**
+     * Export all batch parsed data to a single Excel file
+     * Combines data from multiple files into one Excel file with separate sheets or all in one sheet
+     */
+    protected function exportBatchDataToSingleExcel($allParsedData, $fileNames, $companyName, $supplierName)
+    {
+        try {
+            // Create export directory if it doesn't exist
+            $exportDir = storage_path("app/{$companyName}/{$supplierName}/debug_exports");
+            if (!File::isDirectory($exportDir)) {
+                File::makeDirectory($exportDir, 0755, true, true);
+            }
+
+            // Generate Excel filename with timestamp
+            $timestamp = now()->format('Y-m-d_H-i-s');
+            $excelFileName = "batch_parsed_data_{$timestamp}.xlsx";
+            $excelFilePath = $exportDir . '/' . $excelFileName;
+
+            // Flatten all data and include file names
+            $allFlattenedData = [];
+            
+            foreach ($allParsedData as $index => $data) {
+                $fileName = $fileNames[$index] ?? "unknown_file_{$index}";
+                $flattenedData = $this->flattenDataStructure($data, $fileName);
+                
+                // Since flattenDataStructure returns an array of items, merge them all
+                foreach ($flattenedData as $item) {
+                    $allFlattenedData[] = $item;
+                }
+            }
+
+            if (empty($allFlattenedData)) {
+                throw new \Exception("No data to export");
+            }
+
+            // Create Excel export class for all data
+            $export = new class($allFlattenedData) implements \Maatwebsite\Excel\Concerns\FromArray, \Maatwebsite\Excel\Concerns\WithHeadings {
+                private $data;
+
+                public function __construct($data)
+                {
+                    $this->data = $data;
+                }
+
+                public function array(): array
+                {
+                    return array_values($this->data);
+                }
+
+                public function headings(): array
+                {
+                    return !empty($this->data) ? array_keys($this->data[0]) : [];
+                }
+            };
+
+            // Export to Excel
+            \Maatwebsite\Excel\Facades\Excel::store($export, "/{$companyName}/{$supplierName}/debug_exports/{$excelFileName}");
+
+            $this->info("Exported batch data to Excel: {$excelFilePath}");
+            $this->info("Total records exported: " . count($allFlattenedData));
+            $this->info("Files included: " . implode(', ', $fileNames));
+            
+            $this->logger->info("Exported batch data to Excel", [
+                'excel_path' => $excelFilePath,
+                'total_records' => count($allFlattenedData),
+                'files_included' => $fileNames,
+                'company' => $companyName,
+                'supplier' => $supplierName
+            ]);
+
+            return $excelFilePath;
+
+        } catch (\Exception $e) {
+            $this->error("Failed to export batch data to Excel: " . $e->getMessage());
+            $this->logger->error("Failed to export batch data to Excel", [
+                'error' => $e->getMessage(),
+                'company' => $companyName,
+                'supplier' => $supplierName,
+                'files_count' => count($fileNames)
+            ]);
+            return null;
+        }
     }
 }

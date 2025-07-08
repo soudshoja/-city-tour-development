@@ -71,7 +71,7 @@ class AirFileParser
             'created_by' => $data['created_by'],
             'issued_by' => $data['issued_by'],
         ];
-        return $returnData;
+        return $data;
     }
     
     /**
@@ -130,15 +130,33 @@ class AirFileParser
     
     /**
      * Extract ticket number from T-K line
-     * Format: T-K229-2833184683 -> take last 10 digits
+     * Format: T-K229-2833184683 -> take last 10 digits of ticket number part
      */
     private function extractTicketNumber()
     {
-        $match = $this->findLine('/^T-K\d+-(\d+)$/');
+        // Look for T-K line with format: T-K[airline_code]-[ticket_number]
+        $match = $this->findLine('/^T-K(\d+)-(\d+)/');
+
         if ($match) {
-            $fullNumber = $match[1];
-            return substr($fullNumber, -10); // Last 10 digits
+            $airlineCode = $match[1];  // e.g., "229"
+            $ticketNumber = $match[2]; // e.g., "2833242924"
+            
+            // Return last 10 digits of ticket number
+            return substr($ticketNumber, -10);
         }
+        
+        // Fallback: try to capture the full string after T-K
+        $match = $this->findLine('/^T-K(\d+-\d+)/');
+        if ($match) {
+            $fullNumber = $match[1]; // e.g., "229-2833242924"
+            // Extract just the ticket number part after the dash
+            if (strpos($fullNumber, '-') !== false) {
+                $parts = explode('-', $fullNumber);
+                $ticketNumber = end($parts); // Get the last part (ticket number)
+                return substr($ticketNumber, -10); // Last 10 digits
+            }
+        }
+        
         return '';
     }
     

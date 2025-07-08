@@ -559,6 +559,7 @@
                                     this.chooseMethodModal = false;
                                     this.showUploadForm = false;
                                     this.showManualForm = false;
+                                    window.dispatchEvent(new CustomEvent('reset-dropdowns'));
                                 }
                             }" x-cloak>
                                 <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
@@ -704,7 +705,8 @@
                                                     </svg>
                                                 </a>
 
-                                                <div x-data="{ editTaskModal_{{ $task->id }}: false }">
+                                                <div x-data="{ editTaskModal_{{ $task->id }}: false }" x-init="$watch('editTaskModal_{{ $task->id }}', value => {
+                                                    if (!value) window.dispatchEvent(new CustomEvent('reset-dropdowns')); })">
                                                     <a data-tooltip="edit task" href="javascript:void(0);"
                                                         @click="editTaskModal_{{ $task->id }} = true">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="18"
@@ -729,7 +731,7 @@
                                                                         <h2 class="text-xl font-bold text-gray-800">Edit Task Details</h2>
                                                                         <p class="text-gray-600 italic text-xs mt-1">Please update the task details to ensure accurate information</p>
                                                                     </div>
-                                                                    <button @click="editTaskModal_{{ $task->id }} = false"
+                                                                    <button @click="editTaskModal_{{ $task->id }} = false; window.dispatchEvent(new CustomEvent('reset-dropdowns'));"
                                                                         type="button"
                                                                         class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
                                                                         &times;
@@ -967,7 +969,7 @@
                                                                 <div class="mt-6 flex flex-col sm:flex-row justify-between gap-4">
                                                                     <!-- Cancel Button -->
                                                                     <button type="button"
-                                                                        @click="editTaskModal_{{ $task->id }} = false"
+                                                                        @click="editTaskModal_{{ $task->id }} = false; window.dispatchEvent(new CustomEvent('reset-dropdowns'));"
                                                                         class="px-6 py-2 text-gray-700 font-semibold rounded-full bg-gray-200 hover:bg-gray-300 transition">
                                                                         Cancel
                                                                     </button>

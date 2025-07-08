@@ -357,6 +357,7 @@
                             if (formTaskContainer) {
                                 formTaskContainer.innerHTML = '';
                             }
+                            window.dispatchEvent(new CustomEvent('reset-dropdowns'));
                         });
                     }
                 })"
@@ -1194,14 +1195,14 @@
 
                                                 <!-- Email + DOB -->
                                                 <div class="flex gap-4 mb-3">
-                                                    <div class="w-2/3">
+                                                    <div class="w-1/2">
                                                         <label
                                                             class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                                         <input type="email" name="email" id="emailTask"
                                                             placeholder="Client's email"
                                                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                     </div>
-                                                    <div class="w-full md:w-1/3">
+                                                    <div class="w-1/2">
                                                         <label
                                                             class="block text-sm font-medium text-gray-700 mb-1">Date
                                                             of Birth</label>

@@ -23,6 +23,13 @@ export function searchableDropdown({
             if (!this.selectedName && selectedItem) {
                 this.selectedName = selectedItem.name;
             }
+
+            window.addEventListener('reset-dropdowns', () => {
+                this.selectedId = '';
+                this.selectedName = '';
+                this.search = '';
+                this.filtered = [...this.all];
+            });
         },
 
         filterOptions() {

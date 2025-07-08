@@ -148,8 +148,11 @@ class ProcessAirFiles extends Command
                     ]);
 
                     foreach ($filesToProcess as $file) {
+                        // dump('Processing file: ' . $file->getFilename());
                         $this->processSingleFile($company->id, $companyName, $supplierName, $supplierId, $file);
                     }
+
+                    dd('stop');
                 }
 
                 $this->info('AIR file processing for supplier ' . $supplierName . ' in company ' . $companyName . ' finished.');
@@ -395,7 +398,7 @@ class ProcessAirFiles extends Command
             'supplier' => $supplierName
         ]);
 
-        dump('Processing file: ' . $fileName);
+        // dump('Processing file: ' . $fileName);
 
         $parser = new AirFileParser($fileRealPath);
         $taskData = $parser->parseTaskSchema();
@@ -407,81 +410,81 @@ class ProcessAirFiles extends Command
         }
 
         dump('Parsed task data:', $taskData);
-        dd('Normalized task:', $normalizedTask);
+        // dd('Normalized task:', $normalizedTask);
 
         // Continue with AI processing...
 
-        try {
-            $extractedData = $this->aiManager->processWithAiTool($fileRealPath, $fileName);
+        // try {
+        //     $extractedData = $this->aiManager->processWithAiTool($fileRealPath, $fileName);
 
-            if ($extractedData['status'] === 'error') {
-                $this->handleFileError($companyName, $supplierName, $fileRealPath, $fileName, 'AI tool processing error', $extractedData['message']);
-                return;
-            }
+        //     if ($extractedData['status'] === 'error') {
+        //         $this->handleFileError($companyName, $supplierName, $fileRealPath, $fileName, 'AI tool processing error', $extractedData['message']);
+        //         return;
+        //     }
 
-            $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
+        //     $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
 
-            $dataItems = [];
-            if (isset($extractedData['data']) && is_array($extractedData['data'])) {
-                if (array_keys($extractedData['data']) === range(0, count($extractedData['data']) - 1)) {
-                    $dataItems = $extractedData['data'];
-                } else {
-                    $dataItems[] = $extractedData['data'];
-                }
-            } else {
-                $dataItems[] = $extractedData['data'] ?? [];
-            }
+        //     $dataItems = [];
+        //     if (isset($extractedData['data']) && is_array($extractedData['data'])) {
+        //         if (array_keys($extractedData['data']) === range(0, count($extractedData['data']) - 1)) {
+        //             $dataItems = $extractedData['data'];
+        //         } else {
+        //             $dataItems[] = $extractedData['data'];
+        //         }
+        //     } else {
+        //         $dataItems[] = $extractedData['data'] ?? [];
+        //     }
 
-            // Process all items and collect results
-            $processingResults = [];
-            $allSuccess = true;
+        //     // Process all items and collect results
+        //     $processingResults = [];
+        //     $allSuccess = true;
 
-            foreach ($dataItems as $index => $taskData) {
-                try {
-                    $result = $this->processTaskData($companyId, $companyName, $supplierName, $supplierId, $fileName, $taskData, $index);
-                    $processingResults[] = $result;
+        //     foreach ($dataItems as $index => $taskData) {
+        //         try {
+        //             $result = $this->processTaskData($companyId, $companyName, $supplierName, $supplierId, $fileName, $taskData, $index);
+        //             $processingResults[] = $result;
                     
-                    if (!$result['success']) {
-                        $allSuccess = false;
-                    }
-                } catch (Exception $e) {
-                    $processingResults[] = [
-                        'success' => false,
-                        'index' => $index,
-                        'error' => $e->getMessage(),
-                        'reason' => 'Exception during task data processing'
-                    ];
-                    $allSuccess = false;
-                    $this->logger->error("AIR File Processing: Exception processing item {$index} in {$fileName}: " . $e->getMessage());
-                    $this->logger->error("Exception processing item", [
-                        'file_name' => $fileName,
-                        'item_index' => $index,
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
+        //             if (!$result['success']) {
+        //                 $allSuccess = false;
+        //             }
+        //         } catch (Exception $e) {
+        //             $processingResults[] = [
+        //                 'success' => false,
+        //                 'index' => $index,
+        //                 'error' => $e->getMessage(),
+        //                 'reason' => 'Exception during task data processing'
+        //             ];
+        //             $allSuccess = false;
+        //             $this->logger->error("AIR File Processing: Exception processing item {$index} in {$fileName}: " . $e->getMessage());
+        //             $this->logger->error("Exception processing item", [
+        //                 'file_name' => $fileName,
+        //                 'item_index' => $index,
+        //                 'error' => $e->getMessage()
+        //             ]);
+        //         }
+        //     }
 
-            // Log processing summary
-            $successCount = count(array_filter($processingResults, fn($r) => $r['success']));
-            $totalCount = count($processingResults);
+        //     // Log processing summary
+        //     $successCount = count(array_filter($processingResults, fn($r) => $r['success']));
+        //     $totalCount = count($processingResults);
             
-            $this->info("File {$fileName}: {$successCount}/{$totalCount} items processed successfully");
-            $this->logger->info("AIR File Processing: File {$fileName} summary - {$successCount}/{$totalCount} items successful", [
-                'results' => $processingResults
-            ]);
+        //     $this->info("File {$fileName}: {$successCount}/{$totalCount} items processed successfully");
+        //     $this->logger->info("AIR File Processing: File {$fileName} summary - {$successCount}/{$totalCount} items successful", [
+        //         'results' => $processingResults
+        //     ]);
 
-            // Move file based on overall result
-            if ($allSuccess) {
-                $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
-                $this->moveFileWithLogging($fileRealPath, $successPath, $fileName, "All {$totalCount} items processed successfully");
-            } else {
-                $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
-                $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, "Processing failed: {$successCount}/{$totalCount} items successful");
-            }
+        //     // Move file based on overall result
+        //     if ($allSuccess) {
+        //         $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
+        //         $this->moveFileWithLogging($fileRealPath, $successPath, $fileName, "All {$totalCount} items processed successfully");
+        //     } else {
+        //         $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+        //         $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, "Processing failed: {$successCount}/{$totalCount} items successful");
+        //     }
 
-        } catch (Exception $e) {
-            $this->handleFileError($companyName, $supplierName, $fileRealPath, $fileName, 'Error during processing', $e->getMessage());
-        }
+        // } catch (Exception $e) {
+        //     $this->handleFileError($companyName, $supplierName, $fileRealPath, $fileName, 'Error during processing', $e->getMessage());
+        // }
     }
 
     /**

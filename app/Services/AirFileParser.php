@@ -135,7 +135,7 @@ class AirFileParser
     private function extractTicketNumber()
     {
         // Look for T-K line with format: T-K[airline_code]-[ticket_number]
-        $match = $this->findLine('/^T-K(\d+)-(\d+)/');
+        $match = $this->findLine('/^T-[KE](\d+)-(\d+)/');
 
         if ($match) {
             $airlineCode = $match[1];  // e.g., "229"
@@ -146,7 +146,7 @@ class AirFileParser
         }
         
         // Fallback: try to capture the full string after T-K
-        $match = $this->findLine('/^T-K(\d+-\d+)/');
+        $match = $this->findLine('/^T-[KE](\d+)-(\d+)/');
         if ($match) {
             $fullNumber = $match[1]; // e.g., "229-2833242924"
             // Extract just the ticket number part after the dash
@@ -191,12 +191,7 @@ class AirFileParser
      * Also check K line format for refund indicators (KN-, KS-)
      */
     private function extractStatus()
-    {
-        // Check for refund format in K line (KN- or KS- indicates refund)
-        if ($this->findLine('/^K[NS]-/')) {
-            return 'refund';
-        }
-        
+    {        
         // Check for VOID
         if ($this->findLine('/VOID/')) {
             return 'void';
@@ -226,18 +221,44 @@ class AirFileParser
      */
     private function extractRefundDate()
     {
-        if ($this->extractStatus() === 'refund') {
-            // Look for date patterns in the file
-            $match = $this->findLine('/(\d{2}[A-Z]{3}\d{2})/');
-            if ($match) {
-                try {
-                    $date = Carbon::createFromFormat('dMy', $match[1]);
-                    return $date->format('Y-m-d H:i:s');
-                } catch (\Exception $e) {
-                    // If parsing fails, return null
-                }
+        if ($this->extractStatus() !== 'refund') {
+            return null;
+        }
+
+        // Look for RFDC or RFD line
+        $match = $this->findLine('/^RFDC;(\d{2}[A-Z]{3}\d{2})/');
+        if (!$match) {
+            $match = $this->findLine('/^RFD ?;(\d{2}[A-Z]{3}\d{2})/');
+        }
+        if ($match) {
+            try {
+                $date = Carbon::createFromFormat('dMy', strtoupper($match[1]));
+                return $date->format('Y-m-d H:i:s');
+            } catch (\Exception $e) {
             }
         }
+
+        // Try R- line (e.g. R-141-35807XXXX;27MAR25)
+        $match = $this->findLine('/^R-\d{3}-\d+;(\d{2}[A-Z]{3}\d{2})/');
+        if ($match) {
+            try {
+                $date = Carbon::createFromFormat('dMy', strtoupper($match[1]));
+                return $date->format('Y-m-d H:i:s');
+            } catch (\Exception $e) {
+            }
+        }
+
+        // Fallback: use TKOK line (e.g. TKOK26MAY/...)
+        $match = $this->findLine('/TKOK(\d{2}[A-Z]{3})/');
+        if ($match) {
+            try {
+                $year = date('y');
+                $date = Carbon::createFromFormat('dMy', strtoupper($match[1] . $year));
+                return $date->format('Y-m-d H:i:s');
+            } catch (\Exception $e) {
+            }
+        }
+
         return null;
     }
     

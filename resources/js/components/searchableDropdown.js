@@ -16,6 +16,9 @@ export function searchableDropdown({
         selectedIndex: -1,
         placeholder,
         showAllOnOpen, // store the prop
+        originalId: selectedId,
+        originalName: selectedName,
+        hasChanged: false,
 
         init() {
             this.filtered = [...this.all];
@@ -25,10 +28,16 @@ export function searchableDropdown({
             }
 
             window.addEventListener('reset-dropdowns', () => {
-                this.selectedId = '';
-                this.selectedName = '';
+                if (!this.hasChanged) {
+                    this.selectedId = this.originalId;
+                    this.selectedName = this.originalName;
+                } else {
+                    this.selectedId = '';
+                    this.selectedName = '';
+                }
                 this.search = '';
                 this.filtered = [...this.all];
+                this.hasChanged = false;
             });
         },
 
@@ -49,6 +58,7 @@ export function searchableDropdown({
         select(option) {
             this.selectedId = option.id;
             this.selectedName = option.name;
+            this.hasChanged = true;
             this.search = '';
             this.open = false;
 

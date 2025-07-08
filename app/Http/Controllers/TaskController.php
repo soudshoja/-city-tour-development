@@ -841,7 +841,7 @@ class TaskController extends Controller
     }
 
     public function update(Request $request, $id)
-{
+{ 
     $request->validate([
         'reference' => 'nullable|string',
         'status' => 'required',
@@ -850,7 +850,7 @@ class TaskController extends Controller
         'surcharge' => 'nullable|numeric',
         'total' => 'required|numeric',
         'agent_id' => 'required',
-        'client_id' => 'nullable|exists:clients,id', // no longer required
+        'client_id' => 'nullable|exists:clients,id', 
         'supplier_id' => 'required',
     ], [
         'agent_id.required' => 'Please select an agent',
@@ -894,6 +894,12 @@ class TaskController extends Controller
             $client = Client::findOrFail($request->client_id);
             $data['client_id'] = $client->id;
             $data['client_name'] = $client->name;
+        }
+
+        if ($request->filled('agent_id')) {
+            $agent = Agent::findOrFail($request->agent_id);
+            $data['agent_id'] = $agent->id;
+            $data['agent_name'] = $agent->name;
         }
 
         $task->update($data);

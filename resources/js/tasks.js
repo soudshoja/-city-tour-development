@@ -390,38 +390,36 @@ createInvoiceBtn.addEventListener("click", function () {
     window.location.href = url;
 });
 
-// Close the floating div when the "X" button is clicked
 closeTaskFloatingActions.addEventListener("click", function () {
     floatingActions.classList.add("hidden");
 });
 
 document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('searchInput');
-    const myTable = document.getElementById('myTable');
-    const rows = myTable.querySelectorAll('tbody tr.taskRow');
+    const searchButton = document.getElementById('searchButton');
+    const rows = document.querySelectorAll('#myTable tbody tr.taskRow');
     const noTasksFound = document.getElementById('noTasksFound');
     const loadMoreWrapper = document.getElementById('loadMoreWrapper');
 
-    searchInput.addEventListener('input', function () {
-        const keyword = this.value.toLowerCase().trim();
-        let matchFound = false;
+    const searchInputClone = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(searchInputClone, searchInput);
+
+    searchButton.addEventListener('click', function () {
+        const keyword = searchInputClone.value.toLowerCase().trim();
+        let found = false;
 
         rows.forEach(row => {
-            const rowText = row.textContent.toLowerCase();
-            const isMatch = rowText.includes(keyword);
-            row.style.display = isMatch ? '' : 'none';
-            if (isMatch) matchFound = true;
+            const text = row.textContent.toLowerCase();
+            const match = text.includes(keyword);
+            row.style.display = match ? '' : 'none';
+            if (match) found = true;
         });
 
-        noTasksFound.classList.toggle('hidden', matchFound);
-        
-        if (keyword.length > 0) {
-            loadMoreWrapper.classList.add('hidden');
-        } else {
-            loadMoreWrapper.classList.remove('hidden');
-        }
+        if (noTasksFound) noTasksFound.classList.toggle('hidden', found);
+        if (loadMoreWrapper) loadMoreWrapper.classList.toggle('hidden', keyword.length > 0);
     });
 });
+
 
 document.addEventListener('DOMContentLoaded', function() {
     const filterConfig = {
@@ -776,7 +774,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (searchInput) {
-        searchInput.addEventListener('input', function() {
+        searchInput.addEventListener('click', function() {
             filterTableRows();
         });
     }

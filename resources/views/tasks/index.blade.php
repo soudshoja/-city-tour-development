@@ -206,7 +206,6 @@
             justify-content: between;
             align-items: center;
             margin-bottom: 20px;
-            padding-bottom: 16px;
             border-bottom: 1px solid #e5e7eb;
         }
 
@@ -1127,8 +1126,8 @@
 
                                     <!-- Manual Fill Form -->
                                     <div x-show="showManualForm" x-transition
-                                        class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center">
-                                        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                                        class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center px-2">
+                                        <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 sm:max-h-none sm:overflow-visible max-h-[90vh] overflow-y-auto">
                                             <!-- Header with title and close button -->
                                             <div class="flex items-center justify-between mb-2">
                                                 <h2 class="text-xl font-bold text-gray-800">Client Registration</h2>
@@ -1207,7 +1206,7 @@
                                                             placeholder="Client's email"
                                                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                     </div>
-                                                    <div class="w-1/3">
+                                                    <div class="w-full md:w-1/3">
                                                         <label
                                                             class="block text-sm font-medium text-gray-700 mb-1">Date
                                                             of Birth</label>
@@ -1274,13 +1273,13 @@
                                                 </div>
 
                                                 <!-- Buttons -->
-                                                <div class="flex justify-between pt-4 mt-4">
+                                                <div class="flex justify-between gap-3 pt-4 mt-4">
                                                     <button type="button" @click="closeAll()"
-                                                        class="w-32 bg-gray-300 hover:bg-gray-400 font-semibold py-2 rounded-full text-sm transition duration-150">
+                                                        class="w-[45%] sm:w-32 bg-gray-300 hover:bg-gray-400 font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
                                                         Cancel
                                                     </button>
                                                     <button type="submit"
-                                                        class="w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-full text-sm transition duration-150">
+                                                        class="w-[45%] sm:w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 sm:py-2 rounded-full text-sm transition duration-150">
                                                         Register Client
                                                     </button>
                                                 </div>

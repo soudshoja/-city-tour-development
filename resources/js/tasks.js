@@ -473,6 +473,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let activeFilters = [];
     let filterCounter = 0;
+    const filterRowData = new Map();
 
     const toggleFiltersBtn = document.getElementById('toggleFilters');
     const filterModal = document.getElementById('filterModal');
@@ -486,6 +487,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearAllActiveFiltersBtn = document.getElementById('clearAllActiveFilters');
     const searchInput = document.getElementById("searchInput");
     const noTasksFound = document.getElementById("noTasksFound");
+    const loadMoreWrapper = document.getElementById("loadMoreWrapper");
+    const loadMoreButton = loadMoreWrapper ? loadMoreWrapper.querySelector('button') : null;
 
     toggleFiltersBtn.addEventListener('click', openFilterModal);
     closeFilterModalBtn.addEventListener('click', closeFilterModal);
@@ -505,6 +508,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (filterContainer.children.length === 0) {
             addFilterRow();
         }
+        updateAddFilterButtonState();
     }
 
     function closeFilterModal() {
@@ -517,13 +521,23 @@ document.addEventListener('DOMContentLoaded', function() {
         filterRow.className = 'filter-row';
         filterRow.dataset.filterId = filterId;
 
+        filterRowData.set(filterId, {
+            column: '',
+            value: ''
+        });
+
+        const availableColumns = Object.entries(filterConfig.columns)
+            .filter(([key]) => !isColumnAlreadySelected(key));
+
+        if (availableColumns.length === 0) {
+            return;
+        }
+
         filterRow.innerHTML = `
             <select class="column-select w-48" onchange="updateConditions(this)">
-                ${Object.entries(filterConfig.columns)
-                    .filter(([key]) => !isColumnAlreadySelected(key))
-                    .map(([key, config]) => 
-                        `<option value="${key}" data-type="${config.type}">${config.label}</option>`
-                    ).join('')}
+                ${availableColumns.map(([key, config]) =>
+                    `<option value="${key}" data-type="${config.type}">${config.label}</option>`
+                ).join('')}
             </select>
             <input type="text" class="value-input" placeholder="Enter value...">
             <button type="button" class="remove-filter-btn" onclick="removeFilterRow(${filterId})">
@@ -532,6 +546,8 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
 
         filterContainer.appendChild(filterRow);
+        updateConditions(filterRow.querySelector('.column-select'));
+        updateAddFilterButtonState();
     }
 
     function isColumnAlreadySelected(column) {
@@ -540,72 +556,89 @@ document.addEventListener('DOMContentLoaded', function() {
         return selectedColumns.includes(column);
     }
 
+    function updateAddFilterButtonState() {
+        const currentFilterCount = filterContainer.children.length;
+        const totalAvailableColumns = Object.keys(filterConfig.columns).length;
+
+        if (currentFilterCount >= totalAvailableColumns) {
+            addFilterRowBtn.disabled = true;
+            addFilterRowBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            addFilterRowBtn.disabled = false;
+            addFilterRowBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
+
     window.updateConditions = function(columnSelect) {
         const filterRow = columnSelect.closest('.filter-row');
-        const valueInput = filterRow.querySelector('.value-input');
-        const selectedOption = columnSelect.selectedOptions[0];
-        const columnType = selectedOption.dataset.type;
-        valueInput.disabled = false;
+        const filterId = parseInt(filterRow.dataset.filterId);
+        const selectedColumn = columnSelect.value;
+        const columnType = filterConfig.columns[selectedColumn].type;
+        let valueInput = filterRow.querySelector('.value-input');
 
-        if (columnType === 'date') {
-            valueInput.type = 'date';
-        } else if (columnType === 'number') {
-            valueInput.type = 'number';
-        } else {
-            valueInput.type = 'text';
-        }
+        filterRowData.get(filterId).column = selectedColumn;
 
+        const currentValue = valueInput.value;
+        filterRowData.get(filterId).value = currentValue;
+
+        let newInputElement;
         if (columnType === 'select') {
-            const column = columnSelect.value;
-            const options = filterConfig.columns[column].options || [];
-            const selectElement = document.createElement('select');
-            selectElement.className = 'value-input';
-            selectElement.innerHTML = `<option value="">Select value...</option>
-                ${options.map(option => `<option value="${option}">${option}</option>`).join('')}`;
-            filterRow.replaceChild(selectElement, valueInput);
+            newInputElement = document.createElement('select');
+            newInputElement.className = 'value-input';
+            newInputElement.innerHTML = `<option value="">Select value...</option>
+                ${filterConfig.columns[selectedColumn].options.map(option =>
+                    `<option value="${option}">${option}</option>`
+                ).join('')}`;
         } else {
-            const inputElement = document.createElement('input');
-            inputElement.type = columnType === 'date' ? 'date' : columnType === 'number' ? 'number' : 'text';
-            inputElement.className = 'value-input';
-            inputElement.placeholder = 'Enter value...';
-            filterRow.replaceChild(inputElement, valueInput);
+            newInputElement = document.createElement('input');
+            newInputElement.className = 'value-input';
+            newInputElement.placeholder = 'Enter value...';
+            newInputElement.type = columnType === 'date' ? 'date' : columnType === 'number' ? 'number' : 'text';
         }
+
+        filterRow.replaceChild(newInputElement, valueInput);
+        valueInput = newInputElement;
+
+        const storedValue = filterRowData.get(filterId).value;
+        if (storedValue) {
+            valueInput.value = storedValue;
+        }
+
+        valueInput.addEventListener('input', () => {
+            filterRowData.get(filterId).value = valueInput.value;
+        });
     };
 
-    window.removeFilterRow = function (filterId) {
+    window.removeFilterRow = function(filterId) {
         const filterRow = document.querySelector(`[data-filter-id="${filterId}"]`);
-        if (filterRow && filterContainer.children.length > 1) {
-            const valueInput = filterRow.querySelector('.value-input');
-            if (valueInput) {
-                valueInput.value = '';  // Clear the input value
+        if (filterRow) {
+            filterRow.remove();
+            filterRowData.delete(filterId);
+            updateAddFilterButtonState();
+            if (filterContainer.children.length === 0) {
+                addFilterRow();
             }
-            filterRow.remove(); // Remove the filter row
         }
     };
 
     function applyFilters() {
-        const filterRows = filterContainer.querySelectorAll('.filter-row');
         activeFilters = [];
+        filterRowData.forEach((data, filterId) => {
+            const filterRow = document.querySelector(`[data-filter-id="${filterId}"]`);
+            if (!filterRow) return;
 
-        filterRows.forEach(row => {
-            const column = row.querySelector('.column-select').value;
-            const value = row.querySelector('.value-input').value;
+            const columnSelect = filterRow.querySelector('.column-select');
+            const valueInput = filterRow.querySelector('.value-input');
+
+            const column = columnSelect ? columnSelect.value : '';
+            const value = valueInput ? valueInput.value : '';
 
             if (column && value) {
-                if (column === 'date') {
-                    const dateValue = convertToDate(value);
-                    activeFilters.push({
-                        column,
-                        value: dateValue,
-                        label: `${filterConfig.columns[column].label} "${value}"`
-                    });
-                } else {
-                    activeFilters.push({
-                        column,
-                        value,
-                        label: `${filterConfig.columns[column].label} "${value}"`
-                    });
-                }
+                activeFilters.push({
+                    column,
+                    value,
+                    label: `${filterConfig.columns[column].label} "${value}"`
+                });
             }
         });
 
@@ -616,13 +649,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function clearAllFilters() {
         filterContainer.innerHTML = '';
+        filterRowData.clear();
         activeFilters = [];
-
-        const allInputs = filterContainer.querySelectorAll('.value-input');
-        allInputs.forEach(input => {
-            input.value = '';
-        });
-
         updateActiveFiltersDisplay();
         filterTableRows();
         addFilterRow();
@@ -630,15 +658,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function clearAllActiveFilters() {
         filterContainer.innerHTML = '';
+        filterRowData.clear();
         activeFilters = [];
-
-        const allInputs = filterContainer.querySelectorAll('.value-input');
-        allInputs.forEach(input => {
-            input.value = '';
-        });
-
         updateActiveFiltersDisplay();
         filterTableRows();
+        addFilterRow();
     }
 
     function updateActiveFiltersDisplay() {
@@ -671,6 +695,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function filterTableRows() {
         const tableRows = document.querySelectorAll('#myTable tbody tr.taskRow');
         let anyVisible = false;
+        let filteredCount = 0;
 
         tableRows.forEach(row => {
             let showRow = true;
@@ -680,6 +705,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const cellValue = getCellValue(row, filter.column);
 
                     if (filter.column === 'date') {
+                        // Assuming task date is in 'YYYY-MM-DD' format
                         const taskDate = cellValue.split(' ')[0];
                         return taskDate === filter.value;
                     }
@@ -687,14 +713,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     return matchesCondition(cellValue, filter.value);
                 });
             }
+            const keyword = searchInput.value.toLowerCase().trim();
+            const rowText = row.textContent.toLowerCase();
+            const matchesSearch = rowText.includes(keyword);
+            showRow = showRow && matchesSearch;
 
             row.style.display = showRow ? '' : 'none';
             if (showRow) {
                 anyVisible = true;
+                filteredCount++;
             }
         });
 
         noTasksFound.style.display = anyVisible ? 'none' : 'flex';
+
+        if (loadMoreWrapper && loadMoreButton) {
+            const allTasksCount = document.querySelectorAll('#myTable tbody tr.taskRow').length;
+            const currentlyVisibleTasks = Array.from(tableRows).filter(row => row.style.display !== 'none').length;
+
+            if (currentlyVisibleTasks < filteredCount) {
+                loadMoreWrapper.style.display = 'block';
+            } else {
+                loadMoreWrapper.style.display = 'none';
+            }
+        }
     }
 
     function getCellValue(row, column) {
@@ -735,26 +777,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (searchInput) {
         searchInput.addEventListener('input', function() {
-            const keyword = this.value.toLowerCase().trim();
-            const rows = document.querySelectorAll('#myTable tbody tr.taskRow');
-            let anyVisible = false;
-
-            rows.forEach(row => {
-                const rowText = row.textContent.toLowerCase();
-                const matchesSearch = rowText.includes(keyword);
-                const matchesFilters = activeFilters.length === 0 || activeFilters.every(filter => {
-                    const cellValue = getCellValue(row, filter.column);
-                    return matchesCondition(cellValue, filter.value);
-                });
-
-                const showRow = matchesSearch && matchesFilters;
-                row.style.display = showRow ? '' : 'none';
-                if (showRow) {
-                    anyVisible = true;
-                }
-            });
-
-            noTasksFound.style.display = anyVisible ? 'none' : 'flex';
+            filterTableRows();
         });
     }
+    filterTableRows();
 });

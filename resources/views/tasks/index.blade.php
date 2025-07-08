@@ -387,7 +387,7 @@
                         <!-- Hidden native select (logic only) -->
                         <select id="select-supplier-task" class="hidden">
                             @foreach ($suppliers as $supplier)
-                                <option value="{{ $supplier->id }}" data-supplier='@json(['name' => $supplier->name])'>
+                            <option value="{{ $supplier->id }}" data-supplier='@json(['name'=>$supplier->name])'>
                                     {{ $supplier->name }}
                                 </option>
                             @endforeach
@@ -427,26 +427,53 @@
         <div class="content-70">
             <div class="panel oxShadow rounded-lg">
                 <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
-                    <div class="relative w-full">
-                        <input type="text" placeholder="Find fast and search here..."
-                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                            id="searchInput">
+                    <div class="w-full px-6"> 
+                        <form action="{{ route('tasks.index') }}" method="GET"
+                            class="flex items-center gap-3 max-w-full"> 
+                            
+                            <div class="relative flex-1">
+                                <input type="text" name="q" value="{{ request('q') }}"
+                                    id="searchInput"
+                                    placeholder=" "
+                                    oninput="handleSearchInteraction()"
+                                    class="block px-3 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-transparent border-b-2 border-gray-300 appearance-none
+                                    dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer rounded-full"/>
 
-                        <button data-tooltip="start searching" type="button"
-                            class="DarkBGcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
-                            id="searchButton">
-                            <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5"
-                                    opacity="0.5" class="dark:stroke-gray-300"></circle>
-                                <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"
-                                    class="dark:stroke-gray-300"></path>
-                            </svg>
-                        </button>
+                                <label for="searchInput"
+                                    class="absolute text-md text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
+                                    bg-white dark:bg-gray-900 px-2 peer-focus:text-blue-600 peer-focus:dark:text-blue-500
+                                    peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2
+                                    peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">
+                                    Quick search for tasks
+                                </label>
+                            </div>
+
+                            <button type="submit" id="searchButton"
+                                data-tooltip="Search"
+                                class="relative group bg-blue-200 hover:bg-blue-600 text-black hover:text-white w-9 h-9 flex items-center justify-center rounded-full transition duration-300 ring-offset-2">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+                                    <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+
+                            <button type="button"
+                                data-tooltip="Reset"
+                                onclick="window.location='{{ route('tasks.index') }}'"
+                                id="resetButton"
+                                class="relative group bg-red-200 hover:bg-red-500 text-black hover:text-white w-9 h-9 flex items-center justify-center rounded-full opacity-0 scale-95 pointer-events-none transition-all duration-300">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
+                                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </form>
                     </div>
+
                     <div class="flex customCenter gap-5 w-full justify-end">
                         <button id="toggleFilters"
-                            class="flex px-3 py-2 gap-2 w-full md:w-auto justify-center city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
+                            class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
                             <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
                                 viewBox="0 0 32 32">
                                 <path fill="#333333"
@@ -612,16 +639,19 @@
                                                 Supplier</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        @if ($tasks->isEmpty())
+                                    @php
+                                    $showTasks = request()->has('q') ? $searchTask : $tasks;
+                                    @endphp
+                                    <tbody id="myTableBody">
+                                        @if ($showTasks->isEmpty())
                                         <tr>
                                             <td colspan="10"
                                                 class="text-center p-5 text-gray-500 dark:text-gray-300">No
                                                 tasks found</td>
                                         </tr>
                                         @else
-                                        @foreach ($tasks as $key => $task)
-                                        <tr x-show="{{ $key }} < shown" x-cloak
+                                        @foreach ($showTasks as $key => $task)
+                                        <tr class="taskRow" x-show="{{ $key }} < shown" x-cloak
                                             data-price="{{ $task->price }}"
                                             data-supplier-id="{{ $task->supplier->id }}"
                                             data-branch-id="{{ $task->agent ? $task->agent->branch->id : null }}"
@@ -700,10 +730,10 @@
                                                                         <p class="text-gray-600 italic text-xs mt-1">Please update the task details to ensure accurate information</p>
                                                                     </div>
                                                                     <button @click="editTaskModal_{{ $task->id }} = false"
-    type="button"
-    class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
-    &times;
-</button>
+                                                                        type="button"
+                                                                        class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
+                                                                        &times;
+                                                                    </button>
 
                                                                 </div>
                                                                 @csrf
@@ -2090,4 +2120,30 @@
             'text-sm', 'transition', 'duration-150');
         button.disabled = false;
     }
+
+    function handleSearchInteraction() {
+        const input = document.getElementById('searchInput');
+        const resetBtn = document.getElementById('resetButton');
+        const searchBtn = document.getElementById('searchButton');
+        const label = document.getElementById('searchLabel');
+
+        const hasText = input.value.trim().length > 0;
+
+        if (hasText) {
+            resetBtn.classList.remove('opacity-0', 'scale-95', 'pointer-events-none');
+            resetBtn.classList.add('opacity-100', 'scale-100');
+            label.classList.add('opacity-0');
+
+            searchBtn.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+        } else {
+            resetBtn.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+            resetBtn.classList.remove('opacity-100', 'scale-100');
+            label.classList.remove('opacity-0');
+
+            searchBtn.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', handleSearchInteraction);
+
 </script>

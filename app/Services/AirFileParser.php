@@ -58,7 +58,20 @@ class AirFileParser
             'task_flight_details' => $this->parseFlightDetails(),
         ];
         
-        return $data;
+        $returnData = [
+            'price' => $data['price'],
+            'exchange_currency' => $data['exchange_currency'],
+            'original_price' => $data['original_price'],
+            'original_currency' => $data['original_currency'],
+            'total' => $data['total'],
+            'status' => $data['status'],
+            'agent_name' => $data['agent_name'],
+            'agent_email' => $data['agent_email'],
+            'agent_amadeus_id' => $data['agent_amadeus_id'],
+            'created_by' => $data['created_by'],
+            'issued_by' => $data['issued_by'],
+        ];
+        return $returnData;
     }
     
     /**
@@ -155,11 +168,17 @@ class AirFileParser
     }
     
     /**
-     * Extract status from AMD line
+     * Extract status from AMD line or K line format
      * Look for VOID, RF (refund), FO (reissued), EMD indicators
+     * Also check K line format for refund indicators (KN-, KS-)
      */
     private function extractStatus()
     {
+        // Check for refund format in K line (KN- or KS- indicates refund)
+        if ($this->findLine('/^K[NS]-/')) {
+            return 'refund';
+        }
+        
         // Check for VOID
         if ($this->findLine('/VOID/')) {
             return 'void';
@@ -206,20 +225,45 @@ class AirFileParser
     
     /**
      * Extract price from K line (fare line)
-     * Format: K-FKWD90.000     ;;;;;;;;;;;;KWD143.400    ;;;
+     * Format: 
+     * Regular: K-FKWD90.000     ;;;;;;;;;;;;KWD143.400    ;;;
+     * Refund: KN-IKWD129.000    ;;;;;;;;;;;;KWD227.750    ;;;
+     * Currency Exchange: K-FAED1300 ;KWD109.000 ;;;;;;;;;;;KWD150.900 ;
      */
     private function extractPrice()
     {
-        // Look specifically for K line with fare information
-        // Pattern handles: K-F[CURRENCY][AMOUNT][SPACES/SEMICOLONS][CURRENCY][AMOUNT]
-        $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)\s*;*\s*([A-Z]{3})([\d.]+)/');
+        // Check for refund format first (KN- or KS-)
+        $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)\s*;*\s*([A-Z]{3})([\d.]+)/');
         if ($match) {
-            // Return the second amount (total fare including taxes)
-            return (float) $match[4]; // KWD143.400 in your example
+            // For refunds, determine if there's currency exchange
+            if ($this->hasCurrencyExchange()) {
+                // 3-pair format: return the final total (6th position)
+                $exchangeMatch = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
+                if ($exchangeMatch) {
+                    return (float) $exchangeMatch[6];
+                }
+            }
+            // 2-pair format: return the second amount
+            return (float) $match[4];
+        }
+        
+        // Check for regular format (K-F)
+        if ($this->hasCurrencyExchange()) {
+            // 3-pair format: K-FAED1300 ;KWD109.000 ;;;;;;;;;;;KWD150.900 ;
+            $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
+            if ($match) {
+                return (float) $match[4]; // Final total amount (KWD150.900)
+            }
+        } else {
+            // 2-pair format: K-FKWD66.000 ;;;;;;;;;;;;KWD194.300 ;;;
+            $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
+            if ($match) {
+                return (float) $match[2]; // Total amount (KWD194.300)
+            }
         }
         
         // Fallback: Look for any price pattern on K line (base fare only)
-        $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)/');
+        $match = $this->findLine('/^K[NS]?-[FI]?([A-Z]{3})([\d.]+)/');
         if ($match) {
             return (float) $match[2]; // Base fare if no total found
         }
@@ -229,16 +273,34 @@ class AirFileParser
     
     /**
      * Extract exchange currency from K line
+     * Supports both regular (K-F) and refund (KN-/KS-) formats
+     * Handles both currency exchange and same-currency scenarios
      */
     private function extractExchangeCurrency()
     {
-        // Look for currency on K line
-        $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)\s*;;;;;;;;;;;;([A-Z]{3})([\d.]+)/');
-        if ($match) {
-            return $match[3]; // Second currency (KWD in your example)
+        if ($this->hasCurrencyExchange()) {
+            // 3-pair format with currency exchange - return the final currency
+            $match = $this->findLine('/^K[NS]?-[FI]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
+            if ($match) {
+                return $match[5]; // Final currency (KWD in exchange example)
+            }
+        } else {
+            // 2-pair format - return the second currency
+            // Check for refund format first (KN- or KS-)
+            $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
+            if ($match) {
+                return $match[3]; // Second currency (KWD in refund example)
+            }
+            
+            // Check for regular format (K-F)
+            $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
+            if ($match) {
+                return $match[3]; // Second currency (KWD in regular example)
+            }
         }
         
-        $match = $this->findLine('/^K-F([A-Z]{3})/');
+        // Fallback: Look for any currency on K line
+        $match = $this->findLine('/^K[NS]?-[FI]?([A-Z]{3})/');
         if ($match) {
             return $match[1]; // First currency as fallback
         }
@@ -248,14 +310,21 @@ class AirFileParser
     
     /**
      * Extract original price (base fare from K line)
-     * Format: K-FKWD90.000 (this is the base fare before taxes)
+     * Supports both regular and refund formats
+     * Returns the first amount in the K-line regardless of currency exchange
      */
     private function extractOriginalPrice()
     {
-        // Look for base fare on K line
+        // Check for refund format first (KN- or KS-)
+        $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)/');
+        if ($match) {
+            return (float) $match[2]; // First amount (base fare)
+        }
+        
+        // Check for regular format (K-F)
         $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)/');
         if ($match) {
-            return (float) $match[2]; // KWD90.000 in your example
+            return (float) $match[2]; // First amount (base fare)
         }
         
         return null;
@@ -263,45 +332,73 @@ class AirFileParser
     
     /**
      * Extract original currency from K line
+     * Supports both regular and refund formats
+     * Returns the first currency in the K-line regardless of currency exchange
      */
     private function extractOriginalCurrency()
     {
-        // Look for base fare currency on K line
+        // Check for refund format first (KN- or KS-)
+        $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})/');
+        if ($match) {
+            return $match[1]; // First currency
+        }
+        
+        // Check for regular format (K-F)
         $match = $this->findLine('/^K-F([A-Z]{3})/');
         if ($match) {
-            return $match[1]; // First currency (KWD in your example)
+            return $match[1]; // First currency
         }
         
         return 'KWD'; // Default currency
     }
     
     /**
-     * Extract total amount from K line or TAX line
+     * Extract total amount from K line
+     * The total is explicitly mentioned in the K line after multiple semicolons
+     * Supports both regular and refund formats, and handles currency exchange
+     * Example: K-FKWD135.000    ;;;;;;;;;;;;KWD172.850    ;;;
+     *          KN-IKWD129.000   ;;;;;;;;;;;;KWD227.750    ;;;
+     *          K-FAED1300       ;KWD109.000    ;;;;;;;;;;;KWD150.900    ;0.08368109 ;;
      */
     private function extractTotal()
     {
-        // First try to get total from K line (total fare including taxes)
-        $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)\s*;;;;;;;;;;;;([A-Z]{3})([\d.]+)/');
-        if ($match) {
-            return (float) $match[4]; // Total fare (KWD143.400 in your example)
+        // First try to get explicit total from refund format (KN- or KS-)
+        if ($this->hasCurrencyExchange()) {
+            // 3-pair format with currency exchange
+            $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
+            if ($match) {
+                return (float) $match[6]; // Final total fare
+            }
+        } else {
+            // 2-pair format without currency exchange
+            $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
+            if ($match) {
+                return (float) $match[4]; // Total fare
+            }
         }
         
-        // Look for explicit TOTAL line
-        $match = $this->findLine('/TOTAL\s+([A-Z]{3})\s+([\d.]+)/i');
-        if ($match) {
-            return (float) $match[2];
+        // Try regular format (K-F)
+        if ($this->hasCurrencyExchange()) {
+            // 3-pair format: K-FAED1300 ;KWD109.000 ;;;;;;;;;;;KWD150.900 ;
+            $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
+            if ($match) {
+                return (float) $match[6]; // Final total fare (KWD150.900)
+            }
+        } else {
+            // 2-pair format: K-FKWD66.000 ;;;;;;;;;;;;KWD194.300 ;;;
+            $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
+            if ($match) {
+                return (float) $match[4]; // Total fare (KWD194.300)
+            }
         }
         
-        // If no explicit total, calculate: base fare + taxes
-        $baseFare = $this->extractOriginalPrice();
-        $taxes = $this->extractTax();
-        
-        if ($baseFare !== null && $taxes > 0) {
-            return $baseFare + $taxes;
+        // If no explicit total found in K line, fallback to base fare
+        $baseFare = $this->extractPrice();
+        if ($baseFare !== null) {
+            return $baseFare;
         }
         
-        // Fallback to price
-        return $this->extractPrice();
+        return 0.0;
     }
     
     /**
@@ -329,15 +426,30 @@ class AirFileParser
     }
     
     /**
-     * Extract tax amount from KFTF line or TAX line
+     * Extract tax amount from KFTF line, KNTI/KSTI line, or TAX line
+     * Supports both regular and refund formats
      * KFTF line format: KFTF; KWD24.000   YQ AC; KWD4.000    YR VB; etc.
+     * KNTI line format: KNTI; KWD80.000   YR VA; KWD1.000    GZ SE; etc.
      * TAX line format: TAX-KWD24.000   YQ ;KWD4.000    YR ;KWD25.400   XT ;
      */
     private function extractTax()
     {
         $totalTax = 0.0;
         
-        // First try KFTF line (Kuwait Airways format)
+        // First try refund format (KNTI or KSTI line)
+        $match = $this->findLine('/^K[NS]TI;(.+)/');
+        if ($match) {
+            $taxString = $match[1];
+            // Parse individual tax components: KWD80.000   YR VA; KWD1.000    GZ SE;
+            if (preg_match_all('/([A-Z]{3})([\d.]+)\s+([A-Z0-9]{2})\s*[A-Z]*/', $taxString, $matches, PREG_SET_ORDER)) {
+                foreach ($matches as $taxMatch) {
+                    $totalTax += (float) $taxMatch[2];
+                }
+                return $totalTax;
+            }
+        }
+        
+        // Try regular format (KFTF line)
         $match = $this->findLine('/^KFTF;(.+)/');
         if ($match) {
             $taxString = $match[1];
@@ -380,11 +492,18 @@ class AirFileParser
     }
     
     /**
-     * Extract taxes record from KFTF line or KRF line
+     * Extract taxes record from KFTF line, KNTI/KSTI line, or KRF line
+     * Supports both regular and refund formats
      */
     private function extractTaxesRecord()
     {
-        // Try KFTF line first (Kuwait Airways format)
+        // Try refund format first (KNTI or KSTI line)
+        $match = $this->findLine('/^K[NS]TI;(.+)/');
+        if ($match) {
+            return $match[1];
+        }
+        
+        // Try regular format (KFTF line)
         $match = $this->findLine('/^KFTF;(.+)/');
         if ($match) {
             return $match[1];
@@ -478,10 +597,18 @@ class AirFileParser
      */
     private function extractAgentEmail()
     {
+        // Look for E- prefix followed by email
+        $match = $this->findLine('/E-([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/');
+        if ($match) {
+            return strtolower($match[1]); // Return email without E- prefix
+        }
+        
+        // Fallback: Look for any email pattern without prefix
         $match = $this->findLine('/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/');
         if ($match) {
-            return $match[1];
+            return strtolower($match[1]);
         }
+        
         return '';
     }
     
@@ -772,9 +899,17 @@ class AirFileParser
     /**
      * Extract base fare specifically from K line
      * This is the fare before taxes and fees
+     * Supports both regular and refund formats
      */
     private function extractBaseFare()
     {
+        // Check for refund format first (KN- or KS-)
+        $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)/');
+        if ($match) {
+            return (float) $match[2]; // Base fare amount
+        }
+        
+        // Check for regular format (K-F)
         $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)/');
         if ($match) {
             return (float) $match[2]; // Base fare amount
@@ -786,14 +921,39 @@ class AirFileParser
     /**
      * Extract total fare specifically from K line  
      * This is the fare including taxes and fees
+     * Supports both regular and refund formats
      */
     private function extractTotalFare()
     {
+        // Check for refund format first (KN- or KS-)
+        $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)\s*;;;;;;;;;;;;([A-Z]{3})([\d.]+)/');
+        if ($match) {
+            return (float) $match[4]; // Total fare amount
+        }
+        
+        // Check for regular format (K-F)
         $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)\s*;;;;;;;;;;;;([A-Z]{3})([\d.]+)/');
         if ($match) {
             return (float) $match[4]; // Total fare amount
         }
         
         return $this->extractBaseFare(); // Fallback to base fare
+    }
+    
+    /**
+     * Check if the K-line has currency exchange (3 currency/amount pairs vs 2)
+     * Currency exchange format: K-FAED1300 ;KWD109.000 ;;;;;;;;;;;KWD150.900 ;
+     * Same currency format: K-FKWD66.000 ;;;;;;;;;;;;KWD194.300 ;;;
+     */
+    private function hasCurrencyExchange()
+    {
+        // Look for 3-pair pattern (currency exchange)
+        $threePairMatch = $this->findLine('/^K[NS]?-[FI]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
+        if ($threePairMatch) {
+            // Check if first and second currencies are different (indicating exchange)
+            return $threePairMatch[1] !== $threePairMatch[3];
+        }
+        
+        return false;
     }
 }

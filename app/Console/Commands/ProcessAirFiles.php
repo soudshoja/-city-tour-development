@@ -97,7 +97,28 @@ class ProcessAirFiles extends Command
                     continue;
                 }
 
-                $filesToProcess = File::files($filePath);
+                // ✅ Skip files too new or too small (avoid processing during upload)
+                $filesToProcess = array_filter(File::files($filePath), function ($file) {
+                    $minSize = 500; // bytes
+                    $minAge = 60;   // seconds
+
+                    $fileAge = time() - $file->getMTime();
+                    $fileSize = $file->getSize();
+
+                    if ($fileAge < $minAge) {
+                        Log::info("Skipping file too new: {$file->getFilename()} ({$fileAge}s old)");
+                        return false;
+                    }
+
+                    if ($fileSize < $minSize) {
+                        Log::info("Skipping file too small: {$file->getFilename()} ({$fileSize} bytes)");
+                        return false;
+                    }
+
+                    return true;
+                });
+
+                // $filesToProcess = File::files($filePath);
 
                 if (empty($filesToProcess)) {
                     $this->info("No new files found in {$companyName}/{$supplierName} air-files directory to process.");

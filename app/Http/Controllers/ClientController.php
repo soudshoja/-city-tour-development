@@ -635,7 +635,7 @@ class ClientController extends Controller
                 $coaFeeIdRec = $chargeRecord->acc_fee_id; //COA (Expenses) for Payment Gateway Fee
                 $coaBankFeeIdRec = $chargeRecord->acc_fee_bank_id; //COA (Assets) for Bank Account for the selected Payment Gateway
 
-                $tapAccount = Account::where('id', $coaFeeIdRec)
+                $bankCOAFee = Account::where('id', $coaFeeIdRec)
                     ->where('company_id', $client->agent->branch->company->id)
                     ->first();
 
@@ -698,29 +698,29 @@ class ClientController extends Controller
                 $bankPaymentFee->save();
             }
 
-            $tapAccount->actual_balance += $defaultPaymentGatewayFee;
+            $bankCOAFee->actual_balance += $defaultPaymentGatewayFee;
 
-            if ($tapAccount) {
+            if ($bankCOAFee) {
                 JournalEntry::create([
                     'transaction_id'    => $transaction->id,
                     'company_id'        => $client->agent->branch->company->id,
                     'branch_id'         => $client->agent->branch->id,
-                    'account_id'        => $tapAccount->id,
+                    'account_id'        => $bankCOAFee->id,
                     'voucher_number'    => $payment->voucher_number,
                     'transaction_date'  => Carbon::now(),
                     'description'       => ($paidBy === 'Company'
                         ? 'Company Pays Gateway Fee: '
-                        : 'Client Pays Gateway Fee: ') . $tapAccount->name,
+                        : 'Client Pays Gateway Fee: ') . $bankCOAFee->name,
                     'debit'             => $defaultPaymentGatewayFee,
                     'credit'            => 0,
-                    'balance'           => $tapAccount->actual_balance + $defaultPaymentGatewayFee,
-                    'name'              => $tapAccount->name,
+                    'balance'           => $bankCOAFee->actual_balance + $defaultPaymentGatewayFee,
+                    'name'              => $bankCOAFee->name,
                     'type'              => 'charges',
-                    'type_reference_id' => $tapAccount->id
+                    'type_reference_id' => $bankCOAFee->id
                 ]);
 
-                $tapAccount->actual_balance += $defaultPaymentGatewayFee;
-                $tapAccount->save();
+                $bankCOAFee->actual_balance += $defaultPaymentGatewayFee;
+                $bankCOAFee->save();
             }
 
 

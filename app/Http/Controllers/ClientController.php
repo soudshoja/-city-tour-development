@@ -617,27 +617,14 @@ class ClientController extends Controller
             ]);
         }
         DB::commit();
-        
-        
-      $chargeData = $payment->payment_method === 'myfatoorah'
-    ? ChargeService::FatoorahCharge($payment->amount, $payment->method_id)
-    : ChargeService::TapCharge([
-        'amount' => $payment->amount,
-        'currency' => $payment->currency,
-        'client_id' => $payment->client_id,
-        'agent_id' => $payment->agent_id,
-    ], $payment->payment_method ?? 'Tap');
 
-        $finalAmount = $chargeData['finalAmount'];
-        $fee = $chargeData['fee'];
-        $paidBy = $chargeData['paid_by'];
-        $netReceived = $chargeData['netReceived'];
+        $paymentMethod = $payment->paymentMethod; // Eloquent auto-loads relation
+        $paidBy = $paymentMethod->paid_by ?? null;
 
         DB::beginTransaction();
-
         try {
 
-            $chargeRecord = Charge::where('name', 'LIKE', '%Tap%')
+            $chargeRecord = Charge::where('name', 'LIKE', '%' . $payment->payment_gateway . '%')
                 ->where('company_id', $client->agent->branch->company->id)
                 ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id')
                 ->first();
@@ -699,7 +686,7 @@ class ClientController extends Controller
                     'account_id' =>  $bankPaymentFee->id,
                     'transaction_date' => Carbon::now(),
                     'description' => 'Client Pays by ' . $client->name . ' via (Assets): ' . $bankPaymentFee->name,
-                    'debit' => $paidBy === 'Company' ? $netReceived : $payment->amount,
+                    'debit' => $payment->amount,
                     'credit' => 0,
                     'name' =>  $bankPaymentFee->name,
                     'type' => 'bank',
@@ -707,7 +694,7 @@ class ClientController extends Controller
                     'type_reference_id' => $bankPaymentFee->id
                 ]);
 
-                $bankPaymentFee->actual_balance += ($paidBy === 'Company' ? $netReceived : $payment->amount - $defaultPaymentGatewayFee);
+                $bankPaymentFee->actual_balance += ($payment->amount - $defaultPaymentGatewayFee);
                 $bankPaymentFee->save();
             }
 
@@ -722,8 +709,8 @@ class ClientController extends Controller
                     'voucher_number'    => $payment->voucher_number,
                     'transaction_date'  => Carbon::now(),
                     'description'       => ($paidBy === 'Company'
-                        ? 'Company Pays Tap Gateway Fee: '
-                        : 'Client Pays Tap Gateway Fee: ') . $tapAccount->name,
+                        ? 'Company Pays Gateway Fee: '
+                        : 'Client Pays Gateway Fee: ') . $tapAccount->name,
                     'debit'             => $defaultPaymentGatewayFee,
                     'credit'            => 0,
                     'balance'           => $tapAccount->actual_balance + $defaultPaymentGatewayFee,

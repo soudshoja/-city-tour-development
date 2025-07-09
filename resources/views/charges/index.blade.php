@@ -165,7 +165,7 @@
                                     @foreach ($charge->methods as $method)
                                     <tr x-show="open[{{ $charge->id }}]" x-transition>
                                         <td class="p-3 pl-6 text-sm text-gray-600">{{ $method->english_name }}</td>
-                                        <td class="p-3 text-sm text-gray-600">Child Method</td>
+                                        <td class="p-3 text-sm text-gray-600">Payment Method</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $method->paid_by }}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $method->currency}}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $method->service_charge }}</td>
@@ -194,7 +194,7 @@
                                     @else
                                     <tr x-show="open[{{ $charge->id }}]" x-transition>
                                         <td colspan="9" class="p-3 pl-6 italic text-sm text-red-500 text-center align-middle">
-                                            No child method for this payment gateway
+                                            No payment method for this payment gateway
                                         </td>
                                     </tr>
                                     <tr x-show="open[{{ $charge->id }}]" x-transition>
@@ -253,11 +253,11 @@
                                 </tbody>
                             </table>
                         </div>
-                        <!-- Child Method Edit Modal -->
+                        <!-- Payment Method Edit Modal -->
                         <div x-show="editChildModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
                             <div class="bg-white p-6 rounded-lg w-full max-w-lg shadow" @click.away="editChildModal = false">
                                 <div class="flex items-center justify-between mb-4">
-                                    <h2 class="text-lg font-bold mb-4">Edit Child Method Charges</h2>
+                                    <h2 class="text-lg font-bold mb-4">Edit Payment Method Charges</h2>
                                     <button @click="closeAll()" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">
                                         &times;
                                     </button>

@@ -12,7 +12,7 @@ class AirFileService
      * Process a single AIR file and return normalized data
      *
      * @param string $filePath Path to the AIR file
-     * @return array Normalized task data
+     * @return array Array of normalized task data (one per passenger)
      * @throws \Exception
      */
     public function processFile(string $filePath): array
@@ -22,17 +22,24 @@ class AirFileService
         }
 
         $parser = new AirFileParser($filePath);
-        $taskData = $parser->parseTaskSchema();
+        $tasksData = $parser->parseTaskSchema(); // Now returns array of tasks
         
-        // Normalize the data using the schema
-        $normalizedTask = TaskSchema::normalize($taskData);
+        $normalizedTasks = [];
         
-        // Normalize flight details if present
-        if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
-            $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
+        // Process each passenger's data
+        foreach ($tasksData as $taskData) {
+            // Normalize the data using the schema
+            $normalizedTask = TaskSchema::normalize($taskData);
+            
+            // Normalize flight details if present
+            if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
+                $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
+            }
+
+            $normalizedTasks[] = $normalizedTask;
         }
 
-        return $normalizedTask;
+        return $normalizedTasks;
     }
 
     /**

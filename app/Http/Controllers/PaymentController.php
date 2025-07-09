@@ -965,23 +965,24 @@ class PaymentController extends Controller
         }
 
         $clients = Client::whereIn('agent_id', $agentsId)->get();
-        $payments = Payment::with('invoice')->orderBy('created_at', 'desc')->get();
+        $payments = Payment::with('invoice')
+            ->where(function ($query) use ($agentsId) {
+                $query->whereHas('invoice', function ($payment) use ($agentsId) {
+                    $payment->whereIn('agent_id', $agentsId);
+                })->orWhereIn('agent_id', $agentsId);
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
 
-        $payments = $payments->filter(function ($payment) use ($agentsId) {
-            if ($payment->invoice) {
-                return in_array($payment->invoice->agent_id, $agentsId);
-            }
-            return in_array($payment->agent_id, $agentsId);
-        })->map(function ($payment) {
+        $payments->getCollection()->transform(function ($payment) {
             if ($payment->payment_gateway === 'MyFatoorah') {
                 $mfPayment = MyFatoorahPayment::where('payment_int_id', $payment->id)->first();
                 $payment->invoice_ref = $mfPayment->invoice_ref ?? null;
             } else {
                 $payment->invoice_ref = null;
             }
-
             return $payment;
-        })->values();
+        });
 
         // $invoice = Invoice::where('id', $payment->invoice_id)->first();
 

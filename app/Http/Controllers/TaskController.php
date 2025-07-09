@@ -34,6 +34,7 @@ use Illuminate\Support\Facades\Date;
 use App\Models\FileUpload;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 
 // use Carbon\Carbon;
 
@@ -41,7 +42,7 @@ class TaskController extends Controller
 {
     use NotificationTrait, Converter;
 
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask')->orderBy('id', 'desc');
@@ -125,6 +126,29 @@ class TaskController extends Controller
 
         $importedTask = Cache::get('imported_task');
 
+       $query = Task::query()
+            ->leftJoin('agents', 'tasks.agent_id', '=', 'agents.id')
+            ->leftJoin('companies', 'tasks.company_id', '=', 'companies.id')
+            ->leftJoin('suppliers', 'tasks.supplier_id', '=', 'suppliers.id')
+            ->select('tasks.*');
+
+        if ($search = $request->query('q')) {
+            $taskColumns = Schema::getColumnListing('tasks');
+
+            $query->where(function ($q) use ($taskColumns, $search) {
+                foreach ($taskColumns as $column) {
+                    $q->orWhereRaw("LOWER(tasks.`$column`) LIKE ?", ['%' . strtolower($search) . '%']);
+                }
+
+                // Search related names
+                $q->orWhereRaw("LOWER(agents.name) LIKE ?", ['%' . strtolower($search) . '%']);
+                $q->orWhereRaw("LOWER(companies.name) LIKE ?", ['%' . strtolower($search) . '%']);
+                $q->orWhereRaw("LOWER(suppliers.name) LIKE ?", ['%' . strtolower($search) . '%']);
+            });
+        }
+
+        $searchTask = $query->paginate(20);
+
         return view('tasks.index', compact(
             'tasks',
             'taskCount',
@@ -133,7 +157,8 @@ class TaskController extends Controller
             'suppliers',
             'types',
             'processTask',
-            'countries'
+            'countries',
+            'searchTask'
         ));
     }
 
@@ -841,7 +866,7 @@ class TaskController extends Controller
     }
 
     public function update(Request $request, $id)
-{
+{ 
     $request->validate([
         'reference' => 'nullable|string',
         'status' => 'required',
@@ -850,7 +875,7 @@ class TaskController extends Controller
         'surcharge' => 'nullable|numeric',
         'total' => 'required|numeric',
         'agent_id' => 'required',
-        'client_id' => 'nullable|exists:clients,id', // no longer required
+        'client_id' => 'nullable|exists:clients,id', 
         'supplier_id' => 'required',
     ], [
         'agent_id.required' => 'Please select an agent',
@@ -894,6 +919,12 @@ class TaskController extends Controller
             $client = Client::findOrFail($request->client_id);
             $data['client_id'] = $client->id;
             $data['client_name'] = $client->name;
+        }
+
+        if ($request->filled('agent_id')) {
+            $agent = Agent::findOrFail($request->agent_id);
+            $data['agent_id'] = $agent->id;
+            $data['agent_name'] = $agent->name;
         }
 
         $task->update($data);

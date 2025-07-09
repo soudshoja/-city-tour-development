@@ -13,6 +13,7 @@ use App\Models\SupplierCompany;
 use App\Models\Task;
 use App\Models\TaskFlightDetail;
 use App\Models\FileUpload;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
@@ -517,6 +518,23 @@ class ProcessAirFiles extends Command
                 'has_agent_amadeus_id' => !empty($agentAmadeusId),
                 'task_status' => $taskData['status'] ?? 'unknown'
             ]);
+
+            if ( $taskData['type'] == 'hotel' && isset($taskData['cancellation_deadline']) && !empty($taskData['cancellation_deadline'])) {
+                $this->logger->info("Cancellation deadline found for item {$index} in file {$fileName}: " . $taskData['cancellation_deadline']);
+
+                $cancelDeadline  = Carbon::parse($taskData['cancellation_deadline']);
+                $createdAt = Carbon::parse($taskData['created_at'] ?? now());
+
+                if($createdAt->greaterThanOrEqualTo($cancelDeadline)) {
+                    $this->logger->info("Cancellation deadline has passed for item {$index} in file {$fileName}. Task will be marked as issued");
+                    $taskData['status'] = 'issued';
+                } else {
+                    $this->logger->info("Cancellation deadline is still valid for item {$index} in file {$fileName}. Task will not be marked as issued");
+                    $taskData['status'] = 'confirmed';
+                }
+            } else {
+                $this->logger->info("No cancellation deadline found for item {$index} in file {$fileName}. Task status will not be modified");
+            } 
 
             if (in_array($taskData['status'], ['reissued', 'refund', 'void', 'emd'])) {
                 $this->logger->info("Task status is not 'issued'. Checking original task for reference: {$taskData['reference']}");

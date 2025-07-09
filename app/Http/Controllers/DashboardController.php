@@ -161,7 +161,7 @@ class DashboardController extends Controller
     public function agentDashboard()
     {
         $taskController = new TaskController();
-        return $taskController->index();
+        return $taskController->index(new Request());
     }
 
     // public function agentDashboard()

@@ -478,6 +478,12 @@ class AirFileParser
         if ($match) {
             return (float) $match[1];
         }
+
+        $match = $this->findLine('/^RFD[C]? *;.*/');
+        if ($match && isset($match[0])) {
+            $fields = explode(';', $match[0]);
+            return (float) trim($fields[8]);
+        }
         return 0.0;
     }
     

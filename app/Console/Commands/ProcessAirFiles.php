@@ -207,19 +207,24 @@ class ProcessAirFiles extends Command
             try {
                 // Parse the file using AirFileParser
                 $parser = new AirFileParser($fileRealPath);
-                $taskData = $parser->parseTaskSchema();
+                $tasksData = $parser->parseTaskSchema(); // Now returns array of tasks
 
-                // Normalize the data
-                $normalizedTask = TaskSchema::normalize($taskData);
-                if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
-                    $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
+                // Handle multiple passengers
+                foreach ($tasksData as $taskData) {
+                    // Normalize the data
+                    $normalizedTask = TaskSchema::normalize($taskData);
+                    if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
+                        $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
+                    }
+
+                    // Add to collection
+                    $allParsedData[] = $taskData;
                 }
-
-                // Add to collection
-                $allParsedData[] = $taskData;
+                
                 $processedFiles[] = $fileName;
                 
-                $this->info("✓ Successfully parsed: {$fileName}");
+                $this->info("✓ Successfully parsed: {$fileName} ({" . count($tasksData) . "} passenger(s))");
+                dd($allParsedData);
                 
             } catch (\Exception $e) {
                 $this->error("✗ Failed to parse {$fileName}: " . $e->getMessage());
@@ -386,27 +391,33 @@ class ProcessAirFiles extends Command
         // dump('Processing file: ' . $fileName);
 
         $parser = new AirFileParser($fileRealPath);
-        $taskData = $parser->parseTaskSchema();
+        $tasksData = $parser->parseTaskSchema(); // Now returns array of tasks
 
-        $normalizedTask = TaskSchema::normalize($taskData);
+        $this->info("Found " . count($tasksData) . " passenger(s) in file: {$fileName}");
 
-        if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
-            $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
-        }
-
-        // dump('Parsed task data:', $taskData);
-        // dd('Normalized task:', $normalizedTask);
-
-        // Export parsed data to CSV and Excel for debugging (if enabled)
-        if ($this->option('export-debug')) {
-            $this->exportParsedDataToCsv($taskData, $fileName, $companyName, $supplierName);
-            $this->exportParsedDataToExcel($taskData, $fileName, $companyName, $supplierName);
+        // Process each passenger's task
+        foreach ($tasksData as $index => $taskData) {
+            $passengerIndex = $index + 1;
+            $this->info("Processing passenger {$passengerIndex}/{" . count($tasksData) . "}: {$taskData['client_name']}");
             
-            // Also export normalized data if different
-            if ($normalizedTask !== $taskData) {
-                $normalizedFileName = 'normalized_' . $fileName;
-                $this->exportParsedDataToCsv($normalizedTask, $normalizedFileName, $companyName, $supplierName);
-                $this->exportParsedDataToExcel($normalizedTask, $normalizedFileName, $companyName, $supplierName);
+            $normalizedTask = TaskSchema::normalize($taskData);
+
+            if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
+                $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
+            }
+
+            // Export parsed data to CSV and Excel for debugging (if enabled)
+            if ($this->option('export-debug')) {
+                $passengerFileName = "passenger_{$passengerIndex}_{$fileName}";
+                $this->exportParsedDataToCsv($taskData, $passengerFileName, $companyName, $supplierName);
+                $this->exportParsedDataToExcel($taskData, $passengerFileName, $companyName, $supplierName);
+                
+                // Also export normalized data if different
+                if ($normalizedTask !== $taskData) {
+                    $normalizedFileName = 'normalized_' . $passengerFileName;
+                    $this->exportParsedDataToCsv($normalizedTask, $normalizedFileName, $companyName, $supplierName);
+                    $this->exportParsedDataToExcel($normalizedTask, $normalizedFileName, $companyName, $supplierName);
+                }
             }
         }
 

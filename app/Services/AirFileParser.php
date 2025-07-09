@@ -21,57 +21,92 @@ class AirFileParser
     
     /**
      * Parse the AIR file and extract task schema data
+     * Now returns an array of tasks for multiple passengers
      */
     public function parseTaskSchema()
     {
-        $data = [
-            'additional_info' => $this->extractAdditionalInfo(),
-            'ticket_number' => $this->extractTicketNumber(),
-            'gds_reference' => $this->extractGdsReference(),
-            'airline_reference' => $this->extractAirlineReference(),
-            'status' => $this->extractStatus(),
-            'supplier_status' => $this->extractStatus(), // Same as status
-            'refund_date' => $this->extractRefundDate(),
-            'price' => $this->extractPrice(),
-            'exchange_currency' => $this->extractExchangeCurrency(),
-            'original_price' => $this->extractOriginalPrice(),
-            'original_currency' => $this->extractOriginalCurrency(),
-            'total' => $this->extractTotal(),
-            'surcharge' => $this->extractSurcharge(),
-            'penalty_fee' => $this->extractPenaltyFee(),
-            'tax' => $this->extractTax(),
-            'taxes_record' => $this->extractTaxesRecord(),
-            'refund_charge' => $this->extractRefundCharge(),
-            'reference' => $this->extractReference(),
-            'created_by' => $this->extractCreatedBy(),
-            'issued_by' => $this->extractIssuedBy(),
-            'type' => 'flight', // Always flight for AIR files
-            'agent_name' => $this->extractAgentName(),
-            'agent_email' => $this->extractAgentEmail(),
-            'agent_amadeus_id' => $this->extractAgentAmadeusId(),
-            'client_name' => $this->extractClientName(),
-            'supplier_name' => $this->extractSupplierName(),
-            'supplier_country' => $this->extractSupplierCountry(),
-            'cancellation_policy' => $this->extractCancellationPolicy(),
-            'venue' => $this->extractVenue(),
-            'created_at' => $this->extractCreatedAt(),
-            'task_flight_details' => $this->parseFlightDetails(),
-        ];
+        $passengers = $this->extractAllPassengers();
         
-        $returnData = [
-            'price' => $data['price'],
-            'exchange_currency' => $data['exchange_currency'],
-            'original_price' => $data['original_price'],
-            'original_currency' => $data['original_currency'],
-            'total' => $data['total'],
-            'status' => $data['status'],
-            'agent_name' => $data['agent_name'],
-            'agent_email' => $data['agent_email'],
-            'agent_amadeus_id' => $data['agent_amadeus_id'],
-            'created_by' => $data['created_by'],
-            'issued_by' => $data['issued_by'],
-        ];
-        return $data;
+        // If no passengers found, return single task with default data
+        if (empty($passengers)) {
+            $data = [
+                'additional_info' => $this->extractAdditionalInfo(),
+                'ticket_number' => $this->extractTicketNumber(),
+                'gds_reference' => $this->extractGdsReference(),
+                'airline_reference' => $this->extractAirlineReference(),
+                'status' => $this->extractStatus(),
+                'supplier_status' => $this->extractStatus(), // Same as status
+                'refund_date' => $this->extractRefundDate(),
+                'price' => $this->extractPrice(),
+                'exchange_currency' => $this->extractExchangeCurrency(),
+                'original_price' => $this->extractOriginalPrice(),
+                'original_currency' => $this->extractOriginalCurrency(),
+                'total' => $this->extractTotal(),
+                'surcharge' => $this->extractSurcharge(),
+                'penalty_fee' => $this->extractPenaltyFee(),
+                'tax' => $this->extractTax(),
+                'taxes_record' => $this->extractTaxesRecord(),
+                'refund_charge' => $this->extractRefundCharge(),
+                'reference' => $this->extractReference(),
+                'created_by' => $this->extractCreatedBy(),
+                'issued_by' => $this->extractIssuedBy(),
+                'type' => 'flight', // Always flight for AIR files
+                'agent_name' => $this->extractAgentName(),
+                'agent_email' => $this->extractAgentEmail(),
+                'agent_amadeus_id' => $this->extractAgentAmadeusId(),
+                'client_name' => $this->extractClientName(),
+                'supplier_name' => $this->extractSupplierName(),
+                'supplier_country' => $this->extractSupplierCountry(),
+                'cancellation_policy' => $this->extractCancellationPolicy(),
+                'venue' => $this->extractVenue(),
+                'created_at' => $this->extractCreatedAt(),
+                'task_flight_details' => $this->parseFlightDetails(),
+            ];
+            
+            return [$data];
+        }
+        
+        // Create a task for each passenger
+        $tasks = [];
+        foreach ($passengers as $passenger) {
+            $data = [
+                'additional_info' => $this->extractAdditionalInfo(),
+                'ticket_number' => $passenger['ticket_number'],
+                'gds_reference' => $this->extractGdsReference(),
+                'airline_reference' => $this->extractAirlineReference(),
+                'status' => $this->extractStatus(),
+                'supplier_status' => $this->extractStatus(), // Same as status
+                'refund_date' => $this->extractRefundDate(),
+                'price' => $this->extractPrice(),
+                'exchange_currency' => $this->extractExchangeCurrency(),
+                'original_price' => $this->extractOriginalPrice(),
+                'original_currency' => $this->extractOriginalCurrency(),
+                'total' => $this->extractTotal(),
+                'surcharge' => $this->extractSurcharge(),
+                'penalty_fee' => $this->extractPenaltyFee(),
+                'tax' => $this->extractTax(),
+                'taxes_record' => $this->extractTaxesRecord(),
+                'refund_charge' => $this->extractRefundCharge(),
+                'reference' => $passenger['ticket_number'], // Use individual ticket number as reference
+                'created_by' => $this->extractCreatedBy(),
+                'issued_by' => $this->extractIssuedBy(),
+                'type' => 'flight', // Always flight for AIR files
+                'agent_name' => $this->extractAgentName(),
+                'agent_email' => $this->extractAgentEmail(),
+                'agent_amadeus_id' => $this->extractAgentAmadeusId(),
+                'client_name' => $passenger['client_name'],
+                'supplier_name' => $this->extractSupplierName(),
+                'supplier_country' => $this->extractSupplierCountry(),
+                'cancellation_policy' => $this->extractCancellationPolicy(),
+                'venue' => $this->extractVenue(),
+                'created_at' => $this->extractCreatedAt(),
+                'task_flight_details' => $this->parseFlightDetails(),
+            ];
+            
+            $tasks[] = $data;
+        }
+        
+        return $tasks;
     }
     
     /**
@@ -131,11 +166,12 @@ class AirFileParser
     /**
      * Extract ticket number from T-K line
      * Format: T-K229-2833184683 -> take last 10 digits of ticket number part
+     * For multiple passengers, returns the first ticket number
      */
     private function extractTicketNumber()
     {
         // Look for T-K line with format: T-K[airline_code]-[ticket_number]
-        $match = $this->findLine('/^T-[KE](\d+)-(\d+)/');
+        $match = $this->findLine('/^(T-[KE]\d+-\d+)/');
 
         if ($match) {
             $airlineCode = $match[1];  // e.g., "229"
@@ -143,18 +179,6 @@ class AirFileParser
             
             // Return last 10 digits of ticket number
             return substr($ticketNumber, -10);
-        }
-        
-        // Fallback: try to capture the full string after T-K
-        $match = $this->findLine('/^T-[KE](\d+)-(\d+)/');
-        if ($match) {
-            $fullNumber = $match[1]; // e.g., "229-2833242924"
-            // Extract just the ticket number part after the dash
-            if (strpos($fullNumber, '-') !== false) {
-                $parts = explode('-', $fullNumber);
-                $ticketNumber = end($parts); // Get the last part (ticket number)
-                return substr($ticketNumber, -10); // Last 10 digits
-            }
         }
         
         return '';
@@ -178,7 +202,8 @@ class AirFileParser
      */
     private function extractAirlineReference()
     {
-        $match = $this->findLine('/^MUC1A\s+[A-Z0-9]+.*?([A-Z0-9]{6})$/');
+        $match = $this->findLine('/^MUC1A\s+[A-Z0-9]+.*\s+([A-Z0-9]{6})/');
+
         if ($match) {
             return $match[1];
         }
@@ -636,10 +661,19 @@ class AirFileParser
     }
     
     /**
-     * Extract reference (same as ticket number)
+     * Extract reference (first ticket number for single passenger, or GDS reference for multiple)
      */
     private function extractReference()
     {
+        $passengers = $this->extractAllPassengers();
+        
+        // If multiple passengers, use GDS reference as the main reference
+        if (count($passengers) > 1) {
+            $gdsRef = $this->extractGdsReference();
+            return $gdsRef ?: $this->extractTicketNumber();
+        }
+        
+        // Single passenger, use ticket number
         return $this->extractTicketNumber();
     }
     
@@ -666,10 +700,24 @@ class AirFileParser
      */
     private function extractIssuedBy()
     {
-        $match = $this->findLine('/^MUC1A.*?;([A-Z0-9]+);[^;]*$/');
+        $match = $this->findLine('/^MUC1A\s+(.+?)(?:;+)?$/');
         if ($match) {
-            return $match[1];
+            // Split by semicolon and get all non-empty parts
+            $parts = array_filter(explode(';', $match[1]), function($part) {
+                return trim($part) !== '';
+            });
+            
+            // Find the last part that contains 'KWIKT'
+            $lastKwiktPart = null;
+            foreach ($parts as $part) {
+                if (strpos($part, 'KWIKT') !== false) {
+                    $lastKwiktPart = $part;
+                }
+            }
+            
+            return $lastKwiktPart ?: end($parts); // Return last KWIKT part or fallback to last part
         }
+
         return '';
     }
     
@@ -720,12 +768,13 @@ class AirFileParser
     
     /**
      * Extract client name from I line
+     * For multiple passengers, returns the first client name
      */
     private function extractClientName()
     {
-        $match = $this->findLine('/I-\d+;\d+([^;]+);/');
+        $match = $this->findLine('/^I-(\d+);(\d+)([^;]+);/');
         if ($match) {
-            return trim($match[1]);
+            return trim($match[3]);
         }
         return '';
     }
@@ -1049,5 +1098,45 @@ class AirFileParser
         }
         
         return false;
+    }
+    
+    /**
+     * Extract all passengers from the AIR file
+     * Returns an array of passenger data with ticket numbers and names
+     */
+    private function extractAllPassengers()
+    {
+        $passengers = [];
+        
+        // Find all I- lines (passenger lines)
+        $passengerLines = $this->findLines('/^I-(\d+);(\d+)([^;]+);/');
+        
+        // Find all T-K lines (ticket lines)
+        $ticketLines = $this->findLines('/^T-[KE](\d+)-(\d+)/');
+        
+        // Match passengers with their tickets
+        foreach ($passengerLines as $index => $passengerMatch) {
+            $passengerNumber = $passengerMatch[1]; // e.g., "001", "002"
+            $clientName = trim($passengerMatch[3]); // e.g., "ALZANKI/FAHAD MR"
+            
+            // Find corresponding ticket (they should be in order)
+            $ticketNumber = '';
+            if (isset($ticketLines[$index])) {
+                $ticketMatch = $ticketLines[$index];
+                $airlineCode = $ticketMatch[1];  // e.g., "229"
+                $ticketNum = $ticketMatch[2];    // e.g., "2833184681"
+                
+                // Return last 10 digits of ticket number
+                $ticketNumber = substr($ticketNum, -10);
+            }
+            
+            $passengers[] = [
+                'passenger_number' => $passengerNumber,
+                'client_name' => $clientName,
+                'ticket_number' => $ticketNumber,
+            ];
+        }
+        
+        return $passengers;
     }
 }

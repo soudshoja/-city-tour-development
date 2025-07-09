@@ -188,6 +188,12 @@ class TaskSchema
                 'example' => 'Non-refundable after issue',
                 'default' => '',
             ],
+            'cancellation_deadline' => [
+                'type' => 'datetime',
+                'desc' => "Deadline for cancellation or refund eligibility. Look for specific dates or timeframes mentioned in the cancellation policy. If no specific deadline, set to null.",
+                'example' => '2025-06-01 10:00:00',
+                'default' => null,
+            ],
             'venue' => [
                 'type' => 'string',
                 'desc' => "Primary location or venue for the service. For flights: departure/arrival airports. For hotels: hotel location/city. For events: venue name/location. Extract the main location where the service takes place.",

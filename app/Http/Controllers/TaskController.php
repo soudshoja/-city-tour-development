@@ -239,12 +239,37 @@ class TaskController extends Controller
                 'message' => 'Task with this reference already exists.',
             ], 422);
         }
+        $amadeusId = Supplier::where('name', 'Amadeus')->value('id');
 
-        // Set default values for nullable fields
-        $request->penalty_fee = $request->penalty_fee ?? 0;
-        $request->passenger_name = $request->client_name ?? null;
-        $request->tax = $request->tax ?? 0;
-        $request->enabled = $request->enabled ?? false;
+        if($request->supplier_id !== $amadeusId) {
+
+            Log::info("remove GDS and Airline references for non-Amadeus tasks", [
+                'supplier_id' => $request->supplier_id,
+                'gds_reference' => $request->gds_reference,
+                'airline_reference' => $request->airline_reference
+            ]);
+
+            // Use merge() to update the input array so $request->all() reflects changes
+            $request->merge([
+                'gds_reference' => null,
+                'airline_reference' => null
+            ]);
+            
+            Log::info("GDS and Airline references removed for non-Amadeus supplier", [
+                'supplier_id' => $request->supplier_id,
+                'updated_gds_reference' => $request->gds_reference,
+                'updated_airline_reference' => $request->airline_reference
+            ]);
+
+        }
+
+        // Set default values for nullable fields using merge()
+        $request->merge([
+            'penalty_fee' => $request->penalty_fee ?? 0,
+            'passenger_name' => $request->client_name ?? null,
+            'tax' => $request->tax ?? 0,
+            'enabled' => $request->enabled ?? false
+        ]);
 
         // Handle original task for non-issued statuses
         if (in_array($request->status, ['reissued', 'refund', 'void', 'emd'])) {

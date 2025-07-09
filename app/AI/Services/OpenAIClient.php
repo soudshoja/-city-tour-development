@@ -473,6 +473,7 @@ class OpenAIClient implements AIClientInterface
                 'supplier_name': 'Amadeus',
                 'supplier_country': 'Kuwait',
                 'cancellation_policy': 'cancellation policy',
+                'cancellation_deadline': '2025-06-01 10:00:00', //example of cancellation deadline, if not available, set it to null
                 'venue': 'venue',
                 'task_flight_details': {
                     'farebase': '20.00',
@@ -525,6 +526,7 @@ class OpenAIClient implements AIClientInterface
                 'client_name' => 'client name',
                 'supplier_name' => 'Amadeus',
                 'supplier_country' => 'Kuwait',
+                'cancellation_daeadline' => '2025-06-01 10:00:00', //example of cancellation deadline, if not available, set it to null
                 // if the cancellation policy is not available, you can set it to null
                 // if the venue is not available, you can set it to null
                 // if the flight details are not available, you can set it to null, if it is available , make sure it is same data with the first object as it is the same flight, just different passenger.
@@ -736,6 +738,7 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "      \"supplier_name\": \"supplier/vendor name\",\n";
         $prompt .= "      \"supplier_country\": \"supplier country\",\n";
         $prompt .= "      \"cancellation_policy\": \"cancellation terms\",\n";
+        $prompt .= "      \"cancellation_deadline\": \"2025-06-01 10:00:00\",\n";
         $prompt .= "      \"venue\": \"service location\",\n";
         $prompt .= "      \"created_at\": \"2025-07-03 00:00:00\",\n";
         $prompt .= "      \"task_flight_details\": {\n";

@@ -30,6 +30,7 @@ class ClearTaskRelatedData extends Command
         $this->info('Starting task-related data cleanup...');
 
         DB::beginTransaction();
+        DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
 
         try {
             // Get all task IDs before deletion
@@ -144,6 +145,7 @@ class ClearTaskRelatedData extends Command
                 }
             }
 
+            DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
             DB::commit();
             $this->info('✅ Task-related data cleanup completed successfully!');
 

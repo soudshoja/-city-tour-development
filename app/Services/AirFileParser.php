@@ -198,7 +198,7 @@ class AirFileParser
         }
         
         // Check for refund indicators
-        if ($this->findLine('/RF/')) {
+        if ($this->findLine('/;RF;/')) {
             return 'refund';
         }
         
@@ -233,7 +233,7 @@ class AirFileParser
         if ($match) {
             try {
                 $date = Carbon::createFromFormat('dMy', strtoupper($match[1]));
-                return $date->format('Y-m-d H:i:s');
+                return $date->format('Y-m-d');
             } catch (\Exception $e) {
             }
         }
@@ -243,7 +243,7 @@ class AirFileParser
         if ($match) {
             try {
                 $date = Carbon::createFromFormat('dMy', strtoupper($match[1]));
-                return $date->format('Y-m-d H:i:s');
+                return $date->format('Y-m-d');
             } catch (\Exception $e) {
             }
         }
@@ -254,7 +254,7 @@ class AirFileParser
             try {
                 $year = date('y');
                 $date = Carbon::createFromFormat('dMy', strtoupper($match[1] . $year));
-                return $date->format('Y-m-d H:i:s');
+                return $date->format('Y-m-d');
             } catch (\Exception $e) {
             }
         }
@@ -301,6 +301,12 @@ class AirFileParser
             }
         }
         
+        $match = $this->findLine('/^RFD\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)/');
+        if ($match) {
+            
+            return (float) $match[1];
+        }
+
         // Fallback: Look for any price pattern on K line (base fare only)
         $match = $this->findLine('/^K[NS]?-[FI]?([A-Z]{3})([\d.]+)/');
         if ($match) {
@@ -366,6 +372,12 @@ class AirFileParser
             return (float) $match[2]; // First amount (base fare)
         }
         
+        $match = $this->findLine('/^RFD\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)/');
+        if ($match) {
+            
+            return (float) $match[1];
+        }
+
         return null;
     }
     
@@ -431,6 +443,11 @@ class AirFileParser
             }
         }
         
+        $match = $this->findLine('/^RFD\s.*?([\d.]+)\s*$/');
+        if ($match) {
+            return (float) $match[1]; // Last value = total
+        }
+
         // If no explicit total found in K line, fallback to base fare
         $baseFare = $this->extractPrice();
         if ($baseFare !== null) {
@@ -514,6 +531,17 @@ class AirFileParser
             }
         }
         
+        $match = $this->findLine('/^KRF\s*;(.*)/');
+        if ($match) {
+            $taxString = $match[1];
+            if (preg_match_all('/Q([A-Z]{3})([\d.]+)\s+([A-Z0-9]{2})/', $taxString, $matches, PREG_SET_ORDER)) {
+                foreach ($matches as $m) {
+                    $totalTax += (float) $m[2];
+                }
+                return $totalTax;
+            }
+        }
+
         // Fallback: Sum all tax components from KRF line
         $taxesRecord = $this->extractTaxesRecord();
         if ($taxesRecord) {
@@ -554,6 +582,21 @@ class AirFileParser
             return rtrim($match[1], "; \r\n");
         }
         
+        $match = $this->findLine('/^KRF\s*;(.*)/');
+        if ($match) {
+            $taxString = $match[1];
+            if (preg_match_all('/Q([A-Z]{3})([\d.]+)\s+([A-Z0-9]{2})/', $taxString, $matches, PREG_SET_ORDER)) {
+                $formatted = [];
+                foreach ($matches as $m) {
+                    $currency = $m[1];     // e.g., KWD
+                    $amount = $m[2];       // e.g., 1.000
+                    $code = $m[3];         // e.g., GZ
+                    $formatted[] = "{$currency}{$amount}    {$code} XX";
+                }
+                return implode('; ', $formatted);
+            }
+        }
+
         // Fallback to KRF line
         $match = $this->findLine('/KRF:(.+)/');
         if ($match) {
@@ -603,6 +646,12 @@ class AirFileParser
         if ($match) {
             return $match[1];
         }
+
+         $match = $this->findLine('/^MUC1A\s*;\s*\d+;\s*([A-Z0-9]+);/');
+        if ($match) {
+            return $match[1];
+        }
+
         return '';
     }
     

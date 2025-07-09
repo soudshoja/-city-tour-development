@@ -74,13 +74,7 @@
                     <th>Last Updated</th>
                 </tr>
             </thead>
-            @if($currencyExchanges->isEmpty())
-            <tbody>
-                <tr>
-                    <td colspan="6" class="text-center">No data found</td>
-                </tr>
-            </tbody>
-            @else
+            
             <tbody>
                 @foreach($currencyExchanges as $currencyExchange)
                 <tr>
@@ -89,69 +83,67 @@
                         <p class="uppercase">
                             {{ $currencyExchange->company->name }}
                         </p>
-
-    </div>
-    </td>
-    @endrole
-    <td>{{ $currencyExchange->base_currency }}</td>
-    <td>{{ $currencyExchange->exchange_currency }}</td>
-    @if(auth()->user()->can('update currency exchange') && $currencyExchange->is_manual)
-    <td>
-        <div class="inline-flex justify-between gap-2 items-center" id="exchange-input-container-{{ $currencyExchange->id }}">
-            <input
-                type="number"
-                class="rounded-md border-gray-400 dark:bg-gray-600 exchange-input py-0"
-                value="{{ $currencyExchange->exchange_rate }}"
-                id="{{ $currencyExchange->id }}"
-                onkeydown="setInitialRate(this)"
-                onkeyup="exchangeRateDiffer(this)">
-            <button onclick="updateRateFromApi(this)" data-id="{{ $currencyExchange->id }}" data-tooltip="Update exchange rate automatically" class="pe-5">
-                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="fill-green-500">
-                    <path fill-rule="evenodd" clip-rule="evenodd" d="M2.93077 11.2003C3.00244 6.23968 7.07619 2.25 12.0789 2.25C15.3873 2.25 18.287 3.99427 19.8934 6.60721C20.1103 6.96007 20.0001 7.42199 19.6473 7.63892C19.2944 7.85585 18.8325 7.74565 18.6156 7.39279C17.2727 5.20845 14.8484 3.75 12.0789 3.75C7.8945 3.75 4.50372 7.0777 4.431 11.1982L4.83138 10.8009C5.12542 10.5092 5.60029 10.511 5.89203 10.8051C6.18377 11.0991 6.18191 11.574 5.88787 11.8657L4.20805 13.5324C3.91565 13.8225 3.44398 13.8225 3.15157 13.5324L1.47176 11.8657C1.17772 11.574 1.17585 11.0991 1.46759 10.8051C1.75933 10.5111 2.2342 10.5092 2.52824 10.8009L2.93077 11.2003ZM19.7864 10.4666C20.0786 10.1778 20.5487 10.1778 20.8409 10.4666L22.5271 12.1333C22.8217 12.4244 22.8245 12.8993 22.5333 13.1939C22.2421 13.4885 21.7673 13.4913 21.4727 13.2001L21.0628 12.7949C20.9934 17.7604 16.9017 21.75 11.8825 21.75C8.56379 21.75 5.65381 20.007 4.0412 17.3939C3.82366 17.0414 3.93307 16.5793 4.28557 16.3618C4.63806 16.1442 5.10016 16.2536 5.31769 16.6061C6.6656 18.7903 9.09999 20.25 11.8825 20.25C16.0887 20.25 19.4922 16.9171 19.5625 12.7969L19.1546 13.2001C18.86 13.4913 18.3852 13.4885 18.094 13.1939C17.8028 12.8993 17.8056 12.4244 18.1002 12.1333L19.7864 10.4666Z" />
-                </svg>
-            </button>
-        </div>
-    </td>
-    @else
-    <td>
-        <div id="exchange-input-container-{{ $currencyExchange->id }}">
-            {{ $currencyExchange->exchange_rate }}
-        </div>
-    </td>
-    @endif
-    <td>
-        <div class="w-full flex items-center justify-between">
-            <div class="method-text" data-id="{{ $currencyExchange->id }}">
-                @if($currencyExchange->is_manual)
-                <p class="text-blue-500">Manual</p>
+                    </div>
+                </td>
+                @endrole
+                <td>{{ $currencyExchange->base_currency }}</td>
+                <td>{{ $currencyExchange->exchange_currency }}</td>
+                @if(auth()->user()->can('update currency exchange') && $currencyExchange->is_manual)
+                <td>
+                    <div class="inline-flex justify-between gap-2 items-center" id="exchange-input-container-{{ $currencyExchange->id }}">
+                        <input
+                            type="number"
+                            class="rounded-md border-gray-400 dark:bg-gray-600 exchange-input py-0"
+                            value="{{ $currencyExchange->exchange_rate }}"
+                            id="{{ $currencyExchange->id }}"
+                            onkeydown="setInitialRate(this)"
+                            onkeyup="exchangeRateDiffer(this)">
+                        <button onclick="updateRateFromApi(this)" data-id="{{ $currencyExchange->id }}" data-tooltip="Update exchange rate automatically" class="pe-5">
+                            <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="fill-green-500">
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M2.93077 11.2003C3.00244 6.23968 7.07619 2.25 12.0789 2.25C15.3873 2.25 18.287 3.99427 19.8934 6.60721C20.1103 6.96007 20.0001 7.42199 19.6473 7.63892C19.2944 7.85585 18.8325 7.74565 18.6156 7.39279C17.2727 5.20845 14.8484 3.75 12.0789 3.75C7.8945 3.75 4.50372 7.0777 4.431 11.1982L4.83138 10.8009C5.12542 10.5092 5.60029 10.511 5.89203 10.8051C6.18377 11.0991 6.18191 11.574 5.88787 11.8657L4.20805 13.5324C3.91565 13.8225 3.44398 13.8225 3.15157 13.5324L1.47176 11.8657C1.17772 11.574 1.17585 11.0991 1.46759 10.8051C1.75933 10.5111 2.2342 10.5092 2.52824 10.8009L2.93077 11.2003ZM19.7864 10.4666C20.0786 10.1778 20.5487 10.1778 20.8409 10.4666L22.5271 12.1333C22.8217 12.4244 22.8245 12.8993 22.5333 13.1939C22.2421 13.4885 21.7673 13.4913 21.4727 13.2001L21.0628 12.7949C20.9934 17.7604 16.9017 21.75 11.8825 21.75C8.56379 21.75 5.65381 20.007 4.0412 17.3939C3.82366 17.0414 3.93307 16.5793 4.28557 16.3618C4.63806 16.1442 5.10016 16.2536 5.31769 16.6061C6.6656 18.7903 9.09999 20.25 11.8825 20.25C16.0887 20.25 19.4922 16.9171 19.5625 12.7969L19.1546 13.2001C18.86 13.4913 18.3852 13.4885 18.094 13.1939C17.8028 12.8993 17.8056 12.4244 18.1002 12.1333L19.7864 10.4666Z" />
+                            </svg>
+                        </button>
+                    </div>
+                </td>
                 @else
-                <p class="text-green-500">Auto</p>
+                <td>
+                    <div id="exchange-input-container-{{ $currencyExchange->id }}">
+                        {{ $currencyExchange->exchange_rate }}
+                    </div>
+                </td>
                 @endif
-            </div>
-            <label class="w-12 h-6 relative">
-                <input
-                    type="checkbox"
-                    class="toggle-method absolute w-full h-full opacity-0 z-10 cursor-pointer peer"
-                    data-id="{{ $currencyExchange->id }}"
-                    {{ $currencyExchange->is_manual ? '' : 'checked' }} />
-                <span class="bg-blue-500 block h-full rounded-full before:absolute before:left-1 before:bg-white  dark:peer-checked:before:bg-white before:bottom-1 before:w-4 before:h-4 before:rounded-full peer-checked:before:left-7 peer-checked:bg-green-500 before:transition-all before:duration-300">
-                </span>
-            </label>
-        </div>
-    </td>
-    <td class="group relative">
-        <p class="group-hover:invisible absolute top-1/2 transform -translate-y-1/2 transition-opacity duration-300 ease-in-out">
-            {{ $currencyExchange->updated_at->diffForHumans() }}
-        </p>
-        <p class="invisible group-hover:visible absolute top-1/2 transform -translate-y-1/2 transition-opacity duration-300 ease-in-out">
-            {{ $currencyExchange->updated_at}}
-        </p>
-    </td>
-    </tr>
-    @endforeach
-    </tbody>
-    @endif
-    </table>
+                <td>
+                    <div class="w-full flex items-center justify-between">
+                        <div class="method-text" data-id="{{ $currencyExchange->id }}">
+                            @if($currencyExchange->is_manual)
+                            <p class="text-blue-500">Manual</p>
+                            @else
+                            <p class="text-green-500">Auto</p>
+                            @endif
+                        </div>
+                        <label class="w-12 h-6 relative">
+                            <input
+                                type="checkbox"
+                                class="toggle-method absolute w-full h-full opacity-0 z-10 cursor-pointer peer"
+                                data-id="{{ $currencyExchange->id }}"
+                                {{ $currencyExchange->is_manual ? '' : 'checked' }} />
+                            <span class="bg-blue-500 block h-full rounded-full before:absolute before:left-1 before:bg-white  dark:peer-checked:before:bg-white before:bottom-1 before:w-4 before:h-4 before:rounded-full peer-checked:before:left-7 peer-checked:bg-green-500 before:transition-all before:duration-300">
+                            </span>
+                        </label>
+                    </div>
+                </td>
+                <td class="group relative">
+                    <p class="group-hover:invisible absolute top-1/2 transform -translate-y-1/2 transition-opacity duration-300 ease-in-out">
+                        {{ $currencyExchange->updated_at->diffForHumans() }}
+                    </p>
+                    <p class="invisible group-hover:visible absolute top-1/2 transform -translate-y-1/2 transition-opacity duration-300 ease-in-out">
+                        {{ $currencyExchange->updated_at}}
+                    </p>
+                </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
     </div>
     <div id="update-exchange-rate" class="opacity-0 bg-gradient-to-t from-gray-500 pt-4 pb-6 absolute bottom-0 left-0 w-full m-auto flex justify-center transition-opacity duration-150 ease-in-out">
         <div class="bg-white p-3 px-8 shadow-lg rounded-md">
@@ -164,7 +156,11 @@
         let updateAutoUrl = "{!! route('exchange.update.auto') !!}";
         let toggleMethod = document.querySelectorAll('.toggle-method');
 
-        new DataTable('#currency-exchange', {});
+        new DataTable('#currency-exchange', {
+            language: {
+                emptyTable: 'No record is found',
+            }
+        });
 
         exchangeRate = {};
         let differentCount;
@@ -312,38 +308,38 @@
         toggleUpdateMethod = (element, id) => {
             let updateMethodUrl = "{!! route('exchange.update.method', '__id__') !!}".replace('__id__', id);
             fetch(updateMethodUrl, {
-                method: 'PUT',
-                headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-            })
-            .then(response => {
-                if (!response.ok) {
-                alert('Something went wrong');
-                throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                const alert = document.createElement('div');
-                alert.className = 'alert flex items-center justify-between rounded bg-success-light p-3.5 text-success ';
-                alert.id = 'alert';
-                alert.innerHTML = `
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        alert('Something went wrong');
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const alert = document.createElement('div');
+                    alert.className = 'alert flex items-center justify-between rounded bg-success-light p-3.5 text-success ';
+                    alert.id = 'alert';
+                    alert.innerHTML = `
                 <span>${data.message}</span>
                 <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
                 `;
-                document.body.append(alert);
+                    document.body.append(alert);
 
-                setTimeout(() => {
-                alert.remove();
-                }, 3000);
+                    setTimeout(() => {
+                        alert.remove();
+                    }, 3000);
 
-                exchangeRateContainer = document.getElementById(`exchange-input-container-${id}`);
+                    exchangeRateContainer = document.getElementById(`exchange-input-container-${id}`);
 
-                if (data.currencyExchange.is_manual) {
-                exchangeRateContainer.classList.add('inline-flex', 'justify-between', 'gap-2', 'items-center');
-                exchangeRateContainer.innerHTML = `
+                    if (data.currencyExchange.is_manual) {
+                        exchangeRateContainer.classList.add('inline-flex', 'justify-between', 'gap-2', 'items-center');
+                        exchangeRateContainer.innerHTML = `
                     <input
                     type="number"
                     class="rounded-md border-gray-400 dark:bg-gray-600 exchange-input py-0"
@@ -358,19 +354,19 @@
                     </button>
                 `;
 
-                } else {
-                exchangeRateContainer.className = '';
-                exchangeRateContainer.innerHTML = data.currencyExchange.exchange_rate;
-                }
+                    } else {
+                        exchangeRateContainer.className = '';
+                        exchangeRateContainer.innerHTML = data.currencyExchange.exchange_rate;
+                    }
 
-                let methodText = element.parentElement.parentElement.querySelector('.method-text');
+                    let methodText = element.parentElement.parentElement.querySelector('.method-text');
 
-                if (data.currencyExchange.is_manual) {
-                methodText.innerHTML = '<p class="text-blue-500">Manual</p>';
-                } else {
-                methodText.innerHTML = '<p class="text-green-500">Auto</p>';
-                }
-            })
+                    if (data.currencyExchange.is_manual) {
+                        methodText.innerHTML = '<p class="text-blue-500">Manual</p>';
+                    } else {
+                        methodText.innerHTML = '<p class="text-green-500">Auto</p>';
+                    }
+                })
         }
 
         updateExchangeRateContainer = (exchange_rate) => {

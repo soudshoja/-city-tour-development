@@ -15,28 +15,27 @@ document.querySelectorAll(".refresh-icon").forEach((icon) => {
 
 /// search
 
-const searchInput = document.getElementById("searchInput");
+/* const searchInput = document.getElementById("searchInput");
 
 if (searchInput) {
     const table = document.getElementById("myTable");
-    const rows = Array.from(table.querySelector("tbody").rows); // Get all rows
+    const rows = Array.from(table.querySelector("tbody").rows); 
 
-    // Function to filter rows based on search input
     function filterTable() {
-        const query = searchInput.value.toLowerCase(); // Get the search query
+        const query = searchInput.value.toLowerCase(); 
         rows.forEach((row) => {
-            const cells = Array.from(row.cells); // Get all cells in the row
+            const cells = Array.from(row.cells); 
             const rowText = cells
                 .map((cell) => cell.textContent.toLowerCase())
-                .join(" "); // Combine text from all cells
+                .join(" "); 
             if (rowText.includes(query)) {
-                row.style.display = ""; // Show row if it matches the query
+                row.style.display = ""; 
             } else {
-                row.style.display = "none"; // Hide row if it doesn't match
+                row.style.display = "none"; 
             }
         });
     }
 
-    // Event listener for the search input
+    
     searchInput.addEventListener("input", filterTable);
-}
+} */

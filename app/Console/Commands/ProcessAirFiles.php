@@ -310,8 +310,8 @@ class ProcessAirFiles extends Command
             }
         }
 
-        // Step 2: Export all data to single Excel file (including task save results)
-        if (!empty($allParsedData)) {
+        // Step 2: Export all data to single Excel file (including task save results) - only if export-debug is enabled
+        if (!empty($allParsedData) && $this->option('export-debug')) {
             $totalRecords = count($allParsedData);
             $this->info("Exporting {$totalRecords} parsed records to single Excel file...");
             $this->info("Task save summary: {" . count($savedTasks) . "} saved, {" . count($failedTasks) . "} failed");
@@ -336,6 +336,10 @@ class ProcessAirFiles extends Command
                     'supplier' => $supplierName
                 ]);
             }
+        } elseif (!empty($allParsedData) && !$this->option('export-debug')) {
+            $totalRecords = count($allParsedData);
+            $this->info("Processed {$totalRecords} parsed records (use --export-debug to export to Excel)");
+            $this->info("Task save summary: {" . count($savedTasks) . "} saved, {" . count($failedTasks) . "} failed");
         }
 
         // Step 3: Move files based on processing results

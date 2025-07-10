@@ -159,8 +159,7 @@ class ProcessAirFiles extends Command
                         // dump('Processing file: ' . $file->getFilename());
                         $this->processSingleFile($company->id, $companyName, $supplierName, $supplierId, $file);
                     }
-
-                    dd('stop');
+                    
                 }
 
                 $this->info('AIR file processing for supplier ' . $supplierName . ' in company ' . $companyName . ' finished.');
@@ -197,6 +196,8 @@ class ProcessAirFiles extends Command
         $allParsedData = [];
         $processedFiles = [];
         $errorFiles = [];
+        $savedTasks = [];
+        $failedTasks = [];
 
         foreach ($files as $file) {
             $fileRealPath = $file->getRealPath();
@@ -209,22 +210,65 @@ class ProcessAirFiles extends Command
                 $parser = new AirFileParser($fileRealPath);
                 $tasksData = $parser->parseTaskSchema(); // Now returns array of tasks
 
+                $this->info("Found " . count($tasksData) . " passenger(s) in file: {$fileName}");
+
                 // Handle multiple passengers
-                foreach ($tasksData as $taskData) {
+                foreach ($tasksData as $passengerIndex => $taskData) {
+                    $passengerNum = $passengerIndex + 1;
+                    $this->info("Processing passenger {$passengerNum}/{" . count($tasksData) . "}: {$taskData['client_name']}");
+                    
                     // Normalize the data
                     $normalizedTask = TaskSchema::normalize($taskData);
                     if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
                         $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
                     }
 
-                    // Add to collection
+                    // Add to collection for export
                     $allParsedData[] = $taskData;
+
+                    // Process and save the task using the same logic as single file processing
+                    try {
+                        $taskResult = $this->processTaskData($companyId, $companyName, $supplierName, $supplierId, $fileName, $taskData, $passengerIndex);
+                        
+                        if ($taskResult['success']) {
+                            $savedTasks[] = [
+                                'file_name' => $fileName,
+                                'passenger_index' => $passengerIndex,
+                                'client_name' => $taskData['client_name'],
+                                'task_id' => $taskResult['task_id'] ?? null,
+                                'reason' => $taskResult['reason']
+                            ];
+                            $this->info("✓ Saved task for passenger {$passengerNum}: {$taskData['client_name']}");
+                        } else {
+                            $failedTasks[] = [
+                                'file_name' => $fileName,
+                                'passenger_index' => $passengerIndex,
+                                'client_name' => $taskData['client_name'],
+                                'error' => $taskResult['error'] ?? $taskResult['reason'],
+                                'reason' => $taskResult['reason']
+                            ];
+                            $this->warn("✗ Failed to save task for passenger {$passengerNum}: {$taskData['client_name']} - {$taskResult['reason']}");
+                        }
+                    } catch (\Exception $e) {
+                        $failedTasks[] = [
+                            'file_name' => $fileName,
+                            'passenger_index' => $passengerIndex,
+                            'client_name' => $taskData['client_name'],
+                            'error' => $e->getMessage(),
+                            'reason' => 'Exception during task processing'
+                        ];
+                        $this->error("✗ Exception saving task for passenger {$passengerNum}: {$e->getMessage()}");
+                        $this->logger->error("Exception during batch task processing", [
+                            'file_name' => $fileName,
+                            'passenger_index' => $passengerIndex,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
                 }
                 
                 $processedFiles[] = $fileName;
                 
                 $this->info("✓ Successfully parsed: {$fileName} ({" . count($tasksData) . "} passenger(s))");
-                dd($allParsedData);
                 
             } catch (\Exception $e) {
                 $this->error("✗ Failed to parse {$fileName}: " . $e->getMessage());
@@ -241,15 +285,20 @@ class ProcessAirFiles extends Command
             }
         }
 
-        // Step 2: Export all data to single Excel file
+        // Step 2: Export all data to single Excel file (including task save results)
         if (!empty($allParsedData)) {
-            $this->info("Exporting " . count($allParsedData) . " parsed records to single Excel file...");
+            $totalRecords = count($allParsedData);
+            $this->info("Exporting {$totalRecords} parsed records to single Excel file...");
+            $this->info("Task save summary: {" . count($savedTasks) . "} saved, {" . count($failedTasks) . "} failed");
             
             try {
                 $batchExcelPath = $this->exportBatchDataToSingleExcel($allParsedData, $processedFiles, $companyName, $supplierName);
                 
                 if ($batchExcelPath) {
                     $this->info("✓ Batch data exported to: {$batchExcelPath}");
+                    
+                    // Also export task save results summary
+                    $this->exportTaskSaveResults($savedTasks, $failedTasks, $companyName, $supplierName);
                 } else {
                     $this->error("✗ Failed to export batch data to Excel");
                 }
@@ -270,9 +319,23 @@ class ProcessAirFiles extends Command
             $fileRealPath = $file->getRealPath();
             
             if (in_array($fileName, $processedFiles)) {
-                // Move to processed directory
-                $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
-                $this->moveFileWithLogging($fileRealPath, $successPath, $fileName, "Successfully parsed and exported");
+                // Check if all tasks for this file were saved successfully
+                $fileTaskResults = array_filter($savedTasks, fn($task) => $task['file_name'] === $fileName);
+                $fileTaskFailures = array_filter($failedTasks, fn($task) => $task['file_name'] === $fileName);
+                
+                if (count($fileTaskFailures) === 0) {
+                    // All tasks saved successfully - move to processed directory
+                    $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
+                    $this->moveFileWithLogging($fileRealPath, $successPath, $fileName, 
+                        "Successfully parsed and saved " . count($fileTaskResults) . " tasks");
+                } else {
+                    // Some tasks failed - move to error directory but log partial success
+                    $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                    $successCount = count($fileTaskResults);
+                    $failureCount = count($fileTaskFailures);
+                    $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 
+                        "Partial success: {$successCount} tasks saved, {$failureCount} tasks failed");
+                }
             } else {
                 // Move to error directory
                 $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
@@ -282,12 +345,18 @@ class ProcessAirFiles extends Command
             }
         }
 
-        // Log summary
+        // Log comprehensive summary
         $successCount = count($processedFiles);
         $errorCount = count($errorFiles);
         $totalCount = count($files);
+        $totalTasksSaved = count($savedTasks);
+        $totalTasksFailed = count($failedTasks);
+        $totalTasks = $totalTasksSaved + $totalTasksFailed;
         
-        $this->info("Batch processing completed: {$successCount}/{$totalCount} files parsed successfully, {$errorCount} files failed");
+        $this->info("Batch processing completed:");
+        $this->info("  Files: {$successCount}/{$totalCount} files parsed successfully, {$errorCount} files failed");
+        $this->info("  Tasks: {$totalTasksSaved}/{$totalTasks} tasks saved successfully, {$totalTasksFailed} tasks failed");
+        
         $this->logger->info("Batch processing summary", [
             'company' => $companyName,
             'supplier' => $supplierName,
@@ -295,7 +364,12 @@ class ProcessAirFiles extends Command
             'successful_files' => $successCount,
             'failed_files' => $errorCount,
             'processed_files' => $processedFiles,
-            'error_files' => array_column($errorFiles, 'file_name')
+            'error_files' => array_column($errorFiles, 'file_name'),
+            'total_tasks' => $totalTasks,
+            'saved_tasks' => $totalTasksSaved,
+            'failed_tasks' => $totalTasksFailed,
+            'saved_task_details' => $savedTasks,
+            'failed_task_details' => $failedTasks
         ]);
     }
 
@@ -1262,5 +1336,100 @@ class ProcessAirFiles extends Command
             ]);
             return null;
         }
+    }
+
+    /**
+     * Export task save results summary to Excel file
+     */
+    protected function exportTaskSaveResults($savedTasks, $failedTasks, $companyName, $supplierName)
+    {
+        try {
+            // Create export directory if it doesn't exist
+            $exportDir = storage_path("app/{$companyName}/{$supplierName}/debug_exports");
+            if (!File::isDirectory($exportDir)) {
+                File::makeDirectory($exportDir, 0755, true, true);
+            }
+
+            // Generate Excel filename with timestamp
+            $timestamp = now()->format('Y-m-d_H-i-s');
+            $summaryFileName = "task_save_summary_{$timestamp}.xlsx";
+
+            // Prepare data for export
+            $summaryData = [];
+            
+            // Add saved tasks
+            foreach ($savedTasks as $task) {
+                $summaryData[] = [
+                    'file_name' => $task['file_name'],
+                    'passenger_index' => $task['passenger_index'],
+                    'client_name' => $task['client_name'],
+                    'status' => 'SUCCESS',
+                    'task_id' => $task['task_id'],
+                    'reason' => $task['reason'],
+                    'error' => ''
+                ];
+            }
+            
+            // Add failed tasks
+            foreach ($failedTasks as $task) {
+                $summaryData[] = [
+                    'file_name' => $task['file_name'],
+                    'passenger_index' => $task['passenger_index'],
+                    'client_name' => $task['client_name'],
+                    'status' => 'FAILED',
+                    'task_id' => '',
+                    'reason' => $task['reason'],
+                    'error' => $task['error']
+                ];
+            }
+
+            if (!empty($summaryData)) {
+                // Create Excel export class for task save results
+                $export = new class($summaryData) implements \Maatwebsite\Excel\Concerns\FromArray, \Maatwebsite\Excel\Concerns\WithHeadings {
+                    private $data;
+
+                    public function __construct($data)
+                    {
+                        $this->data = $data;
+                    }
+
+                    public function array(): array
+                    {
+                        return array_values($this->data);
+                    }
+
+                    public function headings(): array
+                    {
+                        return ['File Name', 'Passenger Index', 'Client Name', 'Status', 'Task ID', 'Reason', 'Error'];
+                    }
+                };
+
+                // Export to Excel
+                \Maatwebsite\Excel\Facades\Excel::store($export, "/{$companyName}/{$supplierName}/debug_exports/{$summaryFileName}");
+
+                $summaryPath = $exportDir . '/' . $summaryFileName;
+                $this->info("✓ Task save summary exported to: {$summaryPath}");
+                
+                $this->logger->info("Exported task save summary", [
+                    'summary_path' => $summaryPath,
+                    'total_saved' => count($savedTasks),
+                    'total_failed' => count($failedTasks),
+                    'company' => $companyName,
+                    'supplier' => $supplierName
+                ]);
+
+                return $summaryPath;
+            }
+
+        } catch (\Exception $e) {
+            $this->error("Failed to export task save summary: " . $e->getMessage());
+            $this->logger->error("Failed to export task save summary", [
+                'error' => $e->getMessage(),
+                'company' => $companyName,
+                'supplier' => $supplierName
+            ]);
+        }
+
+        return null;
     }
 }

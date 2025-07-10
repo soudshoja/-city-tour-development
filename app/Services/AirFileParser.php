@@ -316,28 +316,26 @@ class AirFileParser
      * Also check K line format for refund indicators (KN-, KS-)
      */
     private function extractStatus()
-    {        
-        // Check for VOID
-        if ($this->findLine('/VOID/')) {
-            return 'void';
-        }
-        
-        // Check for refund indicators
-        if ($this->findLine('/;RF;/')) {
+    {
+        // Check refund only if line starts with AIR-BLK and has second field = RF
+        if ($this->findLine('/^AIR-BLK\d+;RF;/')) {
             return 'refund';
         }
-        
-        // Check for reissued (FO + original ticket)
-        if ($this->findLine('/FO/')) {
+
+        // Check for VOID only if ;VOIDddMMM; is in a specific line format
+        if ($this->findLine('/;VOID\d{2}[A-Z]{3};/')) {
+            return 'void';
+        }
+
+        // Check if line starts with FO + ticket number
+        if ($this->findLine('/^FO\d{3}-\d{10}/')) {
             return 'reissued';
         }
-        
+
         // Check for EMD
-        if ($this->findLine('/EMD/')) {
+        if ($this->findLine('/^EMD\d{3,4};/')) {
             return 'emd';
         }
-        
-        // Default to issued
         return 'issued';
     }
     

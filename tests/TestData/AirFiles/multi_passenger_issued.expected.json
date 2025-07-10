@@ -14,26 +14,44 @@
             "agent_email": "maged@citytravelers.co",
             "agent_amadeus_id": "0012MI",
             "created_at": "2025-06-21 04:49:04",
-            "task_flight_details": {
-                "farebase": 66,
-                "departure_time": "2025-07-10 04:35:00",
-                "country_id_from": "Kuwait",
-                "airport_from": "TAR",
-                "terminal_from": "",
-                "arrival_time": "2025-07-10 06:05:00",
-                "duration_time": "1h 30m",
-                "country_id_to": "United Arab Emirates",
-                "airport_to": "AIR",
-                "terminal_to": "",
-                "airline_id": "MD Airlines",
-                "flight_number": "LK-206",
-                "class_type": "economy",
-                "baggage_allowed": "30kg",
-                "equipment": "A127",
-                "ticket_number": "T-K157-3049982244",
-                "flight_meal": "",
-                "seat_no": ""
-            },
+            "task_flight_details": [
+                {
+                    "from": "KWI",
+                    "to": "DOH", 
+                    "flight_number": "QR1077",
+                    "airline": "QR",
+                    "departure_time": "2025-07-30 04:35:00",
+                    "arrival_time": "2025-07-30 06:05:00",
+                    "class": "economy"
+                },
+                {
+                    "from": "DOH",
+                    "to": "MUC",
+                    "flight_number": "QR0057", 
+                    "airline": "QR",
+                    "departure_time": "2025-07-30 09:10:00",
+                    "arrival_time": "2025-07-30 14:10:00", 
+                    "class": "economy"
+                },
+                {
+                    "from": "MUC",
+                    "to": "DOH",
+                    "flight_number": "QR0058",
+                    "airline": "QR", 
+                    "departure_time": "2025-08-07 16:10:00",
+                    "arrival_time": "2025-08-07 22:45:00",
+                    "class": "economy"
+                },
+                {
+                    "from": "DOH", 
+                    "to": "KWI",
+                    "flight_number": "QR1076",
+                    "airline": "QR",
+                    "departure_time": "2025-08-08 01:30:00", 
+                    "arrival_time": "2025-08-08 03:05:00",
+                    "class": "economy"
+                }
+            ],
             "taxes_record": " KWD58.400   YQ AC; KWD13.600   YR VB; KWD1.000    GZ SE; KWD2.000    KW AE; KWD5.000    N4 CB; KWD0.250    YX AP; KWD10.200   G4 AF; KWD1.000    PZ AV; KWD10.200   QA AP; KWD1.700    R9 SE; KWD3.100    DE SE; KWD13.000   OY CB; KWD8.850    RA EB",
             "additional_validations": [
                 {"type": "not_empty", "field": "reference"},
@@ -52,26 +70,44 @@
             "agent_name": "COMO TRAVEL AND TOURISM",
             "agent_email": "maged@citytravelers.co",
             "agent_amadeus_id": "0012MI",
-            "task_flight_details": {
-                "farebase": 66,
-                "departure_time": "2025-07-10 04:35:00",
-                "country_id_from": "Kuwait",
-                "airport_from": "TAR",
-                "terminal_from": "",
-                "arrival_time": "2025-07-10 06:05:00",
-                "duration_time": "1h 30m",
-                "country_id_to": "United Arab Emirates",
-                "airport_to": "AIR",
-                "terminal_to": "",
-                "airline_id": "MD Airlines",
-                "flight_number": "LK-206",
-                "class_type": "economy",
-                "baggage_allowed": "30kg",
-                "equipment": "A127",
-                "ticket_number": "T-K157-3049982244",
-                "flight_meal": "",
-                "seat_no": ""
-            },
+            "task_flight_details": [
+                {
+                    "from": "KWI",
+                    "to": "DOH", 
+                    "flight_number": "QR1077",
+                    "airline": "QR",
+                    "departure_time": "2025-07-30 04:35:00",
+                    "arrival_time": "2025-07-30 06:05:00",
+                    "class": "economy"
+                },
+                {
+                    "from": "DOH",
+                    "to": "MUC",
+                    "flight_number": "QR0057", 
+                    "airline": "QR",
+                    "departure_time": "2025-07-30 09:10:00",
+                    "arrival_time": "2025-07-30 14:10:00", 
+                    "class": "economy"
+                },
+                {
+                    "from": "MUC",
+                    "to": "DOH",
+                    "flight_number": "QR0058",
+                    "airline": "QR", 
+                    "departure_time": "2025-08-07 16:10:00",
+                    "arrival_time": "2025-08-07 22:45:00",
+                    "class": "economy"
+                },
+                {
+                    "from": "DOH", 
+                    "to": "KWI",
+                    "flight_number": "QR1076",
+                    "airline": "QR",
+                    "departure_time": "2025-08-08 01:30:00", 
+                    "arrival_time": "2025-08-08 03:05:00",
+                    "class": "economy"
+                }
+            ],
             "taxes_record": " KWD58.400   YQ AC; KWD13.600   YR VB; KWD1.000    GZ SE; KWD2.000    KW AE; KWD5.000    N4 CB; KWD0.250    YX AP; KWD10.200   G4 AF; KWD1.000    PZ AV; KWD10.200   QA AP; KWD1.700    R9 SE; KWD3.100    DE SE; KWD13.000   OY CB; KWD8.850    RA EB",
             "additional_validations": [
                 {"type": "not_empty", "field": "reference"},

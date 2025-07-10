@@ -38,6 +38,7 @@ class AirFileParser
                 'supplier_status' => $this->extractStatus(), // Same as status
                 'refund_date' => $this->extractRefundDate(),
                 'price' => $this->extractPrice(),
+                'currency' => $this->extractExchangeCurrency(), // Primary currency (same as exchange_currency)
                 'exchange_currency' => $this->extractExchangeCurrency(),
                 'original_price' => $this->extractOriginalPrice(),
                 'original_currency' => $this->extractOriginalCurrency(),
@@ -79,6 +80,7 @@ class AirFileParser
                 'supplier_status' => $this->extractStatus(), // Same as status
                 'refund_date' => $this->extractRefundDate(),
                 'price' => $this->extractPrice(),
+                'currency' => $this->extractExchangeCurrency(), // Primary currency (same as exchange_currency)
                 'exchange_currency' => $this->extractExchangeCurrency(),
                 'original_price' => $this->extractOriginalPrice(),
                 'original_currency' => $this->extractOriginalCurrency(),
@@ -112,9 +114,18 @@ class AirFileParser
     
     /**
      * Parse flight details from the AIR file
+     * Extract multiple flight segments from H-lines and return as array
      */
     public function parseFlightDetails()
     {
+        $flightSegments = $this->extractFlightSegments();
+        
+        // If we found H-lines with flight segments, return them
+        if (!empty($flightSegments)) {
+            return $flightSegments;
+        }
+        
+        // Fallback to single flight object for files without H-lines
         return [
             'farebase' => $this->extractFarebase(),
             'departure_time' => $this->extractDepartureTime(),
@@ -135,6 +146,93 @@ class AirFileParser
             'flight_meal' => $this->extractFlightMeal(),
             'seat_no' => $this->extractSeatNumber(),
         ];
+    }
+    
+    /**
+     * Extract flight segments from H-lines
+     * Format: H-005;003OKWI;KUWAIT           ;DOH;DOHA             ;QR    1077 S S 30JUL0435 0605 30JUL;OK02;HK02;M ;0;77W;;;30K;1 ;;ET;0130 ;N;351;
+     */
+    private function extractFlightSegments()
+    {
+        $segments = [];
+        $hLines = $this->findLines('/^H-\d+;(.+)/');
+        
+        foreach ($hLines as $hLine) {
+            $parts = explode(';', $hLine[1]);
+            
+            if (count($parts) >= 5) {
+                // Parse the flight information - corrected indexing
+                $fromAirport = trim($parts[0]); // 003OKWI
+                $fromCity = trim($parts[1]);    // KUWAIT
+                $toAirport = trim($parts[2]);   // DOH
+                $toCity = trim($parts[3]);      // DOHA
+                $flightInfo = trim($parts[4]);  // QR    1077 S S 30JUL0435 0605 30JUL
+                
+                // Extract airport codes (remove prefix numbers and letters)
+                $fromCode = preg_replace('/^\d+[A-Z]?/', '', $fromAirport); // Remove leading digits and optional letter -> KWI
+                $toCode = $toAirport; // DOH is already clean
+                
+                // Parse flight info: QR    1077 S S 30JUL0435 0605 30JUL
+                if (preg_match('/([A-Z]{2})\s+(\d+)\s+[A-Z]\s+[A-Z]\s+(\d{2}[A-Z]{3})(\d{4})\s+(\d{4})\s+(\d{2}[A-Z]{3})/', $flightInfo, $flightMatch)) {
+                    $airline = $flightMatch[1];           // QR
+                    $flightNumber = $flightMatch[2];      // 1077
+                    $departureDate = $flightMatch[3];     // 30JUL
+                    $departureTime = $flightMatch[4];     // 0435
+                    $arrivalTime = $flightMatch[5];       // 0605
+                    $arrivalDate = $flightMatch[6];       // 30JUL
+                    
+                    // Convert date format from 30JUL to 2025-07-30 and combine with time
+                    $departureDateTime = $this->combineDateTimeFormat($departureDate, $departureTime);
+                    $arrivalDateTime = $this->combineDateTimeFormat($arrivalDate, $arrivalTime);
+                    
+                    $segments[] = [
+                        'from' => $fromCode,
+                        'to' => $toCode,
+                        'flight_number' => $airline . $flightNumber,
+                        'airline' => $airline,
+                        'departure_time' => $departureDateTime,
+                        'arrival_time' => $arrivalDateTime,
+                        'class' => 'economy', // Default, could be extracted from booking class if needed
+                    ];
+                }
+            }
+        }
+        
+        return $segments;
+    }
+    
+    /**
+     * Convert date format from 30JUL to 2025-07-30
+     */
+    private function convertDateFormat($dateStr)
+    {
+        $months = [
+            'JAN' => '01', 'FEB' => '02', 'MAR' => '03', 'APR' => '04',
+            'MAY' => '05', 'JUN' => '06', 'JUL' => '07', 'AUG' => '08',
+            'SEP' => '09', 'OCT' => '10', 'NOV' => '11', 'DEC' => '12'
+        ];
+        
+        if (preg_match('/(\d{2})([A-Z]{3})/', $dateStr, $match)) {
+            $day = $match[1];
+            $month = $months[$match[2]] ?? '01';
+            $year = '2025'; // Default to current year + 1, could be made smarter
+            
+            return "{$year}-{$month}-{$day}";
+        }
+        
+        return $dateStr;
+    }
+    
+    /**
+     * Convert time format from 0435 to 04:35
+     */
+    private function convertTimeFormat($timeStr)
+    {
+        if (strlen($timeStr) === 4) {
+            return substr($timeStr, 0, 2) . ':' . substr($timeStr, 2, 2);
+        }
+        
+        return $timeStr;
     }
     
     /**
@@ -1132,5 +1230,17 @@ class AirFileParser
         }
         
         return $passengers;
+    }
+
+    /**
+     * Combine date and time into a single datetime format
+     * Converts 30JUL and 0435 to "2025-07-30 04:35:00"
+     */
+    private function combineDateTimeFormat($dateStr, $timeStr)
+    {
+        $formattedDate = $this->convertDateFormat($dateStr);
+        $formattedTime = $this->convertTimeFormat($timeStr);
+        
+        return $formattedDate . ' ' . $formattedTime . ':00';
     }
 }

@@ -174,11 +174,7 @@ class AirFileParser
         $match = $this->findLine('/^(T-[KE]\d+-\d+)/');
 
         if ($match) {
-            $airlineCode = $match[1];  // e.g., "229"
-            $ticketNumber = $match[2]; // e.g., "2833242924"
-            
-            // Return last 10 digits of ticket number
-            return substr($ticketNumber, -10);
+            return $match[1];    
         }
         
         return '';

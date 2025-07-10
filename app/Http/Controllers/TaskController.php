@@ -65,7 +65,11 @@ class TaskController extends Controller
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $tasks = $tasks->where('company_id', $user->company->id)->paginate(50);
+            // $tasks = $tasks->where('company_id', $user->company->id)->paginate(50);
+            $tasks = $tasks->where('company_id', $user->company->id)
+                ->orderBy('created_at', 'desc')
+                ->paginate(50);
+
             // $queueTasks = $queueTasks->where('company_id', $user->company->id)->get();
             $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
                 $query->where('company_id', $user->company->id)->where('is_active', true);
@@ -81,7 +85,12 @@ class TaskController extends Controller
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id)->paginate(50);
+            // $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id)->paginate(50);
+            $tasks = $tasks->whereIn('agent_id', $agentsId)
+                ->where('company_id', $user->company_id)
+                ->orderBy('created_at', 'desc')
+                ->paginate(50);
+
             // $queueTasks = $queueTasks->where('company_id', $user->company_id)->get();
             $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
                 $query->where('company_id', $user->branch->company_id);
@@ -90,7 +99,11 @@ class TaskController extends Controller
 
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $clients = Client::where('agent_id', $user->agent->id)->get();
-            $tasks = $tasks->where('agent_id', $user->agent->id)->paginate(50);
+            // $tasks = $tasks->where('agent_id', $user->agent->id)->paginate(50);
+            $tasks = $tasks->where('agent_id', $user->agent->id)
+                ->orderBy('created_at', 'desc')
+                ->paginate(50);
+
             // $queueTasks = $queueTasks->where('agent_id', $user->agent->id)->get();
             $companyId = $user->agent->branch->company_id;
             $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
@@ -126,7 +139,7 @@ class TaskController extends Controller
 
         $importedTask = Cache::get('imported_task');
 
-       $query = Task::query()
+        $query = Task::query()
             ->leftJoin('agents', 'tasks.agent_id', '=', 'agents.id')
             ->leftJoin('companies', 'tasks.company_id', '=', 'companies.id')
             ->leftJoin('suppliers', 'tasks.supplier_id', '=', 'suppliers.id')
@@ -231,7 +244,6 @@ class TaskController extends Controller
 
                 $existingTask->created_at = $request->created_at;
                 $existingTask->save();
-
             }
 
             return response()->json([
@@ -241,7 +253,7 @@ class TaskController extends Controller
         }
         $amadeusId = Supplier::where('name', 'Amadeus')->value('id');
 
-        if($request->supplier_id !== $amadeusId) {
+        if ($request->supplier_id !== $amadeusId) {
 
             Log::info("remove GDS and Airline references for non-Amadeus tasks", [
                 'supplier_id' => $request->supplier_id,
@@ -254,13 +266,12 @@ class TaskController extends Controller
                 'gds_reference' => null,
                 'airline_reference' => null
             ]);
-            
+
             Log::info("GDS and Airline references removed for non-Amadeus supplier", [
                 'supplier_id' => $request->supplier_id,
                 'updated_gds_reference' => $request->gds_reference,
                 'updated_airline_reference' => $request->airline_reference
             ]);
-
         }
 
         // Set default values for nullable fields using merge()
@@ -285,7 +296,7 @@ class TaskController extends Controller
 
         if ($request->file_name) {
             $fileUpload = FileUpload::where('file_name', $request->file_name)->first();
-            
+
             if ($fileUpload && $fileUpload->user_id) {
                 Log::info("FileUpload found for {$request->file_name}", [
                     'file_upload_id' => $fileUpload->id,
@@ -294,7 +305,7 @@ class TaskController extends Controller
                 ]);
 
                 $agent = Agent::where('user_id', $fileUpload->user_id)->first();
-                
+
                 if ($agent) {
                     $request->merge(['agent_id' => $agent->id]);
                     Log::info("Assigned agent_id from file uploader", [
@@ -459,7 +470,6 @@ class TaskController extends Controller
                     Log::info('New issued by account created for task: ' . $task->reference, [
                         'issuedByAccount' => $issuedByAccount,
                     ]);
-
                 } catch (Exception $e) {
                     Log::error('Failed to create issued by account: ' . $e->getMessage());
                     throw new Exception('Failed to create issued by account.');
@@ -891,105 +901,105 @@ class TaskController extends Controller
     }
 
     public function update(Request $request, $id)
-{ 
-    $request->validate([
-        'reference' => 'nullable|string',
-        'status' => 'required',
-        'price' => 'nullable|numeric',
-        'tax' => 'nullable|numeric',
-        'surcharge' => 'nullable|numeric',
-        'total' => 'required|numeric',
-        'agent_id' => 'required',
-        'client_id' => 'nullable|exists:clients,id', 
-        'supplier_id' => 'required',
-    ], [
-        'agent_id.required' => 'Please select an agent',
-        'supplier_id.required' => 'Please select a supplier',
-        'status.required' => 'Please select a status',
-        'total.required' => 'Please enter the total amount',
-    ]);
-
-    if (strtolower($request->status) !== 'issued' && strtolower($request->status) !== 'confirmed') {
+    {
         $request->validate([
-            'original_task_id' => 'required|exists:tasks,id',
+            'reference' => 'nullable|string',
+            'status' => 'required',
+            'price' => 'nullable|numeric',
+            'tax' => 'nullable|numeric',
+            'surcharge' => 'nullable|numeric',
+            'total' => 'required|numeric',
+            'agent_id' => 'required',
+            'client_id' => 'nullable|exists:clients,id',
+            'supplier_id' => 'required',
         ], [
-            'original_task_id.required' => 'Task must be linked to an original task',
-        ]);
-    }
-
-    DB::beginTransaction();
-
-    try {
-        $task = Task::findOrFail($id);
-
-        Log::info('Before task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
-        Log::info('Incoming Request: agent_id: ' . $request->agent_id . ', client_id: ' . $request->client_id);
-
-        $prevClientName = $task->client_name;
-        $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
-
-        $data = $request->only([
-            'reference',
-            'status',
-            'price',
-            'tax',
-            'surcharge',
-            'total',
-            'agent_id',
-            'supplier_id',
-            'original_task_id',
+            'agent_id.required' => 'Please select an agent',
+            'supplier_id.required' => 'Please select a supplier',
+            'status.required' => 'Please select a status',
+            'total.required' => 'Please enter the total amount',
         ]);
 
-        if ($request->filled('client_id')) {
-            $client = Client::findOrFail($request->client_id);
-            $data['client_id'] = $client->id;
-            $data['client_name'] = $client->name;
+        if (strtolower($request->status) !== 'issued' && strtolower($request->status) !== 'confirmed') {
+            $request->validate([
+                'original_task_id' => 'required|exists:tasks,id',
+            ], [
+                'original_task_id.required' => 'Task must be linked to an original task',
+            ]);
         }
 
-        if ($request->filled('agent_id')) {
-            $agent = Agent::findOrFail($request->agent_id);
-            $data['agent_id'] = $agent->id;
-            $data['agent_name'] = $agent->name;
+        DB::beginTransaction();
+
+        try {
+            $task = Task::findOrFail($id);
+
+            Log::info('Before task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
+            Log::info('Incoming Request: agent_id: ' . $request->agent_id . ', client_id: ' . $request->client_id);
+
+            $prevClientName = $task->client_name;
+            $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
+
+            $data = $request->only([
+                'reference',
+                'status',
+                'price',
+                'tax',
+                'surcharge',
+                'total',
+                'agent_id',
+                'supplier_id',
+                'original_task_id',
+            ]);
+
+            if ($request->filled('client_id')) {
+                $client = Client::findOrFail($request->client_id);
+                $data['client_id'] = $client->id;
+                $data['client_name'] = $client->name;
+            }
+
+            if ($request->filled('agent_id')) {
+                $agent = Agent::findOrFail($request->agent_id);
+                $data['agent_id'] = $agent->id;
+                $data['agent_name'] = $agent->name;
+            }
+
+            $task->update($data);
+            Log::info('After task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
+
+            $shouldBeEnabled = $task->is_complete;
+
+            if ($shouldBeEnabled && !$wasEnabled) {
+                $task->enabled = true;
+                $task->save();
+                $this->processTaskFinancial($task);
+            } elseif (!$shouldBeEnabled && $wasEnabled) {
+                $task->enabled = false;
+                $task->save();
+            } else {
+                $task->enabled = $shouldBeEnabled;
+                $task->save();
+            }
+
+            $transaction = Transaction::with('journalEntries')
+                ->where('description', 'like', '%' . $task->reference . '%')
+                ->first();
+
+            if (isset($client) && $transaction) {
+                $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
+                    if ($journalEntry->name === $prevClientName) {
+                        $journalEntry->name = $client->name;
+                        $journalEntry->save();
+                    }
+                });
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Task updated successfully.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Task update failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
         }
-
-        $task->update($data);
-        Log::info('After task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
-
-        $shouldBeEnabled = $task->is_complete;
-
-        if ($shouldBeEnabled && !$wasEnabled) {
-            $task->enabled = true;
-            $task->save();
-            $this->processTaskFinancial($task);
-        } elseif (!$shouldBeEnabled && $wasEnabled) {
-            $task->enabled = false;
-            $task->save();
-        } else {
-            $task->enabled = $shouldBeEnabled;
-            $task->save();
-        }
-
-        $transaction = Transaction::with('journalEntries')
-            ->where('description', 'like', '%' . $task->reference . '%')
-            ->first();
-
-        if (isset($client) && $transaction) {
-            $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
-                if ($journalEntry->name === $prevClientName) {
-                    $journalEntry->name = $client->name;
-                    $journalEntry->save();
-                }
-            });
-        }
-
-        DB::commit();
-        return redirect()->back()->with('success', 'Task updated successfully.');
-    } catch (Exception $e) {
-        DB::rollBack();
-        Log::error('Task update failed: ' . $e->getMessage());
-        return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
     }
-}
 
 
     public function upload(Request $request)
@@ -1131,23 +1141,23 @@ class TaskController extends Controller
     {
         try {
             $airline = isset($data['airline_name']) ? Airline::where('name', 'like', '%' . $data['airline_name'] . '%')->first() : null;
-            
+
             // Handle both 'departure_from'/'arrive_to' and 'country_id_from'/'country_id_to' fields
             $countryFrom = null;
             $countryTo = null;
-            
+
             if (isset($data['departure_from'])) {
                 $countryFrom = Country::where('name', 'like', '%' . $data['departure_from'] . '%')->first();
             } elseif (isset($data['country_id_from'])) {
-                $countryFrom = is_numeric($data['country_id_from']) 
+                $countryFrom = is_numeric($data['country_id_from'])
                     ? Country::find($data['country_id_from'])
                     : Country::where('name', 'like', '%' . $data['country_id_from'] . '%')->first();
             }
-            
+
             if (isset($data['arrive_to'])) {
                 $countryTo = Country::where('name', 'like', '%' . $data['arrive_to'] . '%')->first();
             } elseif (isset($data['country_id_to'])) {
-                $countryTo = is_numeric($data['country_id_to']) 
+                $countryTo = is_numeric($data['country_id_to'])
                     ? Country::find($data['country_id_to'])
                     : Country::where('name', 'like', '%' . $data['country_id_to'] . '%')->first();
             }
@@ -1355,7 +1365,6 @@ class TaskController extends Controller
                     'status' => 'error',
                     'message' => 'Agent ' . $agent['name'] . ' not found in database. Please create the agent first.',
                 ];
-
             }
         }
 
@@ -1621,9 +1630,9 @@ class TaskController extends Controller
 
         $user = Auth::user();
         $agentId = null;
-        if($request->agent_id) {
+        if ($request->agent_id) {
             $agent = Agent::findOrFail($request->agent_id);
-            
+
             if (!$agent) {
                 return redirect()->back()->with('error', 'Agent not found');
             }
@@ -1681,7 +1690,7 @@ class TaskController extends Controller
 
                 return redirect()->back()->with('success', 'Magic Holiday task received successfully');
 
-            default :
+            default:
                 $response = $this->upload($request);
                 // Artisan::call('app:process-files', [], null, true);
 

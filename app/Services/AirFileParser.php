@@ -69,6 +69,7 @@ class AirFileParser
         // Create a task for each passenger
         $tasks = [];
         foreach ($passengers as $passenger) {
+            $reference = substr($passenger['ticket_number'], -10); // Use last 10 digits of ticket number as reference
             $data = [
                 'additional_info' => $this->extractAdditionalInfo(),
                 'ticket_number' => $passenger['ticket_number'],
@@ -87,7 +88,7 @@ class AirFileParser
                 'tax' => $this->extractTax(),
                 'taxes_record' => $this->extractTaxesRecord(),
                 'refund_charge' => $this->extractRefundCharge(),
-                'reference' => $passenger['ticket_number'], // Use individual ticket number as reference
+                'reference' => $reference,
                 'created_by' => $this->extractCreatedBy(),
                 'issued_by' => $this->extractIssuedBy(),
                 'type' => 'flight', // Always flight for AIR files
@@ -661,16 +662,8 @@ class AirFileParser
      */
     private function extractReference()
     {
-        $passengers = $this->extractAllPassengers();
-        
-        // If multiple passengers, use GDS reference as the main reference
-        if (count($passengers) > 1) {
-            $gdsRef = $this->extractGdsReference();
-            return $gdsRef ?: $this->extractTicketNumber();
-        }
-        
-        // Single passenger, use ticket number
-        return $this->extractTicketNumber();
+        $ticketNumber = $this->extractTicketNumber();
+        return substr($ticketNumber, -10);
     }
     
     /**
@@ -1119,11 +1112,7 @@ class AirFileParser
             $ticketNumber = '';
             if (isset($ticketLines[$index])) {
                 $ticketMatch = $ticketLines[$index];
-                $airlineCode = $ticketMatch[1];  // e.g., "229"
-                $ticketNum = $ticketMatch[2];    // e.g., "2833184681"
-                
-                // Return last 10 digits of ticket number
-                $ticketNumber = substr($ticketNum, -10);
+                $ticketNumber = $ticketMatch[0];    // e.g., "T-K012-1234567890"
             }
             
             $passengers[] = [

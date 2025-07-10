@@ -173,7 +173,12 @@ class AirFileParser
     {
         // Look for T-K line with format: T-K[airline_code]-[ticket_number]
         $match = $this->findLine('/^(T-[KE]\d+-\d+)/');
+        if ($match) {
+            return $match[1];    
+        }
 
+        // Look for TMCD line with format: TMCD[airline_code]-[ticket_number]
+        $match = $this->findLine('/^TMCD(\d+)-(\d+)/');
         if ($match) {
             return $match[1];    
         }
@@ -1102,6 +1107,10 @@ class AirFileParser
         
         // Find all T-K lines (ticket lines)
         $ticketLines = $this->findLines('/^T-[KE](\d+)-(\d+)/');
+
+        if (empty($ticketLines)) {
+            $ticketLines = $this->findLines('/^TMCD(\d+)-(\d+)/');
+        }
         
         // Match passengers with their tickets
         foreach ($passengerLines as $index => $passengerMatch) {

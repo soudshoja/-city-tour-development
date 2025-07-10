@@ -142,7 +142,7 @@ class AirFileParserTest extends TestCase
         
         // Core fields validation
         $coreFields = [
-            'client_name', 'reference', 'status', 'price', 'currency', 
+            'client_name', 'reference', 'status', 'price', 'currency', 'total',
             'ticket_number', 'agent_name', 'agent_email', 'agent_amadeus_id'
         ];
         

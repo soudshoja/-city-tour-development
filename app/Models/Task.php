@@ -111,6 +111,11 @@ class Task extends Model
 
     public function flightDetails()
     {
+        return $this->hasMany(TaskFlightDetail::class, 'task_id');
+    }
+
+    public function flightDetail()
+    {
         return $this->hasOne(TaskFlightDetail::class, 'task_id');
     }
 

@@ -1045,28 +1045,82 @@ class TaskController extends Controller
      * @return void 
      *
      */
-    public function saveFlightDetails(array $data, int $taskId)
+    public function saveFlightDetails($data, int $taskId)
     {
-
         try {
+            // Handle both single flight detail object and array of flight details
+            if (isset($data[0]) && is_array($data[0])) {
+                // Multiple flight segments - array of flight detail objects
+                foreach ($data as $flightData) {
+                    $this->createSingleFlightDetail($flightData, $taskId);
+                }
+            } else {
+                // Single flight detail object
+                $this->createSingleFlightDetail($data, $taskId);
+            }
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
 
+    /**
+     * Create a single flight detail record
+     * 
+     * @param array $data
+     * @param int $taskId
+     * 
+     * @return void
+     */
+    private function createSingleFlightDetail(array $data, int $taskId)
+    {
+        try {
             $airline = isset($data['airline_name']) ? Airline::where('name', 'like', '%' . $data['airline_name'] . '%')->first() : null;
-            $countryFrom = isset($data['departure_from']) ? Country::where('name', 'like', '%' . $data['departure_from'] . '%')->first() : null;
-            $countryTo = isset($data['departure_from']) ? Country::where('name', 'like', '%' . $data['arrive_to'] . '%')->first() : null;
+            
+            // Handle both 'departure_from'/'arrive_to' and 'country_id_from'/'country_id_to' fields
+            $countryFrom = null;
+            $countryTo = null;
+            
+            if (isset($data['departure_from'])) {
+                $countryFrom = Country::where('name', 'like', '%' . $data['departure_from'] . '%')->first();
+            } elseif (isset($data['country_id_from'])) {
+                $countryFrom = is_numeric($data['country_id_from']) 
+                    ? Country::find($data['country_id_from'])
+                    : Country::where('name', 'like', '%' . $data['country_id_from'] . '%')->first();
+            }
+            
+            if (isset($data['arrive_to'])) {
+                $countryTo = Country::where('name', 'like', '%' . $data['arrive_to'] . '%')->first();
+            } elseif (isset($data['country_id_to'])) {
+                $countryTo = is_numeric($data['country_id_to']) 
+                    ? Country::find($data['country_id_to'])
+                    : Country::where('name', 'like', '%' . $data['country_id_to'] . '%')->first();
+            }
 
+            // Handle airline_id field - could be airline name or ID
+            $airlineId = null;
+            if (isset($data['airline_id'])) {
+                if (is_numeric($data['airline_id'])) {
+                    $airlineId = $data['airline_id'];
+                } else {
+                    $airlineFromId = Airline::where('name', 'like', '%' . $data['airline_id'] . '%')->first();
+                    $airlineId = $airlineFromId ? $airlineFromId->id : null;
+                }
+            } elseif ($airline) {
+                $airlineId = $airline->id;
+            }
 
             $flightDetails = [
                 'farebase' => isset($data['farebase']) ? (float) $data['farebase'] : null,
                 'departure_time' => $data['departure_time'] ?? null,
-                'country_id_from' => $countryFrom->id ?? null,
+                'country_id_from' => $countryFrom ? $countryFrom->id : null,
                 'airport_from' => $data['airport_from'] ?? null,
                 'terminal_from' => $data['terminal_from'] ?? null,
                 'arrival_time' => $data['arrival_time'] ?? null,
                 'duration_time' => $data['duration_time'] ?? null,
-                'country_id_to' => $countryTo->id ?? null,
+                'country_id_to' => $countryTo ? $countryTo->id : null,
                 'airport_to' => $data['airport_to'] ?? null,
                 'terminal_to' => $data['terminal_to'] ?? null,
-                'airline_id' => $airline->id ?? null,
+                'airline_id' => $airlineId,
                 'flight_number' => $data['flight_number'] ?? null,
                 'ticket_number' => $data['ticket_number'] ?? null,
                 'class_type' => $data['class_type'] ?? null,
@@ -1079,7 +1133,6 @@ class TaskController extends Controller
 
             TaskFlightDetail::create($flightDetails);
         } catch (Exception $e) {
-
             throw $e;
         }
     }

@@ -177,7 +177,7 @@ class ProcessAirFiles extends Command
     }
 
     /**
-     * Process multiple AIR files in batch using AirFileParser and export all data to single Excel file
+     * Process multiple AIR files in batch - uses conditional logic to choose parser
      */
     protected function processBatchFiles($companyId, $companyName, $supplierName, $supplierId, array $files)
     {
@@ -192,6 +192,31 @@ class ProcessAirFiles extends Command
             'file_count' => count($files)
         ]);
 
+        // Determine processing method based on supplier and file types
+        $supplier = Supplier::find($supplierId);
+        $useAirFileParser = $this->shouldUseAirFileParser($supplier, $files);
+        
+        $processingMethod = $useAirFileParser ? 'AirFileParser' : 'AI-based processing';
+        $this->info("Using {$processingMethod} for batch processing");
+        $this->logger->info("Batch processing method selected", [
+            'company' => $companyName,
+            'supplier' => $supplierName,
+            'method' => $processingMethod,
+            'supplier_name' => $supplier->name ?? 'unknown'
+        ]);
+
+        if ($useAirFileParser) {
+            $this->processBatchFilesWithAirParser($companyId, $companyName, $supplierName, $supplierId, $files);
+        } else {
+            $this->processBatchFilesWithAI($companyId, $companyName, $supplierName, $supplierId, $files);
+        }
+    }
+
+    /**
+     * Process multiple AIR files in batch using AirFileParser and export all data to single Excel file
+     */
+    protected function processBatchFilesWithAirParser($companyId, $companyName, $supplierName, $supplierId, array $files)
+    {
         // Step 1: Process all files using AirFileParser and collect data
         $allParsedData = [];
         $processedFiles = [];
@@ -447,7 +472,7 @@ class ProcessAirFiles extends Command
     }
 
     /**
-     * Process a single AIR file with proper error handling and separation of concerns.
+     * Process a single file using conditional logic to choose parser
      */
     protected function processSingleFile($companyId, $companyName, $supplierName, $supplierId, $file)
     {
@@ -462,112 +487,198 @@ class ProcessAirFiles extends Command
             'supplier' => $supplierName
         ]);
 
-        // dump('Processing file: ' . $fileName);
+        // Determine processing method based on supplier and file type
+        $supplier = Supplier::find($supplierId);
+        $useAirFileParser = $this->shouldUseAirFileParser($supplier, [$file]);
+        
+        $processingMethod = $useAirFileParser ? 'AirFileParser' : 'AI-based processing';
+        $this->info("Using {$processingMethod} for file: {$fileName}");
+        $this->logger->info("Single file processing method selected", [
+            'file_name' => $fileName,
+            'company' => $companyName,
+            'supplier' => $supplierName,
+            'method' => $processingMethod,
+            'supplier_name' => $supplier->name ?? 'unknown'
+        ]);
 
-        $parser = new AirFileParser($fileRealPath);
-        $tasksData = $parser->parseTaskSchema(); // Now returns array of tasks
+        if ($useAirFileParser) {
+            $this->processSingleFileWithAirParser($companyId, $companyName, $supplierName, $supplierId, $file);
+        } else {
+            $this->processSingleFileWithAI($companyId, $companyName, $supplierName, $supplierId, $file);
+        }
+    }
 
-        $this->info("Found " . count($tasksData) . " passenger(s) in file: {$fileName}");
+    /**
+     * Process a single AIR file using AirFileParser with proper error handling
+     */
+    protected function processSingleFileWithAirParser($companyId, $companyName, $supplierName, $supplierId, $file)
+    {
+        $fileRealPath = $file->getRealPath();
+        $fileName = $file->getFilename();
 
-        // Process each passenger's task
-        foreach ($tasksData as $index => $taskData) {
-            $passengerIndex = $index + 1;
-            $this->info("Processing passenger {$passengerIndex}/{" . count($tasksData) . "}: {$taskData['client_name']}");
-            
-            $normalizedTask = TaskSchema::normalize($taskData);
+        try {
+            $parser = new AirFileParser($fileRealPath);
+            $tasksData = $parser->parseTaskSchema(); // Now returns array of tasks
 
-            if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
-                $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
-            }
+            $this->info("Found " . count($tasksData) . " passenger(s) in file: {$fileName}");
 
-            // Export parsed data to CSV and Excel for debugging (if enabled)
-            if ($this->option('export-debug')) {
-                $passengerFileName = "passenger_{$passengerIndex}_{$fileName}";
-                $this->exportParsedDataToCsv($taskData, $passengerFileName, $companyName, $supplierName);
-                $this->exportParsedDataToExcel($taskData, $passengerFileName, $companyName, $supplierName);
+            $savedTasks = [];
+            $failedTasks = [];
+
+            // Process each passenger's task
+            foreach ($tasksData as $index => $taskData) {
+                $passengerIndex = $index + 1;
+                $this->info("Processing passenger {$passengerIndex}/{" . count($tasksData) . "}: {$taskData['client_name']}");
                 
-                // Also export normalized data if different
-                if ($normalizedTask !== $taskData) {
-                    $normalizedFileName = 'normalized_' . $passengerFileName;
-                    $this->exportParsedDataToCsv($normalizedTask, $normalizedFileName, $companyName, $supplierName);
-                    $this->exportParsedDataToExcel($normalizedTask, $normalizedFileName, $companyName, $supplierName);
+                $normalizedTask = TaskSchema::normalize($taskData);
+
+                if (isset($normalizedTask['task_flight_details']) && is_array($normalizedTask['task_flight_details'])) {
+                    $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
+                }
+
+                // Export parsed data to CSV and Excel for debugging (if enabled)
+                if ($this->option('export-debug')) {
+                    $passengerFileName = "passenger_{$passengerIndex}_{$fileName}";
+                    $this->exportParsedDataToCsv($taskData, $passengerFileName, $companyName, $supplierName);
+                    $this->exportParsedDataToExcel($taskData, $passengerFileName, $companyName, $supplierName);
+                    
+                    // Also export normalized data if different
+                    if ($normalizedTask !== $taskData) {
+                        $normalizedFileName = 'normalized_' . $passengerFileName;
+                        $this->exportParsedDataToCsv($normalizedTask, $normalizedFileName, $companyName, $supplierName);
+                        $this->exportParsedDataToExcel($normalizedTask, $normalizedFileName, $companyName, $supplierName);
+                    }
+                }
+
+                // Process and save the task
+                try {
+                    $taskResult = $this->processTaskData($companyId, $companyName, $supplierName, $supplierId, $fileName, $taskData, $index);
+                    
+                    if ($taskResult['success']) {
+                        $savedTasks[] = $taskResult;
+                        $this->info("✓ Saved task for passenger {$passengerIndex}: {$taskData['client_name']}");
+                    } else {
+                        $failedTasks[] = $taskResult;
+                        $this->warn("✗ Failed to save task for passenger {$passengerIndex}: {$taskData['client_name']} - {$taskResult['reason']}");
+                    }
+                } catch (Exception $e) {
+                    $failedTasks[] = [
+                        'success' => false,
+                        'index' => $index,
+                        'error' => $e->getMessage(),
+                        'reason' => 'Exception during task data processing'
+                    ];
+                    $this->error("✗ Exception processing passenger {$passengerIndex}: " . $e->getMessage());
+                    $this->logger->error("Exception processing passenger", [
+                        'file_name' => $fileName,
+                        'passenger_index' => $passengerIndex,
+                        'error' => $e->getMessage()
+                    ]);
                 }
             }
-        }
 
-        // Continue with AI processing...
-
-        // try {
-        //     $extractedData = $this->aiManager->processWithAiTool($fileRealPath, $fileName);
-
-        //     if ($extractedData['status'] === 'error') {
-        //         $this->handleFileError($companyName, $supplierName, $fileRealPath, $fileName, 'AI tool processing error', $extractedData['message']);
-        //         return;
-        //     }
-
-        //     $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
-
-        //     $dataItems = [];
-        //     if (isset($extractedData['data']) && is_array($extractedData['data'])) {
-        //         if (array_keys($extractedData['data']) === range(0, count($extractedData['data']) - 1)) {
-        //             $dataItems = $extractedData['data'];
-        //         } else {
-        //             $dataItems[] = $extractedData['data'];
-        //         }
-        //     } else {
-        //         $dataItems[] = $extractedData['data'] ?? [];
-        //     }
-
-        //     // Process all items and collect results
-        //     $processingResults = [];
-        //     $allSuccess = true;
-
-        //     foreach ($dataItems as $index => $taskData) {
-        //         try {
-        //             $result = $this->processTaskData($companyId, $companyName, $supplierName, $supplierId, $fileName, $taskData, $index);
-        //             $processingResults[] = $result;
-                    
-        //             if (!$result['success']) {
-        //                 $allSuccess = false;
-        //             }
-        //         } catch (Exception $e) {
-        //             $processingResults[] = [
-        //                 'success' => false,
-        //                 'index' => $index,
-        //                 'error' => $e->getMessage(),
-        //                 'reason' => 'Exception during task data processing'
-        //             ];
-        //             $allSuccess = false;
-        //             $this->logger->error("AIR File Processing: Exception processing item {$index} in {$fileName}: " . $e->getMessage());
-        //             $this->logger->error("Exception processing item", [
-        //                 'file_name' => $fileName,
-        //                 'item_index' => $index,
-        //                 'error' => $e->getMessage()
-        //             ]);
-        //         }
-        //     }
-
-        //     // Log processing summary
-        //     $successCount = count(array_filter($processingResults, fn($r) => $r['success']));
-        //     $totalCount = count($processingResults);
+            // Move file based on results
+            $successCount = count($savedTasks);
+            $totalCount = count($tasksData);
             
-        //     $this->info("File {$fileName}: {$successCount}/{$totalCount} items processed successfully");
-        //     $this->logger->info("AIR File Processing: File {$fileName} summary - {$successCount}/{$totalCount} items successful", [
-        //         'results' => $processingResults
-        //     ]);
+            if (count($failedTasks) === 0) {
+                // All tasks saved successfully
+                $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
+                $this->moveFileWithLogging($fileRealPath, $successPath, $fileName, 
+                    "Successfully processed all {$totalCount} passengers");
+            } else {
+                // Some tasks failed
+                $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                $failureCount = count($failedTasks);
+                $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, 
+                    "Partial success: {$successCount}/{$totalCount} passengers processed successfully");
+            }
 
-        //     // Move file based on overall result
-        //     if ($allSuccess) {
-        //         $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
-        //         $this->moveFileWithLogging($fileRealPath, $successPath, $fileName, "All {$totalCount} items processed successfully");
-        //     } else {
-        //         $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
-        //         $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, "Processing failed: {$successCount}/{$totalCount} items successful");
-        //     }
+        } catch (Exception $e) {
+            $this->handleFileError($companyName, $supplierName, $fileRealPath, $fileName, 
+                'AirFileParser processing error', $e->getMessage());
+        }
+    }
 
-        // } catch (Exception $e) {
-        //     $this->handleFileError($companyName, $supplierName, $fileRealPath, $fileName, 'Error during processing', $e->getMessage());
-        // }
+    /**
+     * Process a single file using AI-based extraction (legacy method)
+     */
+    protected function processSingleFileWithAI($companyId, $companyName, $supplierName, $supplierId, $file)
+    {
+        $fileRealPath = $file->getRealPath();
+        $fileName = $file->getFilename();
+
+        try {
+            $extractedData = $this->aiManager->processWithAiTool($fileRealPath, $fileName);
+
+            if ($extractedData['status'] === 'error') {
+                $this->handleFileError($companyName, $supplierName, $fileRealPath, $fileName, 'AI tool processing error', $extractedData['message']);
+                return;
+            }
+
+            $extractedData = is_array($extractedData) ? $extractedData : json_decode($extractedData, true);
+
+            $dataItems = [];
+            if (isset($extractedData['data']) && is_array($extractedData['data'])) {
+                if (array_keys($extractedData['data']) === range(0, count($extractedData['data']) - 1)) {
+                    $dataItems = $extractedData['data'];
+                } else {
+                    $dataItems[] = $extractedData['data'];
+                }
+            } else {
+                $dataItems[] = $extractedData['data'] ?? [];
+            }
+
+            // Process all items and collect results
+            $processingResults = [];
+            $allSuccess = true;
+
+            foreach ($dataItems as $index => $taskData) {
+                try {
+                    $result = $this->processTaskData($companyId, $companyName, $supplierName, $supplierId, $fileName, $taskData, $index);
+                    $processingResults[] = $result;
+                    
+                    if (!$result['success']) {
+                        $allSuccess = false;
+                    }
+                } catch (Exception $e) {
+                    $processingResults[] = [
+                        'success' => false,
+                        'index' => $index,
+                        'error' => $e->getMessage(),
+                        'reason' => 'Exception during task data processing'
+                    ];
+                    $allSuccess = false;
+                    $this->logger->error("AIR File Processing: Exception processing item {$index} in {$fileName}: " . $e->getMessage());
+                    $this->logger->error("Exception processing item", [
+                        'file_name' => $fileName,
+                        'item_index' => $index,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            // Log processing summary
+            $successCount = count(array_filter($processingResults, fn($r) => $r['success']));
+            $totalCount = count($processingResults);
+            
+            $this->info("File {$fileName}: {$successCount}/{$totalCount} items processed successfully");
+            $this->logger->info("AIR File Processing: File {$fileName} summary - {$successCount}/{$totalCount} items successful", [
+                'results' => $processingResults
+            ]);
+
+            // Move file based on overall result
+            if ($allSuccess) {
+                $successPath = storage_path("app/{$companyName}/{$supplierName}/files_processed");
+                $this->moveFileWithLogging($fileRealPath, $successPath, $fileName, "All {$totalCount} items processed successfully");
+            } else {
+                $errorPath = storage_path("app/{$companyName}/{$supplierName}/files_error");
+                $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, "Processing failed: {$successCount}/{$totalCount} items successful");
+            }
+
+        } catch (Exception $e) {
+            $this->handleFileError($companyName, $supplierName, $fileRealPath, $fileName, 'Error during processing', $e->getMessage());
+        }
     }
 
     /**
@@ -1431,5 +1542,56 @@ class ProcessAirFiles extends Command
         }
 
         return null;
+    }
+
+    /**
+     * Determine whether to use AirFileParser or AI-based processing
+     */
+    protected function shouldUseAirFileParser($supplier, array $files): bool
+    {
+        // Use AirFileParser if:
+        // 1. Supplier is Amadeus (name matches exactly)
+        // 2. At least one file has .air extension
+        
+        if (!$supplier || strcasecmp($supplier->name, 'Amadeus') !== 0) {
+            return false;
+        }
+        
+        // Check if any file has .air extension
+        foreach ($files as $file) {
+            $extension = strtolower(pathinfo($file->getFilename(), PATHINFO_EXTENSION));
+            if ($extension === 'air') {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Process multiple files using AI-based extraction (legacy method)
+     */
+    protected function processBatchFilesWithAI($companyId, $companyName, $supplierName, $supplierId, array $files)
+    {
+        $this->info("Using AI-based processing for batch of " . count($files) . " files");
+        
+        // Process each file individually using AI extraction
+        foreach ($files as $file) {
+            try {
+                $this->processSingleFileWithAI($companyId, $companyName, $supplierName, $supplierId, $file);
+            } catch (Exception $e) {
+                $this->error("Failed to process file {$file->getFilename()} with AI: " . $e->getMessage());
+                $this->logger->error("AI batch processing failed for file", [
+                    'file_name' => $file->getFilename(),
+                    'company' => $companyName,
+                    'supplier' => $supplierName,
+                    'error' => $e->getMessage()
+                ]);
+                
+                // Move failed file to error directory
+                $this->handleFileError($companyName, $supplierName, $file->getRealPath(), $file->getFilename(), 
+                    'AI processing error in batch', $e->getMessage());
+            }
+        }
     }
 }

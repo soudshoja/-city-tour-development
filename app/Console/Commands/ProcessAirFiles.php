@@ -248,8 +248,10 @@ class ProcessAirFiles extends Command
                         $normalizedTask['task_flight_details'] = TaskFlightSchema::normalize($normalizedTask['task_flight_details']);
                     }
 
-                    // Add to collection for export
-                    $allParsedData[] = $taskData;
+                    // Add to collection for export (include file name with the data)
+                    $taskDataWithFileName = $taskData;
+                    $taskDataWithFileName['_source_file_name'] = $fileName;
+                    $allParsedData[] = $taskDataWithFileName;
 
                     // Process and save the task using the same logic as single file processing
                     try {
@@ -1391,7 +1393,14 @@ class ProcessAirFiles extends Command
             $allFlattenedData = [];
             
             foreach ($allParsedData as $index => $data) {
-                $fileName = $fileNames[$index] ?? "unknown_file_{$index}";
+                // Extract file name from the data itself (embedded during processing)
+                $fileName = $data['_source_file_name'] ?? $fileNames[$index] ?? "unknown_file_{$index}";
+                
+                // Remove the temporary field before flattening
+                if (isset($data['_source_file_name'])) {
+                    unset($data['_source_file_name']);
+                }
+                
                 $flattenedData = $this->flattenDataStructure($data, $fileName);
                 
                 // Since flattenDataStructure returns an array of items, merge them all

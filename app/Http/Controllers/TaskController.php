@@ -48,26 +48,17 @@ class TaskController extends Controller
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
 
         if ($search = $request->query('q')) {
-            $taskColumns = Schema::getColumnListing('tasks');
-
-            $query = Task::query()
-                ->leftJoin('agents', 'tasks.agent_id', '=', 'agents.id')
-                ->leftJoin('companies', 'tasks.company_id', '=', 'companies.id')
-                ->leftJoin('suppliers', 'tasks.supplier_id', '=', 'suppliers.id')
-                ->orderBy('tasks.created_at', 'desc')
-                ->select('tasks.*');
-
-            $query->where(function ($q) use ($taskColumns, $search) {
-                foreach ($taskColumns as $column) {
-                    $q->orWhereRaw("LOWER(tasks.`$column`) LIKE ?", ['%' . strtolower($search) . '%']);
-                }
-
-                // Search related names
-                $q->orWhereRaw("LOWER(agents.name) LIKE ?", ['%' . strtolower($search) . '%']);
-                $q->orWhereRaw("LOWER(companies.name) LIKE ?", ['%' . strtolower($search) . '%']);
-                $q->orWhereRaw("LOWER(suppliers.name) LIKE ?", ['%' . strtolower($search) . '%']);
+            
+            $tasks = $tasks->where(function ($query) use ($search) {
+                $query->where('reference', 'like', '%' . $search . '%')
+                    ->orWhere('client_name', 'like', '%' . $search . '%')
+                    ->orWhere('ticket_number', 'like', '%' . $search . '%')
+                    ->orWhere('status', 'like', '%' . $search . '%')
+                    ->orWhereHas('client', function ($q) use ($search) {
+                        $q->where('name', 'like', '%' . $search . '%');
+                    });
             });
-            $tasks = $query;
+
         }
         $countries = Country::all();
 

@@ -226,6 +226,19 @@ class TaskController extends Controller
             ]);
         }
 
+        $supplierName = Supplier::where('id', $request->supplier_id)->value('name');
+
+        if(strtolower($supplierName) == 'jazeera airways' || strtolower($supplierName) == 'fly dubai') {
+            if ($request->status == 'confirmed') {
+                $status = 'issued';
+            } elseif ($request->status == 'on hold') {
+                $status = 'confirmed';
+            } else {
+                $status = $request->status;
+            }
+            $request->merge(['status' => $status]);
+        }
+
         // Set default values for nullable fields using merge()
         $request->merge([
             'penalty_fee' => $request->penalty_fee ?? 0,

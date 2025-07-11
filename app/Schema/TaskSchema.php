@@ -88,7 +88,7 @@ class TaskSchema
             ],
             'total' => [
                 'type' => 'float',
-                'desc' => "Final total amount including all fees, taxes, and charges. For air files: Total stated at end of pricing line. For other documents: Look for 'Total', 'Total Amount', 'Grand Total', 'Final Amount', 'Booking Total',or 'Amount Due'. You don't need to calculate this, just extract the final total amount as stated in the document. It should include base price + taxes + fees. For multiple passengers, it should be the total for that passenger like 'Passenger total'.",
+                'desc' => "Final total amount including all fees, taxes, and charges. For air files: Total stated at end of pricing line. For other documents: Look for 'Total', 'Total Amount', 'Grand Total', 'Final Amount', 'Booking Total',or 'Amount Due'. You don't need to calculate this, just extract the final total amount as stated in the document. It should include base price + taxes + fees. For multiple passengers, it should be the total for that passenger like 'Passenger total'. For some documents, the total price of a single passenger is not stated, since we separate the task for each passenger, you need to divide the total by number of passengers. If no total amount is stated, set to 0.0.",
                 'example' => 115.00,
                 'default' => 0.0,
             ],

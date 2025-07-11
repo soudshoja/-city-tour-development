@@ -79,12 +79,12 @@ class AirFileParser
                 'status' => $this->extractStatus(),
                 'supplier_status' => $this->extractStatus(), // Same as status
                 'refund_date' => $this->extractRefundDate(),
-                'price' => $this->extractPrice(),
+                'price' => $this->extractStatus() === 'emd' ? $passenger['price'] : $this->extractPrice(),
                 'currency' => $this->extractExchangeCurrency(), // Primary currency (same as exchange_currency)
                 'exchange_currency' => $this->extractExchangeCurrency(),
                 'original_price' => $this->extractOriginalPrice(),
                 'original_currency' => $this->extractOriginalCurrency(),
-                'total' => $this->extractTotal(),
+                'total' => $this->extractStatus() === 'emd' ? $passenger['price'] : $this->extractTotal(),
                 'surcharge' => $this->extractSurcharge(),
                 'penalty_fee' => $this->extractPenaltyFee(),
                 'tax' => $this->extractTax(),
@@ -435,7 +435,11 @@ class AirFileParser
         if ($match) {
             return (float) $match[2]; // Base fare if no total found
         }
-        
+
+        $match = $this->findLine('/^EMD\d+;.+?;([A-Z]{3})\s*([\d.]+);N;;([A-Z]{3})\s*([\d.]+)/');
+        if ($match) {
+            return (float) $match[4];
+        }     
         return 0.0;
     }
     
@@ -472,7 +476,11 @@ class AirFileParser
         if ($match) {
             return $match[1]; // First currency as fallback
         }
-        
+
+        $match = $this->findLine('/^EMD\d+;.+?;([A-Z]{3})\s*([\d.]+);N;;([A-Z]{3})\s*([\d.]+)/');
+        if ($match) {
+            return $match[3];
+        }     
         return 'KWD'; // Default currency
     }
     
@@ -501,6 +509,10 @@ class AirFileParser
             return (float) $match[1];
         }
 
+        $match = $this->findLine('/^EMD\d+;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;([A-Z]{3})\s*([\d.]+)/');
+        if ($match) {
+            return (float) $match[2];
+        }
         return null;
     }
     
@@ -522,7 +534,11 @@ class AirFileParser
         if ($match) {
             return $match[1]; // First currency
         }
-        
+
+        $match = $this->findLine('/^EMD\d+;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;([A-Z]{3})\s*([\d.]+)/');
+        if ($match) {
+            return $match[1];
+        }
         return 'KWD'; // Default currency
     }
     
@@ -575,6 +591,11 @@ class AirFileParser
         $baseFare = $this->extractPrice();
         if ($baseFare !== null) {
             return $baseFare;
+        }
+
+        $match = $this->findLine('/^EMD\d+;.+?;([A-Z]{3})\s*([\d.]+);N;;([A-Z]{3})\s*([\d.]+);.*;([A-Z]{3})\s*([\d.]+)/');
+        if ($match) {
+            return (float) $match[6];
         }
         
         return 0.0;
@@ -965,7 +986,7 @@ class AirFileParser
             $time = $match[1];
             $hour = substr($time, 0, 2);
             $minute = substr($time, 2, 2);
-            return Carbon::today()->setTime($hour, $minute)->format('Y-m-d H:i:s');
+            return Carbon::today()->setTime($hour, $minute)->format('H:i');
         }
         return null;
     }
@@ -977,10 +998,12 @@ class AirFileParser
     
     private function extractDepartureAirport()
     {
-        // Look for airport codes in flight segments
-        $match = $this->findLine('/([A-Z]{3})\s+([A-Z]{3})/');
+        $match = $this->findLine('/^U-/');
         if ($match) {
-            return $match[1]; // First airport code
+            $parts = explode(';', $match[0]);
+            if (isset($parts[1])) {
+                return substr($parts[1], -3);
+            }
         }
         return 'KWI'; // Default
     }
@@ -1001,7 +1024,7 @@ class AirFileParser
             $time = $match[2];
             $hour = substr($time, 0, 2);
             $minute = substr($time, 2, 2);
-            return Carbon::today()->setTime($hour, $minute)->format('Y-m-d H:i:s');
+            return Carbon::today()->setTime($hour, $minute)->format('H:i');
         }
         return null;
     }
@@ -1117,6 +1140,14 @@ class AirFileParser
         if ($match) {
             return $match[1];
         }
+
+        $match = $this->findLine('/^(U-\d{3}X;.+)/');
+        if ($match) {
+            $segments = explode(';', $match[1]);
+            if (isset($segments[8])) {
+                return trim($segments[8]);
+            }
+        }
         return '';
     }
     
@@ -1224,8 +1255,20 @@ class AirFileParser
                 'passenger_number' => $passengerNumber,
                 'client_name' => $clientName,
                 'ticket_number' => $ticketNumber,
+                'price' => null,
             ];
         }
+
+        foreach ($this->lines as $line) {
+            if (preg_match('/^EMD\d+;.*?(KWD\s*([\d.]+)).*?;P(\d+);/i', $line, $match)) {
+                $price = (float) $match[2];
+                $paxIndex = (int) $match[3];
+        
+                if (isset($passengers[$paxIndex - 1])) {
+                    $passengers[$paxIndex - 1]['price'] = $price;
+                }
+            }
+        }        
         
         return $passengers;
     }

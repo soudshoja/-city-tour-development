@@ -181,7 +181,7 @@ class ManageAirFileTests extends Command
             if (isset($passengerData['task_flight_details']) && is_array($passengerData['task_flight_details'])) {
                 $this->line("  Flights: " . count($passengerData['task_flight_details']));
                 foreach ($passengerData['task_flight_details'] as $fIndex => $flight) {
-                    $this->line("    " . ($fIndex + 1) . ". " . ($flight['from'] ?? 'N/A') . "-" . ($flight['to'] ?? 'N/A') . " " . ($flight['flight_number'] ?? 'N/A'));
+                    $this->line("    " . ((int)$fIndex + 1) . ". " . ($flight['from'] ?? 'N/A') . "-" . ($flight['to'] ?? 'N/A') . " " . ($flight['flight_number'] ?? 'N/A'));
                 }
             }
             
@@ -225,7 +225,7 @@ class ManageAirFileTests extends Command
                 $expectedPassenger['task_flight_details'] = [];
                 
                 foreach ($passengerData['task_flight_details'] as $index => $flight) {
-                    $this->line("Flight " . ($index + 1) . ": " . ($flight['from'] ?? 'N/A') . "-" . ($flight['to'] ?? 'N/A') . " " . ($flight['flight_number'] ?? 'N/A'));
+                    $this->line("Flight " . ((int)$index + 1) . ": " . ($flight['from'] ?? 'N/A') . "-" . ($flight['to'] ?? 'N/A') . " " . ($flight['flight_number'] ?? 'N/A'));
                     
                     if ($this->confirm("Include this flight in validation?", true)) {
                         $expectedFlight = [];

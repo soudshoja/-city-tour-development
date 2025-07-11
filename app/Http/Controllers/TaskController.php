@@ -48,7 +48,7 @@ class TaskController extends Controller
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
 
         if ($search = $request->query('q')) {
-            
+
             $tasks = $tasks->where(function ($query) use ($search) {
                 $query->where('reference', 'like', '%' . $search . '%')
                     ->orWhere('client_name', 'like', '%' . $search . '%')
@@ -58,7 +58,6 @@ class TaskController extends Controller
                         $q->where('name', 'like', '%' . $search . '%');
                     });
             });
-
         }
         $countries = Country::all();
 
@@ -103,7 +102,6 @@ class TaskController extends Controller
             $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
             })->get();
-     
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
@@ -1414,6 +1412,7 @@ class TaskController extends Controller
                 'surcharge' => 0.00,
                 'total' => $prices['total']['selling']['value'] ?? null,
                 'cancellation_policy' => json_encode($cancellationPolicy) ?? null,
+                'cancellation_deadline' => $cancellationDate ?? null,
                 'additional_info' => $reservation['service']['hotel']['name'] . ' - ' . $clientName,
                 'supplier_id' => $supplierId,
                 'venue' => $hotel['name'] ?? null,

@@ -45,19 +45,13 @@ class TaskController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask')->orderBy('id', 'desc');
+        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
         $countries = Country::all();
 
-        // $queueTasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')
-        //     ->withoutGlobalScope('enabled')
-        //     ->where('enabled', false)
-        //     ->orderBy('id', 'desc');
-
         if ($user->role_id == Role::ADMIN) {
-            $tasks = $tasks->orderBy('created_at', 'desc')->paginate(50);
+            $tasks = $tasks;
             $clients = Client::all();
             $agents = Agent::all();
-            // $queueTasks = $queueTasks->get();
             $suppliers = Supplier::all();
         } elseif ($user->role_id == Role::COMPANY) {
 
@@ -65,12 +59,8 @@ class TaskController extends Controller
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            // $tasks = $tasks->where('company_id', $user->company->id)->paginate(50);
-            $tasks = $tasks->where('company_id', $user->company->id)
-                ->orderBy('created_at', 'desc')
-                ->paginate(50);
+            $tasks = $tasks->where('company_id', $user->company->id);
 
-            // $queueTasks = $queueTasks->where('company_id', $user->company->id)->get();
             $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
                 $query->where('company_id', $user->company->id)->where('is_active', true);
             })->get();
@@ -85,13 +75,8 @@ class TaskController extends Controller
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-            // $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id)->paginate(50);
-            $tasks = $tasks->whereIn('agent_id', $agentsId)
-                ->where('company_id', $user->company_id)
-                ->orderBy('created_at', 'desc')
-                ->paginate(50);
+            $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
 
-            // $queueTasks = $queueTasks->where('company_id', $user->company_id)->get();
             $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
                 $query->where('company_id', $user->branch->company_id);
             })->get();
@@ -99,12 +84,7 @@ class TaskController extends Controller
 
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $clients = Client::where('agent_id', $user->agent->id)->get();
-            // $tasks = $tasks->where('agent_id', $user->agent->id)->paginate(50);
-            $tasks = $tasks->where('agent_id', $user->agent->id)
-                ->orderBy('created_at', 'desc')
-                ->paginate(50);
-
-            // $queueTasks = $queueTasks->where('agent_id', $user->agent->id)->get();
+            $tasks = $tasks->where('agent_id', $user->agent->id);
             $companyId = $user->agent->branch->company_id;
             $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
@@ -112,29 +92,9 @@ class TaskController extends Controller
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
-        $processTask = $tasks->toArray();
-        $processTask = array_map(function ($row) {
-
-            $row = (array) $row;
-            $hasNull = false;
-
-            foreach ($row as $key => $value) {
-                if ($value === null) {
-                    $hasNull = true;
-                    break;
-                }
-            }
-
-            if ($hasNull) {
-                $row['is_complete'] = false;
-            } else {
-                $row['is_complete'] = true;
-            }
-
-            return $row;
-        }, $processTask);
 
         $taskCount = $tasks->count();
+        $tasks = $tasks->orderBy('created_at', 'desc')->paginate(50);
         $types = Task::distinct()->pluck('type');
 
         $importedTask = Cache::get('imported_task');
@@ -143,6 +103,7 @@ class TaskController extends Controller
             ->leftJoin('agents', 'tasks.agent_id', '=', 'agents.id')
             ->leftJoin('companies', 'tasks.company_id', '=', 'companies.id')
             ->leftJoin('suppliers', 'tasks.supplier_id', '=', 'suppliers.id')
+            ->orderBy('tasks.created_at', 'desc')
             ->select('tasks.*');
 
         if ($search = $request->query('q')) {
@@ -158,9 +119,10 @@ class TaskController extends Controller
                 $q->orWhereRaw("LOWER(companies.name) LIKE ?", ['%' . strtolower($search) . '%']);
                 $q->orWhereRaw("LOWER(suppliers.name) LIKE ?", ['%' . strtolower($search) . '%']);
             });
+            $taskCount = $query->count();
+            $tasks = $query->paginate(50);
         }
 
-        $searchTask = $query->paginate(20);
 
         return view('tasks.index', compact(
             'tasks',
@@ -169,9 +131,8 @@ class TaskController extends Controller
             'clients',
             'suppliers',
             'types',
-            'processTask',
             'countries',
-            'searchTask'
+            // 'searchTask'
         ));
     }
 

@@ -58,7 +58,7 @@ class Task extends Model
         'supplier_id',
         'type',
         'status',
-        'client_name',
+        // 'client_name',
         'reference',
         'total',
         // 'venue',

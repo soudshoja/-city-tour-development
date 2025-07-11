@@ -46,7 +46,7 @@ class TaskSchema
             ],
             'status' => [
                 'type' => 'string',
-                'desc' => "Current status of the booking/ticket. For air files: 'refund' (RF indicator), 'reissued' (FO + original ticket), 'emd' (EMD ticket/penalty), 'issued', 'void'. For other documents: Look for status indicators like 'Confirmed', 'Cancelled', 'Pending', 'Issued', 'Refunded', 'Voided', or similar status information.",
+                'desc' => "Current status of the booking/ticket. For air files: 'refund' (RF indicator), 'reissued' (FO + original ticket), 'emd' (EMD ticket/penalty), 'issued', 'void'. For other documents: Look for status indicators like 'Confirmed', 'Cancelled', 'Pending', 'Issued', 'Refunded', 'Voided', 'On Hold', or similar status information.",
                 'example' => 'refund',
                 'default' => '',
             ],

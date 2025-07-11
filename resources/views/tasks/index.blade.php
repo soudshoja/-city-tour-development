@@ -640,18 +640,15 @@
                                                 Supplier</th>
                                         </tr>
                                     </thead>
-                                    @php
-                                    $showTasks = request()->has('q') ? $searchTask : $tasks;
-                                    @endphp
                                     <tbody id="myTableBody">
-                                        @if ($showTasks->isEmpty())
+                                        @if ($tasks->isEmpty())
                                         <tr>
                                             <td colspan="10"
                                                 class="text-center p-5 text-gray-500 dark:text-gray-300">No
                                                 tasks found</td>
                                         </tr>
                                         @else
-                                        @foreach ($showTasks as $key => $task)
+                                        @foreach ($tasks as $key => $task)
                                         <tr class="taskRow" x-show="{{ $key }} < shown" x-cloak
                                             data-price="{{ $task->price }}"
                                             data-supplier-id="{{ $task->supplier->id }}"

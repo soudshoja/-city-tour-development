@@ -46,6 +46,29 @@ class TaskController extends Controller
     {
         $user = Auth::user();
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
+
+        if ($search = $request->query('q')) {
+            $taskColumns = Schema::getColumnListing('tasks');
+
+            $query = Task::query()
+                ->leftJoin('agents', 'tasks.agent_id', '=', 'agents.id')
+                ->leftJoin('companies', 'tasks.company_id', '=', 'companies.id')
+                ->leftJoin('suppliers', 'tasks.supplier_id', '=', 'suppliers.id')
+                ->orderBy('tasks.created_at', 'desc')
+                ->select('tasks.*');
+
+            $query->where(function ($q) use ($taskColumns, $search) {
+                foreach ($taskColumns as $column) {
+                    $q->orWhereRaw("LOWER(tasks.`$column`) LIKE ?", ['%' . strtolower($search) . '%']);
+                }
+
+                // Search related names
+                $q->orWhereRaw("LOWER(agents.name) LIKE ?", ['%' . strtolower($search) . '%']);
+                $q->orWhereRaw("LOWER(companies.name) LIKE ?", ['%' . strtolower($search) . '%']);
+                $q->orWhereRaw("LOWER(suppliers.name) LIKE ?", ['%' . strtolower($search) . '%']);
+            });
+            $tasks = $query;
+        }
         $countries = Country::all();
 
         if ($user->role_id == Role::ADMIN) {
@@ -89,6 +112,7 @@ class TaskController extends Controller
             $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
             })->get();
+     
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
@@ -98,30 +122,6 @@ class TaskController extends Controller
         $types = Task::distinct()->pluck('type');
 
         $importedTask = Cache::get('imported_task');
-
-        $query = Task::query()
-            ->leftJoin('agents', 'tasks.agent_id', '=', 'agents.id')
-            ->leftJoin('companies', 'tasks.company_id', '=', 'companies.id')
-            ->leftJoin('suppliers', 'tasks.supplier_id', '=', 'suppliers.id')
-            ->orderBy('tasks.created_at', 'desc')
-            ->select('tasks.*');
-
-        if ($search = $request->query('q')) {
-            $taskColumns = Schema::getColumnListing('tasks');
-
-            $query->where(function ($q) use ($taskColumns, $search) {
-                foreach ($taskColumns as $column) {
-                    $q->orWhereRaw("LOWER(tasks.`$column`) LIKE ?", ['%' . strtolower($search) . '%']);
-                }
-
-                // Search related names
-                $q->orWhereRaw("LOWER(agents.name) LIKE ?", ['%' . strtolower($search) . '%']);
-                $q->orWhereRaw("LOWER(companies.name) LIKE ?", ['%' . strtolower($search) . '%']);
-                $q->orWhereRaw("LOWER(suppliers.name) LIKE ?", ['%' . strtolower($search) . '%']);
-            });
-            $taskCount = $query->count();
-            $tasks = $query->paginate(50);
-        }
 
 
         return view('tasks.index', compact(

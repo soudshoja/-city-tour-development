@@ -17,26 +17,27 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:payment-release-to-company-bankacc-process')->dailyAt('0:00');
         $schedule->command('app:sync-myfatoorah-methods')->twiceDaily(0, 12);
         $schedule->command('app:delete-expired-offers')->everyFifteenMinutes();
+        $schedule->command('app:update-hotel-status')->everyFifteenMinutes();
 
-           // Countries - weekly full sync
+        // Countries - weekly full sync
         $schedule->command('mapping:sync countries --full')
             ->weekly()
             ->sundays()
             ->at('01:00')
             ->withoutOverlapping();
-        
+
         // Cities - weekly incremental sync
         $schedule->command('mapping:sync cities')
             ->weekly()
             ->mondays()
             ->at('01:00')
             ->withoutOverlapping();
-        
+
         // Hotels - daily incremental sync
         $schedule->command('mapping:sync hotels')
             ->dailyAt('02:00')
             ->withoutOverlapping();
-        
+
         // Make sure to run the queue worker
         $schedule->command('queue:work --queue=api_sync --stop-when-empty')
             ->everyMinute()
@@ -48,7 +49,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands(): void
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

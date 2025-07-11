@@ -779,7 +779,7 @@ class ProcessAirFiles extends Command
                             'success' => false,
                             'index' => $index,
                             'reason' => 'Failed to save task (original task not found)',
-                            'error' => $response['message']
+                            'error' => $response['error']
                         ];
                     }
 
@@ -809,7 +809,7 @@ class ProcessAirFiles extends Command
                             'success' => false,
                             'index' => $index,
                             'reason' => 'Failed to save task (no flight details)',
-                            'error' => $response['message']
+                            'error' => $response['error']
                         ];
                     }
 
@@ -841,7 +841,7 @@ class ProcessAirFiles extends Command
                             'success' => false,
                             'index' => $index,
                             'reason' => 'Failed to save task (agent not found)',
-                            'error' => $response['message']
+                            'error' => $response['error']
                         ];
                     }
 
@@ -871,7 +871,7 @@ class ProcessAirFiles extends Command
                             'success' => false,
                             'index' => $index,
                             'reason' => 'Failed to save task (branch not found)',
-                            'error' => $response['message']
+                            'error' => $response['error']
                         ];
                     }
 
@@ -903,7 +903,7 @@ class ProcessAirFiles extends Command
                             'success' => false,
                             'index' => $index,
                             'reason' => 'Failed to save task (agent not found)',
-                            'error' => $response['message']
+                            'error' => $response['error']
                         ];
                     }
 
@@ -935,7 +935,7 @@ class ProcessAirFiles extends Command
                         'success' => false,
                         'index' => $index,
                         'reason' => 'Failed to save task (branch not found)',
-                        'error' => $response['message']
+                        'error' => $response['error']
                     ];
                 }
 
@@ -968,7 +968,7 @@ class ProcessAirFiles extends Command
                         'success' => false,
                         'index' => $index,
                         'reason' => 'Failed to save task',
-                        'error' => $response['message']
+                        'error' => $response['error']
                     ];
                 }
             }

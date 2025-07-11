@@ -305,6 +305,16 @@ class TaskController extends Controller
                 $this->saveFlightDetails($request->task_flight_details, $task->id);
             }
 
+            if($task->is_complete) {
+                $task->enabled = true; // Ensure enabled is true if task is complete
+                $task->save(); 
+                Log::info('Task enabled status set to true for complete task: ' . $task->reference);
+            } else {
+                $task->enabled = false; // Ensure enabled is false if task is not complete
+                $task->save();
+                Log::info('Task enabled status set to false for incomplete task: ' . $task->reference);
+            }
+
             // Only process financial transactions if task is enabled and complete
             if ($task->enabled && $task->is_complete) {
                 $this->processTaskFinancial($task);
@@ -456,10 +466,6 @@ class TaskController extends Controller
 
         // Process based on status
         switch (strtolower($task->status)) {
-            case 'confirmed':
-                Log::info('Processing confirmed task financial for: ' . $task->reference);
-                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany);
-                break;
             case 'issued':
                 Log::info('Processing issued task financial for: ' . $task->reference);
                 $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany);

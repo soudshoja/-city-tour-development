@@ -11,13 +11,16 @@ return new class extends Migration
         Schema::table('tasks', function (Blueprint $table) {
             // Add 'on_hold' to the 'status' column
             $table->enum('status', [
+                'refund',
                 'issued',
-                'cancelled',
-                'pending',
+                'reissued',
+                'void',
+                'ticketed',
+                'confirmed',
+                'emd',
                 'refunded',
-                'voided',
                 'on_hold', // New status added
-            ])->default('pending')->change();
+            ])->change();
 
         });
     }
@@ -27,11 +30,14 @@ return new class extends Migration
         Schema::table('tasks', function (Blueprint $table) {
             // Revert 'status' column to its previous state
             $table->enum('status', [
+                'refund',
                 'issued',
-                'cancelled',
-                'pending',
-                'refunded',
-                'voided',
+                'reissued',
+                'void',
+                'ticketed',
+                'confirmed',
+                'emd',
+                // 'on_hold' removed
             ])->default('pending')->change();
         });
     }

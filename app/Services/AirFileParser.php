@@ -498,7 +498,7 @@ class AirFileParser
         }
         
         // Check for regular format (K-F)
-        $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)/');
+        $match = $this->findLine('/^K-[RF]([A-Z]{3})([\d.]+)/');
         if ($match) {
             return (float) $match[2]; // First amount (base fare)
         }
@@ -530,7 +530,7 @@ class AirFileParser
         }
         
         // Check for regular format (K-F)
-        $match = $this->findLine('/^K-F([A-Z]{3})/');
+        $match = $this->findLine('/^K-[RF]([A-Z]{3})/');
         if ($match) {
             return $match[1]; // First currency
         }
@@ -576,7 +576,7 @@ class AirFileParser
             }
         } else {
             // 2-pair format: K-FKWD66.000 ;;;;;;;;;;;;KWD194.300 ;;;
-            $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
+            $match = $this->findLine('/^K-[RF]([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
             if ($match) {
                 return (float) $match[4]; // Total fare (KWD194.300)
             }

@@ -181,6 +181,7 @@ Route::middleware(['auth'])->group(function () {
     ], function () {
         Route::get('/', [SupplierController::class, 'index'])->name('index');
         Route::post('/store', [SupplierController::class, 'store'])->name('store');
+        Route::put('/update/{id}', [SupplierController::class, 'update'])->name('update');
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
         Route::get('/total-ledger/{supplierId}/date/{endDate}', [SupplierController::class, 'getTotalDebitCredit'])->name('total-ledger');
         Route::get('/magic/get', [SupplierController::class, 'getMagicHoliday'])->name('magic.get');

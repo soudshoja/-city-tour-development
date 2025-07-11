@@ -5,6 +5,7 @@
 <div
     x-data="searchableDropdown({ 
         items: {{ $items ?? '[]' }}, 
+        selectedId: '{{ $selectedId ?? '' }}',
         selectedName: '{{ $selectedName ?? '' }}',
         name: '{{ $name ?? 'dropdown' }}',
         placeholder: '{{ $placeholder ?? 'Select an option' }}'

@@ -54,7 +54,6 @@ class Task extends Model
 
 
     protected $requiredColumn = [
-        'agent_id',
         'company_id',
         'supplier_id',
         'type',

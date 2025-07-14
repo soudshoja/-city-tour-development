@@ -41,7 +41,7 @@ class ProcessAirFiles extends Command
     {
         parent::__construct();
         $this->aiManager = $aiManager;
-        $this->logger = $this->logger->channel('air_processing');
+        $this->logger = Log::channel('air_processing');
     }
 
     public function handle()

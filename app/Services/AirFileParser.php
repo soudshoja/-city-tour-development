@@ -463,11 +463,17 @@ class AirFileParser
             if ($match) {
                 return $match[3]; // Second currency (KWD in refund example)
             }
-            
-            // Check for regular format (K-F)
+        
+            // Regular format (K-F) with second currency
             $match = $this->findLine('/^K-[RF]([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
             if ($match) {
-                return $match[3]; // Second currency (KWD in regular example)
+                return $match[3]; // Second currency (e.g., KWD)
+            }
+
+            // Fallback: Just get first currency
+            $match = $this->findLine('/^K-[RF]([A-Z]{3})([\d.]+)/');
+            if ($match) {
+                return $match[1]; // First currency (e.g., EGP)
             }
         }
         
@@ -980,15 +986,23 @@ class AirFileParser
     
     private function extractDepartureTime()
     {
-        // Look for departure time patterns
-        $match = $this->findLine('/(\d{4})\s+(\d{4})/');
-        if ($match) {
-            $time = $match[1];
-            $hour = substr($time, 0, 2);
-            $minute = substr($time, 2, 2);
-            return Carbon::today()->setTime($hour, $minute)->format('H:i');
-        }
-        return null;
+         // Match pattern like 02APR0435 (day + month + time)
+    $match = $this->findLine('/\b(\d{2})([A-Z]{3})(\d{4})\b/');
+    if ($match) {
+        $day = $match[1];      // "02"
+        $month = $match[2];    // "APR"
+        $time = $match[3];     // "0435"
+
+        $hour = substr($time, 0, 2);   // "04"
+        $minute = substr($time, 2, 2); // "35"
+
+        // Build a Carbon instance using day, month, and time (assumes current year)
+        $datetime = Carbon::createFromFormat('d-M-H:i', "{$day}-{$month}-{$hour}:{$minute}");
+
+        return $datetime->format('Y-m-d H:i:s');
+    }
+
+    return null;
     }
     
     private function extractDepartureCountry()
@@ -1019,14 +1033,23 @@ class AirFileParser
     
     private function extractArrivalTime()
     {
-        $match = $this->findLine('/(\d{4})\s+(\d{4})/');
-        if ($match) {
-            $time = $match[2];
-            $hour = substr($time, 0, 2);
-            $minute = substr($time, 2, 2);
-            return Carbon::today()->setTime($hour, $minute)->format('H:i');
-        }
-        return null;
+        // Match pattern like 02APR0435 (day + month + time)
+    $match = $this->findLine('/\b(\d{2})([A-Z]{3})(\d{4})\b/');
+    if ($match) {
+        $day = $match[1];      // "02"
+        $month = $match[2];    // "APR"
+        $time = $match[3];     // "0435"
+
+        $hour = substr($time, 0, 2);   // "04"
+        $minute = substr($time, 2, 2); // "35"
+
+        // Build a Carbon instance using day, month, and time (assumes current year)
+        $datetime = Carbon::createFromFormat('d-M-H:i', "{$day}-{$month}-{$hour}:{$minute}");
+
+        return $datetime->format('Y-m-d H:i:s');
+    }
+
+    return null;
     }
     
     private function extractDurationTime()
@@ -1212,7 +1235,7 @@ class AirFileParser
     private function hasCurrencyExchange()
     {
         // Look for 3-pair pattern (currency exchange)
-        $threePairMatch = $this->findLine('/^K[NS]?-[FI]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
+        $threePairMatch = $this->findLine('/^K[RNS]?-[FI]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
         if ($threePairMatch) {
             // Check if first and second currencies are different (indicating exchange)
             return $threePairMatch[1] !== $threePairMatch[3];

@@ -303,18 +303,21 @@ class TaskController extends Controller
                 $this->saveFlightDetails($request->task_flight_details, $task->id);
             }
 
-            if($task->is_complete) {
-                $task->enabled = true; // Ensure enabled is true if task is complete
+            // Set enabled status: task must be complete AND have an agent assigned
+            if($task->is_complete && $task->agent_id) {
+                $task->enabled = true;
                 $task->save(); 
-                Log::info('Task enabled status set to true for complete task: ' . $task->reference);
+                Log::info('Task enabled for complete task with agent: ' . $task->reference);
             } else {
-                $task->enabled = false; // Ensure enabled is false if task is not complete
+                $task->enabled = false;
                 $task->save();
-                Log::info('Task enabled status set to false for incomplete task: ' . $task->reference);
+                Log::info('Task disabled - reason: ' . (!$task->is_complete ? 'incomplete' : 'no agent assigned') . ' - task: ' . $task->reference);
             }
 
-            // Only process financial transactions if task is enabled and complete
-            if ($task->enabled && $task->is_complete) {
+            // Process financial transactions immediately if task is complete (regardless of agent assignment)
+            // This ensures company liability to supplier is tracked immediately
+            if ($task->is_complete) {
+                Log::info('Processing financial transactions for complete task: ' . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
                 $this->processTaskFinancial($task);
             }
 
@@ -336,19 +339,42 @@ class TaskController extends Controller
     }
 
     /**
+     * Get branch ID for task financial processing
+     * Returns agent's branch_id if agent exists, otherwise returns company's main branch_id
+     */
+    private function getTaskBranchId(Task $task)
+    {
+        if ($task->agent && $task->agent->branch_id) {
+            return $task->agent->branch_id;
+        }
+        
+        // Get company's main branch if no agent
+        $company = \App\Models\Company::find($task->company_id);
+        if (!$company) {
+            throw new Exception('Company not found for task: ' . $task->reference);
+        }
+        
+        $mainBranch = $company->getMainBranch();
+        return $mainBranch->id;
+    }
+
+    /**
      * Process all financial transactions for a task
      */
     private function processTaskFinancial(Task $task)
     {
+        if(!($task->status == 'issued' || $task->status == 'reissued' || $task->status == 'void' || $task->status == 'refund')) {
+            Log::info('Skipping financial processing for task: ' . $task->reference . ' - status: ' . $task->status);
+            return;
+        }
         Log::info('Processing financial for task: ' . $task->reference);
         // Use the Task model's is_complete attribute to check completeness
         if (!$task->is_complete) {
             throw new Exception('Task is not complete. Missing required fields: ' . $this->getMissingFields($task));
         }
 
-        if (!$task->agent) {
-            throw new Exception('Agent not found for the task.');
-        }
+        // Get branch_id - from agent if exists, otherwise from company's main branch
+        $branchId = $this->getTaskBranchId($task);
 
         $supplierCompany = SupplierCompany::where('supplier_id', $task->supplier_id)
             ->where('company_id', $task->company_id)
@@ -399,6 +425,12 @@ class TaskController extends Controller
         if ($task->type == 'flight') {
             Log::info('Processing flight task financial for: ' . $task->reference);
             $companyIssuedBy = $task->issued_by ?? 'Not Issued';
+            
+            Log::info('Issued by value determination', [
+                'original_issued_by' => $task->issued_by,
+                'final_company_issued_by' => $companyIssuedBy,
+                'is_null_issued_by' => is_null($task->issued_by)
+            ]);
 
             $issuedByAccount = Account::where('name', $companyIssuedBy)
                 ->where('company_id', $task->company_id)
@@ -409,7 +441,7 @@ class TaskController extends Controller
             Log::info('Issued By Account: ', ['account' => $issuedByAccount]);
 
             if (!$issuedByAccount) {
-                Log::info('Creating new issued by account for: ' . $companyIssuedBy);
+                Log::info('Creating new issued by account for: ' . $companyIssuedBy . ' (was null: ' . (is_null($task->issued_by) ? 'yes' : 'no') . ')');
                 $code = 2151;
                 $lastIssuedByAccount = Account::where('company_id', $task->company_id)
                     ->where('root_id', $liabilities->id)
@@ -426,7 +458,7 @@ class TaskController extends Controller
                         'name' => $companyIssuedBy,
                         'parent_id' => $supplierPayable->id,
                         'company_id' => $task->company_id,
-                        'branch_id' => $task->agent->branch_id,
+                        'branch_id' => $branchId,
                         'root_id' => $liabilities->id,
                         'code' => $code,
                         'account_type' => 'liability',
@@ -442,11 +474,28 @@ class TaskController extends Controller
 
                     Log::info('New issued by account created for task: ' . $task->reference, [
                         'issuedByAccount' => $issuedByAccount,
+                        'account_id' => $issuedByAccount ? $issuedByAccount->id : 'null',
+                        'account_name' => $issuedByAccount ? $issuedByAccount->name : 'null'
                     ]);
                 } catch (Exception $e) {
-                    Log::error('Failed to create issued by account: ' . $e->getMessage());
-                    throw new Exception('Failed to create issued by account.');
+                    Log::error('Failed to create issued by account: ' . $e->getMessage(), [
+                        'task_reference' => $task->reference,
+                        'company_issued_by' => $companyIssuedBy,
+                        'supplier_payable_id' => $supplierPayable->id,
+                        'exception' => $e->getMessage()
+                    ]);
+                    throw new Exception('Failed to create issued by account: ' . $e->getMessage());
                 }
+            }
+
+            // Final validation that we have a valid issued by account for flight tasks
+            if (!$issuedByAccount) {
+                Log::error('Flight task still does not have issued by account after creation attempt', [
+                    'task_reference' => $task->reference,
+                    'issued_by' => $task->issued_by,
+                    'company_issued_by' => $companyIssuedBy ?? 'undefined'
+                ]);
+                throw new Exception('Failed to create or find issued by account for flight task.');
             }
         }
 
@@ -462,23 +511,33 @@ class TaskController extends Controller
             'supplierCompany' => $supplierCompany,
         ]);
 
+        // Additional validation: For flight tasks, we must have an issuedByAccount to avoid using parent account
+        if ($task->type == 'flight' && !$issuedByAccount) {
+            Log::error('Flight task missing issued by account - this should not happen!', [
+                'task_reference' => $task->reference,
+                'issued_by' => $task->issued_by,
+                'supplier_payable_has_children' => $supplierPayable->children()->exists()
+            ]);
+            throw new Exception('Flight task must have a valid issued by account to avoid using parent account.');
+        }
+
         // Process based on status
         switch (strtolower($task->status)) {
             case 'issued':
                 Log::info('Processing issued task financial for: ' . $task->reference);
-                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany);
+                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId);
                 break;
             case 'reissued':
                 Log::info('Processing reissued task financial for: ' . $task->reference);
-                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany);
+                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId);
                 break;
             case 'void':
                 Log::info('Processing void task financial for: ' . $task->reference);
-                $this->processVoidTask($task);
+                $this->processVoidTask($task, $branchId);
                 break;
             case 'refund':
                 Log::info('Processing refund task financial for: ' . $task->reference);
-                $this->processRefundTask($task);
+                $this->processRefundTask($task, $branchId);
                 break;
             default:
                 Log::error('Task status not recognized for financial processing: ' . $task->status);
@@ -496,7 +555,6 @@ class TaskController extends Controller
         // Define custom messages for each required field
         $fieldMessages = [
             'client_id' => 'Please update the client',
-            'agent_id' => 'Agent is required to enable this task',
             'company_id' => 'Company information is missing',
             'supplier_id' => 'Supplier must be assigned to this task',
             'type' => 'Task type (flight/hotel) must be specified',
@@ -520,10 +578,10 @@ class TaskController extends Controller
     /**
      * Process issued task financials
      */
-    private function processIssuedTask(Task $task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany)
+    private function processIssuedTask(Task $task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId)
     {
         $transaction = Transaction::create([
-            'branch_id' => $task->agent->branch_id,
+            'branch_id' => $branchId,
             'company_id' => $task->company_id,
             'entity_id' => $task->company_id,
             'entity_type' => 'company',
@@ -540,7 +598,7 @@ class TaskController extends Controller
         JournalEntry::create([
             'transaction_id' => $transaction->id,
             'company_id' => $task->company_id,
-            'branch_id' => $task->agent->branch_id,
+            'branch_id' => $branchId,
             'account_id' => $supplierCost->id,
             'task_id' => $task->id,
             'transaction_date' => Carbon::now(),
@@ -552,10 +610,11 @@ class TaskController extends Controller
             'type' => 'payable',
         ]);
 
+
         JournalEntry::create([
             'transaction_id' => $transaction->id,
             'company_id' => $task->company_id,
-            'branch_id' => $task->agent->branch_id,
+            'branch_id' => $branchId,
             'account_id' => $issuedByAccount ? $issuedByAccount->id : $supplierPayable->id,
             'task_id' => $task->id,
             'transaction_date' => Carbon::now(),
@@ -571,7 +630,7 @@ class TaskController extends Controller
     /**
      * Process void task financials
      */
-    private function processVoidTask(Task $task)
+    private function processVoidTask(Task $task, $branchId)
     {
         Log::info('Check for invoice created for this task.');
 
@@ -600,80 +659,137 @@ class TaskController extends Controller
     /**
      * Process refund task financials
      */
-    private function processRefundTask(Task $task)
+    private function processRefundTask(Task $task, $branchId)
     {
-        $accountSupplierName = $task->supplier ? $task->supplier->name : 'Unknown Supplier';
-
-        // Get or create Supplier Refund Account
-        $assetsPayableAccount = Account::where('name', 'Accounts Payable')
+        // Get the same accounts as in processTaskFinancial for consistency
+        $liabilities = Account::where('name', 'like', '%Liabilities%')
             ->where('company_id', $task->company_id)
-            ->where('root_id', 2)
             ->first();
 
-        $supplierRefundAccount = Account::where('name', 'LIKE', '%' . $accountSupplierName . '%')
+        $expenses = Account::where('name', 'like', '%Expenses%')
             ->where('company_id', $task->company_id)
-            ->where('root_id', $assetsPayableAccount->root_id)
             ->first();
 
-        if (!$supplierRefundAccount) {
-            $supplierRefundAccount = Account::create([
-                'name' => $accountSupplierName,
-                'parent_id' => $assetsPayableAccount->id,
-                'company_id' => $task->company_id,
-                'branch_id' => $task->agent->branch_id,
-                'root_id' => $assetsPayableAccount->root_id,
-                'code' => $assetsPayableAccount->code + 1,
-                'account_type' => 'asset',
-                'report_type' => 'balance sheet',
-                'level' => $assetsPayableAccount->level + 1,
-                'is_group' => 0,
-                'disabled' => 0,
-                'actual_balance' => 0.00,
-                'budget_balance' => 0.00,
-                'variance' => 0.00,
-                'currency' => 'KWD',
-            ]);
+        if (!$liabilities || !$expenses) {
+            throw new Exception('Liabilities or Expenses account not found.');
         }
 
-        // Get Expense Account
-        $expensesDirectExpenses = Account::where('name', 'LIKE', '%Direct Expenses%')
+        $supplier = Supplier::find($task->supplier_id);
+
+        $supplierPayable = Account::where('name', $supplier->name)
             ->where('company_id', $task->company_id)
-            ->where('root_id', 5)
+            ->where('root_id', $liabilities->id)
             ->first();
 
-        $accountSupplierRefundExpenses = ucfirst($task->type) . 's Cost';
-
-        $supplierRefundExpenses = Account::where('name', $accountSupplierRefundExpenses)
+        $supplierCost = Account::where('name', $supplier->name)
             ->where('company_id', $task->company_id)
-            ->where('root_id', $expensesDirectExpenses->root_id)
+            ->where('root_id', $expenses->id)
             ->first();
 
-        if (!$supplierRefundExpenses) {
-            $supplierRefundExpenses = Account::create([
-                'name' => $accountSupplierRefundExpenses,
-                'parent_id' => $expensesDirectExpenses->id,
-                'company_id' => $task->company_id,
-                'branch_id' => $task->agent->branch_id,
-                'root_id' => $expensesDirectExpenses->root_id,
-                'code' => $expensesDirectExpenses->code + 1,
-                'account_type' => 'asset',
-                'report_type' => 'balance sheet',
-                'level' => $expensesDirectExpenses->level + 1,
-                'is_group' => 0,
-                'disabled' => 0,
-                'actual_balance' => 0.00,
-                'budget_balance' => 0.00,
-                'variance' => 0.00,
-                'currency' => 'KWD',
-            ]);
+        if (!$supplierCost || !$supplierPayable) {
+            throw new Exception('Supplier accounts not found for refund processing.');
         }
+
+        // For flight tasks, use the same issued_by logic as in processTaskFinancial
+        $issuedByAccount = null;
+        $payableAccountToUse = $supplierPayable;
+
+        if ($task->type == 'flight') {
+            Log::info('Processing flight refund task financial for: ' . $task->reference);
+            $companyIssuedBy = $task->issued_by ?? 'Not Issued';
+            
+            Log::info('Refund - Issued by value determination', [
+                'original_issued_by' => $task->issued_by,
+                'final_company_issued_by' => $companyIssuedBy,
+                'is_null_issued_by' => is_null($task->issued_by)
+            ]);
+
+            $issuedByAccount = Account::where('name', $companyIssuedBy)
+                ->where('company_id', $task->company_id)
+                ->where('root_id', $liabilities->id)
+                ->where('parent_id', $supplierPayable->id)
+                ->first();
+
+            Log::info('Refund - Issued By Account lookup: ', ['account' => $issuedByAccount]);
+
+            if (!$issuedByAccount) {
+                Log::info('Refund - Creating new issued by account for: ' . $companyIssuedBy . ' (was null: ' . (is_null($task->issued_by) ? 'yes' : 'no') . ')');
+                $code = 2151;
+                $lastIssuedByAccount = Account::where('company_id', $task->company_id)
+                    ->where('root_id', $liabilities->id)
+                    ->where('parent_id', $supplierPayable->id)
+                    ->orderBy('code', 'desc')
+                    ->first();
+
+                if ($lastIssuedByAccount) {
+                    $code = $lastIssuedByAccount->code + 1;
+                }
+
+                try {
+                    $issuedByAccount = Account::create([
+                        'name' => $companyIssuedBy,
+                        'parent_id' => $supplierPayable->id,
+                        'company_id' => $task->company_id,
+                        'branch_id' => $branchId,
+                        'root_id' => $liabilities->id,
+                        'code' => $code,
+                        'account_type' => 'liability',
+                        'report_type' => 'balance sheet',
+                        'level' => $supplierPayable->level + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0.00,
+                        'budget_balance' => 0.00,
+                        'variance' => 0.00,
+                        'currency' => 'KWD',
+                    ]);
+
+                    Log::info('Refund - New issued by account created for task: ' . $task->reference, [
+                        'issuedByAccount' => $issuedByAccount,
+                        'account_id' => $issuedByAccount ? $issuedByAccount->id : 'null',
+                        'account_name' => $issuedByAccount ? $issuedByAccount->name : 'null'
+                    ]);
+                } catch (Exception $e) {
+                    Log::error('Refund - Failed to create issued by account: ' . $e->getMessage(), [
+                        'task_reference' => $task->reference,
+                        'company_issued_by' => $companyIssuedBy,
+                        'supplier_payable_id' => $supplierPayable->id,
+                        'exception' => $e->getMessage()
+                    ]);
+                    throw new Exception('Failed to create issued by account for refund: ' . $e->getMessage());
+                }
+            }
+
+            // Use the issued by account for flight tasks
+            if ($issuedByAccount) {
+                $payableAccountToUse = $issuedByAccount;
+            } else {
+                Log::error('Refund - Flight task missing issued by account', [
+                    'task_reference' => $task->reference,
+                    'issued_by' => $task->issued_by,
+                    'company_issued_by' => $companyIssuedBy
+                ]);
+                throw new Exception('Failed to create or find issued by account for flight refund task.');
+            }
+        }
+
+        Log::info('Processing refund task with correct accounts', [
+            'task_reference' => $task->reference,
+            'supplier_name' => $supplier->name,
+            'payable_account' => $payableAccountToUse->name,
+            'payable_account_id' => $payableAccountToUse->id,
+            'expense_account' => $supplierCost->name,
+            'expense_account_id' => $supplierCost->id,
+            'is_flight_task' => $task->type == 'flight',
+            'issued_by' => $task->issued_by
+        ]);
 
         // Create Transaction Record
         $transaction = Transaction::create([
             'entity_id' => $task->company_id,
             'entity_type' => 'company',
             'company_id' => $task->company_id,
-            'branch_id' => $task->agent->branch_id,
+            'branch_id' => $branchId,
             'transaction_type' => 'debit',
             'amount' => $task->total,
             'description' => 'Refund Task: ' . $task->reference,
@@ -685,16 +801,18 @@ class TaskController extends Controller
             throw new Exception('Refund Transaction creation failed.');
         }
 
+        // Create journal entries using the correct accounts
         JournalEntry::create([
             'transaction_date' => Carbon::now(),
             'transaction_id' => $transaction->id,
             'company_id' => $task->company_id,
-            'branch_id' => $task->agent->branch_id,
-            'account_id' => $supplierRefundAccount->id,
-            'description' => 'Refund Task - Supplier refunds us (Liabilities): ' . $supplierRefundAccount->name,
+            'branch_id' => $branchId,
+            'account_id' => $payableAccountToUse->id,
+            'task_id' => $task->id,
+            'description' => 'Refund Task - Supplier refunds us (Liabilities): ' . $payableAccountToUse->name,
             'debit' => $task->total,
             'credit' => 0,
-            'name' => $supplierRefundAccount->name,
+            'name' => $supplier->name,
             'type' => 'refund',
         ]);
 
@@ -702,12 +820,13 @@ class TaskController extends Controller
             'transaction_date' => Carbon::now(),
             'transaction_id' => $transaction->id,
             'company_id' => $task->company_id,
-            'branch_id' => $task->agent->branch_id,
-            'account_id' => $supplierRefundExpenses->id,
-            'description' => 'Refund Task - Flight cost return (Expenses): ' . $supplierRefundExpenses->name,
+            'branch_id' => $branchId,
+            'account_id' => $supplierCost->id,
+            'task_id' => $task->id,
+            'description' => 'Refund Task - Supplier cost return (Expenses): ' . $supplierCost->name,
             'debit' => 0,
             'credit' => $task->total,
-            'name' => $supplierRefundExpenses->name,
+            'name' => $supplier->name,
             'type' => 'refund',
         ]);
     }
@@ -878,11 +997,10 @@ class TaskController extends Controller
             'tax' => 'nullable|numeric',
             'surcharge' => 'nullable|numeric',
             'total' => 'required|numeric',
-            'agent_id' => 'required',
+            'agent_id' => 'nullable',
             'client_id' => 'nullable|exists:clients,id',
             'supplier_id' => 'required',
         ], [
-            'agent_id.required' => 'Please select an agent',
             'supplier_id.required' => 'Please select a supplier',
             'status.required' => 'Please select a status',
             'total.required' => 'Please enter the total amount',
@@ -905,6 +1023,7 @@ class TaskController extends Controller
             Log::info('Incoming Request: agent_id: ' . $request->agent_id . ', client_id: ' . $request->client_id);
 
             $prevClientName = $task->client_name;
+            $prevAgentId = $task->agent_id;
             $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
 
             $data = $request->only([
@@ -934,18 +1053,34 @@ class TaskController extends Controller
             $task->update($data);
             Log::info('After task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
 
-            $shouldBeEnabled = $task->is_complete;
+            // Check if agent was just assigned or changed
+            $agentWasAssigned = !$prevAgentId && $task->agent_id;
+            $agentWasChanged = $prevAgentId && $task->agent_id && $prevAgentId != $task->agent_id;
+
+            // Update enabled status: task must be complete AND have an agent assigned
+            $shouldBeEnabled = $task->is_complete && $task->agent_id;
 
             if ($shouldBeEnabled && !$wasEnabled) {
                 $task->enabled = true;
                 $task->save();
-                $this->processTaskFinancial($task);
+                // Process financials if not already processed
+                if (!JournalEntry::where('task_id', $task->id)->exists()) {
+                    Log::info('Processing financial transactions for newly enabled task: ' . $task->reference);
+                    $this->processTaskFinancial($task);
+                }
             } elseif (!$shouldBeEnabled && $wasEnabled) {
                 $task->enabled = false;
                 $task->save();
             } else {
                 $task->enabled = $shouldBeEnabled;
                 $task->save();
+            }
+
+            // If agent was assigned or changed, update branch_id in existing journal entries
+            if (($agentWasAssigned || $agentWasChanged) && $task->agent_id) {
+                Log::info('Agent assignment/change detected for task: ' . $task->reference . 
+                         ' (prev: ' . ($prevAgentId ?? 'none') . ', new: ' . $task->agent_id . ')');
+                $this->updateJournalEntriesBranch($task);
             }
 
             $transaction = Transaction::with('journalEntries')
@@ -2022,6 +2157,47 @@ class TaskController extends Controller
             'message' => 'Unpaid void task reversal journal completed.',
             'data' => $originalTask,
         ], 201);
+    }
+
+    /**
+     * Update branch_id in all journal entries for a task when agent is assigned/changed
+     */
+    private function updateJournalEntriesBranch(Task $task)
+    {
+        if (!$task->agent_id) {
+            Log::warning('Cannot update journal entries branch - no agent assigned to task: ' . $task->reference);
+            return;
+        }
+
+        $agent = Agent::find($task->agent_id);
+        if (!$agent || !$agent->branch_id) {
+            Log::warning('Cannot update journal entries branch - agent has no branch: ' . $task->reference);
+            return;
+        }
+
+        $newBranchId = $agent->branch_id;
+        
+        // Find all transactions related to this task
+        $transactions = Transaction::where('description', 'like', '%' . $task->reference . '%')->get();
+        
+        foreach ($transactions as $transaction) {
+            $oldBranchId = $transaction->branch_id;
+            
+            // Update transaction branch_id
+            $transaction->update(['branch_id' => $newBranchId]);
+            
+            // Update all journal entries for this transaction
+            $updatedEntries = JournalEntry::where('transaction_id', $transaction->id)
+                ->update(['branch_id' => $newBranchId]);
+            
+            Log::info('Updated journal entries for task agent assignment', [
+                'task_reference' => $task->reference,
+                'transaction_id' => $transaction->id,
+                'old_branch_id' => $oldBranchId,
+                'new_branch_id' => $newBranchId,
+                'updated_entries_count' => $updatedEntries
+            ]);
+        }
     }
 
     public function clientPassport(Request $request)

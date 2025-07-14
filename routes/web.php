@@ -345,6 +345,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/gateway-receivable', [ReportController::class, 'gatewayReceivable'])->name('gateway-receivable');
         Route::get('/account-list', [ReportController::class, 'getAccounts'])->name('account-list');
         Route::get('/acc-reconcile', [ReportController::class, 'accountsReconciliationReport'])->name('acc-reconcile');
+        Route::get('/settlements', [ReportController::class, 'settlementsReport'])->name('settlements');
+        Route::get('/settlements/{transaction}/entries', [ReportController::class, 'journalEntries'])->name('settlements.entries');
     });
 
     // INVOICE
@@ -419,7 +421,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/initiate', [PaymentController::class, 'paymentLinkInitiate'])->name('initiate')->withoutMiddleware(['auth']);
             Route::get('/process', [PaymentController::class, 'paymentLinkProcess'])->name('process')->withoutMiddleware(['auth']);
             Route::post('/webhook', [PaymentController::class, 'paymentLinkWebhook'])->name('webhook');
-            Route ::post('/reinitiate', [PaymentController::class, 'paymentLinkReInitiate'])->name('reinitiate')->withoutMiddleware(['auth']); 
+            Route::post('/reinitiate', [PaymentController::class, 'paymentLinkReInitiate'])->name('reinitiate')->withoutMiddleware(['auth']);
         });
 
         Route::get('/test-payment', [PaymentController::class, 'testPayment'])->name('payment.test');
@@ -441,7 +443,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/upload', [ClientController::class, 'import'])->name('upload');
         Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('changeAgent');
         Route::post('/refund/{id}', [ClientController::class, 'refund'])->name('refund');
-        
+
         // Routes for Client Group Management
         Route::post('/group/add', [ClientController::class, 'addToGroup'])->name('group.add');
         Route::post('/group/remove', [ClientController::class, 'removeFromGroup'])->name('group.remove');
@@ -526,7 +528,6 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/update-expiry', [SettingController::class, 'updateInvoiceExpiry'])->name('update-expiry');
         });
     });
-
 }); // auth middleware end
 
 Route::get('/admin', [VersionController::class, 'login'])->name('version.login');

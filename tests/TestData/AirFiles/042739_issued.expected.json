@@ -1,0 +1,48 @@
+{
+    "description": null,
+    "passenger_count": 1,
+    "passengers": [
+        {
+            "client_name": "ALAZMI\/ABDULLAH M A Z MR",
+            "reference": "2833242959",
+            "status": "issued",
+            "price": 103,
+            "currency": "KWD",
+            "ticket_number": "T-K072-2833242959",
+            "agent_name": "",
+            "agent_email": "maged@citytravelers.co",
+            "agent_amadeus_id": "0012MI",
+            "task_flight_details": [
+                {
+                    "from": "KWI",
+                    "to": "BAH",
+                    "flight_number": "GF0216",
+                    "airline": "GF",
+                    "departure_time": "2025-07-23 18:55:00"
+                },
+                {
+                    "from": "BAH",
+                    "to": "BKK",
+                    "flight_number": "GF0152",
+                    "airline": "GF",
+                    "departure_time": "2025-07-23 22:45:00"
+                },
+                {
+                    "from": "BKK",
+                    "to": "BAH",
+                    "flight_number": "GF0153",
+                    "airline": "GF",
+                    "departure_time": "2025-08-09 19:40:00"
+                },
+                {
+                    "from": "BAH",
+                    "to": "KWI",
+                    "flight_number": "GF0211",
+                    "airline": "GF",
+                    "departure_time": "2025-08-10 01:20:00"
+                }
+            ],
+            "additional_validations": []
+        }
+    ]
+}

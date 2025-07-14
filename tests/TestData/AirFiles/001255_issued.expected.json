@@ -1,0 +1,27 @@
+{
+    "description": "issued_prod_bug",
+    "passenger_count": 1,
+    "passengers": [
+        {
+            "client_name": "ALAZEMI\/ABDULRAHMAN A E F MR",
+            "reference": "2833243015",
+            "status": "reissued",
+            "price": 82,
+            "total": 181,
+            "currency": "KWD",
+            "ticket_number": "T-K229-2833243015",
+            "agent_name": "",
+            "agent_email": "ibrahim@citytravelers.co",
+            "agent_amadeus_id": "4714IA",
+            "task_flight_details": [
+                {
+                    "from": "BKK",
+                    "to": "KWI",
+                    "flight_number": "KU0412",
+                    "airline": "KU",
+                    "departure_time": "2025-07-30 11:55:00"
+                }
+            ]
+        }
+    ]
+}

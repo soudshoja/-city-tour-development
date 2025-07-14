@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Task;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
+use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\Transaction;
 use Exception;
@@ -41,6 +42,29 @@ class ClearTaskRelatedData extends Command
                 $this->info('No tasks found. Nothing to clear.');
                 DB::rollback();
                 return Command::SUCCESS;
+            }
+
+            $journalEntries = JournalEntry::whereIn('task_id', $taskIds)->get();
+
+            if( !empty($journalEntries)) {
+                // Clear journal entries related to tasks
+                $transactionsId = $journalEntries->pluck('transaction_id')->toArray();
+                $transactions = Transaction::whereIn('id', $transactionsId)->get();
+                
+                if ($transactions->isNotEmpty()) {
+                    // Delete transactions related to journal entries
+                    $transactionsCount = $transactions->count();
+                    $transactions->each(function ($transaction) {
+                        $transaction->delete();
+                    });
+                    $this->info("Deleted {$transactionsCount} transactions related to journal entries.");
+                }
+
+                $journalEntries->each(function ($journalEntry) {
+                    $journalEntry->delete();
+                });
+
+                $this->info("Deleted " . count($journalEntries) . " journal entries related to tasks.");
             }
 
             // 1. Clear invoice details related to tasks

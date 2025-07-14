@@ -1,0 +1,19 @@
+{
+    "description": "test read void file",
+    "passenger_count": 1,
+    "passengers": [
+        {
+            "client_name": "ALFADHLI\/SHAHAD MRS",
+            "reference": "3580651748",
+            "status": "void",
+            "price": 0,
+            "currency": "KWD",
+            "ticket_number": "T-K607-3580651748",
+            "agent_name": "COMO TRAVEL AND TOURISM",
+            "agent_email": "maged@citytravelers.co",
+            "agent_amadeus_id": "",
+            "gds_refrence": "",
+            "void_date": "11-12-2025"
+        }
+    ]
+}

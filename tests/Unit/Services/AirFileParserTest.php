@@ -32,9 +32,8 @@ class AirFileParserTest extends TestCase
     
     /**
      * Test individual AIR file structures
-     *
-     * @dataProvider airFileTestCaseProvider
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('airFileTestCaseProvider')]
     public function test_individual_air_file_extraction($testCase)
     {
         $this->runSingleTestCase($testCase);

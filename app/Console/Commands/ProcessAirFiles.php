@@ -41,7 +41,7 @@ class ProcessAirFiles extends Command
     {
         parent::__construct();
         $this->aiManager = $aiManager;
-        $this->logger = Log::channel('air_processing');
+        $this->logger = $this->logger->channel('air_processing');
     }
 
     public function handle()
@@ -118,14 +118,14 @@ class ProcessAirFiles extends Command
                     $fileSize = $file->getSize();
 
                     if ($fileAge < $minAge) {
-                        Log::info("Skipping file too new: {$file->getFilename()} ({$fileAge}s old)");
+                        $this->logger->info("Skipping file too new: {$file->getFilename()} ({$fileAge}s old)");
                         return false;
                     }
 
-                    if ($fileSize < $minSize) {
-                        Log::info("Skipping file too small: {$file->getFilename()} ({$fileSize} bytes)");
-                        return false;
-                    }
+                    // if ($fileSize < $minSize) {
+                    //     $this->logger->info("Skipping file too small: {$file->getFilename()} ({$fileSize} bytes)");
+                    //     return false;
+                    // }
 
                     return true;
                 });
@@ -1049,7 +1049,7 @@ class ProcessAirFiles extends Command
         //     ->first();
 
         // if ($existingTask) {
-        //     Log::info("Task with reference {$data['reference']} already exists. Skipping save.");
+        //     $this->logger->info("Task with reference {$data['reference']} already exists. Skipping save.");
 
         //     return [
         //         'status' => 'error',

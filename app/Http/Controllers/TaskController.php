@@ -48,7 +48,7 @@ class TaskController extends Controller
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
 
         if ($search = $request->query('q')) {
-            
+
             $tasks = $tasks->where(function ($query) use ($search) {
                 $query->where('reference', 'like', '%' . $search . '%')
                     ->orWhere('client_name', 'like', '%' . $search . '%')
@@ -58,7 +58,6 @@ class TaskController extends Controller
                         $q->where('name', 'like', '%' . $search . '%');
                     });
             });
-
         }
         $countries = Country::all();
 
@@ -103,7 +102,6 @@ class TaskController extends Controller
             $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
             })->get();
-     
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
@@ -226,6 +224,19 @@ class TaskController extends Controller
             ]);
         }
 
+        $supplierName = Supplier::where('id', $request->supplier_id)->value('name');
+
+        if(strtolower($supplierName) == 'jazeera airways' || strtolower($supplierName) == 'fly dubai') {
+            if ($request->status == 'confirmed') {
+                $status = 'issued';
+            } elseif ($request->status == 'on hold') {
+                $status = 'confirmed';
+            } else {
+                $status = $request->status;
+            }
+            $request->merge(['status' => $status]);
+        }
+
         // Set default values for nullable fields using merge()
         $request->merge([
             'penalty_fee' => $request->penalty_fee ?? 0,
@@ -290,6 +301,16 @@ class TaskController extends Controller
                 $this->saveHotelDetails($request->task_hotel_details, $task->id);
             } elseif ($task->type === 'flight' && $request->has('task_flight_details') && !empty($request->task_flight_details)) {
                 $this->saveFlightDetails($request->task_flight_details, $task->id);
+            }
+
+            if($task->is_complete) {
+                $task->enabled = true; // Ensure enabled is true if task is complete
+                $task->save(); 
+                Log::info('Task enabled status set to true for complete task: ' . $task->reference);
+            } else {
+                $task->enabled = false; // Ensure enabled is false if task is not complete
+                $task->save();
+                Log::info('Task enabled status set to false for incomplete task: ' . $task->reference);
             }
 
             // Only process financial transactions if task is enabled and complete
@@ -443,10 +464,6 @@ class TaskController extends Controller
 
         // Process based on status
         switch (strtolower($task->status)) {
-            case 'confirmed':
-                Log::info('Processing confirmed task financial for: ' . $task->reference);
-                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany);
-                break;
             case 'issued':
                 Log::info('Processing issued task financial for: ' . $task->reference);
                 $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany);
@@ -1395,6 +1412,7 @@ class TaskController extends Controller
                 'surcharge' => 0.00,
                 'total' => $prices['total']['selling']['value'] ?? null,
                 'cancellation_policy' => json_encode($cancellationPolicy) ?? null,
+                'cancellation_deadline' => $cancellationDate ?? null,
                 'additional_info' => $reservation['service']['hotel']['name'] . ' - ' . $clientName,
                 'supplier_id' => $supplierId,
                 'venue' => $hotel['name'] ?? null,

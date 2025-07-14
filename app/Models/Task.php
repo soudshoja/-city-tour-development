@@ -38,6 +38,7 @@ class Task extends Model
         'penalty_fee',
         'total',
         'cancellation_policy',
+        'cancellation_deadline',
         'additional_info',
         'venue',
         'invoice_price',
@@ -58,7 +59,7 @@ class Task extends Model
         'supplier_id',
         'type',
         'status',
-        'client_name',
+        // 'client_name',
         'reference',
         'total',
         // 'venue',
@@ -103,7 +104,7 @@ class Task extends Model
     {
         return $this->created_at->format('d-m-Y');
     }
-    
+
     public function getFormattedDateTimeAttribute()
     {
         return $this->created_at->format('d-m-Y h:i A');

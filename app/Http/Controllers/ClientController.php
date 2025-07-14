@@ -128,13 +128,6 @@ class ClientController extends Controller
         return view('clients.index', compact('agent', 'clients', 'clientsCount'));
     }
 
-    public function list() {}
-
-    public function create()
-    {
-        return view('clients.create');
-    }
-
     public function storeProcess(Request $request)
     {
         $request->validate([
@@ -427,12 +420,11 @@ class ClientController extends Controller
         // Get the new agent details
         $newAgent = $client->agent;
 
-        // Update only pending tasks related to this client, changing the agent's email and id
+        // Update only pending tasks related to this client, changing the agent's id
         Task::where('client_id', $client->id)
             ->where('status', 'pending')
             ->update([
                 'agent_id' => $newAgent->id,
-                'agent_email' => $newAgent->email,
             ]);
 
         // Redirect back with a success message

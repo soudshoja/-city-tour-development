@@ -49,4 +49,26 @@ class Company extends Model
             ->using(SupplierCompany::class)
             ->withPivot('is_active');
     }
+
+    /**
+     * Get the main/default branch for this company
+     * Returns the first branch or creates one if none exists
+     */
+    public function getMainBranch()
+    {
+        $mainBranch = $this->branches()->first();
+        
+        if (!$mainBranch) {
+            // Create a default main branch if none exists
+            $mainBranch = $this->branches()->create([
+                'name' => $this->name . ' - Main Branch',
+                'email' => $this->email,
+                'phone' => $this->phone,
+                'address' => $this->address,
+                'user_id' => $this->user_id,
+            ]);
+        }
+        
+        return $mainBranch;
+    }
 }

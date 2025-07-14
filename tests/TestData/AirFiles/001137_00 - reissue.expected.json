@@ -1,0 +1,33 @@
+{
+    "description": "test read file reissue",
+    "passenger_count": 1,
+    "passengers": [
+        {
+            "client_name": "SALAMA\/ATIF MR",
+            "reference": "3070029150",
+            "status": "reissued",
+            "price": 0,
+            "currency": "REG",
+            "ticket_number": "T-K229-3070029150",
+            "agent_name": "",
+            "agent_email": "ibrahim@citytravelers.co",
+            "agent_amadeus_id": "4714IA",
+            "gds_reference": "LJBL2W",
+            "created_by": "KWIKT2843",
+            "issued_by": "KWIKT2843",
+            "type": "flight",
+            "original_price": 13894.00,
+            "original_currency": "EGP",
+            "taxes_record": "PD 1.000    EG ;PD 0.650    EQ ;PD 23.450   XT",
+            "task_flight_details": [
+                {
+                    "from": "KWI",
+                    "to": "CAI",
+                    "flight_number": "KU0541",
+                    "airline": "KU",
+                    "departure_time": "2025-07-20 16:00:00"
+                }
+            ]
+        }
+    ]
+}

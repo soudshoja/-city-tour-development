@@ -38,24 +38,27 @@ class ProfileController extends Controller
         $phone = null;
         $email = $user->email;
 
-        switch ($user->role->id) {
-            case Role::COMPANY:
-                $profile = Company::where('user_id', $user->id)->first();
-                $phone = $profile?->phone;
-                break;
+        // Check if user has a role and role has an id
+        if ($user->role && $user->role->id) {
+            switch ($user->role->id) {
+                case Role::COMPANY:
+                    $profile = Company::where('user_id', $user->id)->first();
+                    $phone = $profile?->phone;
+                    break;
 
-            case Role::BRANCH:
-                $profile = Branch::where('user_id', $user->id)->first();
-                $phone = $profile?->phone;
-                break;
+                case Role::BRANCH:
+                    $profile = Branch::where('user_id', $user->id)->first();
+                    $phone = $profile?->phone;
+                    break;
 
-            case Role::AGENT:
-                $profile = Agent::where('user_id', $user->id)->first();
-                $phone = $profile?->phone_number; // different column name
-                break;
+                case Role::AGENT:
+                    $profile = Agent::where('user_id', $user->id)->first();
+                    $phone = $profile?->phone_number; // different column name
+                    break;
 
-            default:
-                break;
+                default:
+                    break;
+            }
         }
 
         return view('profile.edit', [
@@ -70,7 +73,7 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {   
-        \Log::info('Updated bank ID:', ['acc_bank_id' => $request->input('acc_bank_id')]);
+        Log::info('Updated bank ID:', ['acc_bank_id' => $request->input('acc_bank_id')]);
 
         $user = $request->user();
         $user->fill($request->validated());

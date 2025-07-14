@@ -41,7 +41,7 @@ trait NotificationTrait
         
         switch ($user->role_id) {
             case Role::ADMIN:
-                return Notification::limit($limit)->get();
+                return Notification::limit($limit)->latest()->get();
             case Role::COMPANY: 
                 return Notification::whereIn('user_id', $this->getCompanyUserIds($user))->where('close', 0)->limit($limit)->latest()->get();
             case Role::BRANCH:
@@ -91,7 +91,11 @@ trait NotificationTrait
 
     private function getCompanyUserIds($user)
     {
-        $branches = $user->company->branches;
+        if (!$user->company) {
+            return [$user->id]; // Return only user's ID if no company
+        }
+        
+        $branches = $user->company->branches ?? collect();
         $branchIds = $branches->pluck('id')->toArray();
         $branchesUserId = $branches->pluck('user_id')->toArray();
         $agentUserIds = Agent::whereIn('branch_id', $branchIds)->pluck('user_id')->toArray();
@@ -102,9 +106,12 @@ trait NotificationTrait
 
     private function getBranchUserIds($user)
     {
-        // $agentIds = $user->branch->agents->pluck('id')->toArray();
-        $agentIds = [10, 11, 12];
-        $userIds = array_merge($agentIds, [$user->id]);
+        if (!$user->branch) {
+            return [$user->id]; // Return only user's ID if no branch
+        }
+        
+        $agentUserIds = $user->branch->agents()->pluck('user_id')->toArray();
+        $userIds = array_merge($agentUserIds, [$user->id]);
 
         return $userIds;
     }

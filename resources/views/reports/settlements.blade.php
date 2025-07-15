@@ -61,7 +61,6 @@
                                 <th class="py-2 px-4">Date</th>
                                 <th class="py-2 px-4">Reference Type</th>
                                 <th class="py-2 px-4">Company</th>
-                                <th class="py-2 px-4">Account</th>
                                 <th class="py-2 px-4">Description</th>
                                 <th class="py-2 px-4 text-right">Amount (KWD)</th>
                                 <th class="py-2 px-4 text-center">Detail</th>
@@ -73,9 +72,8 @@
                                     <td class="py-2 px-4">{{ \Carbon\Carbon::parse($tx->created_at)->format('Y-m-d') }}</td>
                                     <td class="py-2 px-4 capitalize">{{ $tx->reference_type ?? '-' }}</td>
                                     <td class="py-2 px-4">{{ $tx->company->name ?? '-' }}</td>
-                                    <td class="py-2 px-4">{{ $tx->account->code ?? '' }} - {{ $tx->account->name ?? '' }}</td>
                                     <td class="py-2 px-4">{{ $tx->description }}</td>
-                                    <td class="py-2 px-4 text-right">{{ number_format($tx->credit - $tx->debit, 2) }}</td>
+                                    <td class="py-2 px-4 text-right">{{ number_format($tx->amount, 2) }}</td>
                                     <td class="py-2 px-4 text-center">
                                         <a href="#"
                                            @click.prevent="loadEntries('{{ route('reports.settlements.entries', $tx->id) }}')"

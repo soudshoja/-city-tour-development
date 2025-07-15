@@ -7,6 +7,7 @@
             "reference": "2833242959",
             "status": "issued",
             "price": 103,
+            "total": 176.70,
             "currency": "KWD",
             "ticket_number": "T-K072-2833242959",
             "agent_name": "",
@@ -18,28 +19,32 @@
                     "to": "BAH",
                     "flight_number": "GF0216",
                     "airline": "GF",
-                    "departure_time": "2025-07-23 18:55:00"
+                    "departure_time": "2025-07-23 18:55:00",
+                    "arrival_time": "2025-07-23 20:00:00"
                 },
                 {
                     "from": "BAH",
                     "to": "BKK",
                     "flight_number": "GF0152",
                     "airline": "GF",
-                    "departure_time": "2025-07-23 22:45:00"
+                    "departure_time": "2025-07-23 22:45:00",
+                    "arrival_time": "2025-07-24 09:55:00"
                 },
                 {
                     "from": "BKK",
                     "to": "BAH",
                     "flight_number": "GF0153",
                     "airline": "GF",
-                    "departure_time": "2025-08-09 19:40:00"
+                    "departure_time": "2025-08-09 19:40:00",
+                    "arrival_time": "2025-08-09 22:55:00"
                 },
                 {
                     "from": "BAH",
                     "to": "KWI",
                     "flight_number": "GF0211",
                     "airline": "GF",
-                    "departure_time": "2025-08-10 01:20:00"
+                    "departure_time": "2025-08-10 01:20:00",
+                    "arrival_time": "2025-08-10 02:55:00"
                 }
             ],
             "additional_validations": []

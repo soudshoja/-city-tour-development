@@ -881,7 +881,6 @@
                                                                         </div>
 
                                                                         <!-- Agent Selection (Role-based) -->
-                                                                        @unlessrole('agent')
                                                                         <div class="flex-1">
                                                                             <label for="agent_id"
                                                                                 class="block text-sm font-medium text-gray-700">Agent</label>
@@ -900,11 +899,7 @@
                                                                                 @endforeach
                                                                             </select>
                                                                         </div>
-                                                                        @else
-                                                                        <input type="hidden" name="agent_id"
-                                                                            id="agent_id_{{ $task->id }}"
-                                                                            value="{{ Auth()->user()->agent->id }}">
-                                                                        @endunlessrole
+                                                                      
                                                                     </div>
                                                                         
                                                                     <div class="flex flex-wrap gap-4">

@@ -66,5 +66,9 @@ class Transaction extends Model
     {
         return $this->hasMany(JournalEntry::class, 'transaction_id');
     }
-    
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 }

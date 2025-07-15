@@ -29,7 +29,7 @@ class PaymentReleaseToCompanyBankAccProcess extends Command
 
         Payment::where('completed', 0)
             ->where('status', 'completed')
-            ->chunk(100, function ($payments) {
+            ->chunk(500, function ($payments) {
                 foreach ($payments as $payment) {
                     try {
                         Log::info("[Info] Processing Payment ID: {$payment->id}");

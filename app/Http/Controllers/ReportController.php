@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\Agent;
 use App\Models\Branch;
 use App\Models\JournalEntry;
+use App\Models\Payment;
 use App\Models\Supplier;
 use App\Models\SupplierCompany;
 use Illuminate\Http\Request;
@@ -805,30 +806,39 @@ class ReportController extends Controller
         $user = Auth::user();
 
         // Only allow ADMIN and COMPANY roles
-        if ($user->role_id != Role::ADMIN && $user->role_id != Role::COMPANY) {
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
             abort(403, 'Unauthorized');
         }
 
+        // Defaults: current month
+        $from = $request->input('from') ?? Carbon::now()->startOfMonth()->toDateString();
+        $to = $request->input('to') ?? Carbon::now()->endOfMonth()->toDateString();
+
         $query = Transaction::query()
-            ->where('description', 'like', '%Settles to Bank (After 24h) (Assets)%');
+            ->where('description', 'like', '%Settles to Bank (After 24h) (Assets)%')
+            ->whereHas('payment', function ($q) use ($from, $to) {
+                $q->whereBetween('payment_date', [$from, $to]);
+            })
+            ->with(['company', 'account', 'payment']);
 
-        if ($request->filled('from')) {
-            $query->whereDate('created_at', '>=', $request->from);
-        }
-
-        if ($request->filled('to')) {
-            $query->whereDate('created_at', '<=', $request->to);
-        }
-
+        // Filter by reference type if provided
         if ($request->filled('reference_type')) {
             $query->where('reference_type', $request->reference_type);
         }
 
-        if ($user->role_id == Role::COMPANY) {
-            $query->where('company_id', auth()->user()->company->id);
+        // If COMPANY user, restrict to their company
+        if ($user->role_id === Role::COMPANY) {
+            $query->where('company_id', $user->company->id);
         }
 
-        $transactions = $query->with(['account', 'company'])->orderBy('created_at', 'desc')->get();
+        // Order by payment_date DESC (use subquery to sort)
+        $query->orderByDesc(
+            Payment::select('payment_date')
+                ->whereColumn('payments.id', 'transactions.payment_id')
+                ->limit(1)
+        );
+
+        $transactions = $query->paginate(25)->appends($request->query());
 
         return view('reports.settlements', compact('transactions'));
     }

@@ -98,7 +98,10 @@ class SupplierCompanyController extends Controller
                 ? 'Suppliers (Flights)'
                 : ($supplier->has_hotel ? 'Suppliers (Hotels)' : 'Accounts Payable');
 
-            $accountPayable = Account::where('name', $parentAccountName)->first();
+            $accountPayable = Account::where([
+                'name' => $parentAccountName,
+                'company_id' => $company->id,
+            ])->first();
 
             if (!$accountPayable) {
                 throw new Exception("Account Payable group '$parentAccountName' not found.");
@@ -107,9 +110,15 @@ class SupplierCompanyController extends Controller
             $supplierCostAccount = collect();
 
             if ($supplier->has_flight) {
-                $supplierCostAccount = Account::where('name', 'Flights Cost')->first();
+                $supplierCostAccount = Account::where([
+                    'name' => 'Flights Cost',
+                    'company_id' => $company->id,
+                ])->first();
             } else if ($supplier->has_hotel) {
-                $supplierCostAccount = Account::where('name', 'Hotels Cost')->first();
+                $supplierCostAccount = Account::where([
+                    'name' => 'Hotels Cost',
+                    'company_id' => $company->id,
+                ])->first();
             } else {
                 throw new Exception('Supplier is not a flight or hotel supplier.');
             }

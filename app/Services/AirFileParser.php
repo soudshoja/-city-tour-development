@@ -395,12 +395,12 @@ class AirFileParser
     private function extractPrice()
     {
         // Check for refund format first (KN- or KS-)
-        $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)\s*;*\s*([A-Z]{3})([\d.]+)/');
+        $match = $this->findLine('/^K[NS]-[RFI]?([A-Z]{3})([\d.]+)\s*;*\s*([A-Z]{3})([\d.]+)/');
         if ($match) {
             // For refunds, determine if there's currency exchange
             if ($this->hasCurrencyExchange()) {
                 // 3-pair format: return the final total (6th position)
-                $exchangeMatch = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
+                $exchangeMatch = $this->findLine('/^K[NS]-[RFI]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
                 if ($exchangeMatch) {
                     return (float) $exchangeMatch[6];
                 }
@@ -431,7 +431,7 @@ class AirFileParser
         }
 
         // Fallback: Look for any price pattern on K line (base fare only)
-        $match = $this->findLine('/^K[NS]?-[FI]?([A-Z]{3})([\d.]+)/');
+        $match = $this->findLine('/^K[NS]?-[RFI]?([A-Z]{3})([\d.]+)/');
         if ($match) {
             return (float) $match[2]; // Base fare if no total found
         }
@@ -452,27 +452,33 @@ class AirFileParser
     {
         if ($this->hasCurrencyExchange()) {
             // 3-pair format with currency exchange - return the final currency
-            $match = $this->findLine('/^K[NS]?-[FI]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
+            $match = $this->findLine('/^K[NS]?-[RFI]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
             if ($match) {
                 return $match[5]; // Final currency (KWD in exchange example)
             }
         } else {
             // 2-pair format - return the second currency
             // Check for refund format first (KN- or KS-)
-            $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
+            $match = $this->findLine('/^K[NS]-[RFI]?([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
             if ($match) {
                 return $match[3]; // Second currency (KWD in refund example)
             }
-            
-            // Check for regular format (K-F)
+        
+            // Regular format (K-F) with second currency
             $match = $this->findLine('/^K-[RF]([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
             if ($match) {
-                return $match[3]; // Second currency (KWD in regular example)
+                return $match[3]; // Second currency (e.g., KWD)
+            }
+
+            // Fallback: Just get first currency
+            $match = $this->findLine('/^K-[RF]([A-Z]{3})([\d.]+)/');
+            if ($match) {
+                return $match[1]; // First currency (e.g., EGP)
             }
         }
         
         // Fallback: Look for any currency on K line
-        $match = $this->findLine('/^K[NS]?-[FI]?([A-Z]{3})/');
+        $match = $this->findLine('/^K[NS]?-[RFI]?([A-Z]{3})/');
         if ($match) {
             return $match[1]; // First currency as fallback
         }
@@ -492,7 +498,7 @@ class AirFileParser
     private function extractOriginalPrice()
     {
         // Check for refund format first (KN- or KS-)
-        $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)/');
+        $match = $this->findLine('/^K[NS]-[RFI]?([A-Z]{3})([\d.]+)/');
         if ($match) {
             return (float) $match[2]; // First amount (base fare)
         }
@@ -524,7 +530,7 @@ class AirFileParser
     private function extractOriginalCurrency()
     {
         // Check for refund format first (KN- or KS-)
-        $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})/');
+        $match = $this->findLine('/^K[NS]-[RFI]?([A-Z]{3})/');
         if ($match) {
             return $match[1]; // First currency
         }
@@ -555,13 +561,13 @@ class AirFileParser
         // First try to get explicit total from refund format (KN- or KS-)
         if ($this->hasCurrencyExchange()) {
             // 3-pair format with currency exchange
-            $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
+            $match = $this->findLine('/^K[NS]-[RFI]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
             if ($match) {
                 return (float) $match[6]; // Final total fare
             }
         } else {
             // 2-pair format without currency exchange
-            $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
+            $match = $this->findLine('/^K[NS]-[RFI]?([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
             if ($match) {
                 return (float) $match[4]; // Total fare
             }
@@ -715,7 +721,7 @@ class AirFileParser
     private function extractTaxesRecord()
     {
         // Try refund format first (KNTI or KSTI line)
-        $match = $this->findLine('/^K[NS]TI;(.+)/');
+        $match = $this->findLine('/^K[NS]T[FI];(.+)/');
         if ($match) {
             return rtrim($match[1], "; \r\n");
         }
@@ -980,15 +986,23 @@ class AirFileParser
     
     private function extractDepartureTime()
     {
-        // Look for departure time patterns
-        $match = $this->findLine('/(\d{4})\s+(\d{4})/');
-        if ($match) {
-            $time = $match[1];
-            $hour = substr($time, 0, 2);
-            $minute = substr($time, 2, 2);
-            return Carbon::today()->setTime($hour, $minute)->format('H:i');
-        }
-        return null;
+         // Match pattern like 02APR0435 (day + month + time)
+    $match = $this->findLine('/\b(\d{2})([A-Z]{3})(\d{4})\b/');
+    if ($match) {
+        $day = $match[1];      // "02"
+        $month = $match[2];    // "APR"
+        $time = $match[3];     // "0435"
+
+        $hour = substr($time, 0, 2);   // "04"
+        $minute = substr($time, 2, 2); // "35"
+
+        // Build a Carbon instance using day, month, and time (assumes current year)
+        $datetime = Carbon::createFromFormat('d-M-H:i', "{$day}-{$month}-{$hour}:{$minute}");
+
+        return $datetime->format('Y-m-d H:i:s');
+    }
+
+    return null;
     }
     
     private function extractDepartureCountry()
@@ -1019,14 +1033,23 @@ class AirFileParser
     
     private function extractArrivalTime()
     {
-        $match = $this->findLine('/(\d{4})\s+(\d{4})/');
-        if ($match) {
-            $time = $match[2];
-            $hour = substr($time, 0, 2);
-            $minute = substr($time, 2, 2);
-            return Carbon::today()->setTime($hour, $minute)->format('H:i');
-        }
-        return null;
+        // Match pattern like 02APR0435 (day + month + time)
+    $match = $this->findLine('/\b(\d{2})([A-Z]{3})(\d{4})\b/');
+    if ($match) {
+        $day = $match[1];      // "02"
+        $month = $match[2];    // "APR"
+        $time = $match[3];     // "0435"
+
+        $hour = substr($time, 0, 2);   // "04"
+        $minute = substr($time, 2, 2); // "35"
+
+        // Build a Carbon instance using day, month, and time (assumes current year)
+        $datetime = Carbon::createFromFormat('d-M-H:i', "{$day}-{$month}-{$hour}:{$minute}");
+
+        return $datetime->format('Y-m-d H:i:s');
+    }
+
+    return null;
     }
     
     private function extractDurationTime()
@@ -1168,7 +1191,7 @@ class AirFileParser
     private function extractBaseFare()
     {
         // Check for refund format first (KN- or KS-)
-        $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)/');
+        $match = $this->findLine('/^K[NS]-[RFI]?([A-Z]{3})([\d.]+)/');
         if ($match) {
             return (float) $match[2]; // Base fare amount
         }
@@ -1190,7 +1213,7 @@ class AirFileParser
     private function extractTotalFare()
     {
         // Check for refund format first (KN- or KS-)
-        $match = $this->findLine('/^K[NS]-[I]?([A-Z]{3})([\d.]+)\s*;;;;;;;;;;;;([A-Z]{3})([\d.]+)/');
+        $match = $this->findLine('/^K[NS]-[RFI]?([A-Z]{3})([\d.]+)\s*;;;;;;;;;;;;([A-Z]{3})([\d.]+)/');
         if ($match) {
             return (float) $match[4]; // Total fare amount
         }
@@ -1212,7 +1235,7 @@ class AirFileParser
     private function hasCurrencyExchange()
     {
         // Look for 3-pair pattern (currency exchange)
-        $threePairMatch = $this->findLine('/^K[NS]?-[FI]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
+        $threePairMatch = $this->findLine('/^K[RNS]?-[FI]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
         if ($threePairMatch) {
             // Check if first and second currencies are different (indicating exchange)
             return $threePairMatch[1] !== $threePairMatch[3];

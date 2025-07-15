@@ -70,7 +70,7 @@
                     <h3 class="text-lg font-bold text-gray-800">Bill To:</h3>
                     <p class="text-sm text-gray-600"> {{ $payment->client->name }} </p>
                     <p class="text-sm text-gray-600"> {{ $payment->client->email }} </p>
-                    <p class="text-sm text-gray-600"> {{ $payment->client->phone }} </p>
+                    <p class="text-sm text-gray-600"> {{ $payment->client->country_code }}{{ $payment->client->phone }} </p>
                 </div>
 
                 <div>

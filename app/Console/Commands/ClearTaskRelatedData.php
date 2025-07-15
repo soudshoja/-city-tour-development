@@ -9,37 +9,101 @@ use App\Models\InvoiceDetail;
 use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\Transaction;
+use App\Models\Company;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class ClearTaskRelatedData extends Command
 {
-    protected $signature = 'tasks:clear-related-data {--force : Force the operation without confirmation}';
+    protected $signature = 'tasks:clear-related-data {--force : Force the operation without confirmation} {--company= : Clear tasks for specific company (ID or name)}';
 
     protected $description = 'Clear all data related to tasks while preserving non-task related records';
 
     public function handle()
     {
+        $companyFilter = $this->option('company');
+        $companyId = null;
+        $companyName = '';
+
+        // Handle company filter
+        if ($companyFilter) {
+            // Check if it's a numeric ID
+            if (is_numeric($companyFilter)) {
+                $company = Company::find($companyFilter);
+                if (!$company) {
+                    $this->error("Company with ID {$companyFilter} not found.");
+                    return Command::FAILURE;
+                }
+                $companyId = $company->id;
+                $companyName = $company->name;
+            } else {
+                // Search by name using LIKE
+                $companies = Company::where('name', 'LIKE', "%{$companyFilter}%")->get();
+                
+                if ($companies->isEmpty()) {
+                    $this->error("No companies found matching '{$companyFilter}'.");
+                    return Command::FAILURE;
+                }
+                
+                if ($companies->count() > 1) {
+                    $this->info("Multiple companies found:");
+                    foreach ($companies as $company) {
+                        $this->line("ID: {$company->id} - Name: {$company->name}");
+                    }
+                    $companyId = $this->ask('Please enter the Company ID you want to use');
+                    $selectedCompany = Company::find($companyId);
+                    if (!$selectedCompany) {
+                        $this->error("Invalid Company ID selected.");
+                        return Command::FAILURE;
+                    }
+                    $companyName = $selectedCompany->name;
+                } else {
+                    $company = $companies->first();
+                    $companyId = $company->id;
+                    $companyName = $company->name;
+                }
+            }
+            
+            $this->info("Selected Company: {$companyName} (ID: {$companyId})");
+        }
+
         if (!$this->option('force')) {
-            if (!$this->confirm('This will delete all task-related data. Do you wish to continue?')) {
+            $confirmMessage = $companyFilter ? 
+                "This will delete all task-related data for company '{$companyName}'. Do you wish to continue?" :
+                'This will delete all task-related data. Do you wish to continue?';
+                
+            if (!$this->confirm($confirmMessage)) {
                 $this->info('Operation cancelled.');
                 return Command::SUCCESS;
             }
         }
 
-        $this->info('Starting task-related data cleanup...');
+        $this->info($companyFilter ? 
+            "Starting task-related data cleanup for company '{$companyName}'..." :
+            'Starting task-related data cleanup...');
 
         DB::beginTransaction();
         DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
 
         try {
-            // Get all task IDs before deletion
-            $taskIds = Task::pluck('id')->toArray();
-            $this->info('Found ' . count($taskIds) . ' tasks to process.');
+            // Get all task IDs before deletion (filtered by company if specified)
+            $taskQuery = Task::query();
+            if ($companyId) {
+                $taskQuery->where('company_id', $companyId);
+            }
+            $taskIds = $taskQuery->pluck('id')->toArray();
+            
+            $taskCountMessage = $companyFilter ? 
+                "Found " . count($taskIds) . " tasks for company '{$companyName}' to process." :
+                'Found ' . count($taskIds) . ' tasks to process.';
+            $this->info($taskCountMessage);
 
             if (empty($taskIds)) {
-                $this->info('No tasks found. Nothing to clear.');
+                $noTasksMessage = $companyFilter ? 
+                    "No tasks found for company '{$companyName}'. Nothing to clear." :
+                    'No tasks found. Nothing to clear.';
+                $this->info($noTasksMessage);
                 DB::rollback();
                 return Command::SUCCESS;
             }
@@ -171,7 +235,11 @@ class ClearTaskRelatedData extends Command
 
             DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
             DB::commit();
-            $this->info('✅ Task-related data cleanup completed successfully!');
+            
+            $successMessage = $companyFilter ? 
+                "✅ Task-related data cleanup for company '{$companyName}' completed successfully!" :
+                '✅ Task-related data cleanup completed successfully!';
+            $this->info($successMessage);
 
         } catch (Exception $e) {
             DB::rollback();

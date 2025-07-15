@@ -97,7 +97,16 @@ class TaskController extends Controller
 
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $clients = Client::where('agent_id', $user->agent->id)->get();
-            $tasks = $tasks->where('agent_id', $user->agent->id);
+
+            // Get tasks assigned to this agent OR unassigned tasks in the same company
+            $tasks = $tasks->where(function ($query) use ($user) {
+                $query->where('agent_id', $user->agent->id)
+                    ->orWhere(function ($subQuery) use ($user) {
+                        $subQuery->whereNull('agent_id')
+                            ->where('company_id', $user->agent->branch->company_id);
+                    });
+            })->where('company_id', $user->agent->branch->company_id);
+
             $companyId = $user->agent->branch->company_id;
             $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
@@ -105,7 +114,7 @@ class TaskController extends Controller
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
-
+  
         $taskCount = $tasks->count();
         $tasks = $tasks->orderBy('created_at', 'desc')->paginate(50);
         $types = Task::distinct()->pluck('type');
@@ -302,7 +311,7 @@ class TaskController extends Controller
             } elseif ($task->type === 'flight' && $request->has('task_flight_details') && !empty($request->task_flight_details)) {
                 $this->saveFlightDetails($request->task_flight_details, $task->id);
             }
-
+           
             // Set enabled status: task must be complete AND have an agent assigned
             if($task->is_complete && $task->agent_id) {
                 $task->enabled = true;
@@ -387,7 +396,7 @@ class TaskController extends Controller
         $liabilities = Account::where('name', 'like', '%Liabilities%')
             ->where('company_id', $task->company_id)
             ->first();
-
+        
         $expenses = Account::where('name', 'like', '%Expenses%')
             ->where('company_id', $task->company_id)
             ->first();
@@ -407,7 +416,6 @@ class TaskController extends Controller
         }
 
         $supplier = Supplier::find($task->supplier_id);
-
         $supplierPayable = Account::where('name', $supplier->name)
             ->where('company_id', $task->company_id)
             ->where('root_id', $liabilities->id)
@@ -834,31 +842,31 @@ class TaskController extends Controller
     /**
      * Enable task and process financials when task is complete
      */
-    public function enableTask(Task $task)
-    {
-        if (!$task->is_complete) {
-            throw new Exception('Task is not complete. Missing required fields: ' . $this->getMissingFields($task));
-        }
+    // public function enableTask(Task $task)
+    // {
+    //     if (!$task->is_complete) {
+    //         throw new Exception('Task is not complete. Missing required fields: ' . $this->getMissingFields($task));
+    //     }
 
-        DB::beginTransaction();
+    //     DB::beginTransaction();
 
-        try {
-            $task->enabled = true;
-            $task->save();
+    //     try {
+    //         $task->enabled = true;
+    //         $task->save();
 
-            $this->processTaskFinancial($task);
+    //         $this->processTaskFinancial($task);
 
-            DB::commit();
+    //         DB::commit();
 
-            return [
-                'status' => 'success',
-                'message' => 'Task enabled and processed successfully.',
-            ];
-        } catch (Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
-    }
+    //         return [
+    //             'status' => 'success',
+    //             'message' => 'Task enabled and processed successfully.',
+    //         ];
+    //     } catch (Exception $e) {
+    //         DB::rollBack();
+    //         throw $e;
+    //     }
+    // }
 
     public function toggleStatus(Request $request, Task $task)
     {
@@ -869,6 +877,13 @@ class TaskController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Task is not complete. Missing required fields: ' . $this->getMissingFields($task)
+                ], 400);
+            }
+
+            if(!$task->agent_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Task must have an agent assigned to be enabled.'
                 ], 400);
             }
 

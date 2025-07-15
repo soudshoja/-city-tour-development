@@ -825,7 +825,7 @@ class ProcessAirFiles extends Command
                 $this->logger->info("Flight Details for Task ID {$taskData['original_task_id']}: ", $flightDetailsArray);
                 $taskData['task_flight_details'] = $flightDetailsArray;
 
-                $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail);
+                $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail, $companyId);
 
                 if (!$agent) {
                     $this->logger->warning("AIR File Processing: Agent not found for {$fileName} item {$index}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
@@ -885,9 +885,9 @@ class ProcessAirFiles extends Command
 
                 $companyId = $branch->company_id;
             } else {
-                $this->logger->info("Task is 'issued', checking agent using Amadeus ID, name, or email (item {$index})");
+                $this->logger->info("Task is " . $taskData['status'] . ". No original task processing needed for item {$index} in file {$fileName}.");
 
-                $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail);
+                $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail, $companyId);
 
                 if (!$agent) {
                     $this->logger->warning("AIR File Processing: Agent not found for {$fileName} item {$index}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
@@ -999,31 +999,63 @@ class ProcessAirFiles extends Command
     /**
      * Find agent by Amadeus ID, name, or email.
      */
-    protected function findAgent($amadeusId, $name, $email)
+   protected function findAgent($amadeusId, $name, $email, $companyId)
     {
         $agentQuery = Agent::query();
+        $branchesId = Branch::where('company_id', $companyId)->pluck('id');
 
-        if ($amadeusId) {
-            $agentQuery->orWhere('amadeus_id', 'like', $amadeusId);
-        }
-        if ($name) {
-            $words = array_filter(explode(' ', trim($name)));
-            if (count($words) > 1) {
-            $agentQuery->orWhere(function($query) use ($words) {
-                foreach ($words as $word) {
-                $query->where('name', 'like', '%' . $word . '%');
-                }
-            });
-            } else {
-            $agentQuery->orWhere('name', 'like', '%' . $name . '%');
+        // First apply company and branch constraints
+        $agentQuery->whereIn('branch_id', $branchesId)
+                   ->where('company_id', $companyId);
+
+        // Then add the OR conditions for agent identification within a grouped where clause
+        $agentQuery->where(function($query) use ($amadeusId, $name, $email) {
+            $hasConditions = false;
+            
+            if ($amadeusId) {
+                $query->where('amadeus_id', 'like', $amadeusId);
+                $hasConditions = true;
             }
-        }
-        if ($email) {
-            $agentQuery->orWhere('email', 'like', $email);
-        }
+            
+            if ($name) {
+                $words = array_filter(explode(' ', trim($name)));
+                if (count($words) > 1) {
+                    if ($hasConditions) {
+                        $query->orWhere(function($subQuery) use ($words) {
+                            foreach ($words as $word) {
+                                $subQuery->where('name', 'like', '%' . $word . '%');
+                            }
+                        });
+                    } else {
+                        $query->where(function($subQuery) use ($words) {
+                            foreach ($words as $word) {
+                                $subQuery->where('name', 'like', '%' . $word . '%');
+                            }
+                        });
+                        $hasConditions = true;
+                    }
+                } else {
+                    if ($hasConditions) {
+                        $query->orWhere('name', 'like', '%' . $name . '%');
+                    } else {
+                        $query->where('name', 'like', '%' . $name . '%');
+                        $hasConditions = true;
+                    }
+                }
+            }
+            
+            if ($email) {
+                if ($hasConditions) {
+                    $query->orWhere('email', 'like', $email);
+                } else {
+                    $query->where('email', 'like', $email);
+                }
+            }
+        });
 
         return $agentQuery->first();
     }
+
 
     /**
      * Handle file error: log, move file, and show error.
@@ -1043,30 +1075,12 @@ class ProcessAirFiles extends Command
 
     protected function saveTask($companyId, $data, $supplierId)
     {
-        // $existingTask = Task::where('reference', $data['reference'])
-        //     ->where('company_id', $companyId)
-        //     ->where('status', $data['status'])
-        //     ->first();
-
-        // if ($existingTask) {
-        //     $this->logger->info("Task with reference {$data['reference']} already exists. Skipping save.");
-
-        //     return [
-        //         'status' => 'error',
-        //         'message' => 'Task already exists',
-        //         'code' => 409,
-        //     ];
-        // }
 
         try {
             $data['company_id'] = $companyId;
             $data['supplier_id'] = $supplierId;
-    /**
-     * The name and signature of the console command.
-     */
 
             $taskController = new TaskController();
-
             $request = new Request($data);
             $response = $taskController->store($request);
 

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction;
 use App\Models\Role;
+use App\Models\Company;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 
@@ -797,5 +798,56 @@ class ReportController extends Controller
 
         // If account not found, you can handle it by showing an error or redirecting
         return abort(404);  // Or redirect with a message
+    }
+
+    public function settlementsReport(Request $request)
+    {
+        $user = Auth::user();
+
+        // Only allow ADMIN and COMPANY roles
+        if ($user->role_id != Role::ADMIN && $user->role_id != Role::COMPANY) {
+            abort(403, 'Unauthorized');
+        }
+
+        $query = Transaction::query()
+            ->where('description', 'like', '%Settles to Bank (After 24h) (Assets)%');
+
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->from);
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->to);
+        }
+
+        if ($request->filled('reference_type')) {
+            $query->where('reference_type', $request->reference_type);
+        }
+
+        if ($user->role_id == Role::COMPANY) {
+            $query->where('company_id', auth()->user()->company->id);
+        }
+
+        $transactions = $query->with(['account', 'company'])->orderBy('created_at', 'desc')->get();
+
+        return view('reports.settlements', compact('transactions'));
+    }
+
+    public function journalEntries($transactionId)
+    {
+        $entries = JournalEntry::where('transaction_id', $transactionId)
+            ->with('account')
+            ->get()
+            ->map(function ($entry) {
+                return [
+                    'id' => $entry->id,
+                    'account_name' => $entry->account->code . ' - ' . $entry->account->name,
+                    'debit' => $entry->debit,
+                    'credit' => $entry->credit,
+                    'description' => $entry->description,
+                ];
+            });
+
+        return response()->json(['entries' => $entries]);
     }
 }

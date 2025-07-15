@@ -249,6 +249,12 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Acc
                 Reconcile</a>
             </menuitem>
+            <menuitem>
+                <a href="{{ route('reports.settlements') }}"
+                class="block text-xs text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white shadow">
+                    Bank Settlement
+                </a>
+            </menuitem>
             <menuitem><a href="{{ route('coa.transaction') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Transaction
                 List</a>

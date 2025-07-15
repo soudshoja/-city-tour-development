@@ -9,14 +9,14 @@ class ChangeCompletedDefaultInPaymentsTable extends Migration
     public function up()
     {
         Schema::table('payments', function (Blueprint $table) {
-            $table->boolean('completed')->default(0)->change();
+            $table->boolean('completed')->nullable()->default(0)->change();
         });
     }
 
     public function down()
     {
         Schema::table('payments', function (Blueprint $table) {
-            $table->boolean('completed')->default(1)->change();
+            $table->boolean('completed')->nullable()->default(1)->change();
         });
     }
 }

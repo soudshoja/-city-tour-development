@@ -10,29 +10,51 @@
 @endforeach
 @endif
 
-@if(session('success'))
-<div class="alert flex items-center justify-between rounded bg-green-500 p-3.5 text-white " role="alert">
-    {{ session('success') }}
-    <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
-</div>
-@endif
+<div class="alert grid gap-2">
+    @if(session('success'))
+    <div class="flex items-center justify-between rounded bg-green-500 p-3.5 text-white " role="alert">
+        {{ session('success') }}
+        <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
+    </div>
+    @endif
 
-@if(session('error'))
-<div class="alert flex items-center justify-between rounded bg-red-500 p-3.5 text-white dark:bg-danger-dark-light" role="alert">
-    {{ session('error') }}
-    <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
+    @if(session('error'))
+    <div class="flex items-center justify-between rounded bg-red-500 p-3.5 text-white dark:bg-danger-dark-light" role="alert">
+        <div class="grid">
+            <p>
+                {{ session('error') }}
+            </p>
+            @if(session('data'))
+            @foreach(session('data') as $data)
+            @if(is_array($data))
+            <div class="my-2">
+                @foreach($data as $key => $value)
+                <p class="text-sm text-white">
+                    {{ $value }}
+                </p>
+                @endforeach
+            </div>
+            @else
+            <p class="text-sm text-white">
+                {{ $data }}
+            </p>
+            @endif
+            @endforeach
+            @endif
+        </div>
+        <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
+    </div>
+    @endif
 </div>
-@endif
-
 <!-- for ajax alert -->
-<div 
+<div
     id="custom-success-alert"
     class="alert flex items-center justify-between rounded bg-green-500 p-3.5 text-white hidden" role="alert">
     <p></p>
     <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
 </div>
 
-<div 
+<div
     id="custom-error-alert"
     class="alert flex items-center justify-between rounded bg-red-500 p-3.5 text-white hidden" role="alert">
     <p></p>

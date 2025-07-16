@@ -25,6 +25,7 @@
             $defaultTo = \Carbon\Carbon::now()->endOfMonth()->format('Y-m-d');
             $reportFrom = request('from', $defaultFrom);
             $reportTo = request('to', $defaultTo);
+            $selectedGateway = request('payment_gateway');
         @endphp
 
         <!-- Filter Form -->
@@ -50,6 +51,20 @@
                         <option value="">All</option>
                         <option value="invoice" {{ request('reference_type') == 'invoice' ? 'selected' : '' }}>Invoice</option>
                         <option value="payment" {{ request('reference_type') == 'payment' ? 'selected' : '' }}>Payment</option>
+                    </select>
+                </div>
+
+                <!-- New Filter: Payment Gateway -->
+                <div class="flex flex-col w-48">
+                    <label for="payment_gateway" class="text-sm font-medium">Payment Gateway:</label>
+                    <select name="payment_gateway" id="payment_gateway"
+                            class="border border-gray-300 rounded px-2 py-1 h-10 w-full">
+                        <option value="">All</option>
+                        @foreach($gateways as $gateway)
+                            <option value="{{ $gateway }}" {{ $selectedGateway === $gateway ? 'selected' : '' }}>
+                                {{ $gateway }}
+                            </option>
+                        @endforeach
                     </select>
                 </div>
 
@@ -84,6 +99,7 @@
                                 <th class="py-2 px-4">Reference Type</th>
                                 <th class="py-2 px-4">Company</th>
                                 <th class="py-2 px-4">Description</th>
+                                <th class="py-2 px-4">Payment Gateway</th>
                                 <th class="py-2 px-4 text-right">Amount (KWD)</th>
                                 <th class="py-2 px-4 text-center">Detail</th>
                             </tr>
@@ -99,6 +115,7 @@
                                     <td class="py-2 px-4 capitalize">{{ $tx->reference_type ?? '-' }}</td>
                                     <td class="py-2 px-4">{{ $tx->company->name ?? '-' }}</td>
                                     <td class="py-2 px-4">{{ $tx->description }}</td>
+                                    <td class="py-2 px-4">{{ $tx->payment->payment_gateway ?? '-' }}</td>
                                     <td class="py-2 px-4 text-right">{{ number_format($tx->amount, 2) }}</td>
                                     <td class="py-2 px-4 text-center">
                                         <a href="#"

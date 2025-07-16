@@ -10,6 +10,7 @@ class FileUpload extends Model
         'file_name',
         'destination_path',
         'user_id',
+        'company_id',
         'supplier_id',
         'status',
     ];
@@ -37,5 +38,10 @@ class FileUpload extends Model
     public function getFileUrlAttribute()
     {
         return asset('storage/' . $this->destination_path . '/' . $this->file_name);
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
     }
 }

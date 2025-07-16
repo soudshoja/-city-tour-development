@@ -815,7 +815,7 @@ class ReportController extends Controller
         $to = $request->input('to') ?? Carbon::now()->endOfMonth()->toDateString();
 
         $query = Transaction::query()
-            ->where('description', 'like', '%Settles to Bank (After 24h) (Assets)%')
+            ->where('description', 'like', '%Settles to Bank (After 24h)%')
             ->whereHas('payment', function ($q) use ($from, $to) {
                 $q->whereBetween('payment_date', [$from, $to]);
             })

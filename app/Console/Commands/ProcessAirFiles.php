@@ -821,7 +821,19 @@ class ProcessAirFiles extends Command
                     ];
                 }
 
-                $flightDetailsArray = $flightDetails->toArray();
+                $flightDetailsArray = $flightDetails->map(function ($flightDetail) {
+                    $attributes = $flightDetail->getAttributes();
+                    
+                    // Ensure datetime fields keep their full format
+                    foreach (['departure_time', 'arrival_time', 'created_at', 'updated_at'] as $dateField) {
+                        if (isset($attributes[$dateField]) && $flightDetail->$dateField) {
+                            $attributes[$dateField] = $flightDetail->$dateField->format('Y-m-d H:i:s');
+                        }
+                    }
+                    
+                    return $attributes;
+                })->toArray();
+
                 $this->logger->info("Flight Details for Task ID {$taskData['original_task_id']}: ", $flightDetailsArray);
                 $taskData['task_flight_details'] = $flightDetailsArray;
 

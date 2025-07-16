@@ -109,14 +109,14 @@ class Task extends Model
         return $this->created_at->format('d-m-Y h:i A');
     }
 
-    public function flightDetails()
-    {
-        return $this->hasMany(TaskFlightDetail::class, 'task_id');
-    }
-
-    public function flightDetail()
+    public function flightDetails() // temporary fix
     {
         return $this->hasOne(TaskFlightDetail::class, 'task_id');
+    }
+
+    public function flightDetail() // temporary fix
+    {
+        return $this->hasMany(TaskFlightDetail::class, 'task_id');
     }
 
     public function hotelDetails()

@@ -16,7 +16,7 @@ class AppLayout extends Component
         $color = null;
 
         if($user->hasRole('admin')){
-            $color = 'bg-yellow-500';
+            $color = 'bg-koromiko-300';
         } elseif($user->hasRole('company')) {
             $color = 'bg-blue-500';
         } elseif($user->hasRole('branch')) {

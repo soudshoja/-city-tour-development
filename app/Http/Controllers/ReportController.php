@@ -821,26 +821,40 @@ class ReportController extends Controller
             })
             ->with(['company', 'account', 'payment']);
 
-        // Filter by reference type if provided
+        // Filter by reference type
         if ($request->filled('reference_type')) {
             $query->where('reference_type', $request->reference_type);
         }
 
-        // If COMPANY user, restrict to their company
+        // Filter by payment gateway
+        if ($request->filled('payment_gateway')) {
+            $query->whereHas('payment', function ($q) use ($request) {
+                $q->where('payment_gateway', $request->payment_gateway);
+            });
+        }
+
+        // Company-level access restriction
         if ($user->role_id === Role::COMPANY) {
             $query->where('company_id', $user->company->id);
         }
 
-        // Order by payment_date DESC (use subquery to sort)
+        // Order by payment_date DESC
         $query->orderByDesc(
             Payment::select('payment_date')
                 ->whereColumn('payments.id', 'transactions.payment_id')
                 ->limit(1)
         );
 
+        // Paginate results
         $transactions = $query->paginate(25)->appends($request->query());
 
-        return view('reports.settlements', compact('transactions'));
+        // Get list of available payment gateways for filter dropdown
+        $gateways = Payment::whereNotNull('payment_gateway')
+            ->distinct()
+            ->orderBy('payment_gateway')
+            ->pluck('payment_gateway');
+
+        return view('reports.settlements', compact('transactions', 'gateways'));
     }
 
     public function journalEntries($transactionId)

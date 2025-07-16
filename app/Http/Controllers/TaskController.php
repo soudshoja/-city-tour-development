@@ -267,7 +267,10 @@ class TaskController extends Controller
         }
 
         if ($request->file_name) {
-            $fileUpload = FileUpload::where('file_name', $request->file_name)->first();
+            $fileUpload = FileUpload::where([
+                'file_name' => $request->file_name,
+                'company_id' => $request->company_id,
+            ])->first();
 
             if ($fileUpload && $fileUpload->user_id) {
                 Log::info("FileUpload found for {$request->file_name}", [
@@ -1135,6 +1138,11 @@ class TaskController extends Controller
             return redirect()->back()->with('error', 'User not authorized to upload tasks.');
         }
 
+        if(!$company) {
+            Log::error("Company not found for user ID: {$user->id}");
+            return redirect()->back()->with('error', 'Something went wrong.');
+        }
+
         $request->validate([
             'task_file' => 'required|array',
             'task_file.*' => 'mimes:pdf,txt',
@@ -1156,23 +1164,110 @@ class TaskController extends Controller
             Log::info("Created source directory: {$filePath}, please ensure files are pushed here.");
         }
 
+        $error = false;
+        $errorFilesWithMessage = [];
+
+        $success = false;
+        $successFiles = [];
+
         foreach ($files as $file) {
-            $file->move($filePath, $file->getClientOriginalName());
+            $errorFile = [];
+            $fileName = $file->getClientOriginalName();
+
+            $existingFileUpload = FileUpload::where([
+                'file_name' => $fileName,
+                'supplier_id' => $supplier->id,
+                'company_id' => $company->id,
+            ]);
+
+            if($existingFileUpload->exists()) {
+                Log::info("File {$fileName} already exists for supplier {$supplier->name}, in company {$company->name}. Skipping upload.");
+
+                $userUpload = $existingFileUpload->first()->user;
+
+                if ($userUpload->id !== $user->id) {
+                
+                    if($userUpload->company !== null){
+                        $message = "File has been uploaded by your admin. Please contact them to resolve this issue.";
+                    } else {
+                        $message = "File has been uploaded by another user : {$userUpload->name}. Please contact them to resolve this issue.";
+                    }
+
+                    Log::info("File {$fileName} already uploaded by another user: {$userUpload->name}.");
+
+                    $errorFile['file_name'] = $fileName;
+                    $errorFile['message'] = $message;
+
+                    $errorFilesWithMessage[] = $errorFile;
+
+                } else {
+                    Log::info("File {$fileName} already uploaded by the same user: {$user->name}.");
+
+                    $errorFile['file_name'] = $fileName;
+                    $errorFile['message'] = "File has already been uploaded by you";
+
+                    $errorFilesWithMessage[] = $errorFile;
+                }
+                $error = true;
+                continue;
+            }
+
+            $file->move($filePath, $fileName);
+
             Log::info("Uploading file: " . $file->getClientOriginalName() . " to: " . $filePath);
 
-            FileUpload::create([
-                'file_name' => $file->getClientOriginalName(),
-                'destination_path' => $filePath . '/' . $file->getClientOriginalName(),
-                'user_id' => $user->id,
-                'supplier_id' => $supplier->id,
-                'status' => 'pending',
-            ]);
+            try{
+                FileUpload::create([
+                    'file_name' => $file->getClientOriginalName(),
+                    'destination_path' => $filePath . '/' . $file->getClientOriginalName(),
+                    'user_id' => $user->id,
+                    'supplier_id' => $supplier->id,
+                    'company_id' => $company->id,
+                    'status' => 'pending',
+                ]);
+            } catch (Exception $e) {
+                Log::error("Failed to create file upload record for {$fileName}: " . $e->getMessage());
+                $errorFilesWithMessage['file_name'] = $fileName;
+                $errorFilesWithMessage['message'] = "Something went wrong"; 
+                $error = true;
+                continue;
+            }
+
+            $successFiles[] = $file->getClientOriginalName();
+            $success = true;
         }
 
-        return [
-            'status' => 'success',
-            'message' => 'Files uploaded successfully and are now in queue for processing',
-        ];
+        $response = [];
+        if ($error) {
+            Log::error("Some files failed to upload: ");
+
+            $data = [];
+            
+            foreach ($errorFilesWithMessage as $fileError) {
+                $data[] = [
+                    'file_name' => $fileError['file_name'],
+                    'message' => $fileError['message'],
+                ];
+            }
+
+            $response[] = [
+                'status' => 'error',
+                'message' => 'Some files failed to upload.',
+                'data' => $data,
+            ];
+        }
+
+        if($success){
+            Log::info("Files uploaded successfully: " . implode(', ', $successFiles));
+
+            $response[] = [
+                'status' => 'success',
+                'message' => 'Files uploaded successfully: ' . implode(', ', $successFiles),
+                'data' => $successFiles,
+            ];
+        }
+
+        return $response;
     }
 
     public function exportCsv()
@@ -1811,10 +1906,21 @@ class TaskController extends Controller
                 return redirect()->back()->with('success', 'Magic Holiday task received successfully');
 
             default:
-                $response = $this->upload($request);
+                $responses = $this->upload($request);
                 // Artisan::call('app:process-files', [], null, true);
+                $redirectResponse = redirect()->back();
 
-                return redirect()->back()->with($response['status'], $response['message']);
+                foreach($responses as $response) {
+                    if ($response['status'] == 'success') {
+                        $redirectResponse = $redirectResponse->with('success', $response['message']); 
+                    }
+
+                    if($response['status'] == 'error') {
+                        $redirectResponse = $redirectResponse->with('error', $response['message'])->with('data', $response['data']);
+                    }
+                }
+
+                return $redirectResponse;
         }
     }
 

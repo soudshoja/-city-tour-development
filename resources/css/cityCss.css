@@ -530,10 +530,13 @@ div:has(> :is(.dark .coa-partials)){
     position: absolute;
     top: 2rem;
     right: 6.4rem;
+    z-index: 50;
+}
+
+.alert > * {
     padding: 10px; /* Adjust padding as needed */
     border-radius: 5px; /* Optional: for rounded corners */
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Optional: for a subtle shadow */
-    z-index: 50;
 }
 
 .text-success {

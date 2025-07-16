@@ -119,77 +119,79 @@
 
 
             <!-- Profile Picture with Dropdown -->
-            <div class="relative w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
-                @if(Auth::check())
-                <!-- Authenticated User -->
-                <div x-data="{ open: false }" class="relative">
-                    <!-- Profile Image -->
-                    <div @click="open = !open" class="w-full h-full object-cover cursor-pointer">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
-                            <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
-                        </svg>
-                    </div>
+            <div class="p-0.5 h-12 w-12 rounded-full {{$color}}">
+                <div class="relative w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
+                    @if(Auth::check())
+                    <!-- Authenticated User -->
+                    <div x-data="{ open: false }" class="relative">
+                        <!-- Profile Image -->
+                        <div @click="open = !open" class="w-full h-full object-cover cursor-pointer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
+                                <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
+                            </svg>
+                        </div>
 
-                    <!-- Dropdown Menu -->
-                    <div x-cloak x-show="open" @click.away="open = false" class="absolute top-14 right-0 w-64 mt-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10">
-                        <!-- User Information & Profile -->
-                        <a href="{{ route('profile.edit') }}">
-                            <div class="flex items-center p-2 border-b border-gray-200 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-700 hover:rounded-t">
-                                <div class="w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
-                                    <svg class="w-6 h-6 rounded-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                        <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
-                                        <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
-                                    </svg>
-                                </div>
+                        <!-- Dropdown Menu -->
+                        <div x-cloak x-show="open" @click.away="open = false" class="absolute top-14 right-0 w-64 mt-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10">
+                            <!-- User Information & Profile -->
+                            <a href="{{ route('profile.edit') }}">
+                                <div class="flex items-center p-2 border-b border-gray-200 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-700 hover:rounded-t">
+                                    <div class="w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
+                                        <svg class="w-6 h-6 rounded-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                            <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
+                                            <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
+                                        </svg>
+                                    </div>
 
-                                <div class="ml-3">
-                                    <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ Auth::user()->name }}
-                                        <span class="ml-1 text-green-500 text-xs bg-green-200 dark:bg-green-700 py-0.5 px-1 rounded">Pro</span>
-                                    </h4>
-                                    <p class="text-xs text-gray-500 dark:text-gray-300 mt-1">See Your Profile here</p>
+                                    <div class="ml-3">
+                                        <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ Auth::user()->name }}
+                                            <span class="ml-1 text-green-500 text-xs bg-green-200 dark:bg-green-700 py-0.5 px-1 rounded">Pro</span>
+                                        </h4>
+                                        <p class="text-xs text-gray-500 dark:text-gray-300 mt-1">See Your Profile here</p>
+                                    </div>
                                 </div>
+                            </a>
+
+                            <!-- Dropdown Links -->
+                            <div>
+
+                                <!-- Logout -->
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <a href="{{ route('logout') }}" class="flex items-center justify-center p-2 text-sm text-red-600 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:rounded-b"
+                                        onclick="event.preventDefault(); this.closest('form').submit();">
+                                        <svg class="w-5 h-5 text-red-500 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.023 5.5a9 9 0 1 0 9.953 0M12 2v8" color="currentColor" />
+                                        </svg>
+                                        Sign Out
+                                    </a>
+                                </form>
                             </div>
-                        </a>
+                        </div>
 
-                        <!-- Dropdown Links -->
-                        <div>
+                    </div>
+                    @else
+                    <!-- Guest User -->
+                    <div x-data="{ open: false }" class="relative">
+                        <!-- Profile Image -->
+                        <div @click="open = !open" class="w-full h-full object-cover cursor-pointer h-[30px] w-[30px]">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
+                                <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
+                            </svg>
+                        </div>
 
-                            <!-- Logout -->
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <a href="{{ route('logout') }}" class="flex items-center justify-center p-2 text-sm text-red-600 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:rounded-b"
-                                    onclick="event.preventDefault(); this.closest('form').submit();">
-                                    <svg class="w-5 h-5 text-red-500 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                        <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7.023 5.5a9 9 0 1 0 9.953 0M12 2v8" color="currentColor" />
-                                    </svg>
-                                    Sign Out
-                                </a>
-                            </form>
+
+                        <!-- Dropdown Menu -->
+                        <div x-show="open" @click.away="open = false" class="absolute top-14 right-0 w-48 mt-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-10">
+                            <x-dropdown-link :href="route('login')">
+                                {{ __('Login') }}
+                            </x-dropdown-link>
                         </div>
                     </div>
-
+                    @endif
                 </div>
-                @else
-                <!-- Guest User -->
-                <div x-data="{ open: false }" class="relative">
-                    <!-- Profile Image -->
-                    <div @click="open = !open" class="w-full h-full object-cover cursor-pointer h-[30px] w-[30px]">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
-                            <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
-                        </svg>
-                    </div>
-
-
-                    <!-- Dropdown Menu -->
-                    <div x-show="open" @click.away="open = false" class="absolute top-14 right-0 w-48 mt-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md shadow-lg z-10">
-                        <x-dropdown-link :href="route('login')">
-                            {{ __('Login') }}
-                        </x-dropdown-link>
-                    </div>
-                </div>
-                @endif
             </div>
         </div>
     </div>

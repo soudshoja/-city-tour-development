@@ -52,7 +52,7 @@
                         {{ $entry->credit }}
                     </td>
                     <td class="text-center border-b border-gray-200 px-4 py-3 text-base">
-                        {{ $entry->running_balance }}
+                        {{ number_format($entry->running_balance, 2, '.', '') }}
                     </td>
                 </tr>
                 @endforeach

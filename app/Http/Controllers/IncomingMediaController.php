@@ -137,6 +137,36 @@ class IncomingMediaController extends Controller
 
         $autoReplyText = null;
 
+        // Trim phone number
+        $phone = trim($phone);
+        $normalizedPhone = preg_replace('/\s+/', '', $phone);
+
+        // Get all dialing codes from the DB
+        $dialingCodes = DB::table('countries')->pluck('dialing_code');
+
+        // Sort by length DESC to match longest dialing code first (e.g., +441 before +44)
+        $dialingCodes = $dialingCodes->sortByDesc(fn($code) => strlen($code));
+
+        // Find the matching dialing code
+        $matchedCode = null;
+        foreach ($dialingCodes as $code) {
+            if (strpos($normalizedPhone, $code) === 0) {
+                $matchedCode = $code;
+                break;
+            }
+        }
+
+        // Remove the country code if found
+        if ($matchedCode) {
+            $localNumber = substr($normalizedPhone, strlen($matchedCode));
+        } else {
+            $localNumber = $normalizedPhone;
+        }
+
+        // Clean up local number: remove all non-digit characters
+        $localNumber = preg_replace('/\D+/', '', $localNumber);
+
+
         if ($localPath && Storage::exists("public/{$localPath}")) {
             try {
                 $fullPath = storage_path("app/public/{$localPath}");
@@ -159,7 +189,8 @@ class IncomingMediaController extends Controller
                                 'name' => $data['name'],
                                 'email' => $agentEmail,
                                 'status' => 'active',
-                                'phone' => $phone ?? $agentPhone,
+                                'phone' => $localNumber ?? $agentPhone,
+                                'country_code' => $matchedCode ?? '+965',
                                 'date_of_birth' => $data['date_of_birth'] ?? null,
                                 'address' => $data['place_of_birth'] ?? null,
                                 'civil_no' => $data['civil_no'] ?? null,
@@ -172,7 +203,8 @@ class IncomingMediaController extends Controller
                         } else {
                             if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
                                 $client->update([
-                                    'phone' => $phone ?? $agentPhone,
+                                    'phone' => $localNumber ?? $agentPhone,
+                                    'country_code' => $matchedCode ?? '+965',
                                     'date_of_birth' => $data['date_of_birth'] ?? null,
                                     'address' => $data['place_of_birth'] ?? null,
                                     'passport_no' => $data['passport_no'],

@@ -145,7 +145,7 @@ class ClientController extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'status' => 'active',
-                'phone' => $request->phone,
+                'phone' => preg_replace('/\s+/', '', $request->phone),
                 'country_code' => $request->dial_code,
                 'date_of_birth' => $request->date_of_birth,
                 'address' => $request->address,

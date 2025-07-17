@@ -1056,7 +1056,7 @@ class InvoiceController extends Controller
                 'name' => $request->get('name'),
                 'email' => $request->get('email'),
                 'status' => $request->get('status'),
-                'phone' => $request->get('phone'),
+                'phone' => preg_replace('/\s+/', '', $request->get('phone')),
                 'address' => $request->get('address'),
                 'passport_no' => $request->get('passport_no'),
                 'old_passport_no' => $request->get('passport_no'),

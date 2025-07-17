@@ -816,10 +816,10 @@
                                                                             <label for="original_task_id" class="block text-sm font-medium text-gray-700">Original Task</label>
                                                                             <x-searchable-dropdown
                                                                                 name="original_task_id"
-                                                                                :items="$originalTasks->map(fn($t) => [
+                                                                                :items="($originalTasks ?? collect())->map(fn($t) => [
                                                                                     'id' => $t->id,
                                                                                     'name' => $t->reference . ' - ' . ($t->client->name ?? $t->client_name)
-                                                                                ])"
+                                                                                ])->values()"
                                                                                 :selectedId="$task->original_task_id"
                                                                                 :selectedName="$selectedOriginalTask ? $selectedOriginalTask->reference . ' - ' .  ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name) : null"
                                                                                 :placeholder="$taskPlaceholder"

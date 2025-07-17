@@ -213,26 +213,44 @@
             <form action="{{ route('payment.link.store') }}" method="POST" class="space-y-6">
                 @csrf
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    @php
+                    $selectedClient = null;
+                    $clientPlaceholder = $selectedClient ? $selectedClient->name : 'Select a Client';
+                    $selectedId   = old('client_id', $selectedClient->id ?? null);
+                    $selectedName = old('client_name', $selectedClient->name ?? null);
+                    @endphp
                     <div>
                         <label for="client_id" class="block text-sm font-medium text-gray-700">Client</label>
-                        <select name="client_id" id="client_id"
-                            class="form-select mt-1 block w-full border-gray-300 rounded-md">
-                            <option value="">Select a Client</option>
-                            @foreach ($clients as $client)
-                                <option value="{{ $client->id }}">{{ $client->name }}</option>
-                            @endforeach
-                        </select>
+                        <x-searchable-dropdown
+                            name="client_id"
+                            id="client_id"
+                            :items="$clients->map(fn($c) => ['id' => $c->id,
+                                'name' => $c->name . ($c->phone && $c->country_code ? ' - ' . $c->country_code . $c->phone : ($c->phone ? ' - ' . $c->phone : ($c->country_code ? ' - ' . $c->country_code : '')))
+                            ])"
+                            :selectedId="$selectedId"
+                            :selectedName="$selectedName"
+                            placeholder="{{ $clientPlaceholder }}"
+                            class="mt-1 block w-full"
+                        />
                     </div>
 
+                    @php
+                    $selectedAgent = null;
+                    $agentPlaceholder = $selectedAgent ? $selectedAgent->name : 'Select a Agent';
+                    $selectedId   = old('agent_id', $selectedAgent->id ?? null);
+                    $selectedName = old('agent_name', $selectedAgent->name ?? null);
+                    @endphp
                     <div>
                         <label for="agent_id" class="block text-sm font-medium text-gray-700">Agent</label>
-                        <select name="agent_id" id="agent_id"
-                            class="form-select mt-1 block w-full border-gray-300 rounded-md">
-                            <option value="">Select an Agent</option>
-                            @foreach ($agents as $agent)
-                                <option value="{{ $agent->id }}">{{ $agent->name }}</option>
-                            @endforeach
-                        </select>
+                        <x-searchable-dropdown
+                            name="agent_id"
+                            id="agent_id"
+                            :items="$agents->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
+                            :selectedId="$selectedId"
+                            :selectedName="$selectedName"
+                            placeholder="{{ $agentPlaceholder }}"
+                            class="mt-1 block w-full"
+                        />
                     </div>
                 </div>
 

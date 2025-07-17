@@ -748,31 +748,6 @@
                                                                                 name="reference"
                                                                                 value="{{ $task->reference }}">
                                                                         </div>
-
-                                                                        @if (strtolower($task->status) !== 'issued' && strtolower($task->status) !== 'confirmed'|| $task->status == null)
-                                                                        <!-- Original Task Selection for Reissued Tasks -->
-                                                                        <div class="flex-1">
-                                                                            <label for="original_task_id"
-                                                                                class="block text-sm font-medium text-gray-700">Original
-                                                                                Task</label>
-                                                                            <select name="original_task_id"
-                                                                                id="original_task_id_{{ $task->id }}"
-                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base">
-                                                                                <option value="">Select
-                                                                                    Original Task</option>
-                                                                                @foreach ($tasks->where('status', 'issued') as $originalTask)
-                                                                                <option
-                                                                                    value="{{ $originalTask->id }}"
-                                                                                    {{ $task->original_task_id == $originalTask->id ? 'selected' : '' }}>
-                                                                                    {{ $originalTask->reference }}
-                                                                                    -
-                                                                                    {{ $originalTask->client->name ?? $originalTask->client_name }}
-                                                                                </option>
-                                                                                @endforeach
-                                                                            </select>
-                                                                        </div>
-                                                                        @endif
-
                                                                         <!-- Status Field -->
                                                                         <div class="flex-1">
                                                                             <label for="status"
@@ -826,6 +801,32 @@
 
                                                                         </div>
                                                                     </div>
+
+                                                                    @if (strtolower($task->status) !== 'issued' && strtolower($task->status) !== 'confirmed'|| $task->status == null)
+                                                                    <div class="flex flex-col sm:flex-row gap-4">
+                                                                        <!-- Original Task Selection for Reissued Tasks -->
+                                                                        <div class="flex-1">
+                                                                        @php
+                                                                            $originalTasks = $tasks->where('status', 'issued');
+                                                                            $selectedOriginalTask = $originalTasks->firstWhere('id', $task->original_task_id);
+                                                                            $taskPlaceholder = $selectedOriginalTask
+                                                                                ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name)
+                                                                                : 'Select Original Task';
+                                                                        @endphp
+                                                                            <label for="original_task_id" class="block text-sm font-medium text-gray-700">Original Task</label>
+                                                                            <x-searchable-dropdown
+                                                                                name="original_task_id"
+                                                                                :items="$originalTasks->map(fn($t) => [
+                                                                                    'id' => $t->id,
+                                                                                    'name' => $t->reference . ' - ' . ($t->client->name ?? $t->client_name)
+                                                                                ])"
+                                                                                :selectedId="$task->original_task_id"
+                                                                                :selectedName="$selectedOriginalTask ? $selectedOriginalTask->reference . ' - ' .  ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name) : null"
+                                                                                :placeholder="$taskPlaceholder"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                    @endif
 
                                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                                         <!-- Supplier Name -->

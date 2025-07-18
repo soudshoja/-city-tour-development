@@ -595,6 +595,9 @@
                                                 Client Name</th>
                                             <th
                                                 class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Client Contact</th>
+                                            <th
+                                                class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
                                                 Passenger Name</th>
                                             <th
                                                 class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
@@ -1015,6 +1018,9 @@
                                                 </div>
                                                 @endif
                                             </td>
+                                            <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
+                                                {{ optional($task->client)->phone ?? 'Not Set' }}
+                                             </td>
                                             <td
                                                 class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 {{ $task->passenger_name ?? 'Not Set' }}
@@ -1043,15 +1049,15 @@
                                                 {{ $task->agent->name ?? 'Not Set' }}
                                             </td>
                                             @endif
-                                            @if (Auth()->user()->role_id == \App\Models\Role::ADMIN)
+                                            @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                             <td
                                                 class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->formatted_data ?? 'Not Set' }}
+                                                {{ $task->formatted_date_time  ?? 'Not Set' }}
                                             </td>
                                             @else
                                             <td
                                                 class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
-                                                {{ $task->formatted_data ?? 'Not Set' }}
+                                                {{ $task->formatted_date ?? 'Not Set' }}
                                             </td>
                                             @endif
                                             <td
@@ -1316,7 +1322,7 @@
                                         Load More
                                     </button>
                                 </div>
-                                <p id="noTasksFound"
+                                <!-- <p id="noTasksFound"
                                     class="flex flex-col items-center justify-center py-6 text-center text-gray-500 text-sm gap-2 hidden">
                                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor"
                                         stroke-width="1.5" viewBox="0 0 24 24">
@@ -1324,7 +1330,7 @@
                                             d="M9.75 9.75a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5zm3 0a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5zM12 21a9 9 0 100-18 9 9 0 000 18z" />
                                     </svg>
                                     <span>No tasks found matching your search</span>
-                                </p>
+                                </p> -->
                                 <!-- Pagination Links -->
                                 <div class="dataTable-bottom justify-center">
                                     @if ($tasks->hasPages())

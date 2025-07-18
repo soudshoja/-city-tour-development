@@ -351,7 +351,9 @@
                 <button onclick="loadJournalEntries()"
                     class="bg-blue-600 text-white px-4 py-2 rounded w-full sm:w-auto">Search</button>
             </div>
-
+            <div id="totalOutstandingBalance" class="text-right text-sm font-medium text-blue-700 mt-2 hidden">
+                Total Outstanding Balance: KWD <span id="outstandingAmount">0.00</span>
+            </div>
             <div id="recordsContainer" class="text-sm overflow-x-auto">
                 <p class="text-gray-500">Select a date range and click Search to load entries.</p>
             </div>
@@ -867,7 +869,10 @@
             } else {
                 selectedJournalIds = selectedJournalIds.filter(item => item !== record.id);
             }
+
+            updateOutstandingTotal();
         }
+
 
         let supplier = "";
 
@@ -923,6 +928,8 @@
             checkboxes.forEach(cb => {
                 cb.checked = masterCheckbox.checked;
             });
+
+            updateOutstandingTotal();
         }
 
         function closeModal() {
@@ -1042,6 +1049,29 @@
                 select.appendChild(option);
             }
         }
+
+        function updateOutstandingTotal() {
+            const selectedCheckboxes = document.querySelectorAll('.payment-checkbox:checked');
+            let totalOutstanding = 0;
+
+            selectedCheckboxes.forEach(cb => {
+                const debit = parseFloat(cb.dataset.debit || 0);
+                const credit = parseFloat(cb.dataset.credit || 0);
+                totalOutstanding += Math.abs(credit - debit);
+            });
+
+            const container = document.getElementById('totalOutstandingBalance');
+            const amountEl = document.getElementById('outstandingAmount');
+
+            if (selectedCheckboxes.length > 0) {
+                container.classList.remove('hidden');
+                amountEl.textContent = totalOutstanding.toFixed(2);
+            } else {
+                container.classList.add('hidden');
+                amountEl.textContent = '0.00';
+            }
+        }
+
     </script>
 
 </x-app-layout>

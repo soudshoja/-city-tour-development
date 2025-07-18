@@ -1215,6 +1215,10 @@ class InvoiceController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
+        $companyLogoPath = public_path('images/CityLogo.png');
+        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
+        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
+
         return view('invoice.show', compact(
             'invoice',
             'invoiceDetails',
@@ -1225,7 +1229,8 @@ class InvoiceController extends Controller
             'company',
             'checkUtilizeCredit',
             'checkUtilizeCreditPartial',
-            'totalGatewayFee'
+            'totalGatewayFee',
+            'companyLogoSrc'
         ));
     }
 

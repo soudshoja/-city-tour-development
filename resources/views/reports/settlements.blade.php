@@ -108,14 +108,14 @@
                             @foreach($transactions as $tx)
                                 <tr class="border-t hover:bg-gray-50">
                                     <td class="py-2 px-4">
-                                        {{ optional($tx->payment)->payment_date
-                                            ? \Carbon\Carbon::parse($tx->payment->payment_date)->format('Y-m-d')
-                                            : '-' }}
+                                        {{ \Carbon\Carbon::parse($tx->created_at)->format('Y-m-d H:i') }}
                                     </td>
                                     <td class="py-2 px-4 capitalize">{{ $tx->reference_type ?? '-' }}</td>
                                     <td class="py-2 px-4">{{ $tx->company->name ?? '-' }}</td>
                                     <td class="py-2 px-4">{{ $tx->description }}</td>
-                                    <td class="py-2 px-4">{{ $tx->payment->payment_gateway ?? '-' }}</td>
+                                    <td class="py-2 px-4">
+                                        {{ explode(' ', $tx->description)[0] ?? '-' }}
+                                    </td>
                                     <td class="py-2 px-4 text-right">{{ number_format($tx->amount, 2) }}</td>
                                     <td class="py-2 px-4 text-center">
                                         <a href="#"
@@ -141,12 +141,11 @@
             x-show="open"
             x-cloak
         >
-        <div
-            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            @click="open = false"
-        ></div>
+            <div
+                class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                @click="open = false"
+            ></div>
 
-            <!-- Modal -->
             <div class="relative bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 z-10">
                 <button @click="open = false"
                         class="absolute top-2 right-3 text-gray-500 hover:text-gray-800 text-xl font-bold">
@@ -155,12 +154,10 @@
 
                 <h2 class="text-xl font-semibold mb-4">Journal Entries</h2>
 
-                <!-- No entries -->
                 <template x-if="entries.length === 0">
                     <p class="text-gray-600">No journal entries found.</p>
                 </template>
 
-                <!-- Table of entries -->
                 <template x-if="entries.length > 0">
                     <table class="min-w-full border text-sm mb-4">
                         <thead>

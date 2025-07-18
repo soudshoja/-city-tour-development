@@ -108,7 +108,7 @@
                             @foreach($transactions as $tx)
                                 <tr class="border-t hover:bg-gray-50">
                                     <td class="py-2 px-4">
-                                        {{ \Carbon\Carbon::parse($tx->created_at)->format('Y-m-d H:i') }}
+                                        {{ \Carbon\Carbon::parse($tx->created_at)->format('Y-m-d') }}
                                     </td>
                                     <td class="py-2 px-4 capitalize">{{ $tx->reference_type ?? '-' }}</td>
                                     <td class="py-2 px-4">{{ $tx->company->name ?? '-' }}</td>

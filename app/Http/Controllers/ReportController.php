@@ -805,54 +805,50 @@ class ReportController extends Controller
     {
         $user = Auth::user();
 
-        // Only allow ADMIN and COMPANY roles
+        // Allow only ADMIN and COMPANY roles
         if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
             abort(403, 'Unauthorized');
         }
 
-        // Defaults: current month
+        // Date range defaults to current month
         $from = $request->input('from') ?? Carbon::now()->startOfMonth()->toDateString();
         $to = $request->input('to') ?? Carbon::now()->endOfMonth()->toDateString();
 
+        // Base query: only settlement-related transactions
         $query = Transaction::query()
             ->where('description', 'like', '%Settles to Bank (After 24h)%')
-            ->whereHas('payment', function ($q) use ($from, $to) {
-                $q->whereBetween('payment_date', [$from, $to]);
-            })
-            ->with(['company', 'account', 'payment']);
+            ->whereBetween('transactions.created_at', ["$from 00:00:00", "$to 23:59:59"]);
+
+        // Filter by payment gateway (first word of description)
+        if ($request->filled('payment_gateway')) {
+            $gateway = $request->input('payment_gateway');
+            $query->whereRaw("SUBSTRING_INDEX(description, ' ', 1) = ?", [$gateway]);
+        }
 
         // Filter by reference type
         if ($request->filled('reference_type')) {
             $query->where('reference_type', $request->reference_type);
         }
 
-        // Filter by payment gateway
-        if ($request->filled('payment_gateway')) {
-            $query->whereHas('payment', function ($q) use ($request) {
-                $q->where('payment_gateway', $request->payment_gateway);
-            });
-        }
-
-        // Company-level access restriction
+        // Restrict by company if user is COMPANY
         if ($user->role_id === Role::COMPANY) {
             $query->where('company_id', $user->company->id);
         }
 
-        // Order by payment_date DESC
-        $query->orderByDesc(
-            Payment::select('payment_date')
-                ->whereColumn('payments.id', 'transactions.payment_id')
-                ->limit(1)
-        );
+        // Order by transaction date
+        $query->orderByDesc('transactions.created_at');
+
+        // Eager-load related models
+        $query->with(['company', 'account', 'payment']);
 
         // Paginate results
         $transactions = $query->paginate(25)->appends($request->query());
 
-        // Get list of available payment gateways for filter dropdown
-        $gateways = Payment::whereNotNull('payment_gateway')
-            ->distinct()
-            ->orderBy('payment_gateway')
-            ->pluck('payment_gateway');
+        // Get gateway list for filter dropdown (distinct first words in matching descriptions)
+        $gateways = Transaction::selectRaw("DISTINCT SUBSTRING_INDEX(description, ' ', 1) AS gateway")
+            ->where('description', 'like', '%Settles to Bank (After 24h)%')
+            ->orderBy('gateway')
+            ->pluck('gateway');
 
         return view('reports.settlements', compact('transactions', 'gateways'));
     }

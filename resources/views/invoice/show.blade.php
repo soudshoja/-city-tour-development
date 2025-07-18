@@ -98,6 +98,9 @@
                 <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
             </div>
             <div class="text-right">
+                <div class="mb-5 text-right">
+                    <img src="{{ $companyLogoSrc }}" alt="Company Logo" class="h-16 w-auto inline-block">
+                </div>
                 <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
                 <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->address }}</p>
                 <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->phone }}</p>

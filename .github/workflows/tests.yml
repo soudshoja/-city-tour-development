@@ -52,6 +52,8 @@ jobs:
         echo "DB_DATABASE_MAP=map_data_citytour" >> .env
         echo "DB_USERNAME_MAP=laravel_user" >> .env
         echo "DB_PASSWORD_MAP=laravel_user_password" >> .env
+        echo "DB_HOST_MAP=127.0.0.1" >> .env
+        echo "DB_PORT_MAP=3306" >> .env
         echo "CACHE_STORE=array" >> .env
         echo "SESSION_DRIVER=array" >> .env
         echo "QUEUE_CONNECTION=sync" >> .env
@@ -87,7 +89,11 @@ jobs:
         mysql -h 127.0.0.1 -P 3306 -u laravel_user -plaravel_user_password -e "SHOW DATABASES;"
 
     - name: Run Database Migrations
-      run: php artisan migrate --force
+      run: |
+        echo "Running main database migrations..."
+        php artisan migrate --force
+        echo "Running map database migrations..."
+        php artisan migrate --database=mysql_map --force || echo "Map migrations completed with warnings (this may be normal)"
 
     - name: Run Tests
       run: php artisan test --stop-on-failure

@@ -55,6 +55,9 @@ jobs:
         echo "CACHE_STORE=array" >> .env
         echo "SESSION_DRIVER=array" >> .env
         echo "QUEUE_CONNECTION=sync" >> .env
+        echo "MAIL_MAILER=log" >> .env
+        echo "MAIL_FROM_ADDRESS=test@example.com" >> .env
+        echo "MAIL_FROM_NAME=City Tour Test" >> .env
 
     - name: Install Dependencies
       run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
@@ -83,8 +86,8 @@ jobs:
       run: |
         mysql -h 127.0.0.1 -P 3306 -u laravel_user -plaravel_user_password -e "SHOW DATABASES;"
 
-    - name: Run Database Migrations
-      run: php artisan migrate --force
+    # - name: Run Database Migrations
+    #   run: php artisan migrate --force
 
     - name: Run Tests
       run: php artisan test --stop-on-failure

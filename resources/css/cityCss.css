@@ -526,6 +526,11 @@ div:has(> :is(.dark .coa-partials)){
     color: #bec7e3 !important;
 }
 
+/* CSS class for JavaScript filtering - works with Alpine.js x-show */
+.js-hidden {
+    display: none !important;
+}
+
 .alert {
     position: absolute;
     top: 2rem;

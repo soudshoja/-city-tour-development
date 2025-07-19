@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -24,7 +25,7 @@ class CompanyFactory extends Factory
             'email' => $this->faker->unique()->safeEmail,
             'address' => $this->faker->address,
             'status' => 1,
-            'user_id' => 1,
+            'user_id' => User::factory(),
         ];
     }
 }

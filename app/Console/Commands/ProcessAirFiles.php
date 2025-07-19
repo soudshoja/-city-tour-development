@@ -23,6 +23,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use App\Services\FileProcessingLogger;
 
 class ProcessAirFiles extends Command
 {
@@ -35,13 +36,16 @@ class ProcessAirFiles extends Command
     protected $description = 'Scans the root air-files directory for new AIR files, processes them using existing logic, and moves them.';
     protected $aiManager;
     protected $companies;
-    protected $logger;
+    protected FileProcessingLogger $logger;
 
     public function __construct(AIManager $aiManager)
     {
         parent::__construct();
         $this->aiManager = $aiManager;
-        $this->logger = Log::channel('air_processing');
+        $this->logger = new FileProcessingLogger('air_processing', [
+            'command' => 'process-air-files',
+            'process_id' => getmypid()
+        ]);
     }
 
     public function handle()
@@ -833,7 +837,7 @@ class ProcessAirFiles extends Command
                     
                     return $attributes;
                 })->toArray();
-
+                
                 $this->logger->info("Flight Details for Task ID {$taskData['original_task_id']}: ", $flightDetailsArray);
                 $taskData['task_flight_details'] = $flightDetailsArray;
 
@@ -1097,13 +1101,29 @@ class ProcessAirFiles extends Command
             $response = $taskController->store($request);
 
             if ($response->getStatusCode() !== 201) {
-                $this->logger->error("Failed to save task: " . $response->getContent());
-                throw new Exception("Failed to save task: " . $response->getContent());
+                // Use the improved logger to avoid duplicate messages
+                $responseContent = $response->getContent();
+                $this->logger->error("Task save failed with HTTP {$response->getStatusCode()}", [
+                    'response_content' => $responseContent,
+                    'task_data' => $data,
+                    'http_status' => $response->getStatusCode()
+                ]);
+                
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to save task',
+                    'error' => $responseContent,
+                ];
             }
         } catch (Exception $e) {
-            $this->logger->error("Failed to save task: " . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+            // Single error log entry with comprehensive context
+            $this->logger->error("Task save exception occurred", [
+                'error_message' => $e->getMessage(),
+                'task_data' => $data,
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e)
             ]);
+            
             return [
                 'status' => 'error',
                 'message' => 'Failed to save task',

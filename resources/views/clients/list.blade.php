@@ -2,8 +2,8 @@
     <div class="content-70">
         <div class="panel BoxShadow rounded-lg">
 
-            <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
-                <div class="relative w-full">
+            <div class="flex flex-col md:flex-row justify-between p-2 gap-3">
+                <!-- <div class="relative w-full">
                     <input type="text" placeholder="Find fast and search here..."
                         class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
                         id="searchInput">
@@ -19,7 +19,45 @@
                                 class="dark:stroke-gray-300"></path>
                         </svg>
                     </button>
-                </div>
+                </div> -->
+
+                <form class="flex justify-between items-center gap-2 w-full" action="{{ route('clients.index') }}" method="GET">
+                    @csrf
+                    <div class="relative w-full">
+                        <input type="text" name="search" value="{{ request('search') }}"
+                            id="search-client"
+                            placeholder=""
+                            oninput=""
+                            class="block px-3 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-transparent border-b-2 border-gray-300 appearance-none
+                                    dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer rounded-full" />
+
+                        <label for="search-client"
+                            class="absolute text-md text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
+                                    bg-white dark:bg-gray-900 px-2 peer-focus:text-blue-600 peer-focus:dark:text-blue-500
+                                    peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2
+                                    peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">
+                            Quick search for tasks
+                        </label>
+                    </div>
+                    <button type="submit"
+                        class="DarkBGcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 flex items-center justify-center h-10 w-12 rounded-full p-0">
+                        <svg class="mx-auto" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5"
+                                opacity="0.5" class="dark:stroke-gray-300"></circle>
+                            <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"
+                                class="dark:stroke-gray-300"></path>
+                        </svg>
+                    </button>
+                    <button type="button" id="resetSearch"
+                        class="bg-red-600 dark:!bg-gray-700 dark:!hover:bg-gray-600 flex items-center justify-center h-10 w-12 rounded-full p-0">
+                        <svg class="mx-auto" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 18L18 6M6 6L18 18" stroke="#fff" stroke-width="1.5"
+                                class="dark:stroke-gray-300"></path>
+                        </svg>
+                    </button>
+                </form>
 
                 <div class="flex customCenter gap-5 w-full justify-end">
 
@@ -86,16 +124,16 @@
                         </thead>
                         <tbody>
                             @if ($clients->isEmpty())
-                                <tr>
-                                    <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">No
-                                        data for now.... Create new!</td>
-                                </tr>
+                            <tr>
+                                <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">No
+                                    data for now.... Create new!</td>
+                            </tr>
                             @else
-                                @foreach ($clients as $client)
-                                    <tr data-name="{{ $client->name }}" data-email="{{ $client->email }}"
-                                        data-phone="{{ $client->phone }}" data-agent-id="{{ $client->agent_id }}"
-                                        data-client-id="{{ $client ? $client->id : null }}"class="taskRow">
-                                        <!-- <td>
+                            @foreach ($clients as $client)
+                            <tr data-name="{{ $client->name }}" data-email="{{ $client->email }}"
+                                data-phone="{{ $client->phone }}" data-agent-id="{{ $client->agent_id }}"
+                                data-client-id="{{ $client ? $client->id : null }}" class="taskRow">
+                                <!-- <td>
                                     <label class="custom-checkbox" data-tooltip="select client">
                                         <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" data-id="{{ $client->id }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" class="checkbox-svg">
@@ -103,66 +141,66 @@
                                         </svg>
                                     </label>
                                 </td> -->
-                                        <td class="p-3 text-sm text-center">
-                                            <a href="javascript:void(0);"
-                                                class="viewClient inline-flex items-center justify-center mx-auto text-blue-600 dark:text-blue-300"
-                                                data-id="{{ $client->id }}" data-name="{{ $client->name }}"
-                                                data-email="{{ $client->email }}" data-phone="{{ $client->phone }}"
-                                                data-tooltip="see Client">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-                                                    viewBox="0 0 24 24">
-                                                    <g fill="none" stroke="currentColor" stroke-width="1">
-                                                        <path
-                                                            d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z"
-                                                            opacity=".5" />
-                                                        <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
-                                                    </g>
-                                                </svg>
-                                            </a>
-                                        </td>
+                                <td class="p-3 text-sm text-center">
+                                    <a href="javascript:void(0);"
+                                        class="viewClient inline-flex items-center justify-center mx-auto text-blue-600 dark:text-blue-300"
+                                        data-id="{{ $client->id }}" data-name="{{ $client->name }}"
+                                        data-email="{{ $client->email }}" data-phone="{{ $client->phone }}"
+                                        data-tooltip="see Client">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                            viewBox="0 0 24 24">
+                                            <g fill="none" stroke="currentColor" stroke-width="1">
+                                                <path
+                                                    d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z"
+                                                    opacity=".5" />
+                                                <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z" />
+                                            </g>
+                                        </svg>
+                                    </a>
+                                </td>
 
 
-                                        <!-- <td
+                                <!-- <td
                                             class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 cursor-pointer"> -->
-                                        <td
-                                            class=" p-3 text-sm font-semibold text-blue-600 dark:text-gray-300 text-center">
-                                            <a href="{{ route('clients.show', ['id' => $client->id]) }}"
-                                                class="block">{{ $client->name }}</a>
-                                        </td>
-                                        {{-- <td
+                                <td
+                                    class=" p-3 text-sm font-semibold text-blue-600 dark:text-gray-300 text-center">
+                                    <a href="{{ route('clients.show', ['id' => $client->id]) }}"
+                                        class="block">{{ $client->name }}</a>
+                                </td>
+                                {{-- <td
                                             class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
                                             <a href="javascript:void(0);"
                                                 class="clientCreditLink text-blue-600 font-bold"
                                                 data-client-id="{{ $client->id }}">
-                                                {{ $client->credit ? number_format($client->credit, 2) : 'N/A' }}
-                                            </a>
-                                        </td> --}}
-                                        <td class="p-3 text-sm font-semibold text-center">
-                                            @php
-                                                $totalCredit = \App\Models\Credit::getTotalCreditsByClient($client->id);
-                                                $creditColor = $totalCredit >= 0 ? 'text-green-600' : 'text-red-600';
-                                            @endphp
-                                            <a href="javascript:void(0);"
-                                                class="clientCreditLink font-bold {{ $creditColor }}"
-                                                data-client-id="{{ $client->id }}">
-                                                {{ number_format($totalCredit, 2) }}
-                                            </a>
-                                        </td>
+                                {{ $client->credit ? number_format($client->credit, 2) : 'N/A' }}
+                                </a>
+                                </td> --}}
+                                <td class="p-3 text-sm font-semibold text-center">
+                                    @php
+                                    $totalCredit = \App\Models\Credit::getTotalCreditsByClient($client->id);
+                                    $creditColor = $totalCredit >= 0 ? 'text-green-600' : 'text-red-600';
+                                    @endphp
+                                    <a href="javascript:void(0);"
+                                        class="clientCreditLink font-bold {{ $creditColor }}"
+                                        data-client-id="{{ $client->id }}">
+                                        {{ number_format($totalCredit, 2) }}
+                                    </a>
+                                </td>
 
-                                        <td
-                                            class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
-                                            {{ $client->email ? $client->email : 'N/A' }}
-                                        </td>
-                                        <td
-                                            class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
-                                            {{ $client->phone ? $client->phone : 'N/A' }}
-                                        </td>
-                                        <td
-                                            class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
-                                            {{ $client->agent ? $client->agent->name : 'N/A' }}
-                                        </td>
-                                    </tr>
-                                @endforeach
+                                <td
+                                    class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                    {{ $client->email ? $client->email : 'N/A' }}
+                                </td>
+                                <td
+                                    class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                    {{ $client->phone ? $client->phone : 'N/A' }}
+                                </td>
+                                <td
+                                    class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                    {{ $client->agent ? $client->agent->name : 'N/A' }}
+                                </td>
+                            </tr>
+                            @endforeach
                             @endif
                         </tbody>
                     </table>
@@ -170,37 +208,130 @@
                 </div>
                 <!-- pagination -->
                 <div class="dataTable-bottom justify-center">
-                    <nav class="dataTable-pagination">
-                        <ul class="dataTable-pagination-list flex gap-2 mt-4">
-                            <li class="pager" id="prevPage">
-                                <a href="#">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                        <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
-                                            stroke-linecap="round" stroke-linejoin="round"></path>
-                                        <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
-                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                            stroke-linejoin="round"></path>
-                                    </svg>
-                                </a>
-                            </li>
-                            <!-- Dynamic page numbers will be injected here -->
-                            <li class="pager" id="nextPage">
-                                <a href="#">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                        <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
-                                            stroke-linecap="round" stroke-linejoin="round"></path>
-                                        <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
-                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                            stroke-linejoin="round"></path>
-                                    </svg>
-                                </a>
-                            </li>
-                        </ul>
+                    <div class="flex flex-col gap-2 sm:flex-row justify-between items-center mt-4 px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-full">
+                        <!-- Showing results info -->
+                        <div class="text-sm text-gray-600 dark:text-gray-400 mb-2 sm:mb-0">
+                            Showing {{ $clients->firstItem() ?? 0 }} to {{ $clients->lastItem() ?? 0 }} of {{ $clients->total() ?? 0 }} results
+                        </div>
 
+                        <!-- Custom pagination -->
+                        @if ($clients->hasPages())
+                        <nav class="dataTable-pagination">
+                            <ul class="dataTable-pagination-list flex gap-1">
+                                {{-- Previous Page Link --}}
+                                @if ($clients->onFirstPage())
+                                    <li class="pager disabled">
+                                        <span class="flex items-center justify-center w-10 h-10 text-gray-400 cursor-not-allowed bg-gray-200 dark:bg-gray-600 rounded-full">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                                xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                                <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
+                                                    stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
+                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                                    stroke-linejoin="round"></path>
+                                            </svg>
+                                        </span>
+                                    </li>
+                                @else
+                                    <li class="pager">
+                                        <a href="{{ $clients->appends(request()->query())->previousPageUrl() }}" 
+                                           class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                                xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                                <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
+                                                    stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
+                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                                    stroke-linejoin="round"></path>
+                                            </svg>
+                                        </a>
+                                    </li>
+                                @endif
 
-                    </nav>
+                                {{-- Pagination Elements --}}
+                                @php
+                                    $start = max(1, $clients->currentPage() - 2);
+                                    $end = min($clients->lastPage(), $clients->currentPage() + 2);
+                                @endphp
+
+                                @if ($start > 1)
+                                    <li class="pager">
+                                        <a href="{{ $clients->appends(request()->query())->url(1) }}" 
+                                           class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
+                                            1
+                                        </a>
+                                    </li>
+                                    @if ($start > 2)
+                                        <li class="pager">
+                                            <span class="flex items-center justify-center w-10 h-10 text-gray-500">...</span>
+                                        </li>
+                                    @endif
+                                @endif
+
+                                @for ($page = $start; $page <= $end; $page++)
+                                    @if ($page == $clients->currentPage())
+                                        <li class="pager active">
+                                            <span class="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full font-semibold border border-blue-600">
+                                                {{ $page }}
+                                            </span>
+                                        </li>
+                                    @else
+                                        <li class="pager">
+                                            <a href="{{ $clients->appends(request()->query())->url($page) }}" 
+                                               class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
+                                                {{ $page }}
+                                            </a>
+                                        </li>
+                                    @endif
+                                @endfor
+
+                                @if ($end < $clients->lastPage())
+                                    @if ($end < $clients->lastPage() - 1)
+                                        <li class="pager">
+                                            <span class="flex items-center justify-center w-10 h-10 text-gray-500">...</span>
+                                        </li>
+                                    @endif
+                                    <li class="pager">
+                                        <a href="{{ $clients->appends(request()->query())->url($clients->lastPage()) }}" 
+                                           class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
+                                            {{ $clients->lastPage() }}
+                                        </a>
+                                    </li>
+                                @endif
+
+                                {{-- Next Page Link --}}
+                                @if ($clients->hasMorePages())
+                                    <li class="pager">
+                                        <a href="{{ $clients->appends(request()->query())->nextPageUrl() }}" 
+                                           class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                                xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                                <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
+                                                    stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
+                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                                    stroke-linejoin="round"></path>
+                                            </svg>
+                                        </a>
+                                    </li>
+                                @else
+                                    <li class="pager disabled">
+                                        <span class="flex items-center justify-center w-10 h-10 text-gray-400 cursor-not-allowed bg-gray-200 dark:bg-gray-600 rounded-full">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                                xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                                <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
+                                                    stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
+                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                                    stroke-linejoin="round"></path>
+                                            </svg>
+                                        </span>
+                                    </li>
+                                @endif
+                            </ul>
+                        </nav>
+                        @endif
+                    </div>
                 </div>
                 <!-- ./pagination -->
 
@@ -211,7 +342,7 @@
 
     <!-- right -->
     <!-- Client Details Container -->
-    <div class="lg:w-[30%] md:w-[30%] sm:w-[100%] hidden" id="showClientRightDiv">
+    <div class="lg:w-[40%] md:w-[30%] sm:w-[100%] hidden" id="showClientRightDiv">
         <div id="clientDetails" class="mt-0 mb-0 my-5 w-full p-5 bg-opacity-50 bg-white dark:bg-gray-800  m-0">
         </div>
         <!-- Client details will be rendered here -->
@@ -371,7 +502,13 @@
 </div>
 
 <script>
-    let clients = @json($clients);
+    resetSearchButton = document.getElementById("resetSearch");
+
+    resetSearchButton.addEventListener("click", function() {
+        window.location.href = "{{ route('clients.index') }}"; // Redirect to the clients index route
+    });
+
+    let clients = @json($fullClients);
     const viewClientLinks = document.querySelectorAll(".viewClient");
     const showClientRightDiv = document.getElementById("showClientRightDiv"); // Correct element ID
     const clientDetailsDiv = document.getElementById("clientDetails");
@@ -454,7 +591,7 @@
     });
 
     async function fetchSubClients(parentClientId) {
-        const fetchUrl = `/clients/${parentClientId}/subclients`;
+        const fetchUrl = "{{ route('clients.sub', ':parentClientId') }}".replace(':parentClientId', parentClientId);
 
 
         try {
@@ -496,9 +633,8 @@
     }
 
     async function fetchParClients(childClientId) {
-        const fetchUrl = `/clients/${childClientId}/parclients`;
-
-
+        const fetchUrl = "{{ route('clients.parent', ':childClientId') }}".replace(':childClientId', childClientId);
+        
         try {
             const response = await fetch(fetchUrl, {
                 method: "GET",
@@ -621,7 +757,7 @@
     // Function to fetch and update client details in modal
     async function fetchClientDetails(id) {
 
-        const fetchUrl = `/clients/${id}/getDetails`;
+        const fetchUrl = "{{ route('clients.details', ':id') }}".replace(':id', id);
 
         try {
             const response = await fetch(fetchUrl, {
@@ -661,7 +797,7 @@
 
     async function updateClientGroup() {
         const id = document.getElementById("parentId").value;
-        const updateUrl = `/clients/${id}/update-group`; // Adjust the route if needed
+        const updateUrl = "{{ route('clients.group.update', ':id') }}".replace(':id', id); 
         const csrfToken = "{{ csrf_token() }}"; // Laravel CSRF token for security
         const relation = document.querySelector("select[name='relation']").value; // Get selected relation
         let selectedId = document.getElementById("selectedId").value;
@@ -712,8 +848,11 @@
 
 
     async function removeGroup(parentClientId, childClientId) {
+
+        const removeUrl = "{{ route('clients.group.remove') }}";
+
         try {
-            const response = await fetch('/clients/group/remove', {
+            const response = await fetch(removeUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

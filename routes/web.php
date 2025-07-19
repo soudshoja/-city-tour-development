@@ -441,18 +441,18 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}/edit', [ClientController::class, 'edit'])->name('edit');
         Route::put('/{id}', [ClientController::class, 'update'])->name('update');
         Route::post('/upload', [ClientController::class, 'import'])->name('upload');
-        Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('changeAgent');
+        Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('change-agent');
         Route::post('/refund/{id}', [ClientController::class, 'refund'])->name('refund');
 
         // Routes for Client Group Management
         Route::post('/group/add', [ClientController::class, 'addToGroup'])->name('group.add');
         Route::post('/group/remove', [ClientController::class, 'removeFromGroup'])->name('group.remove');
         Route::get('/{parentClientId}/subclients', [ClientController::class, 'getSubClients'])
-            ->name('client.subclients');
-        Route::get('/{childClientId}/parclients', [ClientController::class, 'getParClients'])
-            ->name('client.parclients');
-        Route::put('/{id}/update-group', [ClientController::class, 'updateGroup'])->name('updateGroup');
-        Route::get('/{id}/getDetails', [ClientController::class, 'getDetails'])->name('getDetails');
+            ->name('sub');
+        Route::get('/{childClientId}/parent', [ClientController::class, 'getParClients'])
+            ->name('parent');
+        Route::put('/{id}/update-group', [ClientController::class, 'updateGroup'])->name('group.update');
+        Route::get('/{id}/details', [ClientController::class, 'getDetails'])->name('details');
         Route::get('/{id}/agent', [ClientController::class, 'getAgent'])->name('get-agent');
         Route::get('/{id}/credit-balance', [ClientController::class, 'getCreditBalance']);
     });

@@ -660,7 +660,7 @@
                                             data-status="{{ $task->status }}"
                                             data-type="{{ $task->type }}"
                                             data-client-id="{{ $task->client ? $task->client->id : null }}"
-                                            data-task-id="{{ $task->id }}" class="taskRow">
+                                            data-task-id="{{ $task->id }}">
                                             @can('create', 'App\Models\Invoice')
                                             <td>
                                                 <label class="custom-checkbox"
@@ -2126,20 +2126,17 @@
         const input = document.getElementById('searchInput');
         const resetBtn = document.getElementById('resetButton');
         const searchBtn = document.getElementById('searchButton');
-        const label = document.getElementById('searchLabel');
 
         const hasText = input.value.trim().length > 0;
 
         if (hasText) {
             resetBtn.classList.remove('opacity-0', 'scale-95', 'pointer-events-none');
             resetBtn.classList.add('opacity-100', 'scale-100');
-            label.classList.add('opacity-0');
 
             searchBtn.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
         } else {
             resetBtn.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
             resetBtn.classList.remove('opacity-100', 'scale-100');
-            label.classList.remove('opacity-0');
 
             searchBtn.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
         }

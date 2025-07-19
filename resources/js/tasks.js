@@ -394,33 +394,6 @@ closeTaskFloatingActions.addEventListener("click", function () {
     floatingActions.classList.add("hidden");
 });
 
-document.addEventListener('DOMContentLoaded', function () {
-    const searchInput = document.getElementById('searchInput');
-    const searchButton = document.getElementById('searchButton');
-    const rows = document.querySelectorAll('#myTable tbody tr.taskRow');
-    const noTasksFound = document.getElementById('noTasksFound');
-    const loadMoreWrapper = document.getElementById('loadMoreWrapper');
-
-    const searchInputClone = searchInput.cloneNode(true);
-    searchInput.parentNode.replaceChild(searchInputClone, searchInput);
-
-    searchButton.addEventListener('click', function () {
-        const keyword = searchInputClone.value.toLowerCase().trim();
-        let found = false;
-
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            const match = text.includes(keyword);
-            row.style.display = match ? '' : 'none';
-            if (match) found = true;
-        });
-
-        if (noTasksFound) noTasksFound.classList.toggle('hidden', found);
-        if (loadMoreWrapper) loadMoreWrapper.classList.toggle('hidden', keyword.length > 0);
-    });
-});
-
-
 document.addEventListener('DOMContentLoaded', function() {
     const filterConfig = {
         columns: {
@@ -485,8 +458,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearAllActiveFiltersBtn = document.getElementById('clearAllActiveFilters');
     const searchInput = document.getElementById("searchInput");
     const noTasksFound = document.getElementById("noTasksFound");
-    const loadMoreWrapper = document.getElementById("loadMoreWrapper");
-    const loadMoreButton = loadMoreWrapper ? loadMoreWrapper.querySelector('button') : null;
 
     toggleFiltersBtn.addEventListener('click', openFilterModal);
     closeFilterModalBtn.addEventListener('click', closeFilterModal);
@@ -716,25 +687,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const matchesSearch = rowText.includes(keyword);
             showRow = showRow && matchesSearch;
 
-            row.style.display = showRow ? '' : 'none';
+            // Instead of directly setting display, add/remove a CSS class
+            // This allows Alpine.js x-show to still work
             if (showRow) {
+                row.classList.remove('js-hidden');
                 anyVisible = true;
                 filteredCount++;
+            } else {
+                row.classList.add('js-hidden');
             }
         });
 
         noTasksFound.style.display = anyVisible ? 'none' : 'flex';
 
-        if (loadMoreWrapper && loadMoreButton) {
-            const allTasksCount = document.querySelectorAll('#myTable tbody tr.taskRow').length;
-            const currentlyVisibleTasks = Array.from(tableRows).filter(row => row.style.display !== 'none').length;
-
-            if (currentlyVisibleTasks < filteredCount) {
-                loadMoreWrapper.style.display = 'block';
-            } else {
-                loadMoreWrapper.style.display = 'none';
-            }
-        }
     }
 
     function getCellValue(row, column) {

@@ -22,7 +22,6 @@ use App\Models\RefundClient;
 use App\Models\Role;
 use App\Models\Transaction;
 use App\Models\Credit;
-use App\Services\ChargeService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -34,98 +33,69 @@ class ClientController extends Controller
 {
     use Converter;
 
-    // public function index()
-    // {
-    //     $user = Auth::user();
-    //     if ($user->role_id == Role::COMPANY) {
-    //         $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
-    //         $agent = Agent::whereIn('branch_id', $branch)->first();
-    //         $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
-    //         $clientsCount = Client::whereIn('agent_id', $agentIds)->count();
-    //     } elseif ($user->role_id == Role::AGENT) {
-    //         $agent = Agent::where('user_id', $user->id)->first();
-    //         $clientsCount = Client::where('agent_id', $agent->id)->count();
-    //     } else {
-    //         $clientsCount = Client::count();
-    //     }
-
-    //     if ($user->role_id == Role::ADMIN) {
-    //         $agentIds = Agent::all()->pluck('id')->toArray();
-    //         $branch = Branch::pluck('id')->toArray();
-    //         $agent = Agent::whereIn('branch_id', $branch)->first();
-    //         // retrieve client that has the latest task
-    //         $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->orderByDesc(
-    //             Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
-    //         )->get();
-    //     } elseif ($user->role_id == Role::COMPANY) {
-    //         $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
-    //         $agent = Agent::whereIn('branch_id', $branch)->first();
-    //         $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
-
-    //         // retrieve client that has the latest task
-    //         $clients = Client::with('agent.branch')->whereIn('agent_id', $agentIds)->orderByDesc(
-    //             Task::select('client_id')->whereColumn('client_id', 'clients.id')->limit(1)
-    //         )->get();
-    //     } elseif ($user->role_id == Role::AGENT) {
-    //         $agent = Agent::where('user_id', $user->id)->first();
-
-    //         // retrieve client that has the latest task
-    //         $clients = Client::with('agent.branch')
-    //             ->where('agent_id', $agent->id)
-    //             ->orderByDesc('created_at')
-    //             ->get();
-    //     }
-    //     //dd($agent->name);
-    //     return view('clients.index', compact('agent', 'clients', 'clientsCount'));
-    // }
-
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
 
-        if ($user->role_id == Role::COMPANY) {
-            $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
-            $agent = Agent::whereIn('branch_id', $branch)->first();
-            $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
-            $clientsCount = Client::whereIn('agent_id', $agentIds)->count();
-        } elseif ($user->role_id == Role::AGENT) {
-            $agent = Agent::where('user_id', $user->id)->first();
-            $clientsCount = Client::where('agent_id', $agent->id)->count();
-        } else {
-            $clientsCount = Client::count();
+        $clients = Client::with('agent.branch');
+        $fullClients = clone $clients;
+
+        if($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $clients = $clients->where(function($query) use ($search) {
+                $query->where('name', 'LIKE', '%' . $search . '%')
+                      ->orWhere('email', 'LIKE', '%' . $search . '%')
+                      ->orWhere('phone', 'LIKE', '%' . $search . '%');
+            });
+
         }
+
+        // if ($user->role_id == Role::COMPANY) {
+        //     $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
+        //     $agent = Agent::whereIn('branch_id', $branch)->first();
+        //     $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
+        //     $clientsCount = $clients->whereIn('agent_id', $agentIds)->count();
+        // } elseif ($user->role_id == Role::AGENT) {
+        //     $agent = Agent::where('user_id', $user->id)->first();
+        //     $clientsCount = $clients->where('agent_id', $agent->id)->count();
+        // } else {
+        //     $clientsCount = $clients->count();
+        // }
 
         if ($user->role_id == Role::ADMIN) {
             $agentIds = Agent::all()->pluck('id')->toArray();
             $branch = Branch::pluck('id')->toArray();
             $agent = Agent::whereIn('branch_id', $branch)->first();
 
-            // Sort clients by created_at
-            $clients = Client::with('agent.branch')
-                ->whereIn('agent_id', $agentIds)
-                ->orderByDesc('created_at')
-                ->get();
+            $clients = $clients->whereIn('agent_id', $agentIds);
+            $fullClients = $fullClients->whereIn('agent_id', $agentIds);
+
         } elseif ($user->role_id == Role::COMPANY) {
             $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
             $agent = Agent::whereIn('branch_id', $branch)->first();
             $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
 
-            // Sort clients by created_at
-            $clients = Client::with('agent.branch')
-                ->whereIn('agent_id', $agentIds)
-                ->orderByDesc('created_at')
-                ->get();
+            $clients = $clients->whereIn('agent_id', $agentIds);
+            $fullClients = $fullClients->whereIn('agent_id', $agentIds);
+
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
 
-            // Sort clients by created_at
-            $clients = Client::with('agent.branch')
-                ->where('agent_id', $agent->id)
-                ->orderByDesc('created_at')
-                ->get();
+            $clients = $clients->where('agent_id', $agent->id);
+            $fullClients = $fullClients->where('agent_id', $agent->id);
+        
         }
+        $clientsCount = $clients->count();
 
-        return view('clients.index', compact('agent', 'clients', 'clientsCount'));
+        $clients = $clients->orderByDesc('created_at')->paginate(20);
+        $fullClients = $fullClients->orderByDesc('created_at')->get();
+
+        return view('clients.index', compact(
+            'agent',
+            'fullClients',
+            'clients',
+            'clientsCount'
+        ));
     }
 
     public function storeProcess(Request $request)
@@ -373,10 +343,6 @@ class ClientController extends Controller
         }
     }
 
-
-
-
-
     public function updateClientPassport($client, $data)
     {
         $client->passport_no = $data['passport_no'];
@@ -538,8 +504,6 @@ class ClientController extends Controller
 
         return response()->json($parentClients);
     }
-
-
 
     public function getDetails($id)
     {

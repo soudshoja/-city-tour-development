@@ -24,11 +24,8 @@ class ClientFactory extends Factory
      */
     public function definition(): array
     {
-
-        $agents = Agent::all();
-
         return [
-            'agent_id' => $agents->random()->id,
+            'agent_id' => 1, // Will be overridden in tests
             'name' => $this->faker->name(),
             'email' => $this->faker->unique()->safeEmail(),
             'address' => $this->faker->address(),

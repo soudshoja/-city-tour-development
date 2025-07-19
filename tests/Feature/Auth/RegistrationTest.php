@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
@@ -12,14 +13,17 @@ class RegistrationTest extends TestCase
 
     public function test_registration_screen_can_be_rendered(): void
     {
-        $response = $this->get('/register');
+        $response = $this->get(route('register'));
 
         $response->assertStatus(200);
     }
 
     public function test_new_users_can_register(): void
     {
-        $response = $this->post('/register', [
+        // Fake mail to prevent actual email sending
+        Mail::fake();
+
+        $response = $this->post(route('register.admin'), [
             'name' => 'Test User',
             'email' => 'test@example.com', // example.com is in allowed domains
             'password' => 'password',
@@ -40,7 +44,10 @@ class RegistrationTest extends TestCase
 
     public function test_registration_rejects_invalid_domain(): void
     {
-        $response = $this->post('/register', [
+        // Fake mail to prevent actual email sending
+        Mail::fake();
+
+        $response = $this->post(route('register.admin'), [
             'name' => 'Test User',
             'email' => 'test@invalid-domain.com', // Not in allowed domains
             'password' => 'password',
@@ -61,7 +68,10 @@ class RegistrationTest extends TestCase
         $allowedDomains = ['example.com', 'test.com', 'citytravelers.co'];
         
         foreach ($allowedDomains as $index => $domain) {
-            $response = $this->post('/register', [
+            // Fake mail to prevent actual email sending
+            Mail::fake();
+
+            $response = $this->post(route('register.admin'), [
                 'name' => "Test User {$index}",
                 'email' => "test{$index}@{$domain}",
                 'password' => 'password',
@@ -81,7 +91,10 @@ class RegistrationTest extends TestCase
 
     public function test_registration_requires_password_confirmation(): void
     {
-        $response = $this->post('/register', [
+        // Fake mail to prevent actual email sending
+        Mail::fake();
+
+        $response = $this->post(route('register.admin'), [
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password',
@@ -98,8 +111,11 @@ class RegistrationTest extends TestCase
 
     public function test_registration_prevents_duplicate_emails(): void
     {
+        // Fake mail to prevent actual email sending
+        Mail::fake();
+
         // Create a user first
-        $response1 = $this->post('/register', [
+        $response1 = $this->post(route('register.admin'), [
             'name' => 'First User',
             'email' => 'duplicate@example.com',
             'password' => 'password',
@@ -109,7 +125,7 @@ class RegistrationTest extends TestCase
         $response1->assertRedirect(route('login'));
 
         // Try to register with same email
-        $response2 = $this->post('/register', [
+        $response2 = $this->post(route('register.admin'), [
             'name' => 'Second User',
             'email' => 'duplicate@example.com', // Same email
             'password' => 'password',

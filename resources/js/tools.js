@@ -13,29 +13,3 @@ document.querySelectorAll(".refresh-icon").forEach((icon) => {
     });
 });
 
-/// search
-
-/* const searchInput = document.getElementById("searchInput");
-
-if (searchInput) {
-    const table = document.getElementById("myTable");
-    const rows = Array.from(table.querySelector("tbody").rows); 
-
-    function filterTable() {
-        const query = searchInput.value.toLowerCase(); 
-        rows.forEach((row) => {
-            const cells = Array.from(row.cells); 
-            const rowText = cells
-                .map((cell) => cell.textContent.toLowerCase())
-                .join(" "); 
-            if (rowText.includes(query)) {
-                row.style.display = ""; 
-            } else {
-                row.style.display = "none"; 
-            }
-        });
-    }
-
-    
-    searchInput.addEventListener("input", filterTable);
-} */

@@ -1,45 +1,45 @@
-name: Deploy to cPanel
+# name: Deploy to cPanel
 
-on:
-  push:
-    branches:
-      - dev  
+# on:
+#   push:
+#     branches:
+#       - dev  
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '23'  
+#     - name: Set up Node.js
+#       uses: actions/setup-node@v4
+#       with:
+#         node-version: '23'  
 
-    - name: Install dependencies
-      run: npm install
+#     - name: Install dependencies
+#       run: npm install
       
-    - name: Build assets
-      run: npm run build
-    - name: Deploy to cPanel via FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-      with:
-        local-dir: ./
-        server-dir: /home/citycomm/amir2.citycommerce.group/
-        server: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        port: ${{ secrets.FTP_PORT }}
-        protocol: 'ftp'  # or 'sftp' if you're using SFTP
-        timeout: 190000
-        log-level: standard
-        exclude: |
-          .git*
-          node_modules
+#     - name: Build assets
+#       run: npm run build
+#     - name: Deploy to cPanel via FTP
+#       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+#       with:
+#         local-dir: ./
+#         server-dir: /home/citycomm/amir2.citycommerce.group/
+#         server: ${{ secrets.FTP_SERVER }}
+#         username: ${{ secrets.FTP_USERNAME }}
+#         password: ${{ secrets.FTP_PASSWORD }}
+#         port: ${{ secrets.FTP_PORT }}
+#         protocol: 'ftp'  # or 'sftp' if you're using SFTP
+#         timeout: 190000
+#         log-level: standard
+#         exclude: |
+#           .git*
+#           node_modules
           
 
-    - name: Generate version.json
-      run: |
-        echo "{ \"commit\": \"$(git rev-parse --short HEAD)\", \"branch\": \"$(git rev-parse --abbrev-ref HEAD)\", \"date\": \"$(git log -1 --format=%ci)\" }" > public/version.json
+#     - name: Generate version.json
+#       run: |
+#         echo "{ \"commit\": \"$(git rev-parse --short HEAD)\", \"branch\": \"$(git rev-parse --abbrev-ref HEAD)\", \"date\": \"$(git log -1 --format=%ci)\" }" > public/version.json

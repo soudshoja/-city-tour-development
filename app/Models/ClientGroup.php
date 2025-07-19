@@ -9,22 +9,11 @@ class ClientGroup extends Model
 {
     use HasFactory;
 
-    // Define the table name if it's different from the plural of the model name
-    protected $table = 'client_groups';
-
-    // Auto incrementing primary key (it's handled by MySQL auto_increment)
-    protected $primaryKey = 'id';
-    public $incrementing = true;  // Allow auto-incrementing of the primary key
-
-    // Disable timestamps if not used
-    public $timestamps = false;
-
     // Define fillable columns
     protected $fillable = [
         'parent_client_id',
         'child_client_id',
-        'relation',
-        'created_at'
+        'relation'
     ];
 
     // Define relationships

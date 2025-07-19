@@ -96,7 +96,7 @@ jobs:
         php artisan migrate --database=mysql_map --force || echo "Map migrations completed with warnings (this may be normal)"
 
     - name: Run Tests
-      run: vendor/bin/phpunit tests/Unit/Console/Commands/ProcessAirFilesTest.php
+      run: vendor/bin/phpunit
 
     - name: Upload Coverage Reports
       if: always()

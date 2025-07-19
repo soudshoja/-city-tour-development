@@ -86,8 +86,8 @@ jobs:
       run: |
         mysql -h 127.0.0.1 -P 3306 -u laravel_user -plaravel_user_password -e "SHOW DATABASES;"
 
-    # - name: Run Database Migrations
-    #   run: php artisan migrate --force
+    - name: Run Database Migrations
+      run: php artisan migrate --force
 
     - name: Run Tests
       run: php artisan test --stop-on-failure

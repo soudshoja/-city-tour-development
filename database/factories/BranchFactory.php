@@ -17,12 +17,12 @@ class BranchFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => rand(1, 10),
+            'user_id' => 1, // Will be overridden in tests
             'name' => $this->faker->company,
             'email' => $this->faker->unique()->safeEmail,
             'phone' => $this->faker->phoneNumber,
             'address' => $this->faker->address,
-            'company_id' => rand(1, 10),
+            'company_id' => 1, // Will be overridden in tests
         ];
     }
 }

@@ -738,10 +738,5 @@ document.addEventListener('DOMContentLoaded', function() {
         return lowerCellValue.includes(lowerFilterValue);
     }
 
-    if (searchInput) {
-        searchInput.addEventListener('click', function() {
-            filterTableRows();
-        });
-    }
-    filterTableRows();
+    // filterTableRows();
 });

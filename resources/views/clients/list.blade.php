@@ -49,6 +49,7 @@
                                 class="dark:stroke-gray-300"></path>
                         </svg>
                     </button>
+                    @if(request('search'))
                     <button type="button" id="resetSearch"
                         class="bg-red-600 dark:!bg-gray-700 dark:!hover:bg-gray-600 flex items-center justify-center h-10 w-12 rounded-full p-0">
                         <svg class="mx-auto" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -57,6 +58,7 @@
                                 class="dark:stroke-gray-300"></path>
                         </svg>
                     </button>
+                    @endif
                 </form>
 
                 <div class="flex customCenter gap-5 w-full justify-end">

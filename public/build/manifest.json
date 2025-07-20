@@ -1,11 +1,11 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-DVKnC-em.css",
+    "file": "assets/app-i0SDFxk7.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
   "resources/css/cityCss.css": {
-    "file": "assets/cityCss-DtFU7F1E.css",
+    "file": "assets/cityCss-BvVcoi-8.css",
     "src": "resources/css/cityCss.css",
     "isEntry": true
   },
@@ -27,7 +27,7 @@
     "isEntry": true
   },
   "resources/js/tasks.js": {
-    "file": "assets/tasks-DVbhP7iY.js",
+    "file": "assets/tasks-D_eTSS1k.js",
     "name": "tasks",
     "src": "resources/js/tasks.js",
     "isEntry": true

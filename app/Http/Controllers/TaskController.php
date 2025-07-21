@@ -28,12 +28,15 @@ use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\SupplierCompany;
 use App\Models\Transaction;
+use App\Models\Invoice;
+use App\Models\InvoiceDetail;
 use Illuminate\Support\Facades\DB;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Date;
 use App\Models\FileUpload;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 
 // use Carbon\Carbon;
@@ -2375,6 +2378,138 @@ class TaskController extends Controller
                 'message' => 'Error processing passport',
                 'errors' => 'No file uploaded.',
             ], 400);
+        }
+    }
+
+    public function destroy($id)
+    {
+        Gate::authorize('destroy', Task::class);
+
+        // Check if user is super admin (admin role)
+        $user = Auth::user();
+        if ($user->role_id !== Role::ADMIN) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized. Only super admin can delete tasks.',
+            ], 403);
+        }
+
+        $task = Task::findOrFail($id);
+
+        DB::beginTransaction();
+
+        try {
+            Log::info("Starting soft delete process for task: {$task->reference} (ID: {$id})");
+
+            // 1. Soft delete journal entries related to the task
+            $journalEntries = JournalEntry::where('task_id', $id)->get();
+            if ($journalEntries->isNotEmpty()) {
+                foreach ($journalEntries as $journalEntry) {
+                    // Get transaction ID before soft deleting journal entry
+                    $transactionId = $journalEntry->transaction_id;
+                    
+                    // Soft delete journal entry
+                    $journalEntry->delete();
+                    
+                    // Soft delete associated transaction if it exists
+                    if ($transactionId) {
+                        $transaction = Transaction::find($transactionId);
+                        if ($transaction) {
+                            $transaction->delete();
+                        }
+                    }
+                }
+                Log::info("Soft deleted " . $journalEntries->count() . " journal entries and their transactions for task: {$task->reference}");
+            }
+
+            // 2. Soft delete invoice details related to the task
+            $invoiceDetails = InvoiceDetail::where('task_id', $id)->get();
+            $invoiceIds = [];
+            
+            if ($invoiceDetails->isNotEmpty()) {
+                $invoiceIds = $invoiceDetails->pluck('invoice_id')->unique()->toArray();
+                
+                foreach ($invoiceDetails as $invoiceDetail) {
+                    $invoiceDetail->delete();
+                }
+                Log::info("Soft deleted " . $invoiceDetails->count() . " invoice details for task: {$task->reference}");
+            }
+
+            // 3. Soft delete payments related to task invoices
+            if (!empty($invoiceIds)) {
+                $payments = Payment::whereIn('invoice_id', $invoiceIds)->get();
+                if ($payments->isNotEmpty()) {
+                    foreach ($payments as $payment) {
+                        $payment->delete();
+                    }
+                    Log::info("Soft deleted " . $payments->count() . " payments for task: {$task->reference}");
+                }
+
+                // 4. Soft delete transactions related to task invoices
+                $invoiceTransactions = Transaction::whereIn('invoice_id', $invoiceIds)->get();
+                if ($invoiceTransactions->isNotEmpty()) {
+                    foreach ($invoiceTransactions as $transaction) {
+                        $transaction->delete();
+                    }
+                    Log::info("Soft deleted " . $invoiceTransactions->count() . " invoice transactions for task: {$task->reference}");
+                }
+
+                // 5. Soft delete invoices themselves
+                $invoices = Invoice::whereIn('id', $invoiceIds)->get();
+                if ($invoices->isNotEmpty()) {
+                    foreach ($invoices as $invoice) {
+                        $invoice->delete();
+                    }
+                    Log::info("Soft deleted " . $invoices->count() . " invoices for task: {$task->reference}");
+                }
+            }
+
+            // 6. Soft delete task flight details
+            $flightDetails = TaskFlightDetail::where('task_id', $id)->get();
+            if ($flightDetails->isNotEmpty()) {
+                foreach ($flightDetails as $flightDetail) {
+                    $flightDetail->delete();
+                }
+                Log::info("Soft deleted " . $flightDetails->count() . " flight details for task: {$task->reference}");
+            }
+
+            // 7. Soft delete task hotel details
+            $hotelDetails = TaskHotelDetail::where('task_id', $id)->get();
+            if ($hotelDetails->isNotEmpty()) {
+                foreach ($hotelDetails as $hotelDetail) {
+                    $hotelDetail->delete();
+                }
+                Log::info("Soft deleted " . $hotelDetails->count() . " hotel details for task: {$task->reference}");
+            }
+
+            // 8. Finally, soft delete the task itself
+            $task->delete();
+            Log::info("Soft deleted task: {$task->reference} (ID: {$id})");
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => "Task '{$task->reference}' and all related data have been soft deleted successfully.",
+                'data' => [
+                    'task_id' => $id,
+                    'task_reference' => $task->reference,
+                    'deleted_at' => now()->toISOString()
+                ]
+            ], 200);
+
+        } catch (Exception $e) {
+            DB::rollback();
+            Log::error("Error during task soft delete: " . $e->getMessage(), [
+                'task_id' => $id,
+                'task_reference' => $task->reference ?? 'Unknown',
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete task: ' . $e->getMessage(),
+            ], 500);
         }
     }
 }

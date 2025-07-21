@@ -346,7 +346,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/account-list', [ReportController::class, 'getAccounts'])->name('account-list');
         Route::get('/acc-reconcile', [ReportController::class, 'accountsReconciliationReport'])->name('acc-reconcile');
         Route::get('/settlements', [ReportController::class, 'settlementsReport'])->name('settlements');
-        Route::get('/settlements/{transaction}/entries', [ReportController::class, 'journalEntries'])->name('settlements.entries');
+        Route::get('/settlements/entries/by-date', [ReportController::class, 'journalEntriesByDate'])
+            ->name('settlements.entries.by_date');
     });
 
     // INVOICE

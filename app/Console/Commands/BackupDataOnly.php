@@ -114,16 +114,30 @@ class BackupDataOnly extends Command
     {
         $compressedFilePath = $filePath . '.gz';
         
-        // Read the original file and compress it
-        $originalContent = file_get_contents($filePath);
-        $compressedContent = gzencode($originalContent, 9); // Maximum compression level
+        // Get original file size before compression
+        $originalSize = filesize($filePath);
         
-        file_put_contents($compressedFilePath, $compressedContent);
+        // Use streaming compression to avoid memory issues
+        $inputFile = fopen($filePath, 'rb');
+        $outputFile = gzopen($compressedFilePath, 'wb9'); // 9 = maximum compression level
+        
+        if (!$inputFile || !$outputFile) {
+            throw new Exception("Failed to open files for compression");
+        }
+        
+        // Stream the file in chunks to avoid memory exhaustion
+        $chunkSize = 1024 * 1024; // 1MB chunks
+        while (!feof($inputFile)) {
+            $chunk = fread($inputFile, $chunkSize);
+            gzwrite($outputFile, $chunk);
+        }
+        
+        fclose($inputFile);
+        gzclose($outputFile);
         
         // Remove the original uncompressed file to save space
         unlink($filePath);
         
-        $originalSize = strlen($originalContent);
         $compressedSize = filesize($compressedFilePath);
         $compressionRatio = round((1 - ($compressedSize / $originalSize)) * 100, 2);
         

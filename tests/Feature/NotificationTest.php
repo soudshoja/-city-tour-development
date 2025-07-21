@@ -29,6 +29,21 @@ class NotificationTest extends TestCase
         };
     }
 
+    public function test_display_notification_page()
+    {
+        // Create admin role and user
+        $adminUser = User::factory()->create(['role_id' => Role::ADMIN]);
+        
+        // Authenticate the user
+        $this->actingAs($adminUser);
+        
+        $response = $this->get(route('notifications.index'));
+        $response->assertStatus(200);
+        
+        // Since NotificationIndex is a Livewire full-page component, check if it contains the component
+        $response->assertSee('Notifications'); // Check for the page title
+    }
+
     public function test_store_notification_creates_notification_correctly()
     {
         $controller = $this->getTestController();

@@ -4,8 +4,11 @@ namespace App\Livewire;
 
 use App\Http\Traits\NotificationTrait;
 use App\Models\Notification;
+use App\View\Components\AppLayout;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout(AppLayout::class)]
 class NotificationIndex extends Component
 {
     use NotificationTrait;

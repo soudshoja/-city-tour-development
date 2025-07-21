@@ -805,16 +805,16 @@ class ReportController extends Controller
     {
         $user = Auth::user();
 
-        // Allow only ADMIN and COMPANY roles
+        // Only allow ADMIN and COMPANY roles
         if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
             abort(403, 'Unauthorized');
         }
 
-        // Date range defaults to current month
+        // Date range defaults
         $from = $request->input('from') ?? Carbon::now()->startOfMonth()->toDateString();
         $to = $request->input('to') ?? Carbon::now()->endOfMonth()->toDateString();
 
-        // Base query: only settlement-related transactions
+        // Base query: Only settlement-type transactions
         $query = Transaction::query()
             ->where('description', 'like', '%Settles to Bank (After 24h)%')
             ->whereBetween('transactions.created_at', ["$from 00:00:00", "$to 23:59:59"]);
@@ -830,21 +830,17 @@ class ReportController extends Controller
             $query->where('reference_type', $request->reference_type);
         }
 
-        // Restrict by company if user is COMPANY
+        // Company restriction for COMPANY users
         if ($user->role_id === Role::COMPANY) {
             $query->where('company_id', $user->company->id);
         }
 
-        // Order by transaction date
         $query->orderByDesc('transactions.created_at');
-
-        // Eager-load related models
         $query->with(['company', 'account', 'payment']);
 
-        // Paginate results
         $transactions = $query->paginate(25)->appends($request->query());
 
-        // Get gateway list for filter dropdown (distinct first words in matching descriptions)
+        // Get distinct payment gateways (first word in description)
         $gateways = Transaction::selectRaw("DISTINCT SUBSTRING_INDEX(description, ' ', 1) AS gateway")
             ->where('description', 'like', '%Settles to Bank (After 24h)%')
             ->orderBy('gateway')
@@ -853,10 +849,17 @@ class ReportController extends Controller
         return view('reports.settlements', compact('transactions', 'gateways'));
     }
 
-    public function journalEntries($transactionId)
+    public function journalEntriesByDate(Request $request)
     {
-        $entries = JournalEntry::where('transaction_id', $transactionId)
+        $date = $request->input('date');
+
+        if (!$date) {
+            return response()->json(['entries' => []]);
+        }
+
+        $entries = JournalEntry::whereDate('transaction_date', $date)
             ->with('account')
+            ->orderBy('id', 'desc')
             ->get()
             ->map(function ($entry) {
                 return [

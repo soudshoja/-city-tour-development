@@ -78,8 +78,12 @@ class BackupDataOnly extends Command
 
             if ($returnVar === 0) {
                 $this->info("Data-only backup successful: {$filename}");
-                // Email the backup file
-                $this->sendBackupEmail($filePath, $filename);
+                
+                // Compress the backup file
+                $compressedFilePath = $this->compressBackupFile($filePath, $filename);
+                
+                // Email the compressed backup file
+                $this->sendBackupEmail($compressedFilePath, basename($compressedFilePath));
 
             } else {
                 $errorMessage = implode("\n", $output);
@@ -97,6 +101,49 @@ class BackupDataOnly extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Compress the backup file using gzip
+     *
+     * @param string $filePath The original backup file path
+     * @param string $filename The original filename
+     * @return string The compressed file path
+     */
+    protected function compressBackupFile($filePath, $filename)
+    {
+        $compressedFilePath = $filePath . '.gz';
+        
+        // Read the original file and compress it
+        $originalContent = file_get_contents($filePath);
+        $compressedContent = gzencode($originalContent, 9); // Maximum compression level
+        
+        file_put_contents($compressedFilePath, $compressedContent);
+        
+        // Remove the original uncompressed file to save space
+        unlink($filePath);
+        
+        $originalSize = strlen($originalContent);
+        $compressedSize = filesize($compressedFilePath);
+        $compressionRatio = round((1 - ($compressedSize / $originalSize)) * 100, 2);
+        
+        $this->info("File compressed: {$this->formatBytes($originalSize)} → {$this->formatBytes($compressedSize)} ({$compressionRatio}% reduction)");
+        
+        return $compressedFilePath;
+    }
+
+    /**
+     * Format bytes into human readable format
+     */
+    protected function formatBytes($bytes, $precision = 2)
+    {
+        $units = array('B', 'KB', 'MB', 'GB', 'TB');
+        
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        
+        return round($bytes, $precision) . ' ' . $units[$i];
     }
 
     /**
@@ -125,14 +172,38 @@ class BackupDataOnly extends Command
             return;
         }
 
-        Mail::raw('Please find attached your data-only database backup for ' . config('app.name') . '.', function ($message) use ($filePath, $filename, $recipient) {
-            $message->to($recipient)
-                    ->subject('Laravel Data-Only Database Backup: ' . date('Y-m-d'))
-                    ->attach($filePath, [
-                        'as' => $filename,
-                        'mime' => 'application/sql',
-                    ]);
-        });
+        // Check file size (most email providers have 25MB limit)
+        $fileSize = filesize($filePath);
+        $maxEmailSize = 20 * 1024 * 1024; // 20MB to be safe
+        
+        if ($fileSize > $maxEmailSize) {
+            $this->warn("Backup file is too large ({$this->formatBytes($fileSize)}) to send via email. Sending notification only.");
+            Mail::raw(
+                "Data-only backup was successful, but the file ({$this->formatBytes($fileSize)}) is too large to email.\n\n" .
+                "The backup file '{$filename}' is stored on the server at: {$filePath}\n\n" .
+                "Please download it manually or consider using a file sharing service.",
+                function ($message) use ($recipient) {
+                    $message->to($recipient)
+                            ->subject('Laravel Data-Only Backup: File Too Large - ' . date('Y-m-d'));
+                }
+            );
+            $this->info("Large file notification sent to {$recipient}.");
+            return;
+        }
+
+        Mail::raw(
+            "Please find attached your compressed data-only database backup for " . config('app.name') . ".\n\n" .
+            "File size: {$this->formatBytes($fileSize)}\n" .
+            "To restore, decompress the .gz file first, then import the SQL file.",
+            function ($message) use ($filePath, $filename, $recipient) {
+                $message->to($recipient)
+                        ->subject('Laravel Data-Only Database Backup: ' . date('Y-m-d'))
+                        ->attach($filePath, [
+                            'as' => $filename,
+                            'mime' => 'application/gzip',
+                        ]);
+            }
+        );
 
         $this->info("Data-only backup email sent to {$recipient}.");
     }

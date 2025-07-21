@@ -621,7 +621,7 @@
                                             @endif
                                             <th
                                                 class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
-                                                Date</th>
+                                                Issue Date</th>
                                             <th
                                                 class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
                                                 Type</th>

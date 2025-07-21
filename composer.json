@@ -23,6 +23,7 @@
         "pragmarx/google2fa-qrcode": "^3.0",
         "setasign/fpdi": "^2.6",
         "smalot/pdfparser": "^2.11",
+        "spatie/laravel-backup": "^9.3",
         "spatie/laravel-permission": "^6.10",
         "spatie/pdf-to-image": "^1.2",
         "tecnickcom/tcpdf": "^6.8",

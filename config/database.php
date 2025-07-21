@@ -60,6 +60,10 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+            'dump' => [
+                'dump_binary_path' => env('MYSQLDUMP_BINARY_PATH', '/usr/bin/mysqldump'),
+                'timeout' => 60 * 10, // 10 minutes
+            ],
         ],
 
         'mysql_testing' => [

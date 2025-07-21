@@ -34,4 +34,11 @@ class TaskPolicy
 
         return $user->can('create task');
     }
+
+    public function destroy(User $user): bool
+    {
+        if($user->hasRole('admin')) return true;
+
+        return false;
+    }
 }

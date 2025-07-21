@@ -172,6 +172,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/pdf/receipt/{taskId}', [TaskController::class, 'receiptPdf'])->name('pdf.receipt');
         Route::get('/pdf/receipt/{taskId}/download', [TaskController::class, 'receiptPdfDownload'])->name('pdf.receipt.download');
         Route::post('/upload', [TaskController::class, 'clientPassport'])->name('upload.passport');
+        Route::delete('/{id}', [TaskController::class, 'destroy'])->name('destroy');
     });
 
     // SUPPLIERS

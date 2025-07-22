@@ -27,7 +27,7 @@ class Invoice extends Model
         'bank_name',
         'swift_no',
         'iban_no',
-        'country',
+        'country_id',
         'tax',
         'discount',
         'shipping',

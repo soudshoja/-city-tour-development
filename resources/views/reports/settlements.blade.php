@@ -80,7 +80,6 @@
                         <thead>
                             <tr class="bg-gray-200 text-left text-sm text-gray-700">
                                 <th class="py-2 px-4">Transaction Date</th>
-                                <th class="py-2 px-4">Reference Type</th>
                                 <th class="py-2 px-4">Company</th>
                                 <th class="py-2 px-4">Description</th>
                                 <th class="py-2 px-4">Payment Gateway</th>
@@ -97,7 +96,6 @@
                                 @endphp
                                 <tr class="border-t hover:bg-gray-50">
                                     <td class="py-2 px-4">{{ \Carbon\Carbon::parse($tx->created_at)->format('Y-m-d') }}</td>
-                                    <td class="py-2 px-4 capitalize">{{ $tx->reference_type ?? '-' }}</td>
                                     <td class="py-2 px-4">{{ $tx->company->name ?? '-' }}</td>
                                     <td class="py-2 px-4">{{ $tx->description }}</td>
                                     <td class="py-2 px-4">{{ explode(' ', $tx->description)[0] ?? '-' }}</td>
@@ -150,6 +148,7 @@
                             <thead>
                                 <tr class="bg-gray-200 text-left text-sm text-gray-700">
                                     <th class="py-2 px-4">Account</th>
+                                    <th class="py-2 px-4">Group</th>
                                     <th class="py-2 px-4">Debit</th>
                                     <th class="py-2 px-4">Credit</th>
                                     <th class="py-2 px-4">Description</th>
@@ -159,6 +158,7 @@
                                 <template x-for="entry in entries" :key="entry.id">
                                     <tr class="border-t">
                                         <td class="py-2 px-4" x-text="entry.account_name"></td>
+                                        <td class="py-2 px-4" x-text="entry.root_name"></td>
                                         <td class="py-2 px-4" x-text="entry.debit"></td>
                                         <td class="py-2 px-4" x-text="entry.credit"></td>
                                         <td class="py-2 px-4" x-text="entry.description ?? '-'"></td>

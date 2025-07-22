@@ -835,7 +835,8 @@ class ReportController extends Controller
             $query->where('company_id', $user->company->id);
         }
 
-        $query->orderByDesc('transactions.created_at');
+        $query->orderByDesc('transactions.created_at')
+            ->orderByDesc('transactions.id');
         $query->with(['company', 'account', 'payment']);
 
         $transactions = $query->paginate(25)->appends($request->query());
@@ -865,6 +866,7 @@ class ReportController extends Controller
                 return [
                     'id' => $entry->id,
                     'account_name' => $entry->account->code . ' - ' . $entry->account->name,
+                    'root_name' => $entry->account->root->name ?? '-',
                     'debit' => $entry->debit,
                     'credit' => $entry->credit,
                     'description' => $entry->description,

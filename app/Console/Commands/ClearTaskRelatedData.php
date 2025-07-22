@@ -105,7 +105,7 @@ class ClearTaskRelatedData extends Command
                     'No tasks found. Nothing to clear.';
                 $this->info($noTasksMessage);
                 DB::rollback();
-                return Command::SUCCESS;
+                // return Command::SUCCESS;
             }
 
             $journalEntries = JournalEntry::whereIn('task_id', $taskIds)->get();
@@ -231,6 +231,14 @@ class ClearTaskRelatedData extends Command
                     DB::table('invoice_sequence')->truncate();
                     $this->info("Reset invoice sequence (no invoices remaining).");
                 }
+            }
+
+            //13. Clean up journal entry that have task id but the task somehow does not exist
+            $orphanedJournalEntries = JournalEntry::whereNotNull('task_id');
+            $orphanedJournalEntriesCount = $orphanedJournalEntries->count(); 
+            if ($orphanedJournalEntriesCount > 0) {
+                $orphanedJournalEntries->delete();
+                $this->info("Deleted {$orphanedJournalEntriesCount} orphaned journal entries related to tasks that no longer exist.");
             }
 
             DB::statement('SET FOREIGN_KEY_CHECKS = 1;');

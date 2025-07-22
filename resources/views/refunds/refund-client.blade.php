@@ -1,6 +1,4 @@
-<div class="flex justify-between items-center gap-5 my-3 ">
-
-
+<div class="flex justify-between items-center gap-5 pt-10 my-3 ">
     <div class="flex items-center gap-5 ">
         <h2 class="text-3xl font-bold">Refund From Client Credit</h2>
         <div data-tooltip="number of refunds"

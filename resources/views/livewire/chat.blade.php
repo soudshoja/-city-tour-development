@@ -375,29 +375,32 @@
                     </div>
                 </div>
                 <!-- Phone Field -->
-                <div class="flex justify-between">
-                    <div class="px-2">
+                <div class="flex flex-col md:flex-row md:items-end gap-4">
+                    <!-- Country Code -->
+                    <div class="w-full md:w-1/3">
                         <label for="dial_code" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">
                             Country Code
                         </label>
                         <select name="dial_code" id="dial_code"
-                            class="w-full px-3 border rounded-md pb-2 appearance-none ">
+                            class="w-full px-3 py-2 border rounded-md text-gray-700 dark:text-gray-300 dark:bg-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500">
                             @foreach ($countries as $country)
                                 <option value="{{ $country->dialing_code }}">
                                     {{ $country->dialing_code }} ({{ $country->name }})
                                 </option>
                             @endforeach
-                            <!-- Add more country codes as needed -->
                         </select>
                     </div>
-                    <div class="w-1/2">
+
+                    <!-- Phone Number -->
+                    <div class="w-full md:w-2/3">
                         <label for="phone"
                             class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Phone</label>
                         <input id="phoneChat" name="phone" type="text" required
-                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
                             placeholder="Client Phone" />
                     </div>
                 </div>
+
 
                 <div class="mb-4 flex gap-4">
 

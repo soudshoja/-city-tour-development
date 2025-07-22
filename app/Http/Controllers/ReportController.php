@@ -866,6 +866,7 @@ class ReportController extends Controller
                 return [
                     'id' => $entry->id,
                     'account_name' => $entry->account->code . ' - ' . $entry->account->name,
+                    'root_name' => $entry->account->root->name ?? '-',
                     'debit' => $entry->debit,
                     'credit' => $entry->credit,
                     'description' => $entry->description,

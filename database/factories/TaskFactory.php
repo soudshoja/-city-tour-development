@@ -24,8 +24,6 @@ class TaskFactory extends Factory
     public function definition(): array
     {
         return [
-            'client_id' => 1,
-            'agent_id' => 1, 
             'company_id' => 1,
             'supplier_id' => 1,
             'type' => $this->faker->randomElement(['flight', 'hotel']),

@@ -19,13 +19,13 @@ class CompanyFactory extends Factory
     {
         return [
             'code' => $this->faker->unique()->randomNumber(5),
-            'country_id' => rand(1,100),
+            'country_id' => 1, // Will be overridden in tests
             'name' => $this->faker->company,
             'phone' => $this->faker->phoneNumber,
             'email' => $this->faker->unique()->safeEmail,
             'address' => $this->faker->address,
             'status' => 1,
-            'user_id' => User::factory(),
+            'user_id' => 1, // Will be overridden in tests
         ];
     }
 }

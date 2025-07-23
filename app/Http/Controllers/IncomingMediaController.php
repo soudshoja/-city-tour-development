@@ -21,82 +21,34 @@ class IncomingMediaController extends Controller
         $type = $request->input('data.type');
         Log::info("Source type: {$type}");
 
-        $phone = $request->input('data.fromNumber')
-            ?? $request->input('phone')
-            ?? $request->input('messages.0.from');
-
-        $chatWid = $request->input('data.chat.id') ?? $request->input('data.from');
-
-        // Handle phone number reply by agent
-        if ($type === 'text') {
-            $text = trim($request->input('data.body'));
-            if (preg_match('/^\+?[0-9]{7,15}$/', $text)) {
-                $agent = Agent::where('phone_number', $phone)->first();
-
-                if ($agent) {
-                    try {
-                        $pending = IncomingMedia::where('agent_id', $agent->id)
-                            ->whereNull('client_id')
-                            ->latest()
-                            ->first();
-
-                        if (!$pending) {
-                            $this->sendInteractiveOptions($chatWid, 'No pending passport found. Please resend the document.');
-                            return response()->json(['message' => 'No pending media']);
-                        }
-
-                        $client = Client::firstOrNew(['phone' => $text]);
-                        $isNew = !$client->exists;
-
-                        $client->fill([
-                            'email' => 'ops@citytravelers.co',
-                            'agent_id' => $agent->id,
-                        ]);
-
-                        if ($isNew) {
-                            $client->status = 'active';
-                        }
-
-                        $client->save();
-
-                        $pending->client_id = $client->id;
-                        $pending->save();
-
-                        $message = $isNew
-                            ? "✅ Thank you, your profile has been created for {$text}."
-                            : "ℹ️ Thank you for updating your passport details for {$text}.";
-
-                        $this->sendInteractiveOptions($chatWid, $message);
-                        return response()->json(['message' => 'Client linked']);
-                    } catch (\Exception $e) {
-                        Log::error("Error linking client: " . $e->getMessage());
-                        $this->sendInteractiveOptions($chatWid, '❌ Failed to process client number. Please try again.');
-                        return response()->json(['message' => 'Error processing']);
-                    }
-                }
-            }
-        }
-
-        // Skip non-media messages
+        // Only process certain media types
         if (!in_array($type, ['image', 'video', 'document'])) {
             Log::info("Skipping unsupported message type: {$type}");
             return response()->json(['message' => 'No media to process.'], 200);
         }
 
-        // Agent & fallback
+        $phone = $request->input('data.fromNumber')
+            ?? $request->input('phone')
+            ?? $request->input('messages.0.from');
+
         $deviceId = $request->input('device.id');
+        $chatWid = $request->input('data.chat.id') ?? $request->input('data.from');
+
+        // Agent fallback setup
         $agentId = 1;
         $agentPhone = $request->input('device.phone');
         $agentEmail = null;
         $fallbackPhone = config('app.agent_default_phone', '+96522210017');
-        $fallbackEmail = config('app.agent_default_email', 'ops@citytravelers.co');
+        $fallbackEmail = config('app.agent_default_email', 'admin@citytravelers.co');
 
         try {
             $agent = Agent::where('phone_number', $phone)->first();
+
             if (!$agent) {
                 $agent = Agent::inRandomOrder()->first();
                 Log::info("Selected random agent: " . ($agent ? "{$agent->name} ({$agent->email})" : 'None'));
             }
+
             if ($agent) {
                 $agentId = $agent->id;
                 $agentPhone = $agent->phone_number;
@@ -112,7 +64,6 @@ class IncomingMediaController extends Controller
             $agentEmail = $fallbackEmail;
         }
 
-        // Media setup
         $mediaData = $request->input('media') ?? $request->input('data.media');
         $downloadLink = $mediaData['links']['download'] ?? null;
 
@@ -121,10 +72,12 @@ class IncomingMediaController extends Controller
             return response()->json(['message' => 'No media found.'], 200);
         }
 
+        // Construct absolute URL if needed
         if (!str_starts_with($downloadLink, 'http')) {
             $downloadLink = rtrim(config('services.resayil.base_url'), '/') . $downloadLink;
         }
 
+        $mediaUrl = $downloadLink;
         $mediaId = $mediaData['id'] ?? null;
         $mimeType = $mediaData['mime'] ?? null;
         $caption = $mediaData['caption'] ?? null;
@@ -138,18 +91,20 @@ class IncomingMediaController extends Controller
             return response()->json(['message' => 'Unsupported media type.'], 200);
         }
 
+        // Avoid duplicate media
         if (IncomingMedia::where('media_id', $mediaId)->exists()) {
             Log::info("Duplicate media ignored: {$mediaId}");
             return response()->json(['message' => 'Duplicate media.'], 200);
         }
 
-        // Download media
         $localPath = null;
+
         try {
             $newFilename = 'media_' . time() . '_' . uniqid() . '.' . $extension;
+
             $response = Http::withHeaders([
                 'Token' => config('services.resayil.api_token'),
-            ])->get($downloadLink);
+            ])->get($mediaUrl);
 
             if ($response->ok()) {
                 Storage::put("public/uploads/{$newFilename}", $response->body());
@@ -162,7 +117,7 @@ class IncomingMediaController extends Controller
             Log::error("Media download exception: " . $e->getMessage());
         }
 
-        // Save IncomingMedia
+        $incomingMedia = null;
         try {
             $incomingMedia = IncomingMedia::create([
                 'phone' => $phone,
@@ -176,26 +131,124 @@ class IncomingMediaController extends Controller
                 'agent_email' => $agentEmail,
                 'media_type' => 'whatsapp',
             ]);
-
-            if ($agent) {
-                $this->sendInteractiveOptions($chatWid);
-            }
-
-            return response()->json(['message' => 'Awaiting client number']);
         } catch (\Exception $e) {
             Log::error("Error saving IncomingMedia: " . $e->getMessage());
         }
 
-        return response()->json(['message' => 'Webhook received']);
-    }
+        $autoReplyText = null;
 
-    public function sendInteractiveOptions($to, $bodyText = '📩 Please enter the client mobile number to proceed:')
-    {
-        try {
-            $wa = new WhatsappController();
-            $wa->sendToResayil($to, $bodyText);
-        } catch (\Exception $e) {
-            Log::error("Failed to send interactive prompt to {$to}: " . $e->getMessage());
+        // Trim phone number
+        $phone = trim($phone);
+        $normalizedPhone = preg_replace('/\s+/', '', $phone);
+
+        // Get all dialing codes from the DB
+        $dialingCodes = DB::table('countries')->pluck('dialing_code');
+
+        // Sort by length DESC to match longest dialing code first (e.g., +441 before +44)
+        $dialingCodes = $dialingCodes->sortByDesc(fn($code) => strlen($code));
+
+        // Find the matching dialing code
+        $matchedCode = null;
+        foreach ($dialingCodes as $code) {
+            if (strpos($normalizedPhone, $code) === 0) {
+                $matchedCode = $code;
+                break;
+            }
         }
+
+        // Remove the country code if found
+        if ($matchedCode) {
+            $localNumber = substr($normalizedPhone, strlen($matchedCode));
+        } else {
+            $localNumber = $normalizedPhone;
+        }
+
+        // Clean up local number: remove all non-digit characters
+        $localNumber = preg_replace('/\D+/', '', $localNumber);
+
+
+        if ($localPath && Storage::exists("public/{$localPath}")) {
+            try {
+                $fullPath = storage_path("app/public/{$localPath}");
+
+                $uploadResponse = Http::asMultipart()
+                    ->attach('file', file_get_contents($fullPath), basename($fullPath))
+                    ->post(config('app.url') . '/api/chat/upload');
+
+                if ($uploadResponse->successful()) {
+                    $data = $uploadResponse->json('data');
+                    Log::info("Upload response received");
+
+                    if ($data && isset($data['name'], $data['civil_no'])) {
+                        DB::beginTransaction();
+
+                        $client = Client::where('civil_no', $data['civil_no'])->first();
+
+                        if (!$client) {
+                            $client = Client::create([
+                                'name' => $data['name'],
+                                'email' => $agentEmail,
+                                'status' => 'active',
+                                'phone' => $localNumber ?? $agentPhone,
+                                'country_code' => $matchedCode ?? '+965',
+                                'date_of_birth' => $data['date_of_birth'] ?? null,
+                                'address' => $data['place_of_birth'] ?? null,
+                                'civil_no' => $data['civil_no'] ?? null,
+                                'passport_no' => $data['passport_no'] ?? null,
+                                'old_passport_no' => $data['passport_no'] ?? null,
+                                'agent_id' => $agentId
+                            ]);
+                            $autoReplyText = "Thank you, your profile has been created.";
+                            Log::info("Client created: ID {$client->id}");
+                        } else {
+                            if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
+                                $client->update([
+                                    'phone' => $localNumber ?? $agentPhone,
+                                    'country_code' => $matchedCode ?? '+965',
+                                    'date_of_birth' => $data['date_of_birth'] ?? null,
+                                    'address' => $data['place_of_birth'] ?? null,
+                                    'passport_no' => $data['passport_no'],
+                                    'updated_at' => Carbon::parse($receivedAt),
+                                ]);
+                                $autoReplyText = "Thank you for updating your passport details.";
+                                Log::info("Client passport updated: ID {$client->id}");
+                            } else {
+                                $autoReplyText = "Thank you. We already have your passport information.";
+                            }
+                        }
+
+                        if ($incomingMedia) {
+                            $incomingMedia->client_id = $client->id;
+                            $incomingMedia->save();
+                        }
+
+                        DB::commit();
+                    } else {
+                        Log::error("No valid data from upload response.");
+                    }
+                } else {
+                    Log::error("Upload failed: " . $uploadResponse->status() . ' ' . $uploadResponse->body());
+                }
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error("Client creation/upload error: " . $e->getMessage());
+            }
+        }
+
+        // Auto-reply
+        try {
+            $to = $request->input('data.from') ?? $request->input('from');
+            if ($to && $autoReplyText) {
+                $wa = new WhatsappController();
+                $wa->sendToResayil($to, $autoReplyText);
+                Log::info("Auto-reply sent to {$to}");
+            } else {
+                Log::warning("Missing recipient or message for auto-reply.");
+            }
+        } catch (\Exception $e) {
+            Log::error("Auto-reply failed: " . $e->getMessage());
+        }
+
+        return response()->json(['message' => 'Webhook received successfully']);
     }
 }

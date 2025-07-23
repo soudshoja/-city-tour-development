@@ -24,10 +24,8 @@ class TaskFactory extends Factory
     public function definition(): array
     {
         return [
-            'client_id' => Client::factory(),
-            'agent_id' => Agent::factory(),
-            'company_id' => Company::factory(),
-            'supplier_id' => Supplier::factory(),
+            'company_id' => 1,
+            'supplier_id' => 1,
             'type' => $this->faker->randomElement(['flight', 'hotel']),
             'status' => $this->faker->randomElement(['issued', 'confirmed', 'refund', 'void', 'reissued']),
             'supplier_status' => $this->faker->randomElement(['confirmed', 'pending', 'cancelled']),

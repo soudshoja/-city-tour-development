@@ -16,7 +16,6 @@ class AgentFactory extends Factory
         return [
             'name' => $this->faker->name,
             'user_id' => 1, // Will be overridden in tests
-            'account_id' => 1, // Default account ID
             'email' => $this->faker->unique()->safeEmail,
             'phone_number' => $this->faker->phoneNumber,
             'branch_id' => 1, // Will be overridden in tests

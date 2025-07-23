@@ -102,11 +102,17 @@ class Task extends Model
 
     public function getFormattedDateAttribute()
     {
+        if($this->created_at === null) {
+            return null;
+        }
         return $this->created_at->format('d-m-Y');
     }
 
     public function getFormattedDateTimeAttribute()
     {
+        if($this->created_at === null) {
+            return null;
+        }
         return $this->created_at->format('d-m-Y h:i A');
     }
 

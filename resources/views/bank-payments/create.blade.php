@@ -863,13 +863,6 @@
                 description: checkbox.dataset.description || null
             };
 
-            // Add or remove record from selectedJournalIds
-            if (checkbox.checked) {
-                selectedJournalIds.push(record.id);
-            } else {
-                selectedJournalIds = selectedJournalIds.filter(item => item !== record.id);
-            }
-
             updateOutstandingTotal();
         }
 
@@ -920,6 +913,8 @@
             } else {
                 console.warn("Payment by Date Modal not found.");
             }
+
+            updateOutstandingTotal();
         }
 
 
@@ -987,6 +982,8 @@
                 groupedByAccount[record.account_id].total_debit += record.debit;
                 groupedByAccount[record.account_id].total_credit += record.credit;
                 groupedByAccount[record.account_id].journal_entry_ids.push(record.journal_entry_id);
+
+                selectedJournalIds.push(record.journal_entry_id);
             });
 
             // Loop through each group and merge or add into items

@@ -6,7 +6,11 @@ use App\Models\Agent;
 use App\Models\Client;
 use App\Models\User;
 use App\Models\AgentStatus;
+use App\Models\AgentType;
+use App\Models\Branch;
 use App\Models\ClientStatus;
+use App\Models\Company;
+use App\Models\Role;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**

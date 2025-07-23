@@ -9,6 +9,8 @@ use App\Models\InvoiceDetail;
 use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\Transaction;
+use App\Models\TaskFlightDetail;
+use App\Models\TaskHotelDetail;
 use App\Models\Company;
 use Exception;
 use Illuminate\Console\Command;
@@ -18,10 +20,15 @@ class ClearTaskRelatedData extends Command
 {
     protected $signature = 'tasks:clear-related-data {--force : Force the operation without confirmation} {--company= : Clear tasks for specific company (ID or name)}';
 
-    protected $description = 'Clear all data related to tasks while preserving non-task related records';
+    protected $description = 'Hard delete all data related to tasks (including soft deleted records) while preserving non-task related records';
 
     public function handle()
     {
+        if(env('APP_ENV') == 'production') {
+            $this->error('This command is not allowed in production environments.');
+            return Command::FAILURE;
+        }
+
         $companyFilter = $this->option('company');
         $companyId = null;
         $companyName = '';
@@ -70,8 +77,8 @@ class ClearTaskRelatedData extends Command
 
         if (!$this->option('force')) {
             $confirmMessage = $companyFilter ? 
-                "This will delete all task-related data for company '{$companyName}'. Do you wish to continue?" :
-                'This will delete all task-related data. Do you wish to continue?';
+                "This will PERMANENTLY DELETE all task-related data (including soft deleted records) for company '{$companyName}'. Do you wish to continue?" :
+                'This will PERMANENTLY DELETE all task-related data (including soft deleted records). Do you wish to continue?';
                 
             if (!$this->confirm($confirmMessage)) {
                 $this->info('Operation cancelled.');
@@ -80,23 +87,24 @@ class ClearTaskRelatedData extends Command
         }
 
         $this->info($companyFilter ? 
-            "Starting task-related data cleanup for company '{$companyName}'..." :
-            'Starting task-related data cleanup...');
+            "Starting HARD DELETE of task-related data for company '{$companyName}'..." :
+            'Starting HARD DELETE of task-related data...');
 
         DB::beginTransaction();
         DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
 
         try {
             // Get all task IDs before deletion (filtered by company if specified)
-            $taskQuery = Task::query();
+            // Include soft deleted tasks since we want to hard delete everything
+            $taskQuery = Task::withTrashed();
             if ($companyId) {
                 $taskQuery->where('company_id', $companyId);
             }
             $taskIds = $taskQuery->pluck('id')->toArray();
             
             $taskCountMessage = $companyFilter ? 
-                "Found " . count($taskIds) . " tasks for company '{$companyName}' to process." :
-                'Found ' . count($taskIds) . ' tasks to process.';
+                "Found " . count($taskIds) . " tasks (including soft deleted) for company '{$companyName}' to process." :
+                'Found ' . count($taskIds) . ' tasks (including soft deleted) to process.';
             $this->info($taskCountMessage);
 
             if (empty($taskIds)) {
@@ -105,74 +113,70 @@ class ClearTaskRelatedData extends Command
                     'No tasks found. Nothing to clear.';
                 $this->info($noTasksMessage);
                 DB::rollback();
-                return Command::SUCCESS;
+                // return Command::SUCCESS;
             }
 
-            $journalEntries = JournalEntry::whereIn('task_id', $taskIds)->get();
+            $journalEntries = JournalEntry::withTrashed()->whereIn('task_id', $taskIds)->get();
 
             if( !empty($journalEntries)) {
                 // Clear journal entries related to tasks
                 $transactionsId = $journalEntries->pluck('transaction_id')->toArray();
-                $transactions = Transaction::whereIn('id', $transactionsId)->get();
+                $transactions = Transaction::withTrashed()->whereIn('id', $transactionsId)->get();
                 
                 if ($transactions->isNotEmpty()) {
-                    // Delete transactions related to journal entries
+                    // Hard delete transactions related to journal entries
                     $transactionsCount = $transactions->count();
                     $transactions->each(function ($transaction) {
-                        $transaction->delete();
+                        $transaction->forceDelete();
                     });
-                    $this->info("Deleted {$transactionsCount} transactions related to journal entries.");
+                    $this->info("Hard deleted {$transactionsCount} transactions related to journal entries.");
                 }
 
                 $journalEntries->each(function ($journalEntry) {
-                    $journalEntry->delete();
+                    $journalEntry->forceDelete();
                 });
 
-                $this->info("Deleted " . count($journalEntries) . " journal entries related to tasks.");
+                $this->info("Hard deleted " . count($journalEntries) . " journal entries related to tasks.");
             }
 
             // 1. Clear invoice details related to tasks
-            $invoiceDetailsCount = InvoiceDetail::whereIn('task_id', $taskIds)->count();
+            $invoiceDetailsCount = InvoiceDetail::withTrashed()->whereIn('task_id', $taskIds)->count();
             if ($invoiceDetailsCount > 0) {
-                InvoiceDetail::whereIn('task_id', $taskIds)->delete();
-                $this->info("Deleted {$invoiceDetailsCount} invoice details related to tasks.");
+                InvoiceDetail::withTrashed()->whereIn('task_id', $taskIds)->forceDelete();
+                $this->info("Hard deleted {$invoiceDetailsCount} invoice details related to tasks.");
             }
 
             // 2. Get invoices that have task-related invoice details (now deleted)
             // and invoices that might be empty after deletion
-            $taskRelatedInvoiceIds = Invoice::whereHas('invoiceDetails', function($query) use ($taskIds) {
-                $query->whereIn('task_id', $taskIds);
+            $taskRelatedInvoiceIds = Invoice::withTrashed()->whereHas('invoiceDetails', function($query) use ($taskIds) {
+                $query->withTrashed()->whereIn('task_id', $taskIds);
             })->pluck('id')->toArray();
 
             // Also get invoices that no longer have any invoice details
-            $emptyInvoiceIds = Invoice::whereDoesntHave('invoiceDetails')->pluck('id')->toArray();
+            $emptyInvoiceIds = Invoice::withTrashed()->whereDoesntHave('invoiceDetails')->pluck('id')->toArray();
             
             $invoiceIdsToDelete = array_unique(array_merge($taskRelatedInvoiceIds, $emptyInvoiceIds));
 
             if (!empty($invoiceIdsToDelete)) {
                 // 3. Clear payments related to task invoices
-                $paymentsCount = Payment::whereIn('invoice_id', $invoiceIdsToDelete)->count();
+                $paymentsCount = Payment::withTrashed()->whereIn('invoice_id', $invoiceIdsToDelete)->count();
                 if ($paymentsCount > 0) {
-                    Payment::whereIn('invoice_id', $invoiceIdsToDelete)->delete();
-                    $this->info("Deleted {$paymentsCount} payments related to task invoices.");
+                    Payment::withTrashed()->whereIn('invoice_id', $invoiceIdsToDelete)->forceDelete();
+                    $this->info("Hard deleted {$paymentsCount} payments related to task invoices.");
                 }
 
                 // 4. Clear transactions related to task invoices
-                $transactionsCount = Transaction::whereIn('invoice_id', $invoiceIdsToDelete)->count();
+                $transactionsCount = Transaction::withTrashed()->whereIn('invoice_id', $invoiceIdsToDelete)->count();
                 if ($transactionsCount > 0) {
-                    Transaction::whereIn('invoice_id', $invoiceIdsToDelete)->delete();
-                    $this->info("Deleted {$transactionsCount} transactions related to task invoices.");
+                    Transaction::withTrashed()->whereIn('invoice_id', $invoiceIdsToDelete)->forceDelete();
+                    $this->info("Hard deleted {$transactionsCount} transactions related to task invoices.");
                 }
 
                 // 5. Clear journal entries related to task invoices (if they exist)
-                if (DB::getSchemaBuilder()->hasTable('journal_entries')) {
-                    $journalEntriesCount = DB::table('journal_entries')
-                        ->whereIn('invoice_id', $invoiceIdsToDelete)
-                        ->count();
-                    if ($journalEntriesCount > 0) {
-                        DB::table('journal_entries')->whereIn('invoice_id', $invoiceIdsToDelete)->delete();
-                        $this->info("Deleted {$journalEntriesCount} journal entries related to task invoices.");
-                    }
+                $journalEntriesInvoiceCount = JournalEntry::withTrashed()->whereIn('invoice_id', $invoiceIdsToDelete)->count();
+                if ($journalEntriesInvoiceCount > 0) {
+                    JournalEntry::withTrashed()->whereIn('invoice_id', $invoiceIdsToDelete)->forceDelete();
+                    $this->info("Hard deleted {$journalEntriesInvoiceCount} journal entries related to task invoices.");
                 }
 
                 // 6. Clear invoice partials related to task invoices (if they exist)
@@ -182,45 +186,45 @@ class ClearTaskRelatedData extends Command
                         ->count();
                     if ($invoicePartialsCount > 0) {
                         DB::table('invoice_partials')->whereIn('invoice_id', $invoiceIdsToDelete)->delete();
-                        $this->info("Deleted {$invoicePartialsCount} invoice partials related to task invoices.");
+                        $this->info("Hard deleted {$invoicePartialsCount} invoice partials related to task invoices.");
                     }
                 }
 
                 // 7. Delete the invoices themselves
-                $invoicesCount = Invoice::whereIn('id', $invoiceIdsToDelete)->count();
+                $invoicesCount = Invoice::withTrashed()->whereIn('id', $invoiceIdsToDelete)->count();
                 if ($invoicesCount > 0) {
-                    Invoice::whereIn('id', $invoiceIdsToDelete)->delete();
-                    $this->info("Deleted {$invoicesCount} invoices related to tasks.");
+                    Invoice::withTrashed()->whereIn('id', $invoiceIdsToDelete)->forceDelete();
+                    $this->info("Hard deleted {$invoicesCount} invoices related to tasks.");
                 }
             }
 
             // 8. Clear task flight details
-            $flightDetailsCount = DB::table('task_flight_details')->whereIn('task_id', $taskIds)->count();
+            $flightDetailsCount = TaskFlightDetail::withTrashed()->whereIn('task_id', $taskIds)->count();
             if ($flightDetailsCount > 0) {
-                DB::table('task_flight_details')->whereIn('task_id', $taskIds)->delete();
-                $this->info("Deleted {$flightDetailsCount} task flight details.");
+                TaskFlightDetail::withTrashed()->whereIn('task_id', $taskIds)->forceDelete();
+                $this->info("Hard deleted {$flightDetailsCount} task flight details.");
             }
 
             // 9. Clear task hotel details
-            $hotelDetailsCount = DB::table('task_hotel_details')->whereIn('task_id', $taskIds)->count();
+            $hotelDetailsCount = TaskHotelDetail::withTrashed()->whereIn('task_id', $taskIds)->count();
             if ($hotelDetailsCount > 0) {
-                DB::table('task_hotel_details')->whereIn('task_id', $taskIds)->delete();
-                $this->info("Deleted {$hotelDetailsCount} task hotel details.");
+                TaskHotelDetail::withTrashed()->whereIn('task_id', $taskIds)->forceDelete();
+                $this->info("Hard deleted {$hotelDetailsCount} task hotel details.");
             }
 
             // 10. Reset client credits (only for clients who had task-related invoices)
-            $clientIds = Invoice::whereIn('id', $invoiceIdsToDelete ?? [])->pluck('client_id')->unique()->toArray();
+            $clientIds = Invoice::withTrashed()->whereIn('id', $invoiceIdsToDelete ?? [])->pluck('client_id')->unique()->toArray();
             if (!empty($clientIds)) {
                 $clientsCount = Client::whereIn('id', $clientIds)->count();
                 Client::whereIn('id', $clientIds)->update(['credit' => 0]);
                 $this->info("Reset credit for {$clientsCount} clients who had task-related invoices.");
             }
 
-            // 11. Finally, delete the tasks themselves
-            $tasksCount = Task::whereIn('id', $taskIds)->count();
+            // 11. Finally, hard delete the tasks themselves
+            $tasksCount = Task::withTrashed()->whereIn('id', $taskIds)->count();
             if ($tasksCount > 0) {
-                Task::whereIn('id', $taskIds)->delete();
-                $this->info("Deleted {$tasksCount} tasks.");
+                Task::withTrashed()->whereIn('id', $taskIds)->forceDelete();
+                $this->info("Hard deleted {$tasksCount} tasks.");
             }
 
             // 12. Clean up invoice sequence if needed (only if it's task-related)
@@ -232,13 +236,22 @@ class ClearTaskRelatedData extends Command
                     $this->info("Reset invoice sequence (no invoices remaining).");
                 }
             }
+            //13. Clean up journal entry that have task id but the task somehow does not exist
+            $orphanedJournalEntries = JournalEntry::whereNotNull('task_id');
+            $orphanedJournalEntriesCount = $orphanedJournalEntries->count(); 
+            if ($orphanedJournalEntriesCount > 0) {
+                $orphanedJournalEntries->delete();
+                $orphanedJournalEntries->forceDelete();
+
+                $this->info("Hard Deleted {$orphanedJournalEntriesCount} orphaned journal entries related to tasks that no longer exist.");
+            }
 
             DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
             DB::commit();
             
             $successMessage = $companyFilter ? 
-                "✅ Task-related data cleanup for company '{$companyName}' completed successfully!" :
-                '✅ Task-related data cleanup completed successfully!';
+                "✅ HARD DELETE of task-related data for company '{$companyName}' completed successfully!" :
+                '✅ HARD DELETE of task-related data completed successfully!';
             $this->info($successMessage);
 
         } catch (Exception $e) {

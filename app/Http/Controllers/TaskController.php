@@ -2383,11 +2383,25 @@ class TaskController extends Controller
 
     public function destroy($id)
     {
+        $response = $this->destroyProcess($id);
+
+        $response = json_decode($response->getContent(), true);
+
+        if ($response['status'] === 'success') {
+            return redirect()->back()->with('success', $response['message']);
+        } else {
+            return redirect()->back()->with('error', $response['message'])->with('data', $response['data'] ?? null);
+        }
+    }
+
+    public function destroyProcess($id)
+    {
         Gate::authorize('destroy', Task::class);
 
         // Check if user is super admin (admin role)
         $user = Auth::user();
-        if ($user->role_id !== Role::ADMIN) {
+
+        if ($user->role_id != Role::ADMIN) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Unauthorized. Only super admin can delete tasks.',

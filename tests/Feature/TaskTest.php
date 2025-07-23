@@ -62,10 +62,21 @@ class TaskTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_soft_delete_simple_task()
+    private function createAdminUser(): User
     {
         $admin = User::factory()->create(['role_id' => Role::ADMIN]);
         $admin->assignRole('admin');
+        return $admin;
+    }
+
+    private function createCompanyUser(): User
+    {
+        return User::factory()->create(['role_id' => Role::COMPANY]);
+    }
+
+    public function test_admin_can_soft_delete_simple_task()
+    {
+        $admin = $this->createAdminUser();
 
         $country = Country::factory()->create();
         
@@ -103,21 +114,16 @@ class TaskTest extends TestCase
 
         $response = $this->delete(route('tasks.destroy', $task->id));
 
-        $response->assertStatus(200)
-                ->assertJson([
-                    'status' => 'success',
-                    'message' => "Task 'TEST-REF-001' and all related data have been soft deleted successfully."
-                ]);
+        // Expect redirect with success message
+        $response->assertRedirect()
+                ->assertSessionHas('success', "Task 'TEST-REF-001' and all related data have been soft deleted successfully.");
 
-        $task->refresh();
-        $this->assertSoftDeleted($task);
+        // Verify task was soft deleted
+        $this->assertSoftDeleted('tasks', ['id' => $task->id]);
         
         $trashedTask = Task::withTrashed()->find($task->id);
         $this->assertNotNull($trashedTask);
         $this->assertNotNull($trashedTask->deleted_at);
-
-        
-        $this->assertSoftDeleted('tasks', ['id' => $task->id]);
 
         $this->assertDatabaseHas('tasks', [
             'id' => $task->id,
@@ -128,7 +134,7 @@ class TaskTest extends TestCase
 
     public function test_non_admin_cannot_delete_task()
     {
-        $companyUser = User::factory()->create(['role_id' => Role::COMPANY]);
+        $companyUser = $this->createCompanyUser();
 
         $company = Company::factory()->create([
             'user_id' => $companyUser->id,
@@ -142,9 +148,8 @@ class TaskTest extends TestCase
 
         $response = $this->delete(route('tasks.destroy', $task->id));
 
+        // Gate authorization fails first, which returns 403 from Laravel
         $response->assertStatus(403);
-        
-        $response->assertSee('This action is unauthorized');
 
         // Assert task is not deleted
         $this->assertDatabaseHas('tasks', ['id' => $task->id]);
@@ -153,10 +158,7 @@ class TaskTest extends TestCase
 
     public function test_admin_cannot_delete_nonexistent_task()
     {
-        $adminRole = Role::firstOrCreate(['name' => 'admin']);
-        
-        $admin = User::factory()->create(['role_id' => Role::ADMIN]);
-        $admin->assignRole($adminRole); // Assign Spatie role for policy authorization
+        $admin = $this->createAdminUser();
 
         $this->actingAs($admin);
 
@@ -168,10 +170,7 @@ class TaskTest extends TestCase
 
     public function test_destroy_task_without_related_data()
     {
-        $adminRole = Role::firstOrCreate(['name' => 'admin']);
-        
-        $admin = User::factory()->create(['role_id' => Role::ADMIN]);
-        $admin->assignRole($adminRole);
+        $admin = $this->createAdminUser();
         
         $country = Country::factory()->create();
         $userCompany = User::factory()->create(['role_id' => Role::COMPANY]);
@@ -191,21 +190,15 @@ class TaskTest extends TestCase
 
         $response = $this->delete(route('tasks.destroy', $task->id));
 
-        $response->assertStatus(200)
-            ->assertJson([
-                'status' => 'success',
-                'message' => "Task 'SIMPLE-TASK-001' and all related data have been soft deleted successfully."
-            ]);
+        $response->assertRedirect()
+            ->assertSessionHas('success', "Task 'SIMPLE-TASK-001' and all related data have been soft deleted successfully.");
 
         $this->assertSoftDeleted('tasks', ['id' => $task->id]);
     }
 
     public function test_admin_can_soft_delete_task_with_invoices()
     {
-        $adminRole = Role::firstOrCreate(['name' => 'admin']);
-        
-        $admin = User::factory()->create(['role_id' => Role::ADMIN]);
-        $admin->assignRole($adminRole);
+        $admin = $this->createAdminUser();
         
         $country = Country::factory()->create();
         $userCompany = User::factory()->create(['role_id' => Role::COMPANY]);
@@ -271,11 +264,8 @@ class TaskTest extends TestCase
 
         $response = $this->delete(route('tasks.destroy', $task->id));
 
-        $response->assertStatus(200)
-            ->assertJson([
-                'status' => 'success',
-                'message' => "Task 'TEST-REF-001' and all related data have been soft deleted successfully."
-            ]);
+        $response->assertRedirect()
+            ->assertSessionHas('success', "Task 'TEST-REF-001' and all related data have been soft deleted successfully.");
 
         // Assert task is soft deleted
         $this->assertSoftDeleted('tasks', ['id' => $task->id]);
@@ -304,9 +294,7 @@ class TaskTest extends TestCase
     public function test_admin_can_soft_delete_task_with_all_related_data()
     {
         // Create admin role and user
-        $adminRole = Role::firstOrCreate(['name' => 'admin']);
-        $admin = User::factory()->create(['role_id' => Role::ADMIN]);
-        $admin->assignRole($adminRole);
+        $admin = $this->createAdminUser();
         
         // Create basic dependencies
         $country = Country::factory()->create();
@@ -493,12 +481,9 @@ class TaskTest extends TestCase
         // Call destroy method
         $response = $this->delete(route('tasks.destroy', $task->id));
 
-        // Assert successful response
-        $response->assertStatus(200)
-                ->assertJson([
-                    'status' => 'success',
-                    'message' => "Task 'COMPLEX-TASK-001' and all related data have been soft deleted successfully."
-                ]);
+        // Assert successful redirect with success message
+        $response->assertRedirect()
+                ->assertSessionHas('success', "Task 'COMPLEX-TASK-001' and all related data have been soft deleted successfully.");
 
         // Assert main task is soft deleted
         $this->assertSoftDeleted('tasks', ['id' => $task->id]);

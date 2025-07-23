@@ -1,6 +1,23 @@
 <x-app-layout>
     <div x-data="{ showFilter: false }">
         <!-- Page Heading -->
+         @if(auth()->user()->role_id == \App\Models\Role::ADMIN)
+         <div class="p-2 bg-gray-500 text-white rounded shadow mb-4 flex items-center justify-between">
+             <div class="grid">
+                 <h1 class="text-xl font-semibold">Admin View</h1>
+                 <p class="text-sm">You have access to all transactions across all companies.</p>
+             </div>
+
+             <select name="company_id" id="" class="form-select w-fit py-2 px-6 border rounded-md bg-white text-gray-800">
+                    <option value="">Select Company</option>
+                    @foreach($companies as $companySelect)
+                        <option value="{{ $company->id }}" {{ $companySelect->id == $company->id ? 'selected' : '' }}>
+                            {{ $company->name }}
+                        </option>
+                    @endforeach
+             </select>
+         </div>
+         @endif
         <div class="flex justify-between items-center gap-5 my-3 mb-4">
             <div class="flex items-center space-x-4">
                 <div class="p-3 DarkBGcolor rounded-full shadow-md flex items-center justify-center heartbeat">

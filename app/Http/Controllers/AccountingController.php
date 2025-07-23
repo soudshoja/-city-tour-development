@@ -223,6 +223,10 @@ class AccountingController extends Controller
     {
         $user = Auth::user();
 
+        if($user->role_id != Role::COMPANY && $user->company == null) {
+            return abort(403, 'Unauthorized action.');
+        }
+
         // Retrieve the company associated with the user and load its branches with agents, clients, invoices, and general ledgers
         $company = Company::where('user_id', $user->id)
             ->with([

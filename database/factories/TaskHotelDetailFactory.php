@@ -21,45 +21,42 @@ class TaskHotelDetailFactory extends Factory
     public function definition(): array
     {
         return [
-            'task_id' => Task::factory(),
-            'hotel_name' => $this->faker->company() . ' Hotel',
-            'hotel_address' => $this->faker->address(),
-            'city' => $this->faker->city(),
-            'country' => $this->faker->country(),
-            'check_in_date' => $this->faker->dateTimeBetween('now', '+6 months'),
-            'check_out_date' => $this->faker->dateTimeBetween('+1 day', '+1 year'),
-            'room_type' => $this->faker->randomElement(['Standard', 'Deluxe', 'Suite', 'Executive']),
-            'number_of_rooms' => $this->faker->numberBetween(1, 5),
-            'number_of_guests' => $this->faker->numberBetween(1, 8),
-            'meal_plan' => $this->faker->randomElement(['Breakfast', 'Half Board', 'Full Board', 'All Inclusive']),
-            'hotel_rating' => $this->faker->numberBetween(1, 5),
-            'booking_reference' => $this->faker->regexify('[A-Z0-9]{8}'),
+            'task_id' => 1, // Will be overridden in tests
+            'hotel_id' => $this->faker->numberBetween(1, 100),
+            'booking_time' => $this->faker->dateTimeBetween('now', '+6 months'),
+            'check_in' => $this->faker->dateTimeBetween('now', '+6 months'),
+            'check_out' => $this->faker->dateTimeBetween('+1 day', '+1 year'),
+            'room_reference' => $this->faker->regexify('[A-Z0-9]{8}'),
             'room_number' => $this->faker->optional()->regexify('[0-9]{3,4}'),
-            'special_requests' => $this->faker->optional()->text(100),
-            'booking_status' => $this->faker->randomElement(['confirmed', 'pending', 'cancelled']),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'room_type' => $this->faker->randomElement(['Standard', 'Deluxe', 'Suite', 'Executive']),
+            'room_amount' => $this->faker->numberBetween(1, 5),
+            'room_details' => $this->faker->optional()->text(100),
+            'room_promotion' => $this->faker->optional()->randomElement(['Early Bird', 'Last Minute', 'Group Discount']),
+            'rate' => $this->faker->randomFloat(2, 50, 500),
+            'meal_type' => $this->faker->randomElement(['Breakfast', 'Half Board', 'Full Board', 'All Inclusive']),
+            'is_refundable' => $this->faker->randomElement(['yes', 'no']),
+            'supplements' => $this->faker->optional()->text(50),
         ];
     }
 
     public function confirmed(): static
     {
         return $this->state(fn (array $attributes) => [
-            'booking_status' => 'confirmed',
+            'is_refundable' => 'yes'
         ]);
     }
 
     public function pending(): static
     {
         return $this->state(fn (array $attributes) => [
-            'booking_status' => 'pending',
+            'is_refundable' => 'no',
         ]);
     }
 
     public function cancelled(): static
     {
         return $this->state(fn (array $attributes) => [
-            'booking_status' => 'cancelled',
+            'is_refundable' => 'no',
         ]);
     }
 
@@ -74,8 +71,8 @@ class TaskHotelDetailFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'room_type' => 'Suite',
-            'hotel_rating' => 5,
-            'meal_plan' => 'All Inclusive',
+            'rate' => $this->faker->randomFloat(2, 300, 1000),
+            'meal_type' => 'All Inclusive',
         ]);
     }
 }

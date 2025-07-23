@@ -19,6 +19,7 @@ use App\Models\CoaCategory;
 use App\Models\Supplier;
 use App\Models\JournalEntry;
 use App\Models\Payment;
+use App\Models\Role;
 use App\Models\Sequence;
 use App\Models\SupplierCompany;
 use App\Models\Task;
@@ -576,8 +577,24 @@ class CoaController extends Controller
     public function transaction(Request $request)
     {
         $user = Auth::user();
-    
-        $company = Company::where('user_id', $user->id)->first();
+
+        if($user->role_id == Role::ADMIN){
+            $request->validate([
+                'company_id' => 'nullable|exists:companies,id',
+            ]);
+
+            if($request->company_id) {
+                $company = Company::findOrFail($request->company_id);
+            } else {
+                $company = Company::first();
+            }
+
+
+        } else {
+            $company = Company::where('user_id', $user->id)->first();
+        }
+        
+        $companies = Company::all();
     
         if (!$company) {
             return redirect()->route('dashboard')->with('error', 'Company not found.');
@@ -623,6 +640,7 @@ class CoaController extends Controller
         );
     
         return view('coa.transaction', [
+            'companies' => $companies,
             'company' => $company,
             'transactionsByDate' => $paginated
         ]);

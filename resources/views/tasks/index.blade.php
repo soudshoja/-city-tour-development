@@ -286,7 +286,8 @@
                 align-items: stretch;
             }
 
-            .filter-row input, .value-input {
+            .filter-row input,
+            .value-input {
                 width: 90% !important;
             }
 
@@ -387,9 +388,9 @@
                         <!-- Hidden native select (logic only) -->
                         <select id="select-supplier-task" class="hidden">
                             @foreach ($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" data-supplier='@json(['name'=>$supplier->name])'>
-                                    {{ $supplier->name }}
-                                </option>
+                            <option value="{{ $supplier->id }}" data-supplier='@json([' name'=>$supplier->name])'>
+                                {{ $supplier->name }}
+                            </option>
                             @endforeach
                         </select>
                         <div id="form-task-container" class="mb-3"></div>
@@ -427,17 +428,17 @@
         <div class="content-70">
             <div class="panel oxShadow rounded-lg">
                 <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
-                    <div class="w-full px-6"> 
+                    <div class="w-full px-6">
                         <form action="{{ route('tasks.index') }}" method="GET"
-                            class="flex items-center gap-3 max-w-full"> 
-                            
+                            class="flex items-center gap-3 max-w-full">
+
                             <div class="relative flex-1">
                                 <input type="text" name="q" value="{{ request('q') }}"
                                     id="searchInput"
                                     placeholder=" "
                                     oninput="handleSearchInteraction()"
                                     class="block px-3 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-transparent border-b-2 border-gray-300 appearance-none
-                                    dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer rounded-full"/>
+                                    dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer rounded-full" />
 
                                 <label for="searchInput"
                                     class="absolute text-md text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
@@ -453,8 +454,8 @@
                                 class="relative group bg-blue-200 hover:bg-blue-600 text-black hover:text-white w-9 h-9 flex items-center justify-center rounded-full transition duration-300 ring-offset-2">
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none"
                                     xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
-                                    <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5" />
+                                    <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                                 </svg>
                             </button>
 
@@ -465,7 +466,7 @@
                                 class="relative group bg-red-200 hover:bg-red-500 text-black hover:text-white w-9 h-9 flex items-center justify-center rounded-full opacity-0 scale-95 pointer-events-none transition-all duration-300">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
                                     viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </form>
@@ -809,13 +810,13 @@
                                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                                         <!-- Original Task Selection for Reissued Tasks -->
                                                                         <div class="flex-1">
-                                                                        @php
+                                                                            @php
                                                                             $originalTasks = $tasks->where('status', 'issued');
                                                                             $selectedOriginalTask = $originalTasks->firstWhere('id', $task->original_task_id);
                                                                             $taskPlaceholder = $selectedOriginalTask
-                                                                                ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name)
-                                                                                : 'Select Original Task';
-                                                                        @endphp
+                                                                            ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name)
+                                                                            : 'Select Original Task';
+                                                                            @endphp
                                                                             <label for="original_task_id" class="block text-sm font-medium text-gray-700">Original Task</label>
                                                                             <x-searchable-dropdown
                                                                                 name="original_task_id"
@@ -825,8 +826,7 @@
                                                                                 ])->values()"
                                                                                 :selectedId="$task->original_task_id"
                                                                                 :selectedName="$selectedOriginalTask ? $selectedOriginalTask->reference . ' - ' .  ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name) : null"
-                                                                                :placeholder="$taskPlaceholder"
-                                                                            />
+                                                                                :placeholder="$taskPlaceholder" />
                                                                         </div>
                                                                     </div>
                                                                     @endif
@@ -858,7 +858,7 @@
                                                                                 readonly>
                                                                         </div>
                                                                     </div>
-                                                                    
+
                                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                                         <!-- Client Selection -->
                                                                         @php
@@ -903,9 +903,9 @@
                                                                                 @endforeach
                                                                             </select>
                                                                         </div>
-                                                                      
+
                                                                     </div>
-                                                                        
+
                                                                     <div class="flex flex-wrap gap-4">
                                                                         <!-- Price -->
                                                                         <div class="flex-1 min-w-[150px]">
@@ -951,15 +951,15 @@
                                                                         </div>
                                                                     </div>
                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                         <!-- Additional Info and Venue -->
-                                                                    <div class="flex-1">
-                                                                        <label for="additional_info"
-                                                                            class="block text-sm font-medium text-gray-700">Additional
-                                                                            Info</label>
-                                                                        <textarea rows="3" readonly
-                                                                            class="border border-gray-300 dark:border-gray-600 p-3 rounded-md bg-gray-200 w-full resize-none">{{ $task->additional_info }} - {{ $task->venue }}
-                                                                        </textarea>
-                                                                    </div>
+                                                                        <!-- Additional Info and Venue -->
+                                                                        <div class="flex-1">
+                                                                            <label for="additional_info"
+                                                                                class="block text-sm font-medium text-gray-700">Additional
+                                                                                Info</label>
+                                                                            <textarea rows="3" readonly
+                                                                                class="border border-gray-300 dark:border-gray-600 p-3 rounded-md bg-gray-200 w-full resize-none">{{ $task->additional_info }} - {{ $task->venue }}
+                                                                            </textarea>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                                 <div class="mt-6 flex flex-col sm:flex-row justify-between gap-4">
@@ -982,6 +982,22 @@
                                                         </form>
                                                     </div>
                                                 </div>
+
+                                                @can('destroy', App\Models\Task::class)
+                                                <form action="{{ route('tasks.destroy', $task->id) }}" method="POST">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="group">
+                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="stroke-black dark:stroke-gray-300 group-hover:stroke-red-500">
+                                                            <path d="M20.5001 6H3.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                                            <path d="M18.8332 8.5L18.3732 15.3991C18.1962 18.054 18.1077 19.3815 17.2427 20.1907C16.3777 21 15.0473 21 12.3865 21H11.6132C8.95235 21 7.62195 21 6.75694 20.1907C5.89194 19.3815 5.80344 18.054 5.62644 15.3991L5.1665 8.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                                            <path d="M9.5 11L10 16" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                                            <path d="M14.5 11L14 16" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                                            <path d="M6.5 6C6.55588 6 6.58382 6 6.60915 5.99936C7.43259 5.97849 8.15902 5.45491 8.43922 4.68032C8.44784 4.65649 8.45667 4.62999 8.47434 4.57697L8.57143 4.28571C8.65431 4.03708 8.69575 3.91276 8.75071 3.8072C8.97001 3.38607 9.37574 3.09364 9.84461 3.01877C9.96213 3 10.0932 3 10.3553 3H13.6447C13.9068 3 14.0379 3 14.1554 3.01877C14.6243 3.09364 15.03 3.38607 15.2493 3.8072C15.3043 3.91276 15.3457 4.03708 15.4286 4.28571L15.5257 4.57697C15.5433 4.62992 15.5522 4.65651 15.5608 4.68032C15.841 5.45491 16.5674 5.97849 17.3909 5.99936C17.4162 6 17.4441 6 17.5 6" stroke="" stroke-width="1.5" />
+                                                        </svg>
+                                                    </button>
+                                                </form>
+                                                @endcan
                                             </td>
                                             <td
                                                 class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
@@ -1020,7 +1036,7 @@
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 {{ optional($task->client)->phone ?? 'Not Set' }}
-                                             </td>
+                                            </td>
                                             <td
                                                 class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                 {{ $task->passenger_name ?? 'Not Set' }}
@@ -1773,12 +1789,12 @@
 
                 dropZone.addEventListener('click', () => fileInput.click());
 
-                fileInput.addEventListener('change', function () {
+                fileInput.addEventListener('change', function() {
                     customFiles.push(...Array.from(this.files));
                     renderFileList();
                     this.value = '';
 
-                    window.__resetTaskForm = function () {
+                    window.__resetTaskForm = function() {
                         if (typeof customFiles !== 'undefined') {
                             customFiles.length = 0;
                         }
@@ -1820,7 +1836,7 @@
                 }
 
                 const form = document.getElementById('agent-supplier-task');
-                form.addEventListener('submit', function () {
+                form.addEventListener('submit', function() {
                     const oldHiddenInput = document.getElementById('task-upload');
                     if (oldHiddenInput) oldHiddenInput.remove();
 
@@ -2143,5 +2159,4 @@
     }
 
     window.addEventListener('DOMContentLoaded', handleSearchInteraction);
-
 </script>

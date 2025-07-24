@@ -1,0 +1,23 @@
+{
+    "description": "test read refund files p3",
+    "passenger_count": 1,
+    "passengers": [
+        {
+            "client_name": "ALAJMI/HASSAN MR",
+            "reference": "3580651914",
+            "status": "refund",
+            "refund_date": "2025-01-21",
+            "price": 36.0,
+            "currency": "KWD",
+            "exchange_currency": "KWD",
+            "original_price": 36.0,
+            "original_currency": "KWD",
+            "total": 36.83,
+            "tax": 9.83,
+            "ticket_number": "T-E065-3580651914",
+            "agent_name": "",
+            "agent_email": "",
+            "agent_amadeus_id": "0012MI"
+        }
+    ]
+}

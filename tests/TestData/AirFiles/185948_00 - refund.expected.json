@@ -1,0 +1,25 @@
+{
+    "description": "test read refund files p4",
+    "passenger_count": 1,
+    "passengers": [
+        {
+            "client_name": "ALDOSARI\/SABEKAH MRS",
+            "reference": "2682858786",
+            "status": "refund",
+            "refund_date": "2025-07-20",
+            "price": 202.00,
+            "currency": "KWD",
+            "exchange_currency": "KWD",
+            "original_price": 202.0,
+            "original_currency": "KWD",
+            "total": 202.60,
+            "surcharge": 0.0,
+            "penalty_fee": 40.0,
+            "tax": 40.60,
+            "ticket_number": "T-E229-2682858786",
+            "agent_name": "",
+            "agent_email": "",
+            "agent_amadeus_id": "4714IA"
+        }
+    ]
+}

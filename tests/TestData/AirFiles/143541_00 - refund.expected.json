@@ -1,0 +1,26 @@
+{
+    "description": "test read refund files",
+    "passenger_count": 1,
+    "passengers": [
+        {
+            "client_name": "BENGHAITH\/HANAA MRS",
+            "reference": "2833115354",
+            "status": "refund",
+            "refund_date": "2025-05-28",
+            "price": 281,
+            "currency": "KWD",
+            "exchange_currency": "KWD",
+            "original_price": 281.0,
+            "original_currency": "KWD",
+            "total": 314.55,
+            "surcharge": 0.0,
+            "penalty_fee": 16.0,
+            "tax": 49.55,
+            "refund_charge": 25.65,
+            "ticket_number": "T-E076-2833115354",
+            "agent_name": "",
+            "agent_email": "",
+            "agent_amadeus_id": "2111WM"
+        }
+    ]
+}

@@ -348,39 +348,10 @@ class AirFileParser
             return null;
         }
 
-        // Look for RFDC or RFD line
-        $match = $this->findLine('/^RFDC;(\d{2}[A-Z]{3}\d{2})/');
-        if (!$match) {
-            $match = $this->findLine('/^RFD ?;(\d{2}[A-Z]{3}\d{2})/');
-        }
-        if ($match) {
-            try {
-                $date = Carbon::createFromFormat('dMy', strtoupper($match[1]));
-                return $date->format('Y-m-d');
-            } catch (\Exception $e) {
-            }
-        }
-
-        // Try R- line (e.g. R-141-35807XXXX;27MAR25)
-        $match = $this->findLine('/^R-\d{3}-\d+;(\d{2}[A-Z]{3}\d{2})/');
-        if ($match) {
-            try {
-                $date = Carbon::createFromFormat('dMy', strtoupper($match[1]));
-                return $date->format('Y-m-d');
-            } catch (\Exception $e) {
-            }
-        }
-
-        // Fallback: use TKOK line (e.g. TKOK26MAY/...)
-        $match = $this->findLine('/TKOK(\d{2}[A-Z]{3})/');
-        if ($match) {
-            try {
-                $year = date('y');
-                $date = Carbon::createFromFormat('dMy', strtoupper($match[1] . $year));
-                return $date->format('Y-m-d');
-            } catch (\Exception $e) {
-            }
-        }
+        if ($match = $this->findLine('/\bD-(\d{6});(\d{6});\d{6}\b/')) {
+            $date = Carbon::createFromFormat('ymd', $match[2]);
+            return $date->format('Y-m-d');
+        }        
 
         return null;
     }
@@ -424,7 +395,7 @@ class AirFileParser
             return (float) $match[4];
         }
         
-        $match = $this->findLine('/^RFD\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)/');
+        $match = $this->findLine('/^RFD[MFLAC]?\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)/');
         if ($match) {
             
             return (float) $match[1];
@@ -509,7 +480,7 @@ class AirFileParser
             return (float) $match[2]; // First amount (base fare)
         }
         
-        $match = $this->findLine('/^RFD\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)/');
+        $match = $this->findLine('/^RFD[MFLAC]?\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)/');
         if ($match) {
             
             return (float) $match[1];
@@ -593,7 +564,7 @@ class AirFileParser
             }
         }
         
-        $match = $this->findLine('/^RFD\s.*?([\d.]+)\s*$/');
+        $match = $this->findLine('/^RFD[MFLAC]?[;\s].*;([\d.]+)\s*$/');
         if ($match) {
             return (float) $match[1]; // Last value = total
         }
@@ -634,7 +605,7 @@ class AirFileParser
             return (float) $match[1];
         }
 
-        $match = $this->findLine('/^RFD[C]? *;.*/');
+        $match = $this->findLine('/^RFD[MFLAC]? *;.*/');
         if ($match && isset($match[0])) {
             $fields = explode(';', $match[0]);
             return (float) trim($fields[8]);
@@ -725,6 +696,10 @@ class AirFileParser
      */
     private function extractTaxesRecord()
     {
+        if ($this->extractStatus() === 'refund' && $match = $this->findLine('/^KRF\s*;(.*)/')) {
+            return rtrim($match[1], ";\r\n ");
+        }
+
         // Try refund format first (KNTI or KSTI line)
         $match = $this->findLine('/^K[NS]T[FI];(.+)/');
         if ($match) {
@@ -773,21 +748,19 @@ class AirFileParser
     private function extractRefundCharge()
     {
         $taxesRecord = $this->extractTaxesRecord();
-        if ($taxesRecord) {
-            $total = 0.0;
-            $taxes = explode(',', $taxesRecord);
-            foreach ($taxes as $tax) {
-                if (strpos($tax, ':') !== false) {
-                    list($code, $amount) = explode(':', $tax);
-                    // YQ, YR, YX are typically non-refundable
-                    if (in_array($code, ['YQ', 'YR', 'YX'])) {
-                        $total += (float) $amount;
-                    }
-                }
-            }
-            return $total;
+        if (empty($taxesRecord)) {
+            return 0.0;
         }
-        return 0.0;
+
+        $total = 0.0;
+        foreach (explode(';', $taxesRecord) as $seg) {
+            $seg = trim($seg);
+            if (preg_match('/^Q[A-Z]{3}([\d.]+)\s+(YQ|YR|YX)$/', $seg, $m)) {
+                $total += (float)$m[1];
+            }
+        }
+
+        return $total;
     }
     
     /**

@@ -7,6 +7,10 @@
             $defaultTo = \Carbon\Carbon::now()->endOfMonth()->format('Y-m-d');
             $dateFrom = request('date_from', $defaultFrom);
             $dateTo = request('date_to', $defaultTo);
+
+            $showIssueColumn = $journalEntries->contains(function ($entry) {
+                return $entry->type === 'payable' && !is_null($entry->task);
+            });
         @endphp
 
         <!-- Filter Form -->
@@ -54,7 +58,10 @@
                         <thead>
                             <tr class="bg-gray-200 text-left text-sm text-gray-700">
                                 <th class="py-2 px-4 text-center">Transaction ID</th>
-                                <th class="py-2 px-4 text-center">Date</th>
+                                <th class="py-2 px-4 text-center">Transaction Date</th>
+                                @if($showIssueColumn)
+                                    <th class="py-2 px-4 text-center">Task Date</th>
+                                @endif
                                 <th class="py-2 px-4 text-left">Description</th>
                                 <th class="py-2 px-4 text-center">Account</th>
                                 <th class="py-2 px-4 text-center">Debit</th>
@@ -74,6 +81,11 @@
                                     <td class="py-2 px-4 text-center">
                                         {{ \Carbon\Carbon::parse($entry->created_at)->format('Y-m-d') }}
                                     </td>
+                                    @if($showIssueColumn)
+                                        <td class="py-2 px-4 text-center">
+                                            {{ $entry->task->created_at?->format('Y-m-d') ?? '-' }}
+                                        </td>
+                                    @endif
                                     <td class="py-2 px-4 text-left">
                                         {{ $entry->description }}
                                     </td>

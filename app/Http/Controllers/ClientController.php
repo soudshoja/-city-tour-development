@@ -22,6 +22,8 @@ use App\Models\RefundClient;
 use App\Models\Role;
 use App\Models\Transaction;
 use App\Models\Credit;
+use App\Enums\ChargeType;
+use App\Models\PaymentMethod;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -237,6 +239,15 @@ class ClientController extends Controller
 
         $selectedDialingCode = $countries->where('dialing_code', $client->country_code)->pluck('id')->first();
 
+        $payments = Payment::where('client_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
+            ->where('is_active', true)
+            ->get();
+        $paymentMethods  = PaymentMethod::where('is_active', true)->get();
+
         // Fetch the client groups where this client is the parent (i.e., group of sub-clients)
         // $childClients = ClientGroup::where('parent_client_id', $id)
         //     ->with('childClient') // Load related child clients
@@ -262,6 +273,9 @@ class ClientController extends Controller
             'client',
             'agents',
             'invoices',
+            'payments',
+            'paymentGateways',
+            'paymentMethods',
             'tasks',
             'paid',
             'unpaid',

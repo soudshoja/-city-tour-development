@@ -60,7 +60,7 @@
                                 <th class="py-2 px-4 text-center">Transaction ID</th>
                                 <th class="py-2 px-4 text-center">Transaction Date</th>
                                 @if($showIssueColumn)
-                                    <th class="py-2 px-4 text-center">Task Details</th>
+                                    <th class="py-2 px-4 text-center">Task Date</th>
                                 @endif
                                 <th class="py-2 px-4 text-left">Description</th>
                                 <th class="py-2 px-4 text-center">Account</th>

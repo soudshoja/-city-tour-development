@@ -88,6 +88,8 @@ class IncomingMediaController extends Controller
                         ?? ''
                 );
 
+                $clientPhoneReply = trim($clientPhoneReply);
+
                 // Simple validation: basic phone number pattern (digits and + allowed)
                 if (preg_match('/^\+?\d{6,15}$/', $clientPhoneReply)) {
                     // Save client phone in cache keyed by agent phone, valid for 1 hour

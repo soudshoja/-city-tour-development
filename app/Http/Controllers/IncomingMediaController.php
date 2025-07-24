@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 
 class IncomingMediaController extends Controller
@@ -21,42 +22,125 @@ class IncomingMediaController extends Controller
         $type = $request->input('data.type');
         Log::info("Source type: {$type}");
 
-        // Only process certain media types
-        if (!in_array($type, ['image', 'video', 'document'])) {
-            Log::info("Skipping unsupported message type: {$type}");
-            return response()->json(['message' => 'No media to process.'], 200);
-        }
-
         $phone = $request->input('data.fromNumber')
             ?? $request->input('phone')
             ?? $request->input('messages.0.from');
+
+        // Clear agent cache after successful media handling
+        // Cache::forget('agent_client_phone_' . $phone);
+        // Cache::forget('agent_waiting_for_client_phone_' . $phone);
 
         $deviceId = $request->input('device.id');
         $chatWid = $request->input('data.chat.id') ?? $request->input('data.from');
 
         // Agent fallback setup
+        $senderAgent = "";
         $agentId = 1;
         $agentPhone = $request->input('device.phone');
         $agentEmail = null;
         $fallbackPhone = config('app.agent_default_phone', '+96522210017');
-        $fallbackEmail = config('app.agent_default_email', 'admin@citytravelers.co');
+        $fallbackEmail = config('app.agent_default_email', 'ops@citytravelers.co');
 
         try {
+            // Check if sender is an agent
             $agent = Agent::where('phone_number', $phone)->first();
 
-            if (!$agent) {
-                $agent = Agent::inRandomOrder()->first();
-                Log::info("Selected random agent: " . ($agent ? "{$agent->name} ({$agent->email})" : 'None'));
-            }
-
             if ($agent) {
+                Log::info("Sender is an agent: {$agent->name} ({$phone})");
+
+                // Check if we are currently waiting for client phone number from this agent
+                $waitingForClientPhone = Cache::get('agent_waiting_for_client_phone_' . $phone);
+
+                // 1) If not waiting, send prompt and set waiting flag
+                if (!$waitingForClientPhone) {
+                    $promptMessage = "Hello {$agent->name}, please reply with your client's phone number to proceed.\n(eg: +96522210017)";
+
+                    // Store media temporarily in cache if available
+                    $mediaData = $request->input('media') ?? $request->input('data.media');
+                    if ($mediaData) {
+                        Cache::put('pending_media_' . $phone, $mediaData, now()->addMinutes(30));
+                        Log::info("Media cached for agent {$phone} until client phone is received.");
+                    }
+
+                    $wa = new WhatsappController();
+                    $to = $request->input('data.from') ?? $request->input('from');
+
+                    if ($to) {
+                        $wa->sendToResayil($to, $promptMessage);
+                        Log::info("Prompt sent to agent {$to}");
+                    } else {
+                        Log::warning("Could not find recipient phone to send prompt to agent.");
+                    }
+
+                    // Mark as waiting for client phone number for 30 mins
+                    Cache::put('agent_waiting_for_client_phone_' . $phone, true, now()->addMinutes(30));
+
+                    // Stop processing until we get client phone number reply
+                    return response()->json(['message' => 'Agent prompt sent, waiting for client phone input.'], 200);
+                }
+
+                // 2) If waiting, treat this message as client's phone number reply
+                $clientPhoneReply = trim(
+                    $request->input('data.text')
+                        ?? $request->input('data.body')
+                        ?? $request->input('messages.0.body')
+                        ?? $request->input('messages.0.text')
+                        ?? ''
+                );
+
+                // Simple validation: basic phone number pattern (digits and + allowed)
+                if (preg_match('/^\+?\d{6,15}$/', $clientPhoneReply)) {
+                    // Save client phone in cache keyed by agent phone, valid for 1 hour
+                    Cache::put('agent_client_phone_' . $phone, $clientPhoneReply, now()->addHour());
+
+                    // Clear waiting flag
+                    Cache::forget('agent_waiting_for_client_phone_' . $phone);
+
+                    // Send confirmation to agent
+                    $wa = new WhatsappController();
+                    $to = $request->input('data.from') ?? $request->input('from');
+
+                    if ($to) {
+                        $wa->sendToResayil($to, "Your client's phone number {$clientPhoneReply} received.\nPlease hold while we process the data...");
+                        Log::info("Confirmed client phone received from agent {$to}");
+                    }
+
+                    //return response()->json(['message' => 'Client phone number received and stored.'], 200);
+                } else {
+                    // Invalid phone number format, ask again
+                    $wa = new WhatsappController();
+                    $to = $request->input('data.from') ?? $request->input('from');
+
+                    if ($to) {
+                        $wa->sendToResayil($to, "The phone number you sent seems invalid. Please send a valid phone number including country code.");
+                        Log::warning("Invalid client phone number from agent {$to}: {$clientPhoneReply}");
+                    }
+
+                    Cache::forget('pending_media_' . $phone);  // Don't reuse old media if phone is invalid
+
+                    return response()->json(['message' => 'Invalid client phone number received.'], 200);
+                }
+
                 $agentId = $agent->id;
                 $agentPhone = $agent->phone_number;
                 $agentEmail = $agent->email;
+                $senderAgent = 'yes';
             } else {
-                $agentPhone = $fallbackPhone;
-                $agentEmail = $fallbackEmail;
-                Log::warning("No agent found, using fallback.");
+                // If not an agent, fallback to pick a random agent as before
+                $agent = Agent::inRandomOrder()->first();
+                Log::info("Selected random agent: " . ($agent ? "{$agent->name} ({$agent->email})" : 'None'));
+
+                $senderAgent = 'no';
+                if ($agent) {
+                    $agentId = $agent->id;
+                    $agentPhone = $agent->phone_number;
+                    $agentEmail = $agent->email;
+                } else {
+                    $agentId = '1';
+                    $agentPhone = $fallbackPhone;
+                    $agentEmail = $fallbackEmail;
+                    Log::warning("No agent found, using fallback.");
+                }
             }
         } catch (\Exception $e) {
             Log::error("Error fetching agent: " . $e->getMessage());
@@ -64,7 +148,16 @@ class IncomingMediaController extends Controller
             $agentEmail = $fallbackEmail;
         }
 
-        $mediaData = $request->input('media') ?? $request->input('data.media');
+        // Try to get media from current request, or fallback to cached media (if available)
+        $mediaData = $request->input('media')
+            ?? $request->input('data.media')
+            ?? Cache::get('pending_media_' . $phone);
+
+        if ($mediaData) {
+            // Clean up after using it
+            Cache::forget('pending_media_' . $phone);
+        }
+
         $downloadLink = $mediaData['links']['download'] ?? null;
 
         if (!$downloadLink) {
@@ -72,7 +165,6 @@ class IncomingMediaController extends Controller
             return response()->json(['message' => 'No media found.'], 200);
         }
 
-        // Construct absolute URL if needed
         if (!str_starts_with($downloadLink, 'http')) {
             $downloadLink = rtrim(config('services.resayil.base_url'), '/') . $downloadLink;
         }
@@ -91,7 +183,6 @@ class IncomingMediaController extends Controller
             return response()->json(['message' => 'Unsupported media type.'], 200);
         }
 
-        // Avoid duplicate media
         if (IncomingMedia::where('media_id', $mediaId)->exists()) {
             Log::info("Duplicate media ignored: {$mediaId}");
             return response()->json(['message' => 'Duplicate media.'], 200);
@@ -118,6 +209,33 @@ class IncomingMediaController extends Controller
         }
 
         $incomingMedia = null;
+
+        // Retrieve client phone from cache if exists (only for agents)
+        $clientPhoneFromAgent = null;
+        if ($agent && Cache::has('agent_client_phone_' . $agentPhone)) {
+            $clientPhoneFromAgent = Cache::get('agent_client_phone_' . $agentPhone);
+            // Optionally clear cache after use to avoid reuse
+            Cache::forget('agent_client_phone_' . $agentPhone);
+        }
+
+        if ($senderAgent == 'yes') {
+            $clientPhoneNumber = $clientPhoneReply;
+            $agentPhoneNumber = $agentPhone;
+            $autoReplyAdd = "your client's";
+        } else {
+            $clientPhoneNumber = $phone;
+            $agentPhoneNumber = $agentPhone;
+            $autoReplyAdd = "your";
+        }
+
+        //filter client phone
+        $normalizedClientPhone = $this->normalizePhoneNumber($clientPhoneNumber ?? $phone);
+
+        $normalizedClientFullPhone = $normalizedClientPhone['full'];
+        $matchedCodeClientPhone = $normalizedClientPhone['dialing_code'];
+        $localNumberClient = $normalizedClientPhone['local'];
+
+
         try {
             $incomingMedia = IncomingMedia::create([
                 'phone' => $phone,
@@ -137,36 +255,6 @@ class IncomingMediaController extends Controller
 
         $autoReplyText = null;
 
-        // Trim phone number
-        $phone = trim($phone);
-        $normalizedPhone = preg_replace('/\s+/', '', $phone);
-
-        // Get all dialing codes from the DB
-        $dialingCodes = DB::table('countries')->pluck('dialing_code');
-
-        // Sort by length DESC to match longest dialing code first (e.g., +441 before +44)
-        $dialingCodes = $dialingCodes->sortByDesc(fn($code) => strlen($code));
-
-        // Find the matching dialing code
-        $matchedCode = null;
-        foreach ($dialingCodes as $code) {
-            if (strpos($normalizedPhone, $code) === 0) {
-                $matchedCode = $code;
-                break;
-            }
-        }
-
-        // Remove the country code if found
-        if ($matchedCode) {
-            $localNumber = substr($normalizedPhone, strlen($matchedCode));
-        } else {
-            $localNumber = $normalizedPhone;
-        }
-
-        // Clean up local number: remove all non-digit characters
-        $localNumber = preg_replace('/\D+/', '', $localNumber);
-
-
         if ($localPath && Storage::exists("public/{$localPath}")) {
             try {
                 $fullPath = storage_path("app/public/{$localPath}");
@@ -182,6 +270,7 @@ class IncomingMediaController extends Controller
                     if ($data && isset($data['name'], $data['civil_no'])) {
                         DB::beginTransaction();
 
+                        // Use finalPhone here for client creation and update
                         $client = Client::where('civil_no', $data['civil_no'])->first();
 
                         if (!$client) {
@@ -189,8 +278,8 @@ class IncomingMediaController extends Controller
                                 'name' => $data['name'],
                                 'email' => $agentEmail,
                                 'status' => 'active',
-                                'phone' => $localNumber ?? $agentPhone,
-                                'country_code' => $matchedCode ?? '+965',
+                                'phone' => $localNumberClient,
+                                'country_code' => $matchedCodeClientPhone ?? '+965',
                                 'date_of_birth' => $data['date_of_birth'] ?? null,
                                 'address' => $data['place_of_birth'] ?? null,
                                 'civil_no' => $data['civil_no'] ?? null,
@@ -198,22 +287,22 @@ class IncomingMediaController extends Controller
                                 'old_passport_no' => $data['passport_no'] ?? null,
                                 'agent_id' => $agentId
                             ]);
-                            $autoReplyText = "Thank you, your profile has been created.";
+                            $autoReplyText = "Thank you, {$autoReplyAdd} profile has been created.";
                             Log::info("Client created: ID {$client->id}");
                         } else {
                             if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
                                 $client->update([
-                                    'phone' => $localNumber ?? $agentPhone,
-                                    'country_code' => $matchedCode ?? '+965',
+                                    'phone' => $localNumberClient,
+                                    'country_code' => $matchedCodeClientPhone ?? '+965',
                                     'date_of_birth' => $data['date_of_birth'] ?? null,
                                     'address' => $data['place_of_birth'] ?? null,
                                     'passport_no' => $data['passport_no'],
                                     'updated_at' => Carbon::parse($receivedAt),
                                 ]);
-                                $autoReplyText = "Thank you for updating your passport details.";
+                                $autoReplyText = "Thank you for updating {$autoReplyAdd} passport details.";
                                 Log::info("Client passport updated: ID {$client->id}");
                             } else {
-                                $autoReplyText = "Thank you. We already have your passport information.";
+                                $autoReplyText = "Thank you. We already have {$autoReplyAdd} passport information.";
                             }
                         }
 
@@ -223,6 +312,9 @@ class IncomingMediaController extends Controller
                         }
 
                         DB::commit();
+
+                        Cache::forget('agent_client_phone_' . $phone);
+                        Cache::forget('agent_waiting_for_client_phone_' . $phone);
                     } else {
                         Log::error("No valid data from upload response.");
                     }
@@ -239,6 +331,7 @@ class IncomingMediaController extends Controller
         try {
             $to = $request->input('data.from') ?? $request->input('from');
             if ($to && $autoReplyText) {
+                sleep(2);
                 $wa = new WhatsappController();
                 $wa->sendToResayil($to, $autoReplyText);
                 Log::info("Auto-reply sent to {$to}");
@@ -250,5 +343,39 @@ class IncomingMediaController extends Controller
         }
 
         return response()->json(['message' => 'Webhook received successfully']);
+    }
+
+    private function normalizePhoneNumber($rawPhone): array
+    {
+        // Ensure phone starts with "+"
+        if (!str_starts_with($rawPhone, '+')) {
+            $rawPhone = '+' . $rawPhone;
+        }
+
+        $phoneNormalized = trim($rawPhone);
+        $normalizedPhone = preg_replace('/\s+/', '', $phoneNormalized);
+
+        $dialingCodes = DB::table('countries')->pluck('dialing_code');
+        $dialingCodes = $dialingCodes->sortByDesc(fn($code) => strlen($code));
+
+        $matchedCode = null;
+        foreach ($dialingCodes as $code) {
+            if (strpos($normalizedPhone, $code) === 0) {
+                $matchedCode = $code;
+                break;
+            }
+        }
+
+        $localNumber = $matchedCode
+            ? substr($normalizedPhone, strlen($matchedCode))
+            : $normalizedPhone;
+
+        $localNumber = preg_replace('/\D+/', '', $localNumber);
+
+        return [
+            'full' => $normalizedPhone,
+            'dialing_code' => $matchedCode ?? '',
+            'local' => $localNumber,
+        ];
     }
 }

@@ -36,7 +36,7 @@
                                     bg-white dark:bg-gray-900 px-2 peer-focus:text-blue-600 peer-focus:dark:text-blue-500
                                     peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2
                                     peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">
-                            Quick search for tasks
+                            Quick search for client
                         </label>
                     </div>
                     <button type="submit"

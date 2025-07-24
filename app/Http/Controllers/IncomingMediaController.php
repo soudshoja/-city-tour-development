@@ -331,6 +331,7 @@ class IncomingMediaController extends Controller
         try {
             $to = $request->input('data.from') ?? $request->input('from');
             if ($to && $autoReplyText) {
+                sleep(2);
                 $wa = new WhatsappController();
                 $wa->sendToResayil($to, $autoReplyText);
                 Log::info("Auto-reply sent to {$to}");
@@ -346,6 +347,11 @@ class IncomingMediaController extends Controller
 
     private function normalizePhoneNumber($rawPhone): array
     {
+        // Ensure phone starts with "+"
+        if (!str_starts_with($rawPhone, '+')) {
+            $rawPhone = '+' . $rawPhone;
+        }
+
         $phoneNormalized = trim($rawPhone);
         $normalizedPhone = preg_replace('/\s+/', '', $phoneNormalized);
 

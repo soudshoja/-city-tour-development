@@ -53,7 +53,7 @@ class IncomingMediaController extends Controller
 
                 // 1) If not waiting, send prompt and set waiting flag
                 if (!$waitingForClientPhone) {
-                    $promptMessage = "Hello {$agent->name}, please reply with your client's phone number to proceed.";
+                    $promptMessage = "Hello {$agent->name}, please reply with your client's phone number to proceed.\n(eg: +96522210017)";
 
                     // Store media temporarily in cache if available
                     $mediaData = $request->input('media') ?? $request->input('data.media');
@@ -101,7 +101,7 @@ class IncomingMediaController extends Controller
                     $to = $request->input('data.from') ?? $request->input('from');
 
                     if ($to) {
-                        $wa->sendToResayil($to, "Your client phone number {$clientPhoneReply} received.");
+                        $wa->sendToResayil($to, "Your client's phone number {$clientPhoneReply} received.\nPlease hold while we process the data...");
                         Log::info("Confirmed client phone received from agent {$to}");
                     }
 
@@ -221,36 +221,22 @@ class IncomingMediaController extends Controller
         if ($senderAgent == 'yes') {
             $clientPhoneNumber = $clientPhoneReply;
             $agentPhoneNumber = $agentPhone;
-            $autoReplyAdd = 'your client';
+            $autoReplyAdd = "your client's";
         } else {
             $clientPhoneNumber = $phone;
             $agentPhoneNumber = $agentPhone;
-            $autoReplyAdd = 'your';
+            $autoReplyAdd = "your";
         }
 
+        //filter client phone
+        $normalizedClientPhone = $this->normalizePhoneNumber($clientPhoneNumber ?? $phone);
+
+        $normalizedClientFullPhone = $normalizedClientPhone['full'];
+        $matchedCodeClientPhone = $normalizedClientPhone['dialing_code'];
+        $localNumberClient = $normalizedClientPhone['local'];
+
+
         try {
-            // Normalize phone number from the original sender number
-            $phoneNormalized = trim($phone);
-            $normalizedPhone = preg_replace('/\s+/', '', $phoneNormalized);
-
-            // Get all dialing codes from DB
-            $dialingCodes = DB::table('countries')->pluck('dialing_code');
-            $dialingCodes = $dialingCodes->sortByDesc(fn($code) => strlen($code));
-
-            $matchedCode = null;
-            foreach ($dialingCodes as $code) {
-                if (strpos($normalizedPhone, $code) === 0) {
-                    $matchedCode = $code;
-                    break;
-                }
-            }
-
-            $localNumber = $matchedCode ? substr($normalizedPhone, strlen($matchedCode)) : $normalizedPhone;
-            $localNumber = preg_replace('/\D+/', '', $localNumber);
-
-            // Use client phone from agent if available, else use localNumber or fallback agent phone
-            $finalPhone = $clientPhoneFromAgent ?? $localNumber ?? $agentPhone;
-
             $incomingMedia = IncomingMedia::create([
                 'phone' => $phone,
                 'media_id' => $mediaId,
@@ -292,8 +278,8 @@ class IncomingMediaController extends Controller
                                 'name' => $data['name'],
                                 'email' => $agentEmail,
                                 'status' => 'active',
-                                'phone' => $clientPhoneNumber,
-                                'country_code' => $matchedCode ?? '+965',
+                                'phone' => $localNumberClient,
+                                'country_code' => $matchedCodeClientPhone ?? '+965',
                                 'date_of_birth' => $data['date_of_birth'] ?? null,
                                 'address' => $data['place_of_birth'] ?? null,
                                 'civil_no' => $data['civil_no'] ?? null,
@@ -306,8 +292,8 @@ class IncomingMediaController extends Controller
                         } else {
                             if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
                                 $client->update([
-                                    'phone' => $finalPhone,
-                                    'country_code' => $matchedCode ?? '+965',
+                                    'phone' => $localNumberClient,
+                                    'country_code' => $matchedCodeClientPhone ?? '+965',
                                     'date_of_birth' => $data['date_of_birth'] ?? null,
                                     'address' => $data['place_of_birth'] ?? null,
                                     'passport_no' => $data['passport_no'],
@@ -356,5 +342,34 @@ class IncomingMediaController extends Controller
         }
 
         return response()->json(['message' => 'Webhook received successfully']);
+    }
+
+    private function normalizePhoneNumber($rawPhone): array
+    {
+        $phoneNormalized = trim($rawPhone);
+        $normalizedPhone = preg_replace('/\s+/', '', $phoneNormalized);
+
+        $dialingCodes = DB::table('countries')->pluck('dialing_code');
+        $dialingCodes = $dialingCodes->sortByDesc(fn($code) => strlen($code));
+
+        $matchedCode = null;
+        foreach ($dialingCodes as $code) {
+            if (strpos($normalizedPhone, $code) === 0) {
+                $matchedCode = $code;
+                break;
+            }
+        }
+
+        $localNumber = $matchedCode
+            ? substr($normalizedPhone, strlen($matchedCode))
+            : $normalizedPhone;
+
+        $localNumber = preg_replace('/\D+/', '', $localNumber);
+
+        return [
+            'full' => $normalizedPhone,
+            'dialing_code' => $matchedCode ?? '',
+            'local' => $localNumber,
+        ];
     }
 }

@@ -124,11 +124,13 @@ class IncomingMediaController extends Controller
                 $agentId = $agent->id;
                 $agentPhone = $agent->phone_number;
                 $agentEmail = $agent->email;
+                $senderAgent = 'yes';
             } else {
                 // If not an agent, fallback to pick a random agent as before
                 $agent = Agent::inRandomOrder()->first();
                 Log::info("Selected random agent: " . ($agent ? "{$agent->name} ({$agent->email})" : 'None'));
 
+                $senderAgent = 'no';
                 if ($agent) {
                     $agentId = $agent->id;
                     $agentPhone = $agent->phone_number;
@@ -216,6 +218,16 @@ class IncomingMediaController extends Controller
             Cache::forget('agent_client_phone_' . $agentPhone);
         }
 
+        if ($senderAgent == 'yes') {
+            $clientPhoneNumber = $clientPhoneReply;
+            $agentPhoneNumber = $agentPhone;
+            $autoReplyAdd = 'your client';
+        } else {
+            $clientPhoneNumber = $phone;
+            $agentPhoneNumber = $agentPhone;
+            $autoReplyAdd = 'your';
+        }
+
         try {
             // Normalize phone number from the original sender number
             $phoneNormalized = trim($phone);
@@ -280,7 +292,7 @@ class IncomingMediaController extends Controller
                                 'name' => $data['name'],
                                 'email' => $agentEmail,
                                 'status' => 'active',
-                                'phone' => $finalPhone,
+                                'phone' => $clientPhoneNumber,
                                 'country_code' => $matchedCode ?? '+965',
                                 'date_of_birth' => $data['date_of_birth'] ?? null,
                                 'address' => $data['place_of_birth'] ?? null,
@@ -289,7 +301,7 @@ class IncomingMediaController extends Controller
                                 'old_passport_no' => $data['passport_no'] ?? null,
                                 'agent_id' => $agentId
                             ]);
-                            $autoReplyText = "Thank you, your profile has been created.";
+                            $autoReplyText = "Thank you, {$autoReplyAdd} profile has been created.";
                             Log::info("Client created: ID {$client->id}");
                         } else {
                             if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
@@ -301,10 +313,10 @@ class IncomingMediaController extends Controller
                                     'passport_no' => $data['passport_no'],
                                     'updated_at' => Carbon::parse($receivedAt),
                                 ]);
-                                $autoReplyText = "Thank you for updating your passport details.";
+                                $autoReplyText = "Thank you for updating {$autoReplyAdd} passport details.";
                                 Log::info("Client passport updated: ID {$client->id}");
                             } else {
-                                $autoReplyText = "Thank you. We already have your passport information.";
+                                $autoReplyText = "Thank you. We already have {$autoReplyAdd} passport information.";
                             }
                         }
 

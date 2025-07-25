@@ -26,14 +26,9 @@ class IncomingMediaController extends Controller
             ?? $request->input('phone')
             ?? $request->input('messages.0.from');
 
-        // Clear agent cache after successful media handling
-        // Cache::forget('agent_client_phone_' . $phone);
-        // Cache::forget('agent_waiting_for_client_phone_' . $phone);
-
         $deviceId = $request->input('device.id');
         $chatWid = $request->input('data.chat.id') ?? $request->input('data.from');
 
-        // Agent fallback setup
         $senderAgent = "";
         $agentId = 1;
         $agentPhone = $request->input('device.phone');
@@ -42,20 +37,32 @@ class IncomingMediaController extends Controller
         $fallbackEmail = config('app.agent_default_email', 'ops@citytravelers.co');
 
         try {
-            // Check if sender is an agent
             $agent = Agent::where('phone_number', $phone)->first();
 
             if ($agent) {
                 Log::info("Sender is an agent: {$agent->name} ({$phone})");
 
-                // Check if we are currently waiting for client phone number from this agent
                 $waitingForClientPhone = Cache::get('agent_waiting_for_client_phone_' . $phone);
 
-                // 1) If not waiting, send prompt and set waiting flag
-                if (!$waitingForClientPhone) {
-                    $promptMessage = "Hello {$agent->name}, please reply with your client's phone number to proceed.\n(eg: +96522210017)";
+                $clientPhoneReply = trim(
+                    $request->input('data.text')
+                        ?? $request->input('data.body')
+                        ?? $request->input('messages.0.body')
+                        ?? $request->input('messages.0.text')
+                        ?? ''
+                );
 
-                    // Store media temporarily in cache if available
+                if (strtolower($clientPhoneReply) === 'restart') {
+                    Cache::forget('pending_media_' . $phone);
+                    Cache::forget('agent_client_phone_' . $phone);
+                    Cache::forget('agent_waiting_for_client_phone_' . $phone);
+                    $wa = new WhatsappController();
+                    $to = $request->input('data.from') ?? $request->input('from');
+                    $wa->sendToResayil($to, "Okay, let's start fresh. Please send your client's media document again.");
+                    return response()->json(['message' => 'Restart triggered'], 200);
+                }
+
+                if (!$waitingForClientPhone) {
                     $mediaData = $request->input('media') ?? $request->input('data.media');
                     if ($mediaData) {
                         Cache::put('pending_media_' . $phone, $mediaData, now()->addMinutes(30));
@@ -66,60 +73,27 @@ class IncomingMediaController extends Controller
                     $to = $request->input('data.from') ?? $request->input('from');
 
                     if ($to) {
-                        $wa->sendToResayil($to, $promptMessage);
+                        $wa->sendToResayil($to, "Hello {$agent->name}, please reply with your client's phone number to proceed.\n(eg: +96522210017)");
                         Log::info("Prompt sent to agent {$to}");
-                    } else {
-                        Log::warning("Could not find recipient phone to send prompt to agent.");
                     }
 
-                    // Mark as waiting for client phone number for 30 mins
                     Cache::put('agent_waiting_for_client_phone_' . $phone, true, now()->addMinutes(30));
-
-                    // Stop processing until we get client phone number reply
                     return response()->json(['message' => 'Agent prompt sent, waiting for client phone input.'], 200);
                 }
 
-                // 2) If waiting, treat this message as client's phone number reply
-                $clientPhoneReply = trim(
-                    $request->input('data.text')
-                        ?? $request->input('data.body')
-                        ?? $request->input('messages.0.body')
-                        ?? $request->input('messages.0.text')
-                        ?? ''
-                );
-
-                $clientPhoneReply = trim($clientPhoneReply);
-
-                // Simple validation: basic phone number pattern (digits and + allowed)
                 if (preg_match('/^\+?\d{6,15}$/', $clientPhoneReply)) {
-                    // Save client phone in cache keyed by agent phone, valid for 1 hour
                     Cache::put('agent_client_phone_' . $phone, $clientPhoneReply, now()->addHour());
-
-                    // Clear waiting flag
                     Cache::forget('agent_waiting_for_client_phone_' . $phone);
 
-                    // Send confirmation to agent
                     $wa = new WhatsappController();
                     $to = $request->input('data.from') ?? $request->input('from');
-
-                    if ($to) {
-                        $wa->sendToResayil($to, "Your client's phone number {$clientPhoneReply} received.\nPlease hold while we process the data...");
-                        Log::info("Confirmed client phone received from agent {$to}");
-                    }
-
-                    //return response()->json(['message' => 'Client phone number received and stored.'], 200);
+                    $wa->sendToResayil($to, "Your client's phone number {$clientPhoneReply} received.\nPlease hold while we process the data...");
+                    Log::info("Confirmed client phone received from agent {$to}");
                 } else {
-                    // Invalid phone number format, ask again
                     $wa = new WhatsappController();
                     $to = $request->input('data.from') ?? $request->input('from');
-
-                    if ($to) {
-                        $wa->sendToResayil($to, "The phone number you sent seems invalid. Please send a valid phone number including country code.");
-                        Log::warning("Invalid client phone number from agent {$to}: {$clientPhoneReply}");
-                    }
-
-                    Cache::forget('pending_media_' . $phone);  // Don't reuse old media if phone is invalid
-
+                    $wa->sendToResayil($to, "The phone number you sent seems invalid. Please send a valid phone number including country code.");
+                    Cache::forget('pending_media_' . $phone);
                     return response()->json(['message' => 'Invalid client phone number received.'], 200);
                 }
 
@@ -128,7 +102,6 @@ class IncomingMediaController extends Controller
                 $agentEmail = $agent->email;
                 $senderAgent = 'yes';
             } else {
-                // If not an agent, fallback to pick a random agent as before
                 $agent = Agent::inRandomOrder()->first();
                 Log::info("Selected random agent: " . ($agent ? "{$agent->name} ({$agent->email})" : 'None'));
 
@@ -138,10 +111,8 @@ class IncomingMediaController extends Controller
                     $agentPhone = $agent->phone_number;
                     $agentEmail = $agent->email;
                 } else {
-                    $agentId = '1';
                     $agentPhone = $fallbackPhone;
                     $agentEmail = $fallbackEmail;
-                    Log::warning("No agent found, using fallback.");
                 }
             }
         } catch (\Exception $e) {
@@ -150,18 +121,22 @@ class IncomingMediaController extends Controller
             $agentEmail = $fallbackEmail;
         }
 
-        // Try to get media from current request, or fallback to cached media (if available)
         $mediaData = $request->input('media')
             ?? $request->input('data.media')
             ?? Cache::get('pending_media_' . $phone);
 
-        if ($mediaData) {
-            // Clean up after using it
-            Cache::forget('pending_media_' . $phone);
+        if (!$mediaData) {
+            $wa = new WhatsappController();
+            $to = $request->input('data.from') ?? $request->input('from');
+            if ($to) {
+                $wa->sendToResayil($to, "It looks like the document you sent has expired or wasn't received. Please re-upload it.");
+            }
+            return response()->json(['message' => 'Media missing or expired.'], 200);
         }
 
-        $downloadLink = $mediaData['links']['download'] ?? null;
+        Cache::forget('pending_media_' . $phone);
 
+        $downloadLink = $mediaData['links']['download'] ?? null;
         if (!$downloadLink) {
             Log::info("No media download link found.");
             return response()->json(['message' => 'No media found.'], 200);
@@ -190,11 +165,8 @@ class IncomingMediaController extends Controller
             return response()->json(['message' => 'Duplicate media.'], 200);
         }
 
-        $localPath = null;
-
         try {
             $newFilename = 'media_' . time() . '_' . uniqid() . '.' . $extension;
-
             $response = Http::withHeaders([
                 'Token' => config('services.resayil.api_token'),
             ])->get($mediaUrl);
@@ -204,7 +176,10 @@ class IncomingMediaController extends Controller
                 $localPath = "uploads/{$newFilename}";
                 Log::info("Media downloaded: {$localPath}");
             } else {
-                Log::error("Failed to download media: " . $response->status());
+                $wa = new WhatsappController();
+                $to = $request->input('data.from') ?? $request->input('from');
+                $wa->sendToResayil($to, "We were unable to download your file. Please try uploading again.");
+                return response()->json(['message' => 'Media download failed.'], 200);
             }
         } catch (\Exception $e) {
             Log::error("Media download exception: " . $e->getMessage());
@@ -333,7 +308,7 @@ class IncomingMediaController extends Controller
         try {
             $to = $request->input('data.from') ?? $request->input('from');
             if ($to && $autoReplyText) {
-                sleep(2);
+                sleep(4);
                 $wa = new WhatsappController();
                 $wa->sendToResayil($to, $autoReplyText);
                 Log::info("Auto-reply sent to {$to}");
@@ -349,13 +324,11 @@ class IncomingMediaController extends Controller
 
     private function normalizePhoneNumber($rawPhone): array
     {
-        // Ensure phone starts with "+"
         if (!str_starts_with($rawPhone, '+')) {
             $rawPhone = '+' . $rawPhone;
         }
 
-        $phoneNormalized = trim($rawPhone);
-        $normalizedPhone = preg_replace('/\s+/', '', $phoneNormalized);
+        $normalizedPhone = preg_replace('/\s+/', '', trim($rawPhone));
 
         $dialingCodes = DB::table('countries')->pluck('dialing_code');
         $dialingCodes = $dialingCodes->sortByDesc(fn($code) => strlen($code));

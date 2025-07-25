@@ -289,7 +289,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
-                        <input type="number" name="amount" id="amount"
+                        <input type="number" name="amount" id="amount" step="0.001" min="0"
                             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
                             required>
                     </div>

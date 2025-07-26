@@ -109,10 +109,15 @@
                                 </th>
                                 <th
                                     class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
-                                    Client's Name</th>
+                                    Client's Name
+                                </th>
+                                <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
+                                    Created
+                                </th>
                                 <th
                                     class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
-                                    Credit (KWD)</th>
+                                    Credit (KWD)
+                                </th>
                                 <th
                                     class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
                                     Email</th>
@@ -161,7 +166,6 @@
                                     </a>
                                 </td>
 
-
                                 <!-- <td
                                             class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 cursor-pointer"> -->
                                 <td
@@ -169,6 +173,10 @@
                                     <a href="{{ route('clients.show', ['id' => $client->id]) }}"
                                         class="block">{{ $client->name }}</a>
                                 </td>
+                                <td>
+                                    {{ date('d M Y', strtotime($client->created_at)) }}
+                                </td>
+
                                 {{-- <td
                                             class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
                                             <a href="javascript:void(0);"
@@ -222,114 +230,114 @@
                             <ul class="dataTable-pagination-list flex gap-1">
                                 {{-- Previous Page Link --}}
                                 @if ($clients->onFirstPage())
-                                    <li class="pager disabled">
-                                        <span class="flex items-center justify-center w-10 h-10 text-gray-400 cursor-not-allowed bg-gray-200 dark:bg-gray-600 rounded-full">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                                xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
-                                                <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
-                                                    stroke-linecap="round" stroke-linejoin="round"></path>
-                                                <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
-                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                                    stroke-linejoin="round"></path>
-                                            </svg>
-                                        </span>
-                                    </li>
+                                <li class="pager disabled">
+                                    <span class="flex items-center justify-center w-10 h-10 text-gray-400 cursor-not-allowed bg-gray-200 dark:bg-gray-600 rounded-full">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                            <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
+                                                stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
+                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                                stroke-linejoin="round"></path>
+                                        </svg>
+                                    </span>
+                                </li>
                                 @else
-                                    <li class="pager">
-                                        <a href="{{ $clients->appends(request()->query())->previousPageUrl() }}" 
-                                           class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                                xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
-                                                <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
-                                                    stroke-linecap="round" stroke-linejoin="round"></path>
-                                                <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
-                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                                    stroke-linejoin="round"></path>
-                                            </svg>
-                                        </a>
-                                    </li>
+                                <li class="pager">
+                                    <a href="{{ $clients->appends(request()->query())->previousPageUrl() }}"
+                                        class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                            <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
+                                                stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
+                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                                stroke-linejoin="round"></path>
+                                        </svg>
+                                    </a>
+                                </li>
                                 @endif
 
                                 {{-- Pagination Elements --}}
                                 @php
-                                    $start = max(1, $clients->currentPage() - 2);
-                                    $end = min($clients->lastPage(), $clients->currentPage() + 2);
+                                $start = max(1, $clients->currentPage() - 2);
+                                $end = min($clients->lastPage(), $clients->currentPage() + 2);
                                 @endphp
 
                                 @if ($start > 1)
-                                    <li class="pager">
-                                        <a href="{{ $clients->appends(request()->query())->url(1) }}" 
-                                           class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
-                                            1
-                                        </a>
-                                    </li>
-                                    @if ($start > 2)
-                                        <li class="pager">
-                                            <span class="flex items-center justify-center w-10 h-10 text-gray-500">...</span>
-                                        </li>
-                                    @endif
+                                <li class="pager">
+                                    <a href="{{ $clients->appends(request()->query())->url(1) }}"
+                                        class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
+                                        1
+                                    </a>
+                                </li>
+                                @if ($start > 2)
+                                <li class="pager">
+                                    <span class="flex items-center justify-center w-10 h-10 text-gray-500">...</span>
+                                </li>
+                                @endif
                                 @endif
 
                                 @for ($page = $start; $page <= $end; $page++)
-                                    @if ($page == $clients->currentPage())
-                                        <li class="pager active">
-                                            <span class="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full font-semibold border border-blue-600">
-                                                {{ $page }}
-                                            </span>
-                                        </li>
-                                    @else
-                                        <li class="pager">
-                                            <a href="{{ $clients->appends(request()->query())->url($page) }}" 
-                                               class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
-                                                {{ $page }}
-                                            </a>
-                                        </li>
-                                    @endif
-                                @endfor
-
-                                @if ($end < $clients->lastPage())
-                                    @if ($end < $clients->lastPage() - 1)
-                                        <li class="pager">
-                                            <span class="flex items-center justify-center w-10 h-10 text-gray-500">...</span>
-                                        </li>
-                                    @endif
-                                    <li class="pager">
-                                        <a href="{{ $clients->appends(request()->query())->url($clients->lastPage()) }}" 
-                                           class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
-                                            {{ $clients->lastPage() }}
-                                        </a>
-                                    </li>
-                                @endif
-
-                                {{-- Next Page Link --}}
-                                @if ($clients->hasMorePages())
-                                    <li class="pager">
-                                        <a href="{{ $clients->appends(request()->query())->nextPageUrl() }}" 
-                                           class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                                xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
-                                                <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
-                                                    stroke-linecap="round" stroke-linejoin="round"></path>
-                                                <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
-                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                                    stroke-linejoin="round"></path>
-                                            </svg>
-                                        </a>
-                                    </li>
-                                @else
-                                    <li class="pager disabled">
-                                        <span class="flex items-center justify-center w-10 h-10 text-gray-400 cursor-not-allowed bg-gray-200 dark:bg-gray-600 rounded-full">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                                xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
-                                                <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
-                                                    stroke-linecap="round" stroke-linejoin="round"></path>
-                                                <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
-                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                                    stroke-linejoin="round"></path>
-                                            </svg>
+                                    @if ($page==$clients->currentPage())
+                                    <li class="pager active">
+                                        <span class="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full font-semibold border border-blue-600">
+                                            {{ $page }}
                                         </span>
                                     </li>
-                                @endif
+                                    @else
+                                    <li class="pager">
+                                        <a href="{{ $clients->appends(request()->query())->url($page) }}"
+                                            class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
+                                            {{ $page }}
+                                        </a>
+                                    </li>
+                                    @endif
+                                    @endfor
+
+                                    @if ($end < $clients->lastPage())
+                                        @if ($end < $clients->lastPage() - 1)
+                                            <li class="pager">
+                                                <span class="flex items-center justify-center w-10 h-10 text-gray-500">...</span>
+                                            </li>
+                                            @endif
+                                            <li class="pager">
+                                                <a href="{{ $clients->appends(request()->query())->url($clients->lastPage()) }}"
+                                                    class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
+                                                    {{ $clients->lastPage() }}
+                                                </a>
+                                            </li>
+                                            @endif
+
+                                            {{-- Next Page Link --}}
+                                            @if ($clients->hasMorePages())
+                                            <li class="pager">
+                                                <a href="{{ $clients->appends(request()->query())->nextPageUrl() }}"
+                                                    class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                                        xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                                        <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
+                                                            stroke-linecap="round" stroke-linejoin="round"></path>
+                                                        <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
+                                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                                            stroke-linejoin="round"></path>
+                                                    </svg>
+                                                </a>
+                                            </li>
+                                            @else
+                                            <li class="pager disabled">
+                                                <span class="flex items-center justify-center w-10 h-10 text-gray-400 cursor-not-allowed bg-gray-200 dark:bg-gray-600 rounded-full">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                                        xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                                        <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
+                                                            stroke-linecap="round" stroke-linejoin="round"></path>
+                                                        <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
+                                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                                            stroke-linejoin="round"></path>
+                                                    </svg>
+                                                </span>
+                                            </li>
+                                            @endif
                             </ul>
                         </nav>
                         @endif
@@ -636,7 +644,7 @@
 
     async function fetchParClients(childClientId) {
         const fetchUrl = "{{ route('clients.parent', ':childClientId') }}".replace(':childClientId', childClientId);
-        
+
         try {
             const response = await fetch(fetchUrl, {
                 method: "GET",
@@ -799,7 +807,7 @@
 
     async function updateClientGroup() {
         const id = document.getElementById("parentId").value;
-        const updateUrl = "{{ route('clients.group.update', ':id') }}".replace(':id', id); 
+        const updateUrl = "{{ route('clients.group.update', ':id') }}".replace(':id', id);
         const csrfToken = "{{ csrf_token() }}"; // Laravel CSRF token for security
         const relation = document.querySelector("select[name='relation']").value; // Get selected relation
         let selectedId = document.getElementById("selectedId").value;

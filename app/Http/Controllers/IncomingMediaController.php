@@ -463,16 +463,16 @@ class IncomingMediaController extends Controller
     {
         switch ($attemptCount) {
             case 1:
-                return "👋 Hello! To process your passport/civil ID, please send a clear photo or PDF of your document.\n\n📋 Supported formats:\n• Photos (JPG, PNG)\n• PDF documents\n\n📸 Tips for best results:\n• Ensure good lighting\n• Document should be clearly visible\n• Avoid shadows or glare";
+                return "Thank you for contacting us. To process your request, please upload a clear image or PDF of your passport or civil ID document.\n\nAccepted formats:\n• JPEG/JPG images\n• PNG images\n• PDF documents\n\nFor best results, ensure the document is well-lit and all details are clearly visible.";
                 
             case 2:
-                return "📄 I understand you may have questions, but I need to see your passport or civil ID document to help you.\n\n🔸 Please SEND the document as a photo or PDF file\n🔸 Don't type - just attach the document\n\nOnce I receive your document, I can process your information immediately! 📋";
+                return "We appreciate your message, however our system requires document verification to proceed. Please attach your passport or civil ID document as an image or PDF file.\n\nText messages cannot be processed automatically. Once you upload your document, we will review it promptly.";
                 
             case 3:
-                return "⚠️ IMPORTANT: To proceed with your request, you MUST send your passport or civil ID document.\n\n❌ Text messages cannot be processed\n✅ Only document photos/PDFs can be processed\n\n📤 Please attach your document now to continue.";
+                return "IMPORTANT: Document verification is required to continue with your application.\n\nPlease note:\n• Text messages cannot be processed\n• Only document uploads (passport/civil ID) can be reviewed\n• Supported formats: JPG, PNG, PDF\n\nPlease upload your document to proceed.";
                 
             default: // 4th attempt and beyond
-                return "🚫 FINAL REMINDER: This system only processes PASSPORT/CIVIL ID DOCUMENTS.\n\n📋 You must SEND your document as:\n• Photo (JPG/PNG)\n• PDF file\n\n⏰ No further text responses will be sent. Please send your document to proceed.";
+                return "NOTICE: This service processes identity document verification only.\n\nRequired action: Upload your passport or civil ID document in JPG, PNG, or PDF format.\n\nNo additional text responses will be provided. Please submit your document to continue with the verification process.";
         }
     }
 

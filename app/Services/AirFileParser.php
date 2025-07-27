@@ -60,7 +60,7 @@ class AirFileParser
                 'supplier_country' => $this->extractSupplierCountry(),
                 'cancellation_policy' => $this->extractCancellationPolicy(),
                 'venue' => $this->extractVenue(),
-                'created_at' => $this->extractCreatedAt(),
+                'issued_date' => $this->extractIssuedDate(),
                 'task_flight_details' => $this->parseFlightDetails(),
             ];
             
@@ -102,7 +102,7 @@ class AirFileParser
                 'supplier_country' => $this->extractSupplierCountry(),
                 'cancellation_policy' => $this->extractCancellationPolicy(),
                 'venue' => $this->extractVenue(),
-                'created_at' => $this->extractCreatedAt(),
+                'issued_date' => $this->extractIssuedDate(),
                 'task_flight_details' => $this->parseFlightDetails(),
             ];
             
@@ -919,7 +919,7 @@ class AirFileParser
     /**
      * Extract created at date
      */
-    private function extractCreatedAt()
+    private function extractIssuedDate()
     {
         // Look for date patterns like TKOK12FEB
         $match = $this->findLine('/T[A-Z]{3}(\d{2}[A-Z]{3})/');
@@ -927,6 +927,7 @@ class AirFileParser
             try {
                 $date = Carbon::createFromFormat('dM', $match[1]);
                 $date->year = Carbon::now()->year; // Assume current year
+                $date->setTime(0, 0, 0);
                 return $date->format('Y-m-d H:i:s');
             } catch (\Exception $e) {
                 // If parsing fails, return null

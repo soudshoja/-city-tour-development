@@ -120,7 +120,7 @@ class TaskController extends Controller
         }
   
         $taskCount = $tasks->count();
-        $tasks = $tasks->orderBy('created_at', 'desc')->paginate(50);
+        $tasks = $tasks->orderBy('issued_date', 'desc')->paginate(50);
         $types = Task::distinct()->pluck('type');
 
         $importedTask = Cache::get('imported_task');
@@ -205,7 +205,7 @@ class TaskController extends Controller
                 ], 200);
             } else {
 
-                $existingTask->created_at = $request->created_at;
+                $existingTask->issued_date = $request->issued_date;
                 $existingTask->save();
             }
 

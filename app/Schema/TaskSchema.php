@@ -199,7 +199,7 @@ class TaskSchema
                 'desc' => "Primary location or venue for the service. For flights: departure/arrival airports. For hotels: hotel location/city. For events: venue name/location. Extract the main location where the service takes place.",
                 'example' => 'Kuwait International Airport',
             ],
-            'created_at' => [
+            'issued_date' => [
                 'type' => 'datetime',
                 'desc' => "Date and time when the booking was created or issued. For air files: Convert formats like 'TKOK12FEB' to '2025-02-12 00:00:00'. For other documents: Look for issue dates, booking dates, or creation timestamps in YYYY-MM-DD HH:MM:SS format.",
                 'example' => '2025-02-12 00:00:00',

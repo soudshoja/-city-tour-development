@@ -50,7 +50,7 @@ class Task extends Model
         'refund_charge',
         'ticket_number',
         'file_name',
-        'created_at'
+        'issued_date'
     ];
 
 
@@ -72,6 +72,10 @@ class Task extends Model
     //     });
     // }
 
+    protected $casts = [
+        'issued_date' => 'datetime',
+    ];
+    
     public function getRequiredColumns(): array
     {
         return $this->requiredColumn;
@@ -102,18 +106,18 @@ class Task extends Model
 
     public function getFormattedDateAttribute()
     {
-        if($this->created_at === null) {
+        if($this->issued_date === null) {
             return null;
         }
-        return $this->created_at->format('d-m-Y');
+        return $this->issued_date->format('d-m-Y');
     }
 
     public function getFormattedDateTimeAttribute()
     {
-        if($this->created_at === null) {
+        if($this->issued_date === null) {
             return null;
         }
-        return $this->created_at->format('d-m-Y h:i A');
+        return $this->issued_date->format('d-m-Y h:i A');
     }
 
     public function flightDetails() // temporary fix

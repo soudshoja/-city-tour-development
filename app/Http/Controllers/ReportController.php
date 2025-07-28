@@ -268,38 +268,18 @@ class ReportController extends Controller
         if (!$receivableAccount) {
             return redirect()->back()->with('error', 'Accounts Receivable account not found.');
         }
+        // Get leaf account IDs for payable and receivable accounts
+        $payableLeafAccountIds = $this->getLeafAccountsUnderParent($accountPayable->id)->pluck('id')->toArray();
+        
+        $receivableLeafAccountIds = $this->getLeafAccountsUnderParent($receivableAccount->id)->pluck('id')->toArray();
 
-        $payableQuery = JournalEntry::whereIn('account_id', function ($query) use ($accountPayable) {
-            $query->select('id')
-                ->from('accounts')
-                ->where('parent_id', $accountPayable->id)
-                ->orWhereIn('parent_id', function ($subquery) use ($accountPayable) {
-                    $subquery->select('id')
-                        ->from('accounts')
-                        ->where('parent_id', $accountPayable->id);
-                });
-        });
+        $payableQuery = JournalEntry::whereIn('account_id', $payableLeafAccountIds);
 
-        $receivableQuery = JournalEntry::whereIn('account_id', function ($query) use ($receivableAccount) {
-            $query->select('id')
-                ->from('accounts')
-                ->where('id', $receivableAccount->id)
-                ->orWhereIn('id', function ($subquery) use ($receivableAccount) {
-                    $subquery->select('id')
-                        ->from('accounts')
-                        ->where('parent_id', $receivableAccount->id);
-                });
-        });
+        $receivableQuery = JournalEntry::whereIn('account_id', $receivableLeafAccountIds);
 
         if ($accountId && $accountId != 'all') {
-            $childAccountIds = Account::where('id', $accountId)
-                ->orWhereIn('id', function ($subquery) use ($accountId) {
-                    $subquery->select('id')
-                        ->from('accounts')
-                        ->where('parent_id', $accountId);
-                })
-                ->pluck('id')
-                ->toArray();
+            // Get leaf accounts under the specified account
+            $childAccountIds = $this->getLeafAccountsUnderParent($accountId)->pluck('id')->toArray();
 
             $payableQuery->whereIn('account_id', $childAccountIds);
             $receivableQuery->whereIn('account_id', $childAccountIds);
@@ -319,12 +299,9 @@ class ReportController extends Controller
         }
 
         if ($startDate == null && $endDate !== null) {
-            $startDate = Carbon::parse($endDate)->startOfMonth(); // 2023-10-01 00:00:00
-
-            $payableQuery->where('transaction_date', '>=', $startDate);
-            $receivableQuery->where('transaction_date', '>=', $startDate);
+            $payableQuery->where('transaction_date', '<=', $endDate);
+            $receivableQuery->where('transaction_date', '<=', $endDate);
         }
-
         if ($endDate == null && $startDate !== null) {
             $endDate = Carbon::parse($startDate)->endOfMonth(); // 2023-10-31 23:59:59
 
@@ -351,23 +328,13 @@ class ReportController extends Controller
         $receivableAccounts = collect();
 
         if (!isset($request->type_id) || $request->type_id == 'all' || $request->type_id == 'payable') {
-            $payableAccounts = Account::where('parent_id', $accountPayable->id)
-                ->orWhereIn('parent_id', function ($subquery) use ($accountPayable) {
-                    $subquery->select('id')
-                        ->from('accounts')
-                        ->where('parent_id', $accountPayable->id);
-                })
-                ->get();
+            // Get all leaf accounts (accounts with no children) under Accounts Payable hierarchy
+            $payableAccounts = $this->getLeafAccountsUnderParent($accountPayable->id);
         }
 
         if (!isset($request->type_id) || $request->type_id == 'all' || $request->type_id == 'receivable') {
-            $receivableAccounts = Account::where('id', $receivableAccount->id)
-                ->orWhereIn('id', function ($subquery) use ($receivableAccount) {
-                    $subquery->select('id')
-                        ->from('accounts')
-                        ->where('parent_id', $receivableAccount->id);
-                })
-                ->get();
+            // Get all leaf accounts (accounts with no children) under Accounts Receivable hierarchy
+            $receivableAccounts = $this->getLeafAccountsUnderParent($receivableAccount->id);
         }
         // List out all accounts
         $allAccounts = $payableAccounts->merge($receivableAccounts);
@@ -551,29 +518,56 @@ class ReportController extends Controller
         $typeId = request()->query('type_id'); // Get type_id from the URL query parameter
 
         if ($typeId == 'payable' || $typeId == 'all') {
-            $payableAccounts = Account::where('parent_id', $accountPayable->id)
-                ->orWhereIn('parent_id', function ($subquery) use ($accountPayable) {
-                    $subquery->select('id')
-                        ->from('accounts')
-                        ->where('parent_id', $accountPayable->id);
-                })
-                ->get();
+            // Get all leaf accounts (accounts with no children) under Accounts Payable hierarchy
+            $payableAccounts = $this->getLeafAccountsUnderParent($accountPayable->id);
         }
 
         if ($typeId == 'receivable' || $typeId == 'all') {
-            $receivableAccounts = Account::where('id', $receivableAccount->id)
-                ->orWhereIn('id', function ($subquery) use ($receivableAccount) {
-                    $subquery->select('id')
-                        ->from('accounts')
-                        ->where('parent_id', $receivableAccount->id);
-                })
-                ->get();
+            // Get all leaf accounts (accounts with no children) under Accounts Receivable hierarchy
+            $receivableAccounts = $this->getLeafAccountsUnderParent($receivableAccount->id);
         }
 
         // Merge all accounts
         $allAccounts = $payableAccounts->merge($receivableAccounts);
 
         return $allAccounts;
+    }
+
+    /**
+     * Get all leaf accounts (accounts with no children) under a parent account recursively
+     */
+    private function getLeafAccountsUnderParent($parentId)
+    {
+        // Get all accounts that don't have any children (leaf accounts)
+        $leafAccounts = Account::whereDoesntHave('children')->get();
+        
+        // Filter to only include those that are descendants of the parent
+        $descendants = collect();
+        
+        foreach ($leafAccounts as $account) {
+            if ($this->isDescendantOf($account->id, $parentId)) {
+                $descendants->push($account);
+            }
+        }
+        
+        return $descendants;
+    }
+    
+    /**
+     * Check if an account is a descendant of a parent account
+     */
+    private function isDescendantOf($accountId, $parentId)
+    {
+        $account = Account::find($accountId);
+        
+        while ($account && $account->parent_id) {
+            if ($account->parent_id == $parentId) {
+                return true;
+            }
+            $account = Account::find($account->parent_id);
+        }
+        
+        return false;
     }
 
     private function sumJournalEntries($account, $debitCreditType = 'normal')

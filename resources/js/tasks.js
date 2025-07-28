@@ -338,12 +338,14 @@ const selectAllCheckbox = document.getElementById("selectAll");
 const rowCheckboxes = document.querySelectorAll(".rowCheckbox");
 const createInvoiceBtn = document.getElementById("createInvoiceBtn");
 
-selectAllCheckbox.addEventListener("change", function () {
-    rowCheckboxes.forEach(
-        (checkbox) => (checkbox.checked = selectAllCheckbox.checked)
-    );
-    toggleCreateInvoiceButton(); // Update button state
-});
+if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener("change", function () {
+        rowCheckboxes.forEach(
+            (checkbox) => (checkbox.checked = selectAllCheckbox.checked)
+        );
+        toggleCreateInvoiceButton(); // Update button state
+    });
+}
 
 const toggleCreateInvoiceButton = () => {
     const isAnySelected = Array.from(rowCheckboxes).some(

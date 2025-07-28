@@ -172,16 +172,6 @@
                                             <li>Name: {{ $roomDetails['name'] ?? 'n/a' }}</li>
                                             <li>Info: {{ $roomDetails['info'] ?? 'n/a' }}</li>
                                             <li>Type: {{ $roomDetails['type'] ?? 'n/a' }}</li>
-                                            <li>Extra Services:
-                                                @if (
-                                                    !empty($roomDetails['extraServices']) &&
-                                                        is_array($roomDetails['extraServices']) &&
-                                                        count($roomDetails['extraServices']) > 0)
-                                                    {{ implode(', ', $roomDetails['extraServices']) }}
-                                                @else
-                                                    n/a
-                                                @endif
-                                            </li>
                                             <li>Check-in: {{ $hotelDetails->check_in ?? 'n/a' }}</li>
                                             <li>Check-out: {{ $hotelDetails->check_out ?? 'n/a' }}
                                             </li>

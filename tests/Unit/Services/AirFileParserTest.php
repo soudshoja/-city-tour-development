@@ -211,7 +211,7 @@ class AirFileParserTest extends TestCase
             $actualFlight = $actualFlights[$index] ?? null;
             $this->assertNotNull($actualFlight, "{$prefix} - Missing flight {$index}");
             
-            $flightFields = ['from', 'to', 'flight_number', 'airline', 'departure_date', 'departure_time'];
+            $flightFields = ['airport_from', 'airport_to', 'flight_number', 'airline', 'departure_date', 'departure_time'];
             foreach ($flightFields as $field) {
                 if (isset($expectedFlight[$field])) {
                     $this->assertEquals(

@@ -16,8 +16,8 @@
             "created_at": "2025-06-21 04:49:04",
             "task_flight_details": [
                 {
-                    "from": "KWI",
-                    "to": "DOH", 
+                    "airport_from": "KWI",
+                    "airport_to": "DOH", 
                     "flight_number": "QR1077",
                     "airline": "QR",
                     "departure_time": "2025-07-30 04:35:00",
@@ -25,8 +25,8 @@
                     "class": "economy"
                 },
                 {
-                    "from": "DOH",
-                    "to": "MUC",
+                    "airport_from": "DOH",
+                    "airport_to": "MUC",
                     "flight_number": "QR0057", 
                     "airline": "QR",
                     "departure_time": "2025-07-30 09:10:00",
@@ -34,8 +34,8 @@
                     "class": "economy"
                 },
                 {
-                    "from": "MUC",
-                    "to": "DOH",
+                    "airport_from": "MUC",
+                    "airport_to": "DOH",
                     "flight_number": "QR0058",
                     "airline": "QR", 
                     "departure_time": "2025-08-07 16:10:00",
@@ -43,8 +43,8 @@
                     "class": "economy"
                 },
                 {
-                    "from": "DOH", 
-                    "to": "KWI",
+                    "airport_from": "DOH", 
+                    "airport_to": "KWI",
                     "flight_number": "QR1076",
                     "airline": "QR",
                     "departure_time": "2025-08-08 01:30:00", 
@@ -72,8 +72,8 @@
             "agent_amadeus_id": "0012MI",
             "task_flight_details": [
                 {
-                    "from": "KWI",
-                    "to": "DOH", 
+                    "airport_from": "KWI",
+                    "airport_to": "DOH", 
                     "flight_number": "QR1077",
                     "airline": "QR",
                     "departure_time": "2025-07-30 04:35:00",
@@ -81,8 +81,8 @@
                     "class": "economy"
                 },
                 {
-                    "from": "DOH",
-                    "to": "MUC",
+                    "airport_from": "DOH",
+                    "airport_to": "MUC",
                     "flight_number": "QR0057", 
                     "airline": "QR",
                     "departure_time": "2025-07-30 09:10:00",
@@ -90,8 +90,8 @@
                     "class": "economy"
                 },
                 {
-                    "from": "MUC",
-                    "to": "DOH",
+                    "airport_from": "MUC",
+                    "airport_to": "DOH",
                     "flight_number": "QR0058",
                     "airline": "QR", 
                     "departure_time": "2025-08-07 16:10:00",
@@ -99,8 +99,8 @@
                     "class": "economy"
                 },
                 {
-                    "from": "DOH", 
-                    "to": "KWI",
+                    "airport_from": "DOH", 
+                    "airport_to": "KWI",
                     "flight_number": "QR1076",
                     "airline": "QR",
                     "departure_time": "2025-08-08 01:30:00", 

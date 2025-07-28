@@ -512,6 +512,38 @@
                                     <hr class="border-gray-300 mb-2" />
                                     <div class="space-y-2">
                                         <div class="flex items-center gap-2">
+                                            <input type="checkbox" id="col-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                            <label for="col-reference" class="text-sm text-gray-700">Reference</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" id="col-client" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                            <label for="col-client" class="text-sm text-gray-700">Client</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" id="col-passenger-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                            <label for="col-passenger-name" class="text-sm text-gray-700">Passenger Name</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" id="col-price" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                            <label for="col-price" class="text-sm text-gray-700">Price</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" id="col-status" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                            <label for="col-status" class="text-sm text-gray-700">Status</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" id="col-supplier" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                            <label for="col-supplier" class="text-sm text-gray-700">Supplier</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" id="col-issue-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                            <label for="col-issue-date" class="text-sm text-gray-700">Issue Date</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" id="col-info" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                            <label for="col-info" class="text-sm text-gray-700">Info</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
                                             <input type="checkbox" id="col-type" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
                                             <label for="col-type" class="text-sm text-gray-700">Type</label>
                                         </div>
@@ -636,14 +668,18 @@
                                         } else {
                                             this.selectedTasks.push(taskId);
                                         }
+                                        window.selectedTasksGlobal = [...this.selectedTasks];
                                         this.updateFloatingActions();
                                     },
                                     updateFloatingActions() {
                                         const floatingActions = document.getElementById('floatingActions');
+                                        const createInvoiceBtn = document.getElementById('createInvoiceBtn');
                                         if (this.selectedTasks.length > 0) {
-                                            floatingActions.classList.remove('hidden');
+                                            floatingActions?.classList.remove('hidden');
+                                            createInvoiceBtn?.removeAttribute('disabled');
                                         } else {
-                                            floatingActions.classList.add('hidden');
+                                            floatingActions?.classList.add('hidden');
+                                            createInvoiceBtn?.setAttribute('disabled', 'disabled');
                                         }
                                     },
                                     isSelectable(task) {
@@ -755,21 +791,21 @@
                                                                 <span class="slider round"></span>
                                                             </label>
                                                         </div>
-                                                        <div x-data="{ open: false }" class="relative flex items-center justify-center h-full">
-                                                            <button @click.stop="open = !open" @click.outside="open = false" class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 focus:outline-none flex items-center justify-center">
+                                                        <div x-data="{ id: 'task-{{ $task->id }}' }" class="relative flex items-center justify-center h-full">
+                                                            <button @click.stop="$store.dropdown.toggle(id)" @click.outside="$store.dropdown.closeAll()" 
+                                                                class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 focus:outline-none flex items-center justify-center">
                                                                 <svg class="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
                                                                     <circle cx="5" cy="12" r="2" />
                                                                     <circle cx="12" cy="12" r="2" />
                                                                     <circle cx="19" cy="12" r="2" />
                                                                 </svg>
                                                             </button>
-                                                            <div x-show="open" @click.outside="open = false" x-cloak
-                                                                class="absolute top-full mt-2 left-0 z-10 w-32 rounded-md bg-white shadow-lg border border-gray-200 dark:bg-gray-900 dark:border-gray-700">
+                                                            <div x-show="$store.dropdown.isOpen(id)" x-cloak class="absolute top-full mt-2 left-0 z-10 w-32 rounded-md bg-white shadow-lg border border-gray-200">
                                                                 <ul class="py-1 text-sm text-gray-700 dark:text-gray-200">
                                                                     <li>
                                                                         <a href="javascript:void(0);"
                                                                             class="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
-                                                                            @click="$dispatch('view-task', { id: {{ $task->id }} }); open = false">
+                                                                            @click="$dispatch('view-task', { id: {{ $task->id }} }); $store.dropdown.closeAll()">
                                                                             <svg class="w-4 h-4 mr-2 text-blue-800" fill="currentColor" viewBox="0 0 24 24">
                                                                                 <path d="M12 4c-4.182 0-7.028 2.5-8.725 4.704C2.425 9.81 2 10.361 2 12s.425 2.191 1.275 3.296C4.972 17.5 7.818 20 12 20s7.028-2.5 8.725-4.704C21.575 14.191 22 13.64 22 12s-.425-2.19-1.275-3.296C19.028 6.5 16.182 4 12 4zm0 10a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
                                                                             </svg>
@@ -777,17 +813,14 @@
                                                                         </a>
                                                                     </li>
                                                                     <li>
-                                                                        <div x-data="{ editTaskModal_{{ $task->id }}: false }" x-init="$watch('editTaskModal_{{ $task->id }}', value => {
-                                                                            if (!value) window.dispatchEvent(new CustomEvent('reset-dropdowns')); })">
+                                                                        <div x-data="{ editTaskModal_{{ $task->id }}: false }" x-init="$watch('editTaskModal_{{ $task->id }}', value => { if (!value) window.dispatchEvent(new CustomEvent('reset-dropdowns')); })">
                                                                             <a href="javascript:void(0);" @click.stop="editTaskModal_{{ $task->id }} = true" class="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">
                                                                                 <svg class="w-4 h-4 mr-2 text-blue-800" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                                                                     <path d="M3 17l-2 4l4-2l14-14l-2-2L3 17Z" />
                                                                                 </svg>
                                                                                 Edit Task
                                                                             </a>
-                                                                            <div x-show="editTaskModal_{{ $task->id }}" x-cloak @click.away="editTaskModal_{{ $task->id }} = false"
-                                                                                class="fixed inset-0 z-30 flex items-center justify-center bg-gray-800 bg-opacity-50">
-
+                                                                            <div x-show="editTaskModal_{{ $task->id }}" x-cloak @click.stop class="fixed inset-0 z-30 flex items-center justify-center bg-gray-800 bg-opacity-50">
                                                                                 <form id="edit-task-form-{{ $task->id }}"
                                                                                     action="{{ route('tasks.update', $task->id) }}"
                                                                                     method="post" @click.stop
@@ -799,7 +832,7 @@
                                                                                                 <h2 class="text-xl font-bold text-gray-800">Edit Task Details</h2>
                                                                                                 <p class="text-gray-600 italic text-xs mt-1">Please update the task details to ensure accurate information</p>
                                                                                             </div>
-                                                                                            <button @click="editTaskModal_{{ $task->id }} = false; window.dispatchEvent(new CustomEvent('reset-dropdowns'));"
+                                                                                            <button @click="editTaskModal_{{ $task->id }} = false; window.dispatchEvent(new CustomEvent('reset-dropdowns')); $store.dropdown.closeAll();"
                                                                                                 type="button"
                                                                                                 class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
                                                                                                 &times;
@@ -1033,7 +1066,7 @@
                                                                                         <div class="mt-6 flex flex-col sm:flex-row justify-between gap-4">
                                                                                             <!-- Cancel Button -->
                                                                                             <button type="button"
-                                                                                                @click="editTaskModal_{{ $task->id }} = false; window.dispatchEvent(new CustomEvent('reset-dropdowns'));"
+                                                                                                @click="editTaskModal_{{ $task->id }} = false; window.dispatchEvent(new CustomEvent('reset-dropdowns')); $store.dropdown.closeAll();"
                                                                                                 class="px-6 py-2 text-gray-700 font-semibold rounded-full bg-gray-200 hover:bg-gray-300 transition">
                                                                                                 Cancel
                                                                                             </button>
@@ -1211,7 +1244,7 @@
                                         </tbody>
 
                                         <!-- Upload Passport -->
-                                        <div x-show="showUploadForm" x-transition
+                                        <div x-show="showUploadForm" x-transition x-cloak
                                             class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center">
                                             <div class="bg-white rounded-lg p-6 w-full max-w-sm shadow-xl">
                                                 <div class="flex items-start justify-between mb-6">
@@ -1257,7 +1290,7 @@
                                         </div>
 
                                         <!-- Manual Fill Form -->
-                                        <div x-show="showManualForm" x-transition
+                                        <div x-show="showManualForm" x-transition x-cloak
                                             class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center px-2">
                                             <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 sm:max-h-none sm:overflow-visible max-h-[90vh] overflow-y-auto">
                                                 <!-- Header with title and close button -->
@@ -1585,10 +1618,8 @@
                                 @endif
                             </div>
                         </div>
-
                         <div id="floatingActions"
-                            class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-50 p-3">
-
+                            class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-5 p-3">
                             <div class="flex justify-between gap-5 items-center h-full">
                                 <button id="createInvoiceBtn" data-route="{{ route('invoices.create') }}"
                                     class="flex px-5 py-3 gap-3 btn-success hover:bg-[#8b0000c2] rounded-lg shadow-sm items-center">
@@ -1634,8 +1665,6 @@
                     </div>
                 </div>
             </div>
-
-
             <div class="content-30 hidden" id="showRightDiv">
                 <div id="taskDetails" class="panel w-full xl:mt-0 rounded-lg h-auto"></div>
             </div>
@@ -1645,6 +1674,21 @@
 @vite('resources/js/tasks.js')
 
 <script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.store('dropdown', {
+            openId: null,
+            toggle(id) {
+                this.openId = this.openId === id ? null : id;
+            },
+            isOpen(id) {
+                return this.openId === id;
+            },
+            closeAll() {
+                this.openId = null;
+            }
+        });
+    });
+
     document.addEventListener("DOMContentLoaded", function() {
         const customizeBtn = document.getElementById('customizeColumnsBtn');
         const dropdown = document.getElementById('columnDropdownContent');
@@ -1664,28 +1708,33 @@
 
         checkboxes.forEach(checkbox => {
             checkbox.addEventListener('change', function () {
-                const columnName = this.id.replace('col-', '');
-                const columns = document.querySelectorAll(`[data-column="${columnName}"]`);
-                columns.forEach(column => {
-                    column.classList.toggle('column-hidden', !this.checked);
-                });
+                const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+                if (checkedBoxes.length === 0) {
+                    checkbox.checked = true;
+                    alert("At least one column must remain visible.");
+                } else {
+                    const columnName = checkbox.id.replace('col-', '');
+                    const columns = document.querySelectorAll(`[data-column="${columnName}"]`);
+                    columns.forEach(column => {
+                        column.classList.toggle('column-hidden', !checkbox.checked);
+                    });
+                }
             });
         });
 
         clearBtn.addEventListener('click', function () {
-            checkboxes.forEach(checkbox => {
-                checkbox.checked = false;
-                const columnName = checkbox.id.replace('col-', '');
-                const columns = document.querySelectorAll(`[data-column="${columnName}"]`);
-                columns.forEach(column => column.classList.add('column-hidden'));
-            });
-        });
-
-        const viewTaskLinks = document.querySelectorAll(".viewTask");
-        viewTaskLinks.forEach(link => {
-            link.addEventListener("click", function() {
-                viewTaskLinks.forEach(l => l.classList.remove("text-[#ebc186]", "font-bold"));
-                this.classList.add("text-[#ebc186]", "font-bold");
+            const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
+            if (checkedBoxes.length <= 1) {
+                alert("At least one column must remain visible.");
+                return;
+            }
+            checkedBoxes.forEach((checkbox, index) => {
+                if (index > 0) {
+                    checkbox.checked = false;
+                    const columnName = checkbox.id.replace('col-', '');
+                    const columns = document.querySelectorAll(`[data-column="${columnName}"]`);
+                    columns.forEach(column => column.classList.add('column-hidden'));
+                }
             });
         });
 
@@ -1752,30 +1801,28 @@
         //     });
         // });
 
-        document.getElementById('createInvoiceBtn').addEventListener('click', function () {
-            const taskStatus = this.getAttribute('data-task-status');
+        const createInvoiceBtn = document.getElementById('createInvoiceBtn');
+        if (createInvoiceBtn) {
+            createInvoiceBtn.replaceWith(createInvoiceBtn.cloneNode(true)); // Remove all previous listeners
+        }
 
-            const selectedTasks = Alpine.store('selectedTasksStore')?.tasks 
-                ?? window.selectedTasksGlobal 
-                ?? [];
+        document.getElementById('createInvoiceBtn')?.addEventListener('click', function () {
+            const selectedTasks = window.selectedTasksGlobal ?? [];
 
-            if (taskStatus === 'refund') {
-                window.location.href = this.getAttribute('data-route');
-            } else {
-                if (selectedTasks.length > 0) {
-                    window.location.href = `/invoices/create?task_ids=${selectedTasks.join(',')}`;
+            console.log('Selected tasks:', selectedTasks);
+
+            if (selectedTasks.length > 0) {
+                const taskStatus = this.getAttribute('data-task-status');
+
+                if (taskStatus === 'refund') {
+                    window.location.href = this.getAttribute('data-route');
                 } else {
-                    alert('No task selected.');
+                    const url = `/invoices/create?task_ids=${selectedTasks.join(',')}`;
+                    window.location.href = url;
                 }
+            } else {
+                alert('No task selected.');
             }
-        });
-
-
-        // Handle create invoice button click
-        document.getElementById('createInvoiceBtn').addEventListener('click', function() {
-            const taskId = this.getAttribute('data-task-id');
-            console.log('Creating invoice for task ID:', taskId);
-            // Redirect or open modal logic
         });
 
         // Add event listeners to close modals when clicked outside or on close buttons

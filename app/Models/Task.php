@@ -30,6 +30,7 @@ class Task extends Model
         'issued_by',
         'duration',
         'payment_type',
+        'payment_method_account_id',
         'price',
         'exchange_currency',
         'original_price',

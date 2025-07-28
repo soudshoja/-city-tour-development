@@ -636,6 +636,10 @@
                                             @endcan
                                             <th
                                                 class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                Payment Method
+                                            </th>
+                                            <th
+                                                class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
                                                 Status
                                             </th>
                                             <th
@@ -950,16 +954,29 @@
                                                                                 placeholder="Total">
                                                                         </div>
                                                                     </div>
+                                                                    <!-- Payment Method -->
                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                         <!-- Additional Info and Venue -->
-                                                                    <div class="flex-1">
-                                                                        <label for="additional_info"
-                                                                            class="block text-sm font-medium text-gray-700">Additional
-                                                                            Info</label>
-                                                                        <textarea rows="3" readonly
-                                                                            class="border border-gray-300 dark:border-gray-600 p-3 rounded-md bg-gray-200 w-full resize-none">{{ $task->additional_info }} - {{ $task->venue }}
-                                                                        </textarea>
+                                                                        <div class="flex-1">
+                                                                            <label for="payment_method" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                                            <select name="payment_method_account_id" id="payment_method_account_id"
+                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                                <option value="">Select Payment Method</option>
+                                                                                @foreach($paymentMethod as $method)
+                                                                                    <option value="{{ $method->id }}">{{ $method->name }}</option>
+                                                                                @endforeach
+                                                                            </select>
+                                                                        </div>
                                                                     </div>
+                                                                    <div class="flex flex-col sm:flex-row gap-4">
+                                                                        <!-- Additional Info and Venue -->
+                                                                        <div class="flex-1">
+                                                                            <label for="additional_info"
+                                                                                class="block text-sm font-medium text-gray-700">Additional
+                                                                                Info</label>
+                                                                            <textarea rows="3" readonly
+                                                                                class="border border-gray-300 dark:border-gray-600 p-3 rounded-md bg-gray-200 w-full resize-none">{{ $task->additional_info }} - {{ $task->venue }}
+                                                                            </textarea>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                                 <div class="mt-6 flex flex-col sm:flex-row justify-between gap-4">
@@ -1104,6 +1121,10 @@
                                                 {{ $task->total }}
                                             </td>
                                             @endcan
+                                            <td
+                                                class="p-3 text-sm font-semibold text-gray-500">
+                                                Not Set
+                                            </td>
                                             <td>
                                                 <span
                                                     class="badge badge-outline-success whitespace-nowrap px-2 py-1 rounded text-sm font-medium"

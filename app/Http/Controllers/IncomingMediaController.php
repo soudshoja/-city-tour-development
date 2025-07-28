@@ -33,20 +33,28 @@ class IncomingMediaController extends Controller
             'phone' => $phone
         ]);
 
+        // Check if sender is an agent - if not, ignore the webhook completely
+        $agent = Agent::where('phone_number', $phone)->first();
+        if (!$agent) {
+            Log::info("Non-agent contact ignored", [
+                'phone' => $phone,
+                'webhook_id' => $webhookId
+            ]);
+            return response()->json(['message' => 'Webhook ignored - agents only'], 200);
+        }
+
         $deviceId = $request->input('device.id');
         $chatWid = $request->input('data.chat.id') ?? $request->input('data.from');
 
-        $senderAgent = "";
-        $agentId = 1;
-        $agentPhone = $request->input('device.phone');
-        $agentEmail = null;
+        $senderAgent = "yes";
+        $agentId = $agent->id;
+        $agentPhone = $agent->phone_number;
+        $agentEmail = $agent->email;
         $fallbackPhone = config('app.agent_default_phone', '+96522210017');
         $fallbackEmail = config('app.agent_default_email', 'ops@citytravelers.co');
 
         try {
-            $agent = Agent::where('phone_number', $phone)->first();
-
-            if ($agent) {
+            Log::info("Sender is an agent: {$agent->name} ({$phone})");
                 Log::info("Sender is an agent: {$agent->name} ({$phone})");
 
                 $waitingForClientPhone = Cache::get('agent_waiting_for_client_phone_' . $phone);
@@ -106,63 +114,8 @@ class IncomingMediaController extends Controller
                 $agentPhone = $agent->phone_number;
                 $agentEmail = $agent->email;
                 $senderAgent = 'yes';
-            } else {
-                // Handle client (non-agent) messages
-                Log::info("Sender is a client: {$phone}");
-                
-                // Check if client sent text message
-                $clientTextMessage = trim(
-                    $request->input('data.text')
-                        ?? $request->input('data.body')
-                        ?? $request->input('messages.0.body')
-                        ?? $request->input('messages.0.text')
-                        ?? ''
-                );
-
-                // If client sent text, provide helpful guidance with escalating reminders
-                if (!empty($clientTextMessage) && !$request->input('media') && !$request->input('data.media')) {
-                    $to = $request->input('data.from') ?? $request->input('from');
-                    
-                    // Track how many times this client has sent text messages
-                    $textMessageCount = Cache::get('client_text_count_' . $phone, 0) + 1;
-                    Cache::put('client_text_count_' . $phone, $textMessageCount, now()->addHours(2));
-                    
-                    // Stop responding after 5 attempts to prevent spam
-                    if ($textMessageCount > 5) {
-                        Log::info("Client exceeded text message limit, ignoring", [
-                            'phone' => $phone,
-                            'message_count' => $textMessageCount
-                        ]);
-                        return response()->json(['message' => 'Client exceeded text limit, ignored'], 200);
-                    }
-                    
-                    $helpMessage = $this->getClientHelpMessage($textMessageCount);
-                    
-                    Log::info("Client sent text message", [
-                        'phone' => $phone,
-                        'message_count' => $textMessageCount,
-                        'text_preview' => substr($clientTextMessage, 0, 50)
-                    ]);
-                    
-                    $this->sendWhatsAppMessage($to, $helpMessage, "client_help_attempt_{$textMessageCount}");
-                    return response()->json(['message' => 'Help message sent to client'], 200);
-                }
-
-                $agent = Agent::inRandomOrder()->first();
-                Log::info("Selected random agent: " . ($agent ? "{$agent->name} ({$agent->email})" : 'None'));
-
-                $senderAgent = 'no';
-                if ($agent) {
-                    $agentId = $agent->id;
-                    $agentPhone = $agent->phone_number;
-                    $agentEmail = $agent->email;
-                } else {
-                    $agentPhone = $fallbackPhone;
-                    $agentEmail = $fallbackEmail;
-                }
-            }
         } catch (Exception $e) {
-            Log::error("Error fetching agent: " . $e->getMessage());
+            Log::error("Error processing agent webhook: " . $e->getMessage());
             $agentPhone = $fallbackPhone;
             $agentEmail = $fallbackEmail;
         }
@@ -268,13 +221,9 @@ class IncomingMediaController extends Controller
             ]);
         }
 
-        if ($senderAgent === 'yes') {
-            $clientPhoneNumber = $clientPhoneReply;
-            $autoReplyAdd = "your client's";
-        } else {
-            $clientPhoneNumber = $phone;
-            $autoReplyAdd = "your";
-        }
+        // Since sender is always an agent, use the client phone from their reply
+        $clientPhoneNumber = $clientPhoneReply;
+        $autoReplyAdd = "your client's";
 
         // Normalize client phone number
         $normalizedClientPhone = $this->normalizePhoneNumber($clientPhoneNumber);
@@ -454,26 +403,6 @@ class IncomingMediaController extends Controller
         }
 
         return response()->json(['message' => 'Webhook received successfully']);
-    }
-
-    /**
-     * Get escalating help messages for clients who keep sending text
-     */
-    private function getClientHelpMessage($attemptCount)
-    {
-        switch ($attemptCount) {
-            case 1:
-                return "Thank you for contacting us. To process your request, please upload a clear image or PDF of your passport or civil ID document.\n\nAccepted formats:\n• JPEG/JPG images\n• PNG images\n• PDF documents\n\nFor best results, ensure the document is well-lit and all details are clearly visible.";
-                
-            case 2:
-                return "We appreciate your message, however our system requires document verification to proceed. Please attach your passport or civil ID document as an image or PDF file.\n\nText messages cannot be processed automatically. Once you upload your document, we will review it promptly.";
-                
-            case 3:
-                return "IMPORTANT: Document verification is required to continue with your application.\n\nPlease note:\n• Text messages cannot be processed\n• Only document uploads (passport/civil ID) can be reviewed\n• Supported formats: JPG, PNG, PDF\n\nPlease upload your document to proceed.";
-                
-            default: // 4th attempt and beyond
-                return "NOTICE: This service processes identity document verification only.\n\nRequired action: Upload your passport or civil ID document in JPG, PNG, or PDF format.\n\nNo additional text responses will be provided. Please submit your document to continue with the verification process.";
-        }
     }
 
     /**

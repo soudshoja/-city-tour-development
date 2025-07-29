@@ -50,7 +50,6 @@
                     <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                         <tr>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Transaction Date</th>
-                            <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Issued Date</th>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Client Name</th>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Reference</th>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Status</th>
@@ -68,18 +67,11 @@
                             <td class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-center">
                                 <span class="text-gray-900 dark:text-white font-semibold">
                                     @if ($journalEntry->transaction->transaction_date)
-                                        {{ $journalEntry->transaction->transaction_date->format('d-m-Y') }}
+                                        {{ $journalEntry->transaction->formatted_date }}
                                     @else
                                         Not Set
                                     @endif
                                 </span>  
-                            </td>
-                            <td class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-center">
-                                @if ($journalEntry->task && $journalEntry->task->formatted_date)
-                                    {{ $journalEntry->task->formatted_date_time }}
-                                @else
-                                    Not Set
-                                @endif
                             </td>
                             <td class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-center">
                                 @if ($journalEntry->task && $journalEntry->task->client_name)
@@ -108,19 +100,19 @@
                                         <div class="flex justify-between items-center gap-4 text-center text-sm">
                                             <div class="flex flex-col items-center">
                                                 <span class="font-bold text-base">
-                                                    {{ \Carbon\Carbon::parse($journalEntry->task->flightDetails->departure_time)->format('H:i') }}
+                                                    {{$journalEntry->task->flightDetails ? $journalEntry->task->flightDetails->departure_time : '-' }}
                                                 </span>
                                                 <span class="text-gray-600 text-sm">
-                                                    {{ $journalEntry->task->flightDetails->airport_from ?? '-' }}
+                                                    {{$journalEntry->task->flightDetails ? $journalEntry->task->flightDetails->airport_from : '-'}}
                                                 </span>
                                             </div>
                                             <div class="text-blue-700 text-lg"> ✈ </div>
                                             <div class="flex flex-col items-center">
                                                 <span class="font-bold text-base">
-                                                    {{ \Carbon\Carbon::parse($journalEntry->task->flightDetails->arrival_time)->format('H:i') }}
+                                                    {{$journalEntry->task->flightDetails ? $journalEntry->task->flightDetails->arrival_time : '-' }}
                                                 </span>
                                                 <span class="text-gray-600 text-sm">
-                                                    {{ $journalEntry->task->flightDetails->airport_to ?? '-' }}
+                                                    {{$journalEntry->task->flightDetails ? $journalEntry->task->flightDetails->airport_to : '-'}}
                                                 </span>
                                             </div>
                                         </div>

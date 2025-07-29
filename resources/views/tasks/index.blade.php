@@ -718,7 +718,7 @@
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
                                                 </th>
                                                 <th data-column="issue-date">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issue Date</span>
+                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued Date</span>
                                                 </th>
                                                 <th data-column="info">
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Info</span>
@@ -1165,8 +1165,7 @@
                                                 </td>
                                                 <td data-column="issue-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                    <p>{{ \Carbon\Carbon::parse($task->formatted_date_time)->format('d-m-Y')  ?? 'Not Set' }}</p>
-                                                    <p>{{ \Carbon\Carbon::parse($task->formatted_date_time)->format('H:i:s')  ?? 'Not Set' }}</p>
+                                                    <p>{{ $task->formatted_date_time  ?? 'Not Set' }}</p>
                                                     @else
                                                     {{ $task->formatted_date ?? 'Not Set' }}
                                                     @endif

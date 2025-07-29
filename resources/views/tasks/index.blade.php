@@ -303,7 +303,8 @@
                 align-items: stretch;
             }
 
-            .filter-row input, .value-input {
+            .filter-row input,
+            .value-input {
                 width: 90% !important;
             }
 
@@ -404,9 +405,9 @@
                         <!-- Hidden native select (logic only) -->
                         <select id="select-supplier-task" class="hidden">
                             @foreach ($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" data-supplier='@json(['name'=>$supplier->name])'>
-                                    {{ $supplier->name }}
-                                </option>
+                            <option value="{{ $supplier->id }}" data-supplier='@json([' name'=>$supplier->name])'>
+                                {{ $supplier->name }}
+                            </option>
                             @endforeach
                         </select>
                         <div id="form-task-container" class="mb-3"></div>
@@ -444,17 +445,17 @@
         <div class="content-70">
             <div class="panel oxShadow rounded-lg">
                 <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
-                    <div class="w-full px-6"> 
+                    <div class="w-full px-6">
                         <form action="{{ route('tasks.index') }}" method="GET"
-                            class="flex items-center gap-3 max-w-full"> 
-                            
+                            class="flex items-center gap-3 max-w-full">
+
                             <div class="relative flex-1">
                                 <input type="text" name="q" value="{{ request('q') }}"
                                     id="searchInput"
                                     placeholder=" "
                                     oninput="handleSearchInteraction()"
                                     class="block px-3 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-transparent border-b-2 border-gray-300 appearance-none
-                                    dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer rounded-full"/>
+                                    dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer rounded-full" />
 
                                 <label for="searchInput"
                                     class="absolute text-md text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
@@ -470,8 +471,8 @@
                                 class="relative group bg-blue-200 hover:bg-blue-600 text-black hover:text-white w-9 h-9 flex items-center justify-center rounded-full transition duration-300 ring-offset-2">
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none"
                                     xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
-                                    <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5" />
+                                    <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
                                 </svg>
                             </button>
 
@@ -482,7 +483,7 @@
                                 class="relative group bg-red-200 hover:bg-red-500 text-black hover:text-white w-9 h-9 flex items-center justify-center rounded-full opacity-0 scale-95 pointer-events-none transition-all duration-300">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
                                     viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
 
@@ -758,9 +759,9 @@
                                             @else
                                             @foreach ($tasks as $key => $task)
                                             @php
-                                                $isSelectable = $task->status !== 'refund'
-                                                    ? !$task->invoiceDetail && $task->enabled && !$task->linkedTask
-                                                    : !$task->refundDetail && $task->is_complete;
+                                            $isSelectable = $task->status !== 'refund'
+                                            ? !$task->invoiceDetail && $task->enabled && !$task->linkedTask
+                                            : !$task->refundDetail && $task->is_complete;
                                             @endphp
                                             <tr class="taskRow task-row {{ $isSelectable ? '' : 'not-selectable' }}" @if($isSelectable) @click="toggleTaskSelection({{ $task->id }})" @endif x-show="{{ $key }} < shown" x-cloak
                                                 :class="selectedTasks.includes({{ $task->id }}) ? 'selected' : ''"
@@ -780,7 +781,7 @@
                                                 data-type="{{ $task->type }}"
                                                 data-client-id="{{ $task->client ? $task->client->id : null }}"
                                                 data-task-id="{{ $task->id }}">
-                                                
+
                                                 <td data-column="actions" class="p-3 text-sm">
                                                     <div class="flex items-center justify-center gap-3 h-full min-h-[40px]">
                                                         <div class="flex items-center justify-center h-full">
@@ -792,7 +793,7 @@
                                                             </label>
                                                         </div>
                                                         <div x-data="{ id: 'task-{{ $task->id }}' }" class="relative flex items-center justify-center h-full">
-                                                            <button @click.stop="$store.dropdown.toggle(id)" @click.outside="$store.dropdown.closeAll()" 
+                                                            <button @click.stop="$store.dropdown.toggle(id)" @click.outside="$store.dropdown.closeAll()"
                                                                 class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 focus:outline-none flex items-center justify-center">
                                                                 <svg class="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
                                                                     <circle cx="5" cy="12" r="2" />
@@ -823,16 +824,17 @@
                                                                             <div x-show="editTaskModal_{{ $task->id }}" x-cloak @click.stop class="fixed inset-0 z-30 flex items-center justify-center bg-gray-800 bg-opacity-50">
                                                                                 <form id="edit-task-form-{{ $task->id }}"
                                                                                     action="{{ route('tasks.update', $task->id) }}"
-                                                                                    method="post" @click.stop
+                                                                                    method="post"
                                                                                     class="inline-flex flex-col gap-4 items-center">
-                                                                                    <div class="w-full sm:max-w-screen-sm mx-4 bg-white rounded-md border p-6 relative overflow-y-auto max-h-[90vh]">
+                                                                                    <div @click.away="editTaskModal_{{ $task->id }} = false"
+                                                                                        class="w-full sm:max-w-screen-sm mx-4 bg-white rounded-md border p-6 relative overflow-y-auto max-h-[90vh]">
                                                                                         <!-- Header -->
                                                                                         <div class="flex items-start justify-between mb-2">
                                                                                             <div>
                                                                                                 <h2 class="text-xl font-bold text-gray-800">Edit Task Details</h2>
                                                                                                 <p class="text-gray-600 italic text-xs mt-1">Please update the task details to ensure accurate information</p>
                                                                                             </div>
-                                                                                            <button @click="editTaskModal_{{ $task->id }} = false; window.dispatchEvent(new CustomEvent('reset-dropdowns')); $store.dropdown.closeAll();"
+                                                                                            <button @click="editTaskModal_{{ $task->id }} = false; window.dispatchEvent(new CustomEvent('reset-dropdowns'));"
                                                                                                 type="button"
                                                                                                 class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
                                                                                                 &times;
@@ -910,24 +912,23 @@
                                                                                             <div class="flex flex-col sm:flex-row gap-4">
                                                                                                 <!-- Original Task Selection for Reissued Tasks -->
                                                                                                 <div class="flex-1">
-                                                                                                @php
+                                                                                                    @php
                                                                                                     $originalTasks = $tasks->where('status', 'issued');
                                                                                                     $selectedOriginalTask = $originalTasks->firstWhere('id', $task->original_task_id);
                                                                                                     $taskPlaceholder = $selectedOriginalTask
-                                                                                                        ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name)
-                                                                                                        : 'Select Original Task';
-                                                                                                @endphp
+                                                                                                    ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name)
+                                                                                                    : 'Select Original Task';
+                                                                                                    @endphp
                                                                                                     <label for="original_task_id" class="block text-sm font-medium text-gray-700">Original Task</label>
                                                                                                     <x-searchable-dropdown
                                                                                                         name="original_task_id"
                                                                                                         :items="($originalTasks ?? collect())->map(fn($t) => [
-                                                                                                            'id' => $t->id,
-                                                                                                            'name' => $t->reference . ' - ' . ($t->client->name ?? $t->client_name)
-                                                                                                        ])->values()"
+                                                                                    'id' => $t->id,
+                                                                                    'name' => $t->reference . ' - ' . ($t->client->name ?? $t->client_name)
+                                                                                ])->values()"
                                                                                                         :selectedId="$task->original_task_id"
                                                                                                         :selectedName="$selectedOriginalTask ? $selectedOriginalTask->reference . ' - ' .  ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name) : null"
-                                                                                                        :placeholder="$taskPlaceholder"
-                                                                                                    />
+                                                                                                        :placeholder="$taskPlaceholder" />
                                                                                                 </div>
                                                                                             </div>
                                                                                             @endif
@@ -979,8 +980,8 @@
                                                                                                             :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
                                                                                                             :selectedId="$task->client_id"
                                                                                                             :selectedName="$selectedClient
-                                                                                                        ? $selectedClient->name
-                                                                                                        : null"
+                                                                                ? $selectedClient->name
+                                                                                : null"
                                                                                                             :placeholder="$clientPlaceholder" />
                                                                                                     </div>
                                                                                                 </div>
@@ -1051,22 +1052,35 @@
                                                                                                         placeholder="Total">
                                                                                                 </div>
                                                                                             </div>
+                                                                                            <!-- Payment Method -->
+                                                                                            <div class="flex flex-col sm:flex-row gap-4">
+                                                                                                <div class="flex-1">
+                                                                                                    <label for="payment_method" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                                                                    <select name="payment_method_account_id" id="payment_method_account_id"
+                                                                                                        class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                                                        <option value="">Select Payment Method</option>
+                                                                                                        @foreach($paymentMethod as $method)
+                                                                                                        <option value="{{ $method->id }}" {{ $task->payment_method_account_id == $method->id ? 'selected' : ''}}>{{ $method->name }}</option>
+                                                                                                        @endforeach
+                                                                                                    </select>
+                                                                                                </div>
+                                                                                            </div>
                                                                                             <div class="flex flex-col sm:flex-row gap-4">
                                                                                                 <!-- Additional Info and Venue -->
-                                                                                            <div class="flex-1">
-                                                                                                <label for="additional_info"
-                                                                                                    class="block text-sm font-medium text-gray-700">Additional
-                                                                                                    Info</label>
-                                                                                                <textarea rows="3" readonly
-                                                                                                    class="border border-gray-300 dark:border-gray-600 p-3 rounded-md bg-gray-200 w-full resize-none">{{ $task->additional_info }} - {{ $task->venue }}
-                                                                                                </textarea>
-                                                                                            </div>
+                                                                                                <div class="flex-1">
+                                                                                                    <label for="additional_info"
+                                                                                                        class="block text-sm font-medium text-gray-700">Additional
+                                                                                                        Info</label>
+                                                                                                    <textarea rows="3" readonly
+                                                                                                        class="border border-gray-300 dark:border-gray-600 p-3 rounded-md bg-gray-200 w-full resize-none">{{ $task->additional_info }} - {{ $task->venue }}
+                                                                                                    </textarea>
+                                                                                                </div>
                                                                                             </div>
                                                                                         </div>
                                                                                         <div class="mt-6 flex flex-col sm:flex-row justify-between gap-4">
                                                                                             <!-- Cancel Button -->
                                                                                             <button type="button"
-                                                                                                @click="editTaskModal_{{ $task->id }} = false; window.dispatchEvent(new CustomEvent('reset-dropdowns')); $store.dropdown.closeAll();"
+                                                                                                @click="editTaskModal_{{ $task->id }} = false; window.dispatchEvent(new CustomEvent('reset-dropdowns'));"
                                                                                                 class="px-6 py-2 text-gray-700 font-semibold rounded-full bg-gray-200 hover:bg-gray-300 transition">
                                                                                                 Cancel
                                                                                             </button>
@@ -1110,16 +1124,16 @@
                                                 </td>
                                                 <td data-column="client" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300 ">
                                                     @if ($task->client)
-                                                        <p>{{ $task->client->name }}</p>
-                                                        <p>{{ $task->client->phone ?? 'No phone' }}</p>
+                                                    <p>{{ $task->client->name }}</p>
+                                                    <p>{{ $task->client->phone ?? 'No phone' }}</p>
                                                     @else
-                                                        <p class="{{ $task->client ?? 'no-client relative' }}">
-                                                            <button
-                                                                @click.stop="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}' ,'{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
-                                                                {{ $task->client !== null ? 'disabled' : '' }}>
-                                                                {{ $task->client->name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
-                                                            </button>
-                                                        </p>
+                                                    <p class="{{ $task->client ?? 'no-client relative' }}">
+                                                        <button
+                                                            @click.stop="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}' ,'{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
+                                                            {{ $task->client !== null ? 'disabled' : '' }}>
+                                                            {{ $task->client->name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
+                                                        </button>
+                                                    </p>
                                                     @endif
                                                 </td>
                                                 <td data-column="passenger-name" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
@@ -1151,10 +1165,10 @@
                                                 </td>
                                                 <td data-column="issue-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                        <p>{{ \Carbon\Carbon::parse($task->formatted_date_time)->format('d-m-Y')  ?? 'Not Set' }}</p>
-                                                        <p>{{ \Carbon\Carbon::parse($task->formatted_date_time)->format('H:i:s')  ?? 'Not Set' }}</p>
+                                                    <p>{{ \Carbon\Carbon::parse($task->formatted_date_time)->format('d-m-Y')  ?? 'Not Set' }}</p>
+                                                    <p>{{ \Carbon\Carbon::parse($task->formatted_date_time)->format('H:i:s')  ?? 'Not Set' }}</p>
                                                     @else
-                                                        {{ $task->formatted_date ?? 'Not Set' }}
+                                                    {{ $task->formatted_date ?? 'Not Set' }}
                                                     @endif
                                                 </td>
                                                 <td data-column="info" class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
@@ -1182,7 +1196,7 @@
                                                     <div class="flex items-start gap-2 text-sm text-left">
                                                         <div class="pt-1">
                                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path d="M8 21V7a1 1 0 011-1h6a1 1 0 011 1v14M3 21v-4a1 1 0 011-1h4a1 1 0 011 1v4m10 0v-6a1 1 0 011-1h2a1 1 0 011 1v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                                <path d="M8 21V7a1 1 0 011-1h6a1 1 0 011 1v14M3 21v-4a1 1 0 011-1h4a1 1 0 011 1v4m10 0v-6a1 1 0 011-1h2a1 1 0 011 1v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                                                             </svg>
                                                         </div>
                                                         <div class="flex flex-col truncate">
@@ -1695,19 +1709,19 @@
         const clearBtn = document.getElementById('clearAllColumns');
         const checkboxes = dropdown.querySelectorAll('.column-checkbox');
 
-        customizeBtn.addEventListener('click', function (e) {
+        customizeBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             dropdown.classList.toggle('hidden');
         });
 
-        document.addEventListener('click', function (e) {
+        document.addEventListener('click', function(e) {
             if (!dropdown.contains(e.target) && !customizeBtn.contains(e.target)) {
                 dropdown.classList.add('hidden');
             }
         });
 
         checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function () {
+            checkbox.addEventListener('change', function() {
                 const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
                 if (checkedBoxes.length === 0) {
                     checkbox.checked = true;
@@ -1722,7 +1736,7 @@
             });
         });
 
-        clearBtn.addEventListener('click', function () {
+        clearBtn.addEventListener('click', function() {
             const checkedBoxes = Array.from(checkboxes).filter(cb => cb.checked);
             if (checkedBoxes.length <= 1) {
                 alert("At least one column must remain visible.");
@@ -1806,7 +1820,7 @@
             createInvoiceBtn.replaceWith(createInvoiceBtn.cloneNode(true)); // Remove all previous listeners
         }
 
-        document.getElementById('createInvoiceBtn')?.addEventListener('click', function () {
+        document.getElementById('createInvoiceBtn')?.addEventListener('click', function() {
             const selectedTasks = window.selectedTasksGlobal ?? [];
 
             console.log('Selected tasks:', selectedTasks);

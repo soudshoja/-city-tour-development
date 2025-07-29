@@ -18,6 +18,7 @@ use App\Models\Agent;
 use App\Models\Role;
 use App\Models\PasswordUpdateToken;
 use App\Mail\PasswordUpdateCode;
+use App\Models\JournalEntry;
 
 class ProfileController extends Controller
 {
@@ -37,6 +38,8 @@ class ProfileController extends Controller
         // }
         $phone = null;
         $email = $user->email;
+        $commissions = collect();
+        $totalCommission = 0;
 
         // Check if user has a role and role has an id
         if ($user->role && $user->role->id) {
@@ -54,6 +57,11 @@ class ProfileController extends Controller
                 case Role::AGENT:
                     $profile = Agent::where('user_id', $user->id)->first();
                     $phone = $profile?->phone_number; // different column name
+                    if ($profile) {
+                        $data = $this->getAgentCommissions($profile->id);
+                        $commissions = $data['commissions'];
+                        $totalCommission = $data['totalCommission'];
+                    }
                     break;
 
                 default:
@@ -65,6 +73,8 @@ class ProfileController extends Controller
             'user' => $user,
             'userPhone' => $phone,
             'userEmail' => $email,
+            'commissions' => $commissions,
+            'totalCommission' => $totalCommission,
         ]);
     }
 
@@ -249,6 +259,40 @@ class ProfileController extends Controller
             ->with('status', 'password-updated');
     }
 
-
-
+    /**
+     * Get agent commission
+     */
+    private function getAgentCommissions($agentId)
+    {
+        $query = JournalEntry::with('invoice.invoiceDetails')
+            ->leftJoin('invoice_details', 'journal_entries.invoice_id', '=', 'invoice_details.invoice_id')
+            ->leftJoin('invoices', 'journal_entries.invoice_id', '=', 'invoices.id')
+            ->where('journal_entries.account_id', 43)
+            ->where('invoices.agent_id', $agentId)
+            ->select('journal_entries.*')
+            ->orderByRaw('invoice_details.id IS NULL, journal_entries.created_at DESC');
+    
+        $paginated = $query->paginate(5, ['*'], 'commission');
+    
+        $mapped = $paginated->getCollection()->map(function ($entry) {
+            $taskId = optional($entry->invoice->invoiceDetails->first())->task_id;
+            return [
+                'task_id' => $taskId,
+                'credit' => $entry->credit,
+                'entry_id' => $entry->id,
+            ];
+        });
+    
+        $paginated->setCollection($mapped);
+    
+        $totalCommission = JournalEntry::join('invoices', 'journal_entries.invoice_id', '=', 'invoices.id')
+            ->where('journal_entries.account_id', 43)
+            ->where('invoices.agent_id', $agentId)
+            ->sum('journal_entries.credit');
+    
+        return [
+            'commissions' => $paginated,
+            'totalCommission' => $totalCommission,
+        ];
+    }
 }

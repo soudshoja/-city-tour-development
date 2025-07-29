@@ -32,7 +32,6 @@ class InvoiceFactory extends Factory
             'bank_name' => $this->faker->company(),
             'swift_no' => $this->faker->swiftBicNumber(),
             'iban_no' => $this->faker->iban(),
-            'country_id' => $this->faker->numberBetween(1, 200), // Assuming country IDs are between 1 and 200
             'tax' => $this->faker->randomFloat(2, 0, 20),
             'discount' => $this->faker->randomFloat(2, 0, 20),
             'shipping' => $this->faker->randomFloat(2, 0, 50),

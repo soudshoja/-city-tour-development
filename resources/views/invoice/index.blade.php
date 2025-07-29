@@ -135,8 +135,6 @@
                                 </tr>
                                 @else
                                 @foreach ($invoices as $invoice)
-                                {{-- @foreach ($invoice->invoiceDetails as $invoiceDetail) --}}
-                                {{-- @foreach ($invoices as $invoice) --}}
                                 @php
                                 // Retrieve the first invoice detail; adjust as needed if you want a different one.
                                 $invoiceDetail = $invoice->invoiceDetails->first();

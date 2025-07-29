@@ -1132,7 +1132,7 @@ class ChatController extends Controller
                 'company_id' => $company->id,
                 'branch_id' => $request->branch_id,
                 'type' => $request->type,
-                'account_id' => $account->id
+                // 'account_id' => $account->id
             ]);
 
 

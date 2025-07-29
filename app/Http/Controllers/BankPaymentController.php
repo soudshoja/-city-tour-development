@@ -460,13 +460,35 @@ class BankPaymentController extends Controller
         }
 
         $entries = $entriesQuery
-            ->with(['account', 'account.root'])
+            ->with(['account', 'account.root', 'task'])
             ->orderBy('transaction_date')
             ->get();
 
 
         // Format results
         $payments = $entries->map(function ($entry) use ($totalsByAccount) {
+            $description = '';
+            if($entry->task) $description = $entry->task->reference . ' - ';
+
+            if(isset($entry->task->client_name)) {
+                $description .= $entry->task->client_name;
+            } elseif (isset($entry->task->passenger_name)) {
+                $description .= $entry->task->passenger_name;
+            } elseif (isset($entry->task->supplier_name)) {
+                $description .= $entry->task->supplier_name;
+            } else {
+                $description .= 'No Client';
+            }
+            
+            if ($entry->task) {
+                if ($entry->task->type === 'flight') {
+                    $ticketNumber = $entry->task->ticket_number;
+                    $description = $description . ($ticketNumber ? ' - ' . $ticketNumber : '');
+                } elseif ($entry->task->hotel === 'hotel') {
+                    $hotelName = $entry->task->hotelDetails->hotel->name ?? '';
+                    $description = $description . ($hotelName ? ' - ' . $hotelName : '');
+                }
+            }
             return [
                 'id'               => $entry->id,
                 'transaction_id'   => $entry->transaction_id,
@@ -476,7 +498,7 @@ class BankPaymentController extends Controller
                 'account_name'     => $entry->account->name ?? '',
                 'root_name'        => $entry->account->root->name ?? 'No Root',
                 'name'             => $entry->name,
-                'description'      => $entry->description,
+                'description'      => $description,
                 'debit'            => (float) $entry->debit,
                 'credit'           => (float) $entry->credit,
                 'account_total'    => (float) ($totalsByAccount[$entry->account_id] ?? 0),

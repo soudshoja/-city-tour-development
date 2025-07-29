@@ -405,7 +405,7 @@
                         <!-- Hidden native select (logic only) -->
                         <select id="select-supplier-task" class="hidden">
                             @foreach ($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" data-supplier='@json([' name'=>$supplier->name])'>
+                            <option value="{{ $supplier->id }}" data-supplier='{{ json_encode($supplier) }}'>
                                 {{ $supplier->name }}
                             </option>
                             @endforeach

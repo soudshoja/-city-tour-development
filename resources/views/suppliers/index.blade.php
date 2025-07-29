@@ -87,6 +87,16 @@
                             class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
                         <label for="has_flight" class="ml-2 text-sm text-gray-700">Has Flight</label>
                     </div>
+                    <div class="flex items-center mb-2">
+                        <input type="checkbox" name="has_visa" id="has_visa"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                        <label for="has_visa" class="ml-2 text-sm text-gray-700">Has Visa</label>
+                    </div>
+                    <div class="flex items-center mb-2">
+                        <input type="checkbox" name="has_insurance" id="has_insurance"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                        <label for="has_insurance" class="ml-2 text-sm text-gray-700">Has Insurance</label>
+                    </div>
                     <div>
                         <x-searchable-dropdown
                             name="country_id"
@@ -190,6 +200,12 @@
                                         <input type="checkbox" name="has_flight" id="has_flight" {{ $supplier->has_flight ? 'checked' : '' }}
                                             class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
                                         <label for="has_flight" class="ml-2 text-sm text-gray-700">Has Flight</label>
+                                         <input type="checkbox" name="has_visa" id="has_visa" {{ $supplier->has_visa ? 'checked' : '' }}
+                                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                        <label for="has_visa" class="ml-2 text-sm text-gray-700">Has Visa</label>
+                                         <input type="checkbox" name="has_insurance" id="has_insurance" {{ $supplier->has_insurance ? 'checked' : '' }}
+                                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                        <label for="has_insurance" class="ml-2 text-sm text-gray-700">Has Insurance</label>
                                     </div>
                                     <div>
                                         <x-searchable-dropdown

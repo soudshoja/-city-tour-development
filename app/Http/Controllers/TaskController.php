@@ -601,6 +601,9 @@ class TaskController extends Controller
      */
     private function processIssuedTask(Task $task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId)
     {
+        // Use task's issued_date as transaction_date
+        $transactionDate = $task->issued_date ? Carbon::parse($task->issued_date) : Carbon::now();
+        
         $transaction = Transaction::create([
             'branch_id' => $branchId,
             'company_id' => $task->company_id,
@@ -610,6 +613,7 @@ class TaskController extends Controller
             'amount' => $task->total,
             'description' => 'Task created: ' . $task->reference,
             'reference_type' => 'Payment',
+            'transaction_date' => $transactionDate,
         ]);
 
         if (!$transaction) {
@@ -622,7 +626,7 @@ class TaskController extends Controller
             'branch_id' => $branchId,
             'account_id' => $supplierCost->id,
             'task_id' => $task->id,
-            'transaction_date' => Carbon::now(),
+            'transaction_date' => $transactionDate,
             'description' => 'Task from supplier (Expenses): ' . $supplierCompany->supplier->name,
             'name' => $supplierCompany->supplier->name,
             'debit' => $task->total,
@@ -638,7 +642,7 @@ class TaskController extends Controller
             'branch_id' => $branchId,
             'account_id' => $issuedByAccount ? $issuedByAccount->id : $supplierPayable->id,
             'task_id' => $task->id,
-            'transaction_date' => Carbon::now(),
+            'transaction_date' => $transactionDate,
             'description' => 'Records Payable to (Liabilities): ' . $supplierCompany->supplier->name,
             'name' => $supplierCompany->supplier->name,
             'debit' => 0,
@@ -805,6 +809,9 @@ class TaskController extends Controller
             'issued_by' => $task->issued_by
         ]);
 
+        // Use task's issued_date as transaction_date
+        $transactionDate = $task->issued_date ? Carbon::parse($task->issued_date) : Carbon::now();
+
         // Create Transaction Record
         $transaction = Transaction::create([
             'entity_id' => $task->company_id,
@@ -816,6 +823,7 @@ class TaskController extends Controller
             'description' => 'Refund Task: ' . $task->reference,
             'reference_type' => 'Refund',
             'name' => $task->client_name,
+            'transaction_date' => $transactionDate,
         ]);
 
         if (!$transaction) {
@@ -824,7 +832,7 @@ class TaskController extends Controller
 
         // Create journal entries using the correct accounts
         JournalEntry::create([
-            'transaction_date' => Carbon::now(),
+            'transaction_date' => $transactionDate,
             'transaction_id' => $transaction->id,
             'company_id' => $task->company_id,
             'branch_id' => $branchId,
@@ -838,7 +846,7 @@ class TaskController extends Controller
         ]);
 
         JournalEntry::create([
-            'transaction_date' => Carbon::now(),
+            'transaction_date' => $transactionDate,
             'transaction_id' => $transaction->id,
             'company_id' => $task->company_id,
             'branch_id' => $branchId,
@@ -936,6 +944,9 @@ class TaskController extends Controller
 
         Log::info("Void for task [{$task->reference}]: Client credit before = {$oldCredit}, after = {$client->credit}");
 
+        // Use task's issued_date as transaction_date
+        $transactionDate = $task->issued_date ? Carbon::parse($task->issued_date) : Carbon::now();
+
         $voidTransaction = Transaction::create([
             'branch_id'        => $client->agent->branch_id,
             'company_id'       => $client->agent->branch->company_id,
@@ -946,6 +957,7 @@ class TaskController extends Controller
             'description'      => 'Void task: ' . $task->reference,
             'reference_type'   => 'Refund',
             'reference_number' => $payment->voucher_number,
+            'transaction_date' => $transactionDate,
         ]);
 
         if (!$voidTransaction) {
@@ -963,7 +975,7 @@ class TaskController extends Controller
                 'branch_id'        => $entry->branch_id,
                 'account_id'       => $entry->account_id,
                 'task_id'          => $issuedTask->id,
-                'transaction_date' => now(),
+                'transaction_date' => $transactionDate,
                 'description'      => 'Void: ' . $entry->description,
                 'debit'            => $entry->credit,
                 'credit'           => $entry->debit,
@@ -2246,6 +2258,9 @@ class TaskController extends Controller
 
         Log::info('Recording reversal journal & transaction for task ID: ' . $originalTask->id);
 
+        // Use task's issued_date as transaction_date
+        $transactionDate = $originalTask->issued_date ? Carbon::parse($originalTask->issued_date) : Carbon::now();
+
         $transaction = Transaction::create([
             'branch_id' => $originalTask->agent->branch_id,
             'company_id' => $originalTask->company_id,
@@ -2256,6 +2271,7 @@ class TaskController extends Controller
             'task_id' => $originalTask->id,
             'description' => 'Void reversal for: ' . $originalTask->reference,
             'reference_type' => 'Payment',
+            'transaction_date' => $transactionDate,
         ]);
 
         JournalEntry::create([
@@ -2264,7 +2280,7 @@ class TaskController extends Controller
             'branch_id' => $originalTask->agent->branch_id,
             'account_id' => $supplierCost->id,
             'task_id' => $originalTask->id,
-            'transaction_date' => now(),
+            'transaction_date' => $transactionDate,
             'description' => 'Reversal: Cancelled Cost from ' . $supplierCompany->supplier->name,
             'name' => $supplierCompany->supplier->name,
             'debit' => 0,
@@ -2279,7 +2295,7 @@ class TaskController extends Controller
             'branch_id' => $originalTask->agent->branch_id,
             'account_id' => $issuedByAccount->id,
             'task_id' => $originalTask->id,
-            'transaction_date' => now(),
+            'transaction_date' => $transactionDate,
             'description' => 'Reversal: Cancelled Payable to ' . $supplierCompany->supplier->name,
             'name' => $supplierCompany->supplier->name,
             'debit' => $originalTask->total,
@@ -2626,6 +2642,9 @@ class TaskController extends Controller
     ]);
     Log::info('Starting Journal Reversal for Changed Payment Method');
 
+    // Use task's issued_date as transaction_date
+    $transactionDate = $task->issued_date ? Carbon::parse($task->issued_date) : Carbon::now();
+
     try {
         $transaction1 = Transaction::create([
             'branch_id' => $branchId,
@@ -2636,6 +2655,7 @@ class TaskController extends Controller
             'amount' => $task->total,
             'description' => 'Reversed journal of supplier payment',
             'reference_type' => 'Payment',
+            'transaction_date' => $transactionDate,
         ]);
 
         Log::info('Reversed Journal Entries for Task ID: ' . $task->id . ' with Transaction: ' . $transaction1);
@@ -2647,7 +2667,7 @@ class TaskController extends Controller
             'branch_id' => $branchId,
             'account_id' => $issuedByAccount ? $issuedByAccount->id : $supplierPayable->id,
             'task_id' => $task->id,
-            'transaction_date' => Carbon::now(),
+            'transaction_date' => $transactionDate,
             'description' => 'Reversal of supplier payable: ' . $supplier->name,
             'name' => $supplier->name,
             'debit' => $task->total,
@@ -2662,7 +2682,7 @@ class TaskController extends Controller
             'branch_id' => $branchId,
             'account_id' => $supplierCost->id,
             'task_id' => $task->id,
-            'transaction_date' => Carbon::now(),
+            'transaction_date' => $transactionDate,
             'description' => 'Reversal of supplier cost',
             'name' => $supplier->name,
             'debit' => 0,
@@ -2680,6 +2700,7 @@ class TaskController extends Controller
             'amount' => $task->total,
             'description' => 'Task paid via creditor: ' . $creditorAccount->name,
             'reference_type' => 'Payment',
+            'transaction_date' => $transactionDate,
         ]);
 
         Log::info('New Journal Entries for Task ID: ' . $task->id . ' with Transaction: ' . $transaction2);
@@ -2690,7 +2711,7 @@ class TaskController extends Controller
             'branch_id' => $branchId,
             'account_id' => $supplierCost->id,
             'task_id' => $task->id,
-            'transaction_date' => Carbon::now(),
+            'transaction_date' => $transactionDate,
             'description' => 'Expense paid via creditor: ' . $creditorAccount->name,
             'name' => $supplier->name,
             'debit' => $task->total,
@@ -2705,7 +2726,7 @@ class TaskController extends Controller
             'branch_id' => $branchId,
             'account_id' => $creditorAccount->id,
             'task_id' => $task->id,
-            'transaction_date' => Carbon::now(),
+            'transaction_date' => $transactionDate,
             'description' => 'Creditor payable: ' . $creditorAccount->name,
             'name' => $creditorAccount->name,
             'debit' => 0,

@@ -178,7 +178,7 @@ class TaskController extends Controller
             'task_hotel_details' => 'nullable|array',
             'task_flight_details' => 'nullable|array',
             'file_name' => 'nullable|string',
-            'issued_date' => 'nullable|datetime',
+            'issued_date' => 'nullable|date',
         ]);
 
         $queryChkExistTask = Task::query();

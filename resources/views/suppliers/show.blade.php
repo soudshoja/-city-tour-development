@@ -36,6 +36,7 @@
             </li>
         </ul>
     </div>
+        
     <div class="flex flex-col gap-2">
         <div class="grid bg-gradient-to-r from-blue-600 to-gray-800 p-4 rounded-md shadow-md w-full">
             <div class="flex justify-between items-center gap-4">

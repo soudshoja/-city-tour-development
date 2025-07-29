@@ -43,6 +43,11 @@ class Transaction extends Model
         });
     }
 
+    public function getFormattedDateAttribute()
+    {
+        return $this->transaction_date ? $this->transaction_date->format('Y-m-d') : null;
+    }
+
     // public function getTransactionHashAttribute()
     // {
     //     return hash('sha256', $this->id . $this->date . $this->amount);

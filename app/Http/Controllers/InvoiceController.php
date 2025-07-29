@@ -52,9 +52,9 @@ class InvoiceController extends Controller
 
         // Get all agents under the company
         if ($user->role_id == Role::ADMIN) {
-            dump('admin');
+            return abort(403, 'Unauthorized action.');
             $agents = Agent::with(['branch'])->get();
-            $companiesId = Company::all()->toArray();
+            $companiesId = Company::all()->pluck('id')->toArray();
         } else if ($user->role_id == Role::COMPANY) {
             $agents = Agent::with(['branch' => function ($query) use ($user) {
                 $query->where('company_id', $user->company->id);

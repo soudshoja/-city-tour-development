@@ -21,7 +21,18 @@ class InvoiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_invoice_page_displayed_for_admin()
+    // public function test_invoice_page_displayed_for_admin()
+    // {
+    //     $user = User::factory()->create([
+    //         'role_id' => Role::ADMIN
+    //     ]);
+
+    //     $response = $this->actingAs($user)->get(route('invoices.index'));
+
+    //     $response->assertStatus(200);
+    // }
+
+    public function test_admin_cannot_view_invoice_list()
     {
         $user = User::factory()->create([
             'role_id' => Role::ADMIN
@@ -29,7 +40,7 @@ class InvoiceTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('invoices.index'));
 
-        $response->assertStatus(200);
+        $response->assertStatus(403);
     }
     
     public function test_invoice_page_displayed_for_company(): void
@@ -117,82 +128,82 @@ class InvoiceTest extends TestCase
         $response->assertStatus(200);
     }
 
-    public function test_admin_view_on_list_of_invoice()
-    {
-        $user = User::factory()->create([
-            'role_id' => Role::ADMIN
-        ]);
+    // public function test_admin_view_on_list_of_invoice()
+    // {
+    //     $user = User::factory()->create([
+    //         'role_id' => Role::ADMIN
+    //     ]);
 
 
-        $userAgent = User::factory()->create([
-            'role_id' => Role::AGENT
-        ]);
+    //     $userAgent = User::factory()->create([
+    //         'role_id' => Role::AGENT
+    //     ]);
 
-        $agentType = AgentType::create(['name' => 'Commission']);
+    //     $agentType = AgentType::create(['name' => 'Commission']);
 
-        $agent = Agent::factory()->create([
-            'user_id' => $userAgent->id,
-            'type_id' => $agentType->id
-        ]);
+    //     $agent = Agent::factory()->create([
+    //         'user_id' => $userAgent->id,
+    //         'type_id' => $agentType->id
+    //     ]);
 
-        $client  = Client::factory()->create([
-            'agent_id' => $agent->id
-        ]);
+    //     $client  = Client::factory()->create([
+    //         'agent_id' => $agent->id
+    //     ]);
 
-        $userCompany = User::factory()->create([
-            'role_id' => Role::COMPANY
-        ]);
+    //     $userCompany = User::factory()->create([
+    //         'role_id' => Role::COMPANY
+    //     ]);
 
-        $company = Company::factory()->create([
-            'user_id' => $userCompany->id
-        ]);
+    //     $company = Company::factory()->create([
+    //         'user_id' => $userCompany->id
+    //     ]);
 
-        $userBranch = User::factory()->create([
-            'role_id' => Role::BRANCH
-        ]);
+    //     $userBranch = User::factory()->create([
+    //         'role_id' => Role::BRANCH
+    //     ]);
 
-        $branch = Branch::factory()->create([
-            'user_id' => $userBranch->id,
-            'company_id' => $company->id
-        ]);
+    //     $branch = Branch::factory()->create([
+    //         'user_id' => $userBranch->id,
+    //         'company_id' => $company->id
+    //     ]);
 
-        Agent::factory()->create([
-            'user_id' => $userAgent->id,
-            'branch_id' => $branch->id,
-            'type_id' => $agentType->id,
-        ]);
+    //     Agent::factory()->create([
+    //         'user_id' => $userAgent->id,
+    //         'branch_id' => $branch->id,
+    //         'type_id' => $agentType->id,
+    //     ]);
 
-        $task = Task::factory()->create([
-            'client_id' => $client->id,
-            'agent_id' => $agent->id,
-            'company_id' => $company->id,
-        ]);
+    //     $task = Task::factory()->create([
+    //         'client_id' => $client->id,
+    //         'agent_id' => $agent->id,
+    //         'company_id' => $company->id,
+    //     ]);
 
-        $invoices = Invoice::factory()->count(5)->create([
-            'client_id' => $client->id,
-            'agent_id' => $agent->id,
-        ]);
+    //     $invoices = Invoice::factory()->count(5)->create([
+    //         'client_id' => $client->id,
+    //         'agent_id' => $agent->id,
+    //     ]);
 
-        $invoiceDetails = $invoices->map(function ($invoice) use ($task) {
-            return InvoiceDetail::factory()->create([
-                'invoice_id' => $invoice->id,
-                'task_id' => $task->id,
-            ]);
-        });
+    //     $invoiceDetails = $invoices->map(function ($invoice) use ($task) {
+    //         return InvoiceDetail::factory()->create([
+    //             'invoice_id' => $invoice->id,
+    //             'task_id' => $task->id,
+    //         ]);
+    //     });
 
-        $response = $this->actingAs($user)->get(route('invoices.index'));
-        $response->assertStatus(200);
+    //     $response = $this->actingAs($user)->get(route('invoices.index'));
+    //     $response->assertStatus(200);
 
-        foreach ($invoices as $invoice) {
-            $response->assertSee($invoice->number);
-        }
+    //     foreach ($invoices as $invoice) {
+    //         $response->assertSee($invoice->number);
+    //     }
 
-        foreach ($invoiceDetails as $detail) {
-            $response->assertSee($detail->task_description);
-        }
+    //     foreach ($invoiceDetails as $detail) {
+    //         $response->assertSee($detail->task_description);
+    //     }
 
-        $response->assertSee('Total Invoices: ' . $invoices->count());
-        $response->assertSee('Total Amount: ' . $invoices->sum('total amount'));
-    }
+    //     $response->assertSee('Total Invoices: ' . $invoices->count());
+    //     $response->assertSee('Total Amount: ' . $invoices->sum('total amount'));
+    // }
 
 }

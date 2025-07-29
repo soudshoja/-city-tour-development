@@ -27,6 +27,11 @@ class Transaction extends Model
         'name',
         'remarks_internal',
         'remarks_fl',
+        'transaction_date',
+    ];
+
+    protected $casts = [
+        'transaction_date' => 'datetime',
     ];
 
     protected static function booted()

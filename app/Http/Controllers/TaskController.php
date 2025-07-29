@@ -49,6 +49,7 @@ class TaskController extends Controller
     {
         $user = Auth::user();
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
+        $paymentMethod = Account::where('parent_id', 39)->get();
 
         if ($search = $request->query('q')) {
 
@@ -134,6 +135,7 @@ class TaskController extends Controller
             'suppliers',
             'types',
             'countries',
+            'paymentMethod'
             // 'searchTask'
         ));
     }
@@ -1019,6 +1021,7 @@ class TaskController extends Controller
             'tax' => 'nullable|numeric',
             'surcharge' => 'nullable|numeric',
             'total' => 'required|numeric',
+            'payment_method_account_id' => 'nullable|string',
             'agent_id' => 'nullable',
             'client_id' => 'nullable|exists:clients,id',
             'supplier_id' => 'required',
@@ -1040,6 +1043,7 @@ class TaskController extends Controller
 
         try {
             $task = Task::findOrFail($id);
+            $oldPaymentMethod = $task->payment_method_account_id;
 
             Log::info('Before task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
             Log::info('Incoming Request: agent_id: ' . $request->agent_id . ', client_id: ' . $request->client_id);
@@ -1058,6 +1062,7 @@ class TaskController extends Controller
                 'agent_id',
                 'supplier_id',
                 'original_task_id',
+                'payment_method_account_id',
             ]);
 
             if ($request->filled('client_id')) {
@@ -1074,6 +1079,10 @@ class TaskController extends Controller
 
             $task->update($data);
             Log::info('After task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
+
+            if ($request->filled('payment_method_account_id') && $request->payment_method_account_id != $oldPaymentMethod) {
+                $this->reverseJournalforChangedPaymentMethod($task);
+            }
 
             // Check if agent was just assigned or changed
             $agentWasAssigned = !$prevAgentId && $task->agent_id;
@@ -2526,4 +2535,187 @@ class TaskController extends Controller
             ], 500);
         }
     }
+    
+   public function reverseJournalforChangedPaymentMethod(Task $task)
+{
+    $task = Task::findOrFail($task->id);
+    Log::info('Task ID: ' . $task->id . '. For Journal Reversal of Changed Payment Method');
+
+    $supplier = Supplier::find($task->supplier_id);
+    $branchId = $this->getTaskBranchId($task);
+
+    $supplierCompany = SupplierCompany::where('supplier_id', $task->supplier_id)
+        ->where('company_id', $task->company_id)
+        ->first();
+
+    if (!$supplierCompany) {
+        Log::error('Supplier company not activated or not found.');
+        return;
+    }
+
+    $liabilities = Account::where('name', 'like', '%Liabilities%')
+        ->where('company_id', $task->company_id)
+        ->first();
+
+    $expenses = Account::where('name', 'like', '%Expenses%')
+        ->where('company_id', $task->company_id)
+        ->first();
+
+    if (!$liabilities || !$expenses) {
+        Log::error('Liabilities or Expenses account not found.');
+        return;
+    }
+
+    $supplierPayable = Account::where('name', $supplier->name)
+        ->where('company_id', $task->company_id)
+        ->whereIn('root_id', function ($query) use ($task) {
+            $query->select('id')
+                ->from('accounts')
+                ->where('company_id', $task->company_id)
+                ->where('name', 'like', '%Liabilities%');
+        })
+        ->first();
+
+    $supplierCost = Account::where('name', $supplier->name)
+        ->where('company_id', $task->company_id)
+        ->whereIn('root_id', function ($query) use ($task) {
+            $query->select('id')
+                ->from('accounts')
+                ->where('company_id', $task->company_id)
+                ->where('name', 'like', '%Expenses%');
+        })
+        ->first();
+
+    // ✅ New logic: get issuedByAccount under supplierPayable
+    $companyIssuedBy = $task->issued_by ?? 'Not Issued';
+
+    $issuedByAccount = Account::where('name', $companyIssuedBy)
+        ->where('company_id', $task->company_id)
+        ->where('root_id', $liabilities->id)
+        ->where('parent_id', $supplierPayable->id ?? 0)
+        ->first();
+
+    $creditorAccount = Account::find($task->payment_method_account_id);
+    Log::info('Creditor Account Details', [
+        'id' => $creditorAccount->id,
+        'name' => $creditorAccount->name,
+        'root_id' => $creditorAccount->root_id,
+        'is_group' => $creditorAccount->is_group,
+        'disabled' => $creditorAccount->disabled,
+    ]);
+
+    if ((!$issuedByAccount && !$supplierPayable) || !$supplierCost || !$creditorAccount) {
+        Log::error('Required accounts not found for reversal or new payment method.');
+        return;
+    }
+
+    Log::info('Data of Reversal Journal for Changed Payment Method', [
+        'task_id' => $task->id,
+        'branch_id' => $branchId,
+        'supplier_company' => $supplierCompany,
+        'liabilities' => $liabilities,
+        'expenses' => $expenses,
+        'supplier_payable' => $supplierPayable?->name,
+        'supplier_cost' => $supplierCost->name,
+        'creditor_account' => $creditorAccount->name,
+        'total_amount' => $task->total
+    ]);
+    Log::info('Starting Journal Reversal for Changed Payment Method');
+
+    try {
+        $transaction1 = Transaction::create([
+            'branch_id' => $branchId,
+            'company_id' => $task->company_id,
+            'entity_id' => $task->company_id,
+            'entity_type' => 'company',
+            'transaction_type' => 'debit',
+            'amount' => $task->total,
+            'description' => 'Reversed journal of supplier payment',
+            'reference_type' => 'Payment',
+        ]);
+
+        Log::info('Reversed Journal Entries for Task ID: ' . $task->id . ' with Transaction: ' . $transaction1);
+
+        // ✅ Debit to correct payable account
+        JournalEntry::create([
+            'transaction_id' => $transaction1->id,
+            'company_id' => $task->company_id,
+            'branch_id' => $branchId,
+            'account_id' => $issuedByAccount ? $issuedByAccount->id : $supplierPayable->id,
+            'task_id' => $task->id,
+            'transaction_date' => Carbon::now(),
+            'description' => 'Reversal of supplier payable: ' . $supplier->name,
+            'name' => $supplier->name,
+            'debit' => $task->total,
+            'credit' => 0,
+            'balance' => $task->total,
+            'type' => 'payable',
+        ]);
+
+        JournalEntry::create([
+            'transaction_id' => $transaction1->id,
+            'company_id' => $task->company_id,
+            'branch_id' => $branchId,
+            'account_id' => $supplierCost->id,
+            'task_id' => $task->id,
+            'transaction_date' => Carbon::now(),
+            'description' => 'Reversal of supplier cost',
+            'name' => $supplier->name,
+            'debit' => 0,
+            'credit' => $task->total,
+            'balance' => 0,
+            'type' => 'payable',
+        ]);
+
+        $transaction2 = Transaction::create([
+            'branch_id' => $branchId,
+            'company_id' => $task->company_id,
+            'entity_id' => $task->company_id,
+            'entity_type' => 'company',
+            'transaction_type' => 'credit',
+            'amount' => $task->total,
+            'description' => 'Task paid via creditor: ' . $creditorAccount->name,
+            'reference_type' => 'Payment',
+        ]);
+
+        Log::info('New Journal Entries for Task ID: ' . $task->id . ' with Transaction: ' . $transaction2);
+
+        JournalEntry::create([
+            'transaction_id' => $transaction2->id,
+            'company_id' => $task->company_id,
+            'branch_id' => $branchId,
+            'account_id' => $supplierCost->id,
+            'task_id' => $task->id,
+            'transaction_date' => Carbon::now(),
+            'description' => 'Expense paid via creditor: ' . $creditorAccount->name,
+            'name' => $supplier->name,
+            'debit' => $task->total,
+            'credit' => 0,
+            'balance' => $task->total,
+            'type' => 'expense',
+        ]);
+
+        JournalEntry::create([
+            'transaction_id' => $transaction2->id,
+            'company_id' => $task->company_id,
+            'branch_id' => $branchId,
+            'account_id' => $creditorAccount->id,
+            'task_id' => $task->id,
+            'transaction_date' => Carbon::now(),
+            'description' => 'Creditor payable: ' . $creditorAccount->name,
+            'name' => $creditorAccount->name,
+            'debit' => 0,
+            'credit' => $task->total,
+            'balance' => $task->total,
+            'type' => 'payable',
+        ]);
+
+        Log::info('Kenapa dia tanak masuk creditors gaes: ' .
+            'Transaction: ' . $transaction2->id . ' Company ID: ' . $task->company_id . ' Branch ID: ' . $branchId . ' Account ID: ' . $creditorAccount->id . ' Account Name: ' . $creditorAccount->name . ' Amount: ' . $task->total);
+    } catch (\Exception $e) {
+        Log::error('Failed to create journal entry: ' . $e->getMessage());
+    }
+}
+
+
 }

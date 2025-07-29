@@ -17,29 +17,29 @@
             "original_currency": "KWD",
             "task_flight_details": [
                 {
-                    "from": "BER",
-                    "to": "DOH",
+                    "airport_from": "BER",
+                    "airport_to": "DOH",
                     "flight_number": "QR0084",
                     "airline": "QR",
                     "departure_time": "2025-11-25 21:55:00"
                 },
                 {
-                    "from": "DOH",
-                    "to": "KWI",
+                    "airport_from": "DOH",
+                    "airport_to": "KWI",
                     "flight_number": "QR1070",
                     "airline": "QR",
                     "departure_time": "2025-11-26 08:40:00"
                 },
                 {
-                    "from": "KWI",
-                    "to": "DOH",
+                    "airport_from": "KWI",
+                    "airport_to": "DOH",
                     "flight_number": "QR1083",
                     "airline": "QR",
                     "departure_time": "2025-11-29 22:20:00"
                 },
                 {
-                    "from": "DOH",
-                    "to": "BER",
+                    "airport_from": "DOH",
+                    "airport_to": "BER",
                     "flight_number": "QR0079",
                     "airline": "QR",
                     "departure_time": "2025-11-30 02:40:00"

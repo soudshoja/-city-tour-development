@@ -15,32 +15,32 @@
             "agent_amadeus_id": "0012MI",
             "task_flight_details": [
                 {
-                    "from": "KWI",
-                    "to": "BAH",
+                    "airport_from": "KWI",
+                    "airport_to": "BAH",
                     "flight_number": "GF0216",
                     "airline": "GF",
                     "departure_time": "2025-07-23 18:55:00",
                     "arrival_time": "2025-07-23 20:00:00"
                 },
                 {
-                    "from": "BAH",
-                    "to": "BKK",
+                    "airport_from": "BAH",
+                    "airport_to": "BKK",
                     "flight_number": "GF0152",
                     "airline": "GF",
                     "departure_time": "2025-07-23 22:45:00",
                     "arrival_time": "2025-07-24 09:55:00"
                 },
                 {
-                    "from": "BKK",
-                    "to": "BAH",
+                    "airport_from": "BKK",
+                    "airport_to": "BAH",
                     "flight_number": "GF0153",
                     "airline": "GF",
                     "departure_time": "2025-08-09 19:40:00",
                     "arrival_time": "2025-08-09 22:55:00"
                 },
                 {
-                    "from": "BAH",
-                    "to": "KWI",
+                    "airport_from": "BAH",
+                    "airport_to": "KWI",
                     "flight_number": "GF0211",
                     "airline": "GF",
                     "departure_time": "2025-08-10 01:20:00",

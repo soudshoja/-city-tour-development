@@ -15,8 +15,8 @@
             "agent_amadeus_id": "4714IA",
             "task_flight_details": [
                 {
-                    "from": "BKK",
-                    "to": "KWI",
+                    "airport_from": "BKK",
+                    "airport_to": "KWI",
                     "flight_number": "KU0412",
                     "airline": "KU",
                     "departure_time": "2025-07-30 11:55:00",

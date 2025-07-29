@@ -19,34 +19,41 @@
         <div class="md:flex gap-2">
             <!-- Agents Overview -->
             <div class="panel w-[100%] md:w-[75%]">
-                <div class="mb-5 flex justify-between">
+                <div class="mb-5 flex justify-between items-center">
                     <h5 class="text-lg font-semibold dark:text-white-light">
                         <span class="customBlueColor">Invoices</span> List
                     </h5>
-                    <!-- add an icon here -->
+                    @if($agent->type_id != 1)
+                    <div class="bg-green-100 text-green-700 font-bold px-4 py-2 rounded shadow">
+                        Total Commission: {{ number_format($totalCommission, 2) }} KWD
+                    </div>
+                    @endif
                 </div>
                 <div>
                     @if($invoices->isEmpty())
                     <p class="text-gray-600">No invoices for this agent.</p>
                     @else
                     <div class="max-h-72 overflow-y-auto custom-scrollbar">
-                        <table class="bg-white border border-gray-300 mt-4">
+                        <table class="bg-white border border-gray-300">
                             <thead>
-                                <tr>
-                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">invoice Number</th>
-                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">invoice Date</th>
-                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Status</th>
-                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Cost (KWD)</th>
-                                    <th class="py-2 px-6 text-left font-semibold text-gray-600 border-b">Net (KWD)</th>
-                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Client</th>
-                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Actions</th>
+                                <tr class="text-center">
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Invoice Number</th>
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Invoice Date</th>
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Status</th>
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Cost (KWD)</th>
+                                    <th class="py-2 px-6 font-semibold text-gray-600 border-b">Net (KWD)</th>
+                                    @if($agent->type_id != 1)
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Commission (KWD)</th>
+                                    @endif
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Client</th>
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($invoices as $invoice)
-                                <tr>
+                                <tr class="text-center">
                                     <td class="py-4 px-6 border-b">{{ $invoice->invoice_number }}</td>
-                                    <td class="py-4 px-6 border-b">{{ $invoice->created_at }}</td>
+                                    <td class="py-4 px-6 border-b">{{ \Carbon\Carbon::parse($invoice->created_at)->format('d-m-Y H:i') }}</td>
                                     <td class="py-4 px-6 border-b">
                                         @if($invoice->status == 'paid')
                                         <x-paid>
@@ -58,11 +65,16 @@
                                         </x-unpaid>
                                         @endif
                                     </td>
-                                    <td> {{ $invoice->cost }} </td>
-                                    <td> {{ $invoice->amount }} </td>
+                                    <td class="py-4 px-6 border-b"> {{ $invoice->cost }} </td>
+                                    <td class="py-4 px-6 border-b"> {{ $invoice->amount }} </td>
+                                    @if($agent->type_id != 1)
+                                    <td class="py-4 px-6 border-b text-green-700 font-semibold">
+                                        {{ $invoice->commission ?? '0.00' }}
+                                    </td>
+                                    @endif
                                     <td class="py-4 px-6 border-b">{{ $invoice->client->name }}</td>
                                     <td class="py-4 px-6 border-b">
-                                        <a href="#" class="text-indigo-500">View</a>
+                                        <a href="{{ url('/invoice/' . $invoice->invoice_number) }}" class="text-blue-500">View</a>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -226,10 +238,7 @@
         </div>
         <!-- ./edit agent details modal -->
 
-
-        <div class="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-2">
-
-            <div class="panel h-full w-full">
+            <div class="mt-5 panel">
                 <div class="mb-5 flex justify-between">
                     <h5 class="text-lg font-semibold dark:text-white-light">
                         <span class="customBlueColor">Tasks</span> List
@@ -255,12 +264,11 @@
                     <div class="">
                         @if($tasks->isEmpty())
                         <div class="max-h-96 overflow-y-auto custom-scrollbar">
-
-                            <p class="text-gray-600">No Tasks for this agent.</p>
+                            <p class="text-gray-600">No tasks for this agent.</p>
                         </div>
                         @else
-                        <div class="max-h-96 overflow-y-auto custom-scrollbar">
-                            <table class="min-w-full bg-white border border-gray-300 mt-4">
+                        <div class="max-h-98 overflow-y-auto custom-scrollbar">
+                            <table class="min-w-full bg-white border border-gray-300">
                                 <thead>
                                     <tr class="">
                                         <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Task Name
@@ -275,13 +283,13 @@
                                 </thead>
                                 <tbody class="overflow-auto">
                                     @foreach($tasks as $task)
-                                    <tr class="{{ $task->invoiceDetail !== null ? 'bg-green-300' : 'bg-red-300' }}">
-                                        <td class="py-4 px-6 border-b"> {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}</td>
-                                        <td class="py-4 px-6 border-b">{{ $task->created_at }}</td>
-                                        <td class="py-4 px-6 border-b">{{ $task->status }}</td>
-                                        <td class="py-4 px-6 border-b">{{ $task->client !== null ? $task->client->name : $task->client_name ?? 'Not Set' }}</td>
-                                        <td class="py-4 px-6 border-b">
-                                            <a href="#" class="text-indigo-500">View</a>
+                                    <tr class="{{ $task->invoiceDetail !== null ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700' }}">
+                                        <td class="py-4 px-6 border-b border-gray-300"> {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}</td>
+                                        <td class="py-4 px-6 border-b border-gray-300">{{ $task->created_at }}</td>
+                                        <td class="py-4 px-6 border-b border-gray-300">{{ $task->status }}</td>
+                                        <td class="py-4 px-6 border-b border-gray-300">{{ $task->client !== null ? $task->client->name : $task->client_name ?? 'Not Set' }}</td>
+                                        <td class="py-4 px-6 border-b border-gray-300">
+                                            <a href="{{ url('/tasks?q=' . $task->reference) }}" class="text-blue-500">View</a>
                                         </td>
                                     </tr>
                                     @endforeach
@@ -296,7 +304,7 @@
                 </div>
                 <!-- ./tasks Section -->
             </div>
-            <div class="panel h-full w-full">
+            <div class="mt-5 panel">
                 <div class="mb-5 flex justify-between">
                     <h5 class="text-lg font-semibold dark:text-white-light">
                         <span class="customBlueColor">Clients</span> List
@@ -308,11 +316,10 @@
                     <p class="text-gray-600">No clients for this agent.</p>
                     @else
                     <div class="overflow-auto">
-
                         <table class="w-inherit bg-white border border-gray-300 mt-4 overflow-auto">
                             <thead>
                                 <tr>
-                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">client Name</th>
+                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Client Name</th>
                                     <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Paid (KWD)</th>
                                     <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Pending (KWD)</th>
                                     <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Email</th>
@@ -337,9 +344,9 @@
                                     </td>
                                     <td class="py-4 px-6 border-b">{{ $client->email }}</td>
                                     <td class="py-4 px-6 border-b">{{ $client->phone }}</td>
-                                    <td class="py-4 px-6 border-b">{{ $client->address }}</td>
+                                    <td class="py-4 px-6 border-b">{{ $client->address ?? 'Not Set' }}</td>
                                     <td class="py-4 px-6 border-b">
-                                        <a href="#" class="text-indigo-500">View</a>
+                                        <a href="{{ url('/clients/' . $client->id) }}" class="text-blue-500">View</a>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -353,8 +360,6 @@
 
                 </div>
             </div>
-
-        </div>
 
         <!-- ./invoices and clients section -->
 

@@ -53,4 +53,8 @@ class Supplier extends Model
     {
         return $this->belongsTo(Account::class);
     }
+    public function exchangeRates()
+    {
+        return $this->hasMany(SupplierExchangeRate::class);
+    }
 }

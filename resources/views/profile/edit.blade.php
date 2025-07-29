@@ -34,11 +34,18 @@
                 $tabs = [
                     ['label' => 'Account Information', 'value' => 'Account', 'icon' => 'user'],
                     ['label' => 'Change Password', 'value' => 'Security', 'icon' => 'shield'],
+                ];
+
+                if($user->role_id == 4 && optional($user->agent)->type_id != 1) {
+                    $tabs[] = ['label' => 'Commission', 'value' => 'Commission', 'icon' => 'hand-money'];
+                }
+
+                $tabs = array_merge($tabs, [
                     ['label' => 'Payment', 'value' => 'Payment', 'icon' => 'credit-card'],
                     ['label' => 'Invoices', 'value' => 'Invoices', 'icon' => 'file-text'],
                     ['label' => 'Orders', 'value' => 'Orders', 'icon' => 'shopping-cart'],
                     ['label' => 'Documentation', 'value' => 'Documentation', 'icon' => 'book-open'],
-                ];
+                ]);
             @endphp
 
             <div class="bg-white p-5 grid grid-cols-6 gap-3" x-data="{
@@ -47,6 +54,7 @@
                     this.tab = newTab;
                     const url = new URL(window.location);
                     url.searchParams.set('tab', newTab);
+                    url.searchParams.delete('commission');
                     window.history.pushState({}, '', url);
                 }
             }" role="tabpanel"
@@ -79,6 +87,10 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                             d="M12 3l9 4.5v5.25c0 4.556-2.727 8.682-6.894 10.374a1.932 1.932 0 01-1.212 0C5.727 21.432 3 17.306 3 12.75V7.5L12 3z" />
                                     </svg>
+                                @break
+
+                                @case('hand-money')
+                                    <img class="w-5 h-5" src="https://img.icons8.com/external-smashingstocks-mixed-smashing-stocks/68/external-commission-digital-marketing-smashingstocks-mixed-smashing-stocks.png"/>
                                 @break
 
                                 @case('credit-card')
@@ -122,6 +134,10 @@
 
                     <div x-show="tab === 'Security'" x-cloak>
                         @include('profile.password.update-password-form')
+                    </div>
+
+                    <div x-show="tab === 'Commission'" x-cloak>
+                        <p class="text-gray-700 text-sm">@include('profile.partials.commission-list')</p>
                     </div>
 
                     <div x-show="tab === 'Payment'" x-cloak>

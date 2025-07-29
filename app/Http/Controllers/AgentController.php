@@ -174,6 +174,24 @@ class AgentController extends Controller
         }
     }
 
+    public function updateCommission(Request $request, $id)
+    {
+        $request->validate([
+            'commission' => 'required|numeric|min:0',
+        ]);
+
+        try {
+            $agent = Agent::findOrFail($id);
+            $agent->commission = $request->commission / 100; 
+            $agent->save();
+
+            return redirect()->back()->with('success', 'Agent commission updated successfully');
+        } catch (Exception $e) {
+            logger('Failed to update agent commission: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to update agent commission');
+        }
+    }
+
     public function store(Request $request)
     {
         $request->validate([

@@ -273,8 +273,8 @@ class ReportController extends Controller
         
         $receivableLeafAccountIds = $this->getLeafAccountsUnderParent($receivableAccount->id)->pluck('id')->toArray();
 
-        $payableQuery = JournalEntry::whereIn('account_id', $payableLeafAccountIds)->orderBy('transaction_date', 'asc');
-        $receivableQuery = JournalEntry::whereIn('account_id', $receivableLeafAccountIds)->orderBy('transaction_date', 'asc');
+        $payableQuery = JournalEntry::whereIn('account_id', $payableLeafAccountIds)->orderBy('transaction_date', 'asc')->orderBy('id', 'desc');
+        $receivableQuery = JournalEntry::whereIn('account_id', $receivableLeafAccountIds)->orderBy('transaction_date', 'asc')->orderBy('id', 'desc');
 
 
         if ($accountId && $accountId != 'all') {

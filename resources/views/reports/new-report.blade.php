@@ -133,7 +133,7 @@
                             @endphp
                             <tr>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ $transaction->transaction_date }}
+                                    {{ $transaction->transaction_date ? \Carbon\Carbon::parse($transaction->transaction_date)->format('d-M-Y') : '' }}
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     <p><strong>{{ $transaction->description }}</strong>
@@ -222,7 +222,7 @@
 
                             <tr>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
-                                    {{ $transaction->transaction_date }}
+                                    {{ $transaction->transaction_date ? Carbon\Carbon::parse($transaction->transaction_date)->format('d-M-Y') : '' }}
                                 </td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     <p>{{ $transaction->description }}

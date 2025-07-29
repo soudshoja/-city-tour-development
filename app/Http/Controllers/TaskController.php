@@ -381,7 +381,7 @@ class TaskController extends Controller
      */
     private function processTaskFinancial(Task $task)
     {
-        if(!($task->status == 'issued' || $task->status == 'reissued' || $task->status == 'void' || $task->status == 'refund')) {
+        if(!($task->status == 'issued' || $task->status == 'reissued' || $task->status == 'void' || $task->status == 'refund' || $task->status == 'emd')) {
             Log::info('Skipping financial processing for task: ' . $task->reference . ' - status: ' . $task->status);
             return;
         }
@@ -546,6 +546,10 @@ class TaskController extends Controller
                 break;
             case 'reissued':
                 Log::info('Processing reissued task financial for: ' . $task->reference);
+                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId);
+                break;
+            case 'emd':
+                Log::info('Processing EMD task financial for: ' . $task->reference);
                 $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId);
                 break;
             case 'void':

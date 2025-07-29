@@ -309,7 +309,9 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-    //TRANSACTION
+    Route::get('suppliers/{supplier}/exchange-rates', [SupplierController::class, 'exchangeRates'])->name('suppliers.exchange-rates');
+    Route::post('suppliers/{supplier}/exchange-rates', [SupplierController::class, 'updateExchangeRates'])->name('suppliers.exchange-rates.update');
+        //TRANSACTION
     Route::group([
         'prefix' => 'transactions',
         'as' => 'transactions.',

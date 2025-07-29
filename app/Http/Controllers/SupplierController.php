@@ -75,22 +75,46 @@ class SupplierController extends Controller
         ));
     }
 
-    public function show($suppliersId)
-    {
-        Gate::authorize('view', Supplier::class);
-        // if (Auth::user()->role_id !== Role::ADMIN || Auth::user()->role_id !== Role::COMPANY) {
-        //     abort(403, 'Unauthorized action.');
-        // }
+    public function exchangeRates($supplierId)
+{
+    
+    $supplier = Supplier::with('exchangeRates')->findOrFail($supplierId);
+    $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
+    return view('suppliers.exchange_rates', compact('supplier', 'currencies'));
+}
 
-        $supplier = SupplierCompany::with('supplier.tasks.invoiceDetail.invoice')->findOrFail($suppliersId)->supplier;
-        $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
-        $invoicesId = array_values(array_filter($invoicesId));
-        $JournalEntry = JournalEntry::select('id', 'debit', 'credit', 'created_at')
-            ->whereIn('invoice_id', $invoicesId)
-            ->get();
+public function updateExchangeRates(Request $request, $supplierId)
+{
+    $supplier = Supplier::findOrFail($supplierId);
+    $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
 
-        return view('suppliers.show', compact('supplier', 'JournalEntry'));
+    foreach ($currencies as $currency) {
+        $rate = $request->input(strtolower($currency));
+        if ($rate !== null) {
+            $supplier->exchangeRates()->updateOrCreate(
+                ['currency' => $currency],
+                ['rate' => $rate]
+            );
+        }
     }
+
+    return redirect()->back()->with('success', 'Exchange rates updated.');
+}
+    public function show($suppliersId)
+{
+    Gate::authorize('view', Supplier::class);
+
+    $supplier = SupplierCompany::with('supplier.tasks.invoiceDetail.invoice')->findOrFail($suppliersId)->supplier;
+    $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
+    $invoicesId = array_values(array_filter($invoicesId));
+    $JournalEntry = JournalEntry::select('id', 'debit', 'credit', 'created_at')
+        ->whereIn('invoice_id', $invoicesId)
+        ->get();
+
+    $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR']; // <-- Add this line
+
+    return view('suppliers.show', compact('supplier', 'JournalEntry', 'currencies')); // <-- Add currencies here
+}
 
     public function create()
     {

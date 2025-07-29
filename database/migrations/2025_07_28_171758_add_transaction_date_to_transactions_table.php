@@ -20,7 +20,7 @@ return new class extends Migration
         });
 
         // Update existing records with the date from issued_date field in tasks table
-        $transactions = Transaction::with('journalEntries')->whereNotNull('issued_date')
+        $transactions = Transaction::with('journalEntries')
             ->whereHas('journalEntries', function ($query) {
                 $query->where('task_id', '!=', null);
             })

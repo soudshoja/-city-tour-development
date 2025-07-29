@@ -40,10 +40,9 @@
                 </table>
             </div>
             @else
-            @foreach($account->journalEntries as $journalEntry)
-            @if($journalEntry->transaction !== null)
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left border border-gray-300 dark:border-gray-600">
+                    @if($account->journalEntries->isNotEmpty())
                     <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                         <tr>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6">Transaction</th>
@@ -55,6 +54,8 @@
                         </tr>
                     </thead>
                     <tbody class="text-gray-900 dark:text-gray-100">
+                        @foreach($account->journalEntries as $journalEntry)
+                        @if($journalEntry->transaction !== null)
                         <tr class="hover:bg-gray-200 dark:hover:bg-gray-900 transition">
                             <td class="px-4 py-2 border border-gray-300 dark:border-gray-600">
                                 <div class="flex items-center justify-between gap-1">
@@ -75,11 +76,12 @@
                             <td class="px-4 py-2 border border-gray-300 dark:border-gray-600">{{ number_format($journalEntry->credit, 2) }}</td>
                             <td class="px-4 py-2 border border-gray-300 dark:border-gray-600">{{ number_format($journalEntry->balance, 2) }}</td>
                         </tr>
+                        @endif
+                        @endforeach
                     </tbody>
+                    @endif
                 </table>
             </div>
-            @endif
-            @endforeach
             @endif
         </div>
     </div>

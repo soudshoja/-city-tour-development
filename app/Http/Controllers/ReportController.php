@@ -249,7 +249,7 @@ class ReportController extends Controller
         $endDate = $request->input('end_date');
         $branchId = $request->input('branch_id');
         $supplierId = $request->input('supplier_id');
-        $accountId = $request->input('account_id');
+        $accountId = (int)$request->input('account_id');
 
         $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
 
@@ -274,17 +274,16 @@ class ReportController extends Controller
         $receivableLeafAccountIds = $this->getLeafAccountsUnderParent($receivableAccount->id)->pluck('id')->toArray();
 
         $payableQuery = JournalEntry::whereIn('account_id', $payableLeafAccountIds);
-
         $receivableQuery = JournalEntry::whereIn('account_id', $receivableLeafAccountIds);
+
 
         if ($accountId && $accountId != 'all') {
             // Get leaf accounts under the specified account
-            $childAccountIds = $this->getLeafAccountsUnderParent($accountId)->pluck('id')->toArray();
 
-            $payableQuery->whereIn('account_id', $childAccountIds);
-            $receivableQuery->whereIn('account_id', $childAccountIds);
+            $payableQuery->where('account_id', $accountId);
+            $receivableQuery->where('account_id', $accountId);
         }
-
+        
         if ($branchId) {
             $payableQuery->where('branch_id', $branchId);
             $receivableQuery->where('branch_id', $branchId);

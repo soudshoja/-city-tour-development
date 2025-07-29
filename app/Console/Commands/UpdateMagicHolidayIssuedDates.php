@@ -22,14 +22,17 @@ class UpdateMagicHolidayIssuedDates extends Command
      */
     protected $signature = 'magic-holiday:update-issued-dates 
                             {--limit=50 : Number of tasks to process in this run}
-                            {--dry-run : Show what would be updated without making changes}';
+                            {--dry-run : Show what would be updated without making changes}
+                            {--from-id= : Start from this task ID (inclusive)}
+                            {--to-id= : End at this task ID (inclusive)}
+                            {--below-id= : Process tasks with ID below this value (exclusive)}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Update issued_date for Magic Holiday hotel tasks by fetching from API';
+    protected $description = 'Update issued_date for Magic Holiday hotel tasks by fetching from API. Supports ID range filtering.';
 
     /**
      * Execute the console command.
@@ -69,11 +72,32 @@ class UpdateMagicHolidayIssuedDates extends Command
         $this->info("  Processing ALL tasks with valid references (assuming all issued dates need updating)");
 
         // Get ALL Magic Holiday hotel tasks (assuming all issued dates need updating)
-        $tasks = Task::where('supplier_id', $supplier->id)
+        $tasksQuery = Task::where('supplier_id', $supplier->id)
             ->where('type', 'hotel')
-            ->whereNotNull('reference')
-            ->limit($this->option('limit'))
-            ->get();
+            ->whereNotNull('reference');
+            
+        // Apply ID range filters
+        $fromId = $this->option('from-id');
+        $toId = $this->option('to-id');
+        $belowId = $this->option('below-id');
+        
+        if ($fromId !== null) {
+            $tasksQuery->where('id', '>=', $fromId);
+            $this->info("Filtering: ID >= {$fromId}");
+        }
+        
+        if ($toId !== null) {
+            $tasksQuery->where('id', '<=', $toId);
+            $this->info("Filtering: ID <= {$toId}");
+        }
+        
+        if ($belowId !== null) {
+            $tasksQuery->where('id', '<', $belowId);
+            $this->info("Filtering: ID < {$belowId}");
+        }
+        
+        // Apply limit and get results
+        $tasks = $tasksQuery->limit($this->option('limit'))->get();
 
         if ($tasks->isEmpty()) {
             $this->info('No Magic Holiday hotel tasks found with valid references');

@@ -68,7 +68,7 @@
                             <td class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-center">
                                 <span class="text-gray-900 dark:text-white font-semibold">
                                     @if ($journalEntry->transaction->transaction_date)
-                                        {{ $journalEntry->transaction->transaction_date }}
+                                        {{ $journalEntry->transaction->transaction_date->format('d-m-Y') }}
                                     @else
                                         Not Set
                                     @endif

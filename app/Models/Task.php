@@ -30,6 +30,7 @@ class Task extends Model
         'issued_by',
         'duration',
         'payment_type',
+        'payment_method_account_id',
         'price',
         'exchange_currency',
         'original_price',
@@ -117,7 +118,7 @@ class Task extends Model
         if($this->issued_date === null) {
             return null;
         }
-        return $this->issued_date->format('d-m-Y h:i A');
+        return $this->issued_date->format('d-m-Y H:i');
     }
 
     public function flightDetails() // temporary fix

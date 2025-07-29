@@ -27,6 +27,11 @@ class Transaction extends Model
         'name',
         'remarks_internal',
         'remarks_fl',
+        'transaction_date',
+    ];
+
+    protected $casts = [
+        'transaction_date' => 'datetime',
     ];
 
     protected static function booted()
@@ -36,6 +41,11 @@ class Transaction extends Model
                 $query->where('company_id', auth()->user()->company->id);
             }
         });
+    }
+
+    public function getFormattedDateAttribute()
+    {
+        return $this->transaction_date ? $this->transaction_date->format('Y-m-d') : null;
     }
 
     // public function getTransactionHashAttribute()

@@ -132,15 +132,29 @@
                 @foreach ($invoiceDetails as $detail)
                 <tr class="text-sm text-gray-700">
                     <td class="px-4 py-2 border">
-                        {{ $detail->task_description ?? 'N/A' }}
-                        @if ($detail->task_description != 'Topup Client Credit')
-                        <p>
-                            <br>Info: {{ $detail->task->additional_info }}
-                            <br>Type: {{ ucfirst($detail->task->type) }}
-                            <br>Venue: {{ $detail->task->venue }}
-                        </p>
-                        @endif
-                    </td>
+                            @if ($detail->task->type === 'hotel')
+                                <p>
+                                    Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                                    <br>Hotel Name: {{ $detail->task->hotelDetails->hotel->name ?? 'N/A' }}
+                                    <br>Check In: {{ $detail->task->hotelDetails->check_in ?? 'N/A' }}
+                                    <br>Check Out: {{ $detail->task->hotelDetails->check_out ?? 'N/A' }}
+                                    <br>Number of Pax: {{ $detail->task->hotelDetails->room_details ?? $detail->task->number_of_pax ?? 'N/A' }}
+                                    <br>Room Category: {{ $detail->task->hotelDetails->room_type ?? $detail->task->hotelDetails->room_category ?? 'N/A' }}
+                                </p>
+                            @elseif ($detail->task->type === 'flight')
+                                <p>
+                                    GDS Reference: {{ $detail->task->gds_reference ?? 'N/A' }}
+                                    <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                                    <br>Route: 
+                                        {{ $detail->task->flightDetails->countryFrom->name ?? '' }}
+                                        ({{ $detail->task->flightDetails->airport_from ?? '' }})
+                                        →
+                                        {{ $detail->task->flightDetails->countryTo->name ?? '' }}
+                                        ({{ $detail->task->flightDetails->airport_to ?? '' }})
+                                    <br>Class of Travel: {{ ucfirst($detail->task->flightDetails->class_type ?? 'N/A') }}
+                                </p>
+                            @endif
+                    </td> 
                     <td class="px-4 py-2 border">{{ $detail->quantity ?? 1 }}</td>
                     <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 2) }}</td>
                     <td class="px-4 py-2 border">

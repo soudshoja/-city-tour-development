@@ -122,7 +122,23 @@ class AirFileParser
         
         // If we found H-lines with flight segments, return them
         if (!empty($flightSegments)) {
-            return $flightSegments;
+            $segmentDefaults = [
+                'farebase' => $this->extractFarebase(),
+                'duration_time' => $this->extractDurationTime(),
+                'airline_id' => $this->extractAirlineName(),
+                'baggage_allowed' => $this->extractBaggageAllowed(),
+                'equipment' => $this->extractEquipment(),
+                'ticket_number' => $this->extractTicketNumber(),
+                'seat_no' => $this->extractSeatNumber(),
+                'country_id_from' => $this->extractDepartureCountry(),
+                'country_id_to' => $this->extractArrivalCountry(),
+            ];
+    
+            $detailedSegments = array_map(function ($segment) use ($segmentDefaults) {
+                return array_merge($segment, $segmentDefaults);
+            }, $flightSegments);
+    
+            return $detailedSegments;
         }
         
         // Fallback to single flight object for files without H-lines
@@ -171,6 +187,20 @@ class AirFileParser
                 // Extract airport codes (remove prefix numbers and letters)
                 $fromCode = preg_replace('/^\d+[A-Z]?/', '', $fromAirport); // Remove leading digits and optional letter -> KWI
                 $toCode = $toAirport; // DOH is already clean
+
+                $match = $this->findLine('/^(H-\d{3};.+)/');
+                if ($match) {
+                    $segmentParts = explode(';', $match[1]);
+                    if (isset($segmentParts[17])) {
+                        $terminalTo = trim($segmentParts[17]);
+                    }
+                    if (isset($segmentParts[14])) {
+                        $terminalFrom = trim($segmentParts[14]);
+                    }
+                    if (isset($segmentParts[8])) {
+                        $flightMeal = trim($segmentParts[8]);
+                    }
+                }
                 
                 // Parse flight info: QR    1077 S S 30JUL0435 0605 30JUL
                 if (preg_match('/([A-Z]{2})\s+(\d+)\s+[A-Z]\s+[A-Z]\s+(\d{2}[A-Z]{3})(\d{4})\s+(\d{4})\s+(\d{2}[A-Z]{3})/', $flightInfo, $flightMatch)) {
@@ -186,13 +216,16 @@ class AirFileParser
                     $arrivalDateTime = $this->combineDateTimeFormat($arrivalDate, $arrivalTime);
                     
                     $segments[] = [
-                        'from' => $fromCode,
-                        'to' => $toCode,
+                        'airport_from' => $fromCode,
+                        'airport_to' => $toCode,
                         'flight_number' => $airline . $flightNumber,
                         'airline' => $airline,
                         'departure_time' => $departureDateTime,
                         'arrival_time' => $arrivalDateTime,
-                        'class' => 'economy', // Default, could be extracted from booking class if needed
+                        'terminal_from' => $terminalFrom ?? '',
+                        'terminal_to' => $terminalTo ?? '',
+                        'flight_meal' => $flightMeal ?? '',
+                        'class_type' => 'economy', // Default, could be extracted from booking class if needed
                     ];
                 }
             }
@@ -1064,6 +1097,13 @@ class AirFileParser
     
     private function extractArrivalTerminal()
     {
+        $match = $this->findLine('/^(U-\d{3}X;.+)/');
+        if ($match) {
+            $segments = explode(';', $match[1]);
+            if (isset($segments[17])) {
+                return trim($segments[17]);
+            }
+        }
         return '';
     }
     

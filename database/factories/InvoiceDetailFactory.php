@@ -22,7 +22,7 @@ class InvoiceDetailFactory extends Factory
             'task_id' => null,
             'task_description' => $this->faker->sentence(),
             'task_remark' => $this->faker->text(),
-            'client_notes' => $this->faker->paragraph(),
+            'client_notes' => $this->faker->text(),
             'task_price' => $this->faker->randomFloat(2, 10, 1000),
             'supplier_price' => $this->faker->randomFloat(2, 5, 500),
             'markup_price' => $this->faker->randomFloat(2, 0, 100),

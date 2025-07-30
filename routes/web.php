@@ -109,6 +109,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}', [AgentController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [AgentController::class, 'edit'])->name('edit');
         Route::put('/{id}', [AgentController::class, 'update'])->name('update');
+        Route::put('/update-commision/{id}', [AgentController::class, 'updateCommission'])->name('update-commission');
         // Route::post('/create-profile', [AgentController::class, 'createAgentProfile'])->name('create.profile');
         Route::get('/{id}/tasks', [AgentController::class, 'getTasks'])->name('tasks');
         Route::get('/{id}/clients', [AgentController::class, 'getClients'])->name('clients');
@@ -340,7 +341,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/reports/performance', [ReportController::class, 'performance'])->name('performance');
         Route::get('/reports/summary', [ReportController::class, 'summary'])->name('summary');
         Route::get('/reports/accsummary', [ReportController::class, 'accsummary'])->name('accsummary');
-        Route::get('/new-report', [ReportController::class, 'accountsPayableReceivableReport'])->name('new-report');
+        Route::get('/unpaid-report', [ReportController::class, 'unpaidaccountsPayableReceivableReport'])->name('unpaid-report');
+        Route::get('/paid-report', [ReportController::class, 'paidaccountsPayableReceivableReport'])->name('paid-report');
         Route::get('/payable_supplier', [ReportController::class, 'payableSupplier'])->name('payable-supplier');
         Route::get('/profit-agent', [ReportController::class, 'profitAgent'])->name('profit-agent');
         Route::get('/total-receivable', [ReportController::class, 'receivable'])->name('total-receivable');

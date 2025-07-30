@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('agent_clients', function (Blueprint $table) {
+        Schema::create('agent_client', function (Blueprint $table) {
             $table->id();
             $table->foreignId('agent_id')->constrained('agents')->onDelete('cascade');
             $table->foreignId('client_id')->constrained('clients')->onDelete('cascade');
@@ -21,12 +21,14 @@ return new class extends Migration
 
         try{
             foreach($clients as $client) {
-                $client->agents()->sync($client->agents->pluck('id')->toArray());
+                dump($client->agent->id);
+                $client->agents()->sync($client->agent->id);
                 $client->save();
             }
         } catch (Exception $e) {
             Log::error('Error syncing agents for clients: ' . $e->getMessage());
         }
+        dd('stop');
 
         Schema::table('clients', function (Blueprint $table) {
             $table->dropForeign(['agent_id']);
@@ -39,14 +41,14 @@ return new class extends Migration
         $clients = Client::all();
 
         Schema::table('clients', function (Blueprint $table) {
-            $table->foreignId('agent_id')->nullable()->constrained('agents')->onDelete('set null');
+            $table->foreignId('agent_id')->nullable()->constrained('agents')->onDelete('set null')->after('name');
         });
 
         foreach ($clients as $client){
-            $client->agent_id = $clients->agents->first()->id ?? null;
+            $client->agent_id = $client->agents->first()->id ?? null;
             $client->save();
         }
 
-        Schema::dropIfExists('agent_clients');
+        Schema::dropIfExists('agent_client');
     }
 };

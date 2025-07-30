@@ -635,4 +635,7 @@ Route::group([
     Route::post('/share-partial-link', [ResayilController::class, 'shareInvoicePartialLink'])->name('share-partial-link');
 });
 
-require __DIR__ . '/auth.php';
+Route::get('/exchange-rate/histories', [\App\Http\Controllers\CurrencyExchangeController::class, 'allHistories'])
+    ->name('exchange.histories.all');
+
+    require __DIR__ . '/auth.php';

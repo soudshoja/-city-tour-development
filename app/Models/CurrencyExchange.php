@@ -18,4 +18,8 @@ class CurrencyExchange extends Model
     {
         return $this->belongsTo(Company::class);
     }
+    public function histories()
+{
+    return $this->hasMany(\App\Models\ExchangeRateHistory::class, 'currency_exchange_id');
+}
 }

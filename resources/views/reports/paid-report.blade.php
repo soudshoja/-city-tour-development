@@ -1,8 +1,8 @@
 <x-app-layout>
-    <h1 class="text-center mb-2 font-semibold text-xl">Accounts Payable & Receivable Report</h1>
+    <h1 class="text-center mb-2 font-semibold text-xl">Paid Accounts Payable & Receivable Report</h1>
 
     <div class="flex justify-center items-center bg-gray-100">
-        <form method="GET" action="{{ route('reports.new-report') }}"
+        <form method="GET" action="{{ route('reports.paid-report') }}"
             class="p-6 my-2 w-full md:w-full lg:w-full flex flex-col gap-4 bg-white rounded shadow">
 
             <!-- Input Fields Section -->
@@ -35,7 +35,6 @@
                     <label for="account_id" class="font-medium text-sm mb-1">Filter by Account:</label>
                     <select name="account_id" id="account_id"
                         class="border rounded px-7 py-2 focus:outline-none focus:ring focus:ring-blue-300">
-                        <option value="all" {{ $supplierId == 'all' ? 'selected' : '' }}>All Accounts</option>
                         @foreach ($allAccounts as $account)
                             <option value="{{ $account->id }}" {{ $accountId == $account->id ? 'selected' : '' }}>
                                 {{ ucfirst($account->name) }}
@@ -44,13 +43,13 @@
                     </select>
                 </div>
                 @php
-                    $selectedType = request()->input('type_id', 'All');
+                    $selectedType = request()->input('type_id', '');
                 @endphp
                 <div class="flex flex-col col-span-6 lg:col-span-3">
                     <label for="type_id" class="font-medium text-sm mb-1">Filter by Type:</label>
                     <select name="type_id" id="type_id"
                         class="border rounded px-7 py-2 focus:outline-none focus:ring focus:ring-blue-300">
-                        <option value="all" {{ $selectedType == 'all' ? 'selected' : '' }}>All Payable & Receivable
+                        <option value="" disabled {{ empty($selectedType) ? 'selected' : '' }}>Select Report Type
                         </option>
                         <option value="payable" {{ $selectedType == 'payable' ? 'selected' : '' }}>Payable only
                         </option>
@@ -60,13 +59,19 @@
                 </div>
             </div>
 
-            <!-- Button Section (Centered) -->
-            <div class="flex justify-center">
+           <!-- Button Section (Centered) -->
+           <div class="flex justify-end gap-3 mt-6">
+                <button type="button" onclick="resetReportFilters()"
+                    class="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-md hover:bg-gray-100 transition-all duration-150">
+                    Reset
+                </button>
                 <button id="submit-account-filter" type="submit"
-                    class="w-6/12 md:w-6/12 lg:w-4/12 flex justify-center flex items-center px-2 py-2 bg-black text-white rounded-md hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none">
+                    class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-all duration-150">
                     Filter
                 </button>
             </div>
+
+
             <div class="flex gap-2">
                 <div class="border w-full p-2 rounded">
 
@@ -279,14 +284,13 @@
     <script>
         let filterType = document.getElementById('type_id');
         let filterButton = document.getElementById('submit-account-filter');
+        let accountSelect = document.getElementById('account_id');
 
         filterType.addEventListener('change', (event) => {
-            type_id = event.target.value;
+            let type_id = event.target.value;
 
-            let accountSelect = document.getElementById('account_id');
-            accountSelect.innerHTML = '<option value="all">Loading...</option>'; // Show loading indication
-
-            // Disable the filter button while fetching data
+            // Show loading while fetching
+            accountSelect.innerHTML = '<option value="" disabled>Loading...</option>';
             filterButton.innerHTML = 'Loading...';
             filterButton.classList.add('cursor-not-allowed');
             filterButton.disabled = true;
@@ -300,35 +304,49 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    accountSelect.innerHTML = ''; // Clear all existing options
 
-                    accountSelect.innerHTML = '<option value="all">All Account</option>'; // Reset options
-
-                    // Convert the received data into a select option
-                    let option = document.createElement('option');
-
-                    for (let i = 0; i < data.length; i++) {
-                        option = document.createElement('option');
-                        option.value = data[i].id;
-                        option.textContent = data[i].name;
-                        accountSelect.appendChild(option);
+                    if (data.length === 0) {
+                        accountSelect.innerHTML = '<option value="">No accounts available</option>';
+                        return;
                     }
 
-                    // Re-enable the filter button after data is loaded
-                    filterButton.disabled = false;
+                    data.forEach((account, index) => {
+                        const option = document.createElement('option');
+                        option.value = account.id;
+                        option.textContent = account.name;
+
+                        // Select the first account by default if user hasn't chosen manually
+                        if (index === 0) {
+                            option.selected = true;
+                        }
+
+                        accountSelect.appendChild(option);
+                    });
                 })
                 .catch(error => {
-
-                    accountSelect.innerHTML =
-                        '<option value="all">Error loading accounts</option>'; // Show error message
-
-                    // Re-enable the filter button in case of an error
-                    filterButton.disabled = false;
+                    accountSelect.innerHTML = '<option value="">Error loading accounts</option>';
+                    console.error(error);
                 })
                 .finally(() => {
-                    // Reset the button text and remove the loading class
                     filterButton.innerHTML = 'Filter';
                     filterButton.classList.remove('cursor-not-allowed');
+                    filterButton.disabled = false;
                 });
         });
+        function resetReportFilters() {
+        document.getElementById('start_date').value = '';
+        document.getElementById('end_date').value = '';
+        document.getElementById('branch_id').selectedIndex = 0;
+        document.getElementById('type_id').selectedIndex = 0;
+
+        // Trigger type change so account list resets too
+        document.getElementById('type_id').dispatchEvent(new Event('change'));
+
+        // Wait a bit before submitting to allow accounts to reload
+        setTimeout(() => {
+            document.getElementById('submit-account-filter').click();
+        }, 300); // adjust delay if needed
+    }
     </script>
 </x-app-layout>

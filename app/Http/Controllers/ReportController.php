@@ -238,7 +238,7 @@ class ReportController extends Controller
         return view('reports.accsummary', compact('accounts', 'clients', 'suppliers'));
     }
 
-    public function accountsPayableReceivableReport(Request $request)
+    public function unpaidaccountsPayableReceivableReport(Request $request)
     {
         $user = Auth::user();
         if ($user->role_id == Role::AGENT) {
@@ -249,9 +249,9 @@ class ReportController extends Controller
         $endDate = $request->input('end_date');
         $branchId = $request->input('branch_id');
         $supplierId = $request->input('supplier_id');
-        $accountId = (int)$request->input('account_id');
+        $accountId = $request->input('account_id');
 
-        $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
+        $companyId = auth()->user()->company->id;
 
         $accountPayable = Account::where('name', 'Accounts Payable')
             ->where('company_id', $companyId)
@@ -268,22 +268,32 @@ class ReportController extends Controller
         if (!$receivableAccount) {
             return redirect()->back()->with('error', 'Accounts Receivable account not found.');
         }
-        // Get leaf account IDs for payable and receivable accounts
-        $payableLeafAccountIds = $this->getLeafAccountsUnderParent($accountPayable->id)->pluck('id')->toArray();
-        
-        $receivableLeafAccountIds = $this->getLeafAccountsUnderParent($receivableAccount->id)->pluck('id')->toArray();
 
-        $payableQuery = JournalEntry::whereIn('account_id', $payableLeafAccountIds)->orderBy('transaction_date', 'asc')->orderBy('id', 'asc');
-        $receivableQuery = JournalEntry::whereIn('account_id', $receivableLeafAccountIds)->orderBy('transaction_date', 'asc')->orderBy('id', 'asc');
+        // Preload all leaf accounts
+        $payableAccounts = $this->getLeafAccountsUnderParent($accountPayable->id);
+        $receivableAccounts = $this->getLeafAccountsUnderParent($receivableAccount->id);
+        $allAccounts = $payableAccounts->merge($receivableAccounts);
 
+        // Default to first account if none selected
+        if (empty($accountId) || $accountId === 'all') {
+            $firstAccount = $allAccounts->first();
+            $accountId = $firstAccount ? $firstAccount->id : null;
+        }
 
-        if ($accountId && $accountId != 'all') {
-            // Get leaf accounts under the specified account
+        $payableQuery = JournalEntry::whereIn('account_id', $payableAccounts->pluck('id'))
+            ->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc');
 
+        $receivableQuery = JournalEntry::whereIn('account_id', $receivableAccounts->pluck('id'))
+            ->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc');
+
+        // Apply account filter
+        if ($accountId) {
             $payableQuery->where('account_id', $accountId);
             $receivableQuery->where('account_id', $accountId);
         }
-        
+
         if ($branchId) {
             $payableQuery->where('branch_id', $branchId);
             $receivableQuery->where('branch_id', $branchId);
@@ -301,42 +311,25 @@ class ReportController extends Controller
             $payableQuery->where('transaction_date', '<=', $endDate);
             $receivableQuery->where('transaction_date', '<=', $endDate);
         }
-        if ($endDate == null && $startDate !== null) {
-            $endDate = Carbon::parse($startDate)->endOfMonth(); // 2023-10-31 23:59:59
 
+        if ($endDate == null && $startDate !== null) {
+            $endDate = Carbon::parse($startDate)->endOfMonth();
             $payableQuery->where('transaction_date', '<=', $endDate);
             $receivableQuery->where('transaction_date', '<=', $endDate);
         }
 
-
         if ($startDate && $endDate) {
-            $startDate = Carbon::parse($startDate)->startOfDay(); // 2023-10-01 00:00:00
+            $startDate = Carbon::parse($startDate)->startOfDay();
             $endDate = Carbon::parse($endDate)->endOfDay();
-
             $payableQuery->whereBetween('transaction_date', [$startDate, $endDate]);
             $receivableQuery->whereBetween('transaction_date', [$startDate, $endDate]);
         }
 
         $payableTransactions = $payableQuery->where('reconciled', 0)->get();
-        $receivableTransactions = $receivableQuery->get();
+        $receivableTransactions = $receivableQuery->where('reconciled', 0)->get();
 
         $receivableBalance = $receivableTransactions->sum('debit') - $receivableTransactions->sum('credit');
         $payableBalance = $payableTransactions->sum('credit') - $payableTransactions->sum('debit');
-
-        $payableAccounts = collect();
-        $receivableAccounts = collect();
-
-        if (!isset($request->type_id) || $request->type_id == 'all' || $request->type_id == 'payable') {
-            // Get all leaf accounts (accounts with no children) under Accounts Payable hierarchy
-            $payableAccounts = $this->getLeafAccountsUnderParent($accountPayable->id);
-        }
-
-        if (!isset($request->type_id) || $request->type_id == 'all' || $request->type_id == 'receivable') {
-            // Get all leaf accounts (accounts with no children) under Accounts Receivable hierarchy
-            $receivableAccounts = $this->getLeafAccountsUnderParent($receivableAccount->id);
-        }
-        // List out all accounts
-        $allAccounts = $payableAccounts->merge($receivableAccounts);
 
         $receivableSum = 0.0;
         foreach ($payableTransactions as $transaction) {
@@ -353,7 +346,6 @@ class ReportController extends Controller
         }
 
         $branches = Branch::where('company_id', $companyId)->get();
-        $user = auth()->user();
 
         if (Auth::user()->role->id == Role::ADMIN) {
             $suppliers = Supplier::with('companies')->get();
@@ -365,7 +357,145 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Unauthorized action.');
         }
 
-        return view('reports.new-report', [
+        return view('reports.unpaid-report', [
+            'payableTransactions' => $payableTransactions,
+            'receivableTransactions' => $receivableTransactions,
+            'payableBalance' => $payableBalance,
+            'receivableBalance' => $receivableBalance,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'branchId' => $branchId,
+            'supplierId' => $supplierId,
+            'branches' => $branches,
+            'suppliers' => $suppliers,
+            'accountPayable' => $accountPayable,
+            'receivableAccount' => $receivableAccount,
+            'accountId' => $accountId,
+            'allAccounts' => $allAccounts,
+        ]);
+    }
+
+
+    public function paidaccountsPayableReceivableReport(Request $request)
+    {
+        $user = Auth::user();
+        if ($user->role_id == Role::AGENT) {
+            return abort(403, 'Unauthorized action.');
+        }
+
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $branchId = $request->input('branch_id');
+        $supplierId = $request->input('supplier_id');
+        $accountId = $request->input('account_id');
+
+        $companyId = auth()->user()->company->id;
+
+        $accountPayable = Account::where('name', 'Accounts Payable')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$accountPayable) {
+            return redirect()->back()->with('error', 'Accounts Payable account not found.');
+        }
+
+        $receivableAccount = Account::where('name', 'Accounts Receivable')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$receivableAccount) {
+            return redirect()->back()->with('error', 'Accounts Receivable account not found.');
+        }
+
+        // Preload all leaf accounts
+        $payableAccounts = $this->getLeafAccountsUnderParent($accountPayable->id);
+        $receivableAccounts = $this->getLeafAccountsUnderParent($receivableAccount->id);
+        $allAccounts = $payableAccounts->merge($receivableAccounts);
+
+        // Default to first account if none selected
+        if (empty($accountId) || $accountId === 'all') {
+            $firstAccount = $allAccounts->first();
+            $accountId = $firstAccount ? $firstAccount->id : null;
+        }
+
+        $payableQuery = JournalEntry::whereIn('account_id', $payableAccounts->pluck('id'))
+            ->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc');
+
+        $receivableQuery = JournalEntry::whereIn('account_id', $receivableAccounts->pluck('id'))
+            ->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc');
+
+        // Apply account filter
+        if ($accountId) {
+            $payableQuery->where('account_id', $accountId);
+            $receivableQuery->where('account_id', $accountId);
+        }
+
+        if ($branchId) {
+            $payableQuery->where('branch_id', $branchId);
+            $receivableQuery->where('branch_id', $branchId);
+        }
+
+        if ($supplierId) {
+            $supplier = Supplier::find($supplierId);
+            if ($supplier) {
+                $payableQuery->where('name', $supplier->name);
+                $receivableQuery->where('name', $supplier->name);
+            }
+        }
+
+        if ($startDate == null && $endDate !== null) {
+            $payableQuery->where('transaction_date', '<=', $endDate);
+            $receivableQuery->where('transaction_date', '<=', $endDate);
+        }
+
+        if ($endDate == null && $startDate !== null) {
+            $endDate = Carbon::parse($startDate)->endOfMonth();
+            $payableQuery->where('transaction_date', '<=', $endDate);
+            $receivableQuery->where('transaction_date', '<=', $endDate);
+        }
+
+        if ($startDate && $endDate) {
+            $startDate = Carbon::parse($startDate)->startOfDay();
+            $endDate = Carbon::parse($endDate)->endOfDay();
+            $payableQuery->whereBetween('transaction_date', [$startDate, $endDate]);
+            $receivableQuery->whereBetween('transaction_date', [$startDate, $endDate]);
+        }
+
+        $payableTransactions = $payableQuery->where('reconciled', '!=', 0)->get();
+        $receivableTransactions = $receivableQuery->where('reconciled', '!=', 0)->get();
+
+        $receivableBalance = $receivableTransactions->sum('debit') - $receivableTransactions->sum('credit');
+        $payableBalance = $payableTransactions->sum('credit') - $payableTransactions->sum('debit');
+
+        $receivableSum = 0.0;
+        foreach ($payableTransactions as $transaction) {
+            $balance = $transaction->credit - $transaction->debit;
+            $receivableSum += $balance;
+            $transaction->balance = $receivableSum;
+        }
+
+        $payableSum = 0.0;
+        foreach ($receivableTransactions as $transaction) {
+            $balance = $transaction->debit - $transaction->credit;
+            $payableSum += $balance;
+            $transaction->balance = $payableSum;
+        }
+
+        $branches = Branch::where('company_id', $companyId)->get();
+
+        if (Auth::user()->role->id == Role::ADMIN) {
+            $suppliers = Supplier::with('companies')->get();
+        } elseif (Auth::user()->role->id == Role::COMPANY) {
+            $suppliers = SupplierCompany::where('company_id', $user->company->id)
+                ->with('supplier')
+                ->get();
+        } else {
+            return redirect()->back()->with('error', 'Unauthorized action.');
+        }
+
+        return view('reports.paid-report', [
             'payableTransactions' => $payableTransactions,
             'receivableTransactions' => $receivableTransactions,
             'payableBalance' => $payableBalance,

@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 class AgentController extends Controller
 {
     use NotificationTrait;
@@ -87,23 +88,12 @@ class AgentController extends Controller
             $task->created_at = $date->format('d-M-Y');
         }
 
-        $allInvoices = Invoice::with('invoiceDetails')->where('agent_id', $id)->get();
-        $totalCommission = 0;
-        $totalProfit = 0;
+        $month = request('month') ? Carbon::parse(request('month'))->startOfMonth() : now()->startOfMonth();
+        $monthlySummary = $this->calculateMonthlySummary($agent, $month);
+        $totalCommission = number_format($monthlySummary['commission'], 2);
+        $totalProfit = number_format($monthlySummary['profit'], 2);
 
-        foreach ($allInvoices as $invoice) {
-            foreach ($invoice->invoiceDetails as $detail) {
-                $commission = JournalEntry::where('invoice_detail_id', $detail->id)
-                    ->where('account_id', 43)
-                    ->sum('credit');
-                $totalCommission += $commission;
-                $totalProfit += $detail->markup_price ?? 0;
-            }
-        }
-        $totalCommission = number_format($totalCommission, 2);
-        $totalProfit = number_format($totalProfit, 2);
-
-        $invoices = Invoice::with('invoiceDetails')->where('agent_id', $id)->paginate(4, ['*'], 'invoices');
+        $invoices = Invoice::with('invoiceDetails')->where('agent_id', $id)->whereBetween('created_at', [$month, $month->copy()->endOfMonth()])->paginate(4, ['*'], 'invoices');
 
         foreach ($invoices as $invoice) {
             $commission = 0;
@@ -155,6 +145,51 @@ class AgentController extends Controller
             'totalCommission',
             'totalProfit',
         ));
+    }
+
+    private function calculateMonthlySummary(Agent $agent, $month = null)
+    {
+        $commission = 0;
+        $profit = 0;
+
+        $from = Carbon::parse($month ?? now()->startOfMonth());
+        $to = (clone $from)->endOfMonth();
+
+        $invoices = Invoice::with('invoiceDetails')
+            ->where('agent_id', $agent->id)
+            ->whereBetween('created_at', [$from, $to])
+            ->get();
+
+        foreach ($invoices as $invoice) {
+            foreach ($invoice->invoiceDetails as $detail) {
+                $markup = $detail->markup_price ?? 0;
+                $profit += $markup;
+
+                if ($agent->type_id == 2) {
+                    $detail->commission += \App\Models\JournalEntry::where('invoice_detail_id', $detail->id)
+                        ->where('account_id', 43)
+                        ->sum('credit');
+                    $commission += $detail->commission;
+                } elseif ($agent->type_id == 3) {
+                    // Type 3 (Commission = markup * % + salary per detail)
+                    $commission += ($markup * $agent->commission);
+                }
+            }
+        }
+
+        if ($agent->type_id == 4 && $profit > $agent->target) {
+            // Type 4 (only if profit > target, then (profit - salary) * % + salary)
+            $commission = (($profit - $agent->salary) * $agent->commission) + $agent->salary;
+        } elseif ($agent->type_id == 4) {
+            $commission = 0.00;
+        } elseif ($agent->type_id == 3) {
+            $commission += $agent->salary;
+        }
+
+        return [
+            'commission' => round($commission, 2),
+            'profit' => round($profit, 2),
+        ];
     }
 
     // public function edit($id)

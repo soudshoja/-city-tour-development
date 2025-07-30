@@ -1006,31 +1006,35 @@ class InvoiceController extends Controller
 
         // Commission (Liability)
         try {
-            $commission = 0.15 * ($task->invoiceDetail->task_price - $task->total);
+            $agent = $task->agent;
 
-            $accruedCommissions = Account::where('name', 'like', 'Commissions (Agents)%')
-                ->where('company_id', $task->company_id)
-                ->first();
+            if (!in_array($agent->type_id, [3, 4])) {
+                $commission = 0.15 * ($task->invoiceDetail->task_price - $task->total);
 
-            if ($accruedCommissions) {
-                JournalEntry::create([
-                    'transaction_id' => $transactionId,
-                    'branch_id' => $task->agent->branch_id ?? null,
-                    'company_id' => $task->company_id ?? null,
-                    'account_id' => $accruedCommissions->id,
-                    'invoice_id' => $invoiceId,
-                    'invoice_detail_id' => $task->invoiceDetail->id,
-                    'transaction_date' => Carbon::now(),
-                    'description' => 'Agents Commissions for (Liabilities): ' . $task['agent']['name'],
-                    'debit' => 0,
-                    'credit' => $commission,
-                    'balance' => $accruedCommissions->balance ?? 0,
-                    'name' => $accruedCommissions->name,
-                    'type' => 'payable',
-                    'currency' => $task->currency ?? 'USD',
-                    'exchange_rate' => $task->exchange_rate ?? 1.00,
-                    'amount' => $commission,
-                ]);
+                $accruedCommissions = Account::where('name', 'like', 'Commissions (Agents)%')
+                    ->where('company_id', $task->company_id)
+                    ->first();
+
+                if ($accruedCommissions) {
+                    JournalEntry::create([
+                        'transaction_id' => $transactionId,
+                        'branch_id' => $task->agent->branch_id ?? null,
+                        'company_id' => $task->company_id ?? null,
+                        'account_id' => $accruedCommissions->id,
+                        'invoice_id' => $invoiceId,
+                        'invoice_detail_id' => $task->invoiceDetail->id,
+                        'transaction_date' => Carbon::now(),
+                        'description' => 'Agents Commissions for (Liabilities): ' . $task['agent']['name'],
+                        'debit' => 0,
+                        'credit' => $commission,
+                        'balance' => $accruedCommissions->balance ?? 0,
+                        'name' => $accruedCommissions->name,
+                        'type' => 'payable',
+                        'currency' => $task->currency ?? 'USD',
+                        'exchange_rate' => $task->exchange_rate ?? 1.00,
+                        'amount' => $commission,
+                    ]);
+                }
             }
         } catch (\Exception $e) {
             Log::error('Commission Liability Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoiceId]);

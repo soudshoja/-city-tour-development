@@ -27,6 +27,9 @@ class Agent extends Model
         'country_code',
         'company_id',
         'branch_id',
+        'commission',
+        'salary',
+        'target',
     ];
 
     public function company()

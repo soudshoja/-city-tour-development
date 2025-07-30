@@ -264,20 +264,24 @@ class ProfileController extends Controller
      */
     private function getAgentCommissions($agentId)
     {
-        $query = JournalEntry::with('invoice.invoiceDetails')
-            ->leftJoin('invoice_details', 'journal_entries.invoice_id', '=', 'invoice_details.invoice_id')
-            ->leftJoin('invoices', 'journal_entries.invoice_id', '=', 'invoices.id')
+        $query = JournalEntry::with('invoice')
+            ->leftJoin('invoice_details', function ($join) {
+                $join->on('journal_entries.invoice_id', '=', 'invoice_details.invoice_id')
+                     ->whereRaw('invoice_details.id = (
+                        SELECT MIN(id) FROM invoice_details 
+                        WHERE invoice_details.invoice_id = journal_entries.invoice_id
+                     )');
+            })
+            ->join('invoices', 'journal_entries.invoice_id', '=', 'invoices.id')
             ->where('journal_entries.account_id', 43)
             ->where('invoices.agent_id', $agentId)
             ->select('journal_entries.*')
-            ->orderByRaw('invoice_details.id IS NULL, journal_entries.created_at DESC');
+            ->orderBy('journal_entries.created_at', 'desc');
     
         $paginated = $query->paginate(5, ['*'], 'commission');
     
         $mapped = $paginated->getCollection()->map(function ($entry) {
-            $taskId = optional($entry->invoice->invoiceDetails->first())->task_id;
             return [
-                'task_id' => $taskId,
                 'credit' => $entry->credit,
                 'entry_id' => $entry->id,
             ];

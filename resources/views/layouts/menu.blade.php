@@ -241,8 +241,12 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Client
                 Reports</a>
             </menuitem> -->
-            <menuitem><a href="{{ route('reports.new-report') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Acc
+            <menuitem><a href="{{ route('reports.paid-report') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Paid Acc
+                Pay/Receive</a>
+            </menuitem>
+            <menuitem><a href="{{ route('reports.unpaid-report') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Unpaid Acc
                 Pay/Receive</a>
             </menuitem>
             <menuitem><a href="{{ route('reports.acc-reconcile') }}"

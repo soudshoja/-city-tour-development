@@ -29,9 +29,10 @@
                 <tbody>
                     @foreach($commissions as $index => $commission)
                         @php
-                            $task = \App\Models\Task::with(['flightDetails', 'hotelDetails', 'invoiceDetail.invoice'])->find($commission['task_id']);
-                            $invoice = optional($task->invoiceDetail)->invoice;
-                            $entry = \App\Models\JournalEntry::find($commission['entry_id']);
+                            $entry = \App\Models\JournalEntry::with('invoiceDetail')->find($commission['entry_id']);
+                            $invoice = $entry->invoice;
+                            $invoiceDetail = $entry->invoiceDetail;
+                            $task = \App\Models\Task::with(['flightDetails', 'hotelDetails', 'invoiceDetail.invoice'])->find($invoiceDetail->task_id);
                         @endphp
                         <tr class="cursor-pointer text-center"
                             :class="openRow === {{ $index }} ? 'bg-blue-50 hover:bg-gray-50 dark:bg-blue-900 hover:dark:bg-blue-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'" @click="openRow === {{ $index }} ? openRow = null : openRow = {{ $index }}">
@@ -57,7 +58,28 @@
                                         <div><strong>Issued:</strong> {{ \Carbon\Carbon::parse($task->created_at)->format('d-m-Y H:i:s') }}</div>
                                         <div><strong>Invoice:</strong><a href="{{ url('/invoice/' . $invoice->invoice_number) }}" class="text-blue-500 hover:underline"> {{ $invoice->invoice_number ?? '-' }}</a></div>
                                         <div><strong>Client:</strong> {{ $task->client_name }}</div>
-                                        <div><strong>Price:</strong> {{ number_format($task->total, 2) }} KWD</div>
+                                        <div>
+                                            <strong>Payment Type:</strong>
+                                            @if($invoice->is_client_credit == 1)
+                                                Client Credit
+                                            @elseif($invoice->payment_type === 'full')
+                                                Full Payment
+                                            @elseif($invoice->payment_type === 'partial')
+                                                Partial Payment
+                                            @elseif($invoice->payment_type === 'split')
+                                                Split Payment
+                                            @else
+                                                Unknown
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-1 text-sm bg-sky-100 dark:bg-gray-800 rounded-lg p-3 shadow border mt-4">
+                                        <div><strong>Net Price:</strong> {{ number_format($invoiceDetail->task_price, 2) }} KWD</div>
+                                        <div><strong>Cost Price:</strong> {{ number_format($invoiceDetail->supplier_price, 2) }} KWD</div>
+                                        @if($user->role_id == 4 && optional($user->agent)->type_id != 2)
+                                        <div><strong>Profit Margin:</strong> {{ number_format($invoiceDetail->markup_price, 2) }} KWD</div>
+                                        @endif
                                     </div>
 
                                     @if($task->flightDetails)

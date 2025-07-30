@@ -167,7 +167,7 @@
             <!-- ./ Agents Overview -->
 
             <!-- Agent Details -->
-            <div class="panel overflow-hidden border-0 p-0 w-[100%] md:w-[25%] mt-5 sm:mt-0 max-h-[380px]">
+            <div class="panel overflow-hidden border-0 p-0 w-[100%] md:w-[25%] mt-5 sm:mt-0 {{ $agent->type_id != 2 ? 'max-h-[380px]' : 'max-h-[350px]' }}">
                 <div class="h-full bg-gradient-to-r from-[#4361ee] to-[#160f6b] p-6">
                     <div class="mb-6 flex items-center justify-between">
                         <div class="flex items-center rounded-full bg-black/50 p-1 font-semibold text-white pr-3 ">

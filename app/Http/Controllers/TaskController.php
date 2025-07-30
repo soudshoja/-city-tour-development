@@ -323,7 +323,7 @@ class TaskController extends Controller
             }
            
             // Set enabled status: task must be complete AND have an agent assigned
-            if($task->is_complete && $task->agent_id) {
+            if($task->is_complete && $task->agent_id && $task->client !== null) {
                 $task->enabled = true;
                 $task->save(); 
                 Log::info('Task enabled for complete task with agent: ' . $task->reference);

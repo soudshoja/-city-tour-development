@@ -1019,7 +1019,7 @@ class InvoiceController extends Controller
                     'company_id' => $task->company_id ?? null,
                     'account_id' => $accruedCommissions->id,
                     'invoice_id' => $invoiceId,
-                    'invoice_detail_id' => $invoiceDetailId,
+                    'invoice_detail_id' => $task->invoiceDetail->id,
                     'transaction_date' => Carbon::now(),
                     'description' => 'Agents Commissions for (Liabilities): ' . $task['agent']['name'],
                     'debit' => 0,

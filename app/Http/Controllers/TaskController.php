@@ -335,8 +335,13 @@ class TaskController extends Controller
 
             // Process financial transactions immediately if task is complete (regardless of agent assignment)
             // This ensures company liability to supplier is tracked immediately
-            if ($task->is_complete) {
-                Log::info('Processing financial transactions for complete task: ' . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
+            // Special case: Void tasks should ALWAYS process financials if they have an original_task_id
+            $shouldProcessFinancials = $task->is_complete || 
+                                     ($task->status === 'void' && $task->original_task_id);
+            
+            if ($shouldProcessFinancials) {
+                $reason = $task->is_complete ? 'complete task' : 'void task with original_task_id';
+                Log::info("Processing financial transactions for {$reason}: " . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
                 $this->processTaskFinancial($task);
             }
 
@@ -387,9 +392,15 @@ class TaskController extends Controller
             return;
         }
         Log::info('Processing financial for task: ' . $task->reference);
-        // Use the Task model's is_complete attribute to check completeness
+        
+        // Special handling for void tasks: they should process even if incomplete
+        // as long as they have an original_task_id to reference
         if (!$task->is_complete) {
-            throw new Exception('Task is not complete. Missing required fields: ' . $this->getMissingFields($task));
+            if ($task->status === 'void' && $task->original_task_id) {
+                Log::info('Allowing incomplete void task to process financials: ' . $task->reference . ' (has original_task_id: ' . $task->original_task_id . ')');
+            } else {
+                throw new Exception('Task is not complete. Missing required fields: ' . $this->getMissingFields($task));
+            }
         }
 
         // Get branch_id - from agent if exists, otherwise from company's main branch

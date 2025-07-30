@@ -71,6 +71,9 @@
                         </thead>
                         <tbody>
                             @foreach ($journalEntries as $entry)
+                            @php
+                                $entry->task->info
+                            @endphp
                                 <tr class="border-t hover:bg-gray-50">
                                     <td class="py-2 px-4 text-center">
                                         <a href="{{ route('journal-entries.index', $entry->transaction_id) }}"
@@ -87,7 +90,45 @@
                                         </td>
                                     @endif
                                     <td class="py-2 px-4 text-left">
-                                        {{ $entry->description }}
+                                         @if ($entry->task->type === 'flight')
+                                                    <div class="flex justify-between items-center gap-4 text-center text-sm">
+                                                        <div class="flex flex-col items-center">
+                                                            <span class="font-bold text-base">
+                                                                {{ \Carbon\Carbon::parse($entry->task->flightDetails->departure_time)->format('H:i') }}
+                                                            </span>
+                                                            <span class="text-gray-600 text-sm">
+                                                                {{ $entry->task->flightDetails->airport_from ?? '-' }}
+                                                            </span>
+                                                        </div>
+                                                        <div class="text-blue-700 text-lg"> ✈ </div>
+                                                        <div class="flex flex-col items-center">
+                                                            <span class="font-bold text-base">
+                                                                {{ \Carbon\Carbon::parse($entry->task->flightDetails->arrival_time)->format('H:i') }}
+                                                            </span>
+                                                            <span class="text-gray-600 text-sm">
+                                                                {{ $entry->task->flightDetails->airport_to ?? '-' }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    @elseif ($entry->task->type === 'hotel')
+                                                    <div class="flex items-start gap-2 text-sm text-left">
+                                                        <div class="pt-1">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path d="M8 21V7a1 1 0 011-1h6a1 1 0 011 1v14M3 21v-4a1 1 0 011-1h4a1 1 0 011 1v4m10 0v-6a1 1 0 011-1h2a1 1 0 011 1v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                            </svg>
+                                                        </div>
+                                                        <div class="flex flex-col truncate">
+                                                            <div class="truncate max-w-[140px]" title="{{ $entry->task->hotelDetails->hotel->name ?? '-' }}">
+                                                                {{ $entry->task->hotelDetails->hotel->name ?? '-' }}
+                                                            </div>
+                                                            <div class="text-sm text-gray-500 whitespace-nowrap">
+                                                                {{ $entry->task->hotelDetails->check_in ?? '-' }} - {{ $entry->task->hotelDetails->check_out ?? '-' }}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    @else
+                                                    <div>{{ $entry->task->additional_info ?? '-' }}</div>
+                                                    @endif 
                                     </td>
                                     <td class="py-2 px-4 text-center">
                                         {{ $entry->account->name }}

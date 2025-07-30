@@ -30,9 +30,9 @@ class JournalEntryController extends Controller
         // Fetch journal entries for this account and date range
         $journalEntries = JournalEntry::with(['account', 'transaction', 'task', 'task.flightDetails', 'task.hotelDetails'])
             ->where('account_id', $accountId)
-            ->whereDate('created_at', '>=', $dateFrom)
-            ->whereDate('created_at', '<=', $dateTo)
-            ->orderBy('created_at')
+            ->whereDate('transaction_date', '>=', $dateFrom)
+            ->whereDate('transaction_date', '<=', $dateTo)
+            ->orderBy('transaction_date', 'asc')
             ->get();
 
         // Optional: apply custom transformation (like calculating running balance)

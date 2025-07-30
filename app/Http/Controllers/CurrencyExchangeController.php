@@ -9,6 +9,7 @@ use App\Models\Role;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use App\Models\ExchangeRateHistory;
 
 class CurrencyExchangeController extends Controller
 {
@@ -38,6 +39,10 @@ class CurrencyExchangeController extends Controller
             }
 
             return $response['data'];
+        });
+
+        $currenciesAvailable = array_filter($currenciesAvailable, function ($currency) {
+            return in_array($currency['code'], ['USD', 'SAR', 'QAR', 'GBP', 'AED', 'EUR', 'EGP', 'BHD']);
         });
 
         if (!$currenciesAvailable) {
@@ -147,27 +152,50 @@ class CurrencyExchangeController extends Controller
     }
 
     public function updateManual(Request $request)
+    // {
+    //     $request->validate([
+    //         'id.*' => 'required',
+    //         'exchange_rate.*' => 'required',
+    //         'is_manual.*' => 'required'
+    //     ]);
+
+    //     foreach ($request->all() as $exchange) {
+    //         try {
+    //             $currencyExchange = CurrencyExchange::find($exchange['id']);
+    //             $currencyExchange->exchange_rate = $exchange['exchange_rate'];
+    //             $currencyExchange->updated_at = now();
+    //             $currencyExchange->save();
+    //         } catch (Exception $e) {
+    //             return response()->json(['message' => $e->getMessage()], 500);
+    //         }
+    //     }
+
+    //     return response()->json(['message' => 'Currency exchange rate updated successfully'], 200);
+    // }
     {
-        $request->validate([
-            'id.*' => 'required',
-            'exchange_rate.*' => 'required',
-            'is_manual.*' => 'required'
+    $data = $request->all();
+
+    foreach ($data as $rateData) {
+        $exchange = CurrencyExchange::findOrFail($rateData['id']);
+        $oldRate = $exchange->exchange_rate;
+        $exchange->exchange_rate = $rateData['exchange_rate'];
+        $exchange->is_manual = true;
+        $exchange->save();
+
+        ExchangeRateHistory::create([
+            'currency_exchange_id' => $exchange->id,
+            'base_currency' => $exchange->base_currency,
+            'exchange_currency' => $exchange->exchange_currency,
+            'old_rate' => $oldRate,
+            'new_rate' => $rateData['exchange_rate'],
+            'method' => 'manual',
+            'changed_by' => Auth::id(),
+            'changed_at' => now(),
         ]);
-
-        foreach ($request->all() as $exchange) {
-            try {
-                $currencyExchange = CurrencyExchange::find($exchange['id']);
-                $currencyExchange->exchange_rate = $exchange['exchange_rate'];
-                $currencyExchange->updated_at = now();
-                $currencyExchange->save();
-            } catch (Exception $e) {
-                return response()->json(['message' => $e->getMessage()], 500);
-            }
-        }
-
-        return response()->json(['message' => 'Currency exchange rate updated successfully'], 200);
     }
 
+    return response()->json(['message' => 'Exchange rates updated and history recorded.']);
+}
     public function updateMethod($id)
     {
         try {
@@ -185,4 +213,16 @@ class CurrencyExchangeController extends Controller
             'message' => 'Currency exchange rate method updated successfully'
         ], 200);
     }
+    public function histories()
+{
+    return $this->hasMany(ExchangeRateHistory::class);
+}
+public function allHistories()
+{
+    $currencyExchanges = \App\Models\CurrencyExchange::with(['company', 'histories.user'])
+        ->orderBy('base_currency')
+        ->get();
+
+    return view('currency-exchange.all-histories', compact('currencyExchanges'));
+}
 }

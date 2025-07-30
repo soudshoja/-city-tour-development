@@ -1,3 +1,6 @@
+@php
+    $allowedCurrencies = ['USD', 'SAR', 'QAR', 'GBP', 'AED', 'EUR', 'EGP', 'BHD'];
+@endphp
 <div class="grid">
     <div
         @click="createRateModal = false"

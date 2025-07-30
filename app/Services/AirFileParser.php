@@ -382,9 +382,39 @@ class AirFileParser
         }
 
         if ($match = $this->findLine('/\bD-(\d{6});(\d{6});\d{6}\b/')) {
-            $date = Carbon::createFromFormat('ymd', $match[2]);
-            return $date->format('Y-m-d');
+            try {
+                $date = Carbon::createFromFormat('ymd', $match[2]);
+                return $date->format('Y-m-d');
+            } catch (\Exception $e) {
+                // If parsing fails, return null
+                return null;
+            }
         }        
+
+        return null;
+    }
+    
+    /**
+     * Extract void date if status is void
+     */
+    private function extractVoidDate()
+    {
+        if ($this->extractStatus() !== 'void') {
+            return null;
+        }
+
+        // Look for VOID date patterns like VOID03JUL or VOID16JUL, but avoid XX patterns
+        $match = $this->findLine('/VOID(\d{2}(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))/');
+        if ($match) {
+            try {
+                $date = Carbon::createFromFormat('dM', $match[1]);
+                $date->year = Carbon::now()->year; // Assume current year
+                $date->setTime(0, 0, 0);
+                return $date->format('Y-m-d H:i:s');
+            } catch (\Exception $e) {
+                // If parsing fails, return null
+            }
+        }
 
         return null;
     }
@@ -954,8 +984,8 @@ class AirFileParser
      */
     private function extractIssuedDate()
     {
-        // Look for date patterns like TKOK12FEB
-        $match = $this->findLine('/T[A-Z]{3}(\d{2}[A-Z]{3})/');
+        // Look for date patterns like TKOK12FEB, but avoid XX patterns
+        $match = $this->findLine('/T[A-Z]{3}(\d{2}(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))/');
         if ($match) {
             try {
                 $date = Carbon::createFromFormat('dM', $match[1]);
@@ -966,6 +996,23 @@ class AirFileParser
                 // If parsing fails, return null
             }
         }
+        
+        // For refund tasks, if no issued_date found, use refund_date as fallback
+        if ($this->extractStatus() === 'refund') {
+            $refundDate = $this->extractRefundDate();
+            if ($refundDate) {
+                return $refundDate;
+            }
+        }
+        
+        // For void tasks, if no issued_date found, use void_date as fallback
+        if ($this->extractStatus() === 'void') {
+            $voidDate = $this->extractVoidDate();
+            if ($voidDate) {
+                return $voidDate;
+            }
+        }
+        
         return null;
     }
     
@@ -998,8 +1045,8 @@ class AirFileParser
     
     private function extractDepartureTime()
     {
-         // Match pattern like 02APR0435 (day + month + time)
-    $match = $this->findLine('/\b(\d{2})([A-Z]{3})(\d{4})\b/');
+         // Match pattern like 02APR0435 (day + month + time), but avoid XX patterns
+    $match = $this->findLine('/\b(\d{2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(\d{4})\b/');
     if ($match) {
         $day = $match[1];      // "02"
         $month = $match[2];    // "APR"
@@ -1008,10 +1055,14 @@ class AirFileParser
         $hour = substr($time, 0, 2);   // "04"
         $minute = substr($time, 2, 2); // "35"
 
-        // Build a Carbon instance using day, month, and time (assumes current year)
-        $datetime = Carbon::createFromFormat('d-M-H:i', "{$day}-{$month}-{$hour}:{$minute}");
-
-        return $datetime->format('Y-m-d H:i:s');
+        try {
+            // Build a Carbon instance using day, month, and time (assumes current year)
+            $datetime = Carbon::createFromFormat('d-M-H:i', "{$day}-{$month}-{$hour}:{$minute}");
+            return $datetime->format('Y-m-d H:i:s');
+        } catch (\Exception $e) {
+            // If parsing fails, return null
+            return null;
+        }
     }
 
     return null;
@@ -1045,8 +1096,8 @@ class AirFileParser
     
     private function extractArrivalTime()
     {
-        // Match pattern like 02APR0435 (day + month + time)
-        $match = $this->findLine('/\b(\d{2})([A-Z]{3})\d{4}\s+(\d{4})\s+\1\2\b/');
+        // Match pattern like 02APR0435 (day + month + time), but avoid XX patterns
+        $match = $this->findLine('/\b(\d{2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\d{4}\s+(\d{4})\s+\1\2\b/');
         if ($match) {
             $day = $match[1];      // "02"
             $month = $match[2];    // "APR"
@@ -1055,10 +1106,14 @@ class AirFileParser
             $hour = substr($time, 0, 2);   // "04"
             $minute = substr($time, 2, 2); // "35"
 
-            // Build a Carbon instance using day, month, and time (assumes current year)
-            $datetime = Carbon::createFromFormat('d-M-H:i', "{$day}-{$month}-{$hour}:{$minute}");
-
-            return $datetime->format('Y-m-d H:i:s');
+            try {
+                // Build a Carbon instance using day, month, and time (assumes current year)
+                $datetime = Carbon::createFromFormat('d-M-H:i', "{$day}-{$month}-{$hour}:{$minute}");
+                return $datetime->format('Y-m-d H:i:s');
+            } catch (\Exception $e) {
+                // If parsing fails, return null
+                return null;
+            }
         }
 
         return null;

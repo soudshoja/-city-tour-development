@@ -241,9 +241,17 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Client
                 Reports</a>
             </menuitem> -->
-            <menuitem><a href="{{ route('reports.new-report') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Acc
-                Pay/Receive</a>
+           <menuitem>
+                <a href="{{ route('reports.paid-report') }}"
+                class="text-xs p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow w-full text-center break-words whitespace-normal">
+                    Paid Acc Pay/Receive
+                </a>
+            </menuitem>
+            <menuitem>
+                <a href="{{ route('reports.unpaid-report') }}"
+                class="text-xs p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow w-full text-center break-words whitespace-normal">
+                    Unpaid Acc Pay/Receive
+                </a>
             </menuitem>
             <menuitem><a href="{{ route('reports.acc-reconcile') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Acc
@@ -307,11 +315,24 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Help
             </a>
             </menuitem>
-            <menuitem>
-            <a href="{{ route('exchange.index') }}"
+    <!-- Main Menu Item -->
+    <menuitem>
+         <a href="{{ route('exchange.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Currency
                 Exchange</a>
-            </menuitem>
+            <menu class="flex space-x-2">
+        <menuitem>
+            <a href="{{ route('exchange.histories.all') }}"
+                class="text-xs justify-center text-center   px-4 py-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                Exchange History
+            </a>
+        </menuitem>
+    </menu>
+    </menuitem> 
+
+    <!-- Sub Menu -->
+
+
         </menu>
         </menuitem>
 

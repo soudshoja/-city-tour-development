@@ -28,7 +28,7 @@ class JournalEntryController extends Controller
         $dateTo = $request->input('date_to', now()->endOfMonth()->toDateString());
 
         // Fetch journal entries for this account and date range
-        $journalEntries = JournalEntry::with(['account', 'transaction'])
+        $journalEntries = JournalEntry::with(['account', 'transaction', 'task', 'task.flightDetails', 'task.hotelDetails'])
             ->where('account_id', $accountId)
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)

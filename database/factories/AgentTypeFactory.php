@@ -12,7 +12,7 @@ class AgentTypeFactory extends Factory
     public function definition()
     {
         return [
-            'name' => $this->faker->randomElement(['Salary', 'Commission', 'Both']),
+            'name' => $this->faker->randomElement(['Salary', 'Commission', 'Both-A', 'Both-B']),
         ];
     }
 }

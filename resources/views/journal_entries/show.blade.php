@@ -83,7 +83,7 @@
                                     </td>
                                     @if($showIssueColumn)
                                         <td class="py-2 px-4 text-center">
-                                            {{ $entry->task->created_at?->format('Y-m-d') ?? '-' }}
+                                            {{ $entry->task ? $entry->task->created_at?->format('Y-m-d') ?? '-' : '-' }}
                                         </td>
                                     @endif
                                     <td class="py-2 px-4 text-left">

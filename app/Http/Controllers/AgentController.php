@@ -87,24 +87,39 @@ class AgentController extends Controller
             $task->created_at = $date->format('d-M-Y');
         }
 
+        $allInvoices = Invoice::with('invoiceDetails')->where('agent_id', $id)->get();
         $totalCommission = 0;
-        $invoices = Invoice::with('invoiceDetails')->where('agent_id', $id)->paginate(4, ['*'], 'invoices');
-        foreach ($invoices as $invoice) {
-            $cost = 0;
+        $totalProfit = 0;
+
+        foreach ($allInvoices as $invoice) {
             foreach ($invoice->invoiceDetails as $detail) {
-                $cost += $detail->supplier_price;
-                $cost = number_format($cost, 2);
+                $commission = JournalEntry::where('invoice_detail_id', $detail->id)
+                    ->where('account_id', 43)
+                    ->sum('credit');
+                $totalCommission += $commission;
+                $totalProfit += $detail->markup_price ?? 0;
             }
-            $invoice->cost = (string)$cost;
-
-            $commission = JournalEntry::where('invoice_id', $invoice->id)
-                ->where('account_id', 43)
-                ->sum('credit');
-
-            $invoice->commission = number_format($commission, 2);
-            $totalCommission += $commission;
         }
         $totalCommission = number_format($totalCommission, 2);
+        $totalProfit = number_format($totalProfit, 2);
+
+        $invoices = Invoice::with('invoiceDetails')->where('agent_id', $id)->paginate(4, ['*'], 'invoices');
+
+        foreach ($invoices as $invoice) {
+            $commission = 0;
+            $profit = 0;
+
+            foreach ($invoice->invoiceDetails as $detail) {
+                $detail->commission = JournalEntry::where('invoice_detail_id', $detail->id)
+                    ->where('account_id', 43)
+                    ->sum('credit');
+                $commission += $detail->commission;
+                $profit += $detail->markup_price ?? 0;
+            }
+
+            $invoice->profit = number_format($profit, 2);
+            $invoice->commission = number_format($commission, 2);
+        }
 
         $clients = Client::with('invoices')->whereHas('tasks', function ($query) use ($agent) {
             $query->where('agent_id', $agent->id);
@@ -138,6 +153,7 @@ class AgentController extends Controller
             'taskNotInvoiced',
             'supplierCompany',
             'totalCommission',
+            'totalProfit',
         ));
     }
 
@@ -171,6 +187,24 @@ class AgentController extends Controller
             logger('Failed to update agent: ' . $error->getMessage());
 
             return redirect()->back()->with('error', 'Failed to update agent');
+        }
+    }
+
+    public function updateCommission(Request $request, $id)
+    {
+        $request->validate([
+            'commission' => 'required|numeric|min:0',
+        ]);
+
+        try {
+            $agent = Agent::findOrFail($id);
+            $agent->commission = $request->commission / 100; 
+            $agent->save();
+
+            return redirect()->back()->with('success', 'Agent commission updated successfully');
+        } catch (Exception $e) {
+            logger('Failed to update agent commission: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to update agent commission');
         }
     }
 

@@ -23,18 +23,25 @@
                     <h5 class="text-lg font-semibold dark:text-white-light">
                         <span class="customBlueColor">Invoices</span> List
                     </h5>
-                    @if($agent->type_id != 1)
-                    <div class="bg-green-100 text-green-700 font-bold px-4 py-2 rounded shadow">
-                        Total Commission: {{ number_format($totalCommission, 2) }} KWD
+                    <div class="flex gap-2">
+                        @if($agent->type_id != 1)
+                        <div class="bg-green-100 text-green-700 font-bold px-4 py-2 rounded shadow">
+                            Total Commission: {{ number_format($totalCommission, 2) }} KWD
+                        </div>
+                        @endif
+                        @if($agent->type_id != 2)
+                        <div class="bg-blue-100 text-blue-800 font-bold px-4 py-2 rounded shadow">
+                            Total Profit: {{ number_format($totalProfit, 2) }} KWD
+                        </div>
+                        @endif
                     </div>
-                    @endif
                 </div>
                 <div>
                     @if($invoices->isEmpty())
                     <p class="text-gray-600">No invoices for this agent.</p>
                     @else
-                    <div class="max-h-72 overflow-y-auto custom-scrollbar">
-                        <table class="bg-white border border-gray-300">
+                    <div class="max-h-72 overflow-y-auto custom-scrollbar" x-data="{ openRow: null }">
+                        <table class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700">
                             <thead>
                                 <tr class="text-center">
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Invoice Number</th>
@@ -45,38 +52,105 @@
                                     @if($agent->type_id != 1)
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Commission (KWD)</th>
                                     @endif
+                                    @if($agent->type_id == 1 || $agent->type_id == 3)
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Profit (KWD)</th>
+                                    @endif
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Client</th>
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($invoices as $invoice)
-                                <tr class="text-center">
-                                    <td class="py-4 px-6 border-b">{{ $invoice->invoice_number }}</td>
-                                    <td class="py-4 px-6 border-b">{{ \Carbon\Carbon::parse($invoice->created_at)->format('d-m-Y H:i') }}</td>
-                                    <td class="py-4 px-6 border-b">
-                                        @if($invoice->status == 'paid')
-                                        <x-paid>
-                                            {{ $invoice->status }}
-                                        </x-paid>
-                                        @else
-                                        <x-unpaid>
-                                            {{ $invoice->status }}
-                                        </x-unpaid>
+                                    @foreach($invoice->invoiceDetails as $detail)
+                                    @php
+                                        $task = \App\Models\Task::with(['flightDetails', 'hotelDetails'])->find($detail->task_id);
+                                    @endphp
+                                    <tr class="cursor-pointer text-center"
+                                        :class="openRow === {{ $invoice }} ? 'bg-blue-50 hover:bg-gray-50 dark:bg-blue-900 hover:dark:bg-blue-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'" @click="openRow === {{ $invoice->id }} ? openRow = null : openRow = {{ $invoice->id }}">
+                                        <td class="py-4 px-6 border-b">{{ $invoice->invoice_number }}</td>
+                                        <td class="py-4 px-6 border-b">{{ \Carbon\Carbon::parse($invoice->created_at)->format('d-m-Y H:i') }}</td>
+                                        <td class="py-4 px-6 border-b">
+                                            @if($invoice->status == 'paid')
+                                            <x-paid>
+                                                {{ $invoice->status }}
+                                            </x-paid>
+                                            @else
+                                            <x-unpaid>
+                                                {{ $invoice->status }}
+                                            </x-unpaid>
+                                            @endif
+                                        </td>
+                                        <td class="py-4 px-6 border-b"> {{ $detail->supplier_price }} </td>
+                                        <td class="py-4 px-6 border-b"> {{ $detail->task_price }} </td>
+                                        @if($agent->type_id != 1)
+                                        <td class="py-4 px-6 border-b text-green-700 font-semibold">
+                                            {{ $detail->commission ?? '0.00' }}
+                                        </td>
                                         @endif
-                                    </td>
-                                    <td class="py-4 px-6 border-b"> {{ $invoice->cost }} </td>
-                                    <td class="py-4 px-6 border-b"> {{ $invoice->amount }} </td>
-                                    @if($agent->type_id != 1)
-                                    <td class="py-4 px-6 border-b text-green-700 font-semibold">
-                                        {{ $invoice->commission ?? '0.00' }}
-                                    </td>
-                                    @endif
-                                    <td class="py-4 px-6 border-b">{{ $invoice->client->name }}</td>
-                                    <td class="py-4 px-6 border-b">
-                                        <a href="{{ url('/invoice/' . $invoice->invoice_number) }}" class="text-blue-500">View</a>
-                                    </td>
-                                </tr>
+                                        @if($agent->type_id == 1 || $agent->type_id == 3)
+                                        <td class="py-4 px-6 border-b text-blue-700 font-semibold">
+                                            {{ $invoice->profit ?? '0.00' }}
+                                        </td>
+                                        @endif
+                                        <td class="py-4 px-6 border-b">{{ $invoice->client->name }}</td>
+                                        <td class="py-4 px-6 border-b">
+                                            <a href="{{ url('/invoice/' . $invoice->invoice_number) }}" class="text-blue-500 hover:underline" @click.stop>View</a>
+                                        </td>
+                                    </tr>
+                                    <tr x-show="openRow === {{ $invoice->id }}" x-cloak>
+                                        <td colspan="{{ $agent->type_id == 3 ? 9 : 8 }}" class="bg-gray-50 dark:bg-gray-900 px-6 py-4 border-b dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 rounded-b-lg shadow-inner">
+                                            @if($task)
+                                            <div class="space-y-2">
+                                                <div class="grid grid-cols-2 md:grid-cols-3 gap-1">
+                                                    <div><strong>Branch:</strong> {{ $task->agent ? $task->agent->branch->name : null }}</div>
+                                                    <div><strong>Issued:</strong> {{ \Carbon\Carbon::parse($task->created_at)->format('d-m-Y H:i:s') }}</div>
+                                                    <div>
+                                                        <strong>Payment Type:</strong>
+                                                        @if($invoice->is_client_credit == 1)
+                                                            Client Credit
+                                                        @elseif($invoice->payment_type === 'full')
+                                                            Full Payment
+                                                        @elseif($invoice->payment_type === 'partial')
+                                                            Partial Payment
+                                                        @elseif($invoice->payment_type === 'split')
+                                                            Split Payment
+                                                        @else
+                                                            Unknown
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                @if($task->flightDetails)
+                                                <div class="mt-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner">
+                                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-1 text-sm">
+                                                        <div><strong>Flight No:</strong> {{ $task->flightDetails->flight_number }}</div>
+                                                        <div><strong>From:</strong> {{ $task->flightDetails->airport_from ?? '-' }}</div>
+                                                        <div><strong>To:</strong> {{ $task->flightDetails->airport_to ?? '-' }}</div>
+                                                        <div><strong>Created By:</strong> {{ $task->created_by ?? 'Not Set' }}</div>
+                                                        <div><strong>Airline Reference:</strong> {{ $task->airline_reference ?? 'Not Available' }}</div>
+                                                        <div><strong>Ticket Number:</strong> {{ $task->ticket_number ?? '-' }}</div>
+                                                        <div><strong>Departure Time:</strong> {{ \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('d-m-Y H:i:s') }}</div>
+                                                        <div><strong>Arrival Time:</strong> {{ \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('d-m-Y H:i:s') }}</div>
+                                                        <div><strong>Passenger:</strong> {{ $task->passenger_name }}</div>
+                                                    </div>
+                                                </div>
+                                                @endif
+                                                @if($task->hotelDetails)
+                                                <div class="mt-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner">
+                                                    <div class="grid grid-cols-2 gap-1 text-sm">
+                                                        <div><strong>Hotel Name:</strong> {{ $task->hotelDetails->hotel->name ?? '-' }}</div>
+                                                        <div><strong>Passenger:</strong> {{ $task->passenger_name }}</div>
+                                                        <div><strong>Check-in:</strong> {{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->format('d-m-Y') ?? '-' }}</div>
+                                                        <div><strong>Check-out:</strong> {{ \Carbon\Carbon::parse($task->hotelDetails->check_out)->format('d-m-Y') ?? '-' }}</div>
+                                                    </div>
+                                                </div>
+                                                @endif
+                                            </div>
+                                            @else
+                                                <p class="text-gray-500">Task not found.</p>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @endforeach
                                 @endforeach
                             </tbody>
                         </table>
@@ -93,8 +167,7 @@
             <!-- ./ Agents Overview -->
 
             <!-- Agent Details -->
-            <div class="panel overflow-hidden border-0 p-0 w-[100%] md:w-[25%] mt-5 sm:mt-0">
-
+            <div class="panel overflow-hidden border-0 p-0 w-[100%] md:w-[25%] mt-5 sm:mt-0 {{ $agent->type_id != 2 ? 'max-h-[380px]' : 'max-h-[350px]' }}">
                 <div class="h-full bg-gradient-to-r from-[#4361ee] to-[#160f6b] p-6">
                     <div class="mb-6 flex items-center justify-between">
                         <div class="flex items-center rounded-full bg-black/50 p-1 font-semibold text-white pr-3 ">
@@ -116,9 +189,6 @@
                         </button>
                     </div>
                     <div>
-
-
-
                         <div class="flex items-center justify-between text-white">
                             <p class="text-lg">Email</p>
                             <h5 class="text-base ml-auto">{{ $agent->email }}</h5>
@@ -139,6 +209,12 @@
                             <p class="text-lg">Type</p>
                             <h5 class="text-base ml-auto">{{ $agent->agentType->name }}</h5>
                         </div>
+                        @if($agent->type_id != 2)
+                        <div class="mt-2 flex items-center justify-between text-white">
+                            <p class="text-lg">Salary</p>
+                            <h5 class="text-base ml-auto">{{ $agent->salary }} KWD</h5>
+                        </div>
+                        @endif
                         <div class="flex justify-evenly gap-2 w-full mt-2">
                             <x-paid>{{$paid}} KWD</x-paid>
                             <x-unpaid>{{$unpaid}} KWD</x-unpaid>

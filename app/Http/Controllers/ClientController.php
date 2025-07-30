@@ -313,11 +313,12 @@ class ClientController extends Controller
             'phone' => 'string|max:15',
             'country_code' => 'string|max:30',
             'file' => 'nullable|mimes:jpeg,jpg,png', // Optional passport file field
+            'agent_id' => 'nullable|exists:agents,id',
         ]);
 
         try {
             // Update the client data
-            $client->update($request->only(['name', 'email', 'status', 'country_code', 'phone', 'address']));
+            $client->update($request->only(['name', 'email', 'status', 'country_code', 'phone', 'address', 'agent_id']));
 
             // If a file (image) is uploaded, process it
             if ($request->hasFile('file')) {

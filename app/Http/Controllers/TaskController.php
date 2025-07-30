@@ -121,7 +121,7 @@ class TaskController extends Controller
         }
   
         $taskCount = $tasks->count();
-        $tasks = $tasks->orderBy('issued_date', 'desc')->paginate(50);
+        $tasks = $tasks->orderBy('issued_date', 'desc')->orderBy('id', 'desc')->paginate(50);
         $types = Task::distinct()->pluck('type');
 
         $importedTask = Cache::get('imported_task');
@@ -178,6 +178,7 @@ class TaskController extends Controller
             'task_hotel_details' => 'nullable|array',
             'task_flight_details' => 'nullable|array',
             'file_name' => 'nullable|string',
+            'issued_date' => 'nullable|date',
         ]);
 
         $queryChkExistTask = Task::query();
@@ -1693,6 +1694,7 @@ class TaskController extends Controller
                 'invoice_price' => null,
                 'voucher_status' => null,
                 'refund_date' => null,
+                'issued_date' => Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
                 'task_hotel_details' => [
                     'hotel_name' => $hotel['name'],
                     'hotel_country' => $hotel['countryId'],

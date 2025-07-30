@@ -464,17 +464,6 @@ class ClientController extends Controller
         $client->agent_id = $request->agent_id;
         $client->save();
 
-        // Get the new agent details
-        $newAgent = $client->agent;
-
-        // Update only pending tasks related to this client, changing the agent's id
-        Task::where('client_id', $client->id)
-            ->where('status', 'pending')
-            ->update([
-                'agent_id' => $newAgent->id,
-            ]);
-
-        // Redirect back with a success message
         return redirect()->back()->with('success', 'Agent updated successfully for pending tasks.');
     }
 

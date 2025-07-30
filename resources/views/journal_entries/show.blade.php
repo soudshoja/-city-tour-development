@@ -62,6 +62,8 @@
                                 @if($showIssueColumn)
                                     <th class="py-2 px-4 text-center">Task Date</th>
                                 @endif
+                                <th class="py-2 px-4 text-left">Reference</th>
+                                <th class="py-2 px-4 text-left">Client Name</th>
                                 <th class="py-2 px-4 text-left">Description</th>
                                 <th class="py-2 px-4 text-center">Account</th>
                                 <th class="py-2 px-4 text-center">Debit</th>
@@ -71,9 +73,7 @@
                         </thead>
                         <tbody>
                             @foreach ($journalEntries as $entry)
-                            @php
-                                $entry->task->info
-                            @endphp
+                        
                                 <tr class="border-t hover:bg-gray-50">
                                     <td class="py-2 px-4 text-center">
                                         <a href="{{ route('journal-entries.index', $entry->transaction_id) }}"
@@ -82,13 +82,19 @@
                                         </a>
                                     </td>
                                     <td class="py-2 px-4 text-center">
-                                        {{ \Carbon\Carbon::parse($entry->created_at)->format('Y-m-d') }}
+                                        {{ \Carbon\Carbon::parse($entry->transaction_date)->format('Y-m-d') }}
                                     </td>
                                     @if($showIssueColumn)
                                         <td class="py-2 px-4 text-center">
-                                            {{ $entry->task ? $entry->task->created_at?->format('Y-m-d') ?? '-' : '-' }}
+                                            {{ $entry->task ? $entry->task->issued_date?->format('Y-m-d') ?? '-' : '-' }}
                                         </td>
                                     @endif
+                                    <td class="py-2 px-4 text-left">
+                                        {{ $entry->task ? $entry->task->reference ?? '-' : '-' }}
+                                    </td>
+                                    <td class="py-2 px-4 text-left">
+                                        {{ $entry->task ? $entry->task->client_name ?? '-' : '-' }}
+                                    </td>
                                     <td class="py-2 px-4 text-left">
                                          @if ($entry->task->type === 'flight')
                                                     <div class="flex justify-between items-center gap-4 text-center text-sm">

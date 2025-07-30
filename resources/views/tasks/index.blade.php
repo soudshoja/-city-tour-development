@@ -1175,7 +1175,7 @@
                                                     <div class="flex justify-between items-center gap-4 text-center text-sm">
                                                         <div class="flex flex-col items-center">
                                                             <span class="font-bold text-base">
-                                                                {{ \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('H:i') }}
+                                                                {{ $task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('H:i') : '-'}}
                                                             </span>
                                                             <span class="text-gray-600 text-sm">
                                                                 {{ $task->flightDetails->airport_from ?? '-' }}
@@ -1184,7 +1184,7 @@
                                                         <div class="text-blue-700 text-lg"> ✈ </div>
                                                         <div class="flex flex-col items-center">
                                                             <span class="font-bold text-base">
-                                                                {{ \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('H:i') }}
+                                                                {{$task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('H:i') : '-'}}
                                                             </span>
                                                             <span class="text-gray-600 text-sm">
                                                                 {{ $task->flightDetails->airport_to ?? '-' }}

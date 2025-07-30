@@ -615,11 +615,11 @@ class CoaController extends Controller
         }
     
         $transactions = $query
-            ->orderBy('created_at', 'desc')
+            ->orderBy('transaction_date', 'desc')
             ->get();
     
         $grouped = $transactions->groupBy(function ($item) {
-            return Carbon::parse($item->created_at)->format('Y-m-d');
+            return Carbon::parse($item->transaction_date)->format('Y-m-d');
         });
     
         $perPage = 5;

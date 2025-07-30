@@ -341,7 +341,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/reports/performance', [ReportController::class, 'performance'])->name('performance');
         Route::get('/reports/summary', [ReportController::class, 'summary'])->name('summary');
         Route::get('/reports/accsummary', [ReportController::class, 'accsummary'])->name('accsummary');
-        Route::get('/new-report', [ReportController::class, 'accountsPayableReceivableReport'])->name('new-report');
+        Route::get('/unpaid-report', [ReportController::class, 'unpaidaccountsPayableReceivableReport'])->name('unpaid-report');
+        Route::get('/paid-report', [ReportController::class, 'paidaccountsPayableReceivableReport'])->name('paid-report');
         Route::get('/payable_supplier', [ReportController::class, 'payableSupplier'])->name('payable-supplier');
         Route::get('/profit-agent', [ReportController::class, 'profitAgent'])->name('profit-agent');
         Route::get('/total-receivable', [ReportController::class, 'receivable'])->name('total-receivable');
@@ -636,4 +637,7 @@ Route::group([
     Route::post('/share-partial-link', [ResayilController::class, 'shareInvoicePartialLink'])->name('share-partial-link');
 });
 
-require __DIR__ . '/auth.php';
+Route::get('/exchange-rate/histories', [\App\Http\Controllers\CurrencyExchangeController::class, 'allHistories'])
+    ->name('exchange.histories.all');
+
+    require __DIR__ . '/auth.php';

@@ -36,7 +36,7 @@ class UpdateAmadeusIssuedDates extends Command
      *
      * @var string
      */
-    protected $description = 'Update issued_date for Amadeus tasks by re-parsing their original AIR files using AirFileParser. Optionally update related transaction dates.';
+    protected $description = 'Update issued_date for Amadeus tasks by re-parsing their original AIR files using AirFileParser. For refund tasks, uses refund_date as issued_date. For void tasks, uses void_date as issued_date. Optionally update related transaction dates.';
 
     /**
      * Execute the console command.
@@ -121,6 +121,11 @@ class UpdateAmadeusIssuedDates extends Command
         $successCount = 0;
         $errorCount = 0;
         $skippedCount = 0;
+        
+        // Report tracking
+        $filesWithoutIssuedDate = [];
+        $tasksWithoutFiles = [];
+        $otherErrors = [];
 
         foreach ($tasks as $task) {
             // Set company relationship manually
@@ -137,10 +142,38 @@ class UpdateAmadeusIssuedDates extends Command
                     case 'skipped':
                         $skippedCount++;
                         $this->warn("- Skipped task {$task->id}: {$result['message']}");
+                        
+                        // Track different types of skipped tasks for reporting
+                        if (strpos($result['message'], 'No issued_date, refund_date, or void_date found') !== false) {
+                            $filesWithoutIssuedDate[] = [
+                                'task_id' => $task->id,
+                                'reference' => $task->reference,
+                                'file_name' => $task->file_name,
+                                'company' => $task->company ? $task->company->name : 'Unknown'
+                            ];
+                        }
                         break;
                     case 'error':
                         $errorCount++;
                         $this->error("✗ Failed task {$task->id}: {$result['message']}");
+                        
+                        // Track different types of errors for reporting
+                        if (strpos($result['message'], 'AIR file not found') !== false) {
+                            $tasksWithoutFiles[] = [
+                                'task_id' => $task->id,
+                                'reference' => $task->reference,
+                                'file_name' => $task->file_name,
+                                'company' => $task->company ? $task->company->name : 'Unknown'
+                            ];
+                        } else {
+                            $otherErrors[] = [
+                                'task_id' => $task->id,
+                                'reference' => $task->reference,
+                                'file_name' => $task->file_name,
+                                'company' => $task->company ? $task->company->name : 'Unknown',
+                                'error' => $result['message']
+                            ];
+                        }
                         break;
                 }
 
@@ -151,6 +184,15 @@ class UpdateAmadeusIssuedDates extends Command
                     'error' => $e->getMessage(),
                     'task_reference' => $task->reference
                 ]);
+                
+                // Track exceptions for reporting
+                $otherErrors[] = [
+                    'task_id' => $task->id,
+                    'reference' => $task->reference,
+                    'file_name' => $task->file_name,
+                    'company' => $task->company ? $task->company->name : 'Unknown',
+                    'error' => 'Exception: ' . $e->getMessage()
+                ];
             }
         }
 
@@ -167,6 +209,9 @@ class UpdateAmadeusIssuedDates extends Command
         if ($this->option('dry-run')) {
             $this->info('This was a dry run - no actual changes were made');
         }
+
+        // Generate detailed report
+        $this->generateReport($filesWithoutIssuedDate, $tasksWithoutFiles, $otherErrors);
 
         return 0;
     }
@@ -211,8 +256,10 @@ class UpdateAmadeusIssuedDates extends Command
                 ];
             }
 
-            // Extract issued_date from parsed data
+            // Extract issued_date from parsed data, fallback to refund_date for refund tasks or void_date for void tasks
             $newIssuedDate = null;
+            $dateSource = 'issued_date';
+            
             if (isset($matchingTaskData['issued_date']) && !empty($matchingTaskData['issued_date'])) {
                 try {
                     $newIssuedDate = Carbon::parse($matchingTaskData['issued_date']);
@@ -223,11 +270,24 @@ class UpdateAmadeusIssuedDates extends Command
                         'message' => "Invalid issued_date format in file: {$matchingTaskData['issued_date']}"
                     ];
                 }
+            } elseif (isset($matchingTaskData['refund_date']) && !empty($matchingTaskData['refund_date'])) {
+                // For refund tasks, use refund_date as issued_date if no issued_date found
+                try {
+                    $newIssuedDate = Carbon::parse($matchingTaskData['refund_date']);
+                    $dateSource = 'refund_date';
+                    $this->info("Using refund_date as issued_date for refund task {$task->id}");
+                } catch (Exception $e) {
+                    DB::rollBack();
+                    return [
+                        'status' => 'error',
+                        'message' => "Invalid refund_date format in file: {$matchingTaskData['refund_date']}"
+                    ];
+                }
             } else {
                 DB::rollBack();
                 return [
                     'status' => 'skipped',
-                    'message' => "No issued_date found in parsed file data"
+                    'message' => "No issued_date, refund_date, or void_date found in parsed file data"
                 ];
             }
 
@@ -272,10 +332,11 @@ class UpdateAmadeusIssuedDates extends Command
 
             $itemsStr = empty($updatedItems) ? 'task issued_date' : implode(', ', $updatedItems);
             $oldDateStr = $oldDate ? $oldDate->toDateTimeString() : 'null';
+            $sourceInfo = $dateSource !== 'issued_date' ? " (from {$dateSource})" : '';
             
             return [
                 'status' => 'success',
-                'message' => "Updated {$itemsStr} from '{$oldDateStr}' to '{$newIssuedDateString}'"
+                'message' => "Updated {$itemsStr} from '{$oldDateStr}' to '{$newIssuedDateString}'{$sourceInfo}"
             ];
 
         } catch (Exception $e) {
@@ -444,5 +505,70 @@ class UpdateAmadeusIssuedDates extends Command
         foreach ($companyCounts as $company => $count) {
             $this->info("    {$company}: {$count}");
         }
+    }
+
+    /**
+     * Generate a detailed report of processing results
+     */
+    protected function generateReport(array $filesWithoutIssuedDate, array $tasksWithoutFiles, array $otherErrors): void
+    {
+        $this->info("\n" . str_repeat("=", 60));
+        $this->info("DETAILED PROCESSING REPORT");
+        $this->info(str_repeat("=", 60));
+
+        // Report 1: Files without any date information
+        if (!empty($filesWithoutIssuedDate)) {
+            $this->warn("\n📄 FILES WITHOUT DATE INFORMATION ({" . count($filesWithoutIssuedDate) . "}):");
+            $this->info(str_repeat("-", 60));
+            
+            foreach ($filesWithoutIssuedDate as $item) {
+                $this->line("• File: {$item['file_name']}");
+                $this->line("  Task ID: {$item['task_id']} | Reference: {$item['reference']}");
+                $this->line("  Company: {$item['company']}");
+                $this->line("");
+            }
+        } else {
+            $this->info("\n✅ All processed files contained date information (issued_date, refund_date, or void_date)");
+        }
+
+        // Report 2: Tasks without files
+        if (!empty($tasksWithoutFiles)) {
+            $this->warn("\n🔍 TASKS WITHOUT FILES ({" . count($tasksWithoutFiles) . "}):");
+            $this->info(str_repeat("-", 60));
+            
+            foreach ($tasksWithoutFiles as $item) {
+                $this->line("• Reference: {$item['reference']}");
+                $this->line("  Task ID: {$item['task_id']} | Expected File: {$item['file_name']}");
+                $this->line("  Company: {$item['company']}");
+                $this->line("");
+            }
+        } else {
+            $this->info("\n✅ All tasks had their corresponding AIR files found");
+        }
+
+        // Report 3: Other errors
+        if (!empty($otherErrors)) {
+            $this->error("\n❌ OTHER ERRORS ({" . count($otherErrors) . "}):");
+            $this->info(str_repeat("-", 60));
+            
+            foreach ($otherErrors as $item) {
+                $this->line("• Task ID: {$item['task_id']} | Reference: {$item['reference']}");
+                $this->line("  File: {$item['file_name']} | Company: {$item['company']}");
+                $this->line("  Error: {$item['error']}");
+                $this->line("");
+            }
+        } else {
+            $this->info("\n✅ No other processing errors encountered");
+        }
+
+        // Summary statistics
+        $this->info("\n📊 REPORT SUMMARY:");
+        $this->info(str_repeat("-", 60));
+        $this->info("Files without date information: " . count($filesWithoutIssuedDate));
+        $this->info("Tasks without files: " . count($tasksWithoutFiles));
+        $this->info("Other errors: " . count($otherErrors));
+        $this->info("Total issues: " . (count($filesWithoutIssuedDate) + count($tasksWithoutFiles) + count($otherErrors)));
+        
+        $this->info("\n" . str_repeat("=", 60));
     }
 }

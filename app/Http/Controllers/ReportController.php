@@ -317,7 +317,7 @@ class ReportController extends Controller
             $receivableQuery->whereBetween('transaction_date', [$startDate, $endDate]);
         }
 
-        $payableTransactions = $payableQuery->get();
+        $payableTransactions = $payableQuery->where('reconciled', 0)->get();
         $receivableTransactions = $receivableQuery->get();
 
         $receivableBalance = $receivableTransactions->sum('debit') - $receivableTransactions->sum('credit');

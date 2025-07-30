@@ -920,6 +920,13 @@ class TaskController extends Controller
                 ], 400);
             }
 
+            if($task->client == null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Task must have a client assigned to be enabled.'
+                ], 400);
+            }
+
             $journalEntries = JournalEntry::where('task_id', $task->id)->exists();
 
             if (!$journalEntries) {

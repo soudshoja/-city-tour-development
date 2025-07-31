@@ -12,15 +12,16 @@ use App\Models\Transaction;
 use App\Models\TaskFlightDetail;
 use App\Models\TaskHotelDetail;
 use App\Models\Company;
+use App\Models\Supplier;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class ClearTaskRelatedData extends Command
 {
-    protected $signature = 'tasks:clear-related-data {--force : Force the operation without confirmation} {--company= : Clear tasks for specific company (ID or name)}';
+    protected $signature = 'tasks:clear-related-data {--force : Force the operation without confirmation} {--company= : Clear tasks for specific company (ID or name)} {--supplier= : Clear tasks for specific supplier (ID or name) - requires --company option}';
 
-    protected $description = 'Hard delete all data related to tasks (including soft deleted records) while preserving non-task related records';
+    protected $description = 'Hard delete all data related to tasks (including soft deleted records) while preserving non-task related records. Use --supplier option only with --company option.';
 
     public function handle()
     {
@@ -30,8 +31,17 @@ class ClearTaskRelatedData extends Command
         }
 
         $companyFilter = $this->option('company');
+        $supplierFilter = $this->option('supplier');
         $companyId = null;
         $companyName = '';
+        $supplierId = null;
+        $supplierName = '';
+
+        // Validate that supplier option is only used with company option
+        if ($supplierFilter && !$companyFilter) {
+            $this->error('The --supplier option can only be used together with the --company option.');
+            return Command::FAILURE;
+        }
 
         // Handle company filter
         if ($companyFilter) {
@@ -75,10 +85,57 @@ class ClearTaskRelatedData extends Command
             $this->info("Selected Company: {$companyName} (ID: {$companyId})");
         }
 
+        // Handle supplier filter (only if company is selected)
+        if ($supplierFilter && $companyId) {
+            // Check if it's a numeric ID
+            if (is_numeric($supplierFilter)) {
+                $supplier = Supplier::find($supplierFilter);
+                if (!$supplier) {
+                    $this->error("Supplier with ID {$supplierFilter} not found.");
+                    return Command::FAILURE;
+                }
+                $supplierId = $supplier->id;
+                $supplierName = $supplier->name;
+            } else {
+                // Search by name using LIKE
+                $suppliers = Supplier::where('name', 'LIKE', "%{$supplierFilter}%")->get();
+                
+                if ($suppliers->isEmpty()) {
+                    $this->error("No suppliers found matching '{$supplierFilter}'.");
+                    return Command::FAILURE;
+                }
+                
+                if ($suppliers->count() > 1) {
+                    $this->info("Multiple suppliers found:");
+                    foreach ($suppliers as $supplier) {
+                        $this->line("ID: {$supplier->id} - Name: {$supplier->name}");
+                    }
+                    $supplierId = $this->ask('Please enter the Supplier ID you want to use');
+                    $selectedSupplier = Supplier::find($supplierId);
+                    if (!$selectedSupplier) {
+                        $this->error("Invalid Supplier ID selected.");
+                        return Command::FAILURE;
+                    }
+                    $supplierName = $selectedSupplier->name;
+                } else {
+                    $supplier = $suppliers->first();
+                    $supplierId = $supplier->id;
+                    $supplierName = $supplier->name;
+                }
+            }
+            
+            $this->info("Selected Supplier: {$supplierName} (ID: {$supplierId})");
+        }
+
         if (!$this->option('force')) {
-            $confirmMessage = $companyFilter ? 
-                "This will PERMANENTLY DELETE all task-related data (including soft deleted records) for company '{$companyName}'. Do you wish to continue?" :
-                'This will PERMANENTLY DELETE all task-related data (including soft deleted records). Do you wish to continue?';
+            $confirmMessage = '';
+            if ($companyFilter && $supplierFilter) {
+                $confirmMessage = "This will PERMANENTLY DELETE all task-related data (including soft deleted records) for company '{$companyName}' and supplier '{$supplierName}'. Do you wish to continue?";
+            } elseif ($companyFilter) {
+                $confirmMessage = "This will PERMANENTLY DELETE all task-related data (including soft deleted records) for company '{$companyName}'. Do you wish to continue?";
+            } else {
+                $confirmMessage = 'This will PERMANENTLY DELETE all task-related data (including soft deleted records). Do you wish to continue?';
+            }
                 
             if (!$this->confirm($confirmMessage)) {
                 $this->info('Operation cancelled.');
@@ -86,31 +143,50 @@ class ClearTaskRelatedData extends Command
             }
         }
 
-        $this->info($companyFilter ? 
-            "Starting HARD DELETE of task-related data for company '{$companyName}'..." :
-            'Starting HARD DELETE of task-related data...');
+        $infoMessage = '';
+        if ($companyFilter && $supplierFilter) {
+            $infoMessage = "Starting HARD DELETE of task-related data for company '{$companyName}' and supplier '{$supplierName}'...";
+        } elseif ($companyFilter) {
+            $infoMessage = "Starting HARD DELETE of task-related data for company '{$companyName}'...";
+        } else {
+            $infoMessage = 'Starting HARD DELETE of task-related data...';
+        }
+        $this->info($infoMessage);
 
         DB::beginTransaction();
         DB::statement('SET FOREIGN_KEY_CHECKS = 0;');
 
         try {
-            // Get all task IDs before deletion (filtered by company if specified)
+            // Get all task IDs before deletion (filtered by company and/or supplier if specified)
             // Include soft deleted tasks since we want to hard delete everything
             $taskQuery = Task::withTrashed();
             if ($companyId) {
                 $taskQuery->where('company_id', $companyId);
             }
+            if ($supplierId) {
+                $taskQuery->where('supplier_id', $supplierId);
+            }
             $taskIds = $taskQuery->pluck('id')->toArray();
             
-            $taskCountMessage = $companyFilter ? 
-                "Found " . count($taskIds) . " tasks (including soft deleted) for company '{$companyName}' to process." :
-                'Found ' . count($taskIds) . ' tasks (including soft deleted) to process.';
+            $taskCountMessage = '';
+            if ($companyFilter && $supplierFilter) {
+                $taskCountMessage = "Found " . count($taskIds) . " tasks (including soft deleted) for company '{$companyName}' and supplier '{$supplierName}' to process.";
+            } elseif ($companyFilter) {
+                $taskCountMessage = "Found " . count($taskIds) . " tasks (including soft deleted) for company '{$companyName}' to process.";
+            } else {
+                $taskCountMessage = 'Found ' . count($taskIds) . ' tasks (including soft deleted) to process.';
+            }
             $this->info($taskCountMessage);
 
             if (empty($taskIds)) {
-                $noTasksMessage = $companyFilter ? 
-                    "No tasks found for company '{$companyName}'. Nothing to clear." :
-                    'No tasks found. Nothing to clear.';
+                $noTasksMessage = '';
+                if ($companyFilter && $supplierFilter) {
+                    $noTasksMessage = "No tasks found for company '{$companyName}' and supplier '{$supplierName}'. Nothing to clear.";
+                } elseif ($companyFilter) {
+                    $noTasksMessage = "No tasks found for company '{$companyName}'. Nothing to clear.";
+                } else {
+                    $noTasksMessage = 'No tasks found. Nothing to clear.';
+                }
                 $this->info($noTasksMessage);
                 DB::rollback();
                 // return Command::SUCCESS;
@@ -257,9 +333,14 @@ class ClearTaskRelatedData extends Command
             DB::statement('SET FOREIGN_KEY_CHECKS = 1;');
             DB::commit();
             
-            $successMessage = $companyFilter ? 
-                "✅ HARD DELETE of task-related data for company '{$companyName}' completed successfully!" :
-                '✅ HARD DELETE of task-related data completed successfully!';
+            $successMessage = '';
+            if ($companyFilter && $supplierFilter) {
+                $successMessage = "✅ HARD DELETE of task-related data for company '{$companyName}' and supplier '{$supplierName}' completed successfully!";
+            } elseif ($companyFilter) {
+                $successMessage = "✅ HARD DELETE of task-related data for company '{$companyName}' completed successfully!";
+            } else {
+                $successMessage = '✅ HARD DELETE of task-related data completed successfully!';
+            }
             $this->info($successMessage);
 
         } catch (Exception $e) {

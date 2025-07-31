@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Http\Controllers\TaskController;
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Company;
+use App\Models\Hotel;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Console\Command;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 class getMagicHolidayReservationList extends Command
 {
     use HttpRequestTrait;
+    
     /**
      * The name and signature of the console command.
      *
@@ -24,6 +26,7 @@ class getMagicHolidayReservationList extends Command
                             { --to= : End date for reservations in format YYYY-MM-DD }
                             { --toSql : Generate SQL insert statements instead of storing to database }';
     protected $companies;
+    protected $hotelCreationSqls = [];
 
     /**
      * The console command description.
@@ -346,14 +349,19 @@ class getMagicHolidayReservationList extends Command
 
         $this->info('Magic Holiday task received successfully');
         foreach ($reservations as $reservation) {
-            Log::channel('magic_holidays')->info('Processing reservation: ', $reservation);
             $taskController = new TaskController();
 
             try {
+                // Ensure hotel exists before processing reservation
+                if (isset($reservation['service']['hotel'])) {
+                    $this->getOrCreateHotel($reservation['service']['hotel']);
+                }
+                
                 $response = $taskController->processSingleReservation($reservation, null, $companyId);
 
-                if ($response['status'] == 'error') {
-                    $this->error('Error processing reservation: ' . $response['message']);
+                if (isset($response['status']) && $response['status'] == 'error') {
+                    $this->error('Error processing reservation: ' . ($response['message'] ?? 'Unknown error'));
+                    continue;
                 }
 
                 if (isset($reservation['id'])) {
@@ -383,6 +391,9 @@ class getMagicHolidayReservationList extends Command
 
         $this->info('Generating SQL INSERT statements...');
         
+        // Reset hotel creation SQLs for this session
+        $this->hotelCreationSqls = [];
+        
         $sqlFile = base_path('magic_holiday.sql');
         $sqlContent = '';
         
@@ -396,10 +407,22 @@ class getMagicHolidayReservationList extends Command
             }
         }
         
+        // Prepend hotel creation SQLs at the beginning
+        $finalSqlContent = '';
+        if (!empty($this->hotelCreationSqls)) {
+            $finalSqlContent .= "-- Hotel creation statements\n";
+            $finalSqlContent .= implode('', $this->hotelCreationSqls);
+            $finalSqlContent .= "\n-- Task and task details statements\n";
+        }
+        $finalSqlContent .= $sqlContent;
+        
         // Write SQL content to file (overwrite existing file)
-        file_put_contents($sqlFile, $sqlContent);
+        file_put_contents($sqlFile, $finalSqlContent);
         
         $this->info('SQL generation completed for ' . count($reservations) . ' reservations');
+        if (!empty($this->hotelCreationSqls)) {
+            $this->info('Generated ' . count($this->hotelCreationSqls) . ' hotel creation statements');
+        }
         $this->info('SQL statements saved to: ' . $sqlFile);
     }
 
@@ -486,9 +509,12 @@ class getMagicHolidayReservationList extends Command
      */
     private function generateHotelDetailsSql($reservation, $room, $hotel, $serviceDates)
     {
+        // Generate hotel creation SQL if needed and get hotel reference
+        $hotelReference = $this->generateHotelSql($hotel);
+        
         $hotelDetailsData = [
             'task_id' => 'LAST_INSERT_ID()', // Reference to the task we just inserted
-            'hotel_id' => 'NULL',
+            'hotel_id' => $hotelReference,
             'booking_time' => isset($reservation['added']['time']) ? "'" . date('Y-m-d H:i:s', strtotime($reservation['added']['time'])) . "'" : 'NULL',
             'check_in' => isset($serviceDates['startDate']) ? "'" . date('Y-m-d H:i:s', strtotime($serviceDates['startDate'])) . "'" : 'NULL',
             'check_out' => isset($serviceDates['endDate']) ? "'" . date('Y-m-d H:i:s', strtotime($serviceDates['endDate'])) . "'" : 'NULL',
@@ -511,6 +537,112 @@ class getMagicHolidayReservationList extends Command
         $values = implode(', ', array_values($hotelDetailsData));
         
         return "INSERT INTO task_hotel_details ({$columns}) VALUES ({$values});\n";
+    }
+
+    /**
+     * Generate hotel SQL and return hotel reference for SQL generation
+     */
+    private function generateHotelSql($hotelData)
+    {
+        if (!$hotelData || !isset($hotelData['name'])) {
+            return 'NULL';
+        }
+
+        $hotelName = $hotelData['name'];
+        
+        // Check if we've already processed this hotel in current session
+        static $processedHotels = [];
+        
+        if (isset($processedHotels[$hotelName])) {
+            return $processedHotels[$hotelName];
+        }
+        
+        // Check if hotel exists in database
+        $existingHotel = Hotel::where('name', $hotelName)->first();
+        
+        if ($existingHotel) {
+            $processedHotels[$hotelName] = $existingHotel->id;
+            return $existingHotel->id;
+        }
+        
+        // Generate SQL for creating new hotel
+        $hotelSqlData = [
+            'name' => "'" . addslashes($hotelName) . "'",
+            'address' => isset($hotelData['address']) ? "'" . addslashes($hotelData['address']) . "'" : 'NULL',
+            'city' => isset($hotelData['city']['name']) ? "'" . addslashes($hotelData['city']['name']) . "'" : 'NULL',
+            'state' => isset($hotelData['state']) ? "'" . addslashes($hotelData['state']) . "'" : 'NULL',
+            'country' => isset($hotelData['country']['name']) ? "'" . addslashes($hotelData['country']['name']) . "'" : 'NULL',
+            'zip_code' => isset($hotelData['zip_code']) ? "'" . addslashes($hotelData['zip_code']) . "'" : 'NULL',
+            'phone' => isset($hotelData['phone']) ? "'" . addslashes($hotelData['phone']) . "'" : 'NULL',
+            'email' => isset($hotelData['email']) ? "'" . addslashes($hotelData['email']) . "'" : 'NULL',
+            'website' => isset($hotelData['website']) ? "'" . addslashes($hotelData['website']) . "'" : 'NULL',
+            'rating' => isset($hotelData['rating']) ? (int)$hotelData['rating'] : 'NULL',
+            'description' => isset($hotelData['description']) ? "'" . addslashes($hotelData['description']) . "'" : 'NULL',
+            'created_at' => "'" . now()->toDateTimeString() . "'",
+            'updated_at' => "'" . now()->toDateTimeString() . "'",
+        ];
+
+        $columns = implode(', ', array_keys($hotelSqlData));
+        $values = implode(', ', array_values($hotelSqlData));
+        
+        // Add hotel creation SQL to the main SQL content
+        $this->addHotelSql("INSERT INTO hotels ({$columns}) VALUES ({$values});\n");
+        
+        // Use a placeholder for the hotel_id that will be created
+        $hotelReference = "(SELECT id FROM hotels WHERE name = '" . addslashes($hotelName) . "' LIMIT 1)";
+        $processedHotels[$hotelName] = $hotelReference;
+        
+        return $hotelReference;
+    }
+
+    /**
+     * Add hotel SQL to a separate collection for prepending to main SQL
+     */
+    private function addHotelSql($sql)
+    {
+        static $hotelSqls = [];
+        
+        if (!in_array($sql, $hotelSqls)) {
+            $hotelSqls[] = $sql;
+            // Store in a property or handle differently based on your needs
+            $this->hotelCreationSqls[] = $sql;
+        }
+    }
+
+    /**
+     * Get existing hotel or create new one and return hotel_id (for non-SQL mode)
+     */
+    private function getOrCreateHotel($hotelData)
+    {
+        if (!$hotelData || !isset($hotelData['name'])) {
+            return null;
+        }
+
+        $hotelName = $hotelData['name'];
+        
+        // Try to find existing hotel by name
+        $existingHotel = Hotel::where('name', $hotelName)->first();
+        
+        if ($existingHotel) {
+            return $existingHotel->id;
+        }
+        
+        // Create new hotel if it doesn't exist
+        $newHotel = Hotel::create([
+            'name' => $hotelName,
+            'address' => $hotelData['address'] ?? null,
+            'city' => isset($hotelData['city']['name']) ? $hotelData['city']['name'] : null,
+            'state' => $hotelData['state'] ?? null,
+            'country' => isset($hotelData['country']['name']) ? $hotelData['country']['name'] : null,
+            'zip_code' => $hotelData['zip_code'] ?? null,
+            'phone' => $hotelData['phone'] ?? null,
+            'email' => $hotelData['email'] ?? null,
+            'website' => $hotelData['website'] ?? null,
+            'rating' => isset($hotelData['rating']) ? (int)$hotelData['rating'] : null,
+            'description' => $hotelData['description'] ?? null,
+        ]);
+        
+        return $newHotel->id;
     }
 
     /**

@@ -96,7 +96,7 @@
                                         {{ $entry->task ? $entry->task->client_name ?? '-' : '-' }}
                                     </td>
                                     <td class="py-2 px-4 text-left">
-                                         @if ($entry->task->type === 'flight')
+                                                @if ($entry->task && $entry->task->type === 'flight')
                                                     <div class="flex justify-between items-center gap-4 text-center text-sm">
                                                         <div class="flex flex-col items-center">
                                                             <span class="font-bold text-base">
@@ -116,7 +116,7 @@
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    @elseif ($entry->task->type === 'hotel')
+                                                @elseif ($entry->task && $entry->task->type === 'hotel')
                                                     <div class="flex items-start gap-2 text-sm text-left">
                                                         <div class="pt-1">
                                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -132,9 +132,9 @@
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    @else
+                                                @else
                                                     <div>{{ $entry->task->additional_info ?? '-' }}</div>
-                                                    @endif 
+                                                @endif 
                                     </td>
                                     <td class="py-2 px-4 text-center">
                                         {{ $entry->account->name }}

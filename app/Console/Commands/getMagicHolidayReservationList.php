@@ -47,8 +47,8 @@ class getMagicHolidayReservationList extends Command
             return 0;
         }
 
-        $fromDate = $this->option('from') ?? date('Y-m-d');
-        $toDate = $this->option('to') ?? null;
+        $fromDate = $this->option('from') ?? date('Y-m-d', strtotime('-1 day'));
+        $toDate = $this->option('to') ?? date('Y-m-d');
 
         $companies = Company::whereHas('suppliers', function ($query) {
             $query->where('name', 'Magic Holiday');

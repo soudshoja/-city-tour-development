@@ -19,6 +19,8 @@ use App\Models\Role;
 use App\Models\PasswordUpdateToken;
 use App\Mail\PasswordUpdateCode;
 use App\Models\JournalEntry;
+use App\Models\InvoiceDetail;
+use Carbon\Carbon;
 
 class ProfileController extends Controller
 {
@@ -55,12 +57,19 @@ class ProfileController extends Controller
                     break;
 
                 case Role::AGENT:
+                    $month = request('month') ? Carbon::parse(request('month'))->startOfMonth() : now()->startOfMonth();
                     $profile = Agent::where('user_id', $user->id)->first();
                     $phone = $profile?->phone_number; // different column name
-                    if ($profile) {
-                        $data = $this->getAgentCommissions($profile->id);
-                        $commissions = $data['commissions'];
-                        $totalCommission = $data['totalCommission'];
+                    $typeId = $profile?->type_id;
+                    
+                    if (in_array($typeId, [2, 3, 4])) {
+                        $commissionData = $this->getAgentCommissions($profile->id, $month);
+                        $commissions = $commissionData['commissions'];
+                        $totalCommission = $commissionData['totalCommission'];
+                    }
+                
+                    if (in_array($typeId, [1, 3, 4])) {
+                        $totalProfit = $this->getAgentProfit($profile->id, $month);
                     }
                     break;
 
@@ -75,6 +84,7 @@ class ProfileController extends Controller
             'userEmail' => $email,
             'commissions' => $commissions,
             'totalCommission' => $totalCommission,
+            'totalProfit' => $totalProfit,
         ]);
     }
 
@@ -262,19 +272,23 @@ class ProfileController extends Controller
     /**
      * Get agent commission
      */
-    private function getAgentCommissions($agentId)
+    private function getAgentCommissions($agentId, $month)
     {
+        $start = $month->copy()->startOfMonth();
+        $end = $month->copy()->endOfMonth();
+    
         $query = JournalEntry::with('invoice')
             ->leftJoin('invoice_details', function ($join) {
                 $join->on('journal_entries.invoice_id', '=', 'invoice_details.invoice_id')
-                     ->whereRaw('invoice_details.id = (
+                    ->whereRaw('invoice_details.id = (
                         SELECT MIN(id) FROM invoice_details 
                         WHERE invoice_details.invoice_id = journal_entries.invoice_id
-                     )');
+                    )');
             })
             ->join('invoices', 'journal_entries.invoice_id', '=', 'invoices.id')
             ->where('journal_entries.account_id', 43)
             ->where('invoices.agent_id', $agentId)
+            ->whereBetween('journal_entries.created_at', [$start, $end])
             ->select('journal_entries.*')
             ->orderBy('journal_entries.created_at', 'desc');
     
@@ -292,6 +306,7 @@ class ProfileController extends Controller
         $totalCommission = JournalEntry::join('invoices', 'journal_entries.invoice_id', '=', 'invoices.id')
             ->where('journal_entries.account_id', 43)
             ->where('invoices.agent_id', $agentId)
+            ->whereBetween('journal_entries.created_at', [$start, $end])
             ->sum('journal_entries.credit');
     
         return [
@@ -299,4 +314,12 @@ class ProfileController extends Controller
             'totalCommission' => $totalCommission,
         ];
     }
+
+    private function getAgentProfit($agentId, $month)
+    {
+        return InvoiceDetail::join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
+            ->where('invoices.agent_id', $agentId)
+            ->whereBetween('invoices.created_at', [$month->copy()->startOfMonth(), $month->copy()->endOfMonth()])
+            ->sum('invoice_details.markup_price');
+    }    
 }

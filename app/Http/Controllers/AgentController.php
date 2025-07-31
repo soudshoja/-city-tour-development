@@ -15,7 +15,9 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\AgentsImport;
 use App\Models\Account;
 use App\Models\AgentType;
+use App\Models\AgentMonthlyCommissions;
 use App\Models\Branch;
+use App\Models\Transaction;
 use App\Models\JournalEntry;
 use App\Models\Role;
 use App\Models\SupplierCompany;
@@ -89,9 +91,20 @@ class AgentController extends Controller
         }
 
         $month = request('month') ? Carbon::parse(request('month'))->startOfMonth() : now()->startOfMonth();
-        $monthlySummary = $this->calculateMonthlySummary($agent, $month);
-        $totalCommission = number_format($monthlySummary['commission'], 2);
-        $totalProfit = number_format($monthlySummary['profit'], 2);
+
+        $stored = AgentMonthlyCommissions::where('agent_id', $agent->id)
+            ->where('month', $month->month)
+            ->where('year', $month->year)
+            ->first();
+
+        if ($stored) {
+            $totalCommission = number_format($stored->total_commission, 2);
+            $totalProfit = number_format($stored->total_profit, 2);
+        } else {
+            $monthlySummary = $this->calculateMonthlySummary($agent, $month);
+            $totalCommission = number_format($monthlySummary['commission'], 2);
+            $totalProfit = number_format($monthlySummary['profit'], 2);
+        }
 
         $invoices = Invoice::with('invoiceDetails')->where('agent_id', $id)->whereBetween('created_at', [$month, $month->copy()->endOfMonth()])->paginate(4, ['*'], 'invoices');
 
@@ -100,13 +113,19 @@ class AgentController extends Controller
             $profit = 0;
 
             foreach ($invoice->invoiceDetails as $detail) {
-                $detail->commission = JournalEntry::where('invoice_detail_id', $detail->id)
-                    ->where('account_id', 43)
-                    ->sum('credit');
+                $markup = $detail->markup_price ?? 0;
+                $profit += $markup;
+                if ($agent->type_id == 2) {
+                    $detail->commission = JournalEntry::where('invoice_detail_id', $detail->id)
+                        ->where('account_id', 43)
+                        ->sum('credit');
+                } elseif ($agent->type_id == 3) {
+                    $detail->commission = $markup * $agent->commission;
+                } else {
+                    $detail->commission = 0;
+                }
                 $commission += $detail->commission;
-                $profit += $detail->markup_price ?? 0;
             }
-
             $invoice->profit = number_format($profit, 2);
             $invoice->commission = number_format($commission, 2);
         }
@@ -147,7 +166,7 @@ class AgentController extends Controller
         ));
     }
 
-    private function calculateMonthlySummary(Agent $agent, $month = null)
+    public function calculateMonthlySummary(Agent $agent, $month = null)
     {
         $commission = 0;
         $profit = 0;
@@ -166,12 +185,12 @@ class AgentController extends Controller
                 $profit += $markup;
 
                 if ($agent->type_id == 2) {
-                    $detail->commission += \App\Models\JournalEntry::where('invoice_detail_id', $detail->id)
+                    $detail->commission += JournalEntry::where('invoice_detail_id', $detail->id)
                         ->where('account_id', 43)
                         ->sum('credit');
                     $commission += $detail->commission;
                 } elseif ($agent->type_id == 3) {
-                    // Type 3 (Commission = markup * % + salary per detail)
+                    // Type 3 ((Commission = total profit * %) + salary)
                     $commission += ($markup * $agent->commission);
                 }
             }
@@ -211,12 +230,47 @@ class AgentController extends Controller
         $agent = Agent::find($id);
         $user = User::find($agent->user_id);
         try {
+            $oldSalary = $agent->salary;
             $agent->update($request->all());
             $user->update([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
             ]);
+
+            if ($request->salary != $oldSalary && $request->salary > 0) {
+                $companyId = $agent->branch->company_id;
+                $salaryExpenseAccount = Account::where('name', 'Agent Salaries')
+                ->where('company_id', $agent->branch->company_id)
+                ->first();
+
+                if ($salaryExpenseAccount) {
+                    $transaction = Transaction::create([
+                        'company_id' => $companyId,
+                        'branch_id' => $agent->branch_id,
+                        'entity_id' => $agent->id,
+                        'entity_type' => 'agent',
+                        'transaction_type' => 'debit',
+                        'amount' => $request->salary,
+                        'description' => 'Monthly salary adjustment for agent: ' . $agent->name,
+                        'reference_type' => 'Payment',
+                    ]);
+
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $agent->branch_id,
+                        'company_id' => $agent->branch->company_id,
+                        'account_id' => $salaryExpenseAccount->id,
+                        'transaction_date' => $transaction->created_at,
+                        'description' => 'Recorded updated salary expense for agent: ' . $agent->name,
+                        'debit' => $request->salary,
+                        'credit' => 0,
+                        'balance' => $salaryExpenseAccount->balance ?? 0,
+                        'name' => $salaryExpenseAccount->name,
+                        'type' => 'expense',
+                    ]);
+                }
+            }
             return redirect()->back()->with('success', 'Agent updated successfully');
         } catch (Exception $error) {
             logger('Failed to update agent: ' . $error->getMessage());

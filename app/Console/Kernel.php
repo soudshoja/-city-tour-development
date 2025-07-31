@@ -18,6 +18,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:sync-myfatoorah-methods')->twiceDaily(0, 12);
         $schedule->command('app:delete-expired-offers')->everyFifteenMinutes();
         $schedule->command('app:update-hotel-status')->everyFifteenMinutes();
+        $schedule->command('app:calculate-agent-commission')->monthlyOn(1, '00:10');
 
         // Countries - weekly full sync
         $schedule->command('mapping:sync countries --full')

@@ -377,7 +377,7 @@
                                                         <div><strong>Ticket Number:</strong> {{ $task->ticket_number ?? '-' }}</div>
                                                         <div><strong>Departure Time:</strong> {{ \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('d-m-Y H:i:s') }}</div>
                                                         <div><strong>Arrival Time:</strong> {{ \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('d-m-Y H:i:s') }}</div>
-                                                        <div><strong>Passenger:</strong> {{ $task->passenger_name }}</div>
+                                                        <div><strong>Passenger:</strong> {{ $task->passenger_name ?? '-' }}</div>
                                                     </div>
                                                 </div>
                                                 @endif

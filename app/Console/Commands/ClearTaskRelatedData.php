@@ -19,7 +19,10 @@ use Illuminate\Support\Facades\DB;
 
 class ClearTaskRelatedData extends Command
 {
-    protected $signature = 'tasks:clear-related-data {--force : Force the operation without confirmation} {--company= : Clear tasks for specific company (ID or name)} {--supplier= : Clear tasks for specific supplier (ID or name) - requires --company option}';
+    protected $signature = 'tasks:clear-related-data {--force : Force the operation without confirmation} 
+        {--company= : Clear tasks for specific company (ID or name)}
+        {--supplier= : Clear tasks for specific supplier (ID or name) - requires --company option}
+        {--no-invoice : Only delete tasks that have NOT been invoiced}';
 
     protected $description = 'Hard delete all data related to tasks (including soft deleted records) while preserving non-task related records. Use --supplier option only with --company option.';
 
@@ -165,6 +168,9 @@ class ClearTaskRelatedData extends Command
             }
             if ($supplierId) {
                 $taskQuery->where('supplier_id', $supplierId);
+            }
+            if ($this->option('no-invoice')) {
+                $taskQuery->whereDoesntHave('invoiceDetail');
             }
             $taskIds = $taskQuery->pluck('id')->toArray();
             
@@ -313,7 +319,7 @@ class ClearTaskRelatedData extends Command
                 }
             }
             //13. Clean up journal entry that have task id but the task somehow does not exist
-            $orphanedJournalEntries = JournalEntry::whereNotNull('task_id');
+            $orphanedJournalEntries = JournalEntry::whereNotNull('task_id')->whereDoesntHave('task');
             $orphanedJournalEntriesCount = $orphanedJournalEntries->count(); 
             if ($orphanedJournalEntriesCount > 0) {
                 $orphanedJournalEntries->delete();
@@ -323,7 +329,7 @@ class ClearTaskRelatedData extends Command
             }
 
             //13. Clean up journal entry that have task id but the task somehow does not exist
-            $orphanedJournalEntries = JournalEntry::whereNotNull('task_id');
+            $orphanedJournalEntries = JournalEntry::whereNotNull('task_id')->whereDoesntHave('task');
             $orphanedJournalEntriesCount = $orphanedJournalEntries->count(); 
             if ($orphanedJournalEntriesCount > 0) {
                 $orphanedJournalEntries->delete();

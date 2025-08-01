@@ -1,50 +1,73 @@
+@php
+    $typeId = optional($user->agent)->type_id;
+    $showProfit = in_array($typeId, [1, 3, 4]);
+    $showCommission = in_array($typeId, [2, 3, 4]);
+
+    $title = match($typeId) {
+        1 => 'Profit',
+        2 => 'Commission',
+        3,4 => 'Commission & Profit',
+        default => 'Commission & Profit'
+    };
+    $currentTab = request('tab', 'Commission');
+@endphp
 <section class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md text-gray-900 dark:text-gray-200">
-    <header class="flex justify-between items-center mb-4">
-        <div>
+    <header class="flex flex-col md:flex-row justify-between mb-4 gap-4">
+        <div class="flex-1">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ $user->name }}’s Commission
+                {{ $user->name }}’s {{ $title }}
             </h2>
-            <p class="text-sm text-gray-600 dark:text-gray-400">
-                Review your earned commissions along with details of the associated tasks.
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                Review your earned {{ strtolower($title) }} along with details of the associated tasks.
             </p>
+
+            <form method="GET" action="{{ route('profile.edit') }}" class="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="tab" value="Commission">
+                <label for="month" class="sr-only">Month</label>
+                <div class="flex items-center gap-1">
+                <input type="month" name="month" id="month" value="{{ request('month', now()->format('Y-m')) }}"
+                    class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-gray-900 dark:text-white">
+                <button type="submit" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm">
+                    Filter
+                </button>
+                @if(request()->has('month'))
+                    <a href="{{ route('profile.edit', ['tab' => 'Commission']) }}"
+                    class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded text-sm">
+                    Clear
+                    </a>
+                @endif
+                </div>
+            </form>
         </div>
-        <form method="GET" action="{{ route('profile.edit') }}" class="mb-4">
-            <label for="month" class="text-sm text-gray-700 dark:text-gray-300">Select Month:</label>
-            <input type="month" name="month" id="month" value="{{ request('month', now()->format('Y-m')) }}"
-                class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-gray-900 dark:text-white">
-            <button type="submit" class="ml-2 px-4 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm">
-                Filter
-            </button>
-        </form>
-        <div class="flex flex-col md:flex-row gap-2">
-            @if(optional($user->agent)->type_id === 2)
+
+        <div class="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+            @if($showCommission)
                 <div class="bg-green-100 text-green-800 font-bold px-4 py-2 rounded shadow text-sm">
-                    Total Commission: {{ number_format($totalCommission, 2) }} KWD
+                Total Commission: {{ $totalCommission }} KWD
                 </div>
-            @elseif(optional($user->agent)->type_id === 1)
+            @endif
+            @if($showProfit)
                 <div class="bg-blue-100 text-blue-800 font-bold px-4 py-2 rounded shadow text-sm">
-                    Total Profit: {{ number_format($totalProfit, 2) }} KWD
-                </div>
-            @elseif(in_array(optional($user->agent)->type_id, [3, 4]))
-                <div class="bg-green-100 text-green-800 font-bold px-4 py-2 rounded shadow text-sm">
-                    Total Commission: {{ number_format($totalCommission, 2) }} KWD
-                </div>
-                <div class="bg-blue-100 text-blue-800 font-bold px-4 py-2 rounded shadow text-sm">
-                    Total Profit: {{ number_format($totalProfit, 2) }} KWD
+                Total Profit: {{ $totalProfit }} KWD
                 </div>
             @endif
         </div>
     </header>
 
     @if($commissions->isEmpty())
-        <p class="text-gray-500 text-sm">No commission records found.</p>
+        <p class="text-gray-500 text-sm">No {{ lcfirst($title) }} records found.</p>
     @else
         <div class="overflow-x-auto" x-data="{ openRow: null }">
             <table class="min-w-full text-sm border border-gray-300 dark:border-gray-700">
                 <thead class="bg-gray-100 text-gray-700 dark:bg-gray-900 dark:text-gray-300">
                     <tr>
                         <th class="py-3 px-4 border-b text-center">Task Reference</th>
-                        <th class="py-3 px-4 border-b text-center">Amount (KWD)</th>
+                        @if($user->role_id == 4 && optional($user->agent)->type_id == 2 || optional($user->agent)->type_id == 3)
+                            <th class="py-3 px-4 border-b text-center">Commission (KWD)</th>
+                        @endif
+                        @if($user->role_id == 4 && optional($user->agent)->type_id != 2)
+                            <th class="py-3 px-4 border-b text-center">Profit (KWD)</th>
+                        @endif
                         <th class="py-3 px-4 border-b text-center">Description</th>
                         <th class="py-3 px-4 border-b text-center">Transaction Date</th>
                     </tr>
@@ -60,10 +83,30 @@
                         <tr class="cursor-pointer text-center"
                             :class="openRow === {{ $index }} ? 'bg-blue-50 hover:bg-gray-50 dark:bg-blue-900 hover:dark:bg-blue-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'" @click="openRow === {{ $index }} ? openRow = null : openRow = {{ $index }}">
                             <td class="py-3 px-4 border-b">{{ $task->reference ?? '-' }}</td>
-                            <td class="py-3 px-4 border-b text-green-700 font-semibold">
-                                {{ number_format($commission['credit'], 2) }}
-                            </td>
-                            <td class="py-3 px-4 border-b">{{ $entry->name }}</td>
+                            @if($user->role_id == 4 && optional($user->agent)->type_id == 2 || optional($user->agent)->type_id == 3)
+                                <td class="py-3 px-4 border-b text-green-700 font-semibold">
+                                    {{ number_format($commission['credit'], 2) }}
+                                </td>
+                            @endif
+                            @if($user->role_id == 4 && optional($user->agent)->type_id != 2)
+                                <td class="py-3 px-4 border-b text-blue-700 font-semibold">
+                                    {{ number_format($invoiceDetail->markup_price, 2) }}
+                                </td>
+                            @endif
+                            @php
+                                if ($task) {
+                                    if ($showCommission && ! $showProfit) {
+                                        $description = "Commission on Task {$task->reference}";
+                                    } elseif ($showProfit && ! $showCommission) {
+                                        $description = "Profit on Task {$task->reference}";
+                                    } else {
+                                        $description = "Commission & Profit for Task {$task->reference}";
+                                    }
+                                } else {
+                                    $description = $entry->name ?? '-';
+                                }
+                            @endphp
+                            <td class="py-3 px-4 border-b">{{ $description }}</td>
                             <td class="py-3 px-4 border-b">
                                 {{ \Carbon\Carbon::parse($entry->transaction_date)->format('d-m-Y H:i:s') }}
                             </td>

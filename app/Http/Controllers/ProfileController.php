@@ -15,12 +15,14 @@ use App\Models\Account;
 use App\Models\Company;
 use App\Models\Branch;
 use App\Models\Agent;
+use App\Models\AgentMonthlyCommissions;
 use App\Models\Role;
 use App\Models\PasswordUpdateToken;
 use App\Mail\PasswordUpdateCode;
 use App\Models\JournalEntry;
 use App\Models\InvoiceDetail;
 use Carbon\Carbon;
+use App\Http\Controllers\AgentController;
 
 class ProfileController extends Controller
 {
@@ -30,18 +32,13 @@ class ProfileController extends Controller
     public function edit(Request $request)
     {
         $user = $request->user();
+        $month = $request->input('month') ? Carbon::parse($request->input('month'))->startOfMonth() : now()->startOfMonth();
 
-        // Fetch the company_id based on the authenticated user
-        $company = Company::where('user_id', $user->id)->first();
-
-        // If the user doesn't have a company, handle this scenario
-        // if (!$company) {
-        //     return redirect()->route('home')->withErrors(['message' => 'No company associated with this user.']);
-        // }
         $phone = null;
         $email = $user->email;
         $commissions = collect();
         $totalCommission = 0;
+        $totalProfit = 0;
 
         // Check if user has a role and role has an id
         if ($user->role && $user->role->id) {
@@ -57,19 +54,37 @@ class ProfileController extends Controller
                     break;
 
                 case Role::AGENT:
-                    $month = request('month') ? Carbon::parse(request('month'))->startOfMonth() : now()->startOfMonth();
                     $profile = Agent::where('user_id', $user->id)->first();
                     $phone = $profile?->phone_number; // different column name
                     $typeId = $profile?->type_id;
                     
-                    if (in_array($typeId, [2, 3, 4])) {
-                        $commissionData = $this->getAgentCommissions($profile->id, $month);
-                        $commissions = $commissionData['commissions'];
-                        $totalCommission = $commissionData['totalCommission'];
+                    $stored = AgentMonthlyCommissions::where('agent_id', $profile->id)
+                    ->where('month', $month->month)
+                    ->where('year', $month->year)
+                    ->first();
+
+                    if ($stored) {
+                        if (in_array($typeId, [2, 3, 4])) {
+                            $totalCommission = number_format($stored->total_commission, 2);
+                        }
+                        if (in_array($typeId, [1, 3, 4])) {
+                            $totalProfit = number_format($stored->total_profit, 2);
+                        }
+                    } else {
+                        $summary = app(AgentController::class)->calculateMonthlySummary($profile, $month);
+
+                        if (in_array($typeId, [2, 3, 4])) {
+                            $totalCommission = number_format($summary['commission'], 2);
+                        }
+                        if (in_array($typeId, [1, 3, 4])) {
+                            $totalProfit = number_format($summary['profit'], 2);
+                        }
                     }
-                
-                    if (in_array($typeId, [1, 3, 4])) {
-                        $totalProfit = $this->getAgentProfit($profile->id, $month);
+
+                    $commissionData = $this->getAgentCommissions($profile->id, $month);
+                    $commissions = $commissionData['commissions'];
+                    if ($typeId == 2) {
+                        $totalCommission = number_format($commissionData['totalCommission'], 2);
                     }
                     break;
 
@@ -85,6 +100,7 @@ class ProfileController extends Controller
             'commissions' => $commissions,
             'totalCommission' => $totalCommission,
             'totalProfit' => $totalProfit,
+            'month' => $month,
         ]);
     }
 
@@ -276,8 +292,10 @@ class ProfileController extends Controller
     {
         $start = $month->copy()->startOfMonth();
         $end = $month->copy()->endOfMonth();
+
+        $agent = Agent::findOrFail($agentId);
     
-        $query = JournalEntry::with('invoice')
+        $query = JournalEntry::with('invoice.invoiceDetails')
             ->leftJoin('invoice_details', function ($join) {
                 $join->on('journal_entries.invoice_id', '=', 'invoice_details.invoice_id')
                     ->whereRaw('invoice_details.id = (
@@ -294,9 +312,22 @@ class ProfileController extends Controller
     
         $paginated = $query->paginate(5, ['*'], 'commission');
     
-        $mapped = $paginated->getCollection()->map(function ($entry) {
+        $mapped = $paginated->getCollection()->map(function ($entry) use ($agent) {
+            $commissionValue = $entry->credit;
+
+            if ($agent->type_id == 3) {
+                $markup = 0;
+                $detail = $entry->invoiceDetail;
+
+                if ($detail) {
+                    if (isset($detail->markup_price)) {
+                        $markup = $detail->markup_price;
+                    }
+                }
+                $commissionValue = $markup * $agent->commission;
+            }
             return [
-                'credit' => $entry->credit,
+                'credit' => $commissionValue,
                 'entry_id' => $entry->id,
             ];
         });
@@ -314,12 +345,4 @@ class ProfileController extends Controller
             'totalCommission' => $totalCommission,
         ];
     }
-
-    private function getAgentProfit($agentId, $month)
-    {
-        return InvoiceDetail::join('invoices', 'invoice_details.invoice_id', '=', 'invoices.id')
-            ->where('invoices.agent_id', $agentId)
-            ->whereBetween('invoices.created_at', [$month->copy()->startOfMonth(), $month->copy()->endOfMonth()])
-            ->sum('invoice_details.markup_price');
-    }    
 }

@@ -1,8 +1,8 @@
 <x-app-layout>
     <div class="max-w-6xl mx-auto px-6 py-8">
         <div class="text-center mb-8">
-            <h2 class="text-3xl font-bold text-gray-800">📊 Profit & Loss Report</h2>
-            <p class="text-sm text-gray-500 mt-1">View profit/loss graph and detailed list by selected month</p>
+            <h2 class="text-3xl font-bold text-gray-800">Profit & Loss Report</h2>
+            <p class="text-sm text-gray-500 mt-1">See the net profit/loss for the chosen month in the chart, with a detailed account breakdown below</p>
         </div>
 
         <div class="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
@@ -18,7 +18,17 @@
         </div>
 
         <div class="bg-white shadow rounded-lg p-6 mb-10">
-            <h3 class="text-lg font-semibold text-gray-700 mb-4">Net Profit / Loss ({{ \Carbon\Carbon::parse($month)->format('F Y') }})</h3>
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">📈 Yearly Profit / Loss Graph ({{ $year }})</h3>
+            <form method="GET" class="mb-4 flex flex-wrap items-center gap-2 text-sm">
+                <input type="hidden" name="month" value="{{ $month }}">
+                <label for="year" class="whitespace-nowrap font-medium text-gray-600">Filter Chart By Year:</label>
+                <select name="year" id="year" onchange="this.form.submit()"
+                    class="border rounded px-2 py-1 text-sm h-8 w-24 focus:outline-none focus:ring-1 focus:ring-blue-300">
+                    @foreach (range(now()->year - 5, now()->year) as $y)
+                        <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
+                    @endforeach
+                </select>
+            </form>
             <canvas id="profitLossChart" height="100"></canvas>
         </div>
 
@@ -104,16 +114,15 @@
             data: {
                 labels: @json($monthlyLabels),
                 datasets: [{
-                    label: 'Net Profit/Loss (KWD)',
+                    label: 'Monthly Net',
                     data: @json($monthlyProfits),
                     backgroundColor: @json($monthlyProfitsColors),
-                    borderRadius: 5
+                    borderRadius: 6
                 }]
             },
             options: {
-                indexAxis: 'y',
                 scales: {
-                    x: {
+                    y: {
                         beginAtZero: true,
                         ticks: {
                             callback: function (value) {
@@ -123,7 +132,15 @@
                     }
                 },
                 plugins: {
-                    legend: { display: false }
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                const value = context.parsed.y;
+                                return (value >= 0 ? 'Profit: ' : 'Loss: ') + Math.abs(value) + ' KWD';
+                            }
+                        }
+                    }
                 }
             }
         });

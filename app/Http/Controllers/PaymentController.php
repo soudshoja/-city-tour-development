@@ -67,16 +67,16 @@ class PaymentController extends Controller
         return view('payment.index', compact('invoice', 'invoiceDetails', 'transaction'));
     }
 
-    public function showPaymentPage()
-    {
-        $invoice = [
-            'number' => 'INV12345',
-            'amount' => 1000.00, // Example amount
-        ];
-        $paymentGateways = ['PayPal', 'Stripe', 'Bank Transfer'];
+    // public function showPaymentPage()
+    // {
+    //     $invoice = [
+    //         'number' => 'INV12345',
+    //         'amount' => 1000.00, // Example amount
+    //     ];
+    //     $paymentGateways = ['PayPal', 'Stripe', 'Bank Transfer'];
 
-        return view('payment.choose', compact('invoice', 'paymentGateways'));
-    }
+    //     return view('payment.choose', compact('invoice', 'paymentGateways'));
+    // }
 
     public function create($invoiceNumber, Request $request)
     {

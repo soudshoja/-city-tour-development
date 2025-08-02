@@ -27,7 +27,8 @@ class SystemExchangeRate extends Model
 
     public function setExchangeRateAttribute($value)
     { 
-        $this->attributes['exchange_rate'] = (string) $value;
+        // Round to 6 decimal places to match database precision
+        $this->attributes['exchange_rate'] = round((float) $value, 6);
     }
 
     public function getExchangeRateAttribute($value)

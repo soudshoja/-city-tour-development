@@ -94,78 +94,192 @@ class SupplierCompanyController extends Controller
                 ]);
             }
 
-            $parentAccountName = $supplier->has_flight
-                ? 'Suppliers (Flights)'
-                : ($supplier->has_hotel ? 'Suppliers (Hotels)' : 'Accounts Payable');
-
-            $accountPayable = Account::where([
-                'name' => $parentAccountName,
-                'company_id' => $company->id,
-            ])->first();
-
-            if (!$accountPayable) {
-                throw new Exception("Account Payable group '$parentAccountName' not found.");
-            }
-
-            $supplierCostAccount = collect();
-
-            if ($supplier->has_flight) {
-                $supplierCostAccount = Account::where([
-                    'name' => 'Flights Cost',
-                    'company_id' => $company->id,
-                ])->first();
-            } else if ($supplier->has_hotel) {
-                $supplierCostAccount = Account::where([
-                    'name' => 'Hotels Cost',
-                    'company_id' => $company->id,
-                ])->first();
-            } else {
-                throw new Exception('Supplier is not a flight or hotel supplier.');
-            }
-
-            if (!$supplierCostAccount) {
-                throw new Exception("Supplier cost account not found.");
-            }
-
-            SupplierCompany::firstOrCreate([
-                'supplier_id' => $supplier->id,
-                'company_id' => $company->id,
-                'is_active' => true,
-            ]);
-
-
-            $supplierCompany = SupplierCompany::where('supplier_id', $supplier->id)
-                ->where('company_id', $company->id)
-                ->first();
-
-            $data = [
-                'name' => $supplier->name,
-                'level' => 4,
-                'actual_balance' => 0,
-                'budget_balance' => 0,
-                'variance' => 0,
-                'company_id' => $company->id,
-                'supplier_company_id' => $supplierCompany->id,
+            $types = [
+                'has_flight' => ['payable' => 'Suppliers (Flights)', 'cost' => 'Flights Cost'],
+                'has_hotel' => ['payable' => 'Suppliers (Hotels)', 'cost' => 'Hotels Cost'],
+                'has_visa' => ['payable' => 'Suppliers (Visas)', 'cost' => 'Visa Cost'],
+                'has_insurance' => ['payable' => 'Suppliers (Insurance)', 'cost' => 'Insurance Cost'],
+                'has_tour' => ['payable' => 'Suppliers (Tour)', 'cost' => 'Tour Cost'],
+                'has_cruise' => ['payable' => 'Suppliers (Cruise)', 'cost' => 'Cruise Cost'],
+                'has_car' => ['payable' => 'Suppliers (Car)', 'cost' => 'Car Cost'],
+                'has_rail' => ['payable' => 'Suppliers (Rail)', 'cost' => 'Rail Cost'],
+                'has_esim' => ['payable' => 'Suppliers (Esim)', 'cost' => 'Esim Cost'],
+                'has_event' => ['payable' => 'Suppliers (Event)', 'cost' => 'Event Cost'],
+                'has_lounge' => ['payable' => 'Suppliers (Lounge)', 'cost' => 'Lounge Cost'],
+                'has_ferry' => ['payable' => 'Suppliers (Ferry)', 'cost' => 'Ferry Cost'],
             ];
 
+            $hasAtLeastOne = false;
 
-            $accountPayableCode = (int)$accountPayable->code + 1;
+            foreach ($types as $field => $accounts) {
+                if (!$supplier->$field) {
+                    continue;
+                }
 
-            Account::create(
-                $data + [
+                $hasAtLeastOne = true;
+
+                $accountPayable = Account::where('name', $accounts['payable'])
+                    ->where('company_id', $company->id)
+                    ->first();
+
+                if (!$accountPayable) {
+                    throw new \Exception("Account Payable group '{$accounts['payable']}' not found.");
+                }
+
+                $costAccount = Account::where('name', $accounts['cost'])
+                    ->where('company_id', $company->id)
+                    ->first();
+
+                if (!$costAccount) {
+                    throw new \Exception("Supplier cost account '{$accounts['cost']}' not found.");
+                }
+
+                $supplierCompany = SupplierCompany::firstOrCreate([
+                    'supplier_id' => $supplier->id,
+                    'company_id' => $company->id,
+                    'is_active' => true,
+                ]);
+
+                $data = [
+                    'name' => $supplier->name,
+                    'level' => 4,
+                    'actual_balance' => 0,
+                    'budget_balance' => 0,
+                    'variance' => 0,
+                    'company_id' => $company->id,
+                    'supplier_company_id' => $supplierCompany->id,
+                ];
+
+                // Generate unique code under each account
+                $newPayableCode = (int)$accountPayable->code + 1;
+                $newCostCode = (int)$costAccount->code + 1;
+
+                Account::create($data + [
                     'parent_id' => $accountPayable->id,
                     'root_id' => $accountPayable->root_id,
-                    'code' => (string)$accountPayableCode,
-                ]
-            );
+                    'code' => (string)$newPayableCode,
+                ]);
 
-            Account::create(
-                $data + [
-                    'parent_id' => $supplierCostAccount->id,
-                    'root_id' => $supplierCostAccount->root_id,
-                    'code' => (string)$supplierCostAccount->code,
-                ]
-            );
+                Account::create($data + [
+                    'parent_id' => $costAccount->id,
+                    'root_id' => $costAccount->root_id,
+                    'code' => (string)$newCostCode,
+                ]);
+            }
+
+            if (!$hasAtLeastOne) {
+                throw new \Exception('Supplier must have at least one category checked.');
+            }
+
+            // $parentAccountName = $supplier->has_flight
+            //     ? 'Suppliers (Flights)'
+            //     : ($supplier->has_hotel
+            //         ? 'Suppliers (Hotels)'
+            //         : ($supplier->has_visa
+            //             ? 'Suppliers (Visas)'
+            //             : ($supplier->has_insurance
+            //                 ? 'Suppliers (Insurance)'
+            //                 : ($supplier->has_tour
+            //                     ? 'Suppliers (Tour)'
+            //                     : ($supplier->has_cruise
+            //                         ? 'Suppliers (Cruise)'
+            //                         : ($supplier->has_car
+            //                             ? 'Suppliers (Car)'
+            //                             : ($supplier->has_rail
+            //                                 ? 'Suppliers (Rail)'
+            //                                 : ($supplier->has_esim
+            //                                     ? 'Suppliers (Esim)'
+            //                                     : ($supplier->has_event
+            //                                         ? 'Suppliers (Event)'
+            //                                         : ($supplier->has_lounge
+            //                                             ? 'Suppliers (Lounge)'
+            //                                             : ($supplier->has_ferry
+            //                                                 ? 'Suppliers (Ferry)'
+            //                                                 : 'Accounts Payable')))))))))));
+
+            // $accountPayable = Account::where([
+            //     'name' => $parentAccountName,
+            //     'company_id' => $company->id,
+            // ])->first();
+
+            // if (!$accountPayable) {
+            //     throw new Exception("Account Payable group '$parentAccountName' not found.");
+            // }
+
+            // $supplierCostAccount = collect();
+
+            // if ($supplier->has_flight) {
+            //     $supplierCostAccount = Account::where('name', 'Flights Cost')->where('company_id', $company->id)->first();
+            // } elseif ($supplier->has_hotel) {
+            //     $supplierCostAccount = Account::where('name', 'Hotels Cost')->where('company_id', $company->id)->first();
+            // } elseif ($supplier->has_visa) {
+            //     $supplierCostAccount = Account::where('name', 'Visa Cost')->where('company_id', $company->id)->first();
+            // } elseif ($supplier->has_insurance) {
+            //     $supplierCostAccount = Account::where('name', 'Insurance Cost')->where('company_id', $company->id)->first();
+            // } elseif ($supplier->has_tour) {
+            //     $supplierCostAccount = Account::where('name', 'Tour Cost')->where('company_id', $company->id)->first();
+            // } elseif ($supplier->has_cruise) {
+            //     $supplierCostAccount = Account::where('name', 'Cruise Cost')->where('company_id', $company->id)->first();
+            // } elseif ($supplier->has_car) {
+            //     $supplierCostAccount = Account::where('name', 'Car Cost')->where('company_id', $company->id)->first();
+            // } elseif ($supplier->has_rail) {
+            //     $supplierCostAccount = Account::where('name', 'Rail Cost')->where('company_id', $company->id)->first();
+            // } elseif ($supplier->has_esim) {
+            //     $supplierCostAccount = Account::where('name', 'Esim Cost')->where('company_id', $company->id)->first();
+            // } elseif ($supplier->has_event) {
+            //     $supplierCostAccount = Account::where('name', 'Event Cost')->where('company_id', $company->id)->first();
+            // } elseif ($supplier->has_lounge) {
+            //     $supplierCostAccount = Account::where('name', 'Lounge Cost')->where('company_id', $company->id)->first();
+            // } elseif ($supplier->has_ferry) {
+            //     $supplierCostAccount = Account::where('name', 'Ferry Cost')->where('company_id', $company->id)->first();
+            // } else {
+            //     throw new \Exception('Supplier is not a flight, hotel, visa, insurance, or supported type.');
+            // }
+
+
+            // if (!$supplierCostAccount) {
+            //     throw new Exception("Supplier cost account not found.");
+            // }
+
+            // SupplierCompany::firstOrCreate([
+            //     'supplier_id' => $supplier->id,
+            //     'company_id' => $company->id,
+            //     'is_active' => true,
+            // ]);
+
+
+            // $supplierCompany = SupplierCompany::where('supplier_id', $supplier->id)
+            //     ->where('company_id', $company->id)
+            //     ->first();
+
+            // $data = [
+            //     'name' => $supplier->name,
+            //     'level' => 4,
+            //     'actual_balance' => 0,
+            //     'budget_balance' => 0,
+            //     'variance' => 0,
+            //     'company_id' => $company->id,
+            //     'supplier_company_id' => $supplierCompany->id,
+            // ];
+
+
+            // $accountPayableCode = (int)$accountPayable->code + 1;
+
+            // Account::create(
+            //     $data + [
+            //         'parent_id' => $accountPayable->id,
+            //         'root_id' => $accountPayable->root_id,
+            //         'code' => (string)$accountPayableCode,
+            //     ]
+            // );
+
+            // Account::create(
+            //     $data + [
+            //         'parent_id' => $supplierCostAccount->id,
+            //         'root_id' => $supplierCostAccount->root_id,
+            //         'code' => (string)$supplierCostAccount->code,
+            //     ]
+            // );
 
             // $account = Account::create([
             //     'name' => $supplier->name,

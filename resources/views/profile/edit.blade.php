@@ -36,8 +36,13 @@
                     ['label' => 'Change Password', 'value' => 'Security', 'icon' => 'shield'],
                 ];
 
-                if($user->role_id == 4 && optional($user->agent)->type_id != 1) {
-                    $tabs[] = ['label' => 'Commission', 'value' => 'Commission', 'icon' => 'hand-money'];
+                $typeId = optional($user->agent)->type_id;
+                if ($user->role_id == 4 && $typeId) {
+                    if (in_array($typeId, [1, 2])) {
+                        $tabs[] = ['label' => $typeId == 1 ? 'Profit' : 'Commission', 'value' => 'Commission', 'icon' => 'hand-money'];
+                    } elseif (in_array($typeId, [3, 4])) {
+                        $tabs[] = ['label' => 'Commission & Profit', 'value' => 'Commission', 'icon' => 'hand-money'];
+                    }
                 }
 
                 $tabs = array_merge($tabs, [

@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use App\Models\Agent;
 use App\Http\Controllers\AgentController;
 use App\Models\AgentMonthlyCommissions;
+use Carbon\Carbon;
 
 class ProcessAgentCommission extends Command
 {
@@ -28,7 +29,7 @@ class ProcessAgentCommission extends Command
      */
     public function handle()
     {
-        $month = now()->subMonth()->startOfMonth();
+        $month = Carbon::createFromDate(date('Y'), date('m'), 1)->subMonth();
         $agents = Agent::whereIn('type_id', [3, 4])->get();
 
         foreach ($agents as $agent) {

@@ -7,6 +7,7 @@
                 <p class="text-center text-sm mb-8 w-3/4 max-w-sm">We're excited to have you onboard...</p>
                 <form id="adminForm" method="POST" action="{{ route('register.admin') }}" class="w-full flex flex-col items-center">
                     @csrf
+                    {!! RecaptchaV3::field('register') !!}
                     <!-- Name -->
                     <div class="relative text-white-dark mb-4 w-3/4 max-w-sm">
                         <input id="name" name="name" type="text" placeholder="Your Name"

@@ -31,7 +31,7 @@
 
                 <form method="POST" action="{{ route('login') }}" class="w-full flex flex-col items-center">
                     @csrf
-
+                    {!! RecaptchaV3::field('login') !!}
                     <!-- Email -->
                     <div class="relative text-white-dark mb-2 w-3/4 max-w-sm">
                         <input id="email" type="email" name="email" placeholder="Your Email"

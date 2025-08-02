@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Lunaweb\RecaptchaV3\Facades\RecaptchaV3;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
@@ -23,11 +24,17 @@ class RegistrationTest extends TestCase
         // Fake mail to prevent actual email sending
         Mail::fake();
 
+        // Mock the RecaptchaV3 facade to return a high score
+        RecaptchaV3::shouldReceive('verify')
+            ->once()
+            ->andReturn(1.0);
+
         $response = $this->post(route('register.admin'), [
             'name' => 'Test User',
             'email' => 'test@example.com', // example.com is in allowed domains
             'password' => 'password',
             'password_confirmation' => 'password',
+            'g-recaptcha-response' => 'test-token',
         ]);
 
         // Since storeAdmin redirects to login, not dashboard, and doesn't auto-authenticate
@@ -47,11 +54,17 @@ class RegistrationTest extends TestCase
         // Fake mail to prevent actual email sending
         Mail::fake();
 
+        // Mock the RecaptchaV3 facade to return a high score
+        RecaptchaV3::shouldReceive('verify')
+            ->once()
+            ->andReturn(1.0);
+
         $response = $this->post(route('register.admin'), [
             'name' => 'Test User',
             'email' => 'test@invalid-domain.com', // Not in allowed domains
             'password' => 'password',
             'password_confirmation' => 'password',
+            'g-recaptcha-response' => 'test-token',
         ]);
 
         $response->assertSessionHasErrors(['email' => 'The email domain is not allowed for admin registration.']);
@@ -71,11 +84,17 @@ class RegistrationTest extends TestCase
             // Fake mail to prevent actual email sending
             Mail::fake();
 
+            // Mock the RecaptchaV3 facade to return a high score
+            RecaptchaV3::shouldReceive('verify')
+                ->once()
+                ->andReturn(1.0);
+
             $response = $this->post(route('register.admin'), [
                 'name' => "Test User {$index}",
                 'email' => "test{$index}@{$domain}",
                 'password' => 'password',
                 'password_confirmation' => 'password',
+                'g-recaptcha-response' => 'test-token',
             ]);
 
             $response->assertRedirect(route('login'));
@@ -94,11 +113,17 @@ class RegistrationTest extends TestCase
         // Fake mail to prevent actual email sending
         Mail::fake();
 
+        // Mock the RecaptchaV3 facade to return a high score
+        RecaptchaV3::shouldReceive('verify')
+            ->once()
+            ->andReturn(1.0);
+
         $response = $this->post(route('register.admin'), [
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'different-password', // Mismatched confirmation
+            'g-recaptcha-response' => 'test-token',
         ]);
 
         $response->assertSessionHasErrors(['password']);
@@ -114,15 +139,26 @@ class RegistrationTest extends TestCase
         // Fake mail to prevent actual email sending
         Mail::fake();
 
+        // Mock the RecaptchaV3 facade to return a high score for first registration
+        RecaptchaV3::shouldReceive('verify')
+            ->once()
+            ->andReturn(1.0);
+
         // Create a user first
         $response1 = $this->post(route('register.admin'), [
             'name' => 'First User',
             'email' => 'duplicate@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'g-recaptcha-response' => 'test-token',
         ]);
 
         $response1->assertRedirect(route('login'));
+
+        // Mock the RecaptchaV3 facade to return a high score for second registration attempt
+        RecaptchaV3::shouldReceive('verify')
+            ->once()
+            ->andReturn(1.0);
 
         // Try to register with same email
         $response2 = $this->post(route('register.admin'), [
@@ -130,6 +166,7 @@ class RegistrationTest extends TestCase
             'email' => 'duplicate@example.com', // Same email
             'password' => 'password',
             'password_confirmation' => 'password',
+            'g-recaptcha-response' => 'test-token',
         ]);
 
         $response2->assertSessionHasErrors(['email']);

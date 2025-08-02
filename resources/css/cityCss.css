@@ -1272,3 +1272,9 @@ select::-moz-focus-inner {
 }
 
 /** select2 **/
+
+/* recaptcha */
+
+.grecaptcha-badge {
+    visibility: hidden !important;
+}

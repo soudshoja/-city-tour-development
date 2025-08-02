@@ -12,6 +12,7 @@
         "google/cloud-vision": "^1.10",
         "guzzlehttp/guzzle": "^7.9",
         "intervention/image": "^3.10",
+        "josiasmontag/laravel-recaptchav3": "^1.0",
         "laravel/breeze": "^2.1",
         "laravel/framework": "^11.9",
         "laravel/tinker": "^2.9",

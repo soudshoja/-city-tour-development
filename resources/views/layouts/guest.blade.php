@@ -24,6 +24,9 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/css/cityCss.css'])
+
+    {!! RecaptchaV3::initJs() !!}
+
 </head>
 
 <body>

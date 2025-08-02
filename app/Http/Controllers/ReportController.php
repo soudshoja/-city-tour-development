@@ -212,6 +212,118 @@ class ReportController extends Controller
         ]);
     }
 
+    public function profitLoss(Request $request)
+    {
+        $month = $request->input('month', now()->format('Y-m'));
+        $year = $request->input('year', now()->format('Y'));
+        $from = \Carbon\Carbon::parse($month)->startOfMonth();
+        $to = \Carbon\Carbon::parse($month)->endOfMonth();
+
+        $level3Accounts = Account::where('report_type', Account::REPORT_TYPES['PROFIT_LOSS'])
+            ->where('level', 3)
+            ->get()
+            ->sortBy('code');
+
+        $allAccounts = Account::all();
+
+        $journalEntries = JournalEntry::whereBetween('created_at', [$from, $to])->get();
+
+        $grouped = [];
+
+        foreach ($level3Accounts as $parent) {
+            $descendants = $this->getAllDescendants($parent->id, $allAccounts);
+            $totalAmount = 0;
+            $childRows = [];
+
+            foreach ($descendants as $child) {
+                $childAmount = $journalEntries
+                    ->where('account_id', $child->id)
+                    ->sum(fn($j) => $j->credit - $j->debit);
+                $totalAmount += $childAmount;
+
+                $childRows[] = [
+                    'account' => $child,
+                    'amount' => $childAmount,
+                ];
+            }
+
+            $parentAmount = $journalEntries
+                ->where('account_id', $parent->id)
+                ->sum(fn($j) => $j->credit - $j->debit);
+            $totalAmount += $parentAmount;
+
+            $grouped[$parent->id] = [
+                'account' => $parent,
+                'amount' => $totalAmount,
+                'children' => $childRows,
+            ];
+        }
+
+        $incomeAccounts = collect($grouped)->filter(fn($item) => str_starts_with($item['account']->code, '4'));
+        $expenseAccounts = collect($grouped)->filter(fn($item) => str_starts_with($item['account']->code, '5'));
+
+        $totalIncome = $incomeAccounts->sum('amount');
+        $totalExpense = $expenseAccounts->sum(fn($a) => abs($a['amount']));
+        $net = $totalIncome - $totalExpense;
+
+        $monthlyLabels = [];
+        $monthlyProfits = [];
+        $monthlyProfitsColors = [];
+
+        foreach (range(1, 12) as $m) {
+            $start = \Carbon\Carbon::createFromDate($year, $m, 1)->startOfMonth();
+            $end = \Carbon\Carbon::createFromDate($year, $m, 1)->endOfMonth();
+            $entries = JournalEntry::whereBetween('created_at', [$start, $end])->get();
+
+            $income = 0;
+            $expense = 0;
+
+            foreach ($level3Accounts as $parent) {
+                $descendants = $this->getAllDescendants($parent->id, $allAccounts);
+                $total = 0;
+
+                foreach ($descendants as $child) {
+                    $amount = $entries->where('account_id', $child->id)->sum(fn($j) => $j->credit - $j->debit);
+                    $total += $amount;
+                }
+
+                $amount = $entries->where('account_id', $parent->id)->sum(fn($j) => $j->credit - $j->debit);
+                $total += $amount;
+
+                if (str_starts_with($parent->code, '4')) $income += $total;
+                if (str_starts_with($parent->code, '5')) $expense += abs($total);
+            }
+
+            $monthlyLabels[] = $start->format('M');
+            $profit = $income - $expense;
+            $monthlyProfits[] = round($profit, 2);
+            $monthlyProfitsColors[] = $profit >= 0 ? '#16a34a' : '#dc2626';
+        }
+
+        return view('reports.profit-loss', compact(
+            'month',
+            'year',
+            'monthlyLabels',
+            'monthlyProfits',
+            'monthlyProfitsColors',
+            'incomeAccounts',
+            'expenseAccounts',
+        ));
+    }
+    
+    private function getAllDescendants($parentId, $allAccounts)
+    {
+        $children = $allAccounts->where('parent_id', $parentId);
+        $descendants = collect();
+
+        foreach ($children as $child) {
+            $descendants->push($child);
+            $descendants = $descendants->merge($this->getAllDescendants($child->id, $allAccounts));
+        }
+
+        return $descendants;
+    }
+
     public function accsummary()
     {
 

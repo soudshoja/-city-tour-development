@@ -201,7 +201,7 @@ class AgentController extends Controller
             $commission = (($profit - $agent->salary) * $agent->commission) + $agent->salary;
         } elseif ($agent->type_id == 4) {
             $commission = 0.00;
-        } elseif ($agent->type_id == 3) {
+        } elseif ($agent->type_id == 3 && $profit != 0) {
             $commission += $agent->salary;
         }
 

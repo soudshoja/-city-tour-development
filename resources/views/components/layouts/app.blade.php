@@ -17,6 +17,8 @@
     @livewireStyles
     <script src="{{ asset('js/nice-select2.js') }}"></script>
     <!-- Scripts -->
+
+    {!! RecaptchaV3::initJs() !!}
 </head>
 
 <body>

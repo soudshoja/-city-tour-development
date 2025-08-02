@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Lunaweb\RecaptchaV3\Facades\RecaptchaV3;
 
 class LoginRequest extends FormRequest
 {
@@ -29,6 +30,20 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
+            'g-recaptcha-response' => ['required', 'recaptchav3:login,0.8'],
+        ];
+    }
+
+    /**
+     * Get the validation error messages.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'g-recaptcha-response.required' => 'Please complete the reCAPTCHA verification.',
+            'g-recaptcha-response.recaptchav3' => "The system detected suspicious activity. Please try again.",
         ];
     }
 

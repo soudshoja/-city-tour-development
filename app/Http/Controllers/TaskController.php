@@ -242,7 +242,7 @@ class TaskController extends Controller
 
         $supplierName = Supplier::where('id', $request->supplier_id)->value('name');
 
-        if(strtolower($supplierName) == 'jazeera airways' || strtolower($supplierName) == 'fly dubai') {
+        if(strtolower($supplierName) == 'jazeera airways' || strtolower($supplierName) == 'fly dubai' || strtolower($supplierName) == 'vfs') {
             if ($request->status == 'confirmed') {
                 $status = 'issued';
             } elseif ($request->status == 'on hold') {
@@ -451,7 +451,7 @@ class TaskController extends Controller
 
         Log::info('Supplier Payable Account: ', ['account' => $supplierPayable]);
 
-        if ($task->type == 'flight') {
+        if (in_array($task->type, ['flight', 'visa'])) {
             Log::info('Processing flight task financial for: ' . $task->reference);
             $companyIssuedBy = $task->issued_by ?? 'Not Issued';
             
@@ -731,7 +731,7 @@ class TaskController extends Controller
         $issuedByAccount = null;
         $payableAccountToUse = $supplierPayable;
 
-        if ($task->type == 'flight') {
+        if ($task->type == 'flight' ) {
             Log::info('Processing flight refund task financial for: ' . $task->reference);
             $companyIssuedBy = $task->issued_by ?? 'Not Issued';
             

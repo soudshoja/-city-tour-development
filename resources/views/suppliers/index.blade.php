@@ -77,26 +77,69 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="flex items-center mb-2">
+                  <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 mb-4">
+                    <div class="flex items-center">
                         <input type="checkbox" name="has_hotel" id="has_hotel"
                             class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
                         <label for="has_hotel" class="ml-2 text-sm text-gray-700">Has Hotel</label>
                     </div>
-                    <div class="flex items-center mb-2">
+                    <div class="flex items-center">
                         <input type="checkbox" name="has_flight" id="has_flight"
                             class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
                         <label for="has_flight" class="ml-2 text-sm text-gray-700">Has Flight</label>
                     </div>
-                    <div class="flex items-center mb-2">
+                    <div class="flex items-center">
                         <input type="checkbox" name="has_visa" id="has_visa"
                             class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
                         <label for="has_visa" class="ml-2 text-sm text-gray-700">Has Visa</label>
                     </div>
-                    <div class="flex items-center mb-2">
+                    <div class="flex items-center">
                         <input type="checkbox" name="has_insurance" id="has_insurance"
                             class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
                         <label for="has_insurance" class="ml-2 text-sm text-gray-700">Has Insurance</label>
                     </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="has_tour" id="has_tour"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                        <label for="has_tour" class="ml-2 text-sm text-gray-700">Has Tour</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="has_cruise" id="has_cruise"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                        <label for="has_cruise" class="ml-2 text-sm text-gray-700">Has Cruise</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="has_car" id="has_car"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                        <label for="has_car" class="ml-2 text-sm text-gray-700">Has Car</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="has_rail" id="has_rail"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                        <label for="has_rail" class="ml-2 text-sm text-gray-700">Has Rail</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="has_esim" id="has_esim"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                        <label for="has_esim" class="ml-2 text-sm text-gray-700">Has Esim</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="has_event" id="has_event"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                        <label for="has_event" class="ml-2 text-sm text-gray-700">Has Event</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="has_lounge" id="has_lounge"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                        <label for="has_lounge" class="ml-2 text-sm text-gray-700">Has Lounge</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" name="has_ferry" id="has_ferry"
+                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                        <label for="has_ferry" class="ml-2 text-sm text-gray-700">Has Ferry</label>
+                    </div>
+                </div>
+
                     <div>
                         <x-searchable-dropdown
                             name="country_id"
@@ -206,6 +249,37 @@
                                          <input type="checkbox" name="has_insurance" id="has_insurance" {{ $supplier->has_insurance ? 'checked' : '' }}
                                             class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
                                         <label for="has_insurance" class="ml-2 text-sm text-gray-700">Has Insurance</label>
+                                        <input type="checkbox" name="has_tour" id="has_tour" {{ $supplier->has_tour ? 'checked' : '' }}
+                                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                        <label for="has_tour" class="ml-2 text-sm text-gray-700">Has Tour</label>
+
+                                        <input type="checkbox" name="has_cruise" id="has_cruise" {{ $supplier->has_cruise ? 'checked' : '' }}
+                                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                        <label for="has_cruise" class="ml-2 text-sm text-gray-700">Has Cruise</label>
+
+                                        <input type="checkbox" name="has_car" id="has_car" {{ $supplier->has_car ? 'checked' : '' }}
+                                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                        <label for="has_car" class="ml-2 text-sm text-gray-700">Has Car</label>
+
+                                        <input type="checkbox" name="has_rail" id="has_rail" {{ $supplier->has_rail ? 'checked' : '' }}
+                                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                        <label for="has_rail" class="ml-2 text-sm text-gray-700">Has Rail</label>
+
+                                        <input type="checkbox" name="has_esim" id="has_esim" {{ $supplier->has_esim ? 'checked' : '' }}
+                                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                        <label for="has_esim" class="ml-2 text-sm text-gray-700">Has Esim</label>
+
+                                        <input type="checkbox" name="has_event" id="has_event" {{ $supplier->has_event ? 'checked' : '' }}
+                                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                        <label for="has_event" class="ml-2 text-sm text-gray-700">Has Event</label>
+
+                                        <input type="checkbox" name="has_lounge" id="has_lounge" {{ $supplier->has_lounge ? 'checked' : '' }}
+                                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                        <label for="has_lounge" class="ml-2 text-sm text-gray-700">Has Lounge</label>
+
+                                        <input type="checkbox" name="has_ferry" id="has_ferry" {{ $supplier->has_ferry ? 'checked' : '' }}
+                                            class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                        <label for="has_ferry" class="ml-2 text-sm text-gray-700">Has Ferry</label>
                                     </div>
                                     <div>
                                         <x-searchable-dropdown

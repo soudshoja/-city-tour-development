@@ -37,6 +37,8 @@ class JournalEntry extends Model
         'reconciled',
         'reconciled_ref_id',
         'task_id',
+        'original_currency',
+        'original_amount',
     ];
 
     protected static function booted()

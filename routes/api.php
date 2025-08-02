@@ -38,7 +38,8 @@ use App\Http\Controllers\PaymentController;
         Route::get('/transaction/{agentId}', [MobileController::class, 'getTransactionByAgentId']);
 
         Route::post('payment/webhook-fatoorah', [PaymentController::class, 'handleWebhookFatoorah']);
-
+        Route::post('payment/importfatoorah', [PaymentController::class, 'importPaidFatoorah'])->name('importfatoorah');
+        
         Route::get('/clients', [MobileController::class, 'client']);  
         Route::get('/clients/{agentId}', [MobileController::class, 'getClientByAgentId']);
 

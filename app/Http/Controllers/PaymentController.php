@@ -43,6 +43,7 @@ use Google\Rpc\Context\AttributeContext\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Arr;
 
 class PaymentController extends Controller
 {
@@ -937,6 +938,70 @@ class PaymentController extends Controller
         return view('clients.response', ['status' => 'success', 'message' => 'Payment successful!']);
     }
 
+    public function importPaidFatoorah(Request $request)
+{
+    Log::info('Starting to import MyFatoorah payment from portal');
+
+    $paymentId = $request->input('import_payment_id');
+    if (!$paymentId) {
+        return redirect()->back()->with('error', 'heh lemah, payment ID is required for import la wehhh');
+    }
+
+    $apiKey = config('services.myfatoorah.api_key');
+    $baseUrl = config('services.myfatoorah.base_url');
+
+    $response = Http::withHeaders([
+        'Authorization' => "Bearer $apiKey",
+        'Content-Type' => 'application/json',
+    ])->post("$baseUrl/getPaymentStatus", [
+        "Key" => $paymentId,
+        "KeyType" => "PaymentId"
+    ]);
+
+    if (!$response->successful()) {
+        Log::error('Failed to fetch payment status from MyFatoorah', ['response' => $response->body()]);
+        return redirect()->back()->with('error', 'Failed to fetch payment status.');
+    }
+
+    $responseData = $response->json();
+    $invoiceStatus = $responseData['Data']['InvoiceStatus'] ?? null;
+    $userDefined = json_decode($responseData['Data']['UserDefinedField'] ?? '{}', true);
+
+    if ($invoiceStatus === 'Paid') {
+        $paymentGateway = Arr::get($userDefined, 'payment_gateway');
+        $paymentMethod = collect($responseData['Data']['InvoiceTransactions'] ?? [])
+            ->firstWhere('TransactionStatus', 'Succss')['PaymentGateway'] ?? null;
+        $amount = $responseData['Data']['InvoiceValue'] ?? 0;
+        $clientId = Arr::get($userDefined, 'client_id'); // You can adjust this based on your logic
+        $agentId = Arr::get($userDefined, 'agent_id');   // Same here
+
+        Log::info('Redirecting to form with pre-filled data', [
+            'payment_gateway' => $paymentGateway,
+            'payment_method' => $paymentMethod,
+            'amount' => $amount,
+            'client_id' => $clientId,
+            'agent_id' => $agentId,
+            'notes' => 'Imported from MyFatoorah',
+        ]);
+
+        return redirect()
+            ->route('payment.link.create') // Make sure this route exists
+            ->withInput([
+                'payment_gateway' => $paymentGateway,
+                'payment_method' => $paymentMethod,
+                'amount' => $amount,
+                'client_id' => $clientId,
+                'agent_id' => $agentId,
+                'notes' => 'Imported from MyFatoorah',
+            ]);
+    }
+
+    Log::error('Payment not marked as paid', ['invoiceStatus' => $invoiceStatus]);
+    return redirect()->back()->with('error', 'Payment not found or not paid.');
+}
+
+
+
     public function paymentLink()
     {
         $user = Auth::user();
@@ -1046,98 +1111,203 @@ class PaymentController extends Controller
     public function paymentStoreLinkProcess(Request $request)
     {
         $request->validate([
-            'payment_gateway' => 'required',
-            'payment_method' => 'nullable|string',
-            'amount' => 'required|numeric',
-            'notes' => 'nullable|string|max:255',
-            'client_id' => 'required',
-            'agent_id' => 'nullable',
-            'invoice_id' => 'nullable'
+            'source' => 'nullable|string'
         ]);
 
-        $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
+        if ($request->source === 'import')
+        {
+            Log::info('Processing payment link creation from import source');
 
-        if (!$voucherSequence) {
-            $voucherSequence = Sequence::create([
-                'sequence_for' => 'VOUCHER',
-                'current_sequence' => 1
+            $request->validate([
+                'payment_gateway' => 'required',
+                'payment_method' => 'nullable|string',
+                'amount' => 'required|numeric',
+                'notes' => 'nullable|string|max:255',
+                'client_id' => 'nullable',
+                'agent_id' => 'nullable',
+                'invoice_id' => 'nullable'
             ]);
-        }
 
-        $client = Client::where('id', $request->client_id)->first();
+            $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
 
-        if (!$client) {
-            return [
-                'status' => 'error',
-                'message' => 'Client cannot be found',
-            ];
-        }
-
-        $agent = Agent::where('id', $request->agent_id)->first();
-
-        if (!$agent) {
-            return [
-                'status' => 'error',
-                'message' => 'Agent cannot be found'
-            ];
-        }
-
-        $currentSequence = $voucherSequence->current_sequence;
-        $voucherNumber = $this->generateVoucherNumber($currentSequence);
-        try {
-            $voucherSequence->current_sequence++;
-            $voucherSequence->save();
-        } catch (Exception $e) {
-            logger('Failed to save voucher sequence', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return [
-                'status' => 'error',
-                'message' => $e->getMessage(),
-            ];
-        }
-
-        try {
-            $data = [
-                'voucher_number' => $voucherNumber,
-                'from' => $client->name,
-                'pay_to' => $agent->branch->company->name,
-                'currency' => 'KWD',
-                'payment_date' => Carbon::now(),
-                'amount' => $request->amount,
-                'payment_gateway' => $request->payment_gateway,
-                'payment_method_id' => $request->payment_method,
-                'status' => 'pending',
-                'client_id' => $client->id,
-                'agent_id' => $agent->id,
-                'notes' => $request->notes,
-            ];
-
-            if ($request->invoice_id !== null) {
-                $data['invoice_id'] = $request->invoice_id;
+            if (!$voucherSequence) {
+                $voucherSequence = Sequence::create([
+                    'sequence_for' => 'VOUCHER',
+                    'current_sequence' => 1
+                ]);
             }
 
-            $data['created_by'] = Auth::id();
+            $client = Client::where('id', $request->client_id)->first();
 
-            $payment = Payment::create($data);
-        } catch (Exception $e) {
-            logger('Failed to create payment', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            if (!$client) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Client cannot be found',
+                ];
+            }
+
+            $agent = Agent::where('id', $request->agent_id)->first();
+
+            if (!$agent) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Agent cannot be found'
+                ];
+            }
+
+            $currentSequence = $voucherSequence->current_sequence;
+            $voucherNumber = $this->generateVoucherNumber($currentSequence);
+            try {
+                $voucherSequence->current_sequence++;
+                $voucherSequence->save();
+            } catch (Exception $e) {
+                logger('Failed to save voucher sequence', [
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return [
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                ];
+            }
+
+            try {
+                $data = [
+                    'voucher_number' => $voucherNumber,
+                    'from' => $client->name,
+                    'pay_to' => $agent->branch->company->name,
+                    'currency' => 'KWD',
+                    'payment_date' => Carbon::now(),
+                    'amount' => $request->amount,
+                    'payment_gateway' => $request->payment_gateway,
+                    'payment_method_id' => $request->payment_method,
+                    'status' => 'completed',
+                    'client_id' => $client->id,
+                    'agent_id' => $agent->id,
+                    'notes' => $request->notes,
+                ];
+
+                if ($request->invoice_id !== null) {
+                    $data['invoice_id'] = $request->invoice_id;
+                }
+
+                $data['created_by'] = Auth::id();
+
+                $payment = Payment::create($data);
+                Log::info('Payment created successfully', ['payment' => $payment]);
+            } catch (Exception $e) {
+                logger('Failed to create payment', [
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return [
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                ];
+            }
+
             return [
-                'status' => 'error',
-                'message' => $e->getMessage(),
+                'status' => 'success',
+                'message' => 'Payment Link Created',
+                'clientEmail' => $client->email,
+                'data' => $payment
+            ];
+        } else {
+            $request->validate([
+                'payment_gateway' => 'required',
+                'payment_method' => 'nullable|string',
+                'amount' => 'required|numeric',
+                'notes' => 'nullable|string|max:255',
+                'client_id' => 'required',
+                'agent_id' => 'nullable',
+                'invoice_id' => 'nullable'
+            ]);
+
+            $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
+
+            if (!$voucherSequence) {
+                $voucherSequence = Sequence::create([
+                    'sequence_for' => 'VOUCHER',
+                    'current_sequence' => 1
+                ]);
+            }
+
+            $client = Client::where('id', $request->client_id)->first();
+
+            if (!$client) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Client cannot be found',
+                ];
+            }
+
+            $agent = Agent::where('id', $request->agent_id)->first();
+
+            if (!$agent) {
+                return [
+                    'status' => 'error',
+                    'message' => 'Agent cannot be found'
+                ];
+            }
+
+            $currentSequence = $voucherSequence->current_sequence;
+            $voucherNumber = $this->generateVoucherNumber($currentSequence);
+            try {
+                $voucherSequence->current_sequence++;
+                $voucherSequence->save();
+            } catch (Exception $e) {
+                logger('Failed to save voucher sequence', [
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return [
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                ];
+            }
+
+            try {
+                $data = [
+                    'voucher_number' => $voucherNumber,
+                    'from' => $client->name,
+                    'pay_to' => $agent->branch->company->name,
+                    'currency' => 'KWD',
+                    'payment_date' => Carbon::now(),
+                    'amount' => $request->amount,
+                    'payment_gateway' => $request->payment_gateway,
+                    'payment_method_id' => $request->payment_method,
+                    'status' => 'pending',
+                    'client_id' => $client->id,
+                    'agent_id' => $agent->id,
+                    'notes' => $request->notes,
+                ];
+
+                if ($request->invoice_id !== null) {
+                    $data['invoice_id'] = $request->invoice_id;
+                }
+
+                $data['created_by'] = Auth::id();
+
+                $payment = Payment::create($data);
+            } catch (Exception $e) {
+                logger('Failed to create payment', [
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return [
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                ];
+            }
+
+            return [
+                'status' => 'success',
+                'message' => 'Payment Link Created',
+                'clientEmail' => $client->email,
+                'data' => $payment
             ];
         }
-
-        return [
-            'status' => 'success',
-            'message' => 'Payment Link Created',
-            'clientEmail' => $client->email,
-            'data' => $payment
-        ];
+       
     }
 
     public function paymentStoreLink(Request $request)
@@ -1428,13 +1598,11 @@ class PaymentController extends Controller
 
         $companyId = optional($payment->agent->branch)->company_id;
 
-        // Clean client name
         $customerName = optional($payment->client)->name ?? 'Customer';
         if (strpos($customerName, '/') !== false) {
             $customerName = trim(explode('/', $customerName)[0]);
         }
 
-        // Clean client phone
         $client = $payment->client;
         $clientPhone = $client->phone ?? '50000000';
         if (isset($clientPhone) && strpos($clientPhone, '+') === 0) {
@@ -1442,7 +1610,6 @@ class PaymentController extends Controller
             $clientPhone = ltrim($clientPhone, '0');
         }
 
-        // Recalculate amount + fees
         $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
         $finalAmount = $chargeResult['finalAmount'];
 

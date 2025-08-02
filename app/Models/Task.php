@@ -33,6 +33,7 @@ class Task extends Model
         'payment_method_account_id',
         'price',
         'exchange_currency',
+        'exchange_rate',
         'original_price',
         'original_currency',
         'tax',

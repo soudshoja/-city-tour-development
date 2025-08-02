@@ -206,10 +206,31 @@
                                 </div>
                             </form>
                         </div>
-                    </div>
+                    </div>  
                 </div>
             </div>
 
+            <form action="{{ route('payment.link.importfatoorah') }}" method="POST" class="space-y-4 mb-10 mt-10">
+                @csrf
+                <p>Create a new Payment Link for myFatoorah existing reference?</p>
+                <div class="flex items-end gap-4">
+                    <div class="w-full">
+                        <label for="import_payment_id" class="block text-sm font-medium text-gray-700">
+                            Existing Payment ID
+                        </label>
+                        <input type="text" name="import_payment_id" id="import_payment_id"
+                            class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            placeholder="Enter existing payment ID">
+                    </div>
+                    <div class="pt-5">
+                        <button type="submit"
+                            class="px-6 py-2 bg-blue-600 text-white rounded-full shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                            Search
+                        </button>
+                    </div>
+                </div>
+            </form>
+            <hr>
             <form action="{{ route('payment.link.store') }}" method="POST" class="space-y-6">
                 @csrf
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -254,7 +275,7 @@
                     </div>
                 </div>
 
-                <div x-data="{ selectedGateway: '' }">
+                <div x-data="{ selectedGateway: '{{ old('payment_gateway') }}' }">
                     <div
                         :class="selectedGateway === 'MyFatoorah' ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' :
                             'block'">
@@ -262,13 +283,15 @@
                             <label for="payment-gateway" class="block text-sm font-medium text-gray-700">Payment
                                 Gateway</label>
                             <select name="payment_gateway" id="payment-gateway"
-                                class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                x-model="selectedGateway">
-                                <option value="" disabled>Select Payment Gateway</option>
-                                @foreach ($paymentGateways as $gateway)
-                                    <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
-                                @endforeach
-                            </select>
+                            class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            x-model="selectedGateway">
+                            <option value="" disabled>Select Payment Gateway</option>
+                            @foreach ($paymentGateways as $gateway)
+                                <option value="{{ $gateway->name }}" {{ old('payment_gateway') == $gateway->name ? 'selected' : '' }}>
+                                    {{ $gateway->name }}
+                                </option>
+                            @endforeach
+                        </select>
                         </div>
 
                         <template x-if="selectedGateway === 'MyFatoorah'">
@@ -278,7 +301,9 @@
                                 <select name="payment_method" id="payment-method"
                                     class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                     @foreach ($paymentMethods as $methods)
-                                        <option value="{{ $methods->id }}">{{ $methods->english_name }}</option>
+                                        <option value="{{ $methods->id }}" {{ old('payment_method') == $methods->id ? 'selected' : '' }}>
+                                            {{ $methods->english_name }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
@@ -290,8 +315,9 @@
                     <div>
                         <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
                         <input type="number" name="amount" id="amount" step="0.001" min="0"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                            required>
+                        value="{{ old('amount') }}"
+                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                        required>
                     </div>
                     <div>
                         <label for="currency" class="block text-sm font-medium text-gray-700">Currency</label>
@@ -299,7 +325,7 @@
                             class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             @foreach ($currencies as $currency)
                                 <option value="{{ $currency->iso_code }}"
-                                    {{ $currency->country ? ($currency->country->name == 'Kuwait' ? 'selected' : '') : '' }}>
+                                    {{ old('currency', $currency->country?->name === 'Kuwait' ? $currency->iso_code : '') == $currency->iso_code ? 'selected' : '' }}>
                                     {{ $currency->name }}
                                 </option>
                             @endforeach
@@ -310,7 +336,8 @@
                 <div>
                     <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
                     <input type="text" name="notes" id="notes"
-                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    value="{{ old('notes') }}"
+                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
 
                 <div class="flex justify-between">

@@ -148,6 +148,7 @@ class CoaController extends Controller
 
         $totalDebit = 0;
         $totalCredit = 0;
+        $originalCurrencyTotals = []; // Track totals by original currency
 
         if ($childAccounts->isNotEmpty()) {
             $account->childAccounts = $childAccounts;
@@ -155,14 +156,36 @@ class CoaController extends Controller
             foreach ($childAccounts as $child) {
                 $this->childAccount($child, $debitCreditType); // Recursively get child accounts
 
-                // Sum up the debit and credit from child accounts
+                // Sum up the debit and credit from child accounts (always in KWD)
                 $totalDebit += $child->debit ?? 0;
                 $totalCredit += $child->credit ?? 0;
+
+                // Aggregate original currency totals if child has them
+                if (isset($child->original_currency) && $child->original_currency !== 'KWD') {
+                    $currency = $child->original_currency;
+                    
+                    if (!isset($originalCurrencyTotals[$currency])) {
+                        $originalCurrencyTotals[$currency] = [
+                            'debit' => 0,
+                            'credit' => 0,
+                            'balance' => 0
+                        ];
+                    }
+                    
+                    $originalCurrencyTotals[$currency]['debit'] += $child->original_debit ?? 0;
+                    $originalCurrencyTotals[$currency]['credit'] += $child->original_credit ?? 0;
+                    $originalCurrencyTotals[$currency]['balance'] += $child->original_balance ?? 0;
+                }
             }
 
-            // Assign the summed debit and credit to the parent account
+            // Assign the summed debit and credit to the parent account (in KWD)
             $account->debit = (string)$totalDebit;
             $account->credit = (string)$totalCredit;
+
+            // Store original currency totals if any exist
+            if (!empty($originalCurrencyTotals)) {
+                $account->original_currency_totals = $originalCurrencyTotals;
+            }
 
             if ($debitCreditType == 'normal') {
                 $account->balance = bcsub($totalDebit, $totalCredit, 2);
@@ -174,8 +197,41 @@ class CoaController extends Controller
         } else {
             // If it's the last level, calculate debit and credit from journal entries
             $journalEntries = JournalEntry::with('transaction')->where('account_id', $account->id)->get();
-            $debit = $journalEntries->sum('debit');
-            $credit = $journalEntries->sum('credit');
+
+            // Handle currency conversion if account currency is not KWD
+            if($account->currency !== null && $account->currency !== 'KWD') {
+                // Calculate original currency totals from journal entries that have original_currency data
+                $originalDebit = $journalEntries->whereNotNull('original_currency')
+                    ->where('original_currency', $account->currency)
+                    ->where('debit', '>', 0)
+                    ->sum('original_amount');
+                
+                $originalCredit = $journalEntries->whereNotNull('original_currency')
+                    ->where('original_currency', $account->currency)
+                    ->where('credit', '>', 0)
+                    ->sum('original_amount');
+
+                // Calculate KWD totals (converted amounts)
+                $kwdDebit = $journalEntries->sum('debit');
+                $kwdCredit = $journalEntries->sum('credit');
+
+                // Store both original and converted amounts
+                $account->original_currency = $account->currency;
+                $account->original_debit = (string)$originalDebit;
+                $account->original_credit = (string)$originalCredit;
+                $account->original_balance = $debitCreditType == 'normal' 
+                    ? bcsub($originalDebit, $originalCredit, 2)
+                    : bcsub($originalCredit, $originalDebit, 2);
+
+                // Use KWD converted amounts for main calculations
+                $debit = $kwdDebit;
+                $credit = $kwdCredit;
+                
+            } else {
+                // For KWD accounts, use regular calculation
+                $debit = $journalEntries->sum('debit');
+                $credit = $journalEntries->sum('credit');
+            }
 
             $account->debit = (string)$debit;
             $account->credit = (string)$credit;
@@ -192,7 +248,6 @@ class CoaController extends Controller
 
         return $account; // Return the account with its childAccounts populated
     }
-
 
     // create accounts
     public function createAccounts(Request $request)
@@ -256,8 +311,6 @@ class CoaController extends Controller
         ], 201);
     }
 
-
-
     public function dstry($id)
     {
         $account = Account::find($id);
@@ -314,8 +367,6 @@ class CoaController extends Controller
             'message' => 'Code updated successfully ',
         ]);
     }
-
-
 
     public function store(Request $request)
     {
@@ -382,7 +433,6 @@ class CoaController extends Controller
         $year = now()->year;
         return sprintf('VOU-%s-%05d', $year, $sequence);
     }
-
 
     public function getLevel1Accounts(Request $request)
     {
@@ -483,7 +533,6 @@ class CoaController extends Controller
 
         return response()->json($transactions);
     }
-
 
     public function submitVoucher(Request $request)
     {
@@ -892,7 +941,6 @@ class CoaController extends Controller
             public function collection() { return $this->data; }
         }, 'accounts_export.xlsx');
     }
-
 
     public function delegatePriceAmadeus(Request $request)
     {

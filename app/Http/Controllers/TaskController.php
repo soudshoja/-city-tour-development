@@ -404,6 +404,74 @@ class TaskController extends Controller
     }
 
     /**
+     * Get or create a currency-specific child account for the supplier
+     */
+    private function getOrCreateCurrencySpecificAccount(Task $task, $supplierPayableAccount, $currency, $branchId)
+    {
+        $supplier = Supplier::find($task->supplier_id);
+        $accountName = $supplier->name . ' (' . $currency . ')';
+        
+        // Check if the currency-specific account already exists
+        $currencySpecificAccount = Account::where('name', $accountName)
+            ->where('company_id', $task->company_id)
+            ->where('parent_id', $supplierPayableAccount->id)
+            ->where('currency', $currency)
+            ->first();
+        
+        if (!$currencySpecificAccount) {
+            Log::info('Creating new currency-specific account: ' . $accountName);
+            
+            // Get the next available code
+            $code = 2151;
+            $lastChildAccount = Account::where('company_id', $task->company_id)
+                ->where('parent_id', $supplierPayableAccount->id)
+                ->orderBy('code', 'desc')
+                ->first();
+            
+            if ($lastChildAccount) {
+                $code = $lastChildAccount->code + 1;
+            }
+            
+            try {
+                $currencySpecificAccount = Account::create([
+                    'name' => $accountName,
+                    'parent_id' => $supplierPayableAccount->id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $branchId,
+                    'root_id' => $supplierPayableAccount->root_id,
+                    'code' => $code,
+                    'account_type' => 'liability',
+                    'report_type' => 'balance sheet',
+                    'level' => $supplierPayableAccount->level + 1,
+                    'is_group' => 0,
+                    'disabled' => 0,
+                    'actual_balance' => 0.00,
+                    'budget_balance' => 0.00,
+                    'variance' => 0.00,
+                    'currency' => $currency,
+                ]);
+                
+                Log::info('Created currency-specific account: ' . $accountName, [
+                    'account_id' => $currencySpecificAccount->id,
+                    'currency' => $currency,
+                    'parent_id' => $supplierPayableAccount->id
+                ]);
+            } catch (Exception $e) {
+                Log::error('Failed to create currency-specific account: ' . $e->getMessage(), [
+                    'task_reference' => $task->reference,
+                    'account_name' => $accountName,
+                    'currency' => $currency,
+                    'supplier_payable_id' => $supplierPayableAccount->id,
+                    'exception' => $e->getMessage()
+                ]);
+                throw new Exception('Failed to create currency-specific account: ' . $e->getMessage());
+            }
+        }
+        
+        return $currencySpecificAccount;
+    }
+
+    /**
      * Get branch ID for task financial processing
      * Returns agent's branch_id if agent exists, otherwise returns company's main branch_id
      */
@@ -569,6 +637,44 @@ class TaskController extends Controller
             }
         }
 
+        $jazeera = Supplier::where('name', 'Jazeera Airways')->first();
+
+        // Handle currency-specific accounting for hotel tasks (excluding Jazeera Airways)
+        $currencySpecificAccount = null;
+        if($task->type == 'hotel' && $task->supplier_id !== $jazeera->id) {
+            if ($task->original_currency && $task->original_currency !== 'KWD') {
+                // Create or find the original currency child account under supplier payable
+                Log::info('Processing hotel task with original currency: ' . $task->original_currency . ' for task: ' . $task->reference);
+                $currencySpecificAccount = $this->getOrCreateCurrencySpecificAccount(
+                    $task, 
+                    $supplierPayable, 
+                    $task->original_currency, 
+                    $branchId
+                );
+                
+                Log::info('Original currency account for hotel task: ', [
+                    'account' => $currencySpecificAccount,
+                    'currency' => $task->original_currency,
+                    'original_price' => $task->original_price
+                ]);
+            } else {
+                // Even for KWD, create a KWD-specific child account for consistency
+                Log::info('Processing hotel task with KWD currency for task: ' . $task->reference);
+                $currencySpecificAccount = $this->getOrCreateCurrencySpecificAccount(
+                    $task, 
+                    $supplierPayable, 
+                    'KWD', 
+                    $branchId
+                );
+                
+                Log::info('KWD currency account for hotel task: ', [
+                    'account' => $currencySpecificAccount,
+                    'currency' => 'KWD',
+                    'amount' => $task->total
+                ]);
+            }
+        }
+
         if (!$supplierCost || !$supplierPayable) {
             Log::error('Supplier cost or payable account not found for task: ' . $task->reference);
             throw new Exception('Supplier account not found.');
@@ -595,15 +701,15 @@ class TaskController extends Controller
         switch (strtolower($task->status)) {
             case 'issued':
                 Log::info('Processing issued task financial for: ' . $task->reference);
-                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId);
+                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId, $currencySpecificAccount);
                 break;
             case 'reissued':
                 Log::info('Processing reissued task financial for: ' . $task->reference);
-                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId);
+                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId, $currencySpecificAccount);
                 break;
             case 'emd':
                 Log::info('Processing EMD task financial for: ' . $task->reference);
-                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId);
+                $this->processIssuedTask($task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId, $currencySpecificAccount);
                 break;
             case 'void':
                 Log::info('Processing void task financial for: ' . $task->reference);
@@ -652,7 +758,7 @@ class TaskController extends Controller
     /**
      * Process issued task financials
      */
-    private function processIssuedTask(Task $task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId)
+    private function processIssuedTask(Task $task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId, $currencySpecificAccount = null)
     {
         // Use task's issued_date as transaction_date
         $transactionDate = $task->issued_date ? Carbon::parse($task->issued_date) : Carbon::now();
@@ -673,6 +779,7 @@ class TaskController extends Controller
             throw new Exception('Transaction creation failed.');
         }
 
+        // Create expense journal entry (debit supplier cost)
         JournalEntry::create([
             'transaction_id' => $transaction->id,
             'company_id' => $task->company_id,
@@ -688,20 +795,86 @@ class TaskController extends Controller
             'type' => 'payable',
         ]);
 
+        // Create liability journal entry - determine which account to use
+        $liabilityAccountId = null;
+        $liabilityAmount = $task->total;
+        $liabilityDescription = 'Records Payable to (Liabilities): ' . $supplierCompany->supplier->name;
+        $originalCurrency = null;
+        $originalAmount = null;
+        
+        // Priority order for liability account selection:
+        // 1. Currency-specific account for hotel tasks (both original currency and KWD)
+        // 2. Issued by account for flight tasks  
+        // 3. Default supplier payable account
+        
+        if ($currencySpecificAccount && $task->type == 'hotel') {
+            // Hotel task with currency-specific account
+            $liabilityAccountId = $currencySpecificAccount->id;
+            
+            if ($task->original_currency && $task->original_currency !== 'KWD') {
+                // Original currency task - but use converted amount for accounting balance
+                $liabilityAmount = $task->total; // Use converted amount to match expense entry
+                $liabilityDescription = 'Records Payable to (Liabilities) in ' . $task->original_currency . ': ' . $supplierCompany->supplier->name;
+                $originalCurrency = $task->original_currency;
+                $originalAmount = $task->original_price;
+                
+                Log::info('Using original currency account for liability entry', [
+                    'task_reference' => $task->reference,
+                    'original_currency' => $task->original_currency,
+                    'original_price' => $task->original_price,
+                    'converted_amount' => $task->total,
+                    'liability_account_id' => $liabilityAccountId,
+                    'liability_amount' => $liabilityAmount,
+                    'note' => 'Using converted amount for accounting balance'
+                ]);
+            } else {
+                // KWD currency task with currency-specific account
+                $liabilityDescription = 'Records Payable to (Liabilities) in KWD: ' . $supplierCompany->supplier->name;
+                
+                Log::info('Using KWD currency-specific account for liability entry', [
+                    'task_reference' => $task->reference,
+                    'currency' => 'KWD',
+                    'liability_account_id' => $liabilityAccountId,
+                    'liability_amount' => $liabilityAmount
+                ]);
+            }
+        } elseif ($issuedByAccount && in_array($task->type, ['flight', 'visa'])) {
+            // Flight/visa task with issued by account
+            $liabilityAccountId = $issuedByAccount->id;
+            
+            Log::info('Using issued by account for flight/visa liability entry', [
+                'task_reference' => $task->reference,
+                'issued_by' => $task->issued_by,
+                'liability_account_id' => $liabilityAccountId,
+                'liability_amount' => $liabilityAmount
+            ]);
+        } else {
+            // Default to supplier payable account
+            $liabilityAccountId = $supplierPayable->id;
+            
+            Log::info('Using default supplier payable account for liability entry', [
+                'task_reference' => $task->reference,
+                'task_type' => $task->type,
+                'liability_account_id' => $liabilityAccountId,
+                'liability_amount' => $liabilityAmount
+            ]);
+        }
 
         JournalEntry::create([
             'transaction_id' => $transaction->id,
             'company_id' => $task->company_id,
             'branch_id' => $branchId,
-            'account_id' => $issuedByAccount ? $issuedByAccount->id : $supplierPayable->id,
+            'account_id' => $liabilityAccountId,
             'task_id' => $task->id,
             'transaction_date' => $transactionDate,
-            'description' => 'Records Payable to (Liabilities): ' . $supplierCompany->supplier->name,
+            'description' => $liabilityDescription,
             'name' => $supplierCompany->supplier->name,
             'debit' => 0,
-            'credit' => $task->total,
-            'balance' => $task->total,
+            'credit' => $liabilityAmount,
+            'balance' => $liabilityAmount,
             'type' => 'payable',
+            'original_currency' => $originalCurrency,
+            'original_amount' => $originalAmount,
         ]);
     }
 
@@ -771,6 +944,37 @@ class TaskController extends Controller
         // For flight tasks, use the same issued_by logic as in processTaskFinancial
         $issuedByAccount = null;
         $payableAccountToUse = $supplierPayable;
+        $currencySpecificAccount = null;
+
+        // Handle currency-specific accounts for hotel refund tasks (excluding Jazeera Airways)
+        $jazeera = Supplier::where('name', 'Jazeera Airways')->first();
+        if ($task->type == 'hotel' && $task->supplier_id !== $jazeera->id) {
+            if ($task->original_currency && $task->original_currency !== 'KWD') {
+                // Look for original currency account
+                Log::info('Processing hotel refund task with original currency: ' . $task->original_currency . ' for task: ' . $task->reference);
+                $currencySpecificAccount = Account::where('name', $supplier->name . ' (' . $task->original_currency . ')')
+                    ->where('company_id', $task->company_id)
+                    ->where('parent_id', $supplierPayable->id)
+                    ->where('currency', $task->original_currency)
+                    ->first();
+            } else {
+                // Look for KWD currency account
+                Log::info('Processing hotel refund task with KWD currency for task: ' . $task->reference);
+                $currencySpecificAccount = Account::where('name', $supplier->name . ' (KWD)')
+                    ->where('company_id', $task->company_id)
+                    ->where('parent_id', $supplierPayable->id)
+                    ->where('currency', 'KWD')
+                    ->first();
+            }
+                
+            if ($currencySpecificAccount) {
+                $payableAccountToUse = $currencySpecificAccount;
+                Log::info('Using existing currency-specific account for refund: ' . $currencySpecificAccount->name);
+            } else {
+                Log::warning('Currency-specific account not found for refund task: ' . $task->reference . 
+                           ' - falling back to main supplier account');
+            }
+        }
 
         if ($task->type == 'flight' ) {
             Log::info('Processing flight refund task financial for: ' . $task->reference);
@@ -884,6 +1088,34 @@ class TaskController extends Controller
         }
 
         // Create journal entries using the correct accounts
+        $refundAmount = $task->total; // Always use converted KWD amount for accounting balance
+        $originalCurrency = null;
+        $originalAmount = null;
+        
+        // If this is a hotel task with currency-specific account, store original currency info
+        if ($task->type == 'hotel' && $currencySpecificAccount) {
+            if ($task->original_currency && $task->original_currency !== 'KWD') {
+                // Original currency refund - but use converted amount for accounting balance
+                $originalCurrency = $task->original_currency;
+                $originalAmount = $task->original_price;
+                
+                Log::info('Using original currency info for refund with converted amount', [
+                    'task_reference' => $task->reference,
+                    'original_currency' => $originalCurrency,
+                    'original_amount' => $originalAmount,
+                    'converted_amount' => $task->total,
+                    'note' => 'Using converted amount for accounting balance'
+                ]);
+            } else {
+                // KWD currency refund with currency-specific account
+                Log::info('Using KWD currency-specific account for refund', [
+                    'task_reference' => $task->reference,
+                    'currency' => 'KWD',
+                    'amount' => $task->total
+                ]);
+            }
+        }
+        
         JournalEntry::create([
             'transaction_date' => $transactionDate,
             'transaction_id' => $transaction->id,
@@ -892,10 +1124,12 @@ class TaskController extends Controller
             'account_id' => $payableAccountToUse->id,
             'task_id' => $task->id,
             'description' => 'Refund Task - Supplier refunds us (Liabilities): ' . $payableAccountToUse->name,
-            'debit' => $task->total,
+            'debit' => $refundAmount, // Now always uses converted amount
             'credit' => 0,
             'name' => $supplier->name,
             'type' => 'refund',
+            'original_currency' => $originalCurrency,
+            'original_amount' => $originalAmount,
         ]);
 
         JournalEntry::create([
@@ -907,7 +1141,7 @@ class TaskController extends Controller
             'task_id' => $task->id,
             'description' => 'Refund Task - Supplier cost return (Expenses): ' . $supplierCost->name,
             'debit' => 0,
-            'credit' => $task->total,
+            'credit' => $task->total, // Always use converted amount for expense account
             'name' => $supplier->name,
             'type' => 'refund',
         ]);

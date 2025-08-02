@@ -14,6 +14,12 @@
                 class="p-2  min-w-8 w-fit h-fit text-xs text-center rounded-full font-semibold text-{{ $color }}-600 bg-{{ $color }}-100">
                 {{ $account->balance }}
             </div>
+            @if($account->currency !== null && $account->currency!== 'KWD')
+            <div
+                class="p-2 min-w-8 w-fit h-fit text-xs text-center rounded-full font-semibold text-gray-600 bg-gray-100">
+                {{ $account->original_balance }} {{ $account->currency }}
+            </div>
+            @endif
             <div class="px-2 flex items-center gap-2">
                 @if($account->name == 'Amadeus' && $account->root->name == 'Liabilities' && $account->journalEntries->count() > 0)
                 <div x-data='{ delegateBalanceAmadeus : false }' class="flex items-center" data-tooltip-left="You have child accounts for Amadeus, you have to delegate the balance to the company that issued tasks">

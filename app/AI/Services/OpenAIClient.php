@@ -677,7 +677,10 @@ class OpenAIClient implements AIClientInterface
         $flightFields = TaskFlightSchema::getSchema();
         $hotelFields = TaskHotelSchema::getSchema();
 
-        $supplierList = Supplier::all()->pluck('name')->toArray();
+        $suppliers = Supplier::all();
+
+        $supplierList =$suppliers->pluck('name')->toArray();
+   
         $supplierList = json_encode($supplierList);
 
         $airportList = json_encode(Airport::all()->toArray());

@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Schema;
-
+use App\Models\Account;
 use App\Enums\TaskType;
 use App\Models\Agent;
 use App\Models\Supplier;
@@ -11,7 +11,34 @@ class TaskSchema
 {
     public static function getSchema()
     {
-        $supplierList = json_encode(Supplier::all()->toArray());
+        $suppliers = Supplier::all();
+        $supplierList = json_encode($suppliers->toArray());
+
+        $vfsSupplier = $suppliers->where('name', 'VFS')->first();
+
+        $vfsAccount = $vfsSupplier ? $vfsSupplier->account : null;
+
+        $issuedByAccount = [];
+
+    if ($vfsSupplier) {
+        $vfsAccount = Account::where('name', $vfsSupplier->name)
+            ->where('report_type', 'balance sheet')
+            ->whereHas('root', function ($query) {
+                $query->where('name', 'Liabilities');
+            })
+            ->first();
+
+        if ($vfsAccount) {
+            $vfsChildAccount = $vfsAccount->children()->pluck('name')->toArray();
+
+            $issuedByAccount = array_push($vfsChildAccount);
+        }
+    }
+
+    // dump('VFS Supplier:', $vfsSupplier); 
+    // dump('VFS Account:', $vfsAccount);
+    // dump('VFS Child Accounts:', $vfsChildAccount);
+    // dd($vfsChildAccount);
 
         $taskTypes = Task::where('type', [TaskType::hotel, TaskType::flight])->get();
 
@@ -136,8 +163,8 @@ class TaskSchema
             ],
             'issued_by' => [
                 'type' => 'string',
-                'desc' => "Identifier of who issued/finalized the booking. For Amadeus air files: Last GDS office ID before line A. For other documents: Look for issuing agent, final approval codes, or payment processor identifiers.",
-                'example' => 'KWIKT2844',
+                'desc' => "Country name that issued or received the visa application (e.g., as extracted from VFS documents).\nThis is the list of issued_by in my system: " . json_encode($issuedByAccount) . ". If there is no matching name, create a new one (e.g , 'VFS Italy').",
+                'example' => 'Italy',
                 'default' => '',
             ],
             'type' => [

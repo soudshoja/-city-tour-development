@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 // testing
 use App\AI\AIManager;
 use App\Http\Traits\Converter;
+use App\Http\Traits\CurrencyExchangeTrait;
 use App\Http\Traits\NotificationTrait;
 use Illuminate\Http\Request;
 use App\Models\Task;
@@ -43,7 +44,7 @@ use Illuminate\Support\Facades\Schema;
 
 class TaskController extends Controller
 {
-    use NotificationTrait, Converter;
+    use NotificationTrait, Converter, CurrencyExchangeTrait;
 
     public function index(Request $request)
     {
@@ -180,6 +181,46 @@ class TaskController extends Controller
             'file_name' => 'nullable|string',
             'issued_date' => 'nullable|date',
         ]);
+
+        if($request->exchange_currency !== 'KWD'){
+            $request->merge([
+                'exchange_currency' => 'KWD',
+                'original_currency' => $request->exchange_currency,
+                'original_price' => $request->total > $request->price ? $request->total : $request->price,
+            ]);
+        }
+
+        if ($request->original_currency && $request->original_price) {
+            try {
+                $convertResponse = $this->convert(
+                    $request->company_id,
+                    $request->original_currency,
+                    $request->exchange_currency,
+                    $request->original_price
+                );
+
+                $price = $convertResponse['converted_amount'];
+                $exchangeRate = $convertResponse['exchange_rate'];
+
+                $request->merge([
+                    'price' => $price,
+                    'total' => $price,
+                    'exchange_rate' => $exchangeRate,
+                ]);
+
+            } catch (Exception $e) {
+                Log::error('Currency conversion failed: ' . $e->getMessage(), [
+                    'original_currency' => $request->original_currency,
+                    'exchange_currency' => $request->exchange_currency,
+                    'original_price' => $request->original_price
+                ]);
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Currency conversion failed: ' . $e->getMessage(),
+                ], 500);
+            }
+        }
 
         $queryChkExistTask = Task::query();
         $queryChkExistTask->where('reference', $request->reference)

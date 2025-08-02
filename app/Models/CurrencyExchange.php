@@ -14,6 +14,12 @@ class CurrencyExchange extends Model
         'is_manual',
     ];
 
+    public function setExchangeRateAttribute($value)
+    {
+        // Round to 6 decimal places to match database precision
+        $this->attributes['exchange_rate'] = round((float) $value, 6);
+    }
+
     public function company()
     {
         return $this->belongsTo(Company::class);

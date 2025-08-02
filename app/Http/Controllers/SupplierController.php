@@ -135,26 +135,39 @@ public function updateExchangeRates(Request $request, $supplierId)
 
         $request->validate([
             'name' => 'required',
-            'auth_type' => 'required|in:basic,oauth', 
-            'has_hotel' => 'nullable|required_without:has_flight',
-            'has_flight' => 'nullable|required_without:has_hotel',
+            'auth_type' => 'required|in:basic,oauth',
+            'has_hotel' => 'required_without_all:has_flight,has_visa,has_insurance,has_tour,has_cruise,has_car,has_rail,has_esim,has_event,has_lounge,has_ferry',
+            'has_flight' => 'required_without_all:has_hotel,has_visa,has_insurance,has_tour,has_cruise,has_car,has_rail,has_esim,has_event,has_lounge,has_ferry',
+            'has_visa' => 'required_without_all:has_hotel,has_flight,has_insurance,has_tour,has_cruise,has_car,has_rail,has_esim,has_event,has_lounge,has_ferry',
+            'has_insurance' => 'required_without_all:has_hotel,has_flight,has_visa,has_tour,has_cruise,has_car,has_rail,has_esim,has_event,has_lounge,has_ferry',
             'country_id' => 'required|exists:countries,id',
         ]);
 
         $supplier = Supplier::create([
             'name' => $request->input('name'),
             'auth_type' => $request->input('auth_type'),
-            'has_hotel' => $request->input('has_hotel') ? true : false,
-            'has_flight' => $request->input('has_flight') ? true : false,
+            'has_hotel' => $request->has('has_hotel'),
+            'has_flight' => $request->has('has_flight'),
+            'has_visa' => $request->has('has_visa'),
+            'has_insurance' => $request->has('has_insurance'),
+            'has_tour' => $request->has('has_tour'),
+            'has_cruise' => $request->has('has_cruise'),
+            'has_car' => $request->has('has_car'),
+            'has_rail' => $request->has('has_rail'),
+            'has_esim' => $request->has('has_esim'),
+            'has_event' => $request->has('has_event'),
+            'has_lounge' => $request->has('has_lounge'),
+            'has_ferry' => $request->has('has_ferry'),
             'country_id' => $request->input('country_id'),
         ]);
 
-        if(!$supplier) {
+        if (!$supplier) {
             return redirect()->back()->with('error', 'Failed to create supplier.');
         }
 
         return redirect()->back()->with('success', 'Supplier created successfully.');
     }
+
 
     public function update($id)
     {
@@ -166,23 +179,45 @@ public function updateExchangeRates(Request $request, $supplierId)
 
         $request->validate([
             'name' => 'required',
-            'auth_type' => 'required|in:basic,oauth', 
-            'has_hotel' => 'nullable|required_without:has_flight',
-            'has_flight' => 'nullable|required_without:has_hotel',
+            'auth_type' => 'required|in:basic,oauth',
+            'has_hotel' => 'nullable',
+            'has_flight' => 'nullable',
+            'has_visa' => 'nullable',
+            'has_insurance' => 'nullable',
+            'has_tour' => 'nullable',
+            'has_cruise' => 'nullable',
+            'has_car' => 'nullable',
+            'has_rail' => 'nullable',
+            'has_esim' => 'nullable',
+            'has_event' => 'nullable',
+            'has_lounge' => 'nullable',
+            'has_ferry' => 'nullable',
             'country_id' => 'required|exists:countries,id',
         ]);
 
         $supplier = Supplier::findOrFail($id);
+
         $supplier->update([
             'name' => $request->input('name'),
             'auth_type' => $request->input('auth_type'),
-            'has_hotel' => $request->input('has_hotel') ? true : false,
-            'has_flight' => $request->input('has_flight') ? true : false,
+            'has_hotel' => $request->has('has_hotel'),
+            'has_flight' => $request->has('has_flight'),
+            'has_visa' => $request->has('has_visa'),
+            'has_insurance' => $request->has('has_insurance'),
+            'has_tour' => $request->has('has_tour'),
+            'has_cruise' => $request->has('has_cruise'),
+            'has_car' => $request->has('has_car'),
+            'has_rail' => $request->has('has_rail'),
+            'has_esim' => $request->has('has_esim'),
+            'has_event' => $request->has('has_event'),
+            'has_lounge' => $request->has('has_lounge'),
+            'has_ferry' => $request->has('has_ferry'),
             'country_id' => $request->input('country_id'),
         ]);
 
         return redirect()->back()->with('success', 'Supplier updated successfully.');
     }
+
 
     public function getTotalDebitCredit($supplierId, $endDate)
     {

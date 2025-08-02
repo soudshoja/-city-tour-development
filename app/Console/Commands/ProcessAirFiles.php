@@ -1108,6 +1108,8 @@ class ProcessAirFiles extends Command
                     'task_data' => $data,
                     'http_status' => $response->getStatusCode()
                 ]);
+
+                $this->error("Failed to save task: " . $responseContent);
                 
                 return [
                     'status' => 'error',
@@ -1115,6 +1117,9 @@ class ProcessAirFiles extends Command
                     'error' => $responseContent,
                 ];
             }
+
+            $this->info("Task saved successfully");
+
         } catch (Exception $e) {
             // Single error log entry with comprehensive context
             $this->logger->error("Task save exception occurred", [

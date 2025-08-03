@@ -280,6 +280,7 @@
                     <input type="hidden" name="agent_id" value="{{ $prefill['agent_id'] }}">
                     <input type="hidden" name="notes" value="{{ $prefill['notes'] }}">
                 @endif
+                <input type="hidden" name="payment_id" value="{{ old('payment_id', $prefill['payment_id'] ?? '') }}">
                 <input type="hidden" name="invoice_id" value="{{ old('invoice_id', $prefill['invoice_id'] ?? '') }}">
                 <input type="hidden" name="source" value="{{ old('source', $prefill['source'] ?? '') }}">
 

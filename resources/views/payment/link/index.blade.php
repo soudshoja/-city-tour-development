@@ -13,7 +13,7 @@
                 <div class="flex justify-between items-center mb-4 p-2">
                     <h2 class="text-xl font-semibold">Payment Links</h2>
                     <a href="{{ route('payment.link.create') }}"
-                        class="bg-blue-600 hover:bg-blue-700 rounded-full shadow-md text-white px-4 py-2">Create Payment
+                        class="bg-blue-600 hover:bg-blue-700 rounded-full shadow-md text-white px-4 py-2">Create/Import Payment
                         Link</a>
                 </div>
 

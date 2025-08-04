@@ -948,7 +948,7 @@ class TaskController extends Controller
 
         // Handle currency-specific accounts for hotel refund tasks (excluding Jazeera Airways)
         $jazeera = Supplier::where('name', 'Jazeera Airways')->first();
-        if ($task->type == 'hotel' && $task->supplier_id !== $jazeera->id) {
+        if ($task->type == 'hotel' && (!$jazeera || $task->supplier_id !== $jazeera->id)) {
             if ($task->original_currency && $task->original_currency !== 'KWD') {
                 // Look for original currency account
                 Log::info('Processing hotel refund task with original currency: ' . $task->original_currency . ' for task: ' . $task->reference);

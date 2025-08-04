@@ -128,6 +128,7 @@ class PaymentController extends Controller
         if ($request->selected_items) {
             $data['selected_items'] = $request->selected_items;
         }
+
         $response = json_decode($this->initiatePayment($data)->content(), true);
 
         if (isset($response['error'])) {
@@ -1347,6 +1348,7 @@ class PaymentController extends Controller
         $paymentGateway = $payment->payment_gateway;
         $paymentMethod = $payment->payment_method_id;
 
+
         if (strtolower($paymentGateway) === 'tap') {
 
             $chargeResult = ChargeService::TapCharge([
@@ -1396,9 +1398,7 @@ class PaymentController extends Controller
             }
 
             return redirect($response['transaction']['url']);
-        }
-
-        if (strtolower($paymentGateway) === 'myfatoorah') {
+        } else if (strtolower($paymentGateway) === 'myfatoorah') {
             $apiKey = config('services.myfatoorah.api_key');
             $baseUrl = config('services.myfatoorah.base_url');
 
@@ -1406,7 +1406,7 @@ class PaymentController extends Controller
             $companyId = optional($payment->agent->branch)->company_id;
 
             if ($payment->status === 'initiate') {
-
+             
                 if ($payment->payment_url && $payment->expiry_date && now()->lt($payment->expiry_date)) {
                     Log::info('Reusing existing payment URL', [
                         'invoice_id' => $payment->payment_reference,
@@ -1467,7 +1467,7 @@ class PaymentController extends Controller
                     ]
                 ],
             ];
-            //dd($executePayload);
+            dd($executePayload);
             $executeResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
                 'Content-Type' => 'application/json',
@@ -1564,6 +1564,8 @@ class PaymentController extends Controller
                 ]
             ],
         ];
+
+        dd($executePayload);
 
         $executeResponse = Http::withHeaders([
             'Authorization' => "Bearer $apiKey",

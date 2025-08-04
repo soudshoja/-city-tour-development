@@ -646,6 +646,7 @@
                                     showUploadForm: false,
                                     showManualForm: false,
                                     selectedTasks: [],
+                                    originalInvoiceRoute: '{{ route('invoices.create') }}',
                                     openManualForm(taskId, clientName, passengerName, agentName, agentId, branchName) {
                                         this.modalTaskId = taskId;
                                         this.modalClientName = clientName;
@@ -663,24 +664,85 @@
                                         window.dispatchEvent(new CustomEvent('reset-dropdowns'));
                                     },
                                     toggleTaskSelection(taskId) {
+                                        const taskRow = document.querySelector(`[data-task-id='${taskId}']`);
+                                        const taskStatus = taskRow?.getAttribute('data-status');
+                                        const isRefund = taskStatus === 'refund';
+                                        
                                         const index = this.selectedTasks.indexOf(taskId);
+                                        
                                         if (index > -1) {
+                                            // Remove if already selected
                                             this.selectedTasks.splice(index, 1);
                                         } else {
-                                            this.selectedTasks.push(taskId);
+                                            // Add to selection
+                                            if (isRefund) {
+                                                // If selecting a refund task, clear all non-refund selections
+                                                this.selectedTasks = this.selectedTasks.filter(id => {
+                                                    const row = document.querySelector(`[data-task-id='${id}']`);
+                                                    return row?.getAttribute('data-status') === 'refund';
+                                                });
+                                                this.selectedTasks.push(taskId);
+                                            } else {
+                                                // If selecting a non-refund task, clear all refund selections
+                                                this.selectedTasks = this.selectedTasks.filter(id => {
+                                                    const row = document.querySelector(`[data-task-id='${id}']`);
+                                                    return row?.getAttribute('data-status') !== 'refund';
+                                                });
+                                                this.selectedTasks.push(taskId);
+                                            }
                                         }
+                                        
                                         window.selectedTasksGlobal = [...this.selectedTasks];
                                         this.updateFloatingActions();
                                     },
                                     updateFloatingActions() {
                                         const floatingActions = document.getElementById('floatingActions');
                                         const createInvoiceBtn = document.getElementById('createInvoiceBtn');
+                                        const createInvoiceBtnText = document.getElementById('createInvoiceBtnText');
+                                        
                                         if (this.selectedTasks.length > 0) {
                                             floatingActions?.classList.remove('hidden');
                                             createInvoiceBtn?.removeAttribute('disabled');
+                                            
+                                            // Check if any selected task is a refund task
+                                            const hasRefundTasks = this.selectedTasks.some(taskId => {
+                                                const taskRow = document.querySelector(`[data-task-id='${taskId}']`);
+                                                return taskRow?.getAttribute('data-status') === 'refund';
+                                            });
+                                            
+                                            if (hasRefundTasks) {
+                                                // Update for refund tasks
+                                                createInvoiceBtnText.innerText = 'Proceed Refund';
+                                                // Remove success styling and add danger styling
+                                                createInvoiceBtn?.classList.remove('btn-success', 'hover:bg-green-600');
+                                                createInvoiceBtn?.classList.add('bg-red-500', 'hover:bg-red-600', 'text-white');
+                                                // Set data attribute to indicate refund status
+                                                createInvoiceBtn?.setAttribute('data-task-status', 'refund');
+
+                                                // Set refund route
+                                                if (this.selectedTasks.length === 1) {
+                                                    createInvoiceBtn?.setAttribute('data-route', `/refunds/${this.selectedTasks[0]}/create`);
+                                                }
+                                            } else {
+                                                // Update for regular invoice tasks
+                                                createInvoiceBtnText.innerText = 'Create Invoice';
+                                                // Remove danger styling and add success styling
+                                                createInvoiceBtn?.classList.remove('bg-red-500', 'hover:bg-red-600');
+                                                createInvoiceBtn?.classList.add('btn-success', 'hover:bg-green-600');
+                                                // Remove refund status and reset to original invoice route
+                                                createInvoiceBtn?.removeAttribute('data-task-status');
+                                                createInvoiceBtn?.setAttribute('data-route', this.originalInvoiceRoute);
+                                            }
                                         } else {
                                             floatingActions?.classList.add('hidden');
                                             createInvoiceBtn?.setAttribute('disabled', 'disabled');
+                                            // Reset to default state
+                                            createInvoiceBtnText.innerText = 'Create Invoice';
+                                            createInvoiceBtn?.classList.remove('bg-red-500', 'hover:bg-red-600');
+                                            createInvoiceBtn?.classList.add('btn-success', 'hover:bg-green-600');
+                                            // Remove refund status and reset to original invoice route
+                                            createInvoiceBtn?.removeAttribute('data-task-status');
+                                            createInvoiceBtn?.setAttribute('data-route', this.originalInvoiceRoute);
                                         }
                                     },
                                     isSelectable(task) {
@@ -691,7 +753,7 @@
                                             );
                                     }
                                 }" x-init="window.selectedTasksGlobal = selectedTasks" x-cloak>
-                                    <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
+                                    <table id="myTable" class="whitespace-nowrap dataTable-table">
                                         <thead>
                                             <tr>
                                                 <th data-column="actions">
@@ -760,10 +822,10 @@
                                             @foreach ($tasks as $key => $task)
                                             @php
                                             $isSelectable = $task->status !== 'refund'
-                                            ? !$task->invoiceDetail && $task->enabled && !$task->linkedTask
+                                            ? !$task->invoiceDetail && $task->enabled && $task->linkedTask
                                             : !$task->refundDetail && $task->is_complete;
                                             @endphp
-                                            <tr class="taskRow task-row {{ $isSelectable ? '' : 'not-selectable' }}" @if($isSelectable) @click="toggleTaskSelection({{ $task->id }})" @endif x-show="{{ $key }} < shown" x-cloak
+                                            <tr class="taskRow task-row {{ $isSelectable ? 'hover:bg-blue-100' : 'not-selectable' }}" @if($isSelectable) @click="toggleTaskSelection({{ $task->id }})" @endif x-show="{{ $key }} < shown" x-cloak
                                                 :class="selectedTasks.includes({{ $task->id }}) ? 'selected' : ''"
                                                 @click="isSelectable({
                                                     enabled: {{ $task->enabled ? 'true' : 'false' }},
@@ -1635,7 +1697,7 @@
                             class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-5 p-3">
                             <div class="flex justify-between gap-5 items-center h-full">
                                 <button id="createInvoiceBtn" data-route="{{ route('invoices.create') }}"
-                                    class="flex px-5 py-3 gap-3 btn-success hover:bg-[#8b0000c2] rounded-lg shadow-sm items-center">
+                                    class="flex px-5 py-3 gap-3 btn-success hover:bg-green-600 rounded-lg shadow-sm items-center transition-colors duration-200">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                                         viewBox="0 0 24 24">
                                         <path fill="#ffffff"

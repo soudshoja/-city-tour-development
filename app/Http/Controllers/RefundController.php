@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
+use App\Models\AgentType;
 use App\Models\RefundClient;
 use Carbon\Carbon;
 use Exception;
@@ -51,67 +52,31 @@ class RefundController extends Controller
         return view('refunds.index', compact('refunds', 'totalRefunds', 'refundClients', 'totalRefundClients'));
     }
     
-    public function create(Task $task)
+    public function create(int $taskId)
     {   
-        // Get reference value based on task type
-        $referenceValue = null;
-        if ($task->type === 'flight') {
-            $referenceValue = $task->ticket_number;
-        } elseif ($task->type === 'hotel') {
-            $referenceValue = $task->ticket_number;
+        $task = Task::find($taskId);
+
+        if(!$task->originalTask) return redirect()->back()->withErrors(['error' => 'The selected task has no original task.']);
+
+        if($task->agent !== $task->originalTask->agent) {
+            return redirect()->back()->withErrors(['error' => 'The selected task does not belong to the same agent as the original task.']);
         }
 
-        //dd($referenceValue);
-    
-        // Fail early if reference is missing
-        if (!$referenceValue) {
-            return redirect()->back()->withErrors(['error' => 'No valid reference (ticket number or room reference) found for this task.']);
+        $agent = $task->agent;
+
+        if(strtolower($agent->agentType->name) == 'commission' ? $agent->commission <= 0 : false) {
+            return redirect()->back()->withErrors(['error' => 'The agent does not have a valid commission to process a refund. Please set a valid commission for the agent.']);
+        }
+
+        $invoiceDetail = InvoiceDetail::with('invoice')->where('task_id', $task->originalTask->id)->first();
+        
+        if (!$invoiceDetail) {
+            return redirect()->back()->withErrors(['error' => 'Original task has not been invoiced yet.']);
         }
     
-        // Ensure the invoice and its detail exists
-        $invoiceDetails = null;
-        if ($task->type === 'flight' && $referenceValue) {
-            $invoiceDetails = InvoiceDetail::with('invoice', 'task')
-                ->whereHas('task', function ($query) use ($referenceValue) {
-                    $query->where('ticket_number', $referenceValue);
-                })
-                ->first();
-        } elseif ($task->type === 'hotel' && $referenceValue) {
-            $invoiceDetails = InvoiceDetail::with('invoice', 'task')
-                ->whereHas('task', function ($query) use ($referenceValue) {
-                    $query->where('ticket_number', $referenceValue);
-                })
-                ->first();
-        }
-    
-        // Check if invoiceDetails exists before continuing
-        if (!$invoiceDetails || !$invoiceDetails->invoice) {
-            return redirect()->back()->withErrors(['error' => 'Original invoice not found.']);
-        }
-    
-        // Ensure invoice is paid
-        if ($invoiceDetails->invoice->status === 'unpaid') {
+        if ($invoiceDetail->invoice->status === 'unpaid') {
             return redirect()->back()->withErrors(['error' => 'The invoice from the original task is still unpaid.']);
         }
-    
-        // Make sure there's at least one other task with the same reference and status "issued"
-        // $hasTicketedReference = Task::where('id', '!=', $task->id)
-        //     ->where('status', 'issued')
-        //     ->when($task->type === 'flight', function ($query) use ($referenceValue) {
-        //         $query->whereHas('flightDetails', function ($sub) use ($referenceValue) {
-        //             $sub->where('ticket_number', $referenceValue);
-        //         });
-        //     })
-        //     ->when($task->type === 'hotel', function ($query) use ($referenceValue) {
-        //         $query->whereHas('hotelDetails', function ($sub) use ($referenceValue) {
-        //             $sub->where('room_reference', $referenceValue);
-        //         });
-        //     })
-        //     ->exists();
-    
-        // if (!$hasTicketedReference) {
-        //     return redirect()->back()->withErrors(['error' => 'No matching issued task found for this reference.']);
-        // }
     
         // Get the root IDs for Assets and Liabilities accounts
         $assetsRootId = Account::where('name', 'Assets')->value('id');
@@ -131,7 +96,7 @@ class RefundController extends Controller
 
         return view('refunds.create', [
             'tasks' => $taskWithRelations,
-            'invoiceDetails' => $invoiceDetails,
+            'invoiceDetails' => $invoiceDetail,
             // 'hasTicketedTasksWithReference' => $hasTicketedReference,
             'coaAccounts' => $coaAccounts,
         ]);
@@ -143,7 +108,7 @@ class RefundController extends Controller
         $request->validate([
             'total_nett_refund' => ['required', 'numeric', 'min:-999999.99'],
             'reason' => ['required', 'string'],
-            'method' => ['required', 'in:Bank,Cash,Online'],
+            // 'method' => ['required', 'in:Bank,Cash,Online'],
             'date' => ['required', 'date'],
         ]);
 
@@ -163,49 +128,53 @@ class RefundController extends Controller
             'total_nett_refund' => $request->input('total_nett_refund'),
             'service_charge' => $request->input('service_charge'),
             'reason' => $request->reason,
-            'method' => $request->method,
+            // 'method' => $request->method,
             'date' => $request->date,
             'reference' => $request->reference,
             'status' => 'processed',
             'created_by' => auth()->user()->id,
         ]);
 
-       
+
         //foreach ($invoiceDetails as $invdetail) {
-            if ($task->id) {
-           
-                // Create Transaction Record
-                $transaction = Transaction::create([
-                    'entity_id' => $task->company_id,
-                    'entity_type' => 'company',
-                    'company_id' => $task->company_id,
-                    'branch_id' => $task->agent->branch_id,
-                    'transaction_type' => 'debit',
-                    'amount' => $request->input('total_nett_refund'),
-                    'description' => 'Refund - Record Agent Commission',
-                    'reference_type' => 'Refund',
-                    'reference_number' => $request->bankpaymentref,
-                    'name' => $task->client_name,
-                    'remarks_internal' => $request->input('remarks_internal'),
-                    
-                ]);
+        if ($task->id) {
+            // Create Transaction Record
+            $transaction = Transaction::create([
+                'entity_id' => $task->company_id,
+                'entity_type' => 'company',
+                'company_id' => $task->company_id,
+                'branch_id' => $task->agent->branch_id,
+                'transaction_type' => 'debit',
+                'amount' => $request->input('total_nett_refund'),
+                'description' => 'Refund - Record Agent Commission',
+                'reference_type' => 'Refund',
+                'reference_number' => $request->bankpaymentref,
+                'name' => $task->client_name,
+                'remarks_internal' => $request->input('remarks_internal'),
+            ]);
+
+            $agent = $task->agent;
+
+            if (strtolower($agent->agentType) == 'commission') {
+
+                $agentCommission = $agent->commission;
 
                 $assetsDirectIncome = Account::where('name', 'LIKE', '%Direct Expenses%')
                     ->where('company_id', $task->company_id)
-                    ->where('root_id', 5)                
-                    ->first(); 
+                    ->where('root_id', 5)
+                    ->first();
 
-                $accountincomeName = 'Commissions Expense (Agents)';
-        
+                $accountIncomeName = 'Commissions Expense (Agents)';
+
                 // Get or create Supplier Refund Account
-                $incomeRefundAccount = Account::where('name', $accountincomeName)
+                $incomeRefundAccount = Account::where('name', $accountIncomeName)
                     ->where('company_id', $task->company_id)
                     ->where('root_id', $assetsDirectIncome->root_id)
                     ->first();
-        
+
                 if (!$incomeRefundAccount) {
                     $incomeRefundAccountId = Account::create([
-                        'name' => $accountincomeName,
+                        'name' => $accountIncomeName,
                         'parent_id' => $assetsDirectIncome->id,
                         'company_id' => Auth::user()->company->id,
                         'branch_id' => Auth::user()->branch_id,
@@ -227,7 +196,7 @@ class RefundController extends Controller
                 } else {
                     $incomeRefundAccountEntry =  $incomeRefundAccount;
                 }
-        
+
                 // Get or create Refund Adjustment Account
                 $incomeIndirectIncomeRec = Account::where('name', 'LIKE', '%Accrued Expenses%')
                     ->where('company_id', $task->company_id)
@@ -235,12 +204,12 @@ class RefundController extends Controller
                     ->first();
 
                 $accountincomeRefundIncomeRec = 'Commission (Agents)';
-        
+
                 $incomeRefundIncomeRec = Account::where('name', 'LIKE', $accountincomeRefundIncomeRec)
                     ->where('company_id', $task->company_id)
                     ->where('root_id', $incomeIndirectIncomeRec->root_id)
                     ->first();
-        
+
                 if (!$incomeRefundIncomeRec) {
                     $incomeRefundIncomeRecId = Account::create([
                         'name' => $accountincomeRefundIncomeRec,
@@ -265,7 +234,7 @@ class RefundController extends Controller
                 } else {
                     $incomeRefundIncomeAccEntry =  $incomeRefundIncomeRec;
                 }
-        
+
                 // Step 3: Debit Entry for Supplier Refund
                 JournalEntry::create([
                     'transaction_date' => $request->date,
@@ -273,14 +242,14 @@ class RefundController extends Controller
                     'company_id' => $task->company_id,
                     'branch_id' => $task->agent->branch_id,
                     'account_id' => $incomeRefundAccountEntry->id,
-                    'description' => 'Refund Commission - Agent gets 15% of refund fee (Expenses): '.$incomeRefundAccountEntry->name.'',
-                    'debit' => $request->input('new_task_profit') * 0.15,
+                    'description' => 'Refund Commission - Agent gets ' . $agentCommission * 100 . '% of refund fee (Assets): ' . $incomeRefundAccountEntry->name . '',
+                    'debit' => $request->input('new_task_profit') * $agentCommission,
                     'credit' => 0,
                     'voucher_number' => $refund->id,
                     'name' => $incomeRefundAccountEntry->name,
                     'type' => 'refund',
                 ]);
-        
+
                 // Step 4: Credit Entry for Supplier Refund
                 JournalEntry::create([
                     'transaction_date' => $request->date,
@@ -288,22 +257,95 @@ class RefundController extends Controller
                     'company_id' => $task->company_id,
                     'branch_id' => $task->agent->branch_id,
                     'account_id' => $incomeRefundIncomeAccEntry->id,
-                    'description' => 'Refund Commission - Agent gets 15% of refund fee (Liabilities): '.$incomeRefundIncomeAccEntry->name.'',
+                    'description' => 'Refund Commission - Agent gets ' . $agentCommission * 100 . '% of refund fee (Liabilities): ' . $incomeRefundIncomeAccEntry->name . '',
                     'debit' => 0,
-                    'credit' => $request->input('new_task_profit') * 0.15,
+                    'credit' => $request->input('new_task_profit') * $agentCommission,
                     'voucher_number' => $refund->id,
                     'name' => $incomeRefundIncomeAccEntry->name,
                     'type' => 'refund',
                 ]);
-
-
             }
-        //}
-        
 
-        return redirect()->route('refunds.index')->with('success', 'Refund processed successfully.');
+            $company = $task->company;
 
-        
+            //refund to client Account under liabilities > refund payable > clients
+
+            $liabilities = Account::where('name', 'Liabilities')
+                ->where('company_id', $company->id)
+                ->first();
+            
+            if(!$liabilities) {
+                return redirect()->back()->withErrors(['error' => 'Liabilities account not found.']);
+            }
+
+            $refundPayable = Account::where('name', 'LIKE', '%Refund Payable%')
+                ->where('company_id', $task->company_id)
+                ->where('parent_id', $liabilities->id)
+                ->where('root_id', $liabilities->id)
+                ->first();
+
+            $accountClientRefundLiability = 'Clients';
+
+            $supplierRefundLiability = Account::where('name', $accountClientRefundLiability)
+                ->where('company_id', $task->company_id)
+                ->where('parent_id', $refundPayable->id)
+                ->where('root_id', $refundPayable->root_id)
+                ->first();
+
+            if (!$accountClientRefundLiability) {
+                $accountClientRefundLiability = Account::create([
+                    'name' => $accountClientRefundLiability,
+                    'parent_id' => $refundPayable->id,
+                    'company_id' => Auth::user()->company->id,
+                    'branch_id' => Auth::user()->branch_id,
+                    'root_id' => $liabilities->id,
+                    'code' => $refundPayable->code + 10,
+                    'account_type' => 'asset',
+                    'report_type' => 'balance sheet',
+                    'level' => $refundPayable->level + 1,
+                    'is_group' => 0,
+                    'disabled' => 0,
+                    'actual_balance' => 0.00,
+                    'budget_balance' => 0.00,
+                    'variance' => 0.00,
+                    'currency' => 'KWD',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            try {
+                JournalEntry::create([
+                    'transaction_date' => $request->date,
+                    'currency' => 'KWD',
+                    'exchange_rate' => 1.0,
+                    'amount' => $request->input('total_nett_refund'),
+                    'name' => $task->client_name,
+                    'description' => 'Refund to Client - ' . $task->client_name,
+                    'type' => 'refund',
+                    'debit' => $request->input('total_nett_refund'),
+                    'credit' => 0,
+                    'balance' => $request->input('total_nett_refund'),
+                    'transaction_id' => $transaction->id,
+                    'company_id' => $task->company_id,
+                    'account_id' => $accountClientRefundLiability->id,
+                    'original_currency' => 'KWD',
+                    'original_amount' => $request->input('total_nett_refund'),
+                ]);
+
+                // Create Refund Client record
+
+            } catch (Exception $e) {
+                Log::error('Error creating journal entry for refund: ' . $e->getMessage());
+                return redirect()->back()->withErrors(['error' => 'Failed to create journal entry for refund.']);
+            }
+
+            
+            //}
+
+
+            return redirect()->route('refunds.index')->with('success', 'Refund processed successfully.');
+        }
     }
 
     public function edit(Task $task, Refund $refund)

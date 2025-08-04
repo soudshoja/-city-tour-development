@@ -43,6 +43,8 @@ use Google\Rpc\Context\AttributeContext\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Arr;
+use App\Http\Controllers\ClientController;
 
 class PaymentController extends Controller
 {
@@ -937,6 +939,83 @@ class PaymentController extends Controller
         return view('clients.response', ['status' => 'success', 'message' => 'Payment successful!']);
     }
 
+    public function importPaidFatoorah(Request $request)
+    {
+        Log::info('Starting to import MyFatoorah payment from portal');
+
+        $paymentId = $request->input('import_payment_id');
+        if (!$paymentId) {
+            return redirect()->back()->with('error', 'Payment ID is required to import from Portal');
+        }
+        
+        $apiKey = config('services.myfatoorah.api_key');
+        $baseUrl = config('services.myfatoorah.base_url');
+        Log::info('myFatoorah config values: ',[
+            'apiKey' => $apiKey,
+            'baseUrl' => $baseUrl,
+        ]);
+        
+        $response = Http::withHeaders([
+            'Authorization' => "Bearer $apiKey",
+            'Content-Type' => 'application/json',
+            ])->post("$baseUrl/getPaymentStatus", [
+                "Key" => $paymentId,
+                "KeyType" => "PaymentId"
+            ]);
+
+        if (!$response->successful()) {
+            Log::error('Failed to fetch payment status from MyFatoorah', ['response' => $response->body()]);
+            return redirect()->back()->with('error', 'Failed to fetch payment status due to invalid Payment ID');
+        }
+
+        $responseData = $response->json();
+        $invoiceStatus = $responseData['Data']['InvoiceStatus'] ?? null;
+        $invoiceId = $responseData['Data']['InvoiceId'] ?? null;
+        $customerName = $responseData['Data']['CustomerName'] ?? null;
+        $createdDate = $responseData['Data']['CreatedDate'] ?? null;
+        $userDefined = json_decode($responseData['Data']['UserDefinedField'] ?? '{}', true);
+
+        if ($invoiceStatus === 'Paid') {
+            $paymentGateway = Arr::get($userDefined, 'payment_gateway');
+            $paymentMethod = collect($responseData['Data']['InvoiceTransactions'] ?? [])
+                ->firstWhere('TransactionStatus', 'Succss')['PaymentGateway'] ?? null;
+            $amount = $responseData['Data']['InvoiceValue'] ?? 0;
+            $clientId = null;
+            $agentId = null;
+
+            Log::info('Redirecting to form with pre-filled data', [
+                'invoiceId' => $invoiceId,
+                'payment_id' => $paymentId,
+                'transaction_status' => $invoiceStatus,
+                'customer_name' => $customerName,
+                'payment_gateway' => $paymentGateway,
+                'payment_method' => $paymentMethod,
+                'amount' => $amount,
+                'client_id' => $clientId,
+                'agent_id' => $agentId,
+                'created_at' => $createdDate,
+                'notes' => 'Imported from MyFatoorah Portal with invoice ID : ' . $invoiceId,
+            ]);
+
+            return redirect()
+                ->route('payment.link.create')
+                ->withInput([
+                    'invoice_id' => $invoiceId,
+                    'payment_id' => $paymentId,
+                    'payment_gateway' => $paymentGateway,
+                    'payment_method' => $paymentMethod,
+                    'amount' => $amount,
+                    'client_id' => $clientId,
+                    'agent_id' => $agentId,
+                    'notes' => 'Imported from MyFatoorah Portal with invoice ID : ' . $invoiceId,
+                    'source' => 'import',
+                ]);
+        } else {
+            Log::error('Payment not marked as paid', ['invoiceStatus' => $invoiceStatus]);
+            return redirect()->back()->with('error', 'Payment status is ' . $invoiceStatus . ' . Skipping importing payment from Portal');
+        }
+    }
+
     public function paymentLink()
     {
         $user = Auth::user();
@@ -1045,18 +1124,22 @@ class PaymentController extends Controller
 
     public function paymentStoreLinkProcess(Request $request)
     {
-        $request->validate([
-            'payment_gateway' => 'required',
-            'payment_method' => 'nullable|string',
-            'amount' => 'required|numeric',
-            'notes' => 'nullable|string|max:255',
-            'client_id' => 'required',
-            'agent_id' => 'nullable',
-            'invoice_id' => 'nullable'
-        ]);
+        $source = $request->input('source');
+        $invoiceId = $request->input('invoice_id');
+        $paymentId = $request->input('payment_id');
+        Log::info('Knock knock? Whos that? Im ' . $source . ' and Im bringing ' . $invoiceId . ' with me');
 
+         $request->validate([
+                'payment_gateway' => 'required',
+                'payment_method' => 'nullable|string',
+                'amount' => 'required|numeric',
+                'client_id' => 'nullable',
+                'agent_id' => 'nullable',
+                'invoice_id' => 'nullable',
+                'notes' => 'nullable|string|max:255'
+            ]);
+       
         $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
-
         if (!$voucherSequence) {
             $voucherSequence = Sequence::create([
                 'sequence_for' => 'VOUCHER',
@@ -1064,26 +1147,20 @@ class PaymentController extends Controller
             ]);
         }
 
-        $client = Client::where('id', $request->client_id)->first();
+        $client = Client::find($request->client_id);
+        $agent = Agent::find($request->agent_id);
 
         if (!$client) {
-            return [
-                'status' => 'error',
-                'message' => 'Client cannot be found',
-            ];
+            return ['status' => 'error', 'message' => 'Client cannot be found'];
         }
 
-        $agent = Agent::where('id', $request->agent_id)->first();
-
         if (!$agent) {
-            return [
-                'status' => 'error',
-                'message' => 'Agent cannot be found'
-            ];
+            return ['status' => 'error', 'message' => 'Agent cannot be found'];
         }
 
         $currentSequence = $voucherSequence->current_sequence;
         $voucherNumber = $this->generateVoucherNumber($currentSequence);
+
         try {
             $voucherSequence->current_sequence++;
             $voucherSequence->save();
@@ -1092,15 +1169,13 @@ class PaymentController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return [
-                'status' => 'error',
-                'message' => $e->getMessage(),
-            ];
+            return ['status' => 'error', 'message' => $e->getMessage()];
         }
 
         try {
             $data = [
                 'voucher_number' => $voucherNumber,
+                'payment_reference' => $invoiceId,
                 'from' => $client->name,
                 'pay_to' => $agent->branch->company->name,
                 'currency' => 'KWD',
@@ -1108,29 +1183,49 @@ class PaymentController extends Controller
                 'amount' => $request->amount,
                 'payment_gateway' => $request->payment_gateway,
                 'payment_method_id' => $request->payment_method,
-                'status' => 'pending',
+                'status' => $source === 'import' ? 'completed' : 'pending',
                 'client_id' => $client->id,
                 'agent_id' => $agent->id,
                 'notes' => $request->notes,
+                'created_by' => Auth::id()
             ];
 
-            if ($request->invoice_id !== null) {
-                $data['invoice_id'] = $request->invoice_id;
-            }
-
-            $data['created_by'] = Auth::id();
-
             $payment = Payment::create($data);
+            Log::info('Created Payment:', $data);
+
         } catch (Exception $e) {
             logger('Failed to create payment', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return [
-                'status' => 'error',
-                'message' => $e->getMessage(),
-            ];
+            return ['status' => 'error', 'message' => $e->getMessage()];
         }
+        /* $clientController = new ClientController(); */
+
+        if ($source === 'import') {
+        try {
+            $request = new Request([
+                'payment_id' => $payment->id,
+                'payment_gateway' => $payment->payment_gateway,
+                'payment_method' => $payment->payment_method_id,
+                'amount' => $payment->amount,
+                'client_id' => $payment->client_id,
+                'agent_id' => $payment->agent_id,
+                'invoice_id' => $payment->payment_reference,
+                'fatoorah_payment_id' => $payment->paymentId,
+                'notes' => $payment->notes,
+                'source' => 'import',
+            ]);
+
+            $result = $this->PaymentLinkProcess($request);
+            Log::info('Add Credit & Journal for import payment response:', ['result' => $result]);
+        } catch (\Exception $e) {
+            Log::error('Add Credit & Journal for import payment', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
 
         return [
             'status' => 'success',
@@ -1428,13 +1523,11 @@ class PaymentController extends Controller
 
         $companyId = optional($payment->agent->branch)->company_id;
 
-        // Clean client name
         $customerName = optional($payment->client)->name ?? 'Customer';
         if (strpos($customerName, '/') !== false) {
             $customerName = trim(explode('/', $customerName)[0]);
         }
 
-        // Clean client phone
         $client = $payment->client;
         $clientPhone = $client->phone ?? '50000000';
         if (isset($clientPhone) && strpos($clientPhone, '+') === 0) {
@@ -1442,7 +1535,6 @@ class PaymentController extends Controller
             $clientPhone = ltrim($clientPhone, '0');
         }
 
-        // Recalculate amount + fees
         $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
         $finalAmount = $chargeResult['finalAmount'];
 
@@ -1488,7 +1580,6 @@ class PaymentController extends Controller
         $mfInvoiceId = $resData['Data']['InvoiceId'] ?? null;
 
         if ($invoiceUrl && $mfInvoiceId) {
-            // Optionally update the same payment record (or skip if already stored)
             $payment->payment_reference = $mfInvoiceId;
             $payment->status = 'initiate';
             $payment->save();
@@ -1501,7 +1592,88 @@ class PaymentController extends Controller
 
     public function paymentLinkProcess(Request $request)
     {
-        if ($request->tap_id) {
+        $source = $request->input('source');
+        if ($source === 'import') {
+            $paymentId = $request->payment_id;
+            $payment = Payment::findorFail($paymentId);
+
+            $clientController = new ClientController;
+
+            $addCreditResponse = $clientController->addCredit($payment);
+
+            if (isset($addCreditResponse['error'])) {
+                logger('Failed to add credit to client', [
+                    'message' => $addCreditResponse['error'],
+                    'payment_id' => $paymentId,
+                ]);
+                return redirect()->back()->with('error', 'Payment cannot be updated');
+            }
+
+            $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
+                ->where('company_id', $payment->agent->branch->company->id)
+                ->first();
+
+            if (!$liabilitiesAccount) {
+                return redirect()->back()->with('error', 'Liabilities account not found.');
+            }
+
+            $clientAdvance = Account::where('name', 'Client')
+                ->where('company_id', $payment->agent->branch->company->id)
+                ->where('root_id', $liabilitiesAccount->id)
+                ->first();
+
+            if (!$clientAdvance) {
+                return redirect()->back()->with('error', 'Client advance account not found.');
+            }
+
+            DB::beginTransaction();
+
+            try {
+                $transaction = Transaction::create([
+                    'branch_id' => $payment->agent->branch->id,
+                    'company_id' => $payment->agent->branch->company->id,
+                    'entity_id' => $payment->agent->branch->company->id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'debit',
+                    'amount' => $payment->amount,
+                    'description' => 'Topup success by ' . $payment->client->name,
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $payment->invoice_id,
+                    'payment_reference' => $payment->payment_reference,
+                    'reference_type' => 'Payment',
+                ]);
+
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'branch_id' => $payment->agent->branch->id,
+                    'company_id' => $payment->agent->branch->company->id,
+                    'invoice_id' => $payment->invoice_id,
+                    'account_id' => $clientAdvance->id,
+                    'transaction_date' => now(),
+                    'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
+                    'debit' => 0,
+                    'credit' => $payment->amount,
+                    'balance' => $clientAdvance->actual_balance - $payment->amount,
+                    'name' => $payment->client->name,
+                    'type' => 'receivable',
+                    'voucher_number' => $payment->voucher_number,
+                    'type_reference_id' => $clientAdvance->id
+                ]);
+
+                Log::info('Successfully created transaction and journal entry for import payment of myFatoorah from the portal');
+            } catch (Exception $e) {
+                DB::rollBack();
+                logger('Failed to create journal entry', [
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return redirect()->back()->with('error', 'Payment cannot be updated');
+            }
+            DB::commit();
+
+            return redirect()->route('payment.link.index')->with('success', 'Import payment from myFatoorah portal is success!');
+        }
+        else if ($request->tap_id) {
             $tapId = $request->tap_id;
             $tap = new Tap();
             $response = $tap->getCharge($tapId);

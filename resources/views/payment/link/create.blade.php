@@ -230,7 +230,7 @@
                                 <div class="flex items-center justify-between mb-6">
                                     <div>
                                         <h2 class="text-xl font-bold text-gray-800">Import MyFatoorah Payment</h2>
-                                        <p class="text-gray-600 italic text-xs mt-1">Create a payment link from an existing MyFatoorah Payment ID</p>
+                                        <p class="text-gray-600 italic text-xs mt-1">Import a payment from an existing transaction on MyFatoorah Portal</p>
                                     </div>
                                     <button @click="importFatoorahModal = false"
                                         class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">
@@ -246,7 +246,7 @@
                                         </label>
                                         <input type="text" name="import_payment_id" id="import_payment_id"
                                             class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                            placeholder="Enter existing payment ID" required>
+                                            placeholder="Enter payment ID" required>
                                     </div>
 
                                     <div class="flex justify-between pt-4 mt-4">

@@ -950,7 +950,11 @@ class PaymentController extends Controller
         
         $apiKey = config('services.myfatoorah.api_key');
         $baseUrl = config('services.myfatoorah.base_url');
-
+        Log::info('myFatoorah config values: ',[
+            'apiKey' => $apiKey,
+            'baseUrl' => $baseUrl,
+        ]);
+        
         $response = Http::withHeaders([
             'Authorization' => "Bearer $apiKey",
             'Content-Type' => 'application/json',

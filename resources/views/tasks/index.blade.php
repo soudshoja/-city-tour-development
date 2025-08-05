@@ -1079,7 +1079,8 @@
                                                                                                         class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
                                                                                                         name="price"
                                                                                                         placeholder="Price"
-                                                                                                        value="{{ $task->price }}">
+                                                                                                        value="{{ $task->price }}"
+                                                                                                       {{$task->task_price_changeable ? '' : 'disabled'}}> 
                                                                                                 </div>
 
                                                                                                 <!-- Tax -->
@@ -1111,7 +1112,8 @@
                                                                                                     <input type="text" name="total"
                                                                                                         class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
                                                                                                         value="{{ $task->total }}"
-                                                                                                        placeholder="Total">
+                                                                                                        placeholder="Total"
+                                                                                                        {{$task->task_price_changeable ? '' : 'disabled'}}>
                                                                                                 </div>
                                                                                             </div>
                                                                                             <!-- Payment Method -->

@@ -1467,7 +1467,7 @@ class PaymentController extends Controller
                     ]
                 ],
             ];
-            dd($executePayload);
+            // dd($executePayload);
             $executeResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
                 'Content-Type' => 'application/json',
@@ -1565,7 +1565,7 @@ class PaymentController extends Controller
             ],
         ];
 
-        dd($executePayload);
+        // dd($executePayload);
 
         $executeResponse = Http::withHeaders([
             'Authorization' => "Bearer $apiKey",

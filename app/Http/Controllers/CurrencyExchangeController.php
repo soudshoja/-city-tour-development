@@ -42,7 +42,25 @@ class CurrencyExchangeController extends Controller
         });
 
         $currenciesAvailable = array_filter($currenciesAvailable, function ($currency) {
-            return in_array($currency['code'], ['USD', 'SAR', 'QAR', 'GBP', 'AED', 'EUR', 'EGP', 'BHD', 'KWD', 'LKR', 'JOD', 'INR']);
+            return in_array($currency['code'], [
+                'USD',
+                'SAR',
+                'QAR',
+                'GBP',
+                'AED',
+                'EUR',
+                'EGP',
+                'BHD',
+                'KWD',
+                'LKR',
+                'JOD',
+                'INR',
+                'MAD',
+                'CNY',
+                'SGD',
+                'IDR',
+                'NPR',
+            ]);
         });
 
         if (!$currenciesAvailable) {

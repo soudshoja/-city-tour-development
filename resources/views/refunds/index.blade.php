@@ -65,7 +65,7 @@
                             <thead>
                                 <tr>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Refund Number</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Method</th>
+                                    <!-- <th class="p-3 text-left text-md font-bold text-gray-500">Method</th> -->
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Client</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Total Refund</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
@@ -86,8 +86,8 @@
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $refund->refund_number }}
                                             </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->method }}
-                                            </td>
+                                            <!-- <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->method }}
+                                            </td> -->
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $refund->task->client->name ?? '' }}
                                             </td>

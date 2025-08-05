@@ -122,6 +122,15 @@ class Task extends Model
         return $this->issued_date->format('d-m-Y H:i');
     }
 
+    public function getTaskPriceChangeableAttribute()
+    {
+        if(empty($this->original_currency)) {
+            return true;
+        } 
+
+        return $this->original_currency !== 'KWD';
+    }
+
     public function flightDetails() // temporary fix
     {
         return $this->hasOne(TaskFlightDetail::class, 'task_id');

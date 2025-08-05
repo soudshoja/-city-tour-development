@@ -49,6 +49,25 @@ class TaskController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
+
+        $defaultColumns = [
+            'reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'issue-date', 'info'
+        ];
+
+        if ($user->role_id === Role::AGENT) {
+            $defaultColumns = array_filter($defaultColumns, fn($col) => $col !== 'agent-name');
+        }
+
+        $visibleColumns = session('visible_task_columns', $defaultColumns);
+
+        $sortBy = $request->query('sortBy', 'issued_date');
+        $sortOrder = $request->query('sortOrder', 'desc');
+
+        $sortableColumns = ['issued_date', 'created_at'];
+        if (!in_array($sortBy, $sortableColumns)) {
+            $sortBy = 'issued_date';
+        }
+
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
         $paymentMethod = Account::where('parent_id', 39)->get();
 
@@ -122,7 +141,7 @@ class TaskController extends Controller
         }
   
         $taskCount = $tasks->count();
-        $tasks = $tasks->orderBy('issued_date', 'desc')->orderBy('id', 'desc')->paginate(20);
+        $tasks = $tasks->orderBy($sortBy, $sortOrder)->orderBy('id', 'desc')->paginate(20);
         $types = Task::distinct()->pluck('type');
 
         $importedTask = Cache::get('imported_task');
@@ -136,9 +155,24 @@ class TaskController extends Controller
             'suppliers',
             'types',
             'countries',
-            'paymentMethod'
+            'paymentMethod',
+            'visibleColumns',
             // 'searchTask'
         ));
+    }
+
+    /**
+     * Save the user’s task-list column visibility settings in session
+     */
+    public function saveColumnPrefs(Request $request)
+    {
+        $validated = $request->validate([
+            'columns' => 'required|array'
+        ]);
+
+        $request->session()->put('visible_task_columns', $validated['columns']);
+
+        return response()->json(['success', 'message' => 'Column preferences saved.']);
     }
 
     public function store(Request $request)

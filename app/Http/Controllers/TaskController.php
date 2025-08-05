@@ -673,9 +673,14 @@ class TaskController extends Controller
 
         $jazeera = Supplier::where('name', 'Jazeera Airways')->first();
 
-        // Handle currency-specific accounting for hotel tasks (excluding Jazeera Airways)
+        $isJazeera = $jazeera !== null ? $task->supplier_id == $jazeera->id : false;
+
         $currencySpecificAccount = null;
-        if($task->type == 'hotel' && (!$jazeera ?? $task->supplier_id !== $jazeera->id)) {
+        if($task->type == 'hotel' && !$isJazeera) {
+            if ($jazeera ? $task->supplier_id == $jazeera->id : false) {
+                Log::info('Processing hotel task for Jazeera Airways - using supplier payable account directly: ' . $task->reference);
+                
+            }
             if ($task->original_currency && $task->original_currency !== 'KWD') {
                 // Create or find the original currency child account under supplier payable
                 Log::info('Processing hotel task with original currency: ' . $task->original_currency . ' for task: ' . $task->reference);
@@ -982,7 +987,9 @@ class TaskController extends Controller
 
         // Handle currency-specific accounts for hotel refund tasks (excluding Jazeera Airways)
         $jazeera = Supplier::where('name', 'Jazeera Airways')->first();
-        if ($task->type == 'hotel' && (!$jazeera || $task->supplier_id !== $jazeera->id)) {
+
+        $isJazeera = $jazeera !== null ? $task->supplier_id == $jazeera->id : false;
+        if ($task->type == 'hotel' && !$isJazeera) {
             if ($task->original_currency && $task->original_currency !== 'KWD') {
                 // Look for original currency account
                 Log::info('Processing hotel refund task with original currency: ' . $task->original_currency . ' for task: ' . $task->reference);
@@ -2098,7 +2105,7 @@ class TaskController extends Controller
                     'message' => 'Error creating task: ' . $response['message'],
                 ];
             }
-
+            
             $task = Task::with('hotelDetails')->find($response['data']['id']);
 
             if (!$task) {
@@ -2944,6 +2951,39 @@ class TaskController extends Controller
         ->where('parent_id', $supplierPayable->id ?? 0)
         ->first();
 
+    // Handle currency-specific accounts for hotel tasks (same logic as other methods)
+    $currencySpecificAccount = null;
+    $jazeera = Supplier::where('name', 'Jazeera Airways')->first();
+
+    $isJazeera = $jazeera !== null ? $task->supplier_id == $jazeera->id : false;
+
+    if ($task->type == 'hotel' && !$isJazeera) {
+        if ($task->original_currency && $task->original_currency !== 'KWD') {
+            // Look for original currency account
+            Log::info('Processing hotel task with original currency: ' . $task->original_currency . ' for task: ' . $task->reference);
+            $currencySpecificAccount = Account::where('name', $supplier->name . ' (' . $task->original_currency . ')')
+                ->where('company_id', $task->company_id)
+                ->where('parent_id', $supplierPayable->id)
+                ->where('currency', $task->original_currency)
+                ->first();
+        } else {
+            // Look for KWD currency account
+            Log::info('Processing hotel task with KWD currency for task: ' . $task->reference);
+            $currencySpecificAccount = Account::where('name', $supplier->name . ' (KWD)')
+                ->where('company_id', $task->company_id)
+                ->where('parent_id', $supplierPayable->id)
+                ->where('currency', 'KWD')
+                ->first();
+        }
+        
+        if ($currencySpecificAccount) {
+            Log::info('Using existing currency-specific account for payment method reversal: ' . $currencySpecificAccount->name);
+        } else {
+            Log::warning('Currency-specific account not found for task: ' . $task->reference . 
+                       ' - falling back to main supplier account');
+        }
+    }
+
     $creditorAccount = Account::find($task->payment_method_account_id);
     Log::info('Creditor Account Details', [
         'id' => $creditorAccount->id,
@@ -2989,15 +3029,51 @@ class TaskController extends Controller
 
         Log::info('Reversed Journal Entries for Task ID: ' . $task->id . ' with Transaction: ' . $transaction1);
 
+        // Determine which payable account to use - priority: currency-specific > issued by > supplier payable
+        $payableAccountToUse = null;
+        $payableAccountDescription = '';
+        
+        if ($currencySpecificAccount && $task->type == 'hotel') {
+            // Hotel task with currency-specific account
+            $payableAccountToUse = $currencySpecificAccount;
+            $payableAccountDescription = 'Reversal of supplier payable (currency-specific): ' . $currencySpecificAccount->name;
+            
+            Log::info('Using currency-specific account for reversal', [
+                'task_reference' => $task->reference,
+                'account_name' => $currencySpecificAccount->name,
+                'account_id' => $currencySpecificAccount->id
+            ]);
+        } elseif ($issuedByAccount && in_array($task->type, ['flight', 'visa'])) {
+            // Flight/visa task with issued by account
+            $payableAccountToUse = $issuedByAccount;
+            $payableAccountDescription = 'Reversal of supplier payable (issued by): ' . $issuedByAccount->name;
+            
+            Log::info('Using issued by account for reversal', [
+                'task_reference' => $task->reference,
+                'account_name' => $issuedByAccount->name,
+                'account_id' => $issuedByAccount->id
+            ]);
+        } else {
+            // Default to supplier payable account
+            $payableAccountToUse = $supplierPayable;
+            $payableAccountDescription = 'Reversal of supplier payable: ' . $supplier->name;
+            
+            Log::info('Using default supplier payable account for reversal', [
+                'task_reference' => $task->reference,
+                'account_name' => $supplierPayable->name,
+                'account_id' => $supplierPayable->id
+            ]);
+        }
+
         // ✅ Debit to correct payable account
         JournalEntry::create([
             'transaction_id' => $transaction1->id,
             'company_id' => $task->company_id,
             'branch_id' => $branchId,
-            'account_id' => $issuedByAccount ? $issuedByAccount->id : $supplierPayable->id,
+            'account_id' => $payableAccountToUse->id,
             'task_id' => $task->id,
             'transaction_date' => $transactionDate,
-            'description' => 'Reversal of supplier payable: ' . $supplier->name,
+            'description' => $payableAccountDescription,
             'name' => $supplier->name,
             'debit' => $task->total,
             'credit' => 0,

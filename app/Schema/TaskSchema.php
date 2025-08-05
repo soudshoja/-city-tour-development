@@ -228,13 +228,13 @@ class TaskSchema
             ],
             'issued_date' => [
                 'type' => 'datetime',
-                'desc' => "Date and time when the booking was created or issued. For air files: Convert formats like 'TKOK12FEB' to '2025-02-12 00:00:00'. For other documents: Look for issue dates, booking dates, or creation timestamps in YYYY-MM-DD HH:MM:SS format.",
+                'desc' => "Date and time when the booking was created or issued. Look for issue dates, booking dates, or creation timestamps in YYYY-MM-DD HH:MM:SS format. Please don't use the example date, it is just an example of the format. Set to null if not available.",
                 'example' => '2025-02-12 00:00:00',
                 'default' => null,
             ],
             'task_flight_details' => [
                 'type' => 'object',
-                'desc' => "Flight details associated with the task.",
+                'desc' => "Flight details associated with the task. For flight details that have multiple segments, you can use the same schema for each segment. For example, if the flight come from Kuwait to Singapore with a stopover in Dubai, you can use flight details schema for each segment like Kuwait to Dubai, and Dubai to Singapore. This means one task can have multiple flight details. and also notes that if the flight has multiple passenger, the same segment/flight details should be used for each passenger. If the flight details are not available, you can set it to null.",
                 'example' => [
                     'farebase' => '20.00',
                     'departure_time' => '2025-10-16 14:00:00',
@@ -295,7 +295,7 @@ class TaskSchema
         foreach ($schema as $field => $meta) {
            
             if ($meta['type'] === 'object' && is_array($meta['example'])) {
-                // Nested object normalization
+                // Nested object normalization - handle arrays of objects
                 $nestedClass = null;
                 if ($field === 'task_flight_details' && class_exists('\App\Schema\TaskFlightSchema')) {
                    
@@ -303,9 +303,22 @@ class TaskSchema
                 } elseif ($field === 'task_hotel_details' && class_exists('\App\Schema\TaskHotelSchema')) {
                     $nestedClass = '\App\Schema\TaskHotelSchema';
                 }
-                $normalized[$field] = isset($input[$field]) && is_array($input[$field]) && $nestedClass
-                    ? $nestedClass::normalize($input[$field])
-                    : ($meta['default'] ?? null);
+                
+                if (isset($input[$field]) && is_array($input[$field]) && $nestedClass) {
+                    // Check if it's an array of objects (multiple flight/hotel details)
+                    if (isset($input[$field][0]) && is_array($input[$field][0])) {
+                        // Array of objects - normalize each one
+                        $normalized[$field] = [];
+                        foreach ($input[$field] as $nestedItem) {
+                            $normalized[$field][] = $nestedClass::normalize($nestedItem);
+                        }
+                    } else {
+                        // Single object - normalize directly
+                        $normalized[$field] = [$nestedClass::normalize($input[$field])];
+                    }
+                } else {
+                    $normalized[$field] = $meta['default'] ?? null;
+                }
             } else {
                 $normalized[$field] = array_key_exists($field, $input)
                     ? $input[$field]

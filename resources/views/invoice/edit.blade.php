@@ -197,7 +197,7 @@
                         <div class="mt-4 flex items-center">
                             <label class="w-full text-sm font-semibold">Invoice Date:</label>
                             <input id="invdate" type="date" name="invdate" class="w-full form-input"
-                                value="{{ $invoice->invoice_date }}" />
+                                value="{{ $invoice->invoice_date }}" disabled />
                         </div>
 
                         <div class="mt-4 flex items-center">

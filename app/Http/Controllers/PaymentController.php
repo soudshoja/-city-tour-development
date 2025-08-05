@@ -976,13 +976,92 @@ class PaymentController extends Controller
         $createdDate = $responseData['Data']['CreatedDate'] ?? null;
         $userDefined = json_decode($responseData['Data']['UserDefinedField'] ?? '{}', true);
 
-        if ($invoiceStatus === 'Paid') {
+        $page = null;
+        $clientId = null;
+        $agentId = null;
+
+        $clientName = $request->input('receiverName');
+        $agentName = $request->input('agentName');
+        $page = $request->input('page') ?? 'paymentLink';
+
+        $agentId = Agent::where('name', $agentName)->value('id');
+        $clientId = Client::where('name', $clientName)->value('id');
+
+        if ($page === 'invoice' && $invoiceStatus === 'Paid') {
+            if (!$invoiceId) {
+                Log::info('Invoice ID not found in myFatoorah portal');
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No such Invoice ID found in MyFatoorah portal'
+                ], 400);
+            }
+
+            $existingInvoiceId = Payment::where('payment_reference', $invoiceId)->exists();
+
+            if ($existingInvoiceId) {
+                Log::info('Invoice ID has already been imported');
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'A payment with this Invoice ID has already been imported'
+                ], 400);
+            }
+            $paymentGateway = Arr::get($userDefined, 'payment_gateway') ?? 'MyFatoorah';
+            $paymentMethod = collect($responseData['Data']['InvoiceTransactions'] ?? [])
+                ->firstWhere('TransactionStatus', 'Succss')['PaymentGateway'] ?? null;
+            $amount = $responseData['Data']['InvoiceValue'] ?? 0;
+
+            Log::debug('Received from page:', [
+                'client_id' => $clientId,
+                'agent_id' => $agentId,
+                'payment_id' => $paymentId,
+                'page' => $page
+            ]);
+
+            if (!$clientId || !$agentId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Both Client and Agent are not fetched before importing payment'
+                ], 400);
+            }
+
+            $paymentMethodId = PaymentMethod::where('english_name', $paymentMethod)->value('id');
+            $data = [
+                'invoice_id' => $invoiceId,
+                'payment_id' => $paymentId,
+                'payment_gateway' => $paymentGateway,
+                'payment_method' => $paymentMethodId,
+                'amount' => $amount,
+                'client_id' => $clientId,
+                'agent_id' => $agentId,
+                'notes' => 'Imported from MyFatoorah Portal with invoice ID : ' . $invoiceId,
+                'source' => 'import',
+            ];
+
+            Log::debug('Data from Invoice page: ', $data);
+
+            $internalRequest = new Request($data);
+            $response = $this->paymentStoreLinkProcess($internalRequest);
+
+            if ($response['status'] === 'error') {
+                return redirect()->back()->with('error', $response['message']);
+            }
+        } elseif ($page === 'paymentLink' && $invoiceStatus === 'Paid' ) {
+            if (!$invoiceId) {
+                Log::info('Invoice ID not found in myFatoorah portal');
+                return redirect()->back()->with('error', 'No such Invoice ID found in MyFatoorah portal');
+            }
+
+            $existingInvoiceId = Payment::where('payment_reference', $invoiceId)->exists();
+
+            if ($existingInvoiceId) {
+                Log::info('Invoice ID has already been imported');
+                return redirect()->back()->with('error', 'A payment with this Invoice ID has already been imported');
+            }
+
             $paymentGateway = Arr::get($userDefined, 'payment_gateway');
             $paymentMethod = collect($responseData['Data']['InvoiceTransactions'] ?? [])
                 ->firstWhere('TransactionStatus', 'Succss')['PaymentGateway'] ?? null;
             $amount = $responseData['Data']['InvoiceValue'] ?? 0;
-            $clientId = null;
-            $agentId = null;
 
             Log::info('Redirecting to form with pre-filled data', [
                 'invoiceId' => $invoiceId,
@@ -1127,19 +1206,29 @@ class PaymentController extends Controller
     {
         $source = $request->input('source');
         $invoiceId = $request->input('invoice_id');
-        $paymentId = $request->input('payment_id');
-        Log::info('Knock knock? Whos that? Im ' . $source . ' and Im bringing ' . $invoiceId . ' with me');
 
-         $request->validate([
+        try {
+            $request->validate([
                 'payment_gateway' => 'required',
-                'payment_method' => 'nullable|string',
+                'payment_method' => 'nullable',
                 'amount' => 'required|numeric',
                 'client_id' => 'nullable',
                 'agent_id' => 'nullable',
                 'invoice_id' => 'nullable',
                 'notes' => 'nullable|string|max:255'
             ]);
-       
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed in paymentStoreLinkProcess', [
+                'errors' => $e->validator->errors()->all()
+            ]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $e->validator->errors()
+            ], 422);
+        }
+
+
         $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
         if (!$voucherSequence) {
             $voucherSequence = Sequence::create([
@@ -1161,7 +1250,7 @@ class PaymentController extends Controller
 
         $currentSequence = $voucherSequence->current_sequence;
         $voucherNumber = $this->generateVoucherNumber($currentSequence);
-
+        
         try {
             $voucherSequence->current_sequence++;
             $voucherSequence->save();
@@ -1204,6 +1293,7 @@ class PaymentController extends Controller
         /* $clientController = new ClientController(); */
 
         if ($source === 'import') {
+            Log::debug('We hit here in paymentStoreLink at import');
         try {
             $request = new Request([
                 'payment_id' => $payment->id,
@@ -1218,7 +1308,7 @@ class PaymentController extends Controller
                 'source' => 'import',
             ]);
 
-            $result = $this->PaymentLinkProcess($request);
+            $result = $this->paymentLinkProcess($request);
             Log::info('Add Credit & Journal for import payment response:', ['result' => $result]);
         } catch (\Exception $e) {
             Log::error('Add Credit & Journal for import payment', [
@@ -1226,18 +1316,20 @@ class PaymentController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
         }
-    }
+        }
 
-        return [
-            'status' => 'success',
-            'message' => 'Payment Link Created',
-            'clientEmail' => $client->email,
-            'data' => $payment
-        ];
+            return [
+                'status' => 'success',
+                'message' => 'Payment Link Created',
+                'clientEmail' => $client->email,
+                'data' => $payment
+            ];
     }
 
     public function paymentStoreLink(Request $request)
     {
+        Log::debug('Apa yang kita dapat: ', $request->all());
+
         $response = $this->paymentStoreLinkProcess($request);
         if ($response['status'] === 'error') {
             return redirect()->back()->with('error', $response['message']);
@@ -1593,7 +1685,7 @@ class PaymentController extends Controller
     }
 
     public function paymentLinkProcess(Request $request)
-    {
+    {   
         $source = $request->input('source');
         if ($source === 'import') {
             $paymentId = $request->payment_id;
@@ -1673,7 +1765,7 @@ class PaymentController extends Controller
             }
             DB::commit();
 
-            return redirect()->route('payment.link.index')->with('success', 'Import payment from myFatoorah portal is success!');
+            return redirect()->back()->with('success', 'Import payment from myFatoorah portal is success!');
         }
         else if ($request->tap_id) {
             $tapId = $request->tap_id;

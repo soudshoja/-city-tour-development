@@ -3159,23 +3159,27 @@
                     loadingBox.classList.add('hidden');
 
                     if (res.ok) {
-                        successBox.textContent = `✅ Payment imported successfully.`;
+                        successBox.textContent = `Payment imported successfully.`;
                         successBox.classList.remove('hidden');
                         input.value = '';
                         setTimeout(() => {
                             closeModal();
-                            window.location.reload(); // ✅ refresh after modal closes
-                        }, 1500);
+                            window.location.reload();
+                        }, 2000);
                     } else {
-                        const text = await res.text();
-                        errorBox.textContent = `❌ Import failed. Server said: ${text.slice(0, 100)}...`;
+                        const data = await res.json();
+                        errorBox.textContent = `${data.message}`;
                         errorBox.classList.remove('hidden');
-                    }
 
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    }
+                    
                 } catch (err) {
                     console.error(err);
                     loadingBox.classList.add('hidden');
-                    errorBox.textContent = '❌ ' + err.message;
+                    errorBox.textContent = err.message;
                     errorBox.classList.remove('hidden');
                 }
             });

@@ -522,7 +522,7 @@
                                     <div class="space-y-2">
                                         <div class="flex items-center gap-2">
                                             <input type="checkbox" id="col-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                            <label for="col-reference" class="text-sm text-gray-700">Refdfdsference</label>
+                                            <label for="col-reference" class="text-sm text-gray-700">Reference</label>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <input type="checkbox" id="col-client" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>

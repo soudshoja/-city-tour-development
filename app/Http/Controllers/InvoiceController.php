@@ -612,6 +612,7 @@ class InvoiceController extends Controller
                 }
 
                 $transaction = Transaction::create([
+                    'transaction_date' => $invoice->invoice_date,
                     'company_id' => $tasks[0]->company_id,
                     'branch_id' => $tasks[0]->agent->branch_id,
                     'entity_id' => $tasks[0]->company_id,
@@ -759,6 +760,7 @@ class InvoiceController extends Controller
             // Generate and increment new invoice number
         }
 
+    }
         $agent = Agent::where('id', $agentId)->first();
         $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
         $branchId = $agent ? $agent->branch_id : null;
@@ -826,8 +828,6 @@ class InvoiceController extends Controller
                     Log::error('Failed to create InvoiceDetails: ' . $e->getMessage());
                     return response()->json('Something Went Wrong', 500);
                 }
-
-
 
                 // Log::info('filteredPayableChild', ['filteredPayableChild' => $payableAccount->children()]);
                 // if ($payableAccount) {
@@ -909,7 +909,7 @@ class InvoiceController extends Controller
                         'account_id' => $clientAdvance->id,
                         'invoice_id' => $invoiceId,
                         'invoice_detail_id' => $invoiceDetailId,
-                        'transaction_date' => now(),
+                        'transaction_date' => $invoice->invoice_date,
                         'description' => 'Invoice created for (Assets): ' . $clientName,
                         'debit' => $task->invoiceDetail->task_price,
                         'credit' => 0,
@@ -939,7 +939,7 @@ class InvoiceController extends Controller
                         'account_id' => $clientAccount->id,
                         'invoice_id' => $invoiceId,
                         'invoice_detail_id' => $invoiceDetailId,
-                        'transaction_date' => Carbon::now(),
+                        'transaction_date' => $invoice->invoice_date,
                         'description' => 'Invoice created for (Assets): ' . $clientName,
                         'debit' => $task->invoiceDetail->task_price,
                         'credit' => 0,
@@ -974,7 +974,7 @@ class InvoiceController extends Controller
                     'account_id' => $detailsAccount->id,
                     'invoice_id' => $invoiceId,
                     'invoice_detail_id' => $invoiceDetailId,
-                    'transaction_date' => now(),
+                    'transaction_date' => $invoice->invoice_date,
                     'description' => 'Invoice created for (Income): ' . $task['additional_info'],
                     'debit' => 0,
                     'credit' => $task->invoiceDetail->task_price,
@@ -1025,7 +1025,7 @@ class InvoiceController extends Controller
                     'account_id' => $commissionExpenses->id,
                     'invoice_id' => $invoiceId,
                     'invoice_detail_id' => $invoiceDetailId,
-                    'transaction_date' => Carbon::now(),
+                    'transaction_date' => $invoice->invoice_date,
                     'description' => 'Agents Commissions for (Expenses): ' . $task['agent']['name'],
                     'debit' => $commission,
                     'credit' => 0,
@@ -1064,7 +1064,7 @@ class InvoiceController extends Controller
                         'account_id' => $accruedCommissions->id,
                         'invoice_id' => $invoiceId,
                         'invoice_detail_id' => $task->invoiceDetail->id,
-                        'transaction_date' => Carbon::now(),
+                        'transaction_date' => $invoice->invoice_date,
                         'description' => 'Agents Commissions for (Liabilities): ' . $task['agent']['name'],
                         'debit' => 0,
                         'credit' => $commission,

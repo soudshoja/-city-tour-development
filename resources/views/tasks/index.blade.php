@@ -514,7 +514,7 @@
                                     <div class="space-y-2">
                                         <div class="flex items-center gap-2">
                                             <input type="checkbox" id="col-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                            <label for="col-reference" class="text-sm text-gray-700">Reference</label>
+                                            <label for="col-reference" class="text-sm text-gray-700">Refdfdsference</label>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <input type="checkbox" id="col-client" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
@@ -763,7 +763,7 @@
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Reference</span>
                                                 </th>
                                                 <th data-column="client">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Bill To</span>
                                                 </th>
                                                 <th data-column="passenger-name">
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Passenger Name</span>

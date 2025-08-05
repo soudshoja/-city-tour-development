@@ -757,14 +757,7 @@ class InvoiceController extends Controller
          $existingInvoice = Invoice::where('invoice_number', $invoiceNumber)->first();
     if ($existingInvoice) {
         // Generate and increment new invoice number
-        $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
-        if (!$invoiceSequence) {
-            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
-        }
-        $currentSequence = $invoiceSequence->current_sequence;
-        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
-        $invoiceSequence->current_sequence++;
-        $invoiceSequence->save();
+
     }
         $agent = Agent::where('id', $agentId)->first();
         $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
@@ -851,6 +844,15 @@ class InvoiceController extends Controller
 
             }
         }
+
+        $invoiceSequence = InvoiceSequence::first();
+        if (!$invoiceSequence) {
+            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+        }
+        $currentSequence = $invoiceSequence->current_sequence;
+        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+        $invoiceSequence->current_sequence++;
+        $invoiceSequence->save();
 
         return response()->json([
             'success' => true,

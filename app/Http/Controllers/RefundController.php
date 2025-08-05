@@ -343,7 +343,7 @@ class RefundController extends Controller
                         'company_id' => $task->company_id,
                         'branch_id' => $task->agent->branch_id,
                         'client_id' => $task->client_id,
-                        'type' => 'refund',
+                        'type' => 'Refund',
                         'description' => 'Refund for Task ID: ' . $task->id,
                         'amount' => $request->input('total_nett_refund'),
                         'topup_by' => $refundBy !== '' ? $refundBy : 'Company',

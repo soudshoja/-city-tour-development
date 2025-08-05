@@ -197,11 +197,7 @@
                         <div class="mt-4 flex items-center">
                             <label class="w-full text-sm font-semibold">Invoice Date:</label>
                             <input id="invdate" type="date" name="invdate" class="w-full form-input"
-<<<<<<< Updated upstream
                                 value="{{ $invoice->invoice_date }}" disabled />
-=======
-                                value={{ $invoiceDate }} />
->>>>>>> Stashed changes
                         </div>
 
                         <div class="mt-4 flex items-center">

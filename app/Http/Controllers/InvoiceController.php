@@ -128,7 +128,33 @@ class InvoiceController extends Controller
     }
 
     public function create(Request $request)
+    
+
     {
+    if (auth()->user()->role_id == Role::ADMIN) {
+        return view('invoice.maintenance');
+    }
+
+    $invoiceNumber = $request->query('invoiceNumber');
+    $invoiceId = $request->query('invoiceId');
+
+    if ($invoiceNumber || $invoiceId) {
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
+        if ($invoice) {
+            $invoiceNumber = $invoice->invoice_number;
+            $invoiceId = $invoice->id;
+        }
+    } else {
+        // Just preview the next number, do NOT increment
+        $invoiceSequence = InvoiceSequence::first();
+        if (!$invoiceSequence) {
+            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+        }
+        $currentSequence = $invoiceSequence->current_sequence;
+        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+        $invoiceId = null;
+    }
+
         if (auth()->user()->role_id == Role::ADMIN) {
             return view('invoice.maintenance'); // Show the maintenance page
         }
@@ -210,15 +236,15 @@ class InvoiceController extends Controller
             $selectedCompany = $company;
         }
 
-        $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
-        if (!$invoiceSequence) {
-            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
-        }
+        // $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
+        // if (!$invoiceSequence) {
+        //     $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+        // }
 
-        $currentSequence = $invoiceSequence->current_sequence;
-        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
-        $invoiceSequence->current_sequence++;
-        $invoiceSequence->save();
+        // $currentSequence = $invoiceSequence->current_sequence;
+        // $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+        // $invoiceSequence->current_sequence++;
+        // $invoiceSequence->save();
 
         $this->storeNotification([
             'user_id' => $user->id,
@@ -310,6 +336,7 @@ class InvoiceController extends Controller
             'invoiceExpireDefault',
             'countries'
         ));
+
     }
 
     public function edit(string $invoiceNumber)
@@ -727,7 +754,18 @@ class InvoiceController extends Controller
         $invoiceNumber = $request->input(key: 'invoiceNumber');
         $currency = $request->input('currency');
 
-
+         $existingInvoice = Invoice::where('invoice_number', $invoiceNumber)->first();
+    if ($existingInvoice) {
+        // Generate and increment new invoice number
+        $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
+        if (!$invoiceSequence) {
+            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+        }
+        $currentSequence = $invoiceSequence->current_sequence;
+        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+        $invoiceSequence->current_sequence++;
+        $invoiceSequence->save();
+    }
         $agent = Agent::where('id', $agentId)->first();
         $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
         $branchId = $agent ? $agent->branch_id : null;

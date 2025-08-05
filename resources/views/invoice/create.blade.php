@@ -2865,13 +2865,17 @@
                     throw new Error("Failed to generate");
                 }
 
-                const result = await response.json();
-                const {
-                    invoiceId
-                } = result;
+                // ...existing code...
+const result = await response.json();
+const { invoiceId: newInvoiceId, invoiceNumber: newInvoiceNumber } = result;
 
-                document.getElementById('invoiceId').value = invoiceId;
-                const generatedLink = appUrl + '/invoice/' + invoiceNumber;
+// Only update invoice number if this is a new invoice (no invoiceId before)
+if (!invoiceId) {
+    document.getElementById('invoiceNumber').value = newInvoiceNumber;
+}
+document.getElementById('invoiceId').value = newInvoiceId;
+const generatedLink = appUrl + '/invoice/' + (invoiceNumber || newInvoiceNumber);
+// ...existing code...
 
                 // Show success state
                 isSaved = true; // Mark as saved after generating

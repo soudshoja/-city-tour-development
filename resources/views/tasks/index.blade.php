@@ -822,7 +822,7 @@
                                             @foreach ($tasks as $key => $task)
                                             @php
                                             $isSelectable = $task->status !== 'refund'
-                                            ? !$task->invoiceDetail && $task->enabled && $task->linkedTask
+                                            ? !$task->invoiceDetail && $task->enabled
                                             : !$task->refundDetail && $task->is_complete;
                                             @endphp
                                             <tr class="taskRow task-row {{ $isSelectable ? 'hover:bg-blue-100' : 'not-selectable' }}" @if($isSelectable) @click="toggleTaskSelection({{ $task->id }})" @endif x-show="{{ $key }} < shown" x-cloak

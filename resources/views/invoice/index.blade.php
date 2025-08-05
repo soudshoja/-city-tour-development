@@ -246,9 +246,9 @@
                                                 </svg>
                                             </div>
                                             <div x-cloak x-show="viewVoucherModal_{{ $invoice->id }}"
-                                                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+                                                class="fixed inset-0 z-20 bg-gray-800 bg-opacity-50 flex items-center justify-center overflow-y-auto p-4">
                                                 <div @click.away="viewVoucherModal_{{ $invoice->id }}=false"
-                                                    class="bg-white rounded-md border-2 w-auto">
+                                                    class="bg-white rounded-md border-2 max-w-4xl max-h-[80vh] overflow-y-auto shadow-lg">
                                                     <div class="flex justify-between gap-4 p-4">
                                                         <p class="text-lg font-semibold">
                                                             Voucher
@@ -285,11 +285,11 @@
                                                                     <div class="flex justify-between items-center">
                                                                         <div class="text-left">
                                                                             <h3 class="text-xl font-bold tracking-wider">
-                                                                                {{ $invoiceDetail->task->flightDetails->airport_from }}
+                                                                                {{ $invoiceDetail->task->flightDetails->airport_from ?? 'N/A' }}
                                                                                 <span class="mx-2 text-blue-700">
                                                                                     ✈
                                                                                 </span>
-                                                                                {{ $invoiceDetail->task->flightDetails->airport_to }}
+                                                                                {{ $invoiceDetail->task->flightDetails->airport_to ?? 'N/A' }}
                                                                             </h3>
                                                                         </div>
                                                                     </div>
@@ -308,7 +308,7 @@
                                                             <div class="bg-[#fdfaf6] rounded-xl border-[3px] border-[#d4b996] shadow-md p-5 max-w-lg mx-auto relative font-[Georgia,serif]">
                                                                 <h2 class="text-center text-2xl text-[#355070] tracking-wide font-semibold mb-2">Hotel Reservation</h2>
                                                                 <p class="text-center text-sm text-gray-700 italic mb-4">A gift from <span class="text-koromiko-700">{{ $invoiceDetail->task->supplier->name }}</span></p>
-                                                                <div class="text-center text-lg font-bold text-[#355070] border-y border-dashed border-gray-400 py-2 uppercase">
+                                                                <div class="text-center text-lg font-bold text-[#355070] border-y border-dashed border-gray-400 py-2 uppercase whitespace-normal break-words px-2 max-w-full">
                                                                     {{ $invoiceDetail->task->hotelDetails->hotel->name ?? 'n/a' }}
                                                                 </div>
                                                                 <div class="flex justify-between items-center mt-6 gap-6">

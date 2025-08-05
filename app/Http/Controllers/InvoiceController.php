@@ -79,6 +79,7 @@ class InvoiceController extends Controller
             // 'invoiceDetails.task.hotelDetails.room', 
             'client'
         ])
+            ->orderBy('created_at', 'desc')
             ->whereIn('agent_id', $agentIds)
             ->whereHas('agent.branch', function ($query) use ($companiesId) {
                 $query->whereIn('company_id', $companiesId);

@@ -89,7 +89,7 @@
                     <!-- Method -->
                     <div>
                         <label for="method" class="block text-gray-700 font-semibold mb-2">Refund Method</label>
-                        <select name="method" id="method" required
+                        <select name="method" id="method" 
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                             <option value="">Select</option>
                             <option value="Cash" {{ old('method') == 'Cash' ? 'selected' : '' }}>Cash</option>

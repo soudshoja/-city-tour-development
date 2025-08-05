@@ -340,6 +340,14 @@
                 min-width: 100px;
             }
         }
+        @media (hover: none) {
+            .group:hover .group-hover\:block {
+                display: none;
+            }
+            .group:focus .group-focus\:block {
+                display: block;
+            }
+        }
     </style>
 
     <div class="flex justify-between items-center gap-5 my-3 ">
@@ -746,11 +754,17 @@
                                         }
                                     },
                                     isSelectable(task) {
+                                        if (!task.agent_id) return false;
                                         return task.enabled &&
                                             (
                                                 (task.status === 'refund' && !task.refundDetail && task.is_complete) ||
-                                                (task.status !== 'refund' && !task.invoiceDetail && !task.linkedTask)
+                                                (task.status !== 'refund' && !task.invoiceDetail)
                                             );
+                                    },
+                                    clearSelectedTasks() {
+                                        this.selectedTasks = [];
+                                        window.selectedTasksGlobal = [];
+                                        this.updateFloatingActions();
                                     }
                                 }" x-init="window.selectedTasksGlobal = selectedTasks" x-cloak>
                                     <table id="myTable" class="whitespace-nowrap dataTable-table">
@@ -821,9 +835,8 @@
                                             @else
                                             @foreach ($tasks as $key => $task)
                                             @php
-                                            $isSelectable = $task->status !== 'refund'
-                                            ? !$task->invoiceDetail && $task->enabled
-                                            : !$task->refundDetail && $task->is_complete;
+                                            $isSelectable = $task->status !== 'refund' ? !$task->invoiceDetail && $task->enabled && $task->agent_id
+                                            : !$task->refundDetail && $task->is_complete && $task->agent_id;
                                             @endphp
                                             <tr class="taskRow task-row {{ $isSelectable ? 'hover:bg-blue-100' : 'not-selectable' }}" @if($isSelectable) @click="toggleTaskSelection({{ $task->id }})" @endif x-show="{{ $key }} < shown" x-cloak
                                                 :class="selectedTasks.includes({{ $task->id }}) ? 'selected' : ''"
@@ -845,7 +858,26 @@
                                                 data-task-id="{{ $task->id }}">
 
                                                 <td data-column="actions" class="p-3 text-sm">
-                                                    <div class="flex items-center justify-center gap-3 h-full min-h-[40px]">
+                                                    <div class="flex items-center justify-center gap-2 h-full min-h-[40px]">
+                                                        @if (!$isSelectable)
+                                                            @php
+                                                                $reasons = [];
+                                                                if (!$task->enabled) $reasons[] = 'Task is currently disabled';
+                                                                if (!$task->agent_id) $reasons[] = 'Agent not selected';
+                                                                if ($task->invoiceDetail) $reasons[] = 'Invoice already created';
+                                                                if ($task->status === 'refund' && $task->refundDetail) $reasons[] = 'Refund already processed';
+                                                                if ($task->status === 'refund' && !$task->is_complete) $reasons[] = 'Refund not complete';
+                                                                $tooltipText = implode(', ', $reasons);
+                                                            @endphp
+                                                            <div class="relative group cursor-default">
+                                                                <svg class="w-5 h-5 text-gray-400 hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fill-rule="evenodd" d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0zm-9-1V7h2v2H9zm0 2h2v4H9v-4z" clip-rule="evenodd" />
+                                                                </svg>
+                                                                <div class="absolute top-1/2 left-full -translate-y-1/2 w-[180px] text-xs bg-black text-white rounded px-3 py-2 z-20 hidden group-hover:block text-left whitespace-normal shadow-lg">
+                                                                    {{ $tooltipText }}
+                                                                </div>
+                                                            </div>
+                                                        @endif
                                                         <div class="flex items-center justify-center h-full">
                                                             <label class="switch m-0" @click.stop>
                                                                 <input type="checkbox" class="toggle-task-status"
@@ -1236,41 +1268,58 @@
                                                 </td>
                                                 <td data-column="info" class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                     @if ($task->type === 'flight')
-                                                    <div class="flex justify-between items-center gap-4 text-center text-sm">
-                                                        <div class="flex flex-col items-center">
-                                                            <span class="font-bold text-base">
-                                                                {{ $task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('H:i') : '-'}}
-                                                            </span>
-                                                            <span class="text-gray-600 text-sm">
-                                                                {{ $task->flightDetails->airport_from ?? '-' }}
-                                                            </span>
-                                                        </div>
-                                                        <div class="text-blue-700 text-lg"> ✈ </div>
-                                                        <div class="flex flex-col items-center">
-                                                            <span class="font-bold text-base">
-                                                                {{$task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('H:i') : '-'}}
-                                                            </span>
-                                                            <span class="text-gray-600 text-sm">
-                                                                {{ $task->flightDetails->airport_to ?? '-' }}
-                                                            </span>
-                                                        </div>
-                                                    </div>
+                                                        @php
+                                                            $flight = $task->flightDetails;
+                                                            $isFlightDataEmpty = !$flight || (!$flight->departure_time && !$flight->arrival_time && !$flight->airport_from && !$flight->airport_to);
+                                                        @endphp
+                                                        @if ($isFlightDataEmpty)
+                                                            <div class="text-gray-500 text-sm">Flight info not available</div>
+                                                        @else
+                                                            <div class="flex justify-between items-center gap-4 text-center text-sm">
+                                                                <div class="flex flex-col items-center">
+                                                                    <span class="font-bold text-base">
+                                                                        {{ $task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('H:i') : '-'}}
+                                                                    </span>
+                                                                    <span class="text-gray-600 text-sm">
+                                                                        {{ $task->flightDetails->airport_from ?? '-' }}
+                                                                    </span>
+                                                                </div>
+                                                                <div class="text-blue-700 text-lg"> ✈ </div>
+                                                                <div class="flex flex-col items-center">
+                                                                    <span class="font-bold text-base">
+                                                                        {{$task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('H:i') : '-'}}
+                                                                    </span>
+                                                                    <span class="text-gray-600 text-sm">
+                                                                        {{ $task->flightDetails->airport_to ?? '-' }}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        @endif
                                                     @elseif ($task->type === 'hotel')
-                                                    <div class="flex items-start gap-2 text-sm text-left">
-                                                        <div class="pt-1">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path d="M8 21V7a1 1 0 011-1h6a1 1 0 011 1v14M3 21v-4a1 1 0 011-1h4a1 1 0 011 1v4m10 0v-6a1 1 0 011-1h2a1 1 0 011 1v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                            </svg>
-                                                        </div>
-                                                        <div class="flex flex-col truncate">
-                                                            <div class="truncate max-w-[140px]" title="{{ $task->hotelDetails->hotel->name ?? '-' }}">
-                                                                {{ $task->hotelDetails->hotel->name ?? '-' }}
+                                                        @php
+                                                            $hotelDetails = $task->hotelDetails;
+                                                            $hotel = $hotelDetails?->hotel;
+                                                            $isHotelDataEmpty = !$hotelDetails || (!$hotel?->name && !$hotelDetails->check_in && !$hotelDetails->check_out);
+                                                        @endphp
+                                                        @if ($isHotelDataEmpty)
+                                                            <div class="text-gray-500 text-sm">Hotel info not available</div>
+                                                        @else
+                                                        <div class="flex items-start gap-2 text-sm text-left">
+                                                            <div class="pt-1">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path d="M8 21V7a1 1 0 011-1h6a1 1 0 011 1v14M3 21v-4a1 1 0 011-1h4a1 1 0 011 1v4m10 0v-6a1 1 0 011-1h2a1 1 0 011 1v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                                </svg>
                                                             </div>
-                                                            <div class="text-sm text-gray-500 whitespace-nowrap">
-                                                                {{ $task->hotelDetails->check_in ?? '-' }} - {{ $task->hotelDetails->check_out ?? '-' }}
+                                                            <div class="flex flex-col truncate">
+                                                                <div class="truncate max-w-[140px]" title="{{ $task->hotelDetails->hotel->name ?? '-' }}">
+                                                                    {{ $task->hotelDetails->hotel->name ?? '-' }}
+                                                                </div>
+                                                                <div class="text-sm text-gray-500 whitespace-nowrap">
+                                                                    {{ $task->hotelDetails->check_in ?? '-' }} - {{ $task->hotelDetails->check_out ?? '-' }}
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
+                                                        @endif
                                                     @else
                                                     <div>{{ $task->additional_info ?? '-' }}</div>
                                                     @endif
@@ -1530,6 +1579,28 @@
                                         </div>
 
                                     </table>
+                                    <div id="floatingActions"
+                                        class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-10 p-3">
+                                        <div class="flex justify-between gap-5 items-center h-full">
+                                            <button id="createInvoiceBtn" data-route="{{ route('invoices.create') }}"
+                                                class="flex px-5 py-3 gap-3 btn-success hover:bg-green-600 rounded-lg shadow-sm items-center transition-colors duration-200">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                    viewBox="0 0 24 24">
+                                                    <path fill="#ffffff"
+                                                        d="M2 12c0-2.8 1.6-5.2 4-6.3V3.5C2.5 4.8 0 8.1 0 12s2.5 7.2 6 8.5v-2.2c-2.4-1.1-4-3.5-4-6.3m13-9c-5 0-9 4-9 9s4 9 9 9s9-4 9-9s-4-9-9-9m5 10h-4v4h-2v-4h-4v-2h4V7h2v4h4z" />
+                                                </svg>
+                                                <span id="createInvoiceBtnText" class="text-sm">Create Invoice</span>
+                                            </button>
+                                        </div>
+                                        <div id="closeTaskFloatingActions" @click="clearSelectedTasks()"
+                                            class="flex cursor-pointer items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                viewBox="0 0 12 12">
+                                                <path fill="#E53935"
+                                                    d="M1.757 10.243a6.001 6.001 0 1 1 8.488-8.486a6.001 6.001 0 0 1-8.488 8.486M6 4.763l-2-2L2.763 4l2 2l-2 2L4 9.237l2-2l2 2L9.237 8l-2-2l2-2L8 2.763Z" />
+                                            </svg>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div id="loadMoreWrapper" class="text-center my-4"
@@ -1693,28 +1764,6 @@
                                     Showing {{ $tasks->firstItem() }} to {{ $tasks->lastItem() }} of {{ $tasks->total() }} results
                                 </div>
                                 @endif
-                            </div>
-                        </div>
-                        <div id="floatingActions"
-                            class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-5 p-3">
-                            <div class="flex justify-between gap-5 items-center h-full">
-                                <button id="createInvoiceBtn" data-route="{{ route('invoices.create') }}"
-                                    class="flex px-5 py-3 gap-3 btn-success hover:bg-green-600 rounded-lg shadow-sm items-center transition-colors duration-200">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                        viewBox="0 0 24 24">
-                                        <path fill="#ffffff"
-                                            d="M2 12c0-2.8 1.6-5.2 4-6.3V3.5C2.5 4.8 0 8.1 0 12s2.5 7.2 6 8.5v-2.2c-2.4-1.1-4-3.5-4-6.3m13-9c-5 0-9 4-9 9s4 9 9 9s9-4 9-9s-4-9-9-9m5 10h-4v4h-2v-4h-4v-2h4V7h2v4h4z" />
-                                    </svg>
-                                    <span id="createInvoiceBtnText" class="text-sm">Create Invoice</span>
-                                </button>
-                            </div>
-                            <div id="closeTaskFloatingActions"
-                                class="flex cursor-pointer items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                    viewBox="0 0 12 12">
-                                    <path fill="#E53935"
-                                        d="M1.757 10.243a6.001 6.001 0 1 1 8.488-8.486a6.001 6.001 0 0 1-8.488 8.486M6 4.763l-2-2L2.763 4l2 2l-2 2L4 9.237l2-2l2 2L9.237 8l-2-2l2-2L8 2.763Z" />
-                                </svg>
                             </div>
                         </div>
                         <div id="taskInvoicePlaceholder"

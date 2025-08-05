@@ -215,8 +215,7 @@
 
                         <div class="mt-4 flex items-center">
                             <label for="invoiceDate" class="w-full text-sm font-semibold">Invoice Date</label>
-                            <input id="invoiceDate" type="date" name="invoiceDate" class="w-full form-input"
-                                value="{{ $todayDate }}" disabled />
+                            <input id="invoiceDate" type="date" name="invoiceDate" class="w-full form-input" value="{{ $todayDate }}"/>
                         </div>
 
                         <div class="mt-4 flex items-center">

@@ -197,7 +197,7 @@
                         <div class="mt-4 flex items-center">
                             <label class="w-full text-sm font-semibold">Invoice Date:</label>
                             <input id="invdate" type="date" name="invdate" class="w-full form-input"
-                                value={{ $invoiceDate }}/>
+                                value="{{ $invoice->invoice_date }}" />
                         </div>
 
                         <div class="mt-4 flex items-center">
@@ -679,34 +679,36 @@
                             $selectedMethod = optional($invoice->invoicePartials->first())->payment_method ?? '';
                             @endphp
                             <div id="payment_gateway_dropdowns">
-                                <div class="mt-4" x-data="{ selectedGateway: '{{ $selectedGateway }}', paymentType: '{{ $invoice->payment_type ?? '' }}' }">
-                                    <div class="flex items-center">
-                                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
-                                        <span x-show="paymentType !== ''" class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
-                                            @click="updateGateway">(Change)</span>
+                                <div x-data="{ selectedGateway: '{{ $selectedGateway }}', selectedMethod: '{{ $selectedMethod }}', paymentType: '{{ $invoice->payment_type ?? '' }}' }">
+                                    <div class="mt-4">
+                                        <div class="flex items-center">
+                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
+                                            <span x-show="paymentType !== ''" class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
+                                                @click="updateGateway">(Change)</span>
+                                        </div>
+                                        <select id="payment_gateway_option" name="payment_gateway_option"
+                                            class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
+                                            @foreach ($paymentGateways as $gateway)
+                                            <option value="{{ $gateway }}"
+                                                {{ $selectedGateway === $gateway ? 'selected' : '' }}>
+                                                {{ $gateway }}
+                                            </option>
+                                            @endforeach
+                                        </select>
                                     </div>
-                                    <select id="payment_gateway_option" name="payment_gateway_option"
-                                        class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
-                                        @foreach ($paymentGateways as $gateway)
-                                        <option value="{{ $gateway }}"
-                                            {{ $selectedGateway === $gateway ? 'selected' : '' }}>
-                                            {{ $gateway }}
-                                        </option>
-                                        @endforeach
-                                    </select>
+                                    <div class="mt-4" x-cloak
+                                        x-show="selectedGateway === 'MyFatoorah'" x-transition>
+                                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Method</h2>
+                                        <select name="payment_method" id="payment_method_full"
+                                            class="border border-gray-300 p-2 rounded w-full">
+                                            @foreach ($paymentMethods as $methods)
+                                            <option value="{{ $methods->id }}" {{ $selectedMethod == $methods->id ? 'selected' : '' }}>{{ $methods->english_name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
-                                <div class="mt-4" x-data="{ selectedGateway: '{{ $selectedGateway }}', selectedMethod: '{{ $selectedMethod }}' }" x-init="$watch('selectedGateway', () => {}); document.getElementById('payment_gateway_option').addEventListener('change', e => selectedGateway = e.target.value)" x-cloak
-                                    x-show="selectedGateway === 'MyFatoorah'" x-transition>
-                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Method</h2>
-                                    <select name="payment_method" id="payment_method"
-                                        class="border border-gray-300 p-2 rounded w-full">
-                                        @foreach ($paymentMethods as $methods)
-                                        <option value="{{ $methods->id }}" {{ $selectedMethod == $methods->id ? 'selected' : '' }}>{{ $methods->english_name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
+                                <div id="payment-response-message" class="hidden mt-4 text-sm font-semibold rounded px-4 py-2"></div>
                             </div>
-                            <div id="payment-response-message" class="hidden mt-4 text-sm font-semibold rounded px-4 py-2"></div>
                             <div class="mt-4">
                                 <button id="update-invoice-btn" type="button"
                                     class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
@@ -2368,7 +2370,7 @@
             };
 
             if (gateway !== 'Tap') {
-                const method = document.getElementById('payment_method').value;
+                const method = document.getElementById('payment_method_full').value;
                 data.method = method;
             }
 
@@ -2627,7 +2629,7 @@
             if (type === 'full' || type === 'credit') {
                 payload.clientId = document.getElementById('receiverId').value;
                 if (item.gateway === 'MyFatoorah') {
-                    payload.method = document.getElementById('payment_method')?.value;
+                    payload.method = document.getElementById('payment_method_full')?.value;
                 } else {
                     payload.method = null;
                 }

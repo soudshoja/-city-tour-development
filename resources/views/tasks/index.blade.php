@@ -525,13 +525,19 @@
                                             <label for="col-reference" class="text-sm text-gray-700">Reference</label>
                                         </div>
                                         <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-client" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                            <label for="col-client" class="text-sm text-gray-700">Bill To</label>
+                                            <input type="checkbox" id="col-bill-to" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                            <label for="col-bill-to" class="text-sm text-gray-700">Bill To</label>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <input type="checkbox" id="col-passenger-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
                                             <label for="col-passenger-name" class="text-sm text-gray-700">Passenger Name</label>
                                         </div>
+                                        @if (Auth()->user()->role_id != \App\Models\Role::AGENT)
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" id="col-agent-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                            <label for="col-agent-name" class="text-sm text-gray-700">Agent Name</label>
+                                        </div>
+                                        @endif
                                         <div class="flex items-center gap-2">
                                             <input type="checkbox" id="col-price" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
                                             <label for="col-price" class="text-sm text-gray-700">Price</label>
@@ -541,12 +547,16 @@
                                             <label for="col-status" class="text-sm text-gray-700">Status</label>
                                         </div>
                                         <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-supplier" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                            <input type="checkbox" id="col-supplier" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
                                             <label for="col-supplier" class="text-sm text-gray-700">Supplier</label>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <input type="checkbox" id="col-issue-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
                                             <label for="col-issue-date" class="text-sm text-gray-700">Issue Date</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                                            <label for="col-created-at" class="text-sm text-gray-700">Created Date</label>
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <input type="checkbox" id="col-info" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
@@ -572,14 +582,12 @@
                                             <input type="checkbox" id="col-issued-by" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
                                             <label for="col-issued-by" class="text-sm text-gray-700">Issued By</label>
                                         </div>
+                                        @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                         <div class="flex items-center gap-2">
                                             <input type="checkbox" id="col-branch-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
                                             <label for="col-branch-name" class="text-sm text-gray-700">Branch Name</label>
                                         </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-agent-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                            <label for="col-agent-name" class="text-sm text-gray-700">Agent Name</label>
-                                        </div>
+                                        @endif
                                         <div class="flex items-center gap-2">
                                             <input type="checkbox" id="col-invoice" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
                                             <label for="col-invoice" class="text-sm text-gray-700">Invoice</label>
@@ -776,12 +784,17 @@
                                                 <th data-column="reference">
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Reference</span>
                                                 </th>
-                                                <th data-column="client">
+                                                <th data-column="bill-to">
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Bill To</span>
                                                 </th>
                                                 <th data-column="passenger-name">
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Passenger Name</span>
                                                 </th>
+                                                @if (Auth()->user()->role_id != \App\Models\Role::AGENT)
+                                                <th data-column="agent-name">
+                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent Name</span>
+                                                </th>
+                                                @endif
                                                 @can('viewPrice', 'App\Models\Task')
                                                 <th data-column="price">
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Price</span>
@@ -794,7 +807,32 @@
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
                                                 </th>
                                                 <th data-column="issue-date">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued Date</span>
+                                                    <a href="{{ request()->fullUrlWithQuery([ 'sortBy' => 'issued_date', 'sortOrder' => (request('sortBy')==='issued_date' && request('sortOrder')==='asc') ? 'desc' : 'asc' ]) }}" class="flex items-center gap-1 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                        Issued Date
+                                                        @if(request('sortBy') === 'issued_date')
+                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                                                @if(request('sortOrder', 'desc') === 'asc')
+                                                                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
+                                                                @else
+                                                                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
+                                                                @endif
+                                                            </svg>
+                                                        @endif
+                                                    </a>
+                                                </th>
+                                                <th data-column="created-at" class="column-hidden">
+                                                    <a href="{{ request()->fullUrlWithQuery([ 'sortBy' => 'created_at', 'sortOrder' => (request('sortBy')==='created_at' && request('sortOrder')==='asc') ? 'desc' : 'asc' ]) }}" class="flex items-center gap-1 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">
+                                                        Created Date
+                                                        @if(request('sortBy') === 'created_at')
+                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                                                @if(request('sortOrder', 'desc') === 'asc')
+                                                                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
+                                                                @else
+                                                                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
+                                                                @endif
+                                                            </svg>
+                                                        @endif
+                                                    </a>
                                                 </th>
                                                 <th data-column="info">
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Info</span>
@@ -817,9 +855,6 @@
                                                 @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                                 <th data-column="branch-name" class="column-hidden">
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Branch Name</span>
-                                                </th>
-                                                <th data-column="agent-name" class="column-hidden">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent Name</span>
                                                 </th>
                                                 @endif
                                                 <th data-column="invoice" class="column-hidden">
@@ -858,7 +893,7 @@
                                                 data-task-id="{{ $task->id }}">
 
                                                 <td data-column="actions" class="p-3 text-sm">
-                                                    <div class="flex items-center justify-center gap-2 h-full min-h-[40px]">
+                                                    <div class="flex items-center justify-center h-full min-h-[40px]">
                                                         @if (!$isSelectable)
                                                             @php
                                                                 $reasons = [];
@@ -873,12 +908,12 @@
                                                                 <svg class="w-5 h-5 text-gray-400 hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
                                                                     <path fill-rule="evenodd" d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0zm-9-1V7h2v2H9zm0 2h2v4H9v-4z" clip-rule="evenodd" />
                                                                 </svg>
-                                                                <div class="absolute top-1/2 left-full -translate-y-1/2 w-[180px] text-xs bg-black text-white rounded px-3 py-2 z-20 hidden group-hover:block text-left whitespace-normal shadow-lg">
+                                                                <div class="absolute top-1/2 left-full -translate-y-1/2 w-[170px] text-xs bg-black text-white rounded px-3 py-2 z-20 hidden group-hover:block text-left whitespace-normal shadow-lg">
                                                                     {{ $tooltipText }}
                                                                 </div>
                                                             </div>
                                                         @endif
-                                                        <div class="flex items-center justify-center h-full">
+                                                        <div class="flex items-center justify-center h-full mr-2">
                                                             <label class="switch m-0" @click.stop>
                                                                 <input type="checkbox" class="toggle-task-status"
                                                                     data-task-id="{{ $task->id }}"
@@ -1218,7 +1253,7 @@
                                                 <td data-column="reference" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->reference }}
                                                 </td>
-                                                <td data-column="client" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300 ">
+                                                <td data-column="bill-to" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300 ">
                                                     @if ($task->client)
                                                     <p>{{ $task->client->name }}</p>
                                                     <p>{{ $task->client->phone ?? 'No phone' }}</p>
@@ -1244,6 +1279,11 @@
                                                         @endif
                                                     </div>
                                                 </td>
+                                                @if (Auth()->user()->role_id != \App\Models\Role::AGENT)
+                                                <td data-column="agent-name" class="p-3 text-sm text-center font-semibold text-gray-500">
+                                                    {{ $task->agent->name ?? 'Not Set' }}
+                                                </td>
+                                                @endif
                                                 @can('viewPrice', 'App\Models\Task')
                                                 <td data-column="price" class="p-3 text-sm text-center font-semibold DarkBTextcolor dark:text-gray-300">
                                                     {{ $task->total ?? '-' }}
@@ -1265,6 +1305,9 @@
                                                     @else
                                                     {{ $task->formatted_date ?? 'Not Set' }}
                                                     @endif
+                                                </td>
+                                                <td data-column="created-at" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                                    {{ \Carbon\Carbon::parse($task->created_at)->format('d-m-Y H:i') }}
                                                 </td>
                                                 <td data-column="info" class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                     @if ($task->type === 'flight')
@@ -1342,9 +1385,6 @@
                                                 @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                                 <td data-column="branch-name" class="column-hidden p-3 text-sm text-center font-semibold text-gray-500">
                                                     {{ $task->agent->branch->name ?? 'Not Set' }}
-                                                </td>
-                                                <td data-column="agent-name" class="column-hidden p-3 text-sm text-center font-semibold text-gray-500">
-                                                    {{ $task->agent->name ?? 'Not Set' }}
                                                 </td>
                                                 @endif
                                                 <td data-column="invoice" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
@@ -1821,6 +1861,47 @@
         const clearBtn = document.getElementById('clearAllColumns');
         const checkboxes = dropdown.querySelectorAll('.column-checkbox');
 
+        // An array of column names from the session, passed from the controller
+        const visibleColumns = @json($visibleColumns ?? []);
+
+        function updateColumnVisibility() {
+            checkboxes.forEach(checkbox => {
+                const columnName = checkbox.id.replace('col-', '');
+                const isVisible = visibleColumns.includes(columnName);
+                checkbox.checked = isVisible;
+                
+                const columns = document.querySelectorAll(`[data-column="${columnName}"]`);
+                columns.forEach(column => {
+                    column.classList.toggle('column-hidden', !isVisible);
+                });
+            });
+        }
+
+        function saveColumnPreferences() {
+            const currentlyVisible = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.id.replace('col-', ''));
+
+            fetch("{{ route('tasks.columns.save') }}", {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute("content")
+                },
+                body: JSON.stringify({ columns: currentlyVisible })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error('Failed to save column preferences.');
+                }
+            })
+            .catch(error => console.error('Error saving column preferences:', error));
+        }
+
+        updateColumnVisibility();
+
         customizeBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             dropdown.classList.toggle('hidden');
@@ -1844,6 +1925,7 @@
                     columns.forEach(column => {
                         column.classList.toggle('column-hidden', !checkbox.checked);
                     });
+                    saveColumnPreferences();
                 }
             });
         });
@@ -1862,70 +1944,8 @@
                     columns.forEach(column => column.classList.add('column-hidden'));
                 }
             });
+            saveColumnPreferences();
         });
-
-        // document.querySelectorAll('.rowCheckbox').forEach(checkbox => {
-        //     checkbox.addEventListener('change', function() {
-        //         const taskRow = this.closest('.taskRow');
-        //         const taskId = taskRow.getAttribute('data-task-id');
-        //         const taskStatus = taskRow.getAttribute('data-status');
-
-        //         const floatingActions = document.getElementById('floatingActions');
-        //         const createInvoiceBtn = document.getElementById('createInvoiceBtn');
-        //         const createInvoiceBtnText = document.getElementById('createInvoiceBtnText');
-
-        //         if (this.checked) {
-        //             const isRefund = taskStatus === 'refund';
-
-        //             if (isRefund) {
-        //                 // Uncheck all others if refund
-        //                 document.querySelectorAll('.rowCheckbox').forEach(cb => {
-        //                     if (cb !== this) {
-        //                         cb.checked = false;
-        //                     }
-        //                 });
-        //             } else {
-        //                 // If not refund, uncheck all refund checkboxes
-        //                 document.querySelectorAll('.rowCheckbox').forEach(cb => {
-        //                     if (cb !== this && cb.dataset.status === 'refund') {
-        //                         cb.checked = false;
-        //                     }
-        //                 });
-        //             }
-
-        //             floatingActions.classList.remove('hidden');
-
-        //             if (isRefund) {
-        //                 createInvoiceBtnText.innerText = 'Proceed Refund';
-        //                 createInvoiceBtn.setAttribute('data-route',
-        //                     `/refunds/${taskId}/create`);
-
-        //                 // Set button background to red
-        //                 createInvoiceBtn.classList.remove('btn-success');
-        //                 createInvoiceBtn.classList.add('btn-danger');
-        //             } else {
-        //                 createInvoiceBtnText.innerText = 'Create Invoice';
-        //                 createInvoiceBtn.setAttribute('data-route',
-        //                     `/invoices/create?task=${taskId}`);
-
-        //                 // Set button background to green
-        //                 createInvoiceBtn.classList.remove('btn-danger');
-        //                 createInvoiceBtn.classList.add('btn-success');
-        //             }
-
-        //             createInvoiceBtn.setAttribute('data-task-id', taskId);
-        //             createInvoiceBtn.setAttribute('data-task-status', taskStatus);
-
-        //         } else {
-        //             const anyChecked = Array.from(document.querySelectorAll('.rowCheckbox'))
-        //                 .some(cb => cb.checked);
-        //             if (!anyChecked) {
-        //                 floatingActions.classList.add('hidden');
-        //             }
-        //         }
-
-        //     });
-        // });
 
         const createInvoiceBtn = document.getElementById('createInvoiceBtn');
         if (createInvoiceBtn) {

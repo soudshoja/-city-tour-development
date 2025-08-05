@@ -1321,19 +1321,19 @@
                                                             <div class="flex justify-between items-center gap-4 text-center text-sm">
                                                                 <div class="flex flex-col items-center">
                                                                     <span class="font-bold text-base">
-                                                                        {{ $task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('H:i') : '-'}}
+                                                                        {{ $task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('H:i') : 'N/A'}}
                                                                     </span>
                                                                     <span class="text-gray-600 text-sm">
-                                                                        {{ $task->flightDetails->airport_from ?? '-' }}
+                                                                        {{ $task->flightDetails->airport_from ?? 'N/A' }}
                                                                     </span>
                                                                 </div>
                                                                 <div class="text-blue-700 text-lg"> ✈ </div>
                                                                 <div class="flex flex-col items-center">
                                                                     <span class="font-bold text-base">
-                                                                        {{$task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('H:i') : '-'}}
+                                                                        {{$task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('H:i') : 'N/A'}}
                                                                     </span>
                                                                     <span class="text-gray-600 text-sm">
-                                                                        {{ $task->flightDetails->airport_to ?? '-' }}
+                                                                        {{ $task->flightDetails->airport_to ?? 'N/A' }}
                                                                     </span>
                                                                 </div>
                                                             </div>
@@ -1355,10 +1355,10 @@
                                                             </div>
                                                             <div class="flex flex-col truncate">
                                                                 <div class="truncate max-w-[140px]" title="{{ $task->hotelDetails->hotel->name ?? '-' }}">
-                                                                    {{ $task->hotelDetails->hotel->name ?? '-' }}
+                                                                    {{ $task->hotelDetails->hotel->name ?? 'N/A' }}
                                                                 </div>
                                                                 <div class="text-sm text-gray-500 whitespace-nowrap">
-                                                                    {{ $task->hotelDetails->check_in ?? '-' }} - {{ $task->hotelDetails->check_out ?? '-' }}
+                                                                    {{ $task->hotelDetails->check_in ?? 'N/A' }} - {{ $task->hotelDetails->check_out ?? 'N/A' }}
                                                                 </div>
                                                             </div>
                                                         </div>

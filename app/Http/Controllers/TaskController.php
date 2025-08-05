@@ -81,6 +81,9 @@ class TaskController extends Controller
                     ->orWhereHas('client', function ($q) use ($search) {
                         $q->where('name', 'like', '%' . $search . '%')
                         ->orWhere('phone', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('supplier', function ($q) use ($search) {
+                        $q->where('name', 'like', '%' . $search . '%');
                     });
             });
         }

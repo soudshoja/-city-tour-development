@@ -988,27 +988,44 @@ class PaymentController extends Controller
         $clientId = Client::where('name', $clientName)->value('id');
 
         if ($page === 'invoice' && $invoiceStatus === 'Paid') {
-                $paymentGateway = Arr::get($userDefined, 'payment_gateway') ?? 'MyFatorah';
-                $paymentMethod = collect($responseData['Data']['InvoiceTransactions'] ?? [])
+            if (!$invoiceId) {
+                Log::info('Invoice ID not found in myFatoorah portal');
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No such Invoice ID found in MyFatoorah portal'
+                ], 400);
+            }
+
+            $existingInvoiceId = Payment::where('payment_reference', $invoiceId)->exists();
+
+            if ($existingInvoiceId) {
+                Log::info('Invoice ID has already been imported');
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'A payment with this Invoice ID has already been imported'
+                ], 400);
+            }
+            $paymentGateway = Arr::get($userDefined, 'payment_gateway') ?? 'MyFatoorah';
+            $paymentMethod = collect($responseData['Data']['InvoiceTransactions'] ?? [])
                 ->firstWhere('TransactionStatus', 'Succss')['PaymentGateway'] ?? null;
-                $amount = $responseData['Data']['InvoiceValue'] ?? 0;
+            $amount = $responseData['Data']['InvoiceValue'] ?? 0;
 
-                Log::debug('Received from page:', [
-                    'client_id' => $clientId,
-                    'agent_id' => $agentId,
-                    'payment_id' => $paymentId,
-                    'page' => $page
-                ]);
-    
-                if (!$clientId || !$agentId) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Both Client and Agent are not fetched before importing payment'
-                    ], 400);
-                }
+            Log::debug('Received from page:', [
+                'client_id' => $clientId,
+                'agent_id' => $agentId,
+                'payment_id' => $paymentId,
+                'page' => $page
+            ]);
 
-                $paymentMethodId = PaymentMethod::where('english_name', $paymentMethod)->value('id');
-                $data = [
+            if (!$clientId || !$agentId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Both Client and Agent are not fetched before importing payment'
+                ], 400);
+            }
+
+            $paymentMethodId = PaymentMethod::where('english_name', $paymentMethod)->value('id');
+            $data = [
                 'invoice_id' => $invoiceId,
                 'payment_id' => $paymentId,
                 'payment_gateway' => $paymentGateway,
@@ -1028,8 +1045,19 @@ class PaymentController extends Controller
             if ($response['status'] === 'error') {
                 return redirect()->back()->with('error', $response['message']);
             }
-
         } elseif ($page === 'paymentLink' && $invoiceStatus === 'Paid' ) {
+            if (!$invoiceId) {
+                Log::info('Invoice ID not found in myFatoorah portal');
+                return redirect()->back()->with('error', 'No such Invoice ID found in MyFatoorah portal');
+            }
+
+            $existingInvoiceId = Payment::where('payment_reference', $invoiceId)->exists();
+
+            if ($existingInvoiceId) {
+                Log::info('Invoice ID has already been imported');
+                return redirect()->back()->with('error', 'A payment with this Invoice ID has already been imported');
+            }
+
             $paymentGateway = Arr::get($userDefined, 'payment_gateway');
             $paymentMethod = collect($responseData['Data']['InvoiceTransactions'] ?? [])
                 ->firstWhere('TransactionStatus', 'Succss')['PaymentGateway'] ?? null;

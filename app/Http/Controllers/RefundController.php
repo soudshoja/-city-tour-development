@@ -279,7 +279,7 @@ class RefundController extends Controller
             }
 
             $refundPayable = Account::where('name', 'LIKE', '%Refund Payable%')
-                ->where('company_id', $task->company_id)
+                ->where('company_id', $company->id)
                 ->where('parent_id', $liabilities->id)
                 ->where('root_id', $liabilities->id)
                 ->first();
@@ -287,7 +287,7 @@ class RefundController extends Controller
             $accountClientRefundLiability = 'Clients';
 
             $supplierRefundLiability = Account::where('name', $accountClientRefundLiability)
-                ->where('company_id', $task->company_id)
+                ->where('company_id', $company->id)
                 ->where('parent_id', $refundPayable->id)
                 ->where('root_id', $refundPayable->root_id)
                 ->first();
@@ -333,19 +333,41 @@ class RefundController extends Controller
                     'original_amount' => $request->input('total_nett_refund'),
                 ]);
 
-                // Create Refund Client record
 
             } catch (Exception $e) {
                 Log::error('Error creating journal entry for refund: ' . $e->getMessage());
                 return redirect()->back()->withErrors(['error' => 'Failed to create journal entry for refund.']);
             }
 
-            
-            //}
+            $user = Auth::user();
+            $refundBy = '';
 
+            if($user->company){
+                $refundBy = 'Company';
+            } elseif($user->branch) {
+                $refundBy = 'Branch';
+            }
 
-            return redirect()->route('refunds.index')->with('success', 'Refund processed successfully.');
+            try {
+                Credit::create([
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'client_id' => $task->client_id,
+                    'type' => 'refund',
+                    'description' => 'Refund for Task ID: ' . $task->id,
+                    'amount' => $request->input('total_nett_refund'),
+                    'topup_by' => $refundBy !== '' ? $refundBy : 'Company',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } catch (Exception $e) {
+                Log::error('Error creating credit for refund: ' . $e->getMessage());
+                return redirect()->back()->withErrors(['error' => 'Failed to create credit for refund.'])->withInput();
+            }
+
         }
+
+        return redirect()->route('refunds.index')->with('success', 'Refund processed successfully.');
     }
 
     public function edit(Task $task, Refund $refund)

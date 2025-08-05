@@ -513,10 +513,12 @@
 
 <script>
     resetSearchButton = document.getElementById("resetSearch");
-
-    resetSearchButton.addEventListener("click", function() {
-        window.location.href = "{{ route('clients.index') }}"; // Redirect to the clients index route
-    });
+                                    
+    if(resetSearchButton){
+        resetSearchButton.addEventListener("click", function() {
+            window.location.href = "{{ route('clients.index') }}"; // Redirect to the clients index route
+        });
+    }
 
     let clients = @json($fullClients);
     const viewClientLinks = document.querySelectorAll(".viewClient");

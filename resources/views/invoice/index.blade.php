@@ -121,10 +121,45 @@
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Number</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Agent name</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Client name</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>                                    
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Payment Type</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Registered Date</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
+<th>
+    <a href="{{ request()->fullUrlWithQuery([
+        'sortBy' => 'created_at',
+        'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+    ]) }}" 
+       class="flex items-center gap-1 p-3 text-left text-md font-bold text-gray-500 dark:text-gray-300">
+        Created Date
+        @if(request('sortBy') === 'created_at')
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                @if(request('sortOrder', 'desc') === 'asc')
+                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
+                @else
+                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
+                @endif
+            </svg>
+        @endif
+    </a>
+</th>
+<th>
+    <a href="{{ request()->fullUrlWithQuery([
+        'sortBy' => 'invoice_date',
+        'sortOrder' => (request('sortBy') === 'invoice_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+    ]) }}" 
+       class="flex items-center gap-1 p-3 text-left text-md font-bold text-gray-500 dark:text-gray-300">
+        Invoice Date
+        @if(request('sortBy') === 'invoice_date')
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                @if(request('sortOrder', 'desc') === 'asc')
+                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
+                @else
+                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
+                @endif
+            </svg>
+        @endif
+    </a>
+</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -211,9 +246,9 @@
                                                 </svg>
                                             </div>
                                             <div x-cloak x-show="viewVoucherModal_{{ $invoice->id }}"
-                                                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+                                                class="fixed inset-0 z-20 bg-gray-800 bg-opacity-50 flex items-center justify-center overflow-y-auto p-4">
                                                 <div @click.away="viewVoucherModal_{{ $invoice->id }}=false"
-                                                    class="bg-white rounded-md border-2 w-auto">
+                                                    class="bg-white rounded-md border-2 max-w-4xl max-h-[80vh] overflow-y-auto shadow-lg">
                                                     <div class="flex justify-between gap-4 p-4">
                                                         <p class="text-lg font-semibold">
                                                             Voucher
@@ -250,11 +285,11 @@
                                                                     <div class="flex justify-between items-center">
                                                                         <div class="text-left">
                                                                             <h3 class="text-xl font-bold tracking-wider">
-                                                                                {{ $invoiceDetail->task->flightDetails->airport_from }}
+                                                                                {{ $invoiceDetail->task->flightDetails->airport_from ?? 'N/A' }}
                                                                                 <span class="mx-2 text-blue-700">
                                                                                     ✈
                                                                                 </span>
-                                                                                {{ $invoiceDetail->task->flightDetails->airport_to }}
+                                                                                {{ $invoiceDetail->task->flightDetails->airport_to ?? 'N/A' }}
                                                                             </h3>
                                                                         </div>
                                                                     </div>
@@ -273,7 +308,7 @@
                                                             <div class="bg-[#fdfaf6] rounded-xl border-[3px] border-[#d4b996] shadow-md p-5 max-w-lg mx-auto relative font-[Georgia,serif]">
                                                                 <h2 class="text-center text-2xl text-[#355070] tracking-wide font-semibold mb-2">Hotel Reservation</h2>
                                                                 <p class="text-center text-sm text-gray-700 italic mb-4">A gift from <span class="text-koromiko-700">{{ $invoiceDetail->task->supplier->name }}</span></p>
-                                                                <div class="text-center text-lg font-bold text-[#355070] border-y border-dashed border-gray-400 py-2 uppercase">
+                                                                <div class="text-center text-lg font-bold text-[#355070] border-y border-dashed border-gray-400 py-2 uppercase whitespace-normal break-words px-2 max-w-full">
                                                                     {{ $invoiceDetail->task->hotelDetails->hotel->name ?? 'n/a' }}
                                                                 </div>
                                                                 <div class="flex justify-between items-center mt-6 gap-6">
@@ -329,15 +364,6 @@
                                         {{ $invoice->client->name }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
-                                        {{ ucwords($invoice->payment_type) }}
-                                    </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
-                                        {{ $invoice->currency }} {{ $invoice->amount }}
-                                    </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
-                                        {{ $invoice->created_at }}
-                                    </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid')
                                         <a href="{{ route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank">
                                             <span class="badge badge-outline-success cursor-pointer">{{ $invoice->status }}</span>
@@ -347,8 +373,20 @@
                                             class="badge badge-outline-danger">{{ $invoice->status }}</span>
                                         @endif
                                     </td>
-
-
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ ucwords($invoice->payment_type) }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $invoice->currency }} {{ $invoice->amount }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $invoice->created_at }}
+                                    </td>
+                                    
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $invoice->invoice_date }}
+                                    </td>
+                                   
 
                                 </tr>
                                 {{-- @endforeach --}}

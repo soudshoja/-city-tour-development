@@ -825,7 +825,7 @@
                                                         Created Date
                                                         @if(request('sortBy') === 'created_at')
                                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                                                                @if(request('sortOrder', 'desc') === 'asc')
+                                                                @if(request('sortOrder' ) === 'asc')
                                                                     <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
                                                                 @else
                                                                     <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
@@ -1307,7 +1307,7 @@
                                                     @endif
                                                 </td>
                                                 <td data-column="created-at" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ \Carbon\Carbon::parse($task->created_at)->format('d-m-Y H:i') }}
+                                                    {{ $task->created_at ?  \Carbon\Carbon::parse($task->created_at)->format('d-m-Y H:i') : 'Not Set' }}
                                                 </td>
                                                 <td data-column="info" class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                     @if ($task->type === 'flight')

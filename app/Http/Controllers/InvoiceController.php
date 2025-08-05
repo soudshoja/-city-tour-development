@@ -80,6 +80,7 @@ class InvoiceController extends Controller
             'client'
         ])
             ->orderBy('created_at', 'desc')
+            ->orderBy('created_at', 'desc')
             ->whereIn('agent_id', $agentIds)
             ->whereHas('agent.branch', function ($query) use ($companiesId) {
                 $query->whereIn('company_id', $companiesId);
@@ -128,6 +129,33 @@ class InvoiceController extends Controller
     }
 
     public function create(Request $request)
+    
+
+    {
+    if (auth()->user()->role_id == Role::ADMIN) {
+        return view('invoice.maintenance');
+    }
+
+    $invoiceNumber = $request->query('invoiceNumber');
+    $invoiceId = $request->query('invoiceId');
+
+    if ($invoiceNumber || $invoiceId) {
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
+        if ($invoice) {
+            $invoiceNumber = $invoice->invoice_number;
+            $invoiceId = $invoice->id;
+        }
+    } else {
+        // Just preview the next number, do NOT increment
+        $invoiceSequence = InvoiceSequence::first();
+        if (!$invoiceSequence) {
+            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+        }
+        $currentSequence = $invoiceSequence->current_sequence;
+        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+        $invoiceId = null;
+    }
+
     
 
     {
@@ -240,7 +268,15 @@ class InvoiceController extends Controller
         // if (!$invoiceSequence) {
         //     $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
         // }
+        // $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
+        // if (!$invoiceSequence) {
+        //     $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+        // }
 
+        // $currentSequence = $invoiceSequence->current_sequence;
+        // $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+        // $invoiceSequence->current_sequence++;
+        // $invoiceSequence->save();
         // $currentSequence = $invoiceSequence->current_sequence;
         // $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
         // $invoiceSequence->current_sequence++;
@@ -336,6 +372,7 @@ class InvoiceController extends Controller
             'invoiceExpireDefault',
             'countries'
         ));
+
 
     }
 
@@ -613,6 +650,7 @@ class InvoiceController extends Controller
 
                 $transaction = Transaction::create([
                     'transaction_date' => $invoice->invoice_date,
+                    'transaction_date' => $invoice->invoice_date,
                     'company_id' => $tasks[0]->company_id,
                     'branch_id' => $tasks[0]->agent->branch_id,
                     'entity_id' => $tasks[0]->company_id,
@@ -761,6 +799,7 @@ class InvoiceController extends Controller
         }
 
     }
+    }
         $agent = Agent::where('id', $agentId)->first();
         $companyId = $agent && $agent->branch && $agent->branch->company ? $agent->branch->company->id : null;
         $branchId = $agent ? $agent->branch_id : null;
@@ -854,6 +893,15 @@ class InvoiceController extends Controller
         $invoiceSequence->current_sequence++;
         $invoiceSequence->save();
 
+        $invoiceSequence = InvoiceSequence::first();
+        if (!$invoiceSequence) {
+            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+        }
+        $currentSequence = $invoiceSequence->current_sequence;
+        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+        $invoiceSequence->current_sequence++;
+        $invoiceSequence->save();
+
         return response()->json([
             'success' => true,
             'message' => 'Invoice created successfully!',
@@ -910,6 +958,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoiceId,
                         'invoice_detail_id' => $invoiceDetailId,
                         'transaction_date' => $invoice->invoice_date,
+                        'transaction_date' => $invoice->invoice_date,
                         'description' => 'Invoice created for (Assets): ' . $clientName,
                         'debit' => $task->invoiceDetail->task_price,
                         'credit' => 0,
@@ -939,6 +988,7 @@ class InvoiceController extends Controller
                         'account_id' => $clientAccount->id,
                         'invoice_id' => $invoiceId,
                         'invoice_detail_id' => $invoiceDetailId,
+                        'transaction_date' => $invoice->invoice_date,
                         'transaction_date' => $invoice->invoice_date,
                         'description' => 'Invoice created for (Assets): ' . $clientName,
                         'debit' => $task->invoiceDetail->task_price,
@@ -974,6 +1024,7 @@ class InvoiceController extends Controller
                     'account_id' => $detailsAccount->id,
                     'invoice_id' => $invoiceId,
                     'invoice_detail_id' => $invoiceDetailId,
+                    'transaction_date' => $invoice->invoice_date,
                     'transaction_date' => $invoice->invoice_date,
                     'description' => 'Invoice created for (Income): ' . $task['additional_info'],
                     'debit' => 0,
@@ -1026,6 +1077,7 @@ class InvoiceController extends Controller
                     'invoice_id' => $invoiceId,
                     'invoice_detail_id' => $invoiceDetailId,
                     'transaction_date' => $invoice->invoice_date,
+                    'transaction_date' => $invoice->invoice_date,
                     'description' => 'Agents Commissions for (Expenses): ' . $task['agent']['name'],
                     'debit' => $commission,
                     'credit' => 0,
@@ -1064,6 +1116,7 @@ class InvoiceController extends Controller
                         'account_id' => $accruedCommissions->id,
                         'invoice_id' => $invoiceId,
                         'invoice_detail_id' => $task->invoiceDetail->id,
+                        'transaction_date' => $invoice->invoice_date,
                         'transaction_date' => $invoice->invoice_date,
                         'description' => 'Agents Commissions for (Liabilities): ' . $task['agent']['name'],
                         'debit' => 0,

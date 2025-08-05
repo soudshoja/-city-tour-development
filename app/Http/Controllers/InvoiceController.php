@@ -44,11 +44,10 @@ class InvoiceController extends Controller
 
     public function index()
     {
-
         $user = Auth::user();
-
+        $companiesId = [];  
+        
         // Gate::authorize('viewAny', Invoice::class);
-        $companiesId = [];
 
         // Get all agents under the company
         if ($user->role_id == Role::ADMIN) {
@@ -72,7 +71,15 @@ class InvoiceController extends Controller
         }
         
         $agentIds = $agents->pluck('id');
-
+$sortBy = request('sortBy', 'created_at');
+    $sortOrder = request('sortOrder', 'desc');
+    $allowedSorts = ['created_at', 'invoice_date', 'amount', 'status']; // add more as needed
+    if (!in_array($sortBy, $allowedSorts)) {
+        $sortBy = 'created_at';
+    }
+    if (!in_array($sortOrder, ['asc', 'desc'])) {
+        $sortOrder = 'desc';
+    }
         $invoices = Invoice::with([
             'agent.branch',
             'invoiceDetails.task.supplier',
@@ -81,10 +88,12 @@ class InvoiceController extends Controller
         ])
             ->orderBy('created_at', 'desc')
             ->whereIn('agent_id', $agentIds)
-            ->whereHas('agent.branch', function ($query) use ($companiesId) {
-                $query->whereIn('company_id', $companiesId);
-            })
-            ->paginate(500);
+        ->whereHas('agent.branch', function ($query) use ($companiesId) {
+            $query->whereIn('company_id', $companiesId);
+        })
+        ->orderBy($sortBy, $sortOrder) // 👈 Use dynamic sorting
+        ->paginate(500);
+
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();
 

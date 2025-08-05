@@ -412,11 +412,11 @@ class OpenAIClient implements AIClientInterface
         foreach ($taskFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['desc']}\n";
         }
-        $prompt .= "\n2. `task_flight_details` model (for flights):\n";
+        $prompt .= "\n2. `task_flight_details` model (for flights) - THIS IS AN ARRAY that can contain multiple flight details:\n";
         foreach ($flightFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
-        $prompt .= "\n3. `task_hotel_details` model (for hotels):\n";
+        $prompt .= "\n3. `task_hotel_details` model (for hotels) - THIS IS AN ARRAY that can contain multiple hotel details:\n";
         foreach ($hotelFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
@@ -432,6 +432,9 @@ class OpenAIClient implements AIClientInterface
         If the file type is (.air) but the structure doesn't match the reference example, reject the file.
         If the uploaded file type is (.air), set it to amedeus as per supplier's list that i gave you,
         then bind the data to the `tasks` and `task_flight_details` models in JSON format. 
+        
+        IMPORTANT: task_flight_details and task_hotel_details are ARRAYS that can contain multiple flight/hotel segments.
+        For multi-segment trips (connecting flights, round trips), include all segments in the task_flight_details array.
         
         The venue field is populated using the airport_to field from the file, which contains codes like 'DXB'. 
         These codes are matched against $airportList and the corresponding location data from the list is used to update the venue field.
@@ -475,26 +478,28 @@ class OpenAIClient implements AIClientInterface
                 'cancellation_policy': 'cancellation policy',
                 'cancellation_deadline': '2025-06-01 10:00:00', //example of cancellation deadline, if not available, set it to null
                 'venue': 'venue',
-                'task_flight_details': {
-                    'farebase': '20.00',
-                    'departure_time': '2024-10-16 14:00:00',
-                    'departure_from': 'Kuwait',
-                    'airport_from': 'KWI',
-                    'terminal_from': '1',
-                    'arrival_time': '2024-10-16 16:00:00',
-                    'duration_time': '2h 5m',
-                    'arrive_to': 'Singapore',
-                    'airport_to': 'SIN',
-                    'terminal_to': '1',
-                    'airline_name': 'Kuwait Airways',
-                    'flight_number': 'KU-123',
-                    'class_type': 'economy',
-                    'baggage_allowed': 'baggage allowed',
-                    'equipment': 'equipment',
-                    'flight_meal': 'flight meal',
-                    'seat_no': 'seat no',
-                    'ticket_number': '3580878589', //example of ticket flight number with the airline code, 10-digit ticket number only
-                }
+                'task_flight_details': [
+                    {
+                        'farebase': '20.00',
+                        'departure_time': '2024-10-16 14:00:00',
+                        'departure_from': 'Kuwait',
+                        'airport_from': 'KWI',
+                        'terminal_from': '1',
+                        'arrival_time': '2024-10-16 16:00:00',
+                        'duration_time': '2h 5m',
+                        'arrive_to': 'Singapore',
+                        'airport_to': 'SIN',
+                        'terminal_to': '1',
+                        'airline_name': 'Kuwait Airways',
+                        'flight_number': 'KU-123',
+                        'class_type': 'economy',
+                        'baggage_allowed': 'baggage allowed',
+                        'equipment': 'equipment',
+                        'flight_meal': 'flight meal',
+                        'seat_no': 'seat no',
+                        'ticket_number': '3580878589', //example of ticket flight number with the airline code, 10-digit ticket number only
+                    }
+                ]
             }
         ]
 
@@ -692,11 +697,11 @@ class OpenAIClient implements AIClientInterface
         foreach ($taskFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['desc']}\n";
         }
-        $prompt .= "\n2. `task_flight_details` model (for flights):\n";
+        $prompt .= "\n2. `task_flight_details` model (for flights) - THIS IS AN ARRAY that can contain multiple flight details:\n";
         foreach ($flightFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
-        $prompt .= "\n3. `task_hotel_details` model (for hotels):\n";
+        $prompt .= "\n3. `task_hotel_details` model (for hotels) - THIS IS AN ARRAY that can contain multiple hotel details:\n";
         foreach ($hotelFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
@@ -705,6 +710,7 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- The PDF may contain multiple passengers/bookings. Return an array of task objects.\n";
         $prompt .= "- Each passenger should be a separate task object with their own ticket/booking details.\n";
         $prompt .= "- If multiple passengers share the same flight/booking, they may have the same flight details but different ticket numbers and passenger names.\n";
+        $prompt .= "- task_flight_details and task_hotel_details are ARRAYS that can contain multiple flight/hotel segments for each task.\n";
         $prompt .= "- Extract all available data, set missing fields to null.\n";
         $prompt .= "- All dates should be in 'Y-m-d H:i:s' format.\n";
         $prompt .= "- For supplier name, refer to this list: $supplierList\n";
@@ -720,15 +726,16 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "      \"airline_reference\": \"airline confirmation code\",\n";
         $prompt .= "      \"status\": \"issued/confirmed/cancelled/refunded\",\n";
         $prompt .= "      \"supplier_status\": \"same as status\",\n";
+        $prompt .= "      \"refund_date\": \"2025-06-01 10:00:00\",\n";
         $prompt .= "      \"price\": 100.00,\n";
         $prompt .= "      \"exchange_currency\": \"KWD\",\n";
         $prompt .= "      \"original_price\": 100.00,\n";
         $prompt .= "      \"original_currency\": \"USD\",\n";
         $prompt .= "      \"total\": 115.00,\n";
         $prompt .= "      \"surcharge\": 10.00,\n";
+        $prompt .= "      \"penalty_fee\": 0.00,\n";
         $prompt .= "      \"tax\": 5.00,\n";
         $prompt .= "      \"taxes_record\": \"tax breakdown if available\",\n";
-        $prompt .= "      \"penalty_fee\": 0.00,\n";
         $prompt .= "      \"refund_charge\": 0.00,\n";
         $prompt .= "      \"reference\": \"main reference number\",\n";
         $prompt .= "      \"created_by\": \"agent/office code\",\n";
@@ -743,39 +750,47 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "      \"cancellation_policy\": \"cancellation terms\",\n";
         $prompt .= "      \"cancellation_deadline\": \"2025-06-01 10:00:00\",\n";
         $prompt .= "      \"venue\": \"service location\",\n";
-        $prompt .= "      \"created_at\": \"2025-07-03 00:00:00\",\n";
-        $prompt .= "      \"task_flight_details\": {\n";
-        $prompt .= "        \"farebase\": 20.00,\n";
-        $prompt .= "        \"departure_time\": \"2025-07-03 14:00:00\",\n";
-        $prompt .= "        \"country_id_from\": \"departure country\",\n";
-        $prompt .= "        \"airport_from\": \"departure airport code\",\n";
-        $prompt .= "        \"terminal_from\": \"departure terminal\",\n";
-        $prompt .= "        \"arrival_time\": \"2025-07-03 16:00:00\",\n";
-        $prompt .= "        \"duration_time\": \"2h 30m\",\n";
-        $prompt .= "        \"country_id_to\": \"arrival country\",\n";
-        $prompt .= "        \"airport_to\": \"arrival airport code\",\n";
-        $prompt .= "        \"terminal_to\": \"arrival terminal\",\n";
-        $prompt .= "        \"airline_id\": \"airline name\",\n";
-        $prompt .= "        \"flight_number\": \"flight number\",\n";
-        $prompt .= "        \"class_type\": \"economy/business/first\",\n";
-        $prompt .= "        \"baggage_allowed\": \"baggage allowance\",\n";
-        $prompt .= "        \"equipment\": \"aircraft type\",\n";
-        $prompt .= "        \"ticket_number\": \"flight ticket number\",\n";
-        $prompt .= "        \"flight_meal\": \"meal service\",\n";
-        $prompt .= "        \"seat_no\": \"seat assignment\"\n";
-        $prompt .= "      },\n";
-        $prompt .= "      \"task_hotel_details\": {\n";
-        $prompt .= "        \"hotel_name\": \"hotel name\",\n";
-        $prompt .= "        \"check_in_date\": \"2025-07-03\",\n";
-        $prompt .= "        \"check_out_date\": \"2025-07-05\",\n";
-        $prompt .= "        \"room_type\": \"room type\",\n";
-        $prompt .= "        \"nights\": 2,\n";
-        $prompt .= "        \"guests\": 2,\n";
-        $prompt .= "        \"price_per_night\": 150.00,\n";
-        $prompt .= "        \"total_price\": 300.00,\n";
-        $prompt .= "        \"currency\": \"KWD\",\n";
-        $prompt .= "        \"booking_reference\": \"hotel booking ref\"\n";
-        $prompt .= "      }\n";
+        $prompt .= "      \"issued_date\": \"2025-07-03 00:00:00\",\n";
+        $prompt .= "      \"task_flight_details\": [\n";
+        $prompt .= "        {\n";
+        $prompt .= "          \"farebase\": 20.00,\n";
+        $prompt .= "          \"departure_time\": \"2025-07-03 14:00:00\",\n";
+        $prompt .= "          \"country_id_from\": \"departure country\",\n";
+        $prompt .= "          \"airport_from\": \"departure airport code\",\n";
+        $prompt .= "          \"terminal_from\": \"departure terminal\",\n";
+        $prompt .= "          \"arrival_time\": \"2025-07-03 16:00:00\",\n";
+        $prompt .= "          \"duration_time\": \"2h 30m\",\n";
+        $prompt .= "          \"country_id_to\": \"arrival country\",\n";
+        $prompt .= "          \"airport_to\": \"arrival airport code\",\n";
+        $prompt .= "          \"terminal_to\": \"arrival terminal\",\n";
+        $prompt .= "          \"airline_id\": \"airline name\",\n";
+        $prompt .= "          \"flight_number\": \"flight number\",\n";
+        $prompt .= "          \"class_type\": \"economy/business/first\",\n";
+        $prompt .= "          \"baggage_allowed\": \"baggage allowance\",\n";
+        $prompt .= "          \"equipment\": \"aircraft type\",\n";
+        $prompt .= "          \"ticket_number\": \"flight ticket number\",\n";
+        $prompt .= "          \"flight_meal\": \"meal service\",\n";
+        $prompt .= "          \"seat_no\": \"seat assignment\"\n";
+        $prompt .= "        }\n";
+        $prompt .= "      ],\n";
+        $prompt .= "      \"task_hotel_details\": [\n";
+        $prompt .= "        {\n";
+        $prompt .= "          \"hotel_name\": \"hotel name\",\n";
+        $prompt .= "          \"booking_time\": \"2025-07-03 10:00:00\",\n";
+        $prompt .= "          \"check_in\": \"2025-07-03 15:00:00\",\n";
+        $prompt .= "          \"check_out\": \"2025-07-05 11:00:00\",\n";
+        $prompt .= "          \"room_reference\": \"room booking reference\",\n";
+        $prompt .= "          \"room_number\": \"room number\",\n";
+        $prompt .= "          \"room_type\": \"room type\",\n";
+        $prompt .= "          \"room_amount\": 150.00,\n";
+        $prompt .= "          \"room_details\": \"room details and amenities\",\n";
+        $prompt .= "          \"room_promotion\": \"special offers or discounts\",\n";
+        $prompt .= "          \"rate\": 150.00,\n";
+        $prompt .= "          \"meal_type\": \"breakfast/half-board/full-board\",\n";
+        $prompt .= "          \"is_refundable\": true,\n";
+        $prompt .= "          \"supplements\": \"additional services\"\n";
+        $prompt .= "        }\n";
+        $prompt .= "      ]\n";
         $prompt .= "    }\n";
         $prompt .= "  ]\n";
         $prompt .= "}\n\n";
@@ -1109,11 +1124,11 @@ class OpenAIClient implements AIClientInterface
         foreach ($taskFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['desc']}\n";
         }
-        $prompt .= "\n2. `task_flight_details` model (for flights):\n";
+        $prompt .= "\n2. `task_flight_details` model (for flights) - THIS IS AN ARRAY that can contain multiple flight details:\n";
         foreach ($flightFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
-        $prompt .= "\n3. `task_hotel_details` model (for hotels):\n";
+        $prompt .= "\n3. `task_hotel_details` model (for hotels) - THIS IS AN ARRAY that can contain multiple hotel details:\n";
         foreach ($hotelFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
@@ -1123,6 +1138,8 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- For PDF files: Extract booking information, tickets, itineraries, etc.\n";
         $prompt .= "- Each passenger should be a separate task object with their own ticket/booking details\n";
         $prompt .= "- If multiple passengers share the same flight/booking, they may have the same flight details but different ticket numbers and passenger names\n";
+        $prompt .= "- task_flight_details and task_hotel_details are ARRAYS that can contain multiple flight/hotel segments for each task\n";
+        $prompt .= "- For multi-segment trips (connecting flights, multiple hotels), include all segments in the respective arrays\n";
         $prompt .= "- Extract all available data, set missing fields to null\n";
         $prompt .= "- All dates should be in 'Y-m-d H:i:s' format\n";
         $prompt .= "- For supplier name, refer to this list: $supplierListJson\n";
@@ -1147,15 +1164,16 @@ class OpenAIClient implements AIClientInterface
                 $prompt .= "        \"airline_reference\": \"airline confirmation code\",\n";
                 $prompt .= "        \"status\": \"issued/confirmed/cancelled/refunded/void/reissue\",\n";
                 $prompt .= "        \"supplier_status\": \"same as status\",\n";
+                $prompt .= "        \"refund_date\": \"2025-06-01 10:00:00\",\n";
                 $prompt .= "        \"price\": 100.00,\n";
                 $prompt .= "        \"exchange_currency\": \"KWD\",\n";
                 $prompt .= "        \"original_price\": 100.00,\n";
                 $prompt .= "        \"original_currency\": \"USD\",\n";
                 $prompt .= "        \"total\": 115.00,\n";
                 $prompt .= "        \"surcharge\": 10.00,\n";
+                $prompt .= "        \"penalty_fee\": 0.00,\n";
                 $prompt .= "        \"tax\": 5.00,\n";
                 $prompt .= "        \"taxes_record\": \"tax breakdown if available\",\n";
-                $prompt .= "        \"penalty_fee\": 0.00,\n";
                 $prompt .= "        \"refund_charge\": 0.00,\n";
                 $prompt .= "        \"reference\": \"main reference number\",\n";
                 $prompt .= "        \"created_by\": \"agent/office code\",\n";
@@ -1168,40 +1186,49 @@ class OpenAIClient implements AIClientInterface
                 $prompt .= "        \"supplier_name\": \"supplier/vendor name\",\n";
                 $prompt .= "        \"supplier_country\": \"supplier country\",\n";
                 $prompt .= "        \"cancellation_policy\": \"cancellation terms\",\n";
+                $prompt .= "        \"cancellation_deadline\": \"2025-06-01 10:00:00\",\n";
                 $prompt .= "        \"venue\": \"service location\",\n";
-                $prompt .= "        \"created_at\": \"2025-07-04 00:00:00\",\n";
-                $prompt .= "        \"task_flight_details\": {\n";
-                $prompt .= "          \"farebase\": 20.00,\n";
-                $prompt .= "          \"departure_time\": \"2025-07-04 14:00:00\",\n";
-                $prompt .= "          \"country_id_from\": \"departure country\",\n";
-                $prompt .= "          \"airport_from\": \"departure airport code\",\n";
-                $prompt .= "          \"terminal_from\": \"departure terminal\",\n";
-                $prompt .= "          \"arrival_time\": \"2025-07-04 16:00:00\",\n";
-                $prompt .= "          \"duration_time\": \"2h 30m\",\n";
-                $prompt .= "          \"country_id_to\": \"arrival country\",\n";
-                $prompt .= "          \"airport_to\": \"arrival airport code\",\n";
-                $prompt .= "          \"terminal_to\": \"arrival terminal\",\n";
-                $prompt .= "          \"airline_id\": \"airline name\",\n";
-                $prompt .= "          \"flight_number\": \"flight number\",\n";
-                $prompt .= "          \"class_type\": \"economy/business/first\",\n";
-                $prompt .= "          \"baggage_allowed\": \"baggage allowance\",\n";
-                $prompt .= "          \"equipment\": \"aircraft type\",\n";
-                $prompt .= "          \"ticket_number\": \"flight ticket number\",\n";
-                $prompt .= "          \"flight_meal\": \"meal service\",\n";
-                $prompt .= "          \"seat_no\": \"seat assignment\"\n";
-                $prompt .= "        },\n";
-                $prompt .= "        \"task_hotel_details\": {\n";
-                $prompt .= "          \"hotel_name\": \"hotel name\",\n";
-                $prompt .= "          \"check_in_date\": \"2025-07-04\",\n";
-                $prompt .= "          \"check_out_date\": \"2025-07-06\",\n";
-                $prompt .= "          \"room_type\": \"room type\",\n";
-                $prompt .= "          \"nights\": 2,\n";
-                $prompt .= "          \"guests\": 2,\n";
-                $prompt .= "          \"price_per_night\": 150.00,\n";
-                $prompt .= "          \"total_price\": 300.00,\n";
-                $prompt .= "          \"currency\": \"KWD\",\n";
-                $prompt .= "          \"booking_reference\": \"hotel booking ref\"\n";
-                $prompt .= "        }\n";
+                $prompt .= "        \"issued_date\": \"2025-07-04 00:00:00\",\n";
+                $prompt .= "        \"task_flight_details\": [\n";
+                $prompt .= "          {\n";
+                $prompt .= "            \"farebase\": 20.00,\n";
+                $prompt .= "            \"departure_time\": \"2025-07-04 14:00:00\",\n";
+                $prompt .= "            \"country_id_from\": \"departure country\",\n";
+                $prompt .= "            \"airport_from\": \"departure airport code\",\n";
+                $prompt .= "            \"terminal_from\": \"departure terminal\",\n";
+                $prompt .= "            \"arrival_time\": \"2025-07-04 16:00:00\",\n";
+                $prompt .= "            \"duration_time\": \"2h 30m\",\n";
+                $prompt .= "            \"country_id_to\": \"arrival country\",\n";
+                $prompt .= "            \"airport_to\": \"arrival airport code\",\n";
+                $prompt .= "            \"terminal_to\": \"arrival terminal\",\n";
+                $prompt .= "            \"airline_id\": \"airline name\",\n";
+                $prompt .= "            \"flight_number\": \"flight number\",\n";
+                $prompt .= "            \"class_type\": \"economy/business/first\",\n";
+                $prompt .= "            \"baggage_allowed\": \"baggage allowance\",\n";
+                $prompt .= "            \"equipment\": \"aircraft type\",\n";
+                $prompt .= "            \"ticket_number\": \"flight ticket number\",\n";
+                $prompt .= "            \"flight_meal\": \"meal service\",\n";
+                $prompt .= "            \"seat_no\": \"seat assignment\"\n";
+                $prompt .= "          }\n";
+                $prompt .= "        ],\n";
+                $prompt .= "        \"task_hotel_details\": [\n";
+                $prompt .= "          {\n";
+                $prompt .= "            \"hotel_name\": \"hotel name\",\n";
+                $prompt .= "            \"booking_time\": \"2025-07-04 10:00:00\",\n";
+                $prompt .= "            \"check_in\": \"2025-07-04 15:00:00\",\n";
+                $prompt .= "            \"check_out\": \"2025-07-06 11:00:00\",\n";
+                $prompt .= "            \"room_reference\": \"room booking reference\",\n";
+                $prompt .= "            \"room_number\": \"room number\",\n";
+                $prompt .= "            \"room_type\": \"room type\",\n";
+                $prompt .= "            \"room_amount\": 150.00,\n";
+                $prompt .= "            \"room_details\": \"room details and amenities\",\n";
+                $prompt .= "            \"room_promotion\": \"special offers or discounts\",\n";
+                $prompt .= "            \"rate\": 150.00,\n";
+                $prompt .= "            \"meal_type\": \"breakfast/half-board/full-board\",\n";
+                $prompt .= "            \"is_refundable\": true,\n";
+                $prompt .= "            \"supplements\": \"additional services\"\n";
+                $prompt .= "          }\n";
+                $prompt .= "        ]\n";
                 $prompt .= "      }\n";
                 $prompt .= "    ]" . (array_search($fileName, array_keys($fileMetadata)) < count($fileMetadata) - 1 ? "," : "") . "\n";
             }
@@ -1249,11 +1276,11 @@ class OpenAIClient implements AIClientInterface
         foreach ($taskFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['desc']}\n";
         }
-        $prompt .= "\n2. `task_flight_details` model (for flights):\n";
+        $prompt .= "\n2. `task_flight_details` model (for flights) - THIS IS AN ARRAY that can contain multiple flight details:\n";
         foreach ($flightFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
-        $prompt .= "\n3. `task_hotel_details` model (for hotels):\n";
+        $prompt .= "\n3. `task_hotel_details` model (for hotels) - THIS IS AN ARRAY that can contain multiple hotel details:\n";
         foreach ($hotelFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
@@ -1281,15 +1308,16 @@ class OpenAIClient implements AIClientInterface
             $prompt .= "        \"airline_reference\": \"airline confirmation code\",\n";
             $prompt .= "        \"status\": \"issued/confirmed/cancelled/refunded\",\n";
             $prompt .= "        \"supplier_status\": \"same as status\",\n";
+            $prompt .= "        \"refund_date\": \"2025-06-01 10:00:00\",\n";
             $prompt .= "        \"price\": 100.00,\n";
             $prompt .= "        \"exchange_currency\": \"KWD\",\n";
             $prompt .= "        \"original_price\": 100.00,\n";
             $prompt .= "        \"original_currency\": \"USD\",\n";
             $prompt .= "        \"total\": 115.00,\n";
             $prompt .= "        \"surcharge\": 10.00,\n";
+            $prompt .= "        \"penalty_fee\": 0.00,\n";
             $prompt .= "        \"tax\": 5.00,\n";
             $prompt .= "        \"taxes_record\": \"tax breakdown if available\",\n";
-            $prompt .= "        \"penalty_fee\": 0.00,\n";
             $prompt .= "        \"refund_charge\": 0.00,\n";
             $prompt .= "        \"reference\": \"main reference number\",\n";
             $prompt .= "        \"created_by\": \"agent/office code\",\n";
@@ -1302,40 +1330,49 @@ class OpenAIClient implements AIClientInterface
             $prompt .= "        \"supplier_name\": \"supplier/vendor name\",\n";
             $prompt .= "        \"supplier_country\": \"supplier country\",\n";
             $prompt .= "        \"cancellation_policy\": \"cancellation terms\",\n";
+            $prompt .= "        \"cancellation_deadline\": \"2025-06-01 10:00:00\",\n";
             $prompt .= "        \"venue\": \"service location\",\n";
-            $prompt .= "        \"created_at\": \"2025-07-03 00:00:00\",\n";
-            $prompt .= "        \"task_flight_details\": {\n";
-            $prompt .= "          \"farebase\": 20.00,\n";
-            $prompt .= "          \"departure_time\": \"2025-07-03 14:00:00\",\n";
-            $prompt .= "          \"country_id_from\": \"departure country\",\n";
-            $prompt .= "          \"airport_from\": \"departure airport code\",\n";
-            $prompt .= "          \"terminal_from\": \"departure terminal\",\n";
-            $prompt .= "          \"arrival_time\": \"2025-07-03 16:00:00\",\n";
-            $prompt .= "          \"duration_time\": \"2h 30m\",\n";
-            $prompt .= "          \"country_id_to\": \"arrival country\",\n";
-            $prompt .= "          \"airport_to\": \"arrival airport code\",\n";
-            $prompt .= "          \"terminal_to\": \"arrival terminal\",\n";
-            $prompt .= "          \"airline_id\": \"airline name\",\n";
-            $prompt .= "          \"flight_number\": \"flight number\",\n";
-            $prompt .= "          \"class_type\": \"economy/business/first\",\n";
-            $prompt .= "          \"baggage_allowed\": \"baggage allowance\",\n";
-            $prompt .= "          \"equipment\": \"aircraft type\",\n";
-            $prompt .= "          \"ticket_number\": \"flight ticket number\",\n";
-            $prompt .= "          \"flight_meal\": \"meal service\",\n";
-            $prompt .= "          \"seat_no\": \"seat assignment\"\n";
-            $prompt .= "        },\n";
-            $prompt .= "        \"task_hotel_details\": {\n";
-            $prompt .= "          \"hotel_name\": \"hotel name\",\n";
-            $prompt .= "          \"check_in_date\": \"2025-07-03\",\n";
-            $prompt .= "          \"check_out_date\": \"2025-07-05\",\n";
-            $prompt .= "          \"room_type\": \"room type\",\n";
-            $prompt .= "          \"nights\": 2,\n";
-            $prompt .= "          \"guests\": 2,\n";
-            $prompt .= "          \"price_per_night\": 150.00,\n";
-            $prompt .= "          \"total_price\": 300.00,\n";
-            $prompt .= "          \"currency\": \"KWD\",\n";
-            $prompt .= "          \"booking_reference\": \"hotel booking ref\"\n";
-            $prompt .= "        }\n";
+            $prompt .= "        \"issued_date\": \"2025-07-03 00:00:00\",\n";
+            $prompt .= "        \"task_flight_details\": [\n";
+            $prompt .= "          {\n";
+            $prompt .= "            \"farebase\": 20.00,\n";
+            $prompt .= "            \"departure_time\": \"2025-07-03 14:00:00\",\n";
+            $prompt .= "            \"country_id_from\": \"departure country\",\n";
+            $prompt .= "            \"airport_from\": \"departure airport code\",\n";
+            $prompt .= "            \"terminal_from\": \"departure terminal\",\n";
+            $prompt .= "            \"arrival_time\": \"2025-07-03 16:00:00\",\n";
+            $prompt .= "            \"duration_time\": \"2h 30m\",\n";
+            $prompt .= "            \"country_id_to\": \"arrival country\",\n";
+            $prompt .= "            \"airport_to\": \"arrival airport code\",\n";
+            $prompt .= "            \"terminal_to\": \"arrival terminal\",\n";
+            $prompt .= "            \"airline_id\": \"airline name\",\n";
+            $prompt .= "            \"flight_number\": \"flight number\",\n";
+            $prompt .= "            \"class_type\": \"economy/business/first\",\n";
+            $prompt .= "            \"baggage_allowed\": \"baggage allowance\",\n";
+            $prompt .= "            \"equipment\": \"aircraft type\",\n";
+            $prompt .= "            \"ticket_number\": \"flight ticket number\",\n";
+            $prompt .= "            \"flight_meal\": \"meal service\",\n";
+            $prompt .= "            \"seat_no\": \"seat assignment\"\n";
+            $prompt .= "          }\n";
+            $prompt .= "        ],\n";
+            $prompt .= "        \"task_hotel_details\": [\n";
+            $prompt .= "          {\n";
+            $prompt .= "            \"hotel_name\": \"hotel name\",\n";
+            $prompt .= "            \"booking_time\": \"2025-07-03 10:00:00\",\n";
+            $prompt .= "            \"check_in\": \"2025-07-03 15:00:00\",\n";
+            $prompt .= "            \"check_out\": \"2025-07-05 11:00:00\",\n";
+            $prompt .= "            \"room_reference\": \"room booking reference\",\n";
+            $prompt .= "            \"room_number\": \"room number\",\n";
+            $prompt .= "            \"room_type\": \"room type\",\n";
+            $prompt .= "            \"room_amount\": 150.00,\n";
+            $prompt .= "            \"room_details\": \"room details and amenities\",\n";
+            $prompt .= "            \"room_promotion\": \"special offers or discounts\",\n";
+            $prompt .= "            \"rate\": 150.00,\n";
+            $prompt .= "            \"meal_type\": \"breakfast/half-board/full-board\",\n";
+            $prompt .= "            \"is_refundable\": true,\n";
+            $prompt .= "            \"supplements\": \"additional services\"\n";
+            $prompt .= "          }\n";
+            $prompt .= "        ]\n";
             $prompt .= "      }\n";
             $prompt .= "    ]" . ($index < count($fileIds) - 1 ? "," : "") . "\n";
         }

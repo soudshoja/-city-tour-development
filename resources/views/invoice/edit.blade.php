@@ -197,7 +197,11 @@
                         <div class="mt-4 flex items-center">
                             <label class="w-full text-sm font-semibold">Invoice Date:</label>
                             <input id="invdate" type="date" name="invdate" class="w-full form-input"
+<<<<<<< Updated upstream
                                 value="{{ $invoice->invoice_date }}" disabled />
+=======
+                                value={{ $invoiceDate }} />
+>>>>>>> Stashed changes
                         </div>
 
                         <div class="mt-4 flex items-center">
@@ -247,6 +251,7 @@
                         <div class="mt-4 flex items-center">
                             <input id="receiverName" type="text" name="receiverName" class="form-input flex-1"
                                 placeholder="Client Name" disabled />
+                            <input type="hidden" id="receiverName" name="receiverName" value="{{ request()->input('client_id') }}">
                         </div>
 
                         <!-- client email -->
@@ -308,6 +313,7 @@
                                 placeholder="Agent Name"
                                 value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->name : '' }}"
                                 disabled />
+                            <input type="hidden" id="agentName" name="agentName" value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->id : '' }}">
                         </div>
 
                         <!-- agent email -->
@@ -500,8 +506,8 @@
                                                 </header>
 
                                                 <main>
-                                                <form action="{{ route('invoice.client-credit') }}" method="POST"
-                                                    x-effect="if (option !== 'generate_yes' && option !== 'use_credit') selectedGateway = ''"
+                                                    <form action="{{ route('invoice.client-credit') }}" method="POST"
+                                                        x-effect="if (option !== 'generate_yes' && option !== 'use_credit') selectedGateway = ''"
                                                         x-data="{
                                                             option: '',
                                                             selectedGateway: '',
@@ -588,10 +594,10 @@
                                                                 Payment Method
                                                             </label>
                                                             <select id="payment_method" name="payment_method"
-                                                                    x-ref="method"
-                                                                    class="border border-gray-300 p-2 rounded w-full">
+                                                                x-ref="method"
+                                                                class="border border-gray-300 p-2 rounded w-full">
                                                                 @foreach ($paymentMethods as $methods)
-                                                                    <option value="{{ $methods->id }}">{{ $methods->english_name }}</option>
+                                                                <option value="{{ $methods->id }}">{{ $methods->english_name }}</option>
                                                                 @endforeach
                                                             </select>
                                                         </div>
@@ -670,6 +676,80 @@
                                 </div>
                             </label>
 
+                            <!-- Trigger Button -->
+                            <label class="cursor-pointer rounded-full shadow">
+                                <input type="radio" id="payment_type_import" name="payment_type" value="import"
+                                    onclick="showModal('import')" hidden class="peer" />
+                                <div
+                                    class="rounded-full flex items-center justify-center 
+                                        peer-checked:ring-2 peer-checked:ring-blue-500 
+                                        peer-checked:bg-green-500
+                                        peer-checked:text-white
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
+                                    <span id="openImportModalBtn" class="font-medium">Import from MyFatoorah</span>
+                                </div>
+                            </label>
+                            <!-- <button id="openImportModalBtn" class="rounded-full px-4 py-2 bg-green-500 text-white shadow">
+                                Import from MyFatoorah
+                            </button> -->
+                        </div>
+                        <!-- Modal -->
+                        <div id="importModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50 hidden">
+                            <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl overflow-y-auto" style="max-height: 90vh;">
+                                <!-- Header -->
+                                <div class="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h2 class="text-xl font-bold text-gray-800">Import MyFatoorah Payment</h2>
+                                        <p class="text-gray-600 italic text-xs mt-1">
+                                            Import a payment from an existing transaction on MyFatoorah Portal
+                                        </p>
+                                    </div>
+                                    <button id="closeImportModalBtn"
+                                        class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">&times;</button>
+                                </div>
+
+                                <!-- Form -->
+                                <form id="importForm" class="space-y-4">
+                                    <div>
+                                        <label for="import_payment_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                            Existing Payment ID
+                                        </label>
+                                        <input type="text" id="import_payment_id"
+                                            class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                            placeholder="Enter payment ID" required>
+                                    </div>
+
+                                    <!-- Success Message -->
+                                    <div id="successBox" class="hidden p-3 bg-green-50 border border-green-200 rounded-md text-green-800 text-sm"></div>
+
+                                    <!-- Error Message -->
+                                    <div id="errorBox" class="hidden p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm"></div>
+
+                                    <!-- Loading Spinner -->
+                                    <div id="loadingBox" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-800 text-sm flex items-center">
+                                        <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-blue-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Processing import...
+                                    </div>
+
+                                    <!-- Buttons -->
+                                    <div class="flex justify-between pt-4 mt-4">
+                                        <button type="button" id="cancelImport"
+                                            class="w-32 shadow-md border border-gray-200 hover:bg-gray-400 font-semibold py-2 rounded-full text-sm transition duration-150">
+                                            Cancel
+                                        </button>
+                                        <button type="submit" id="submitImportBtn"
+                                            class="w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-full text-sm shadow-md transition duration-150">
+                                            Import
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
 
                         <!-- Payment Gateway Section -->
@@ -1074,6 +1154,7 @@
                                 </div>
                             </div>
                         </div>
+
                         <!-- Agents Modal -->
                         <div id="agentModal"
                             class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
@@ -1119,9 +1200,8 @@
                                 <!-- ./List of Agents -->
                             </div>
                         </div>
-
-
                         <!-- End Agents Modal -->
+
                         <!-- Clients Modal -->
                         <div id="clientModal"
                             class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden ">
@@ -2438,7 +2518,7 @@
                 `;
                 text.textContent = 'Saving...';
 
-                setTimeout(( ) => {
+                setTimeout(() => {
                     icon.innerHTML = '';
                     text.textContent = 'Saved ✅';
                     location.reload();
@@ -2505,7 +2585,7 @@
 
                     textSplit.textContent = 'Saving...';
 
-                    setTimeout(( ) => {
+                    setTimeout(() => {
                         iconSplit.innerHTML = ''; // remove spinner
                         textSplit.textContent = 'Saved ✅';
                         location.reload();
@@ -2558,7 +2638,7 @@
 
                     textPartial.textContent = 'Saving...';
 
-                    setTimeout(( ) => {
+                    setTimeout(() => {
                         iconPartial.innerHTML = ''; // remove icon
                         textPartial.textContent = 'Saved ✅';
                         location.reload(); // or redirect if you want
@@ -2598,7 +2678,7 @@
                 `;
                 text.textContent = 'Saving...';
 
-                displaySuccessMessage("Invoice saved and paid successfully!" );
+                displaySuccessMessage("Invoice saved and paid successfully!");
 
                 setTimeout(() => {
                     icon.innerHTML = '';
@@ -3008,6 +3088,106 @@
 
         });
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('importModal');
+            const openBtn = document.getElementById('openImportModalBtn');
+            const closeBtn = document.getElementById('closeImportModalBtn');
+            const cancelBtn = document.getElementById('cancelImport');
+            const form = document.getElementById('importForm');
+            const input = document.getElementById('import_payment_id');
+
+            const successBox = document.getElementById('successBox');
+            const errorBox = document.getElementById('errorBox');
+            const loadingBox = document.getElementById('loadingBox');
+
+            // Show modal
+            openBtn.addEventListener('click', () => {
+                input.value = '';
+                errorBox.classList.add('hidden');
+                successBox.classList.add('hidden');
+                loadingBox.classList.add('hidden');
+                modal.classList.remove('hidden');
+            });
+
+            // Hide modal
+            function closeModal() {
+                modal.classList.add('hidden');
+            }
+            closeBtn.addEventListener('click', closeModal);
+            cancelBtn.addEventListener('click', closeModal);
+
+            // Submit logic
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const agentId = document.getElementById('agentName')?.value || '';
+                const clientId = document.getElementById('receiverName')?.value || '';
+                const paymentId = input.value.trim();
+                const page = 'invoice';
+
+                successBox.classList.add('hidden');
+                errorBox.classList.add('hidden');
+                loadingBox.classList.remove('hidden');
+
+                if (!agentId || !clientId) {
+                    loadingBox.classList.add('hidden');
+                    errorBox.textContent = 'Agent and Client must be selected.';
+                    errorBox.classList.remove('hidden');
+                    return;
+                }
+
+                if (!paymentId) {
+                    loadingBox.classList.add('hidden');
+                    errorBox.textContent = 'Payment ID is required.';
+                    errorBox.classList.remove('hidden');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('_token', '{{ csrf_token() }}');
+                formData.append('import_payment_id', paymentId);
+                formData.append('agentName', agentId);
+                formData.append('receiverName', clientId);
+                formData.append('page', page);
+
+                try {
+                    const res = await fetch(`{{ route('payment.link.importfatoorah') }}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData,
+                    });
+
+                    loadingBox.classList.add('hidden');
+
+                    if (res.ok) {
+                        successBox.textContent = `✅ Payment imported successfully.`;
+                        successBox.classList.remove('hidden');
+                        input.value = '';
+                        setTimeout(() => {
+                            closeModal();
+                            window.location.reload(); // ✅ refresh after modal closes
+                        }, 1500);
+                    } else {
+                        const text = await res.text();
+                        errorBox.textContent = `❌ Import failed. Server said: ${text.slice(0, 100)}...`;
+                        errorBox.classList.remove('hidden');
+                    }
+
+                } catch (err) {
+                    console.error(err);
+                    loadingBox.classList.add('hidden');
+                    errorBox.textContent = '❌ ' + err.message;
+                    errorBox.classList.remove('hidden');
+                }
+            });
+        });
+    </script>
+
+
+
 
 
 </x-app-layout>

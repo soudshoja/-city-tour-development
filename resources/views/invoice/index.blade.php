@@ -121,10 +121,45 @@
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Number</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Agent name</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Client name</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>                                    
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Payment Type</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Registered Date</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
+<th>
+    <a href="{{ request()->fullUrlWithQuery([
+        'sortBy' => 'created_at',
+        'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+    ]) }}" 
+       class="flex items-center gap-1 p-3 text-left text-md font-bold text-gray-500 dark:text-gray-300">
+        Created Date
+        @if(request('sortBy') === 'created_at')
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                @if(request('sortOrder', 'desc') === 'asc')
+                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
+                @else
+                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
+                @endif
+            </svg>
+        @endif
+    </a>
+</th>
+<th>
+    <a href="{{ request()->fullUrlWithQuery([
+        'sortBy' => 'invoice_date',
+        'sortOrder' => (request('sortBy') === 'invoice_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+    ]) }}" 
+       class="flex items-center gap-1 p-3 text-left text-md font-bold text-gray-500 dark:text-gray-300">
+        Invoice Date
+        @if(request('sortBy') === 'invoice_date')
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                @if(request('sortOrder', 'desc') === 'asc')
+                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
+                @else
+                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
+                @endif
+            </svg>
+        @endif
+    </a>
+</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -329,15 +364,6 @@
                                         {{ $invoice->client->name }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
-                                        {{ ucwords($invoice->payment_type) }}
-                                    </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
-                                        {{ $invoice->currency }} {{ $invoice->amount }}
-                                    </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
-                                        {{ $invoice->created_at }}
-                                    </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid')
                                         <a href="{{ route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank">
                                             <span class="badge badge-outline-success cursor-pointer">{{ $invoice->status }}</span>
@@ -347,8 +373,20 @@
                                             class="badge badge-outline-danger">{{ $invoice->status }}</span>
                                         @endif
                                     </td>
-
-
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ ucwords($invoice->payment_type) }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $invoice->currency }} {{ $invoice->amount }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $invoice->created_at }}
+                                    </td>
+                                    
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $invoice->invoice_date }}
+                                    </td>
+                                   
 
                                 </tr>
                                 {{-- @endforeach --}}

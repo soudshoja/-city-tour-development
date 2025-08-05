@@ -215,12 +215,12 @@
 
                         <div class="mt-4 flex items-center">
                             <label for="invoiceDate" class="w-full text-sm font-semibold">Invoice Date</label>
-                            <input id="invoiceDate" type="date" name="invoiceDate" class="w-full form-input" value="{{ $todayDate }}"/>
+                            <input id="invoiceDate" type="date" name="invoiceDate" class="w-full form-input" value="{{ $todayDate }}" />
                         </div>
 
                         <div class="mt-4 flex items-center">
                             <label for="dueDate" class="w-full text-sm font-semibold">Due Date</label>
-                            <input id="dueDate" type="date" name="dueDate" class="w-full form-input" value="{{$invoiceExpireDefault}}"/>
+                            <input id="dueDate" type="date" name="dueDate" class="w-full form-input" value="{{$invoiceExpireDefault}}" />
                         </div>
                         <!-- Refresh Button -->
                         <div class="mt-6 flex justify-end">
@@ -929,7 +929,9 @@
                                     <div class="relative mb-4">
                                         <input type="text" placeholder="Search Client..."
                                             class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                                            id="clientSearchInput">
+                                            id="clientSearchInput"
+                                            oninput="filterClients()"> <!-- Add this line -->
+
                                     </div>
                                     <!-- ./Search Box -->
 
@@ -973,9 +975,9 @@
                                                 <select name="dial_code" id="dial_code"
                                                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                                                     @foreach ($countries as $country)
-                                                        <option value="{{ $country->dialing_code }}" {{ $country->dialing_code == '+965' ? 'selected' : '' }}>
-                                                            {{ $country->name }} ({{ $country->dialing_code }})
-                                                        </option>
+                                                    <option value="{{ $country->dialing_code }}" {{ $country->dialing_code == '+965' ? 'selected' : '' }}>
+                                                        {{ $country->name }} ({{ $country->dialing_code }})
+                                                    </option>
                                                     @endforeach
                                                 </select>
                                             </div>
@@ -998,18 +1000,18 @@
                                         <div class="mb-4">
                                             <label for="agent_id" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Agent</label>
                                             @unlessrole('agent')
-                                                <select name="agent_id" id="agent_id"
-                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
-                                                    <option value="" disabled selected>Select Agent</option>
-                                                    @foreach ($agents as $agent)
-                                                        <option value="{{ $agent->id }}">{{ $agent->name }}</option>
-                                                    @endforeach
-                                                </select>
+                                            <select name="agent_id" id="agent_id"
+                                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+                                                <option value="" disabled selected>Select Agent</option>
+                                                @foreach ($agents as $agent)
+                                                <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                                                @endforeach
+                                            </select>
                                             @else
-                                                <input type="text" name="agent_id" id="agent_id"
-                                                    value="{{ auth()->user()->agent->name }}"
-                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" readonly />
-                                                <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
+                                            <input type="text" name="agent_id" id="agent_id"
+                                                value="{{ auth()->user()->agent->name }}"
+                                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline" readonly />
+                                            <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
                                             @endunlessrole
                                         </div>
 
@@ -2052,7 +2054,8 @@
         function filterClients() {
             const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
             const filteredClients = clients.filter(client =>
-                client.name.toLowerCase().includes(searchValue) || client.email.toLowerCase().includes(searchValue)
+                (client.name && client.name.toLowerCase().includes(searchValue)) ||
+                (client.email && client.email.toLowerCase().includes(searchValue))
             );
             renderClientList(filteredClients);
         }
@@ -2865,16 +2868,19 @@
                 }
 
                 // ...existing code...
-const result = await response.json();
-const { invoiceId: newInvoiceId, invoiceNumber: newInvoiceNumber } = result;
+                const result = await response.json();
+                const {
+                    invoiceId: newInvoiceId,
+                    invoiceNumber: newInvoiceNumber
+                } = result;
 
-// Only update invoice number if this is a new invoice (no invoiceId before)
-if (!invoiceId) {
-    document.getElementById('invoiceNumber').value = newInvoiceNumber;
-}
-document.getElementById('invoiceId').value = newInvoiceId;
-const generatedLink = appUrl + '/invoice/' + (invoiceNumber || newInvoiceNumber);
-// ...existing code...
+                // Only update invoice number if this is a new invoice (no invoiceId before)
+                if (!invoiceId) {
+                    document.getElementById('invoiceNumber').value = newInvoiceNumber;
+                }
+                document.getElementById('invoiceId').value = newInvoiceId;
+                const generatedLink = appUrl + '/invoice/' + (invoiceNumber || newInvoiceNumber);
+                // ...existing code...
 
                 // Show success state
                 isSaved = true; // Mark as saved after generating

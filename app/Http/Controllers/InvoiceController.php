@@ -210,21 +210,21 @@ class InvoiceController extends Controller
             $selectedCompany = $company;
         }
 
-        // $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
-        // if (!$invoiceSequence) {
-        //     $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
-        // }
+        $invoiceSequence = InvoiceSequence::lockForUpdate()->first();
+        if (!$invoiceSequence) {
+            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
+        }
 
-        // $currentSequence = $invoiceSequence->current_sequence;
-        // $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+        $currentSequence = $invoiceSequence->current_sequence;
+        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
         // $invoiceSequence->current_sequence++;
         // $invoiceSequence->save();
 
-        $this->storeNotification([
-            'user_id' => $user->id,
-            'title' => 'Invoice ' . $invoiceNumber . ' Created By ' . $user->name,
-            'message' => 'Invoice ' . $invoiceNumber . ' has been created.'
-        ]);
+        // $this->storeNotification([
+        //     'user_id' => $user->id,
+        //     'title' => 'Invoice ' . $invoiceNumber . ' Created By ' . $user->name,
+        //     'message' => 'Invoice ' . $invoiceNumber . ' has been created.'
+        // ]);
 
         if ($selectedTasks->count() > 0) {
             $clientIds = $selectedTasks->pluck('client_id')->unique();

@@ -1680,9 +1680,6 @@
                                 <span>No tasks found matching your search</span>
                             </p> -->
                             <!-- Pagination Links -->
-                            @php
-                                $paginator = $tasks->appends(request()->query());
-                            @endphp
                             <div class="dataTable-bottom justify-center">
                                 @if ($tasks->hasPages())
                                 <nav class="dataTable-pagination">

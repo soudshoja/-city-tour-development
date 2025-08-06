@@ -827,7 +827,7 @@ $sortBy = request('sortBy', 'created_at');
         $invoiceDetailId,
         $transactionId,
         $clientName,
-    ) {
+        ) {
         Log::info('addJournalEntry method called', [
             'task_id' => $task->id ?? null,
             'invoice_id' => $invoiceId,
@@ -1344,7 +1344,7 @@ $sortBy = request('sortBy', 'created_at');
     /**
      * Update the specified resource in storage.
      */
-    public function updateTaskPrice(Request $request)
+public function updateTaskPrice(Request $request)
 {
     $request->validate([
         'task_id' => 'required|integer',
@@ -1360,14 +1360,43 @@ $sortBy = request('sortBy', 'created_at');
         return response()->json(['success' => false, 'message' => 'Invoice detail not found.']);
     }
 
+    $oldPrice = $invoiceDetail->task_price;
     $invoiceDetail->task_price = $newPrice;
     $invoiceDetail->markup_price = $newPrice - $invoiceDetail->supplier_price;
     $invoiceDetail->save();
 
-    // Update related JournalEntry and Transaction
-    // Update JournalEntry
-    \App\Models\JournalEntry::where('invoice_detail_id', $invoiceDetail->id)
-        ->update(['amount' => $newPrice, 'debit' => $newPrice, 'credit' => $newPrice]);
+    // Update related JournalEntry records
+    $journalEntries = \App\Models\JournalEntry::where('invoice_detail_id', $invoiceDetail->id)->get();
+    foreach ($journalEntries as $entry) {
+        // Invoice created for (Assets)
+        if (str_contains($entry->description, 'Invoice created for (Assets)')) {
+            $entry->debit = $newPrice;
+            $entry->credit = 0;
+            $entry->amount = $newPrice;
+        }
+        // Invoice created for (Income)
+        elseif (str_contains($entry->description, 'Invoice created for (Income)')) {
+            $entry->debit = 0;
+            $entry->credit = $newPrice;
+            $entry->amount = $newPrice;
+        }
+        // Agent commission for (Expenses)
+        elseif (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
+            // Recalculate commission based on new price
+            $commission = 0.15 * ($newPrice - $invoiceDetail->supplier_price);
+            $entry->debit = $commission;
+            $entry->credit = 0;
+            $entry->amount = $commission;
+        }
+        // Agent commission for (Liabilities)
+        elseif (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
+            $commission = 0.15 * ($newPrice - $invoiceDetail->supplier_price);
+            $entry->debit = 0;
+            $entry->credit = $commission;
+            $entry->amount = $commission;
+        }
+        $entry->save();
+    }
 
     // Update Transaction (if needed)
     $transaction = \App\Models\Transaction::where('invoice_id', $invoiceDetail->invoice_id)->first();

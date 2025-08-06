@@ -45,8 +45,8 @@ class InvoiceController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $companiesId = [];  
-        
+        $companiesId = [];
+
         // Gate::authorize('viewAny', Invoice::class);
 
         // Get all agents under the company
@@ -59,27 +59,26 @@ class InvoiceController extends Controller
                 $query->where('company_id', $user->company->id);
             }])->get();
             $companiesId[] = $user->company->id;
-        } else if($user->role_id == Role::BRANCH){
-            $agents = Agent::where('branch_id' , $user->branch->id);
+        } else if ($user->role_id == Role::BRANCH) {
+            $agents = Agent::where('branch_id', $user->branch->id);
             $companiesId[] = $user->branch->company_id;
-        }
-        else if ($user->role_id == Role::AGENT) {
+        } else if ($user->role_id == Role::AGENT) {
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $companiesId[] = $user->agent->branch->company_id;
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
-        
+
         $agentIds = $agents->pluck('id');
-$sortBy = request('sortBy', 'created_at');
-    $sortOrder = request('sortOrder', 'desc');
-    $allowedSorts = ['created_at', 'invoice_date', 'amount', 'status']; // add more as needed
-    if (!in_array($sortBy, $allowedSorts)) {
-        $sortBy = 'created_at';
-    }
-    if (!in_array($sortOrder, ['asc', 'desc'])) {
-        $sortOrder = 'desc';
-    }
+        $sortBy = request('sortBy', 'created_at');
+        $sortOrder = request('sortOrder', 'desc');
+        $allowedSorts = ['created_at', 'invoice_date', 'amount', 'status']; // add more as needed
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'created_at';
+        }
+        if (!in_array($sortOrder, ['asc', 'desc'])) {
+            $sortOrder = 'desc';
+        }
         $invoices = Invoice::with([
             'agent.branch',
             'invoiceDetails.task.supplier',
@@ -88,11 +87,11 @@ $sortBy = request('sortBy', 'created_at');
         ])
             ->orderBy('created_at', 'desc')
             ->whereIn('agent_id', $agentIds)
-        ->whereHas('agent.branch', function ($query) use ($companiesId) {
-            $query->whereIn('company_id', $companiesId);
-        })
-        ->orderBy($sortBy, $sortOrder) // 👈 Use dynamic sorting
-        ->paginate(500);
+            ->whereHas('agent.branch', function ($query) use ($companiesId) {
+                $query->whereIn('company_id', $companiesId);
+            })
+            ->orderBy($sortBy, $sortOrder) // 👈 Use dynamic sorting
+            ->paginate(500);
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();
@@ -1349,26 +1348,89 @@ $sortBy = request('sortBy', 'created_at');
     /**
      * Update the specified resource in storage.
      */
-    public function updateDate(Request $request, $invoiceNumber)
-{
-    $request->validate([
-        'invdate' => 'required|date',
-    ]);
+    public function updateTaskPrice(Request $request)
+    {
+        $request->validate([
+            'task_id' => 'required|integer',
+            'new_price' => 'required|numeric|min:0.01',
+        ]);
 
-    $invoice = Invoice::where('invoice_number', $invoiceNumber)->firstOrFail();
-    $invoice->invoice_date = $request->input('invdate');
-    $invoice->save();
-    
-    $transactions = \App\Models\Transaction::where('invoice_id', $invoice->id)->get();
-    foreach ($transactions as $transaction) {
-        $transaction->transaction_date = $request->input('invdate');
-        $transaction->save();
+        $taskId = $request->input('task_id');
+        $newPrice = $request->input('new_price');
+
+        // Find the InvoiceDetail for this task
+        $invoiceDetail = \App\Models\InvoiceDetail::where('task_id', $taskId)->first();
+        if (!$invoiceDetail) {
+            return response()->json(['success' => false, 'message' => 'Invoice detail not found.']);
+        }
+
+        $oldPrice = $invoiceDetail->task_price;
+        $invoiceDetail->task_price = $newPrice;
+        $invoiceDetail->markup_price = $newPrice - $invoiceDetail->supplier_price;
+        $invoiceDetail->save();
+
+        // Update related JournalEntry records
+        $journalEntries = \App\Models\JournalEntry::where('invoice_detail_id', $invoiceDetail->id)->get();
+        foreach ($journalEntries as $entry) {
+            // Invoice created for (Assets)
+            if (str_contains($entry->description, 'Invoice created for (Assets)')) {
+                $entry->debit = $newPrice;
+                $entry->credit = 0;
+                $entry->amount = $newPrice;
+            }
+            // Invoice created for (Income)
+            elseif (str_contains($entry->description, 'Invoice created for (Income)')) {
+                $entry->debit = 0;
+                $entry->credit = $newPrice;
+                $entry->amount = $newPrice;
+            }
+            // Agent commission for (Expenses)
+            elseif (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
+                // Recalculate commission based on new price
+                $commission = 0.15 * ($newPrice - $invoiceDetail->supplier_price);
+                $entry->debit = $commission;
+                $entry->credit = 0;
+                $entry->amount = $commission;
+            }
+            // Agent commission for (Liabilities)
+            elseif (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
+                $commission = 0.15 * ($newPrice - $invoiceDetail->supplier_price);
+                $entry->debit = 0;
+                $entry->credit = $commission;
+                $entry->amount = $commission;
+            }
+            $entry->save();
+        }
+
+        // Update Transaction (if needed)
+        $transaction = \App\Models\Transaction::where('invoice_id', $invoiceDetail->invoice_id)->first();
+        if ($transaction) {
+            $transaction->amount = $newPrice;
+            $transaction->save();
+        }
+
+        return response()->json(['success' => true]);
     }
-    \App\Models\JournalEntry::where('invoice_id', $invoice->id)
-        ->update(['transaction_date' => $request->input('invdate')]);
+    public function updateDate(Request $request, $invoiceNumber)
+    {
+        $request->validate([
+            'invdate' => 'required|date',
+        ]);
 
-    return redirect()->back()->with('success', 'Invoice date, transaction date, and journal entry date updated!');
-}
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->firstOrFail();
+        $invoice->invoice_date = $request->input('invdate');
+        $invoice->save();
+
+        $transactions = \App\Models\Transaction::where('invoice_id', $invoice->id)->get();
+        foreach ($transactions as $transaction) {
+            $transaction->transaction_date = $request->input('invdate');
+            $transaction->save();
+        }
+        \App\Models\JournalEntry::where('invoice_id', $invoice->id)
+            ->update(['transaction_date' => $request->input('invdate')]);
+
+        return redirect()->back()->with('success', 'Invoice date, transaction date, and journal entry date updated!');
+    }
     public function update(Request $request)
     {
         $request->validate([

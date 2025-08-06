@@ -1360,6 +1360,26 @@ $sortBy = request('sortBy', 'created_at');
     /**
      * Update the specified resource in storage.
      */
+    public function updateDate(Request $request, $invoiceNumber)
+{
+    $request->validate([
+        'invdate' => 'required|date',
+    ]);
+
+    $invoice = Invoice::where('invoice_number', $invoiceNumber)->firstOrFail();
+    $invoice->invoice_date = $request->input('invdate');
+    $invoice->save();
+    
+    $transactions = \App\Models\Transaction::where('invoice_id', $invoice->id)->get();
+    foreach ($transactions as $transaction) {
+        $transaction->transaction_date = $request->input('invdate');
+        $transaction->save();
+    }
+    \App\Models\JournalEntry::where('invoice_id', $invoice->id)
+        ->update(['transaction_date' => $request->input('invdate')]);
+
+    return redirect()->back()->with('success', 'Invoice date, transaction date, and journal entry date updated!');
+}
     public function update(Request $request)
     {
         $request->validate([

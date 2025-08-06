@@ -144,7 +144,7 @@ class TaskController extends Controller
         }
   
         $taskCount = $tasks->count();
-        $tasks = $tasks->orderBy($sortBy, $sortOrder)->paginate(20);
+        $tasks = $tasks->orderBy($sortBy, $sortOrder)->paginate(20)->withQueryString();
         $types = Task::distinct()->pluck('type');
 
         $importedTask = Cache::get('imported_task');

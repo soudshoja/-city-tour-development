@@ -963,7 +963,9 @@ class PaymentController extends Controller
             ])->post("$baseUrl/getPaymentStatus", [
                 "Key" => $paymentId,
                 "KeyType" => "PaymentId"
-            ]);
+            ]); 
+        
+        Log::info('MyFatoorah Get Payment Status Response: ', $response->json());
 
         if (!$response->successful()) {
             Log::error('Failed to fetch payment status from MyFatoorah', ['response' => $response->body()]);
@@ -1050,11 +1052,11 @@ class PaymentController extends Controller
                 return redirect()->back()->with('error', 'A payment with this Invoice ID has already been imported');
             }
 
-            $paymentGateway = Arr::get($userDefined, 'payment_gateway');
+            $paymentGateway = Arr::get($userDefined, 'payment_gateway') ?? 'MyFatoorah';
             $paymentMethod = collect($responseData['Data']['InvoiceTransactions'] ?? [])
                 ->firstWhere('TransactionStatus', 'Succss')['PaymentGateway'] ?? null;
             $amount = $responseData['Data']['InvoiceValue'] ?? 0;
-
+            
             Log::info('Redirecting to form with pre-filled data', [
                 'invoiceId' => $invoiceId,
                 'payment_id' => $paymentId,
@@ -1199,27 +1201,15 @@ class PaymentController extends Controller
         $source = $request->input('source');
         $invoiceId = $request->input('invoice_id');
 
-        try {
-            $request->validate([
-                'payment_gateway' => 'required',
-                'payment_method' => 'nullable',
-                'amount' => 'required|numeric',
-                'client_id' => 'nullable',
-                'agent_id' => 'nullable',
-                'invoice_id' => 'nullable',
-                'notes' => 'nullable|string|max:255'
-            ]);
-        } catch (ValidationException $e) {
-            Log::error('Validation failed in paymentStoreLinkProcess', [
-                'errors' => $e->validator->errors()->all()
-            ]);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Validation failed',
-                'errors' => $e->validator->errors()
-            ], 422);
-        }
-
+        $request->validate([
+            'payment_gateway' => 'required',
+            'payment_method' => 'nullable',
+            'amount' => 'required|numeric',
+            'client_id' => 'nullable',
+            'agent_id' => 'nullable',
+            'invoice_id' => 'nullable',
+            'notes' => 'nullable|string|max:255'
+        ]);
 
         $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
         if (!$voucherSequence) {
@@ -1300,7 +1290,7 @@ class PaymentController extends Controller
             ]);
 
             $result = $this->paymentLinkProcess($request);
-            Log::info('Add Credit & Journal for import payment response:', ['result' => $result]);
+            Log::info('Add Credit & Journal for import payment response:';
         } catch (\Exception $e) {
             Log::error('Add Credit & Journal for import payment', [
                 'error' => $e->getMessage(),
@@ -1319,8 +1309,6 @@ class PaymentController extends Controller
 
     public function paymentStoreLink(Request $request)
     {
-        Log::debug('Apa yang kita dapat: ', $request->all());
-
         $response = $this->paymentStoreLinkProcess($request);
         if ($response['status'] === 'error') {
             return redirect()->back()->with('error', $response['message']);

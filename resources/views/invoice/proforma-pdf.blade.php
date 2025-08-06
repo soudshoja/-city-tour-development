@@ -214,14 +214,14 @@
                     </td>
                     @endif
                     <td>{{ $detail->task->supplier->name ?? 'N/A' }}</td>
-                    <td class="text-right">${{ number_format($detail->task_price, 3) }}</td>
+                    <td class="text-right">KWD{{ number_format($detail->task_price, 3) }}</td>
                 </tr>
                 @endforeach
             </tbody>
             <tfoot>
                 <tr>
                     <th colspan="3" class="text-right">Grand Total:</th>
-                    <th class="text-right">${{ number_format($grandTotal, 2) }}</th>
+                    <th class="text-right">KWD{{ number_format($grandTotal, 2) }}</th>
                 </tr>
             </tfoot>
         </table>

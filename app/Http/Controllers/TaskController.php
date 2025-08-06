@@ -2474,55 +2474,50 @@ class TaskController extends Controller
 
     public function flightPdf($taskId)
     {
-        $task = Task::with('flightDetails', 'flightDetails.countryFrom', 'flightDetails.countryTo')->findOrFail($taskId);
-        $flight = $task->flightDetails;
+        $invoiceTask = Task::with(['flightDetails.countryFrom', 'flightDetails.countryTo', 'agent', 'client'])->findOrFail($taskId);
 
-        $companyLogoPath = public_path('images/CityLogo.png');
-        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
-        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
+        if ($invoiceTask->gds_reference) {
+            $tasks = Task::with(['flightDetails.countryFrom', 'flightDetails.countryTo', 'agent', 'client'])->where('gds_reference', $invoiceTask->gds_reference)->get();
 
-        return view('tasks.pdfView.flight-view', compact('task', 'flight', 'companyLogoSrc'));
-    }
+            Log::info("flightPdf: loaded tasks for GDS {$invoiceTask->gds_reference}", [
+                'count' => $tasks->count(),
+                'ids'   => $tasks->pluck('id')->toArray()
+            ]);
+    
+            if ($tasks->isEmpty()) {
+                Log::warning("no tasks for gds_reference={$invoiceTask->gds_reference}, falling back to invoiceTask only");
+                $tasks = collect([$invoiceTask]);
+            }
+        } else {
+            Log::warning("invoiceTask task {$taskId} has no gds_reference, falling back to invoiceTask only");
+            $tasks = collect([$invoiceTask]);
+        }
 
-    public function flightPdfDownload($taskId)
-    {
-        $task = Task::with('flightDetails', 'flightDetails.countryFrom', 'flightDetails.countryTo')->findOrFail($taskId);
-        $flight = $task->flightDetails;
+        $flights = $invoiceTask->flightDetails()->get();
+        $agent  = $invoiceTask->agent;
 
-        $companyLogoPath = public_path('images/CityLogo.png');
-        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
-        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
-
-        $pdf = Pdf::loadView('tasks.pdf.flight', compact('task', 'flight', 'companyLogoSrc'));
-
-        return $pdf->download('flight.pdf');
+        return view('tasks.pdf.flight', compact('tasks', 'flights'));
     }
 
     public function hotelPdf($taskId)
     {
-        $task = Task::with('hotelDetails', 'hotelDetails.hotel', 'hotelDetails.room', 'hotelDetails.hotel.country')->findOrFail($taskId);
-        $hotelDetails = $task->hotelDetails;
+        $invoiceTask = Task::with('hotelDetails.hotel', 'hotelDetails.room', 'hotelDetails.hotel.country', 'agent', 'client')->findOrFail($taskId);
 
-        $companyLogoPath = public_path('images/CityLogo.png');
-        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
-        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
+        if ($invoiceTask->reference) {
+            $tasks = Task::with(['agent','client'])
+                ->where('reference', $invoiceTask->reference)
+                ->get();
+    
+            if ($tasks->isEmpty()) {
+                $tasks = collect([$invoiceTask]);
+            }
+        } else {
+            $tasks = collect([$invoiceTask]);
+        }
 
-        return view('tasks.pdfView.hotel-view', compact('task', 'hotelDetails', 'companyLogoSrc'));
-    }
+        $hotelDetails = $invoiceTask->hotelDetails()->get();
 
-
-    public function hotelPdfDownload($taskId)
-    {
-        $task = Task::with('hotelDetails', 'hotelDetails.hotel', 'hotelDetails.room', 'hotelDetails.hotel.country')->findOrFail($taskId);
-        $hotelDetails = $task->hotelDetails;
-
-        $companyLogoPath = public_path('images/CityLogo.png');
-        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
-        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
-
-        $pdf = Pdf::loadView('tasks.pdf.hotel', compact('task', 'hotelDetails', 'companyLogoSrc'));
-
-        return $pdf->download('hotel.pdf');
+        return view('tasks.pdf.hotel', compact('tasks', 'hotelDetails'));
     }
 
     public function receiptPdf($taskId)

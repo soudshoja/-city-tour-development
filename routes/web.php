@@ -166,9 +166,7 @@ Route::post('/invoice/update-task-price', [InvoiceController::class, 'updateTask
         Route::post('/agent/upload', [TaskController::class, 'supplierTaskForAgent'])->name('agent.upload');
         Route::get('/get-tbo/{companyId}', [TaskController::class, 'getTboTask'])->name('get-tbo');
         Route::get('/pdf/flight/{taskId}', [TaskController::class, 'flightPdf'])->name('pdf.flight');
-        Route::get('/pdf/flight/{taskId}/download', [TaskController::class, 'flightPdfDownload'])->name('pdf.flight.download');
         Route::get('/pdf/hotel/{taskId}', [TaskController::class, 'hotelPdf'])->name('pdf.hotel');
-        Route::get('/pdf/hotel/{taskId}/download', [TaskController::class, 'hotelPdfDownload'])->name('pdf.hotel.download');
         Route::get('/pdf/receipt/{taskId}', [TaskController::class, 'receiptPdf'])->name('pdf.receipt');
         Route::get('/pdf/receipt/{taskId}/download', [TaskController::class, 'receiptPdfDownload'])->name('pdf.receipt.download');
         Route::post('/upload', [TaskController::class, 'clientPassport'])->name('upload.passport');

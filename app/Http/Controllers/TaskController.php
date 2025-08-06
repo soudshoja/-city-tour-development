@@ -227,7 +227,13 @@ class TaskController extends Controller
             ]);
         }
 
-        if ($request->original_currency && $request->original_price) {
+        $amadeus = Supplier::where('name', 'Amadeus')->first();
+
+        $exceptionConvert = [];
+
+        if($amadeus) $exceptionConvert[] = $amadeus->id;
+
+        if ( !in_array($request->supplier_id, $exceptionConvert) && $request->original_currency && $request->original_price) {
             try {
                 $convertResponse = $this->convert(
                     $request->company_id,

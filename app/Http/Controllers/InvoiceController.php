@@ -969,8 +969,8 @@ class InvoiceController extends Controller
                 ]);
             }
 
-            if ($agent->agentType->name == 'Commission' || $agent->agentType->name == 'Both') {
-                $commission = 0.15 * ($task->invoiceDetail->task_price - $task->total);
+            if (in_array($agent->type_id, [2, 3])) {
+                $commission = ($agent->commission ?? 0.15) * ($task->invoiceDetail->task_price - $task->total);
 
                 $commissionExpenses = Account::where('name', 'like', 'Commissions Expense (Agents)%')
                     ->where('company_id', $task->company_id)
@@ -1011,8 +1011,8 @@ class InvoiceController extends Controller
         try {
             $agent = $task->agent;
 
-            if (!in_array($agent->type_id, [3, 4])) {
-                $commission = 0.15 * ($task->invoiceDetail->task_price - $task->total);
+            if (in_array($agent->type_id, [2, 3])) {
+                $commission = ($agent->commission ?? 0.15) * ($task->invoiceDetail->task_price - $task->total);
 
                 $accruedCommissions = Account::where('name', 'like', 'Commissions (Agents)%')
                     ->where('company_id', $task->company_id)
@@ -1363,6 +1363,8 @@ class InvoiceController extends Controller
             return response()->json(['success' => false, 'message' => 'Invoice detail not found.']);
         }
 
+        $agent = $invoiceDetail->task->agent;
+
         $oldPrice = $invoiceDetail->task_price;
         $invoiceDetail->task_price = $newPrice;
         $invoiceDetail->markup_price = $newPrice - $invoiceDetail->supplier_price;
@@ -1386,14 +1388,14 @@ class InvoiceController extends Controller
             // Agent commission for (Expenses)
             elseif (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
                 // Recalculate commission based on new price
-                $commission = 0.15 * ($newPrice - $invoiceDetail->supplier_price);
+                $commission = ($agent->commission ?? 0.15) * ($newPrice - $invoiceDetail->supplier_price);
                 $entry->debit = $commission;
                 $entry->credit = 0;
                 $entry->amount = $commission;
             }
             // Agent commission for (Liabilities)
             elseif (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
-                $commission = 0.15 * ($newPrice - $invoiceDetail->supplier_price);
+                $commission = ($agent->commission ?? 0.15) * ($newPrice - $invoiceDetail->supplier_price);
                 $entry->debit = 0;
                 $entry->credit = $commission;
                 $entry->amount = $commission;

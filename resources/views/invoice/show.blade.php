@@ -90,30 +90,51 @@
     @endif
     <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         <!-- Header -->
-
-        <div class="flex justify-between items-center mb-8">
+        <div class="flex justify-between items-center mb-10">
+            {{-- Left: Company Logo --}}
             <div>
-                <h1 class="text-3xl font-bold text-gray-800">INVOICE</h1>
-                <p class="text-sm text-gray-600">Invoice #{{ $invoice->invoice_number }}</p>
-                <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
+                <img src="{{ $companyLogoSrc }}" alt="Company Logo" class="h-16 w-auto inline-block">
             </div>
+
+            {{-- Right: Invoice Details --}}
             <div class="text-right">
-                <div class="mb-5 text-right">
-                    <img src="{{ $companyLogoSrc }}" alt="Company Logo" class="h-16 w-auto inline-block">
-                </div>
-                <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
-                <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->address }}</p>
-                <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->phone }}</p>
-                <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->email }}</p>
+                <h1 class="text-2xl font-bold text-gray-800">INVOICE</h1>
+                <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
+                <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
             </div>
         </div>
 
-        <!-- Client Details -->
-        <div class="mb-8">
-            <h3 class="text-lg font-bold text-gray-800">Bill To:</h3>
-            <p class="text-sm text-gray-600">{{ $invoice->client->name ?? 'N/A' }}</p>
-            <p class="text-sm text-gray-600">{{ $invoice->client->address ?? 'N/A' }}</p>
-            <p class="text-sm text-gray-600">{{ $invoice->client->email ?? 'N/A' }}</p>
+        <!-- Header Ends -->
+
+        <div class="flex justify-between items-center mb-8">
+            <div class="text-left max-w-xs">
+                <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
+                <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->address }}</p>
+                <p class="text-sm text-gray-600">
+                    <a href="mailto:{{ $invoice->agent->branch->company->email }}" class="hover:underline hover:text-blue-600">
+                        {{ $invoice->agent->branch->company->email }}
+                    </a>
+                </p>
+                <p class="text-sm text-gray-600">
+                    <a href="tel:{{ $invoice->agent->branch->company->phone }}" class="hover:underline hover:text-blue-600">
+                        {{ $invoice->agent->branch->company->phone }}
+                    </a>
+                </p>
+            </div>
+            <div class="text-right">
+                <h3 class="text-lg font-bold text-gray-800">Billed To</h3>
+                <p class="text-sm text-gray-600">{{ $invoice->client->name ?? 'N/A' }}</p>
+                <p class="text-sm text-gray-600">
+                    <a href="mailto:{{ $invoice->client->email}}" class="hover:underline hover:text-blue-600">
+                        {{ $invoice->client->email ?? 'N/A' }}
+                    </a>    
+            </p>
+                <p class="text-sm text-gray-600">
+                    <a href="tel:{{ $invoice->client->country_code }}{{ $invoice->client->phone }}" class="hover:underline hover:text-blue-600">
+                        {{ $invoice->client->country_code ?? ''}}{{ $invoice->client->phone ?? 'N/A' }}
+                    </a>
+                </p>
+            </div>
         </div>
 
         @if ($invoice->payment_type === 'full')
@@ -132,29 +153,29 @@
                 @foreach ($invoiceDetails as $detail)
                 <tr class="text-sm text-gray-700">
                     <td class="px-4 py-2 border">
-                            @if ($detail->task->type === 'hotel')
-                                <p>
-                                    Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
-                                    <br>Hotel Name: {{ $detail->task->hotelDetails->hotel->name ?? 'N/A' }}
-                                    <br>Check In: {{ $detail->task->hotelDetails->check_in ?? 'N/A' }}
-                                    <br>Check Out: {{ $detail->task->hotelDetails->check_out ?? 'N/A' }}
-                                    <br>Number of Pax: {{ $detail->task->hotelDetails->room_details ?? $detail->task->number_of_pax ?? 'N/A' }}
-                                    <br>Room Category: {{ $detail->task->hotelDetails->room_type ?? $detail->task->hotelDetails->room_category ?? 'N/A' }}
-                                </p>
-                            @elseif ($detail->task->type === 'flight')
-                                <p>
-                                    GDS Reference: {{ $detail->task->gds_reference ?? 'N/A' }}
-                                    <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
-                                    <br>Route: 
-                                        {{ $detail->task->flightDetails->countryFrom->name ?? '' }}
-                                        ({{ $detail->task->flightDetails->airport_from ?? '' }})
-                                        →
-                                        {{ $detail->task->flightDetails->countryTo->name ?? '' }}
-                                        ({{ $detail->task->flightDetails->airport_to ?? '' }})
-                                    <br>Class of Travel: {{ ucfirst($detail->task->flightDetails->class_type ?? 'N/A') }}
-                                </p>
-                            @endif
-                    </td> 
+                        @if ($detail->task->type === 'hotel')
+                        <p>
+                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                            <br>Hotel Name: {{ $detail->task->hotelDetails->hotel->name ?? 'N/A' }}
+                            <br>Check In: {{ $detail->task->hotelDetails->check_in ?? 'N/A' }}
+                            <br>Check Out: {{ $detail->task->hotelDetails->check_out ?? 'N/A' }}
+                            <br>Number of Pax: {{ $detail->task->hotelDetails->room_details ?? $detail->task->number_of_pax ?? 'N/A' }}
+                            <br>Room Category: {{ $detail->task->hotelDetails->room_type ?? $detail->task->hotelDetails->room_category ?? 'N/A' }}
+                        </p>
+                        @elseif ($detail->task->type === 'flight')
+                        <p>
+                            GDS Reference: {{ $detail->task->gds_reference ?? 'N/A' }}
+                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                            <br>Route:
+                            {{ $detail->task->flightDetails->countryFrom->name ?? '' }}
+                            ({{ $detail->task->flightDetails->airport_from ?? '' }})
+                            →
+                            {{ $detail->task->flightDetails->countryTo->name ?? '' }}
+                            ({{ $detail->task->flightDetails->airport_to ?? '' }})
+                            <br>Class of Travel: {{ ucfirst($detail->task->flightDetails->class_type ?? 'N/A') }}
+                        </p>
+                        @endif
+                    </td>
                     <td class="px-4 py-2 border">{{ $detail->quantity ?? 1 }}</td>
                     <td class="px-4 py-2 border">{{ number_format($detail->task_price ?? 0, 2) }}</td>
                     <td class="px-4 py-2 border">
@@ -205,9 +226,9 @@
                     <td class="px-4 py-2 border">{{ $partial->status }}</td>
                     <td class="px-4 py-2 border">
                         @if ($partial->status !== 'paid')
-                            {{ number_format($partial->final_amount ?? $partial->amount, 2) }}
+                        {{ number_format($partial->final_amount ?? $partial->amount, 2) }}
                         @else
-                            {{ number_format($partial->amount, 2) }}
+                        {{ number_format($partial->amount, 2) }}
                         @endif
                     </td>
                     <!-- <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td> -->
@@ -320,11 +341,11 @@
                     </td>
                     <td class="px-4 py-2 border">{{ $partial->status }}</td>
                     <td class="px-4 py-2 border">
-                    @if ($partial->status !== 'paid')
+                        @if ($partial->status !== 'paid')
                         {{ number_format($partial->final_amount ?? $partial->amount, 2) }}
-                    @else
+                        @else
                         {{ number_format($partial->amount, 2) }}
-                    @endif
+                        @endif
                     </td>
                 </tr>
                 @php
@@ -337,9 +358,6 @@
 
         </table>
         @endif
-
-
-
 
         <!-- Totals Section -->
         <div class="flex justify-end mb-8">
@@ -364,24 +382,24 @@
                 </div>
 
                 @if ($invoice->status === 'paid' || $invoice->payment_type === 'split')
-                    @php
-                        $paidServiceCharge = $invoice->invoicePartials->sum('service_charge');
-                        $paidTotalAmount = $invoice->invoicePartials->sum('amount');
-                    @endphp
-                    @if ($paidServiceCharge > 0)
-                        <div class="flex justify-between py-2 border-b border-gray-200">
-                            <span>Service Charge:</span>
-                            <span>{{ number_format($paidServiceCharge, 2) }}</span>
-                        </div>
-                    @endif
+                @php
+                $paidServiceCharge = $invoice->invoicePartials->sum('service_charge');
+                $paidTotalAmount = $invoice->invoicePartials->sum('amount');
+                @endphp
+                @if ($paidServiceCharge > 0)
+                <div class="flex justify-between py-2 border-b border-gray-200">
+                    <span>Service Charge:</span>
+                    <span>{{ number_format($paidServiceCharge, 2) }}</span>
+                </div>
+                @endif
                 @else
-                    @if(isset($totalGatewayFee['paid_by']) || $totalGatewayFee['paid_by'] !== 'Company')
-                    <div class="flex justify-between py-2 border-b border-gray-200">
-                        <span>Service Charge @if(isset($totalGatewayFee['charge_type']) && $totalGatewayFee['charge_type'] === 'Percent') (%): @else: @endif</span>
-                        <span>{{ number_format($totalGatewayFee['fee'], 2) }}</span>
-                    </div>
-                    @endif
-                @endif  
+                @if(isset($totalGatewayFee['paid_by']) || $totalGatewayFee['paid_by'] !== 'Company')
+                <div class="flex justify-between py-2 border-b border-gray-200">
+                    <span>Service Charge @if(isset($totalGatewayFee['charge_type']) && $totalGatewayFee['charge_type'] === 'Percent') (%): @else: @endif</span>
+                    <span>{{ number_format($totalGatewayFee['fee'], 2) }}</span>
+                </div>
+                @endif
+                @endif
                 <div class="flex justify-between py-2 font-bold text-gray-800">
                     <span>Total:</span>
                     <span>
@@ -435,9 +453,6 @@
                         class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                         Pay Now
                     </button>
-                    <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
-                        {{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}
-                    </span>
                     @endif
                 </div>
 
@@ -607,7 +622,6 @@
                 </div>
             </div>
 
-
             <div class="thank-you mt-6 bg-gray-100 p-6 rounded-lg">
                 <h4 class="text-xl font-semibold text-gray-800 mb-2">Thank You for Your Payment!</h4>
                 <p class="text-lg text-gray-600">We appreciate your business! A confirmation email has been
@@ -632,7 +646,7 @@
         // Calculate the total paid amount from invoicePartials
         let totalPaidAmount = invoicePartials.filter(partial => partial.status === 'paid')
             .reduce((sum, partial) => sum + parseFloat(partial.amount), 0);
-        
+
         let totalPaidServiceCharge = invoicePartials.filter(partial => partial.status === 'paid')
             .reduce((sum, partial) => sum + parseFloat(partial.service_charge), 0);
 
@@ -728,11 +742,11 @@
             });
 
             totalAmountInput.value = totalForSubmission.toFixed(2);
-            
+
             if (totalAmountDisplay) {
                 totalAmountDisplay.textContent = totalForDisplay.toFixed(2);
             }
-            
+
             console.log("Amount for submission (backend):", totalAmountInput.value);
             console.log("Amount for display (frontend):", totalForDisplay.toFixed(2));
         }

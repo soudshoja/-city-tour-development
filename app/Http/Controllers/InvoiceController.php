@@ -279,6 +279,10 @@ $sortBy = request('sortBy', 'created_at');
 
         $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
 
+        $invoiceSequence = InvoiceSequence::first();
+        $currentSequence = $invoiceSequence->current_sequence;
+        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+
         $countries = Country::all();
 
         return view('invoice.create', compact(

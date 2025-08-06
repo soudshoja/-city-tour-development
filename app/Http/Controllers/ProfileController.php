@@ -324,7 +324,7 @@ class ProfileController extends Controller
                         $markup = $detail->markup_price;
                     }
                 }
-                $commissionValue = $markup * $agent->commission;
+                $commissionValue = $markup * ($agent->commission ?? 0.15);
             }
             return [
                 'credit' => $commissionValue,

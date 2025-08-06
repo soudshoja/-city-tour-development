@@ -194,16 +194,30 @@
                                 class="w-full form-input" placeholder="Invoice Number" />
                         </div>
 
-                        <div class="mt-4 flex items-center">
-                            <label class="w-full text-sm font-semibold">Invoice Date:</label>
-                            <input id="invdate" type="date" name="invdate" class="w-full form-input"
-                                value="{{ $invoice->invoice_date }}" disabled />
-                        </div>
+<form id="invoice-date-form" method="POST" action="{{ route('invoice.updateDate', $invoice->invoice_number) }}">
+    @csrf
+    @method('PUT')
+    <div class="flex items-center">
+        <label class="w-full text-sm font-semibold">Invoice Date:</label>
+        <!-- Save icon button -->
+        <button type="submit" class=" rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Save">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                 class="w-5 h-5 text-blue-600">
+                <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
+            </svg>
+        </button>
+        <input id="invdate" type="date" name="invdate" class="form-input w-full"
+            value="{{ $invoice->invoice_date }}"/>
+        
+        
+    </div>
+</form>
+
 
                         <div class="mt-4 flex items-center">
                             <label class="w-full text-sm font-semibold">Due Date:</label>
                             <input id="duedate" type="date" name="duedate" class="w-full form-input"
-                                value={{ $dueDate }} />
+                                value={{ $dueDate }} disabled />
                         </div>
 
 

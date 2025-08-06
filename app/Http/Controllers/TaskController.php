@@ -1478,6 +1478,25 @@ class TaskController extends Controller
                 ->where('description', 'like', '%' . $task->reference . '%')
                 ->first();
 
+            if ($transaction) {
+                $transaction->amount = $task->total;
+                $transaction->save();
+            
+                foreach ($transaction->journalEntries as $entry) {
+                    if ($entry->debit > 0) {
+                        $entry->debit   = $task->total;
+                        $entry->balance = $task->total;
+                    } else {
+                        $entry->credit  = $task->total;
+                        $entry->balance = $task->total;
+                    }
+                    if (isset($entry->amount)) {
+                        $entry->amount = $task->total;
+                    }
+                    $entry->save();
+                }
+            }
+
             if (isset($client) && $transaction) {
                 $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
                     if ($journalEntry->name === $prevClientName) {

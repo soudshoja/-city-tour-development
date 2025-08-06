@@ -117,7 +117,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
 Route::put('/invoice/{invoiceNumber}/date', [InvoiceController::class, 'updateDate'])->name('invoice.updateDate');    // Routes for creating new records
-
+Route::post('/invoice/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('invoice.updateTaskPrice');
     // Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions');
     Route::post('/companies/create-branch', [CompanyController::class, 'createBranch'])->name('companies.createBranch');
     Route::post('/companies/create-agent', [CompanyController::class, 'createAgent'])->name('companies.createAgent');

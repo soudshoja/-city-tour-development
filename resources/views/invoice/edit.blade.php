@@ -1829,14 +1829,27 @@
                     <p>${item.total} KWD</p>
                     </td>
                     <td>
-                          <input readonly
-                                id="invprice-table-${item.id}"
-                                type="number"
-                                class="border border-gray-300 p-2 rounded-md w-full"
-                                value="${item.task_price}" 
-                                onInput="updateField(${item.id}, 'invprice-table')"
-                            />
-                    </td>
+    <div class="flex items-center gap-2">
+        <input
+            id="invprice-table-${item.id}"
+            type="number"
+            class="border border-gray-300 p-2 rounded-md w-full"
+            value="${item.task_price}"
+            onInput="updateField(${item.id}, 'invprice-table')"
+        />
+        <button
+            type="button"
+            class="p-1 rounded hover:bg-gray-200"
+            title="Save"
+            onclick="saveTaskPrice(${item.id})"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                class="w-5 h-5 text-blue-600">
+                <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
+            </svg>
+        </button>
+    </div>
+</td>
                     <td>
                     <p>${item.client_name}</p>
                     </td>
@@ -2184,7 +2197,40 @@
 
 
         }
+        function saveTaskPrice(itemId) {
+    const input = document.getElementById(`invprice-table-${itemId}`);
+    const newPrice = parseFloat(input.value);
 
+    if (isNaN(newPrice) || newPrice <= 0) {
+        displayErrorMessage('Please enter a valid price.');
+        return;
+    }
+
+    // Send AJAX request to update the price
+    fetch(`/invoice/update-task-price`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': "{{ csrf_token() }}",
+        },
+        body: JSON.stringify({
+            task_id: itemId,
+            new_price: newPrice,
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displaySuccessMessage('Task price updated!');
+            // Optionally, update subtotal or reload data
+        } else {
+            displayErrorMessage(data.message || 'Failed to update price.');
+        }
+    })
+    .catch(() => {
+        displayErrorMessage('Failed to update price.');
+    });
+}
         function removeItem(itemId) {
             items = items.filter(item => item.id !== itemId);
             renderItems(); // Re-render the table after removal

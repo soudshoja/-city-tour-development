@@ -1344,6 +1344,40 @@ $sortBy = request('sortBy', 'created_at');
     /**
      * Update the specified resource in storage.
      */
+    public function updateTaskPrice(Request $request)
+{
+    $request->validate([
+        'task_id' => 'required|integer',
+        'new_price' => 'required|numeric|min:0.01',
+    ]);
+
+    $taskId = $request->input('task_id');
+    $newPrice = $request->input('new_price');
+
+    // Find the InvoiceDetail for this task
+    $invoiceDetail = \App\Models\InvoiceDetail::where('task_id', $taskId)->first();
+    if (!$invoiceDetail) {
+        return response()->json(['success' => false, 'message' => 'Invoice detail not found.']);
+    }
+
+    $invoiceDetail->task_price = $newPrice;
+    $invoiceDetail->markup_price = $newPrice - $invoiceDetail->supplier_price;
+    $invoiceDetail->save();
+
+    // Update related JournalEntry and Transaction
+    // Update JournalEntry
+    \App\Models\JournalEntry::where('invoice_detail_id', $invoiceDetail->id)
+        ->update(['amount' => $newPrice, 'debit' => $newPrice, 'credit' => $newPrice]);
+
+    // Update Transaction (if needed)
+    $transaction = \App\Models\Transaction::where('invoice_id', $invoiceDetail->invoice_id)->first();
+    if ($transaction) {
+        $transaction->amount = $newPrice;
+        $transaction->save();
+    }
+
+    return response()->json(['success' => true]);
+}
     public function updateDate(Request $request, $invoiceNumber)
 {
     $request->validate([

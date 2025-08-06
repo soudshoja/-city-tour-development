@@ -889,10 +889,11 @@
                                             </tr>
                                             @else
                                             @foreach ($tasks as $key => $task)
-                                            @php
-                                            $isSelectable = $task->status !== 'refund' ? !$task->invoiceDetail && $task->enabled && $task->agent_id
-                                            : !$task->refundDetail && $task->is_complete && $task->agent_id;
-                                            @endphp
+                                                @php
+                                                    $hasCommission = $task->agent && ($task->agent->type_id === 1 || ($task->agent->commission ?? 0) > 0 );
+                                                    $isSelectable = $task->status !== 'refund' ? !$task->invoiceDetail && $task->enabled && $task->agent_id && $hasCommission
+                                                    : !$task->refundDetail && $task->is_complete && $task->agent_id && $hasCommission;
+                                                @endphp
                                             <tr class="taskRow task-row {{ $isSelectable ? 'hover:bg-blue-100' : 'not-selectable' }}" @if($isSelectable) @click="toggleTaskSelection({{ $task->id }})" @endif x-show="{{ $key }} < shown" x-cloak
                                                 :class="selectedTasks.includes({{ $task->id }}) ? 'selected' : ''"
                                                 @click="isSelectable({
@@ -918,7 +919,8 @@
                                                             @php
                                                                 $reasons = [];
                                                                 if (!$task->enabled) $reasons[] = 'Task is currently disabled';
-                                                                if (!$task->agent_id) $reasons[] = 'Agent not selected';
+                                                                if (!$task->agent) { $reasons[] = 'Agent not selected'; }
+                                                                elseif (!$hasCommission) { $reasons[] = 'Agent commission rate missing'; }
                                                                 if ($task->invoiceDetail) $reasons[] = 'Invoice already created';
                                                                 if ($task->status === 'refund' && $task->refundDetail) $reasons[] = 'Refund already processed';
                                                                 if ($task->status === 'refund' && !$task->is_complete) $reasons[] = 'Refund not complete';

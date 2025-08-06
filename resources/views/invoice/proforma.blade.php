@@ -52,7 +52,6 @@
                                         <tr>
                                             <th>#</th>
                                             <th>Details</th>
-                                            <th>Supplier</th>
                                             <th>Total</th>
                                         </tr>
                                     </thead>
@@ -85,14 +84,13 @@
                                                 <p>-</p>
                                             </td>
                                             @endif
-                                            <td>{{ $detail->task->supplier->name ?? 'N/A' }}</td>
                                             <td>KWD{{ number_format($detail->task_price, 3) }}</td>
                                         </tr>
                                         @endforeach
                                     </tbody>
                                     <tfoot>
                                         <tr>
-                                            <th colspan="3" class="text-end">Grand Total:</th>
+                                            <th colspan="2" class="text-end">Grand Total:</th>
                                             <th>KWD{{ number_format($grandTotal, 2) }}</th>
                                         </tr>
                                     </tfoot>

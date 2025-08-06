@@ -806,63 +806,54 @@
                                                 <th data-column="supplier">
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
                                                 </th>
-                            <th data-column="issue-date">
-    <a href="{{ request()->fullUrlWithQuery([
-        'sortBy' => 'issued_date',
-        'sortOrder' => (request('sortBy') === 'issued_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
-    ]) }}" 
-       class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
-        Issued Date
-
-        {{-- Neutral icon when not sorted --}}
-        @if(request('sortBy') !== 'issued_date')
-            <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200" 
-                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6"/>
-            </svg>
-        @else
-            {{-- Sorting direction icon --}}
-            <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200" 
-                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                @if(request('sortOrder', 'desc') === 'asc')
-                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
-                @else
-                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
-                @endif
-            </svg>
-        @endif
-    </a>
-</th>
-
-
+                                                <th data-column="issue-date">
+                                                    <a href="{{ request()->fullUrlWithQuery([
+                                                        'sortBy' => 'issued_date',
+                                                        'sortOrder' => (request('sortBy') === 'issued_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+                                                    ]) }}" 
+                                                    class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                                        Issued Date
+                                                        @if(request('sortBy') !== 'issued_date')
+                                                            <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200" 
+                                                                fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                                <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6"/>
+                                                            </svg>
+                                                        @else
+                                                            <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200" 
+                                                                fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                                                @if(request('sortOrder', 'desc') === 'asc')
+                                                                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
+                                                                @else
+                                                                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
+                                                                @endif
+                                                            </svg>
+                                                        @endif
+                                                    </a>
+                                                </th>
                                                 <th data-column="created-at" class="column-hidden">
-    <a href="{{ request()->fullUrlWithQuery([
-        'sortBy' => 'created_at',
-        'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
-    ]) }}" 
-       class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
-        Created Date
-
-        {{-- Neutral icon when not sorted --}}
-        @if(request('sortBy') !== 'created_at')
-            <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200" 
-                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6"/>
-            </svg>
-        @else
-            {{-- Sorting direction icon --}}
-            <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200" 
-                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                @if(request('sortOrder') === 'asc')
-                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
-                @else
-                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
-                @endif
-            </svg>
-        @endif
-    </a>
-</th>
-
+                                                    <a href="{{ request()->fullUrlWithQuery([
+                                                        'sortBy' => 'created_at',
+                                                        'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+                                                    ]) }}" 
+                                                    class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                                        Created Date
+                                                        @if(request('sortBy') !== 'created_at')
+                                                            <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200" 
+                                                                fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                                <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6"/>
+                                                            </svg>
+                                                        @else
+                                                            <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200" 
+                                                                fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                                                @if(request('sortOrder') === 'asc')
+                                                                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
+                                                                @else
+                                                                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
+                                                                @endif
+                                                            </svg>
+                                                        @endif
+                                                    </a>
+                                                </th>
                                                 <th data-column="info">
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Info</span>
                                                 </th>
@@ -1689,6 +1680,9 @@
                                 <span>No tasks found matching your search</span>
                             </p> -->
                             <!-- Pagination Links -->
+                            @php
+                                $paginator = $tasks->appends(request()->query());
+                            @endphp
                             <div class="dataTable-bottom justify-center">
                                 @if ($tasks->hasPages())
                                 <nav class="dataTable-pagination">

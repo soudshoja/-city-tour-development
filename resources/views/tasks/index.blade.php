@@ -1176,7 +1176,7 @@
                                                                                                         name="price"
                                                                                                         placeholder="Price"
                                                                                                         value="{{ $task->price }}"
-                                                                                                       {{$task->task_price_changeable ? '' : 'disabled'}}> 
+                                                                                                       {{$task->task_price_changeable ? '' : 'readonly'}}> 
                                                                                                 </div>
 
                                                                                                 <!-- Tax -->
@@ -1209,7 +1209,7 @@
                                                                                                         class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
                                                                                                         value="{{ $task->total }}"
                                                                                                         placeholder="Total"
-                                                                                                        {{$task->task_price_changeable ? '' : 'disabled'}}>
+                                                                                                        {{$task->task_price_changeable ? '' : 'readonly'}}>
                                                                                                 </div>
                                                                                             </div>
                                                                                             <!-- Payment Method -->

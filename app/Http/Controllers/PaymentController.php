@@ -1290,7 +1290,7 @@ class PaymentController extends Controller
             ]);
 
             $result = $this->paymentLinkProcess($request);
-            Log::info('Add Credit & Journal for import payment response:';
+            Log::info('Add Credit & Journal for import payment response');
         } catch (\Exception $e) {
             Log::error('Add Credit & Journal for import payment', [
                 'error' => $e->getMessage(),

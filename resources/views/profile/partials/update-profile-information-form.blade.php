@@ -28,8 +28,8 @@
         @if ($userEmail)
             <div class="mt-4">
                 <x-input-label for="email" :value="__('Email')" />
-                <x-text-input readonly id="email" name="email" type="email"
-                    class="mt-1 block w-full bg-gray-100" :value="old('email', $userEmail)" required autocomplete="username" />
+                <x-text-input  id="email" name="email" type="email"
+                    class="mt-1 block w-full" :value="old('email', $userEmail)" required autocomplete="username" />
                 <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
                 @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !$user->hasVerifiedEmail())
@@ -54,9 +54,9 @@
         @endif
         @if ($userPhone)
             <div>
-                <x-input-label for="phone" :value="__('Name')" />
-                <x-text-input readonly id="phone" name="phone" type="text"
-                    class="mt-1 block w-full  bg-gray-100" :value="old('phone', $userPhone)" required autofocus autocomplete="phone" />
+                <x-input-label for="phone" :value="__('Phone Number')" />
+                <x-text-input id="phone" name="phone" type="text"
+                    class="mt-1 block w-full" :value="old('phone', $userPhone)" required autofocus autocomplete="phone" />
                 <x-input-error class="mt-2" :messages="$errors->get('phone')" />
             </div>
         @endif

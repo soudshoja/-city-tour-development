@@ -32,6 +32,7 @@ use App\Models\MyFatoorahPayment;
 use App\Services\ChargeService;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Http;
 use App\Support\PaymentGateway\Tap;
@@ -1010,13 +1011,6 @@ class PaymentController extends Controller
                 ->firstWhere('TransactionStatus', 'Succss')['PaymentGateway'] ?? null;
             $amount = $responseData['Data']['InvoiceValue'] ?? 0;
 
-            Log::debug('Received from page:', [
-                'client_id' => $clientId,
-                'agent_id' => $agentId,
-                'payment_id' => $paymentId,
-                'page' => $page
-            ]);
-
             if (!$clientId || !$agentId) {
                 return response()->json([
                     'success' => false,
@@ -1036,8 +1030,6 @@ class PaymentController extends Controller
                 'notes' => 'Imported from MyFatoorah Portal with invoice ID : ' . $invoiceId,
                 'source' => 'import',
             ];
-
-            Log::debug('Data from Invoice page: ', $data);
 
             $internalRequest = new Request($data);
             $response = $this->paymentStoreLinkProcess($internalRequest);
@@ -1217,7 +1209,7 @@ class PaymentController extends Controller
                 'invoice_id' => 'nullable',
                 'notes' => 'nullable|string|max:255'
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             Log::error('Validation failed in paymentStoreLinkProcess', [
                 'errors' => $e->validator->errors()->all()
             ]);
@@ -1293,7 +1285,6 @@ class PaymentController extends Controller
         /* $clientController = new ClientController(); */
 
         if ($source === 'import') {
-            Log::debug('We hit here in paymentStoreLink at import');
         try {
             $request = new Request([
                 'payment_id' => $payment->id,

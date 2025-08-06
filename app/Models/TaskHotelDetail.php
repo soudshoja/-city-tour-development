@@ -53,6 +53,24 @@ class TaskHotelDetail extends Model
         return date('Y', strtotime($this->check_in));
     }
 
+    public function getNightsAttribute()
+    {
+        $checkIn = new \DateTime($this->check_in);
+        $checkOut = new \DateTime($this->check_out);
+        return $checkIn->diff($checkOut)->days;
+    }
+
+    public function getRoomNameAttribute()
+    {
+        if ($this->room_details) {
+            $roomDetails = json_decode($this->room_details, true);
+            return $roomDetails['name'] ?? 'N/A';
+        } else {
+            return 'N/A';
+        }
+        return 'N/A';
+    }
+
     public function task()
     {
         return $this->belongsTo(Task::class, 'task_id');

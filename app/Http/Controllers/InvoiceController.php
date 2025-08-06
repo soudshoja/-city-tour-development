@@ -1150,7 +1150,68 @@ class InvoiceController extends Controller
      * Display the specified resource.
      */
 
+    public function proforma(string $invoiceNumber)
+    {
+        $user = Auth::user();
+        
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->with('agent.branch.company', 'client', 'invoiceDetails.task.supplier')
+            ->first();
 
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+        // Check authorization - similar to other invoice methods
+        $hasAccess = false;
+        if ($user->role_id == Role::ADMIN) {
+            $hasAccess = true;
+        } elseif ($user->role_id == Role::COMPANY) {
+            $hasAccess = $invoice->agent->branch->company_id == $user->company->id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $hasAccess = $invoice->agent->branch_id == $user->branch->id;
+        } elseif ($user->role_id == Role::AGENT) {
+            $hasAccess = $invoice->agent_id == $user->agent->id;
+        }
+
+        if (!$hasAccess) {
+            return redirect()->back()->with('error', 'Unauthorized access.');
+        }
+
+        $invoiceDetails = $invoice->invoiceDetails;
+        $company = $invoice->agent->branch->company;
+
+        // Company logo for display
+        $companyLogoPath = public_path('images/CityLogo.png');
+        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
+        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
+
+        return view('invoice.proforma', compact(
+            'invoice',
+            'invoiceDetails',
+            'company',
+            'companyLogoSrc'
+        ));
+    }
+
+    public function proformaGeneratePdf(string $invoiceNumber)
+    {
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->with('agent.branch.company', 'client', 'invoiceDetails.task.supplier')
+            ->first();
+
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+        $invoiceDetails = $invoice->invoiceDetails;
+        $company = $invoice->agent->branch->company;
+        $companyLogoSrc = public_path('images/CityLogo.png');
+
+        $pdf = Pdf::loadView('invoice.proforma-pdf', compact('invoice', 'invoiceDetails', 'company', 'companyLogoSrc'));
+
+        return $pdf->download("Proforma_Invoice_{$invoiceNumber}.pdf");
+    }
 
     public function show(string $invoiceNumber)
     {

@@ -381,6 +381,10 @@ Route::post('/invoice/update-task-price', [InvoiceController::class, 'updateTask
         Route::post('/remove/partial', [InvoiceController::class, 'removePartial'])->name('removepartial');
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split');
         Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
+        Route::get('/{invoiceNumber}', [InvoiceController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
+        Route::get('/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('pdf')->withoutMiddleware(['auth']);
+        Route::get('/{invoiceNumber}/proforma', [InvoiceController::class, 'proforma'])->name('proforma')->withoutMiddleware(['auth']);
+        Route::get('/{invoiceNumber}/proforma-pdf', [InvoiceController::class, 'proformaGeneratePdf'])->name('proforma.pdf')->withoutMiddleware(['auth']);
     });
 
 
@@ -547,10 +551,6 @@ Route::post('/version/updateMaster', [VersionController::class, 'updateMaster'])
 Route::get('/current', [VersionController::class, 'getCurrent'])->name('version.getCurrent');
 
 Route::get('/monitor-versions', [VersionController::class, 'monitorVersions']);
-
-
-Route::get('/invoice/{invoiceNumber}', [InvoiceController::class, 'show'])->name('invoice.show');
-Route::get('/invoice/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('invoice.pdf');
 
 
 // search for invoice creation

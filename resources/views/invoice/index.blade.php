@@ -129,10 +129,19 @@
         'sortBy' => 'created_at',
         'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
     ]) }}" 
-       class="flex items-center gap-1 p-3 text-left text-md font-bold text-gray-500 dark:text-gray-300">
+       class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
         Created Date
-        @if(request('sortBy') === 'created_at')
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+
+        {{-- Neutral icon when not sorted --}}
+        @if(request('sortBy') !== 'created_at')
+            <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200" 
+                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6"/>
+            </svg>
+        @else
+            {{-- Sorting direction icon --}}
+            <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200" 
+                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                 @if(request('sortOrder', 'desc') === 'asc')
                     <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
                 @else
@@ -142,15 +151,27 @@
         @endif
     </a>
 </th>
+
+
+
 <th>
     <a href="{{ request()->fullUrlWithQuery([
         'sortBy' => 'invoice_date',
         'sortOrder' => (request('sortBy') === 'invoice_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
     ]) }}" 
-       class="flex items-center gap-1 p-3 text-left text-md font-bold text-gray-500 dark:text-gray-300">
+       class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
         Invoice Date
-        @if(request('sortBy') === 'invoice_date')
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+
+        {{-- Neutral icon when not sorted --}}
+        @if(request('sortBy') !== 'invoice_date')
+            <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200" 
+                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6"/>
+            </svg>
+        @else
+            {{-- Sorting direction icon --}}
+            <svg class="w-4 h-4 transform hover:scale-110 transition-all duration-200" 
+                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                 @if(request('sortOrder', 'desc') === 'asc')
                     <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
                 @else
@@ -160,6 +181,9 @@
         @endif
     </a>
 </th>
+
+
+
                                 </tr>
                             </thead>
                             <tbody>

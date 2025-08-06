@@ -78,6 +78,8 @@ class TaskController extends Controller
                     ->orWhere('client_name', 'like', '%' . $search . '%')
                     ->orWhere('ticket_number', 'like', '%' . $search . '%')
                     ->orWhere('status', 'like', '%' . $search . '%')
+                    ->orWhere('gds_reference', 'like', '%' . $search . '%')
+                    ->orWhere('airline_reference', 'like', '%' . $search . '%')
                     ->orWhereHas('client', function ($q) use ($search) {
                         $q->where('name', 'like', '%' . $search . '%')
                         ->orWhere('phone', 'like', '%' . $search . '%');
@@ -144,7 +146,7 @@ class TaskController extends Controller
         }
   
         $taskCount = $tasks->count();
-        $tasks = $tasks->orderBy($sortBy, $sortOrder)->orderBy('id', 'desc')->paginate(20);
+        $tasks = $tasks->orderBy($sortBy, $sortOrder)->paginate(20)->withQueryString();
         $types = Task::distinct()->pluck('type');
 
         $importedTask = Cache::get('imported_task');
@@ -1477,6 +1479,25 @@ class TaskController extends Controller
             $transaction = Transaction::with('journalEntries')
                 ->where('description', 'like', '%' . $task->reference . '%')
                 ->first();
+
+            if ($transaction) {
+                $transaction->amount = $task->total;
+                $transaction->save();
+            
+                foreach ($transaction->journalEntries as $entry) {
+                    if ($entry->debit > 0) {
+                        $entry->debit   = $task->total;
+                        $entry->balance = $task->total;
+                    } else {
+                        $entry->credit  = $task->total;
+                        $entry->balance = $task->total;
+                    }
+                    if (isset($entry->amount)) {
+                        $entry->amount = $task->total;
+                    }
+                    $entry->save();
+                }
+            }
 
             if (isset($client) && $transaction) {
                 $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {

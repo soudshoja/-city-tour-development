@@ -120,7 +120,7 @@ class AgentController extends Controller
                         ->where('account_id', 43)
                         ->sum('credit');
                 } elseif ($agent->type_id == 3) {
-                    $detail->commission = $markup * $agent->commission;
+                    $detail->commission = $markup * ($agent->commission ?? 0.15);
                 } else {
                     $detail->commission = 0;
                 }
@@ -191,14 +191,14 @@ class AgentController extends Controller
                     $commission += $detail->commission;
                 } elseif ($agent->type_id == 3) {
                     // Type 3 ((Commission = total profit * %) + salary)
-                    $commission += ($markup * $agent->commission);
+                    $commission += ($markup * ($agent->commission ?? 0.15));
                 }
             }
         }
 
         if ($agent->type_id == 4 && $profit > $agent->target) {
             // Type 4 (only if profit > target, then (profit - salary) * % + salary)
-            $commission = (($profit - $agent->salary) * $agent->commission) + $agent->salary;
+            $commission = (($profit - $agent->salary) * ($agent->commission ?? 0.15)) + $agent->salary;
         } elseif ($agent->type_id == 4) {
             $commission = 0.00;
         } elseif ($agent->type_id == 3 && $profit != 0) {

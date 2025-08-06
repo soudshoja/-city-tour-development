@@ -970,8 +970,8 @@ class InvoiceController extends Controller
                 ]);
             }
 
-            if ($agent->agentType->name == 'Commission' || $agent->agentType->name == 'Both') {
-                $commission = 0.15 * ($task->invoiceDetail->task_price - $task->total);
+            if (in_array($agent->type_id, [2, 3])) {
+                $commission = ($agent->commission ?? 0.15) * ($task->invoiceDetail->task_price - $task->total);
 
                 $commissionExpenses = Account::where('name', 'like', 'Commissions Expense (Agents)%')
                     ->where('company_id', $task->company_id)
@@ -1012,8 +1012,8 @@ class InvoiceController extends Controller
         try {
             $agent = $task->agent;
 
-            if (!in_array($agent->type_id, [3, 4])) {
-                $commission = 0.15 * ($task->invoiceDetail->task_price - $task->total);
+            if (in_array($agent->type_id, [2, 3])) {
+                $commission = ($agent->commission ?? 0.15) * ($task->invoiceDetail->task_price - $task->total);
 
                 $accruedCommissions = Account::where('name', 'like', 'Commissions (Agents)%')
                     ->where('company_id', $task->company_id)
@@ -1151,7 +1151,68 @@ class InvoiceController extends Controller
      * Display the specified resource.
      */
 
+    public function proforma(string $invoiceNumber)
+    {
+        $user = Auth::user();
+        
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->with('agent.branch.company', 'client', 'invoiceDetails.task.supplier')
+            ->first();
 
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+        // Check authorization - similar to other invoice methods
+        $hasAccess = false;
+        if ($user->role_id == Role::ADMIN) {
+            $hasAccess = true;
+        } elseif ($user->role_id == Role::COMPANY) {
+            $hasAccess = $invoice->agent->branch->company_id == $user->company->id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $hasAccess = $invoice->agent->branch_id == $user->branch->id;
+        } elseif ($user->role_id == Role::AGENT) {
+            $hasAccess = $invoice->agent_id == $user->agent->id;
+        }
+
+        if (!$hasAccess) {
+            return redirect()->back()->with('error', 'Unauthorized access.');
+        }
+
+        $invoiceDetails = $invoice->invoiceDetails;
+        $company = $invoice->agent->branch->company;
+
+        // Company logo for display
+        $companyLogoPath = public_path('images/CityLogo.png');
+        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
+        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
+
+        return view('invoice.proforma', compact(
+            'invoice',
+            'invoiceDetails',
+            'company',
+            'companyLogoSrc'
+        ));
+    }
+
+    public function proformaGeneratePdf(string $invoiceNumber)
+    {
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->with('agent.branch.company', 'client', 'invoiceDetails.task.supplier')
+            ->first();
+
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+        $invoiceDetails = $invoice->invoiceDetails;
+        $company = $invoice->agent->branch->company;
+        $companyLogoSrc = public_path('images/CityLogo.png');
+
+        $pdf = Pdf::loadView('invoice.proforma-pdf', compact('invoice', 'invoiceDetails', 'company', 'companyLogoSrc'));
+
+        return $pdf->download("Proforma_Invoice_{$invoiceNumber}.pdf");
+    }
 
     public function show(string $invoiceNumber)
     {
@@ -1364,6 +1425,8 @@ class InvoiceController extends Controller
             return response()->json(['success' => false, 'message' => 'Invoice detail not found.']);
         }
 
+        $agent = $invoiceDetail->task->agent;
+
         $oldPrice = $invoiceDetail->task_price;
         $invoiceDetail->task_price = $newPrice;
         $invoiceDetail->markup_price = $newPrice - $invoiceDetail->supplier_price;
@@ -1387,14 +1450,14 @@ class InvoiceController extends Controller
             // Agent commission for (Expenses)
             elseif (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
                 // Recalculate commission based on new price
-                $commission = 0.15 * ($newPrice - $invoiceDetail->supplier_price);
+                $commission = ($agent->commission ?? 0.15) * ($newPrice - $invoiceDetail->supplier_price);
                 $entry->debit = $commission;
                 $entry->credit = 0;
                 $entry->amount = $commission;
             }
             // Agent commission for (Liabilities)
             elseif (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
-                $commission = 0.15 * ($newPrice - $invoiceDetail->supplier_price);
+                $commission = ($agent->commission ?? 0.15) * ($newPrice - $invoiceDetail->supplier_price);
                 $entry->debit = 0;
                 $entry->credit = $commission;
                 $entry->amount = $commission;

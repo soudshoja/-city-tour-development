@@ -62,11 +62,17 @@ class TaskFlightDetail extends Model
 
     public function getReadableDepartureTimeAttribute()
     {
+        if(!$this->departure_time) {
+            return 'N/A';
+        }
         return $this->departure_time->format('F j, Y g:i A');
     }
 
     public function getReadableArrivalTimeAttribute()
     {
+        if(!$this->arrival_time) {
+            return 'N/A';
+        }
         return $this->arrival_time->format('F j, Y g:i A');
     }
 

@@ -13,7 +13,8 @@ class AgentTypeSeeder extends Seeder
     {
         AgentType::firstOrCreate(['name' => 'Salary']);
         AgentType::firstOrCreate(['name' => 'Commission']);
-        AgentType::firstOrCreate(['name' => 'Both-A']);
+        AgentType::firstOrCreate(['name' => 'Both']);
+        DB::table('agent_type')->where('name', 'Both')->update(['name' => 'Both-A']);
         AgentType::firstOrCreate(['name' => 'Both-B']);
     }
 }

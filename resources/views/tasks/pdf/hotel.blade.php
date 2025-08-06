@@ -122,7 +122,7 @@
                            flex items-center justify-center text-sm">
                             {{ $i + 1 }}
                         </span>
-                        <div class="bg-white shadow-sm rounded-lg p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                        <div class="bg-white shadow-sm rounded-lg p-4 grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm">
                             <div>
                                 <div class="uppercase text-xs text-gray-500">Check-In</div>
                                 <div class="font-medium text-gray-900">{{ $d->check_in ? \Carbon\Carbon::parse($d->check_in)->format('d M Y') : '—' }}</div>
@@ -136,6 +136,10 @@
                                 <div class="font-medium text-gray-900">
                                     {{ $d->booking_time ? \Carbon\Carbon::parse($d->booking_time)->format('d M Y, H:i') : '—' }}
                                 </div>
+                            </div>
+                            <div>
+                                <div class="uppercase text-xs text-gray-500">Nights</div>
+                                <div class="font-medium text-gray-900">{{ $d->nights . ' days' ?? '—' }}</div>
                             </div>
                         </div>
                     </div>

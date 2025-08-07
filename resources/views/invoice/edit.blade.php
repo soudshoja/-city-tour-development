@@ -2206,8 +2206,13 @@
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // Update the item in the items array
+            const item = items.find(item => item.id === itemId);
+            if (item) {
+                item.task_price = newPrice;
+            }
+            calculateSubtotal(); // <-- This updates #subT and others
             displaySuccessMessage('Task price updated!');
-            // Optionally, update subtotal or reload data
         } else {
             displayErrorMessage(data.message || 'Failed to update price.');
         }

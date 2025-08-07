@@ -389,7 +389,7 @@ class InvoiceController extends Controller
         $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')->first();
 
         $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
-
+        // dd($selectedTasks);
         return view('invoice.edit', compact(
             'clients',
             'invoice',
@@ -1408,71 +1408,91 @@ class InvoiceController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function updateTaskPrice(Request $request)
-    {
-        $request->validate([
-            'task_id' => 'required|integer',
-            'new_price' => 'required|numeric|min:0.01',
-        ]);
+public function updateTaskPrice(Request $request)
+{
+    $request->validate([
+        'task_id' => 'required|integer',
+        'new_price' => 'required|numeric|min:0.01',
+    ]);
 
-        $taskId = $request->input('task_id');
-        $newPrice = $request->input('new_price');
+    $taskId = $request->input('task_id');
+    $newPrice = $request->input('new_price');
 
-        // Find the InvoiceDetail for this task
-        $invoiceDetail = \App\Models\InvoiceDetail::where('task_id', $taskId)->first();
-        if (!$invoiceDetail) {
-            return response()->json(['success' => false, 'message' => 'Invoice detail not found.']);
-        }
-
-        $agent = $invoiceDetail->task->agent;
-
-        $oldPrice = $invoiceDetail->task_price;
-        $invoiceDetail->task_price = $newPrice;
-        $invoiceDetail->markup_price = $newPrice - $invoiceDetail->supplier_price;
-        $invoiceDetail->save();
-
-        // Update related JournalEntry records
-        $journalEntries = \App\Models\JournalEntry::where('invoice_detail_id', $invoiceDetail->id)->get();
-        foreach ($journalEntries as $entry) {
-            // Invoice created for (Assets)
-            if (str_contains($entry->description, 'Invoice created for (Assets)')) {
-                $entry->debit = $newPrice;
-                $entry->credit = 0;
-                $entry->amount = $newPrice;
-            }
-            // Invoice created for (Income)
-            elseif (str_contains($entry->description, 'Invoice created for (Income)')) {
-                $entry->debit = 0;
-                $entry->credit = $newPrice;
-                $entry->amount = $newPrice;
-            }
-            // Agent commission for (Expenses)
-            elseif (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
-                // Recalculate commission based on new price
-                $commission = ($agent->commission ?? 0.15) * ($newPrice - $invoiceDetail->supplier_price);
-                $entry->debit = $commission;
-                $entry->credit = 0;
-                $entry->amount = $commission;
-            }
-            // Agent commission for (Liabilities)
-            elseif (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
-                $commission = ($agent->commission ?? 0.15) * ($newPrice - $invoiceDetail->supplier_price);
-                $entry->debit = 0;
-                $entry->credit = $commission;
-                $entry->amount = $commission;
-            }
-            $entry->save();
-        }
-
-        // Update Transaction (if needed)
-        $transaction = \App\Models\Transaction::where('invoice_id', $invoiceDetail->invoice_id)->first();
-        if ($transaction) {
-            $transaction->amount = $newPrice;
-            $transaction->save();
-        }
-
-        return response()->json(['success' => true]);
+    // Find the InvoiceDetail for this task
+    $invoiceDetail = \App\Models\InvoiceDetail::where('task_id', $taskId)->first();
+    if (!$invoiceDetail) {
+        return response()->json(['success' => false, 'message' => 'Invoice detail not found.']);
     }
+
+    $agent = $invoiceDetail->task->agent;
+
+    $oldPrice = $invoiceDetail->task_price;
+    $invoiceDetail->task_price = $newPrice;
+    $invoiceDetail->markup_price = $newPrice - $invoiceDetail->supplier_price;
+    $invoiceDetail->save();
+
+    // Update related JournalEntry records
+    $journalEntries = \App\Models\JournalEntry::where('invoice_detail_id', $invoiceDetail->id)->get();
+    foreach ($journalEntries as $entry) {
+        // ...e        $journalEntries = \App\Models\JournalEntry::where('invoice_detail_id', $invoiceDetail->id)->get();
+        foreach ($journalEntries as $entry) {
+    // Invoice created for (Assets)
+    if (str_contains($entry->description, 'Invoice created for (Assets)')) {
+        $entry->debit = $newPrice;
+        $entry->credit = 0;
+        $entry->amount = $newPrice;
+    }
+    // Invoice created for (Income)
+    elseif (str_contains($entry->description, 'Invoice created for (Income)')) {
+        $entry->debit = 0;
+        $entry->credit = $newPrice;
+        $entry->amount = $newPrice;
+    }
+    // Agent commission for (Expenses)
+    elseif (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
+        // Recalculate commission based on new price
+        $commission = ($agent->commission ?? 0.15) * max(0, $newPrice - $invoiceDetail->supplier_price);
+        $entry->debit = $commission;
+        $entry->credit = 0;
+        $entry->amount = $commission;
+    }
+    // Agent commission for (Liabilities)
+    elseif (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
+        $commission = ($agent->commission ?? 0.15) * max(0, $newPrice - $invoiceDetail->supplier_price);
+        $entry->debit = 0;
+        $entry->credit = $commission;
+        $entry->amount = $commission;
+    }
+    $entry->save();
+}
+    }
+
+    // Update Transaction (if needed)
+    $transaction = \App\Models\Transaction::where('invoice_id', $invoiceDetail->invoice_id)->first();
+    if ($transaction) {
+        $transaction->amount = $newPrice;
+        $transaction->save();
+    }
+
+    // --- NEW: Update Invoice and InvoicePartial amounts ---
+    $invoice = $invoiceDetail->invoice;
+    if ($invoice) {
+        // Recalculate total from all invoice details
+        $newTotal = $invoice->invoiceDetails()->sum('task_price');
+        $invoice->amount = $newTotal;
+        $invoice->sub_amount = $newTotal;
+        $invoice->save();
+
+        // Update all related invoice partials
+        foreach ($invoice->invoicePartials as $partial) {
+            $partial->amount = $newTotal;
+            $partial->save();
+        }
+    }
+    // --- END NEW ---
+
+    return response()->json(['success' => true]);
+}
     public function updateDate(Request $request, $invoiceNumber)
     {
         $request->validate([

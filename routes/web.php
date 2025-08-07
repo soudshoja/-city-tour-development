@@ -115,7 +115,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}/clients', [AgentController::class, 'getClients'])->name('clients');
         Route::get('/{id}/invoices', [AgentController::class, 'getInvoices'])->name('invoices');
     });
-
+Route::post('/tasks/bulk-update', [TaskController::class, 'bulkUpdate'])->name('tasks.bulkUpdate');
 Route::put('/invoice/{invoiceNumber}/date', [InvoiceController::class, 'updateDate'])->name('invoice.updateDate');    // Routes for creating new records
 Route::post('/invoice/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('invoice.updateTaskPrice');
     // Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions');

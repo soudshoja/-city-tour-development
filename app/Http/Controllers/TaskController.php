@@ -1825,31 +1825,47 @@ class TaskController extends Controller
     public function saveHotelDetails(array $data, int $taskId)
     {
         try {
-            $hotel = Hotel::where('name', 'like', '%' . $data['hotel_name'] . '%')->first();
+            // Handle both single hotel detail object and array of hotel details
+            if (isset($data[0]) && is_array($data[0])) {
+            // Multiple hotel details - array of hotel detail objects
+            foreach ($data as $hotelData) {
+                $this->createSingleHotelDetail($hotelData, $taskId);
+            }
+            } else {
+            // Single hotel detail object
+            $this->createSingleHotelDetail($data, $taskId);
+            }
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
 
-            // $hotelCountry = Country::where('name', 'like', '%' . $data['hotel_country'] . '%')->first();
+    public function createSingleHotelDetail(array $data, int $taskId)
+    {
+        try {
+            $hotel = isset($data['hotel_name']) ? Hotel::where('name', 'like', '%' . $data['hotel_name'] . '%')->first() : null;
 
             if (!$hotel) {
-                $hotel = Hotel::create([
-                    'name' => $data['hotel_name'],
-                    'address' => $data['hotel_address'] ?? null,
-                    'city' => $data['hotel_city'] ?? null,
-                    'state' => $data['hotel_state'] ?? null,
-                    'country' => $data['hotel_country'] ?? null,
-                    'zip' => $data['hotel_zip'] ?? null,
-                ]);
+                try {
+                    $hotel = Hotel::create([
+                        'name' => $data['hotel_name'],
+                    ]);
+                } catch (Exception $e) {
+                    Log::error('Failed to create hotel: ' . $e->getMessage());
+                    throw new Exception('Failed to create hotel: ' . $e->getMessage());
+                }
             }
 
             $hotelDetails = [
                 'hotel_id' => $hotel->id,
-                'booking_time' => $data['booking_time'] ?? null,
-                'check_in' => $data['check_in'] ?? null,
-                'check_out' => $data['check_out'] ?? null,
-                'room_number' => $data['room_number'] ?? null,
+                'check_in' => isset($data['check_in']) ? Carbon::parse($data['check_in']) : null,
+                'check_out' => isset($data['check_out']) ? Carbon::parse($data['check_out']) : null,
+                'city' => $data['city'] ?? null,
                 'room_type' => $data['room_type'] ?? null,
-                'room_amount' => $data['room_amount'] ?? null,
-                'room_details' => $data['room_details'] ?? null,
-                'rate' => $data['rate'] ?? null,
+                'room_number' => $data['room_number'] ?? null,
+                'meal_plan' => $data['meal_plan'] ?? null,
+                'adults' => isset($data['adults']) ? (int) $data['adults'] : null,
+                'children' => isset($data['children']) ? (int) $data['children'] : null,
                 'task_id' => $taskId
             ];
 

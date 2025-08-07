@@ -1874,7 +1874,7 @@
                     </td>
                     <td>
                     <p>${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</p>
-                    <td>`;
+                    </td>`;
 
                     itemsBody.appendChild(row);
 

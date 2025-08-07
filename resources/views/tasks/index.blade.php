@@ -1,4 +1,6 @@
 <x-app-layout>
+    <head><meta name="csrf-token" content="{{ csrf_token() }}">
+</head>
     <style>
         .no-client {
             color: red;
@@ -340,10 +342,12 @@
                 min-width: 100px;
             }
         }
+
         @media (hover: none) {
             .group:hover .group-hover\:block {
                 display: none;
             }
+
             .group:focus .group-focus\:block {
                 display: block;
             }
@@ -661,6 +665,7 @@
                                     chooseMethodModal: false,
                                     showUploadForm: false,
                                     showManualForm: false,
+                                    showBulkEditModal: false,
                                     selectedTasks: [],
                                     originalInvoiceRoute: '{{ route('invoices.create') }}',
                                     openManualForm(taskId, clientName, passengerName, agentName, agentId, branchName) {
@@ -679,6 +684,36 @@
                                         this.showManualForm = false;
                                         window.dispatchEvent(new CustomEvent('reset-dropdowns'));
                                     },
+
+                                    submitBulkEdit() {
+                                        const form = document.getElementById('bulk-edit-form');
+                                        const formData = new FormData(form);
+                                        formData.append('task_ids', JSON.stringify(this.selectedTasks));
+
+                                        fetch('{{ route('tasks.bulkUpdate') }}', {
+                                            method: 'POST',
+                                            headers: {
+                                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                                'Accept': 'application/json'
+                                            },
+                                            body: formData
+                                        })
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                alert('Tasks updated successfully!');
+                                                this.showBulkEditModal = false;
+                                                window.location.reload();
+                                            } else {
+                                                alert(data.message || 'Failed to update tasks.');
+                                            }
+                                        })
+                                        .catch(error => {
+                                            alert('Error updating tasks.');
+                                            console.error(error);
+                                        });
+                                    },
+
                                     toggleTaskSelection(taskId) {
                                         const taskRow = document.querySelector(`[data-task-id='${taskId}']`);
                                         const taskStatus = taskRow?.getAttribute('data-status');
@@ -808,52 +843,61 @@
                                                 </th>
                                                 <th data-column="issue-date">
                                                     <a href="{{ request()->fullUrlWithQuery([
-                                                        'sortBy' => 'issued_date',
-                                                        'sortOrder' => (request('sortBy') === 'issued_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
-                                                    ]) }}" 
-                                                    class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                                                'sortBy' => 'issued_date',
+                                                                'sortOrder' => (request('sortBy') === 'issued_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+                                                            ]) }}"
+                                                        class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
                                                         Issued Date
+
+                                                        {{-- Neutral icon when not sorted --}}
                                                         @if(request('sortBy') !== 'issued_date')
-                                                            <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200" 
-                                                                fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                                                <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6"/>
-                                                            </svg>
+                                                        <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
+                                                            fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                            <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
+                                                        </svg>
                                                         @else
-                                                            <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200" 
-                                                                fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                                                                @if(request('sortOrder', 'desc') === 'asc')
-                                                                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
-                                                                @else
-                                                                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
-                                                                @endif
-                                                            </svg>
+                                                        {{-- Sorting direction icon --}}
+                                                        <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
+                                                            fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                                            @if(request('sortOrder', 'desc') === 'asc')
+                                                            <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z" />
+                                                            @else
+                                                            <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z" />
+                                                            @endif
+                                                        </svg>
                                                         @endif
                                                     </a>
                                                 </th>
+
+
                                                 <th data-column="created-at" class="column-hidden">
                                                     <a href="{{ request()->fullUrlWithQuery([
-                                                        'sortBy' => 'created_at',
-                                                        'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
-                                                    ]) }}" 
-                                                    class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                                                    'sortBy' => 'created_at',
+                                                                    'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+                                                                ]) }}"
+                                                            class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
                                                         Created Date
+
+                                                        {{-- Neutral icon when not sorted --}}
                                                         @if(request('sortBy') !== 'created_at')
-                                                            <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200" 
-                                                                fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                                                <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6"/>
-                                                            </svg>
+                                                        <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
+                                                            fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                            <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
+                                                        </svg>
                                                         @else
-                                                            <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200" 
-                                                                fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                                                                @if(request('sortOrder') === 'asc')
-                                                                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
-                                                                @else
-                                                                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
-                                                                @endif
-                                                            </svg>
+                                                        {{-- Sorting direction icon --}}
+                                                        <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
+                                                            fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                                            @if(request('sortOrder') === 'asc')
+                                                            <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z" />
+                                                            @else
+                                                            <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z" />
+                                                            @endif
+                                                        </svg>
                                                         @endif
                                                     </a>
                                                 </th>
+
                                                 <th data-column="info">
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Info</span>
                                                 </th>
@@ -889,11 +933,10 @@
                                             </tr>
                                             @else
                                             @foreach ($tasks as $key => $task)
-                                                @php
-                                                    $hasCommission = $task->agent && ($task->agent->type_id === 1 || ($task->agent->commission ?? 0) > 0 );
-                                                    $isSelectable = $task->status !== 'refund' ? !$task->invoiceDetail && $task->enabled && $task->agent_id && $hasCommission
-                                                    : !$task->refundDetail && $task->is_complete && $task->agent_id && $hasCommission;
-                                                @endphp
+                                            @php
+                                            $isSelectable = $task->status !== 'refund' ? !$task->invoiceDetail && $task->enabled && $task->agent_id
+                                            : !$task->refundDetail && $task->is_complete && $task->agent_id;
+                                            @endphp
                                             <tr class="taskRow task-row {{ $isSelectable ? 'hover:bg-blue-100' : 'not-selectable' }}" @if($isSelectable) @click="toggleTaskSelection({{ $task->id }})" @endif x-show="{{ $key }} < shown" x-cloak
                                                 :class="selectedTasks.includes({{ $task->id }}) ? 'selected' : ''"
                                                 @click="isSelectable({
@@ -916,24 +959,23 @@
                                                 <td data-column="actions" class="p-3 text-sm">
                                                     <div class="flex items-center justify-center h-full min-h-[40px]">
                                                         @if (!$isSelectable)
-                                                            @php
-                                                                $reasons = [];
-                                                                if (!$task->enabled) $reasons[] = 'Task is currently disabled';
-                                                                if (!$task->agent) { $reasons[] = 'Agent not selected'; }
-                                                                elseif (!$hasCommission) { $reasons[] = 'Agent commission rate missing'; }
-                                                                if ($task->invoiceDetail) $reasons[] = 'Invoice already created';
-                                                                if ($task->status === 'refund' && $task->refundDetail) $reasons[] = 'Refund already processed';
-                                                                if ($task->status === 'refund' && !$task->is_complete) $reasons[] = 'Refund not complete';
-                                                                $tooltipText = implode(', ', $reasons);
-                                                            @endphp
-                                                            <div class="relative group cursor-default">
-                                                                <svg class="w-5 h-5 text-gray-400 hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                                                                    <path fill-rule="evenodd" d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0zm-9-1V7h2v2H9zm0 2h2v4H9v-4z" clip-rule="evenodd" />
-                                                                </svg>
-                                                                <div class="absolute top-1/2 left-full -translate-y-1/2 w-[170px] text-xs bg-black text-white rounded px-3 py-2 z-20 hidden group-hover:block text-left whitespace-normal shadow-lg">
-                                                                    {{ $tooltipText }}
-                                                                </div>
+                                                        @php
+                                                        $reasons = [];
+                                                        if (!$task->enabled) $reasons[] = 'Task is currently disabled';
+                                                        if (!$task->agent_id) $reasons[] = 'Agent not selected';
+                                                        if ($task->invoiceDetail) $reasons[] = 'Invoice already created';
+                                                        if ($task->status === 'refund' && $task->refundDetail) $reasons[] = 'Refund already processed';
+                                                        if ($task->status === 'refund' && !$task->is_complete) $reasons[] = 'Refund not complete';
+                                                        $tooltipText = implode(', ', $reasons);
+                                                        @endphp
+                                                        <div class="relative group cursor-default">
+                                                            <svg class="w-5 h-5 text-gray-400 hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M18 10A8 8 0 1 1 2 10a8 8 0 0 1 16 0zm-9-1V7h2v2H9zm0 2h2v4H9v-4z" clip-rule="evenodd" />
+                                                            </svg>
+                                                            <div class="absolute top-1/2 left-full -translate-y-1/2 w-[170px] text-xs bg-black text-white rounded px-3 py-2 z-20 hidden group-hover:block text-left whitespace-normal shadow-lg">
+                                                                {{ $tooltipText }}
                                                             </div>
+                                                        </div>
                                                         @endif
                                                         <div class="flex items-center justify-center h-full mr-2">
                                                             <label class="switch m-0" @click.stop>
@@ -1169,7 +1211,7 @@
                                                                                                         name="price"
                                                                                                         placeholder="Price"
                                                                                                         value="{{ $task->price }}"
-                                                                                                       {{$task->task_price_changeable ? '' : 'readonly'}}> 
+                                                                                                        {{$task->task_price_changeable ? '' : 'readonly'}}>
                                                                                                 </div>
 
                                                                                                 <!-- Tax -->
@@ -1254,6 +1296,9 @@
                                                                 </ul>
                                                             </div>
                                                         </div>
+                                                         
+                                                        
+<!-- Bulk Edit Modal -->
 
                                                         @can('destroy', App\Models\Task::class)
                                                         <form action="{{ route('tasks.destroy', $task->id) }}" method="POST">
@@ -1333,58 +1378,58 @@
                                                 </td>
                                                 <td data-column="info" class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                     @if ($task->type === 'flight')
-                                                        @php
-                                                            $flight = $task->flightDetails;
-                                                            $isFlightDataEmpty = !$flight || (!$flight->departure_time && !$flight->arrival_time && !$flight->airport_from && !$flight->airport_to);
-                                                        @endphp
-                                                        @if ($isFlightDataEmpty)
-                                                            <div class="text-gray-500 text-sm">Flight info not available</div>
-                                                        @else
-                                                            <div class="flex justify-between items-center gap-4 text-center text-sm">
-                                                                <div class="flex flex-col items-center">
-                                                                    <span class="font-bold text-base">
-                                                                        {{ $task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('H:i') : 'N/A'}}
-                                                                    </span>
-                                                                    <span class="text-gray-600 text-sm">
-                                                                        {{ $task->flightDetails->airport_from ?? 'N/A' }}
-                                                                    </span>
-                                                                </div>
-                                                                <div class="text-blue-700 text-lg"> ✈ </div>
-                                                                <div class="flex flex-col items-center">
-                                                                    <span class="font-bold text-base">
-                                                                        {{$task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('H:i') : 'N/A'}}
-                                                                    </span>
-                                                                    <span class="text-gray-600 text-sm">
-                                                                        {{ $task->flightDetails->airport_to ?? 'N/A' }}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        @endif
+                                                    @php
+                                                    $flight = $task->flightDetails;
+                                                    $isFlightDataEmpty = !$flight || (!$flight->departure_time && !$flight->arrival_time && !$flight->airport_from && !$flight->airport_to);
+                                                    @endphp
+                                                    @if ($isFlightDataEmpty)
+                                                    <div class="text-gray-500 text-sm">Flight info not available</div>
+                                                    @else
+                                                    <div class="flex justify-between items-center gap-4 text-center text-sm">
+                                                        <div class="flex flex-col items-center">
+                                                            <span class="font-bold text-base">
+                                                                {{ $task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('H:i') : 'N/A'}}
+                                                            </span>
+                                                            <span class="text-gray-600 text-sm">
+                                                                {{ $task->flightDetails->airport_from ?? 'N/A' }}
+                                                            </span>
+                                                        </div>
+                                                        <div class="text-blue-700 text-lg"> ✈ </div>
+                                                        <div class="flex flex-col items-center">
+                                                            <span class="font-bold text-base">
+                                                                {{$task->flightDetails ? \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('H:i') : 'N/A'}}
+                                                            </span>
+                                                            <span class="text-gray-600 text-sm">
+                                                                {{ $task->flightDetails->airport_to ?? 'N/A' }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    @endif
                                                     @elseif ($task->type === 'hotel')
-                                                        @php
-                                                            $hotelDetails = $task->hotelDetails;
-                                                            $hotel = $hotelDetails?->hotel;
-                                                            $isHotelDataEmpty = !$hotelDetails || (!$hotel?->name && !$hotelDetails->check_in && !$hotelDetails->check_out);
-                                                        @endphp
-                                                        @if ($isHotelDataEmpty)
-                                                            <div class="text-gray-500 text-sm">Hotel info not available</div>
-                                                        @else
-                                                        <div class="flex items-start gap-2 text-sm text-left">
-                                                            <div class="pt-1">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path d="M8 21V7a1 1 0 011-1h6a1 1 0 011 1v14M3 21v-4a1 1 0 011-1h4a1 1 0 011 1v4m10 0v-6a1 1 0 011-1h2a1 1 0 011 1v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                                                </svg>
+                                                    @php
+                                                    $hotelDetails = $task->hotelDetails;
+                                                    $hotel = $hotelDetails?->hotel;
+                                                    $isHotelDataEmpty = !$hotelDetails || (!$hotel?->name && !$hotelDetails->check_in && !$hotelDetails->check_out);
+                                                    @endphp
+                                                    @if ($isHotelDataEmpty)
+                                                    <div class="text-gray-500 text-sm">Hotel info not available</div>
+                                                    @else
+                                                    <div class="flex items-start gap-2 text-sm text-left">
+                                                        <div class="pt-1">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path d="M8 21V7a1 1 0 011-1h6a1 1 0 011 1v14M3 21v-4a1 1 0 011-1h4a1 1 0 011 1v4m10 0v-6a1 1 0 011-1h2a1 1 0 011 1v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                                            </svg>
+                                                        </div>
+                                                        <div class="flex flex-col truncate">
+                                                            <div class="truncate max-w-[140px]" title="{{ $task->hotelDetails->hotel->name ?? '-' }}">
+                                                                {{ $task->hotelDetails->hotel->name ?? 'N/A' }}
                                                             </div>
-                                                            <div class="flex flex-col truncate">
-                                                                <div class="truncate max-w-[140px]" title="{{ $task->hotelDetails->hotel->name ?? '-' }}">
-                                                                    {{ $task->hotelDetails->hotel->name ?? 'N/A' }}
-                                                                </div>
-                                                                <div class="text-sm text-gray-500 whitespace-nowrap">
-                                                                    {{ $task->hotelDetails->check_in ?? 'N/A' }} - {{ $task->hotelDetails->check_out ?? 'N/A' }}
-                                                                </div>
+                                                            <div class="text-sm text-gray-500 whitespace-nowrap">
+                                                                {{ $task->hotelDetails->check_in ?? 'N/A' }} - {{ $task->hotelDetails->check_out ?? 'N/A' }}
                                                             </div>
                                                         </div>
-                                                        @endif
+                                                    </div>
+                                                    @endif
                                                     @else
                                                     <div>{{ $task->additional_info ?? '-' }}</div>
                                                     @endif
@@ -1641,6 +1686,58 @@
                                         </div>
 
                                     </table>
+                                    <!-- Bulk Edit Modal -->
+<div x-show="showBulkEditModal" x-transition x-cloak
+ class="fixed inset-0 z-30 flex items-center justify-center bg-gray-800" style="background-color: rgba(31, 41, 55, 0.7);">
+    <div class="bg-white rounded-md border p-6 w-full max-w-md relative overflow-y-auto max-h-[90vh]">
+        <div class="flex items-start justify-between mb-2">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">Bulk Edit Tasks</h2>
+                <p class="text-gray-600 italic text-xs mt-1">Update Client, Agent, or Payment Method for selected tasks</p>
+            </div>
+            <button @click="showBulkEditModal = false"
+                class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
+                &times;
+            </button>
+        </div>
+        <form id="bulk-edit-form" @submit.prevent="submitBulkEdit" class="flex flex-col gap-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                <x-searchable-dropdown name="bulk_client_id"
+                    :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
+                    placeholder="Select Client" />
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
+                <x-searchable-dropdown name="bulk_agent_id"
+                    :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
+                    placeholder="Select Agent" />
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                <select name="bulk_payment_method_id" class="border border-gray-300 rounded-md w-full p-2">
+                    <option value="">Select Payment Method</option>
+                    @foreach($paymentMethod as $method)
+                        <option value="{{ $method->id }}">{{ $method->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="mt-6 flex flex-col sm:flex-row justify-between gap-4">
+                <button type="button"
+                    @click="showBulkEditModal = false"
+                    class="px-6 py-2 text-gray-700 font-semibold rounded-full bg-gray-200 hover:bg-gray-300 transition">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-full bg-blue-600 hover:bg-blue-700 transition">
+                    Update Tasks
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- End Bulk Edit Modal -->
+
                                     <div id="floatingActions"
                                         class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-10 p-3">
                                         <div class="flex justify-between gap-5 items-center h-full">
@@ -1654,6 +1751,16 @@
                                                 <span id="createInvoiceBtnText" class="text-sm">Create Invoice</span>
                                             </button>
                                         </div>
+                                        <div class="flex justify-between gap-5 items-center h-full">
+                                            <button type="button"
+                                                x-show="selectedTasks.length > 1"
+                                                @click="showBulkEditModal = true"
+                                                class="flex px-5 py-3 gap-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg shadow-sm items-center transition-colors duration-200">
+                                               
+                                                <span class="text-sm text-white">Bulk Edit</span>
+                                            </button>
+                                        </div>
+                                        
                                         <div id="closeTaskFloatingActions" @click="clearSelectedTasks()"
                                             class="flex cursor-pointer items-center justify-center">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
@@ -1865,6 +1972,7 @@
     document.addEventListener('alpine:init', () => {
         Alpine.store('dropdown', {
             openId: null,
+            
             toggle(id) {
                 this.openId = this.openId === id ? null : id;
             },
@@ -1875,6 +1983,7 @@
                 this.openId = null;
             }
         });
+   
     });
 
     document.addEventListener("DOMContentLoaded", function() {
@@ -1891,35 +2000,37 @@
                 const columnName = checkbox.id.replace('col-', '');
                 const isVisible = visibleColumns.includes(columnName);
                 checkbox.checked = isVisible;
-                
+
                 const columns = document.querySelectorAll(`[data-column="${columnName}"]`);
                 columns.forEach(column => {
                     column.classList.toggle('column-hidden', !isVisible);
                 });
             });
         }
-
+        
         function saveColumnPreferences() {
             const currentlyVisible = Array.from(checkboxes)
                 .filter(cb => cb.checked)
                 .map(cb => cb.id.replace('col-', ''));
 
             fetch("{{ route('tasks.columns.save') }}", {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute("content")
-                },
-                body: JSON.stringify({ columns: currentlyVisible })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    console.error('Failed to save column preferences.');
-                }
-            })
-            .catch(error => console.error('Error saving column preferences:', error));
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute("content")
+                    },
+                    body: JSON.stringify({
+                        columns: currentlyVisible
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        console.error('Failed to save column preferences.');
+                    }
+                })
+                .catch(error => console.error('Error saving column preferences:', error));
         }
 
         updateColumnVisibility();
@@ -2166,7 +2277,7 @@
                 formTaskContainer.appendChild(fileListDisplay);
             }
         });
-
+                 
         // Toggle task status
         document.querySelectorAll('.toggle-task-status').forEach(function(checkbox) {
             checkbox.addEventListener('change', function() {
@@ -2250,10 +2361,12 @@
         document.addEventListener("alpine:init", () => {
             Alpine.data("clientModal", () => ({
                 showUploadField: false,
-
+              
                 toggleUpload() {
                     this.showUploadField = !this.showUploadField;
-                }
+                },
+                
+       
             }));
         });
     });

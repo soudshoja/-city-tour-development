@@ -353,22 +353,19 @@
                 <!-- choose items -->
                 <div class="mt-8">
                     <!-- choose items -->
-                    <div class="overflow-x-auto max-w-[1100px] border border-gray-200">
+                    <div class="overflow-x-auto w-full border border-gray-200">
                         <table id="itemsTable" class="text-left table-auto border-collapse w-full text-xs">
                             <thead>
                                 <tr>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
-                                    <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task</th>
-                                    {{-- <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Type</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Venue</th> --}}
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
+                                    <th class="text-gray-900 dark:text-gray-100">No.</th>
+                                    <th class="px-4 py-2 min-w-[100px] text-gray-900 dark:text-gray-100">Task</th>
+                                    <th class="px-6 py-6 text-gray-900 dark:text-gray-100">Task Price</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Branch Name</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Supplier Name</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Type</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="items-body" class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -1842,11 +1839,11 @@
                     <p>${item.total} KWD</p>
                     </td>
                     <td>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center">
         <input
             id="invprice-table-${item.id}"
             type="number"
-            class="border border-gray-300 p-2 rounded-md w-full"
+            class="border border-gray-300 rounded-md w-full"
             value="${item.task_price}"
             onInput="updateField(${item.id}, 'invprice-table')"
         />
@@ -1877,33 +1874,8 @@
                     </td>
                     <td>
                     <p>${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</p>
-                    <td>
-                    <td>
-                    <div
-                        class="inline-flex items-center justify-evenly">
-                        <div 
-                            id="modal-open-button_${item.id}"
-                            data-tooltip="See Details">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" >
-                            <path d="M14.3601 4.07866L15.2869 3.15178C16.8226 1.61607 19.3125 1.61607 20.8482 3.15178C22.3839 4.68748 22.3839 7.17735 20.8482 8.71306L19.9213 9.63993M14.3601 4.07866C14.3601 4.07866 14.4759 6.04828 16.2138 7.78618C17.9517 9.52407 19.9213 9.63993 19.9213 9.63993M14.3601 4.07866L12 6.43872M19.9213 9.63993L14.6607 14.9006L11.5613 18L11.4001 18.1612C10.8229 18.7383 10.5344 19.0269 10.2162 19.2751C9.84082 19.5679 9.43469 19.8189 9.00498 20.0237C8.6407 20.1973 8.25352 20.3263 7.47918 20.5844L4.19792 21.6782M4.19792 21.6782L3.39584 21.9456C3.01478 22.0726 2.59466 21.9734 2.31063 21.6894C2.0266 21.4053 1.92743 20.9852 2.05445 20.6042L2.32181 19.8021M4.19792 21.6782L2.32181 19.8021M2.32181 19.8021L3.41556 16.5208C3.67368 15.7465 3.80273 15.3593 3.97634 14.995C4.18114 14.5653 4.43213 14.1592 4.7249 13.7838C4.97308 13.4656 5.26166 13.1771 5.83882 12.5999L8.5 9.93872" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
-                            </svg>
-                        </div>
+                    <td>`;
 
-                        <dialog data-modal-invoice="${item.id}" class="rounded-md h-near-full w-full min-h-80 overflow-y-scroll">
-                            <div class="flex justify-between items-center p-4 border-b border-black">
-                                <h2 class="text-lg font-bold text-gray-700">INVOICE DETAILS</h2>
-                                <button class="text-gray-500 hover:text-gray-800" id="modal-close-button_${item.id}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
-                            </div>
-                            <div id="task-details_${item.id}" class="min-w-72 w-full p-4 text-lg"> </div> 
-                        </dialog>
-                    </div>
-                    </td>
-                `;
                     itemsBody.appendChild(row);
 
                     let taskDetails = document.getElementById('task-details_' + item.id);

@@ -431,7 +431,8 @@ Route::post('/invoice/update-task-price', [InvoiceController::class, 'updateTask
             Route::get('/process', [PaymentController::class, 'paymentLinkProcess'])->name('process')->withoutMiddleware(['auth']);
             Route::post('/webhook', [PaymentController::class, 'paymentLinkWebhook'])->name('webhook');
             Route::post('/reinitiate', [PaymentController::class, 'paymentLinkReInitiate'])->name('reinitiate')->withoutMiddleware(['auth']);
-            Route::post('importfatoorah', [PaymentController::class, 'importPaidFatoorah'])->name('importfatoorah');
+            Route::post('/import-fatoorah/invoice', [PaymentController::class, 'importMyFatoorahFromInvoice'])->name('import-fatoorah.invoice');
+            Route::post('/import-fatoorah/payment', [PaymentController::class, 'importMyFatoorahFromPayment'])->name('import-fatoorah.payment');
         });
 
         Route::get('/test-payment', [PaymentController::class, 'testPayment'])->name('payment.test');

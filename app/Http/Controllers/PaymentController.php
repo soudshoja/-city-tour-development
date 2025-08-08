@@ -46,6 +46,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Arr;
 use App\Http\Controllers\ClientController;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 
 class PaymentController extends Controller
 {
@@ -941,58 +943,78 @@ class PaymentController extends Controller
         return view('clients.response', ['status' => 'success', 'message' => 'Payment successful!']);
     }
 
-    public function importPaidFatoorah(Request $request)
+    public function getPaymentStatusMyFatoorah($paymentId) : JsonResponse
     {
-        Log::info('Starting to import MyFatoorah payment from portal');
-
-        $paymentId = $request->input('import_payment_id');
-        if (!$paymentId) {
-            return redirect()->back()->with('error', 'Payment ID is required to import from Portal');
-        }
-        
         $apiKey = config('services.myfatoorah.api_key');
         $baseUrl = config('services.myfatoorah.base_url');
-        Log::info('myFatoorah config values: ',[
+
+        Log::info('getPaymentStatusMyFatoorah called with payment_id: ', [
+            'payment_id' => $paymentId,
             'apiKey' => $apiKey,
             'baseUrl' => $baseUrl,
         ]);
-        
+
         $response = Http::withHeaders([
             'Authorization' => "Bearer $apiKey",
             'Content-Type' => 'application/json',
-            ])->post("$baseUrl/getPaymentStatus", [
-                "Key" => $paymentId,
-                "KeyType" => "PaymentId"
-            ]); 
-        
-        Log::info('MyFatoorah Get Payment Status Response: ', $response->json());
+        ])->post("$baseUrl/getPaymentStatus", [
+            "Key" => $paymentId,
+            "KeyType" => "PaymentId"
+        ]);
 
-        if (!$response->successful()) {
-            Log::error('Failed to fetch payment status from MyFatoorah', ['response' => $response->body()]);
-            return redirect()->back()->with('error', 'Failed to fetch payment status due to invalid Payment ID');
+        Log::info('getPaymentStatusMyFatoorah Response: ', $response->json());
+
+        if(!$response->successful()){
+
+            $message = $response->json()['Message'] ?? 'Unknown error';
+
+            Log::error('Failed to fetch payment status from MyFatoorah', [
+                'paymentId' => $paymentId,
+                'response' => $response->body()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $message
+            ], 500);
         }
 
         $responseData = $response->json();
-        $invoiceStatus = $responseData['Data']['InvoiceStatus'] ?? null;
-        $invoiceId = $responseData['Data']['InvoiceId'] ?? null;
-        $customerName = $responseData['Data']['CustomerName'] ?? null;
-        $createdDate = $responseData['Data']['CreatedDate'] ?? null;
-        $userDefined = json_decode($responseData['Data']['UserDefinedField'] ?? '{}', true);
+        $data = $responseData['Data'] ?? [];
 
-        $page = null;
-        $clientId = null;
-        $agentId = null;
+        if( empty($data)) {
+            Log::error('No data found in MyFatoorah response', ['response' => $responseData]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No data found in MyFatoorah response'
+            ], 404);
+        }
 
-        $clientName = $request->input('receiverName');
-        $agentName = $request->input('agentName');
-        $page = $request->input('page') ?? 'paymentLink';
+        $invoiceStatus = $data['InvoiceStatus'] ?? null;
 
-        $agentId = Agent::where('name', $agentName)->value('id');
-        $clientId = Client::where('name', $clientName)->value('id');
+        if( !$invoiceStatus) {
+            Log::error('Invoice status not found in MyFatoorah response', ['response' => $responseData]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invoice status not found in MyFatoorah response'
+            ], 404);
+        }
 
-        if ($page === 'invoice' && $invoiceStatus === 'Paid') {
+        $invoiceValue = $data['InvoiceValue'] ?? null;
+
+        if(!$invoiceValue) {
+            Log::error('Invoice value not found in MyFatoorah response', ['response' => $responseData]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invoice value not found in MyFatoorah response'
+            ], 404);
+        }
+
+        if($invoiceStatus === 'Paid') {
+            $invoiceId = $response->json()['Data']['InvoiceId'] ?? null;
+
             if (!$invoiceId) {
-                Log::info('Invoice ID not found in myFatoorah portal');
+                Log::info('Invoice ID not found in MyFatoorah portal');
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No such Invoice ID found in MyFatoorah portal'
@@ -1000,7 +1022,7 @@ class PaymentController extends Controller
             }
 
             $existingInvoiceId = Payment::where('payment_reference', $invoiceId)->exists();
-
+           
             if ($existingInvoiceId) {
                 Log::info('Invoice ID has already been imported');
                 return response()->json([
@@ -1008,86 +1030,124 @@ class PaymentController extends Controller
                     'message' => 'A payment with this Invoice ID has already been imported'
                 ], 400);
             }
-            $paymentGateway = Arr::get($userDefined, 'payment_gateway') ?? 'MyFatoorah';
-            $paymentMethod = collect($responseData['Data']['InvoiceTransactions'] ?? [])
-                ->firstWhere('TransactionStatus', 'Succss')['PaymentGateway'] ?? null;
-            $amount = $responseData['Data']['InvoiceValue'] ?? 0;
+        } else {
+            Log::info('Invoice status is not Paid', ['invoiceStatus' => $invoiceStatus]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invoice status is not Paid'
+            ], 400);
+        }
 
-            if (!$clientId || !$agentId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Both Client and Agent are not fetched before importing payment'
-                ], 400);
-            }
+        $userDefined = json_decode($data['UserDefinedField'] ?? '{}', true);
+        $paymentMethodId = PaymentMethod::where('english_name')->value('id');
 
-            $paymentMethodId = PaymentMethod::where('english_name', $paymentMethod)->value('id');
-            $data = [
-                'invoice_id' => $invoiceId,
-                'payment_id' => $paymentId,
-                'payment_gateway' => $paymentGateway,
-                'payment_method' => $paymentMethodId,
-                'amount' => $amount,
-                'client_id' => $clientId,
-                'agent_id' => $agentId,
-                'notes' => 'Imported from MyFatoorah Portal with invoice ID : ' . $invoiceId,
-                'source' => 'import',
-            ];
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Payment status fetched successfully',
+            'data' => $data,
+            'amount' => $invoiceValue,
+            'invoice_status' => $invoiceStatus,
+            'invoice_id' => $data['InvoiceId'] ?? null,
+            'customer_name' => $data['CustomerName'] ?? null,
+            'created_date' => $data['CreatedDate'] ?? null,
+            'payment_gateway' => Arr::get($userDefined, 'payment_gateway', 'MyFatoorah'),
+            'payment_method_id' => $paymentMethodId,
+            'user_defined' => $userDefined,
+        ]);
+    }
 
-            $internalRequest = new Request($data);
-            $response = $this->paymentStoreLinkProcess($internalRequest);
+    public function importMyFatoorahFromInvoice(Request $request) : JsonResponse
+    {
+        Log::info('Starting to import MyFatoorah payment from invoice');
 
-            if ($response['status'] === 'error') {
-                return redirect()->back()->with('error', $response['message']);
-            }
-        } elseif ($page === 'paymentLink' && $invoiceStatus === 'Paid' ) {
-            if (!$invoiceId) {
-                Log::info('Invoice ID not found in myFatoorah portal');
-                return redirect()->back()->with('error', 'No such Invoice ID found in MyFatoorah portal');
-            }
+        $request->validate([
+            'import_payment_id' => 'required|string',
+            'receiverName' => 'required|string',
+            'agentName' => 'required|string',
+        ]);
 
-            $existingInvoiceId = Payment::where('payment_reference', $invoiceId)->exists();
+        $importPaymentId = $request->input('import_payment_id');
 
-            if ($existingInvoiceId) {
-                Log::info('Invoice ID has already been imported');
-                return redirect()->back()->with('error', 'A payment with this Invoice ID has already been imported');
-            }
+        $response = $this->getPaymentStatusMyFatoorah($importPaymentId)->getData(true);
 
-            $paymentGateway = Arr::get($userDefined, 'payment_gateway') ?? 'MyFatoorah';
-            $paymentMethod = collect($responseData['Data']['InvoiceTransactions'] ?? [])
-                ->firstWhere('TransactionStatus', 'Succss')['PaymentGateway'] ?? null;
-            $amount = $responseData['Data']['InvoiceValue'] ?? 0;
-            
-            Log::info('Redirecting to form with pre-filled data', [
-                'invoiceId' => $invoiceId,
-                'payment_id' => $paymentId,
-                'transaction_status' => $invoiceStatus,
-                'customer_name' => $customerName,
-                'payment_gateway' => $paymentGateway,
-                'payment_method' => $paymentMethod,
-                'amount' => $amount,
-                'client_id' => $clientId,
-                'agent_id' => $agentId,
-                'created_at' => $createdDate,
-                'notes' => 'Imported from MyFatoorah Portal with invoice ID : ' . $invoiceId,
+        if($response['status'] === 'error') {
+            Log::error('Error fetching payment status from MyFatoorah', ['message' => $response['message']]);
+            return response()->json([
+                'status' => 'error',
+                'message' => $response['message']
+            ], 400);
+        }
+
+        $agentId = Agent::where('name', $request->input('agentName'))->value('id');
+        $clientId = Client::where('name', $request->input('receiverName'))->value('id');
+
+        if (!$agentId || !$clientId) {
+
+            Log::error('Payment ID, Client, or Agent is missing', [
+                'clientId' => $clientId,
+                'agentId' => $agentId,
             ]);
 
-            return redirect()
-                ->route('payment.link.create')
-                ->withInput([
-                    'invoice_id' => $invoiceId,
-                    'payment_id' => $paymentId,
-                    'payment_gateway' => $paymentGateway,
-                    'payment_method' => $paymentMethod,
-                    'amount' => $amount,
-                    'client_id' => $clientId,
-                    'agent_id' => $agentId,
-                    'notes' => 'Imported from MyFatoorah Portal with invoice ID : ' . $invoiceId,
-                    'source' => 'import',
-                ]);
-        } else {
-            Log::error('Payment not marked as paid', ['invoiceStatus' => $invoiceStatus]);
-            return redirect()->back()->with('error', 'Payment status is ' . $invoiceStatus . ' . Skipping importing payment from Portal');
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Something went wrong, please ensure all fields are filled correctly.'
+            ], 400);
         }
+  
+        $data = [
+            'payment_id' => $importPaymentId,
+            'payment_gateway' => $response['payment_gateway'],
+            'payment_method' => $response['payment_method_id'],
+            'amount' => $response['amount'],
+            'client_id' => $clientId,
+            'agent_id' => $agentId,
+            'notes' => 'Imported from MyFatoorah Portal with payment ID: ' . $importPaymentId,
+            'source' => 'import',
+        ];
+
+        $response = $this->paymentStoreLinkProcess(new Request($data));
+
+        if( $response['status'] === 'error') {
+            Log::error('Error during payment store link process', ['message' => $response['message']]);
+            return response()->json([
+                'status' => 'error',
+                'message' => $response['message']
+            ], 400);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Payment imported successfully',
+            'data' => [
+                'client_id' => $clientId,
+                'agent_id' => $agentId,
+            ]
+        ]);
+    }
+
+    public function importMyFatoorahFromPayment(Request $request) : RedirectResponse
+    {
+        $request->validate([
+            'import_payment_id' => 'required|string',
+        ]);
+
+        $paymentId = $request->input('import_payment_id');
+
+        $response = $this->getPaymentStatusMyFatoorah($paymentId)->getData(true);
+
+        if ($response['status'] === 'error') {
+            Log::error('Error fetching payment status from MyFatoorah', ['message' => $response['message']]);
+            return redirect()->back()->with('error', $response['message']);
+        }
+
+        return redirect()->route('payment.link.create')->withInput([
+            'payment_id' => $paymentId,
+            'payment_gateway' => $response['payment_gateway'],
+            'payment_method' => $response['payment_method_id'],
+            'amount' => $response['amount'],
+            'notes' => 'Imported from MyFatoorah Portal with payment ID: ' . $paymentId,
+            'source' => 'import',
+        ]);
     }
 
     public function paymentLink()

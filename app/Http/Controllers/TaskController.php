@@ -51,7 +51,7 @@ class TaskController extends Controller
         $user = Auth::user();
 
         $defaultColumns = [
-            'reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'issue-date', 'info'
+            'reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'issue-date', 'created-at', 'info'
         ];
 
         if ($user->role_id === Role::AGENT) {
@@ -60,12 +60,12 @@ class TaskController extends Controller
 
         $visibleColumns = session('visible_task_columns', $defaultColumns);
 
-        $sortBy = $request->query('sortBy', 'issued_date');
+        $sortBy = $request->query('sortBy', 'created_at');
         $sortOrder = $request->query('sortOrder', 'desc');
 
         $sortableColumns = ['issued_date', 'created_at'];
         if (!in_array($sortBy, $sortableColumns)) {
-            $sortBy = 'issued_date';
+            $sortBy = 'created_at';
         }
 
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');

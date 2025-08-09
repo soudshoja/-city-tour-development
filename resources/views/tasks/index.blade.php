@@ -1179,27 +1179,26 @@
                                                                                             </div>
 
                                                                                             <div class="flex flex-col sm:flex-row gap-4">
-                                                                                                <!-- Client Selection -->
                                                                                                 @php
-                                                                                                $selectedClient = \App\Models\Client::find(
-                                                                                                $task->client_id,
-                                                                                                );
+                                                                                                $selectedClient = \App\Models\Client::find($task->client_id);
                                                                                                 $clientPlaceholder = $selectedClient
-                                                                                                ? $selectedClient->name
-                                                                                                : 'Select a Client';
+                                                                                                    ? $selectedClient->name . ' - ' . $selectedClient->phone
+                                                                                                    : 'Select a Client';
                                                                                                 @endphp
                                                                                                 <div class="flex-1">
                                                                                                     <label for="client_id"
                                                                                                         class="block text-sm font-medium text-gray-700">Client</label>
                                                                                                     <div class="w-full">
-                                                                                                        <x-searchable-dropdown
-                                                                                                            name="client_id"
-                                                                                                            :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                                                                                                            :selectedId="$task->client_id"
-                                                                                                            :selectedName="$selectedClient
-                                                                                ? $selectedClient->name
-                                                                                : null"
-                                                                                                            :placeholder="$clientPlaceholder" />
+                                                                                                    <x-searchable-dropdown
+                                                                                                        name="client_id"
+                                                                                                        :items="$clients->map(fn($c) => [
+                                                                                                            'id'   => $c->id,
+                                                                                                            'name' => $c->name . ' - ' . $c->phone
+                                                                                                        ])"
+                                                                                                        :selectedId="$task->client_id"
+                                                                                                        :selectedName="$selectedClient ? $selectedClient->name . ' - '  .           $selectedClient->phone : null"
+                                                                                                        :placeholder="$clientPlaceholder"
+                                                                                                    />
                                                                                                     </div>
                                                                                                 </div>
 

@@ -1357,6 +1357,16 @@ class AirFileParser
         }
 
         foreach ($this->lines as $line) {
+            if (preg_match('/^\s*EMD\d+;.*?;N;;\s*([A-Z]{3})\s*([\d.]+).*?;P(\d+);/i', $line, $m)) {
+                $paxIndex = (int) $m[3];
+                $price    = (float) $m[2];
+        
+                if (isset($passengers[$paxIndex - 1])) {
+                    $passengers[$paxIndex - 1]['price'] = $price;
+                }
+                continue;
+            }
+
             if (preg_match('/^EMD\d+;.*?(KWD\s*([\d.]+)).*?;P(\d+);/i', $line, $match)) {
                 $price = (float) $match[2];
                 $paxIndex = (int) $match[3];
@@ -1364,7 +1374,7 @@ class AirFileParser
                 if (isset($passengers[$paxIndex - 1])) {
                     $passengers[$paxIndex - 1]['price'] = $price;
                 }
-            }
+            } 
         }        
         
         return $passengers;

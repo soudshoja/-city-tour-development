@@ -1830,7 +1830,7 @@
 
             for (const item of items) {
                 try {
-                const safe = {
+                const task = {
                     desc: item?.description ?? '',
                     info: item?.additional_info ?? '',
                     total: item?.total ?? 0,
@@ -1854,23 +1854,23 @@
                 row.innerHTML = `
                     <td class="flex-grow"><p>${++count}</p></td>
                     <td class="flex-grow">
-                    <p><b>${safe.desc}</b><br>Info: ${safe.info}</br></p>
+                    <p><b>${task.desc}</b><br>Info: ${task.info}</br></p>
                     </td>
-                    <td><p>${safe.total} KWD</p></td>
+                    <td><p>${task.total} KWD</p></td>
                     <td>
                     <div class="flex items-center">
                         <input
-                        id="invprice-table-${safe.id}"
+                        id="invprice-table-${task.id}"
                         type="number"
                         class="border border-gray-300 rounded-md w-full"
-                        value="${safe.taskPrice}"
-                        oninput="updateField(${JSON.stringify(safe.id)}, 'invprice-table')"
+                        value="${task.taskPrice}"
+                        oninput="updateField(${JSON.stringify(task.id)}, 'invprice-table')"
                         />
                         <button
                         type="button"
                         class="p-1 rounded hover:bg-gray-200"
                         title="Save"
-                        onclick="saveTaskPrice(${JSON.stringify(safe.id)})"
+                        onclick="saveTaskPrice(${JSON.stringify(task.id)})"
                         >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                             class="w-5 h-5 text-blue-600">
@@ -1879,54 +1879,278 @@
                         </button>
                     </div>
                     </td>
-                    <td><p>${safe.clientName}</p></td>
-                    <td><p>${safe.agentName}</p></td>
-                    <td><p>${safe.branchName}</p></td>
-                    <td><p>${safe.supplierName}</p></td>
-                    <td><p>${safe.typeCap}</p></td>
+                    <td><p>${task.clientName}</p></td>
+                    <td><p>${task.agentName}</p></td>
+                    <td><p>${task.branchName}</p></td>
+                    <td><p>${task.supplierName}</p></td>
+                    <td><p>${task.typeCap}</p></td>
                 `;
 
                 frag.appendChild(row);
 
-                // Safely update modal/details blocks only if present
-                const taskDetails = document.getElementById('task-details_' + safe.id);
+                const taskDetails = document.getElementById('task-details_' + task.id);
                 if (taskDetails) {
                     taskDetails.innerHTML = `
                     <div class="mb-4 flex flex-col gap-2"> 
                         <div class="header text-lg font-bold mt-4 border-b">Task Details</div> 
                         <div class="flex justify-between items-center text-lg">
-                        <div>Quantitiy: <strong>${safe.quantity}</strong></div>
-                        <div class="font-bold">${(safe.quantity * Number(safe.total || 0)).toFixed(2)} KWD</div>
+                        <div>Quantitiy: <strong>${task.quantity}</strong></div>
+                        <div class="font-bold">${(task.quantity * Number(task.total || 0)).toFixed(2)} KWD</div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <input id="invprice-modal-${safe.id}" type="number" name="invprice"
+                        <input id="invprice-modal-${task.id}" type="number" name="invprice"
                             placeholder="Enter Invoice Price" class="border border-gray-300 p-2 rounded-md"
-                            oninput="updateField(${JSON.stringify(safe.id)}, 'invprice-modal')" value="${safe.invprice}">
-                        <input id="remark-${safe.id}" type="text" name="remark" placeholder="Enter Remark"
+                            oninput="updateField(${JSON.stringify(task.id)}, 'invprice-modal')" value="${task.invprice}">
+                        <input id="remark-${task.id}" type="text" name="remark" placeholder="Enter Remark"
                             class="border border-gray-300 p-2 rounded-md"
-                            oninput="updateField(${JSON.stringify(safe.id)}, 'remark')">
-                        <input id="note-${safe.id}" type="text" name="note" placeholder="Enter Note"
+                            oninput="updateField(${JSON.stringify(task.id)}, 'remark')">
+                        <input id="note-${task.id}" type="text" name="note" placeholder="Enter Note"
                             class="border border-gray-300 p-2 rounded-md"
-                            oninput="updateField(${JSON.stringify(safe.id)}, 'note')">
+                            oninput="updateField(${JSON.stringify(task.id)}, 'note')">
                         </div>
                     </div>
                     `;
 
-                    if (safe.flight && safe.hotel) {
+                    if (task.flight!== null && task.hotel !== null) {
                     taskDetails.innerHTML = '<div class="text-red-500">Something Went Wrong</div>';
-                    } else if (safe.flight) {
-                    taskDetails.innerHTML += `...`; // keep your flight HTML
-                    } else if (safe.hotel) {
-                    taskDetails.innerHTML += `...`; // keep your hotel HTML
+                    } else if (task.flight !== null) {
+                    taskDetails.innerHTML += ` <div class="text-lg font-bold mt-4">Flight Details</div>
+                            <hr/> 
+                                <div class="flex flex-row-reverse items-center">
+                                    <div class="p-2">
+                                        <label class="switch">
+                                            <input type="checkbox" id="" onclick="toggleAll(${task.id})">
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                    <strong>Toggle All</strong>
+                                </div>
+
+                                <form>
+                                <div class="task-details" style="box-sizing: border-box;">
+                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group" >
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Ticket Info</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div class="p-4">
+                                        
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Departure Time</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${task.flight_details.departure_time}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Country From</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.country_from}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airport From</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.airport_from ? task.flight_details.airport_from : 'null'}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Terminal From</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.terminal_from}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Arrival Time</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.arrival_time}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Country To</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.country_to}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airport To</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.airport_to}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Terminal To</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.terminal_to}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airline</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.airline_id}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Class</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.class_type}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full line-clamp-1">Baggage Allowed</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.baggage_allowed}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Equipment</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.equipment}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Flight Meal</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.flight_meal}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Seat No</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.seat_no}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Created At</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.created_at}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Updated At</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${task.flight_details.updated_at}" disabled>
+                                        </div>
+                                    </div>
+                                </details>
+                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Route Info</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div class="p-4">
+                                    </div>
+                                </details>
+                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Fare Info</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div class="p-4">
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Farebase</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${task.flight_details.farebase}">
+                                        </div>
+                                    </div>
+                                </details>
+                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Void Info</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div class="p-4">
+                                    </div>
+                                </details>
+                                
+                                
+                            </div>
+                            </form>
+                            `;
+                        
+                    } else if (task.hotel!== null) {
+                    taskDetails.innerHTML += ` <div class="text-lg font-bold mt-4">Hotel Details</div>
+                            <hr/>
+                            <div class="flex flex-row-reverse items-center">
+                                <div class="p-2">
+                                    <label class="switch">
+                                        <input type="checkbox" id="" onclick="toggleAll(${task.id})">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                                <strong>Toggle All</strong>
+                            </div>
+                            <form>
+                            <div class="task-details" style="box-sizing: border-box;">
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">General Information</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div class="p-4">
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Hotel ID</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${task.hotel_details.hotel.name}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Booking Time</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${task.hotel_details.booking_time}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-in</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${task.hotel_details.check_in}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-out</div>
+                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${task.hotel_details.check_out}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Number</div>
+                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${task.hotel_details.room_number}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Type</div>
+                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${task.hotel_details.room_type}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Amount</div>
+                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${task.hotel_details.room_amount}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Details</div>
+                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${task.hotel_details.room_details}" disabled>
+                                        </div>
+                                        <div class="flex justify-center items-center">
+                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Rate</div>
+                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${task.hotel_details.rate}" disabled>
+                                        </div> 
+                                    </div>
+                                </details>
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Service Information</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div></div>
+                                </details>
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Account Information</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div></div>
+                                </details>
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Remarks</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div></div>
+                                </details>
+                                <details class="bg-gray-200 p-2 rounded-md group">
+                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
+                                        <h3 class="flex flex-1 p-4 font-semibold">Print Information</h3>
+                                        <div class="flex w-10 items-center justify-center">
+                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
+                                        </div>
+                                    </summary>
+                                    <div></div>
+                                </details>
+                            </div>
+                            </form>
+                        `;
                     }
                 }
 
-                // Wire up modal buttons only if they exist
-                const openButton  = document.getElementById('modal-open-button_' + safe.id);
-                const closeButton = document.getElementById('modal-close-button_' + safe.id);
-                const modal = document.querySelector('dialog[data-modal-invoice="' + safe.id + '"]');
+                const openButton  = document.getElementById('modal-open-button_' + task.id);
+                const closeButton = document.getElementById('modal-close-button_' + task.id);
+                const modal = document.querySelector('dialog[data-modal-invoice="' + task.id + '"]');
 
                 if (openButton && modal) {
+                    console.log(task.id);
                     openButton.addEventListener('click', () => modal.showModal());
                     modal.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
                 }
@@ -1936,13 +2160,11 @@
 
                 } catch (err) {
                 console.error('renderItems(): failed on item ->', item, err);
-                // continue loop; don't break rendering for other items
                 }
             }
 
             tbody.appendChild(frag);
 
-            // Final audit
             console.info('renderItems(): rendered rows =', tbody.rows.length, 'from items len =', items.length);
         }
 

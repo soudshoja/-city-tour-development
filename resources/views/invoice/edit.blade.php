@@ -3154,8 +3154,8 @@
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
 
-                const agentId = document.getElementById('agentName')?.value || '';
-                const clientId = document.getElementById('receiverName')?.value || '';
+                const agentName = document.getElementById('agentName')?.value || '';
+                const clientName = document.getElementById('receiverName')?.value || '';
                 const paymentId = input.value.trim();
                 const page = 'invoice';
 
@@ -3163,7 +3163,7 @@
                 errorBox.classList.add('hidden');
                 loadingBox.classList.remove('hidden');
 
-                if (!agentId || !clientId) {
+                if (!agentName || !clientName) {
                     loadingBox.classList.add('hidden');
                     errorBox.textContent = 'Agent and Client must be selected.';
                     errorBox.classList.remove('hidden');
@@ -3180,12 +3180,12 @@
                 const formData = new FormData();
                 formData.append('_token', '{{ csrf_token() }}');
                 formData.append('import_payment_id', paymentId);
-                formData.append('agentName', agentId);
-                formData.append('receiverName', clientId);
+                formData.append('agentName', agentName);
+                formData.append('receiverName', clientName);
                 formData.append('page', page);
 
                 try {
-                    const res = await fetch(`{{ route('payment.link.importfatoorah') }}`, {
+                    const res = await fetch(`{{ route('payment.link.import-fatoorah.invoice') }}`, {
                         method: 'POST',
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest'
@@ -3207,10 +3207,6 @@
                         const data = await res.json();
                         errorBox.textContent = `${data.message}`;
                         errorBox.classList.remove('hidden');
-
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2000);
                     }
                     
                 } catch (err) {

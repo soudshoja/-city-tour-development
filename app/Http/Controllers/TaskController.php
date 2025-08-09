@@ -168,40 +168,41 @@ class TaskController extends Controller
             // 'searchTask'
         ));
     }
+    
+
+   public function bulkUpdate(Request $request)
+    {
+        $taskIds = json_decode($request->input('task_ids'), true);
+        $clientId = $request->input('bulk_client_id');
+        $agentId = $request->input('bulk_agent_id');
+        $paymentMethodId = $request->input('bulk_payment_method_id');
+
+        if (!$taskIds || !is_array($taskIds)) {
+            return response()->json(['success' => false, 'message' => 'No tasks selected.']);
+        }
+
+        foreach ($taskIds as $id) {
+            $task = Task::find($id);
+            if ($task) {
+                if ($clientId) {
+                    $task->client_id = $clientId;
+                    $client = Client::find($clientId);
+                    if ($client) {
+                        $task->client_name = $client->name;
+                    }
+                }
+                if ($agentId) $task->agent_id = $agentId;
+                if ($paymentMethodId) $task->payment_method_account_id = $paymentMethodId;
+                $task->save();
+            }
+        }
+
+        return response()->json(['success' => true]);
+    }
 
     /**
      * Save the user’s task-list column visibility settings in session
      */
-
-   public function bulkUpdate(Request $request)
-{
-    $taskIds = json_decode($request->input('task_ids'), true);
-    $clientId = $request->input('bulk_client_id');
-    $agentId = $request->input('bulk_agent_id');
-    $paymentMethodId = $request->input('bulk_payment_method_id');
-
-    if (!$taskIds || !is_array($taskIds)) {
-        return response()->json(['success' => false, 'message' => 'No tasks selected.']);
-    }
-
-    foreach ($taskIds as $id) {
-        $task = Task::find($id);
-        if ($task) {
-            if ($clientId) {
-                $task->client_id = $clientId;
-                $client = \App\Models\Client::find($clientId);
-                if ($client) {
-                    $task->client_name = $client->name;
-                }
-            }
-            if ($agentId) $task->agent_id = $agentId;
-            if ($paymentMethodId) $task->payment_method_account_id = $paymentMethodId;
-            $task->save();
-        }
-    }
-
-    return response()->json(['success' => true]);
-}
     public function saveColumnPrefs(Request $request)
     {
         $validated = $request->validate([

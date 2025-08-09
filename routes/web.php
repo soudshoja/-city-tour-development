@@ -115,9 +115,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}/clients', [AgentController::class, 'getClients'])->name('clients');
         Route::get('/{id}/invoices', [AgentController::class, 'getInvoices'])->name('invoices');
     });
-Route::post('/tasks/bulk-update', [TaskController::class, 'bulkUpdate'])->name('tasks.bulkUpdate');
-Route::put('/invoice/{invoiceNumber}/date', [InvoiceController::class, 'updateDate'])->name('invoice.updateDate');    // Routes for creating new records
-Route::post('/invoice/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('invoice.updateTaskPrice');
+
     // Route::get('/companies/create', [CompanyController::class, 'showCreateOptions'])->name('companies.showCreateOptions');
     Route::post('/companies/create-branch', [CompanyController::class, 'createBranch'])->name('companies.createBranch');
     Route::post('/companies/create-agent', [CompanyController::class, 'createAgent'])->name('companies.createAgent');
@@ -172,6 +170,7 @@ Route::post('/invoice/update-task-price', [InvoiceController::class, 'updateTask
         Route::post('/upload', [TaskController::class, 'clientPassport'])->name('upload.passport');
         Route::delete('/{id}', [TaskController::class, 'destroy'])->name('destroy');
         Route::post('/columns/save', [TaskController::class, 'saveColumnPrefs'])->name('columns.save');
+        Route::post('/bulk-update', [TaskController::class, 'bulkUpdate'])->name('bulkUpdate');
     });
 
     // SUPPLIERS
@@ -385,6 +384,8 @@ Route::post('/invoice/update-task-price', [InvoiceController::class, 'updateTask
         Route::get('/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('pdf')->withoutMiddleware(['auth']);
         Route::get('/{invoiceNumber}/proforma', [InvoiceController::class, 'proforma'])->name('proforma')->withoutMiddleware(['auth']);
         Route::get('/{invoiceNumber}/proforma-pdf', [InvoiceController::class, 'proformaGeneratePdf'])->name('proforma.pdf')->withoutMiddleware(['auth']);
+        Route::put('/{invoiceNumber}/date', [InvoiceController::class, 'updateDate'])->name('updateDate');
+        Route::post('/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('updateTaskPrice');
     });
 
 

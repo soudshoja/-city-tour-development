@@ -362,95 +362,106 @@
                 <span class="text-xl font-bold text-white">{{ $taskCount }}</span>
             </div>
         </div>
-        <div x-data="{ addTaskModal: false }" class="flex items-center gap-5">
-            <div @click="addTaskModal = true"
-                class="p-2 text-center bg-white rounded-full shadow group hover:bg-black dark:hover:bg-gray-600 dark:bg-gray-700 cursor-pointer"
-                data-tooltip-left="Add Task">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-                    class="stroke-black dark:stroke-gray-300 group-hover:stroke-white group-focus:stroke-white">
-                    <path d="M15 12L12 12M12 12L9 12M12 12L12 9M12 12L12 15" stroke="" stroke-width="1.5"
-                        stroke-linecap="round" />
-                    <path
-                        d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7"
-                        stroke="" stroke-width="1.5" stroke-linecap="round" />
+        <div class="flex items-center gap-3">
+            <div data-tooltip-left="Reload"
+                class="rotate refresh-icon w-10 h-10 relative flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                    <path fill="currentColor"
+                        d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />
+                    <path fill="currentColor"
+                        d="M20.841 10.467a.75.75 0 0 0-1.054 0L18.1 12.133a.75.75 0 0 0 .527 1.284h.899c-.381 3.83-3.651 6.833-7.644 6.833a7.7 7.7 0 0 1-6.565-3.644a.75.75 0 1 0-1.276.788a9.2 9.2 0 0 0 7.84 4.356c4.809 0 8.766-3.66 9.151-8.333H22a.75.75 0 0 0 .527-1.284z"
+                        opacity=".5" />
                 </svg>
-
             </div>
-            <div x-cloak x-show="addTaskModal" x-init="$watch('addTaskModal', value => {
-                    if (!value) {
-                        $nextTick(() => {
-                            if (typeof window.__resetTaskForm === 'function') {
-                                window.__resetTaskForm();
-                            }
+            <div x-data="{ addTaskModal: false }" class="flex items-center gap-5">
+                <div @click="addTaskModal = true"
+                    class="p-2 text-center bg-white rounded-full shadow group hover:bg-black dark:hover:bg-gray-600 dark:bg-gray-700 cursor-pointer"
+                    data-tooltip-left="Add Task">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                        class="stroke-black dark:stroke-gray-300 group-hover:stroke-white group-focus:stroke-white">
+                        <path d="M15 12L12 12M12 12L9 12M12 12L12 9M12 12L12 15" stroke="" stroke-width="1.5"
+                            stroke-linecap="round" />
+                        <path
+                            d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7"
+                            stroke="" stroke-width="1.5" stroke-linecap="round" />
+                    </svg>
 
-                            const formTaskContainer = document.getElementById('form-task-container');
-                            if (formTaskContainer) {
-                                formTaskContainer.innerHTML = '';
-                            }
-                            window.dispatchEvent(new CustomEvent('reset-dropdowns'));
-                        });
-                    }
-                })"
-                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-                <div @click.away="addTaskModal = false" class="bg-white rounded shadow w-96">
-                    <div class="p-4 flex justify-between items-center">
-                        <span class="text-lg font-semibold">Add Task For Specific Supplier</span>
+                </div>
+                <div x-cloak x-show="addTaskModal" x-init="$watch('addTaskModal', value => {
+                        if (!value) {
+                            $nextTick(() => {
+                                if (typeof window.__resetTaskForm === 'function') {
+                                    window.__resetTaskForm();
+                                }
 
-                        <button type="button" @click="addTaskModal = false"
-                            class="text-gray-500 hover:text-red-600 p-1 rounded focus:outline-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                                stroke="currentColor" class="w-6 h-6">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
+                                const formTaskContainer = document.getElementById('form-task-container');
+                                if (formTaskContainer) {
+                                    formTaskContainer.innerHTML = '';
+                                }
+                                window.dispatchEvent(new CustomEvent('reset-dropdowns'));
+                            });
+                        }
+                    })"
+                    class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
+                    <div @click.away="addTaskModal = false" class="bg-white rounded shadow w-96">
+                        <div class="p-4 flex justify-between items-center">
+                            <span class="text-lg font-semibold">Add Task For Specific Supplier</span>
 
-                    <hr>
-                    <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
-                        class="p-4 flex flex-col" method="POST" enctype="multipart/form-data">
-                        @csrf
-
-                        <div class="mb-3">
-                            <x-searchable-dropdown name="supplier_id" :items="$suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])" placeholder="Select Supplier"
-                                label="Select a Supplier" />
+                            <button type="button" @click="addTaskModal = false"
+                                class="text-gray-500 hover:text-red-600 p-1 rounded focus:outline-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                    stroke="currentColor" class="w-6 h-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
                         </div>
-                        <!-- Hidden native select (logic only) -->
-                        <select id="select-supplier-task" class="hidden">
-                            @foreach ($suppliers as $supplier)
-                            <option value="{{ $supplier->id }}" data-supplier='{{ json_encode($supplier) }}'>
-                                {{ $supplier->name }}
-                            </option>
-                            @endforeach
-                        </select>
-                        <div id="form-task-container" class="mb-3"></div>
 
-                        @unlessrole('agent')
-                        <!-- <div class="mb-4">
-                            <x-searchable-dropdown name="agent_id" :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])" placeholder="Select Agent"
-                                label="Select an Agent" />
-                        </div> -->
-                        @else
-                        <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
-                        @endunlessrole
-                    </form>
+                        <hr>
+                        <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
+                            class="p-4 flex flex-col" method="POST" enctype="multipart/form-data">
+                            @csrf
 
-                    <hr>
-                    <div class="p-4 flex justify-between items-center">
-                        <button @click="addTaskModal = false"
-                            class="rounded-full shadow-sm px-4 py-2 text-red-500 border border-white-100 bg-white hover:bg-gray-100 transition">
-                            Cancel
-                        </button>
+                            <div class="mb-3">
+                                <x-searchable-dropdown name="supplier_id" :items="$suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])" placeholder="Select Supplier"
+                                    label="Select a Supplier" />
+                            </div>
+                            <!-- Hidden native select (logic only) -->
+                            <select id="select-supplier-task" class="hidden">
+                                @foreach ($suppliers as $supplier)
+                                <option value="{{ $supplier->id }}" data-supplier='{{ json_encode($supplier) }}'>
+                                    {{ $supplier->name }}
+                                </option>
+                                @endforeach
+                            </select>
+                            <div id="form-task-container" class="mb-3"></div>
 
-                        <x-primary-button type="submit" form="agent-supplier-task"
-                            class="rounded-full shadow-md px-6 py-2 text-white bg-black hover:bg-gray-800 transition">
-                            Submit
-                        </x-primary-button>
+                            @unlessrole('agent')
+                            <!-- <div class="mb-4">
+                                <x-searchable-dropdown name="agent_id" :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])" placeholder="Select Agent"
+                                    label="Select an Agent" />
+                            </div> -->
+                            @else
+                            <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
+                            @endunlessrole
+                        </form>
 
+                        <hr>
+                        <div class="p-4 flex justify-between items-center">
+                            <button @click="addTaskModal = false"
+                                class="rounded-full shadow-sm px-4 py-2 text-red-500 border border-white-100 bg-white hover:bg-gray-100 transition">
+                                Cancel
+                            </button>
+
+                            <x-primary-button type="submit" form="agent-supplier-task"
+                                class="rounded-full shadow-md px-6 py-2 text-white bg-black hover:bg-gray-800 transition">
+                                Submit
+                            </x-primary-button>
+
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
 
     <div class="tableCon">
@@ -684,7 +695,6 @@
                                         this.showManualForm = false;
                                         window.dispatchEvent(new CustomEvent('reset-dropdowns'));
                                     },
-
                                     submitBulkEdit() {
                                         const form = document.getElementById('bulk-edit-form');
                                         const formData = new FormData(form);
@@ -713,7 +723,6 @@
                                             console.error(error);
                                         });
                                     },
-
                                     toggleTaskSelection(taskId) {
                                         const taskRow = document.querySelector(`[data-task-id='${taskId}']`);
                                         const taskStatus = taskRow?.getAttribute('data-status');
@@ -747,62 +756,86 @@
                                         this.updateFloatingActions();
                                     },
                                     updateFloatingActions() {
-                                        const floatingActions = document.getElementById('floatingActions');
-                                        const createInvoiceBtn = document.getElementById('createInvoiceBtn');
-                                        const createInvoiceBtnText = document.getElementById('createInvoiceBtnText');
-                                        
-                                        if (this.selectedTasks.length > 0) {
-                                            floatingActions?.classList.remove('hidden');
-                                            createInvoiceBtn?.removeAttribute('disabled');
-                                            
-                                            // Check if any selected task is a refund task
-                                            const hasRefundTasks = this.selectedTasks.some(taskId => {
-                                                const taskRow = document.querySelector(`[data-task-id='${taskId}']`);
-                                                return taskRow?.getAttribute('data-status') === 'refund';
-                                            });
-                                            
-                                            if (hasRefundTasks) {
-                                                // Update for refund tasks
-                                                createInvoiceBtnText.innerText = 'Proceed Refund';
-                                                // Remove success styling and add danger styling
-                                                createInvoiceBtn?.classList.remove('btn-success', 'hover:bg-green-600');
-                                                createInvoiceBtn?.classList.add('bg-red-500', 'hover:bg-red-600', 'text-white');
-                                                // Set data attribute to indicate refund status
-                                                createInvoiceBtn?.setAttribute('data-task-status', 'refund');
+                                        const floating = document.getElementById('floatingActions');
+                                        const createBtn = document.getElementById('createInvoiceBtn');
+                                        const createBtnText = document.getElementById('createInvoiceBtnText');
 
-                                                // Set refund route
-                                                if (this.selectedTasks.length === 1) {
-                                                    createInvoiceBtn?.setAttribute('data-route', `/refunds/${this.selectedTasks[0]}/create`);
-                                                }
-                                            } else {
-                                                // Update for regular invoice tasks
-                                                createInvoiceBtnText.innerText = 'Create Invoice';
-                                                // Remove danger styling and add success styling
-                                                createInvoiceBtn?.classList.remove('bg-red-500', 'hover:bg-red-600');
-                                                createInvoiceBtn?.classList.add('btn-success', 'hover:bg-green-600');
-                                                // Remove refund status and reset to original invoice route
-                                                createInvoiceBtn?.removeAttribute('data-task-status');
-                                                createInvoiceBtn?.setAttribute('data-route', this.originalInvoiceRoute);
-                                            }
+                                        const resetButton = () => {
+                                            createBtn?.classList.add('hidden');
+                                            createBtn?.setAttribute('disabled', 'disabled');
+                                            createBtnText.innerText = 'Create Invoice';
+                                            createBtn?.classList.remove('bg-red-500','hover:bg-red-600','text-white');
+                                            createBtn?.classList.add('btn-success','hover:bg-green-600');
+                                            createBtn?.setAttribute('data-route', this.originalInvoiceRoute);
+                                            createBtn?.removeAttribute('data-task-status'); 
+                                        };
+
+                                        if (this.selectedTasks.length === 0) {
+                                            floating?.classList.add('hidden');
+                                            resetButton();
+                                            return;
+                                        }
+
+                                        const selected = this.selectedTasks.map(id => {
+                                            const row = document.querySelector(`[data-task-id='${id}']`);
+                                            return {
+                                                id,
+                                                agent_id: row?.getAttribute('data-agent-id'),
+                                                enabled: row?.getAttribute('data-enabled') === 'true',
+                                                status: row?.getAttribute('data-status'),
+                                                refundDetail: row?.getAttribute('data-refund-detail') === 'true',
+                                                is_complete: row?.getAttribute('data-is-complete') === 'true',
+                                                invoiceDetail: row?.getAttribute('data-invoice-detail') === 'true',
+                                            };
+                                        });
+
+                                        const anyRefund = selected.some(t => t.status === 'refund');
+                                        const canProceedRefund =
+                                            this.selectedTasks.length === 1 &&
+                                            anyRefund &&
+                                            !!selected[0].agent_id &&
+                                            selected[0].enabled &&
+                                            !selected[0].refundDetail &&
+                                            selected[0].is_complete;
+
+                                        const allCanCreateInvoice = !anyRefund && selected.every(t => this.canCreateInvoice(t));
+                                        const showBulk = this.selectedTasks.length > 1;
+                                        const shouldShow = canProceedRefund || allCanCreateInvoice || showBulk;
+
+                                        if (!shouldShow) {
+                                            floating?.classList.add('hidden');
+                                            resetButton();
+                                            return;
+                                        }
+
+                                        floating?.classList.remove('hidden');
+
+                                        if (canProceedRefund) {
+                                            createBtn?.classList.remove('hidden');
+                                            createBtn?.removeAttribute('disabled');
+                                            createBtnText.innerText = 'Proceed Refund';
+                                            createBtn?.classList.remove('btn-success','hover:bg-green-600');
+                                            createBtn?.classList.add('bg-red-500','hover:bg-red-600','text-white');
+                                            createBtn?.setAttribute('data-route', `/refunds/${this.selectedTasks[0]}/create`);
+                                            createBtn?.setAttribute('data-task-status', 'refund');
+                                        } else if (allCanCreateInvoice) {
+                                            createBtn?.classList.remove('hidden');
+                                            createBtn?.removeAttribute('disabled');
+                                            createBtnText.innerText = 'Create Invoice';
+                                            createBtn?.classList.remove('bg-red-500','hover:bg-red-600','text-white');
+                                            createBtn?.classList.add('btn-success','hover:bg-green-600');
+                                            createBtn?.setAttribute('data-route', this.originalInvoiceRoute);
+                                            createBtn?.setAttribute('data-task-status', 'invoice');
                                         } else {
-                                            floatingActions?.classList.add('hidden');
-                                            createInvoiceBtn?.setAttribute('disabled', 'disabled');
-                                            // Reset to default state
-                                            createInvoiceBtnText.innerText = 'Create Invoice';
-                                            createInvoiceBtn?.classList.remove('bg-red-500', 'hover:bg-red-600');
-                                            createInvoiceBtn?.classList.add('btn-success', 'hover:bg-green-600');
-                                            // Remove refund status and reset to original invoice route
-                                            createInvoiceBtn?.removeAttribute('data-task-status');
-                                            createInvoiceBtn?.setAttribute('data-route', this.originalInvoiceRoute);
+                                            resetButton();
                                         }
                                     },
-                                    isSelectable(task) {
+                                    canCreateInvoice(task) {
                                         if (!task.agent_id) return false;
-                                        return task.enabled &&
-                                            (
-                                                (task.status === 'refund' && !task.refundDetail && task.is_complete) ||
-                                                (task.status !== 'refund' && !task.invoiceDetail)
-                                            );
+                                        return task.enabled && (
+                                            (task.status === 'refund' && !task.refundDetail && task.is_complete) ||
+                                            (task.status !== 'refund' && !task.invoiceDetail)
+                                        );
                                     },
                                     clearSelectedTasks() {
                                         this.selectedTasks = [];
@@ -928,24 +961,18 @@
                                             $isSelectable = $task->status !== 'refund' ? !$task->invoiceDetail && $task->enabled && $task->agent_id
                                             : !$task->refundDetail && $task->is_complete && $task->agent_id;
                                             @endphp
-                                            <tr class="taskRow task-row {{ $isSelectable ? 'hover:bg-blue-100' : 'not-selectable' }}" @if($isSelectable) @click="toggleTaskSelection({{ $task->id }})" @endif x-show="{{ $key }} < shown" x-cloak
+                                            <tr class="taskRow task-row 
+                                                {{ ($task->invoiceDetail || $task->refundDetail) ? 'cursor-not-allowed' : 'cursor-pointer' }}"
+                                                @click="{{ (!$task->invoiceDetail && !$task->refundDetail) ? "toggleTaskSelection($task->id)" : '' }}"
+                                                x-show="{{ $key }} < shown" x-cloak
                                                 :class="selectedTasks.includes({{ $task->id }}) ? 'selected' : ''"
-                                                @click="isSelectable({
-                                                    enabled: {{ $task->enabled ? 'true' : 'false' }},
-                                                    status: '{{ $task->status }}',
-                                                    refundDetail: {{ $task->refundDetail ? 'true' : 'false' }},
-                                                    is_complete: {{ $task->is_complete ? 'true' : 'false' }},
-                                                    invoiceDetail: {{ $task->invoiceDetail ? 'true' : 'false' }},
-                                                    linkedTask: {{ $task->linkedTask ? 'true' : 'false' }},
-                                                }) && toggleTaskSelection({{ $task->id }})"
-                                                data-price="{{ $task->price }}"
-                                                data-supplier-id="{{ $task->supplier->id }}"
-                                                data-branch-id="{{ $task->agent ? $task->agent->branch->id : null }}"
                                                 data-agent-id="{{ $task->agent_id }}"
                                                 data-status="{{ $task->status }}"
-                                                data-type="{{ $task->type }}"
-                                                data-client-id="{{ $task->client ? $task->client->id : null }}"
-                                                data-task-id="{{ $task->id }}">
+                                                data-task-id="{{ $task->id }}"
+                                                data-enabled="{{ $task->enabled ? 'true' : 'false' }}"
+                                                data-invoice-detail="{{ $task->invoiceDetail ? 'true' : 'false' }}"
+                                                data-refund-detail="{{ $task->refundDetail ? 'true' : 'false' }}"
+                                                data-is-complete="{{ $task->is_complete ? 'true' : 'false' }}">
 
                                                 <td data-column="actions" class="p-3 text-sm">
                                                     <div class="flex items-center justify-center h-full min-h-[40px]">
@@ -1287,10 +1314,6 @@
                                                                 </ul>
                                                             </div>
                                                         </div>
-                                                         
-                                                        
-<!-- Bulk Edit Modal -->
-
                                                         @can('destroy', App\Models\Task::class)
                                                         <form action="{{ route('tasks.destroy', $task->id) }}" method="POST">
                                                             @csrf
@@ -1671,64 +1694,58 @@
                                                 </form>
                                             </div>
                                         </div>
-
                                     </table>
-                                    <!-- Bulk Edit Modal -->
-<div x-show="showBulkEditModal" x-transition x-cloak
- class="fixed inset-0 z-30 flex items-center justify-center bg-gray-800" style="background-color: rgba(31, 41, 55, 0.7);">
-    <div class="bg-white rounded-md border p-6 w-full max-w-md relative overflow-y-auto max-h-[90vh]">
-        <div class="flex items-start justify-between mb-2">
-            <div>
-                <h2 class="text-xl font-bold text-gray-800">Bulk Edit Tasks</h2>
-                <p class="text-gray-600 italic text-xs mt-1">Update Client, Agent, or Payment Method for selected tasks</p>
-            </div>
-            <button @click="showBulkEditModal = false"
-                class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
-                &times;
-            </button>
-        </div>
-        <form id="bulk-edit-form" @submit.prevent="submitBulkEdit" class="flex flex-col gap-6">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                <x-searchable-dropdown name="bulk_client_id"
-                    :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                    placeholder="Select Client" />
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
-                <x-searchable-dropdown name="bulk_agent_id"
-                    :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-                    placeholder="Select Agent" />
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
-                <select name="bulk_payment_method_id" class="border border-gray-300 rounded-md w-full p-2">
-                    <option value="">Select Payment Method</option>
-                    @foreach($paymentMethod as $method)
-                        <option value="{{ $method->id }}">{{ $method->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="mt-6 flex flex-col sm:flex-row justify-between gap-4">
-                <button type="button"
-                    @click="showBulkEditModal = false"
-                    class="px-6 py-2 text-gray-700 font-semibold rounded-full bg-gray-200 hover:bg-gray-300 transition">
-                    Cancel
-                </button>
-                <button type="submit"
-                    class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-full bg-blue-600 hover:bg-blue-700 transition">
-                    Update Tasks
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-<!-- End Bulk Edit Modal -->
+                                    <div x-show="showBulkEditModal" x-transition x-cloak 
+                                        class="fixed inset-0 z-30 flex items-center justify-center bg-gray-800" style="background-color: rgba(31, 41, 55, 0.7);">
+                                        <div class="bg-white rounded-md border p-6 w-full max-w-md relative overflow-y-auto max-h-[90vh]">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <div>
+                                                    <h2 class="text-xl font-bold text-gray-800">Bulk Edit Tasks</h2>
+                                                    <p class="text-gray-600 italic text-xs mt-1">Update Client, Agent, or Payment Method for selected tasks</p>
+                                                </div>
+                                                <button @click="showBulkEditModal = false"
+                                                    class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
+                                                    &times;
+                                                </button>
+                                            </div>
+                                            <form id="bulk-edit-form" @submit.prevent="submitBulkEdit" class="flex flex-col gap-6">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                                                    <x-searchable-dropdown name="bulk_client_id"
+                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
+                                                        placeholder="Select Client" />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
+                                                    <x-searchable-dropdown name="bulk_agent_id"
+                                                        :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
+                                                        placeholder="Select Agent" />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                                                    <x-searchable-dropdown name="bulk_payment_method_id"
+                                                        :items="$paymentMethod->map(fn($m) => ['id' => $m->id, 'name' => $m->name])"
+                                                        placeholder="Select Payment Method" />
+                                                </div>
+                                                <div class="mt-6 flex flex-col sm:flex-row justify-between gap-4">
+                                                    <button type="button"
+                                                        @click="showBulkEditModal = false"
+                                                        class="px-6 py-2 text-gray-700 font-semibold rounded-full bg-gray-200 hover:bg-gray-300 transition">
+                                                        Cancel
+                                                    </button>
+                                                    <button type="submit"
+                                                        class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-full bg-blue-600 hover:bg-blue-700 transition">
+                                                        Update Tasks
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
 
                                     <div id="floatingActions"
                                         class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-10 p-3">
                                         <div class="flex justify-between gap-5 items-center h-full">
-                                            <button id="createInvoiceBtn" data-route="{{ route('invoices.create') }}"
+                                            <button id="createInvoiceBtn" data-route="{{ route('invoices.create') }}" type="button"
                                                 class="flex px-5 py-3 gap-3 btn-success hover:bg-green-600 rounded-lg shadow-sm items-center transition-colors duration-200">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                                                     viewBox="0 0 24 24">
@@ -1747,7 +1764,6 @@
                                                 <span class="text-sm text-white">Bulk Edit</span>
                                             </button>
                                         </div>
-                                        
                                         <div id="closeTaskFloatingActions" @click="clearSelectedTasks()"
                                             class="flex cursor-pointer items-center justify-center">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"

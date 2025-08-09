@@ -181,21 +181,35 @@ class TaskController extends Controller
             return response()->json(['success' => false, 'message' => 'No tasks selected.']);
         }
 
-        foreach ($taskIds as $id) {
-            $task = Task::find($id);
-            if ($task) {
-                if ($clientId) {
-                    $task->client_id = $clientId;
-                    $client = Client::find($clientId);
-                    if ($client) {
-                        $task->client_name = $client->name;
+        DB::transaction(function () use ($taskIds, $clientId, $agentId, $paymentMethodId) {
+            foreach ($taskIds as $id) {
+                $task = Task::find($id);
+                if ($task) {
+                    if ($clientId) {
+                        $task->client_id = $clientId;
+                        $client = Client::find($clientId);
+                        if ($client) {
+                            $task->client_name = $client->name;
+                        }
                     }
+                    if ($agentId) $task->agent_id = $agentId;
+                    if ($paymentMethodId) $task->payment_method_account_id = $paymentMethodId;
+                    
+                    if ($task->is_complete && $task->agent_id && $task->client) {
+                        $journalEntries = JournalEntry::where('task_id', $task->id)->exists();
+                        if (!$journalEntries) {
+                            try {
+                                $this->processTaskFinancial($task);
+                            } catch (\Exception $e) {
+                                Log::error('Failed to process task financial: ' . $e->getMessage());
+                            }
+                        }
+                        $task->enabled = true;
+                    }
+                    $task->save();
                 }
-                if ($agentId) $task->agent_id = $agentId;
-                if ($paymentMethodId) $task->payment_method_account_id = $paymentMethodId;
-                $task->save();
             }
-        }
+        });
 
         return response()->json(['success' => true]);
     }

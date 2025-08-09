@@ -1437,6 +1437,9 @@
         let tasks = [];
         const itemsBody = document.getElementById('items-body');
         const appUrl = @json($appUrl);
+
+        console.log(items);
+        
         // console.log('invoice', invoice);
         // Handle Tab Switching
         const selectTabButton = document.getElementById('selectTabButton');
@@ -1810,418 +1813,180 @@
 
 
         function renderItems() {
-            itemsBody.innerHTML = ''; // Clear existing rows
+            const tbody = itemsBody;
+            if (!tbody) return;
+            tbody.innerHTML = '';
 
-            if (items.length === 0) {
-                // If no items, display the "No Item Available" row
+            if (!Array.isArray(items) || items.length === 0) {
                 const noItemsRow = document.createElement('tr');
                 noItemsRow.innerHTML =
-                    '<td colspan="13" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
-                itemsBody.appendChild(noItemsRow);
-            } else {
-                // Iterate over items and create rows
-                let count = 0;
-                items.forEach(item => {
-                    const row = document.createElement('tr');
-                    row.classList.add('border-b', 'border-[#e0e6ed]', 'align-top', 'dark:border-[#1b2e4b]');
-                    row.classList.add('TrX');
-                    console.log('items data: ', items);
-                    row.innerHTML = `
+                '<td colspan="13" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
+                tbody.appendChild(noItemsRow);
+                return;
+            }
+
+            const frag = document.createDocumentFragment();
+            let count = 0;
+
+            for (const item of items) {
+                try {
+                const safe = {
+                    desc: item?.description ?? '',
+                    info: item?.additional_info ?? '',
+                    total: item?.total ?? 0,
+                    taskPrice: item?.task_price ?? 0,
+                    clientName: item?.client_name ?? '',
+                    agentName: item?.agent?.name ?? '',
+                    branchName: item?.agent?.branch?.name ?? '',
+                    supplierName: item?.supplier_name ?? '',
+                    type: (item?.type ?? ''),
+                    typeCap: (item?.type ? (item.type.charAt(0).toUpperCase() + item.type.slice(1)) : ''),
+                    id: item?.id ?? `row-${count+1}`,
+                    quantity: item?.quantity ?? 1,
+                    invprice: item?.invprice ?? '',
+                    flight: item?.flight_details ?? null,
+                    hotel: item?.hotel_details ?? null,
+                };
+
+                const row = document.createElement('tr');
+                row.className = 'border-b border-[#e0e6ed] align-top dark:border-[#1b2e4b] TrX';
+
+                row.innerHTML = `
+                    <td class="flex-grow"><p>${++count}</p></td>
                     <td class="flex-grow">
-                    <p>${++count}</p>
+                    <p><b>${safe.desc}</b><br>Info: ${safe.info}</br></p>
                     </td>
-                    <td class="flex-grow">
-                    <p><b>${item.description}</b><br>Info: ${item.additional_info}</br>
+                    <td><p>${safe.total} KWD</p></td>
+                    <td>
+                    <div class="flex items-center">
+                        <input
+                        id="invprice-table-${safe.id}"
+                        type="number"
+                        class="border border-gray-300 rounded-md w-full"
+                        value="${safe.taskPrice}"
+                        oninput="updateField(${JSON.stringify(safe.id)}, 'invprice-table')"
+                        />
+                        <button
+                        type="button"
+                        class="p-1 rounded hover:bg-gray-200"
+                        title="Save"
+                        onclick="saveTaskPrice(${JSON.stringify(safe.id)})"
+                        >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                            class="w-5 h-5 text-blue-600">
+                            <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
+                        </svg>
+                        </button>
+                    </div>
+                    </td>
+                    <td><p>${safe.clientName}</p></td>
+                    <td><p>${safe.agentName}</p></td>
+                    <td><p>${safe.branchName}</p></td>
+                    <td><p>${safe.supplierName}</p></td>
+                    <td><p>${safe.typeCap}</p></td>
+                `;
 
-                    </p>
-                    </td>
-                    <td>
-                    <p>${item.total} KWD</p>
-                    </td>
-                    <td>
-    <div class="flex items-center">
-        <input
-            id="invprice-table-${item.id}"
-            type="number"
-            class="border border-gray-300 rounded-md w-full"
-            value="${item.task_price}"
-            onInput="updateField(${item.id}, 'invprice-table')"
-        />
-        <button
-            type="button"
-            class="p-1 rounded hover:bg-gray-200"
-            title="Save"
-            onclick="saveTaskPrice(${item.id})"
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                class="w-5 h-5 text-blue-600">
-                <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
-            </svg>
-        </button>
-    </div>
-</td>
-                    <td>
-                    <p>${item.client_name}</p>
-                    </td>
-                    <td>
-                    <p>${item.agent.name}</p>
-                    </td>
-                    <td>
-                    <p>${item.agent.branch.name}</p>
-                    </td>
-                    <td>
-                    <p>${item.supplier_name}</p>
-                    </td>
-                    <td>
-                    <p>${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</p>
-                    </td>`;
+                frag.appendChild(row);
 
-                    itemsBody.appendChild(row);
-
-                    let taskDetails = document.getElementById('task-details_' + item.id);
+                // Safely update modal/details blocks only if present
+                const taskDetails = document.getElementById('task-details_' + safe.id);
+                if (taskDetails) {
                     taskDetails.innerHTML = `
-                                <div class="mb-4 flex flex-col gap-2"> 
-                                    <div class="header text-lg font-bold mt-4 border-b">Task Details</div> 
-                                    <div class="flex justify-between items-center text-lg">
-                                        <div>Quantitiy: <strong>${item.quantity}</strong></div>
-                                        <div class="font-bold">${(item.quantity * item.total).toFixed(2)} KWD</div>
-                                    </div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    <input
-                                        id="invprice-modal-${item.id}"
-                                        type="number"
-                                        name="invprice",
-                                        placeholder="Enter Invoice Price",
-                                        class="border border-gray-300 p-2 rounded-md"
-                                        onInput="updateField(${item.id}, 'invprice-modal')"
-                                        value="${item.invprice}"
-                                    >
-                                    <input
-                                        id="remark-${item.id}"
-                                        type="text"
-                                        name="remark",
-                                        placeholder="Enter Remark",
-                                        class="border border-gray-300 p-2 rounded-md"
-                                        onInput="updateField(${item.id}, 'remark')"
-                                    >
-                                    <input
-                                        id="note-${item.id}"
-                                        type="text"
-                                        name="note",
-                                        placeholder="Enter Note",
-                                        class="border border-gray-300 p-2 rounded-md"
-                                        onInput="updateField(${item.id}, 'note')"
-                                    >
-                                    </div>
-                                </div>
-                        `;
+                    <div class="mb-4 flex flex-col gap-2"> 
+                        <div class="header text-lg font-bold mt-4 border-b">Task Details</div> 
+                        <div class="flex justify-between items-center text-lg">
+                        <div>Quantitiy: <strong>${safe.quantity}</strong></div>
+                        <div class="font-bold">${(safe.quantity * Number(safe.total || 0)).toFixed(2)} KWD</div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <input id="invprice-modal-${safe.id}" type="number" name="invprice"
+                            placeholder="Enter Invoice Price" class="border border-gray-300 p-2 rounded-md"
+                            oninput="updateField(${JSON.stringify(safe.id)}, 'invprice-modal')" value="${safe.invprice}">
+                        <input id="remark-${safe.id}" type="text" name="remark" placeholder="Enter Remark"
+                            class="border border-gray-300 p-2 rounded-md"
+                            oninput="updateField(${JSON.stringify(safe.id)}, 'remark')">
+                        <input id="note-${safe.id}" type="text" name="note" placeholder="Enter Note"
+                            class="border border-gray-300 p-2 rounded-md"
+                            oninput="updateField(${JSON.stringify(safe.id)}, 'note')">
+                        </div>
+                    </div>
+                    `;
 
-                    if (item.flight_details !== null && item.hotel_details !== null) {
-                        taskDetails.innerHTML = '<div class="text-red-500">Something Went Wrong</div>';
-                    } else if (item.flight_details !== null) {
-                        taskDetails.innerHTML += `
-                            <div class="text-lg font-bold mt-4">Flight Details</div>
-                            <hr/> 
-                                <div class="flex flex-row-reverse items-center">
-                                    <div class="p-2">
-                                        <label class="switch">
-                                            <input type="checkbox" id="" onclick="toggleAll(${item.id})">
-                                            <span class="slider round"></span>
-                                        </label>
-                                    </div>
-                                    <strong>Toggle All</strong>
-                                </div>
-
-                                <form>
-                                <div class="task-details" style="box-sizing: border-box;">
-                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group" >
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Ticket Info</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div class="p-4">
-                                        
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Departure Time</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.flight_details.departure_time}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Country From</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.country_from}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airport From</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airport_from ? item.flight_details.airport_from : 'null'}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Terminal From</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.terminal_from}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Arrival Time</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.arrival_time}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Country To</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.country_to}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airport To</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airport_to}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Terminal To</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.terminal_to}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Airline</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.airline_id}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Class</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.class_type}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full line-clamp-1">Baggage Allowed</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.baggage_allowed}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Equipment</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.equipment}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Flight Meal</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.flight_meal}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Seat No</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.seat_no}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Created At</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.created_at}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Updated At</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md" value="${item.flight_details.updated_at}" disabled>
-                                        </div>
-                                    </div>
-                                </details>
-                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Route Info</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div class="p-4">
-                                    </div>
-                                </details>
-                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Fare Info</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div class="p-4">
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Farebase</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.flight_details.farebase}">
-                                        </div>
-                                    </div>
-                                </details>
-                                <details class="flex justify-between items-center bg-gray-100 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Void Info</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div class="p-4">
-                                    </div>
-                                </details>
-                                
-                                
-                            </div>
-                            </form>
-                            `;
-
-                    } else if (item.hotel_details !== null) {
-
-                        taskDetails.innerHTML += `
-                            <div class="text-lg font-bold mt-4">Hotel Details</div>
-                            <hr/>
-                            <div class="flex flex-row-reverse items-center">
-                                <div class="p-2">
-                                    <label class="switch">
-                                        <input type="checkbox" id="" onclick="toggleAll(${item.id})">
-                                        <span class="slider round"></span>
-                                    </label>
-                                </div>
-                                <strong>Toggle All</strong>
-                            </div>
-                            <form>
-                            <div class="task-details" style="box-sizing: border-box;">
-                                <details class="bg-gray-200 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">General Information</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div class="p-4">
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Hotel ID</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.hotel.name}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Booking Time</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.booking_time}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-in</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_in}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                            <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Check-out</div>
-                                            <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.check_out}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Number</div>
-                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_number}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Type</div>
-                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_type}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Amount</div>
-                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_amount}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Room Details</div>
-                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.room_details}" disabled>
-                                        </div>
-                                        <div class="flex justify-center items-center">
-                                        <div class="font-semibold rounded-l-md bg-gray-200 p-2 border-0 w-full">Rate</div>
-                                        <input type="text" class="border-2 border-gray-200 p-2 rounded-r-md h-full" value="${item.hotel_details.rate}" disabled>
-                                        </div> 
-                                    </div>
-                                </details>
-                                <details class="bg-gray-200 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Service Information</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div></div>
-                                </details>
-                                <details class="bg-gray-200 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Account Information</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div></div>
-                                </details>
-                                <details class="bg-gray-200 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Remarks</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div></div>
-                                </details>
-                                <details class="bg-gray-200 p-2 rounded-md group">
-                                    <summary class="list-none flex flex-wrap items-center cursor-pointer">
-                                        <h3 class="flex flex-1 p-4 font-semibold">Print Information</h3>
-                                        <div class="flex w-10 items-center justify-center">
-                                            <div class="border-8 border-transparent border-l-black ml-2 group-open:rotate-90 transition-transform origin-left"></div>
-                                        </div>
-                                    </summary>
-                                    <div></div>
-                                </details>
-                            </div>
-                            </form>
-                        `;
+                    if (safe.flight && safe.hotel) {
+                    taskDetails.innerHTML = '<div class="text-red-500">Something Went Wrong</div>';
+                    } else if (safe.flight) {
+                    taskDetails.innerHTML += `...`; // keep your flight HTML
+                    } else if (safe.hotel) {
+                    taskDetails.innerHTML += `...`; // keep your hotel HTML
                     }
+                }
 
+                // Wire up modal buttons only if they exist
+                const openButton  = document.getElementById('modal-open-button_' + safe.id);
+                const closeButton = document.getElementById('modal-close-button_' + safe.id);
+                const modal = document.querySelector('dialog[data-modal-invoice="' + safe.id + '"]');
 
-                    let openButton = document.getElementById('modal-open-button_' + item.id);
-                    let closeButton = document.getElementById('modal-close-button_' + item.id);
-                    let modalInvoice = document.querySelector('dialog[data-modal-invoice="' + item.id + '"]');
+                if (openButton && modal) {
+                    openButton.addEventListener('click', () => modal.showModal());
+                    modal.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
+                }
+                if (closeButton && modal) {
+                    closeButton.addEventListener('click', () => modal.close());
+                }
 
-                    openButton.addEventListener('click', function() {
-                        console.log(item.id);
-                        modalInvoice.showModal();
-                    });
+                } catch (err) {
+                console.error('renderItems(): failed on item ->', item, err);
+                // continue loop; don't break rendering for other items
+                }
+            }
 
-                    closeButton.addEventListener('click', function() {
-                        modalInvoice.close();
-                    });
+            tbody.appendChild(frag);
 
-                    modalInvoice.addEventListener('click', function(event) {
-                        if (event.target === modalInvoice) {
-                            modalInvoice.close();
-                        }
-                    });
+            // Final audit
+            console.info('renderItems(): rendered rows =', tbody.rows.length, 'from items len =', items.length);
+        }
 
-                    // removeButton = document.getElementById('remove-button-' + item.id);
+        function saveTaskPrice(itemId) {
+            const input = document.getElementById(`invprice-table-${itemId}`);
+            const newPrice = parseFloat(input.value);
 
-                    // removeButton.addEventListener('click', function() {
-                    //     removeItem(item.id);
-                    // });
+            if (isNaN(newPrice) || newPrice <= 0) {
+                displayErrorMessage('Please enter a valid price.');
+                return;
+            }
+
+            // Send AJAX request to update the price
+            fetch(`/invoice/update-task-price`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': "{{ csrf_token() }}",
+                },
+                body: JSON.stringify({
+                    task_id: itemId,
+                    new_price: newPrice,
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the item in the items array
+                    const item = items.find(item => item.id === itemId);
+                    if (item) {
+                        item.task_price = newPrice;
+                    }
+                    calculateSubtotal(); // <-- This updates #subT and others
+                    displaySuccessMessage('Task price updated!');
+                } else {
+                    displayErrorMessage(data.message || 'Failed to update price.');
+                }
+                })
+                .catch(() => {
+                    displayErrorMessage('Failed to update price.');
                 });
             }
-
-
-        }
-        function saveTaskPrice(itemId) {
-    const input = document.getElementById(`invprice-table-${itemId}`);
-    const newPrice = parseFloat(input.value);
-
-    if (isNaN(newPrice) || newPrice <= 0) {
-        displayErrorMessage('Please enter a valid price.');
-        return;
-    }
-
-    // Send AJAX request to update the price
-    fetch(`/invoice/update-task-price`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': "{{ csrf_token() }}",
-        },
-        body: JSON.stringify({
-            task_id: itemId,
-            new_price: newPrice,
-        }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update the item in the items array
-            const item = items.find(item => item.id === itemId);
-            if (item) {
-                item.task_price = newPrice;
-            }
-            calculateSubtotal(); // <-- This updates #subT and others
-            displaySuccessMessage('Task price updated!');
-        } else {
-            displayErrorMessage(data.message || 'Failed to update price.');
-        }
-    })
-    .catch(() => {
-        displayErrorMessage('Failed to update price.');
-    });
-}
-        function removeItem(itemId) {
+        
+            function removeItem(itemId) {
             items = items.filter(item => item.id !== itemId);
             renderItems(); // Re-render the table after removal
             renderTaskList(tasks);

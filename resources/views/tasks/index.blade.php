@@ -559,7 +559,7 @@
                                             <label for="col-issue-date" class="text-sm text-gray-700">Issue Date</label>
                                         </div>
                                         <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                                            <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
                                             <label for="col-created-at" class="text-sm text-gray-700">Created Date</label>
                                         </div>
                                         <div class="flex items-center gap-2">
@@ -848,15 +848,12 @@
                                                             ]) }}"
                                                         class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
                                                         Issued Date
-
-                                                        {{-- Neutral icon when not sorted --}}
                                                         @if(request('sortBy') !== 'issued_date')
                                                         <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
                                                             fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                                             <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
                                                         </svg>
                                                         @else
-                                                        {{-- Sorting direction icon --}}
                                                         <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
                                                             fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                                                             @if(request('sortOrder', 'desc') === 'asc')
@@ -868,24 +865,19 @@
                                                         @endif
                                                     </a>
                                                 </th>
-
-
-                                                <th data-column="created-at" class="column-hidden">
+                                                <th data-column="created-at">
                                                     <a href="{{ request()->fullUrlWithQuery([
                                                                     'sortBy' => 'created_at',
                                                                     'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
                                                                 ]) }}"
                                                             class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
                                                         Created Date
-
-                                                        {{-- Neutral icon when not sorted --}}
                                                         @if(request('sortBy') !== 'created_at')
                                                         <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
                                                             fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                                             <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
                                                         </svg>
                                                         @else
-                                                        {{-- Sorting direction icon --}}
                                                         <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
                                                             fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                                                             @if(request('sortOrder') === 'asc')
@@ -897,7 +889,6 @@
                                                         @endif
                                                     </a>
                                                 </th>
-
                                                 <th data-column="info">
                                                     <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Info</span>
                                                 </th>
@@ -1367,13 +1358,9 @@
                                                     {{ $task->supplier->name }}
                                                 </td>
                                                 <td data-column="issue-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                    <p>{{ $task->formatted_date ?? 'Not Set' }}</p>
-                                                    @else
                                                     {{ $task->formatted_date ?? 'Not Set' }}
-                                                    @endif
                                                 </td>
-                                                <td data-column="created-at" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                                <td data-column="created-at" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->created_at ?  \Carbon\Carbon::parse($task->created_at)->format('d-m-Y H:i') : 'Not Set' }}
                                                 </td>
                                                 <td data-column="info" class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">

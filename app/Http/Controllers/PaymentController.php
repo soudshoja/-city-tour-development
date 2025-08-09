@@ -1096,12 +1096,13 @@ class PaymentController extends Controller
   
         $data = [
             'payment_id' => $importPaymentId,
+            'invoice_id' => $response['invoice_id'],
             'payment_gateway' => $response['payment_gateway'],
             'payment_method' => $response['payment_method_id'],
             'amount' => $response['amount'],
             'client_id' => $clientId,
             'agent_id' => $agentId,
-            'notes' => 'Imported from MyFatoorah Portal with payment ID: ' . $importPaymentId,
+            'notes' => 'Imported from MyFatoorah Portal with Invoice ID: ' . $response['invoice_id'],
             'source' => 'import',
         ];
 
@@ -1142,10 +1143,11 @@ class PaymentController extends Controller
 
         return redirect()->route('payment.link.create')->withInput([
             'payment_id' => $paymentId,
+            'invoice_id' => $response['invoice_id'],
             'payment_gateway' => $response['payment_gateway'],
             'payment_method' => $response['payment_method_id'],
             'amount' => $response['amount'],
-            'notes' => 'Imported from MyFatoorah Portal with payment ID: ' . $paymentId,
+            'notes' => 'Imported from MyFatoorah Portal with Invoice ID: ' . $response['invoice_id'],
             'source' => 'import',
         ]);
     }

@@ -238,7 +238,7 @@
                                     </button>
                                 </div>
 
-                                <form action="{{ route('payment.link.importfatoorah') }}" method="POST" class="space-y-4">
+                                <form action="{{ route('payment.link.import-fatoorah.payment') }}" method="POST" class="space-y-4">
                                     @csrf
                                     <div>
                                         <label for="import_payment_id" class="block text-sm font-medium text-gray-700 mb-1">

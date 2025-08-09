@@ -1121,25 +1121,31 @@
 
                                                                                             @if (strtolower($task->status) !== 'issued' && strtolower($task->status) !== 'confirmed'|| $task->status == null)
                                                                                             <div class="flex flex-col sm:flex-row gap-4">
-                                                                                                <!-- Original Task Selection for Reissued Tasks -->
                                                                                                 <div class="flex-1">
                                                                                                     @php
-                                                                                                    $originalTasks = $tasks->where('status', 'issued');
+                                                                                                    $originalTasks = \App\Models\Task::with('client')
+                                                                                                        ->where('status', 'issued')
+                                                                                                        ->where('reference', $task->reference)
+                                                                                                        ->get();
                                                                                                     $selectedOriginalTask = $originalTasks->firstWhere('id', $task->original_task_id);
                                                                                                     $taskPlaceholder = $selectedOriginalTask
-                                                                                                    ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name)
-                                                                                                    : 'Select Original Task';
+                                                                                                        ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name)
+                                                                                                        : 'Select Original Task';
                                                                                                     @endphp
+                                                                                                    
                                                                                                     <label for="original_task_id" class="block text-sm font-medium text-gray-700">Original Task</label>
                                                                                                     <x-searchable-dropdown
                                                                                                         name="original_task_id"
-                                                                                                        :items="($originalTasks ?? collect())->map(fn($t) => [
-                                                                                    'id' => $t->id,
-                                                                                    'name' => $t->reference . ' - ' . ($t->client->name ?? $t->client_name)
-                                                                                ])->values()"
+                                                                                                        :items="$originalTasks->map(fn($t) => [
+                                                                                                            'id' => $t->id,
+                                                                                                            'name' => $t->reference . ' - ' . ($t->client->name ?? $t->client_name)
+                                                                                                        ])->values()"
                                                                                                         :selectedId="$task->original_task_id"
-                                                                                                        :selectedName="$selectedOriginalTask ? $selectedOriginalTask->reference . ' - ' .  ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name) : null"
-                                                                                                        :placeholder="$taskPlaceholder" />
+                                                                                                        :selectedName="$selectedOriginalTask
+                                                                                                            ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name)
+                                                                                                            : null"
+                                                                                                        :placeholder="$taskPlaceholder"
+                                                                                                    />
                                                                                                 </div>
                                                                                             </div>
                                                                                             @endif
@@ -1173,27 +1179,26 @@
                                                                                             </div>
 
                                                                                             <div class="flex flex-col sm:flex-row gap-4">
-                                                                                                <!-- Client Selection -->
                                                                                                 @php
-                                                                                                $selectedClient = \App\Models\Client::find(
-                                                                                                $task->client_id,
-                                                                                                );
+                                                                                                $selectedClient = \App\Models\Client::find($task->client_id);
                                                                                                 $clientPlaceholder = $selectedClient
-                                                                                                ? $selectedClient->name
-                                                                                                : 'Select a Client';
+                                                                                                    ? $selectedClient->name . ' - ' . $selectedClient->phone
+                                                                                                    : 'Select a Client';
                                                                                                 @endphp
                                                                                                 <div class="flex-1">
                                                                                                     <label for="client_id"
                                                                                                         class="block text-sm font-medium text-gray-700">Client</label>
                                                                                                     <div class="w-full">
-                                                                                                        <x-searchable-dropdown
-                                                                                                            name="client_id"
-                                                                                                            :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                                                                                                            :selectedId="$task->client_id"
-                                                                                                            :selectedName="$selectedClient
-                                                                                ? $selectedClient->name
-                                                                                : null"
-                                                                                                            :placeholder="$clientPlaceholder" />
+                                                                                                    <x-searchable-dropdown
+                                                                                                        name="client_id"
+                                                                                                        :items="$clients->map(fn($c) => [
+                                                                                                            'id'   => $c->id,
+                                                                                                            'name' => $c->name . ' - ' . $c->phone
+                                                                                                        ])"
+                                                                                                        :selectedId="$task->client_id"
+                                                                                                        :selectedName="$selectedClient ? $selectedClient->name . ' - '  .           $selectedClient->phone : null"
+                                                                                                        :placeholder="$clientPlaceholder"
+                                                                                                    />
                                                                                                     </div>
                                                                                                 </div>
 

@@ -170,7 +170,7 @@ class TaskController extends Controller
     }
     
 
-   public function bulkUpdate(Request $request)
+    public function bulkUpdate(Request $request)
     {
         $taskIds = json_decode($request->input('task_ids'), true);
         $clientId = $request->input('bulk_client_id');
@@ -181,21 +181,35 @@ class TaskController extends Controller
             return response()->json(['success' => false, 'message' => 'No tasks selected.']);
         }
 
-        foreach ($taskIds as $id) {
-            $task = Task::find($id);
-            if ($task) {
-                if ($clientId) {
-                    $task->client_id = $clientId;
-                    $client = Client::find($clientId);
-                    if ($client) {
-                        $task->client_name = $client->name;
+        DB::transaction(function () use ($taskIds, $clientId, $agentId, $paymentMethodId) {
+            foreach ($taskIds as $id) {
+                $task = Task::find($id);
+                if ($task) {
+                    if ($clientId) {
+                        $task->client_id = $clientId;
+                        $client = Client::find($clientId);
+                        if ($client) {
+                            $task->client_name = $client->name;
+                        }
                     }
+                    if ($agentId) $task->agent_id = $agentId;
+                    if ($paymentMethodId) $task->payment_method_account_id = $paymentMethodId;
+                    
+                    if ($task->is_complete && $task->agent_id && $task->client) {
+                        $journalEntries = JournalEntry::where('task_id', $task->id)->exists();
+                        if (!$journalEntries) {
+                            try {
+                                $this->processTaskFinancial($task);
+                            } catch (\Exception $e) {
+                                Log::error('Failed to process task financial: ' . $e->getMessage());
+                            }
+                        }
+                        $task->enabled = true;
+                    }
+                    $task->save();
                 }
-                if ($agentId) $task->agent_id = $agentId;
-                if ($paymentMethodId) $task->payment_method_account_id = $paymentMethodId;
-                $task->save();
             }
-        }
+        });
 
         return response()->json(['success' => true]);
     }
@@ -1421,18 +1435,15 @@ class TaskController extends Controller
             'agent_id' => 'nullable',
             'client_id' => 'nullable|exists:clients,id',
             'supplier_id' => 'required',
+            'original_task_id' => 'nullable|exists:tasks,id',
         ], [
             'supplier_id.required' => 'Please select a supplier',
             'status.required' => 'Please select a status',
             'total.required' => 'Please enter the total amount',
         ]);
 
-        if (strtolower($request->status) !== 'issued' && strtolower($request->status) !== 'confirmed') {
-            $request->validate([
-                'original_task_id' => 'required|exists:tasks,id',
-            ], [
-                'original_task_id.required' => 'Task must be linked to an original task',
-            ]);
+        if (strtolower($request->status) !== 'issued' && strtolower($request->status) !== 'confirmed' && !$request->filled('original_task_id')) {
+            return back()->withErrors(['original_task_id' => 'Task must be linked to an original task'])->withInput();
         }
 
         DB::beginTransaction();
@@ -1480,9 +1491,9 @@ class TaskController extends Controller
                 $this->reverseJournalforChangedPaymentMethod($task);
             }
 
-            // Check if agent was just assigned or changed
+            $clientChanged = $task->wasChanged('client_id');
             $agentWasAssigned = !$prevAgentId && $task->agent_id;
-            $agentWasChanged = $prevAgentId && $task->agent_id && $prevAgentId != $task->agent_id;
+            $agentWasChanged = $prevAgentId && $task->agent_id && $prevAgentId !== $task->agent_id;
 
             // Update enabled status: task must be complete AND have an agent assigned
             $shouldBeEnabled = $task->is_complete && $task->agent_id;
@@ -1540,6 +1551,20 @@ class TaskController extends Controller
                         $journalEntry->save();
                     }
                 });
+            }
+
+            if (strtolower($task->status) === 'issued' && ($agentWasChanged || $clientChanged)) {
+                $children = Task::where('original_task_id', $task->id)->get();
+    
+                foreach ($children as $child) {
+                    if ($agentWasChanged)  $child->agent_id  = $task->agent_id;
+                    if ($clientChanged) $child->client_id = $task->client_id;
+                    $child->save();
+
+                    if ($agentWasChanged) {
+                        $this->updateJournalEntriesBranch($child);
+                    }
+                }
             }
 
             DB::commit();

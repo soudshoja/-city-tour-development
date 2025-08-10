@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('accounts', function (Blueprint $table) {
-            $table->enum('account_dimension', ['service', 'payment', 'both'])->default('both');
+            $table->enum('account_dimension', ['service', 'payment', 'both'])->after('account_type')->default('both');
         });
     }
 

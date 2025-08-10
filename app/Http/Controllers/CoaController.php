@@ -217,8 +217,10 @@ class CoaController extends Controller
 
             if ($debitCreditType == 'normal') {
                 $account->balance = bcsub($totalDebit, $totalCredit, 2);
+                $account->excluded_payment_balance = bcsub($excludedPaymentDebit, $excludedPaymentCredit, 2);
             } else if ($debitCreditType == 'reverse') {
                 $account->balance = bcsub($totalCredit, $totalDebit, 2);
+                $account->excluded_payment_balance = bcsub($excludedPaymentCredit, $excludedPaymentDebit, 2);
             } else {
                 throw new Exception('Invalid debitCreditType');
             }

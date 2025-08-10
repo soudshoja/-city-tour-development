@@ -42,7 +42,7 @@ class InvoiceController extends Controller
     use NotificationTrait;
     use NotificationTrait;
 
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $companiesId = [];
@@ -79,31 +79,55 @@ class InvoiceController extends Controller
         if (!in_array($sortOrder, ['asc', 'desc'])) {
             $sortOrder = 'desc';
         }
+
         $invoices = Invoice::with([
             'agent.branch',
             'invoiceDetails.task.supplier',
             // 'invoiceDetails.task.hotelDetails.room', 
             'client'
-        ])
-            ->orderBy('created_at', 'desc')
-            ->whereIn('agent_id', $agentIds)
+        ]);
+
+        if($request->has('search')){
+            $search = $request->input('search');
+            $invoices = $invoices->where(function($query) use ($search) {
+                $query->where('invoice_number', 'like', "%{$search}%")
+                      ->orWhere('status', "$search")
+                      ->orWhere('currency', 'like', "%{$search}%")
+                      ->orWhere('payment_type', 'like', "%{$search}%")
+                      ->orWhere('amount', 'like', "%{$search}%")
+                      ->orWhere('sub_amount', 'like', "%{$search}%")
+                      ->orWhere('tax', 'like', "%{$search}%")
+                      ->orWhere('invoice_date', 'like', "%{$search}%")
+                      ->orWhere('due_date', 'like', "%{$search}%")
+                      ->orWhere('paid_date', 'like', "%{$search}%")
+                      ->orWhereHas('client', function($q) use ($search) {
+                          $q->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('agent', function($q) use ($search) {
+                          $q->where('name', 'like', "%{$search}%");
+                      });
+            });
+        }
+
+        $invoices = $invoices->whereIn('agent_id', $agentIds)
             ->whereHas('agent.branch', function ($query) use ($companiesId) {
                 $query->whereIn('company_id', $companiesId);
-            })
-            ->orderBy($sortBy, $sortOrder) // 👈 Use dynamic sorting
-            ->paginate(500);
+            });
 
-        // Get clients related to the agents
+        $totalInvoices = $invoices->count();
+
+        $invoices = $invoices->orderBy($sortBy, $sortOrder) // 👈 Use dynamic sorting
+            ->paginate(20)
+            ->withQueryString();
+        
         $clients = Client::whereIn('agent_id', $agentIds)->get();
-
-        // Get tasks related to the agents
         $tasks = Task::whereIn('agent_id', $agentIds)->get();
 
         $suppliers = Supplier::all();
         $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $companiesId)->get();
         $types = Task::distinct()->pluck('type');
-        $totalInvoices = $invoices->total();
-
+           
         return view('invoice.index', compact('invoices', 'types', 'suppliers', 'branches', 'agents', 'clients', 'tasks', 'totalInvoices'));
     }
 

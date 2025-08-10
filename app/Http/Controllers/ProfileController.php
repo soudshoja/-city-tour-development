@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use App\Models\User;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\Branch;
@@ -23,6 +24,7 @@ use App\Models\JournalEntry;
 use App\Models\InvoiceDetail;
 use Carbon\Carbon;
 use App\Http\Controllers\AgentController;
+use Intervention\Image\Drivers\Gd\Modifiers\DrawEllipseModifier;
 
 class ProfileController extends Controller
 {
@@ -109,37 +111,143 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {   
-        Log::info('Updated bank ID:', ['acc_bank_id' => $request->input('acc_bank_id')]);
-
         $user = $request->user();
-        $user->fill($request->validated());
+        $originalData = $user->toArray();
         
-        $accBankId = (int) $request->input('acc_bank_id');
-
-        $accountExists = Account::where('id', $accBankId)
-            ->where('company_id', $user->company_id)  // Make sure the bank account is related to the same company
-            ->exists();
-
-        // If the account does not exist, return an error message
-        // if (!$accountExists) {
-        //     return redirect()->route('profile.edit')
-        //         ->withErrors(['acc_bank_id' => 'The selected bank account is invalid or does not belong to your company.']);
-        // }
-
-        if ($request->has('acc_bank_id')) {
-            $user->acc_bank_id = $request->input('acc_bank_id');
-        }
+        // Update user basic information
+        $user->fill($request->validated());
     
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
         }
     
+        // Save user changes first
         $user->save();
+        
+        // Update related profile information based on user role
+        if ($user->role_id){
+            try {
+                switch ($user->role_id) {
+                    case Role::COMPANY:
+                        $this->updateCompanyProfile($user, $request);
+                        break;
+
+                    case Role::BRANCH:
+                        $this->updateBranchProfile($user, $request);
+                        break;
+
+                    case Role::AGENT:
+                        $this->updateAgentProfile($user, $request);
+                        break;
+
+                    default:
+                        break;
+                }
+            } catch (\Exception $e) {
+                Log::error('Failed to update profile for user: ' . $user->id, [
+                    'error' => $e->getMessage(),
+                    'role_id' => $user->role->id
+                ]);
+                
+                return redirect()->back()->with('error', 'Failed to update profile information.');
+            }
+        }
     
-        if ($request->user()->save()) {
-            return redirect()->back()->with('success', 'Profile Successfully Updated.');
-        } else {
-            return redirect()->back()->with('error', 'Unable to update profile.');
+        return redirect()->back()->with('success', 'Profile Successfully Updated.');
+    }
+
+    /**
+     * Update company profile information
+     */
+    private function updateCompanyProfile(User $user, ProfileUpdateRequest $request): void
+    {
+        $company = Company::where('user_id', $user->id)->first();
+        
+        if ($company) {
+            $updateData = [];
+            
+            if ($request->has('name') && $request->input('name') !== $company->name) {
+                $updateData['name'] = $request->input('name');
+            }
+            
+            if ($request->has('email') && $request->input('email') !== $company->email) {
+                $updateData['email'] = $request->input('email');
+            }
+            
+            if ($request->has('phone') && $request->input('phone') !== $company->phone) {
+                $updateData['phone'] = $request->input('phone');
+            }
+            
+            if ($request->has('address') && $request->input('address') !== $company->address) {
+                $updateData['address'] = $request->input('address');
+            }
+            
+            if (!empty($updateData)) {
+                $company->update($updateData);
+                Log::info('Company profile updated', ['company_id' => $company->id, 'updates' => $updateData]);
+            }
+        }
+    }
+
+    /**
+     * Update branch profile information
+     */
+    private function updateBranchProfile(User $user, ProfileUpdateRequest $request): void
+    {
+        $branch = Branch::where('user_id', $user->id)->first();
+        
+        if ($branch) {
+            $updateData = [];
+            
+            if ($request->has('name') && $request->input('name') !== $branch->name) {
+                $updateData['name'] = $request->input('name');
+            }
+            
+            if ($request->has('email') && $request->input('email') !== $branch->email) {
+                $updateData['email'] = $request->input('email');
+            }
+            
+            if ($request->has('phone') && $request->input('phone') !== $branch->phone) {
+                $updateData['phone'] = $request->input('phone');
+            }
+            
+            if ($request->has('address') && $request->input('address') !== $branch->address) {
+                $updateData['address'] = $request->input('address');
+            }
+            
+            if (!empty($updateData)) {
+                $branch->update($updateData);
+                Log::info('Branch profile updated', ['branch_id' => $branch->id, 'updates' => $updateData]);
+            }
+        }
+    }
+
+    /**
+     * Update agent profile information
+     */
+    private function updateAgentProfile(User $user, ProfileUpdateRequest $request): void
+    {
+        $agent = Agent::where('user_id', $user->id)->first();
+        
+        if ($agent) {
+            $updateData = [];
+            
+            if ($request->has('name') && $request->input('name') !== $agent->name) {
+                $updateData['name'] = $request->input('name');
+            }
+            
+            if ($request->has('email') && $request->input('email') !== $agent->email) {
+                $updateData['email'] = $request->input('email');
+            }
+            
+            if ($request->has('phone') && $request->input('phone') !== $agent->phone_number) {
+                $updateData['phone_number'] = $request->input('phone');
+            }
+            
+            if (!empty($updateData)) {
+                $agent->update($updateData);
+                Log::info('Agent profile updated', ['agent_id' => $agent->id, 'updates' => $updateData]);
+            }
         }
     }
     

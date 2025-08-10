@@ -90,11 +90,12 @@
                     <div>
                         <label for="method" class="block text-gray-700 font-semibold mb-2">Refund Method</label>
                         <select name="method" id="method" 
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300" required>
                             <option value="">Select</option>
                             <option value="Cash" {{ old('method') == 'Cash' ? 'selected' : '' }}>Cash</option>
                             <option value="Bank" {{ old('method') == 'Bank' ? 'selected' : '' }}>Bank</option>
                             <option value="Online" {{ old('method') == 'Online' ? 'selected' : '' }}>Online</option>
+                            <option value="Credit" {{ old('method') == 'Credit' ? 'selected' : '' }}>{{ $tasks->client->name . ' Credit' }}</option>
                         </select>
                         @error('method')
                         <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -123,7 +124,7 @@
                 <!-- Reference - Full Width -->
                 <div class="mb-6">
                     <label for="reference" class="block text-gray-700 font-semibold mb-2">Reference</label>
-                    <input required type="text" name="reference" id="reference"
+                    <input type="text" name="reference" id="reference"
                         value="{{ old('reference', $refund->reference ?? '') }}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                 </div>
@@ -315,7 +316,7 @@
     <!-- Reason -->
     <div class="mt-6">
         <label for="reason" class="block text-gray-700 font-semibold mb-2">Reason</label>
-        <textarea required name="reason" id="reason" rows="3"
+        <textarea name="reason" id="reason" rows="3"
             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">{{ old('reason') }}</textarea>
         @error('reason')
         <span class="text-red-500 text-sm">{{ $message }}</span>

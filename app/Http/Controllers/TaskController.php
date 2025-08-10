@@ -195,16 +195,16 @@ class TaskController extends Controller
                     if ($agentId) $task->agent_id = $agentId;
                     if ($paymentMethodId) $task->payment_method_account_id = $paymentMethodId;
                     
-                    if ($task->is_complete && $task->agent_id && $task->client) {
+                    if ($task->is_complete && $task->agent && $task->client) {
                         $journalEntries = JournalEntry::where('task_id', $task->id)->exists();
                         if (!$journalEntries) {
                             try {
                                 $this->processTaskFinancial($task);
+                                $task->enabled = true;
                             } catch (\Exception $e) {
                                 Log::error('Failed to process task financial: ' . $e->getMessage());
                             }
                         }
-                        $task->enabled = true;
                     }
                     $task->save();
                 }

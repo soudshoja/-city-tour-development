@@ -149,6 +149,10 @@ class CoaController extends Controller
         $totalDebit = 0;
         $totalCredit = 0;
         $originalCurrencyTotals = []; // Track totals by original currency
+        
+        // Track excluded amounts separately for reporting purposes
+        $excludedPaymentDebit = 0;
+        $excludedPaymentCredit = 0;
 
         if ($childAccounts->isNotEmpty()) {
             $account->childAccounts = $childAccounts;
@@ -156,14 +160,34 @@ class CoaController extends Controller
             foreach ($childAccounts as $child) {
                 $this->childAccount($child, $debitCreditType); // Recursively get child accounts
 
-                // Sum up the debit and credit from child accounts (always in KWD)
-                $totalDebit += $child->debit ?? 0;
-                $totalCredit += $child->credit ?? 0;
+                // Account dimension inclusion logic:
+                // - 'both': Always included in parent totals (traditional accounts)
+                // - 'service': Include in parent totals (service consumption affects expenses)
+                // - 'payment': Exclude from parent totals (prevents double-counting liabilities)
+                if (($child->account_dimension ?? 'both') !== 'payment') {
+                    $totalDebit += $child->debit ?? 0;
+                    $totalCredit += $child->credit ?? 0;
+                } else {
+                    // Store separate tracking for payment accounts (excluded from parent)
+                    $child->excluded_from_parent = true;
+                    
+                    // Track excluded payment amounts for reporting
+                    $excludedPaymentDebit += $child->debit ?? 0;
+                    $excludedPaymentCredit += $child->credit ?? 0;
+                }
+
+                // Also accumulate excluded amounts from deeper levels (grandchildren, etc.)
+                if (isset($child->excluded_payment_debit) && $child->excluded_payment_debit > 0) {
+                    $excludedPaymentDebit += $child->excluded_payment_debit;
+                }
+                if (isset($child->excluded_payment_credit) && $child->excluded_payment_credit > 0) {
+                    $excludedPaymentCredit += $child->excluded_payment_credit;
+                }
 
                 // Aggregate original currency totals if child has them
                 if (isset($child->original_currency) && $child->original_currency !== 'KWD') {
                     $currency = $child->original_currency;
-                    
+
                     if (!isset($originalCurrencyTotals[$currency])) {
                         $originalCurrencyTotals[$currency] = [
                             'debit' => 0,
@@ -171,7 +195,7 @@ class CoaController extends Controller
                             'balance' => 0
                         ];
                     }
-                    
+
                     $originalCurrencyTotals[$currency]['debit'] += $child->original_debit ?? 0;
                     $originalCurrencyTotals[$currency]['credit'] += $child->original_credit ?? 0;
                     $originalCurrencyTotals[$currency]['balance'] += $child->original_balance ?? 0;
@@ -181,6 +205,10 @@ class CoaController extends Controller
             // Assign the summed debit and credit to the parent account (in KWD)
             $account->debit = (string)$totalDebit;
             $account->credit = (string)$totalCredit;
+
+            // Store excluded amounts for display purposes (only payment accounts excluded)
+            $account->excluded_payment_debit = (string)$excludedPaymentDebit;
+            $account->excluded_payment_credit = (string)$excludedPaymentCredit;
 
             // Store original currency totals if any exist
             if (!empty($originalCurrencyTotals)) {
@@ -199,13 +227,13 @@ class CoaController extends Controller
             $journalEntries = JournalEntry::with('transaction')->where('account_id', $account->id)->get();
 
             // Handle currency conversion if account currency is not KWD
-            if($account->currency !== null && $account->currency !== 'KWD') {
+            if ($account->currency !== null && $account->currency !== 'KWD') {
                 // Calculate original currency totals from journal entries that have original_currency data
                 $originalDebit = $journalEntries->whereNotNull('original_currency')
                     ->where('original_currency', $account->currency)
                     ->where('debit', '>', 0)
                     ->sum('original_amount');
-                
+
                 $originalCredit = $journalEntries->whereNotNull('original_currency')
                     ->where('original_currency', $account->currency)
                     ->where('credit', '>', 0)
@@ -219,14 +247,13 @@ class CoaController extends Controller
                 $account->original_currency = $account->currency;
                 $account->original_debit = (string)$originalDebit;
                 $account->original_credit = (string)$originalCredit;
-                $account->original_balance = $debitCreditType == 'normal' 
+                $account->original_balance = $debitCreditType == 'normal'
                     ? bcsub($originalDebit, $originalCredit, 2)
                     : bcsub($originalCredit, $originalDebit, 2);
 
                 // Use KWD converted amounts for main calculations
                 $debit = $kwdDebit;
                 $credit = $kwdCredit;
-                
             } else {
                 // For KWD accounts, use regular calculation
                 $debit = $journalEntries->sum('debit');
@@ -245,6 +272,23 @@ class CoaController extends Controller
             $account->journalEntries = $journalEntries; // Attach journal entries to the account
             $account->ledger = true;
         }
+
+        // Only calculate dimensional data if specifically requested
+        // For basic COA display, skip these expensive calculations
+        // if($reportDimension === 'service'){
+        //     $serviceTotal = $this->calculateServiceDimension($account);
+        //     $account->service_total = $serviceTotal;
+        // }
+
+        // if($reportDimension === 'payment'){
+        //     $paymentTotal = $this->calculatePaymentDimension($account);
+        //     $account->payment_total = $paymentTotal;
+        // }
+
+        // // Only get linked accounts if we're doing dimensional reporting
+        // if($reportDimension !== 'both'){
+        //     $account->linked_accounts = $this->getLinkedAccounts($account);
+        // }
 
         return $account; // Return the account with its childAccounts populated
     }
@@ -427,111 +471,10 @@ class CoaController extends Controller
         return view('coa.payment', compact('company', 'voucherNumber'));
     }
 
-
     private function generateVoucherNumber($sequence)
     {
         $year = now()->year;
         return sprintf('VOU-%s-%05d', $year, $sequence);
-    }
-
-    public function getLevel1Accounts(Request $request)
-    {
-
-        $user = Auth::user();
-        $company = Company::where('user_id', $user->id)->first();
-
-        // Ensure the company exists
-        if (!$company) {
-            return response()->json(['error' => 'Company not found.'], 404);
-        }
-
-
-        // Fetch Level 1 accounts, assuming 'level' field defines the hierarchy level
-        $accounts = Account::where('level', 1)
-            ->whereNull('parent_id')
-            ->where('company_id', $company->id)
-            ->get(['id', 'name']); // Return only necessary fields (id, name)
-
-        return response()->json($accounts);
-    }
-
-    // Get child accounts (Level 2) based on Level 1 selection
-    public function getLevel2Accounts($level1Id)
-    {
-
-        $user = Auth::user();
-        $company = Company::where('user_id', $user->id)->first();
-
-        // Ensure the company exists
-        if (!$company) {
-            return response()->json(['error' => 'Company not found.'], 404);
-        }
-
-
-        // Fetch child accounts for Level 1 selection
-        $accounts = Account::where('parent_id', $level1Id)
-            ->where('company_id', $company->id)
-            ->get(['id', 'name']);
-
-        return response()->json($accounts);
-    }
-
-    // Get child accounts (Level 3) based on Level 2 selection
-    public function getLevel3Accounts($level2Id)
-    {
-
-        $user = Auth::user();
-        $company = Company::where('user_id', $user->id)->first();
-
-        // Ensure the company exists
-        if (!$company) {
-            return response()->json(['error' => 'Company not found.'], 404);
-        }
-
-
-        // Fetch child accounts for Level 2 selection
-        $accounts = Account::where('parent_id', $level2Id)
-            ->where('company_id', $company->id)
-            ->get(['id', 'name']);
-
-        return response()->json($accounts);
-    }
-
-    public function getLevel4Accounts($level3Id)
-    {
-
-        $user = Auth::user();
-        $company = Company::where('user_id', $user->id)->first();
-
-        // Ensure the company exists
-        if (!$company) {
-            return response()->json(['error' => 'Company not found.'], 404);
-        }
-
-
-        $accounts = Account::where('parent_id', $level3Id)
-            ->where('company_id', $company->id)
-            ->get(['id', 'name', 'actual_balance']);
-
-        return response()->json($accounts);
-    }
-
-    public function getTransactionsByLevel4(Request $request)
-    {
-        $user = Auth::user();
-        $company = Company::where('user_id', $user->id)->first();
-
-        // Ensure the company exists
-        if (!$company) {
-            return response()->json(['error' => 'Company not found.'], 404);
-        }
-
-        $level4Id = $request->query('level4_id');
-
-        // Fetch transactions where account_id matches the selected Level 4 ID
-        $transactions = JournalEntry::where('account_id', $level4Id)->get();
-
-        return response()->json($transactions);
     }
 
     public function submitVoucher(Request $request)

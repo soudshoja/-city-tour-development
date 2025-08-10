@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\CurrencyExchangeTrait;
 use App\Models\Company;
 use App\Models\CurrencyExchange;
 use App\Models\SystemExchangeRate;
@@ -10,9 +11,13 @@ use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use App\Models\ExchangeRateHistory;
+use Illuminate\Http\JsonResponse;
 
 class CurrencyExchangeController extends Controller
 {
+     use CurrencyExchangeTrait {
+        convert as convertCurrencies; // alias the TRAIT method
+    }
     public function index()
     {
         $currencyExchanges = CurrencyExchange::orderBy('company_id', 'asc')->get();
@@ -226,5 +231,33 @@ class CurrencyExchangeController extends Controller
             ->get();
 
         return view('currency-exchange.all-histories', compact('currencyExchanges'));
+    }
+
+    public function convert(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'company_id'    => ['nullable', 'integer'],
+            'from_currency' => ['required', 'string', 'size:3'],
+            'to_currency'   => ['required', 'string', 'size:3'],
+            'amount'        => ['required', 'numeric'],
+        ]);
+
+        $companyId = (int) ($data['company_id'] ?? 1); // default to 1
+
+        $result = $this->convertCurrencies(
+            $companyId,                                    // <- companyId (default 1)
+            strtoupper($data['from_currency']),            // <- from
+            strtoupper($data['to_currency']),              // <- to
+            (float) $data['amount']                         // <- amount
+        );
+
+        $inverse = $result['exchange_rate'] > 0 ? round(1 / $result['exchange_rate'], 6) : null;
+        
+        return response()->json([
+            'ok'               => true,
+            'exchange_rate'    => $result['exchange_rate'],
+            'converted_amount' => $result['converted_amount'],
+            'inverse_rate'     => $inverse,
+        ]);
     }
 }

@@ -152,19 +152,20 @@
 
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Amount:</span>
-                    <span>{{ number_format($payment->amount, 2) }}</span>
+                    <!--  <span>{{ number_format($payment->amount, 2) }}</span> -->
+                    <span>{{ number_format($finalAmount, 2) }} {{ $payment->currency }}</span>
                 </div>
 
                 <!-- @if ($serviceCharge > 0)
-        <tr>
-            <td class="py-1 px-4">
-                <div class="ml-5">Service Charge</div>
-            </td>
-            <td class="py-1 px-4 text-right">
-                {{ number_format($serviceCharge, 2) }} {{ $payment->currency }}
-            </td>
-        </tr>
-        @endif -->
+                <tr>
+                    <td class="py-1 px-4">
+                        <div class="ml-5">Service Charge</div>
+                    </td>
+                    <td class="py-1 px-4 text-right">
+                        {{ number_format($serviceCharge, 2) }} {{ $payment->currency }}
+                    </td>
+                </tr>
+                @endif -->
 
                 <div class="flex justify-between items-center py-2 font-bold text-gray-800">
                     <span>Total:</span>

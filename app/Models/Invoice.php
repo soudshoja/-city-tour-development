@@ -72,5 +72,10 @@ class Invoice extends Model
         return $this->hasMany(Transaction::class);
     }
 
-
+    public function recalculateTotal()
+    {
+        $this->amount = $this->invoiceDetails()->sum('task_price');
+        $this->sub_amount = $this->invoiceDetails()->sum('task_price');
+        $this->save();
+    }
 }

@@ -241,12 +241,12 @@
                                 <form action="{{ route('payment.link.import-fatoorah.payment') }}" method="POST" class="space-y-4">
                                     @csrf
                                     <div>
-                                        <label for="import_payment_id" class="block text-sm font-medium text-gray-700 mb-1">
-                                            Existing Payment ID
+                                        <label for="import_invoice_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                            Existing Invoice ID
                                         </label>
-                                        <input type="text" name="import_payment_id" id="import_payment_id"
+                                        <input type="text" name="import_invoice_id" id="import_invoice_id"
                                             class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                            placeholder="Enter payment ID" required>
+                                            placeholder="Enter invoice ID" required>
                                     </div>
 
                                     <div class="flex justify-between pt-4 mt-4">

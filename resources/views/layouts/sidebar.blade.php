@@ -1,7 +1,7 @@
 <div class="space-y-4 my-5 mt-3">
     <div class="flex flex-col justify-between items-center space-y-48">
         <div class="flex flex-col justify-between items-center space-y-4 mt-5">
-          
+
             <!-- <div data-tooltip="Quick Actions" class="flex flex-col items-center heartbeat-container">
                 
                 <div class="relative">
@@ -40,7 +40,7 @@
                 <a href="{{ route('users.create') }}">
                     <div class="relative ">
                         <div data-tooltip="Add new user"
-                            class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200"> 
+                            class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
                             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                 <g fill="none" fill-rule="evenodd">
                                     <path d="m12.594 23.258l-.012.002l-.071.035l-.02.004l-.014-.004l-.071-.036q-.016-.004-.024.006l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.016-.018m.264-.113l-.014.002l-.184.093l-.01.01l-.003.011l.018.43l.005.012l.008.008l.201.092q.019.005.029-.008l.004-.014l-.034-.614q-.005-.019-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.003-.011l.018-.43l-.003-.012l-.01-.01z" />
@@ -59,10 +59,10 @@
                     href="{{ route('invoices.create') }}">
 
                     <div class="relative">
-                        
+
                         <div data-tooltip="Create Invoice"
                             class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
-                            
+
                             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                 <path fill="currentColor" d="M4 5.25A2.25 2.25 0 0 1 6.25 3h9.5A2.25 2.25 0 0 1 18 5.25V14h4v3.75A3.25 3.25 0 0 1 18.75 21h-6.772c.297-.463.536-.966.709-1.5H16.5V5.25a.75.75 0 0 0-.75-.75h-9.5a.75.75 0 0 0-.75.75v5.826a6.5 6.5 0 0 0-1.5.422zm9.75 7.25h-3.096a6.5 6.5 0 0 0-2.833-1.366A.75.75 0 0 1 8.25 11h5.5a.75.75 0 0 1 0 1.5m4.25 7h.75a1.75 1.75 0 0 0 1.75-1.75V15.5H18zM8.25 7a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5zM12 17.5a5.5 5.5 0 1 0-11 0a5.5 5.5 0 0 0 11 0M7 18l.001 2.503a.5.5 0 1 1-1 0V18H3.496a.5.5 0 0 1 0-1H6v-2.5a.5.5 0 1 1 1 0V17h2.497a.5.5 0 0 1 0 1z" />
                             </svg>
@@ -72,18 +72,155 @@
                 </a>
             </div>
 
+            <div class="flex flex-col items-center"
+                x-data="currencyConverter({ companyId: window.APP_COMPANY_ID, convertUrl: '{{ route('exchange.convert') }}'})">
+
+                <!-- Trigger Button -->
+                <button @click="showModal = true">
+                    <div class="relative">
+                        <div data-tooltip="Currency Exchange"
+                            class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M8 15c0 2 2 3 4 3s4-1 4-3-2-3-4-3-4-1-4-3 2-3 4-3 4 1 4 3" />
+                                <path d="M12 6v12" />
+                            </svg>
+                        </div>
+                    </div>
+                </button>
+
+                <!-- Modal -->
+                <div x-cloak x-show="showModal" x-trap="showModal" @click.self="showModal = false"
+                    class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
+
+                    <div class="bg-white rounded-lg p-6 w-[1680px] max-w-[95vw] shadow-xl overflow-y-auto" style="max-height: 120vh;">
+                        <div class="flex items-center justify-between mb-6">
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-800">Currency Exchange</h2>
+                                <p class="text-gray-600 italic text-xs mt-1">Perform quick currency conversions with saved exchange rates</p>
+                            </div>
+                            <button @click="showModal = false" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">&times;</button>
+                        </div>
+
+                        <div class="space-y-6">
+                            <!-- Amount -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Amount</label>
+                                <input type="text" step="0.01" x-model.number="amount"
+                                    @input.debounce.400ms="convertIfReady"
+                                    class="w-full border border-gray-300 rounded-md px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                            </div>
+
+                            @php
+                            // Collect all unique ISO codes from both columns
+                            $base = App\Models\CurrencyExchange::pluck('base_currency')
+                            ->filter()->map(fn($c) => strtoupper($c))->unique()->values();
+
+                            $exchange = App\Models\CurrencyExchange::pluck('exchange_currency')
+                            ->filter()->map(fn($c) => strtoupper($c))->unique()->values();
+
+                            $allIso = $base->merge($exchange)->unique()->sort()->values();
+
+                            // Pull name + symbol for display
+                            $currencies = App\Models\Currency::whereIn('iso_code', $allIso)
+                            ->get(['iso_code','name','symbol'])
+                            ->keyBy('iso_code'); // ['KWD' => {iso_code,name,symbol}, ...]
+                            @endphp
+
+                            <div class="flex items-center justify-between space-x-4">
+                                <!-- From -->
+                                <div class="w-full border rounded-lg p-4 flex items-center justify-between">
+                                    <div class="relative w-full">
+                                        <p class="text-sm text-gray-500">From</p>
+                                        <select id="fromSelect"
+                                            x-model="from"
+                                            @change="convertIfReady"
+                                            class="w-full font-semibold border-none focus:ring-0 p-0 bg-transparent appearance-none pr-8">
+                                            @foreach($allIso as $code)
+                                            @php
+                                            $c = $currencies[$code] ?? null;
+                                            $label = trim(($c->symbol ?? '').' '.$code.' '.($c->name ?? ''));
+                                            @endphp
+                                            <option value="{{ $code }}">{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Swap -->
+                                <button type="button" @click="swap(); convertIfReady()" class="rounded-full border p-2 bg-white shadow" title="Swap">
+                                    <img src="{{ asset('images/swap-currency.png') }}" alt="Swap" class="w-full h-full">
+                                </button>
+
+                                <!-- To -->
+                                <div class="w-full border rounded-lg p-4 flex items-center justify-between">
+                                    <div class="relative w-full">
+                                        <p class="text-sm text-gray-500">To</p>
+                                        <select id="toSelect"
+                                            x-model="to"
+                                            @change="convertIfReady"
+                                            class="w-full font-semibold border-none focus:ring-0 p-0 bg-transparent appearance-none pr-8">
+                                            @foreach($allIso as $code)
+                                            @php
+                                            $c = $currencies[$code] ?? null;
+                                            $label = trim(($c->symbol ?? '').' '.$code.' '.($c->name ?? ''));
+                                            @endphp
+                                            <option value="{{ $code }}">{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Result -->
+                            <template x-if="ready">
+                                <div class="text-center mt-10">
+                                    <p class="text-sm text-gray-600" x-text="`${format(amount)} ${from} =`"></p>
+                                    <p class="text-4xl font-bold text-blue-800">
+                                        <span x-text="format(converted)"></span>
+                                        <span class="font-medium text-blue-800" x-text="to"></span>
+                                    </p>
+                                    <div class="text-sm text-gray-500 mt-2">
+                                        <p x-text="`1 ${from} = ${parseFloat(rate).toFixed(4)} ${to}`"></p>
+                                        <p x-text="`1 ${to} = ${parseFloat(inverse).toFixed(4)} ${from}`"></p>
+                                    </div>
+                                    <p class="text-xs text-gray-400 mt-5" x-text="lastUpdated"></p>
+                                </div>
+                            </template>
+
+                            <!-- (Button kept but hidden; remove if you prefer) -->
+                            <div class="flex items-center justify-end gap-2" x-show="false">
+                                <button type="button" @click="convert()" class="px-4 py-2 bg-blue-600 text-white rounded-full shadow-md hover:bg-blue-700">
+                                    Convert
+                                </button>
+                            </div>
+
+                            <!-- Error -->
+                            <template x-if="error">
+                                <div class="flex justify-center mt-2">
+                                    <div
+                                        class="border border-red-500 bg-red-50 text-red-700 text-sm px-3 py-2 rounded max-w-lg overflow-hidden text-ellipsis whitespace-nowrap"
+                                        x-text="error">
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <div class="flex flex-col justify-between items-center space-y-4">
-            
+
             <div id="themeToggle" data-tooltip="switch theme">
-                
+
                 <button id="themeButton" class="p-3 rounded-full shadow-md flex items-center justify-center bg-black hover:bg-gray-700 dark:bg-gray-600  dark:hover:bg-gray-900/50 transition-all duration-200">
-                    
+
                     <svg id="lightSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                         <path fill="#fff" d="M12 15q1.25 0 2.125-.875T15 12t-.875-2.125T12 9t-2.125.875T9 12t.875 2.125T12 15m0 2q-2.075 0-3.537-1.463T7 12t1.463-3.537T12 7t3.538 1.463T17 12t-1.463 3.538T12 17m-7-4H1v-2h4zm18 0h-4v-2h4zM11 5V1h2v4zm0 18v-4h2v4zM6.4 7.75L3.875 5.325L5.3 3.85l2.4 2.5zm12.3 12.4l-2.425-2.525L17.6 16.25l2.525 2.425zM16.25 6.4l2.425-2.525L20.15 5.3l-2.5 2.4zM3.85 18.7l2.525-2.425L7.75 17.6l-2.425 2.525zM12 12" />
                     </svg>
-                    
+
                     <svg id="darkSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                         style="display: none;">
                         <path fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 21a9 9 0 0 0 8.997-9.252a7 7 0 0 1-10.371-8.643A9 9 0 0 0 12 21" />
@@ -100,3 +237,102 @@
 
 
 </div>
+<script>
+    function currencyConverter({
+        companyId,
+        convertUrl
+    }) {
+        return {
+            showModal: false,
+
+            // config
+            companyId,
+            convertUrl,
+
+            // state
+            amount: null,
+            from: null,
+            to: null,
+            rate: null,
+            inverse: null,
+            converted: null,
+            ready: false,
+            error: null,
+            lastUpdated: '',
+
+            init() {
+                this.$nextTick(() => {
+                    if (!this.from) this.from = this._selectValue('#fromSelect');
+                    if (!this.to) this.to = this._selectValue('#toSelect');
+                    this.convertIfReady();
+                });
+            },
+
+            _selectValue(sel) {
+                const el = this.$root.querySelector(sel);
+                return el ? el.value : null;
+            },
+
+            format(n) {
+                return Number(n ?? 0).toLocaleString(undefined, {
+                    maximumFractionDigits: 6
+                });
+            },
+
+            swap() {
+                const tmp = this.from;
+                this.from = this.to;
+                this.to = tmp;
+                this.ready = false;
+            },
+
+            convertIfReady() {
+                const validAmt = typeof this.amount === 'number' ? this.amount : Number(this.amount);
+                if (validAmt > 0 && this.from && this.to) {
+                    this.convert();
+                } else {
+                    this.ready = false;
+                }
+            },
+
+            async convert() {
+                this.error = null;
+                this.ready = false;
+
+                try {
+                    const res = await fetch(this.convertUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            company_id: this.companyId,
+                            from_currency: this.from,
+                            to_currency: this.to,
+                            amount: Number(this.amount),
+                        })
+                    });
+
+                    const text = await res.text();
+                    if (!res.ok) throw new Error(`Server error ${res.status}: ${text.slice(0, 200)}...`);
+
+                    const data = JSON.parse(text);
+                    if (!data.ok) throw new Error(data.error || 'Conversion failed');
+
+                    this.rate = this.format(data.exchange_rate);
+                    this.inverse = data.inverse_rate ? this.format(data.inverse_rate) : null;
+                    this.converted = data.converted_amount;
+                    this.ready = true;
+
+                    const now = new Date();
+                    this.lastUpdated = `Last updated ${now.toLocaleString()}`;
+                } catch (e) {
+                    this.error = e.message || 'Failed to convert.';
+                    console.error(e);
+                }
+            }
+        }
+    }
+</script>

@@ -66,41 +66,47 @@
     <div class="tableCon">
         <div class="content-70">
             <!-- Table  -->
-            <div class="panel oxShadow rounded-lg">
-                <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
-                    <!--  search icon -->
+            <div class="panel BoxShadow rounded-lg">
+                 <form class="flex justify-between items-center gap-2 max-w-160" action="{{ route('invoices.index') }}" method="GET">
+                    @csrf
                     <div class="relative w-full">
-                        <!-- Search Input -->
-                        <input type="text" placeholder="Find fast and search here..."
-                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                            id="searchInput">
+                        <input type="text" name="search" value="{{ request('search') }}"
+                            id="search-client"
+                            placeholder=""
+                            oninput=""
+                            class="block px-3 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-transparent border-b-2 border-gray-300 appearance-none
+                                    dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer rounded-full" />
 
-                        <!-- Search Button with SVG Icon -->
-                        <button type="button"
-                            class="btn DarkBGcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
-                            id="searchButton">
-                            <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5"
-                                    opacity="0.5"></circle>
-                                <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round">
-                                </path>
-                            </svg>
-                        </button>
+                        <label for="search-client"
+                            class="absolute text-md text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
+                                    bg-white dark:bg-gray-900 px-2 peer-focus:text-blue-600 peer-focus:dark:text-blue-500
+                                    peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2
+                                    peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">
+                            Quick search for client
+                        </label>
                     </div>
+                    <button type="submit"
+                        class="DarkBGcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 flex items-center justify-center h-10 w-12 rounded-full p-0">
+                        <svg class="mx-auto" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5"
+                                opacity="0.5" class="dark:stroke-gray-300"></circle>
+                            <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"
+                                class="dark:stroke-gray-300"></path>
+                        </svg>
+                    </button>
+                    @if(request('search'))
+                    <button type="button" id="resetSearch"
+                        class="bg-red-600 dark:!bg-gray-700 dark:!hover:bg-gray-600 flex items-center justify-center h-10 w-12 rounded-full p-0">
+                        <svg class="mx-auto" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 18L18 6M6 6L18 18" stroke="#fff" stroke-width="1.5"
+                                class="dark:stroke-gray-300"></path>
+                        </svg>
+                    </button>
+                    @endif
+                </form>
 
-                    <!-- ./search icon -->
-                    <div class="flex customCenter gap-5 w-full justify-end">
-                        <button id="toggleFilters"
-                            class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
-                            <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                                <path fill="#333333"
-                                    d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
-                            </svg>
-                            <span class="text-xs md:text-sm dark:text-black">Filters</span>
-                        </button>
-                    </div>
-                </div>
 
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
@@ -121,69 +127,63 @@
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Invoice Number</th>
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Agent name</th>
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Client name</th>
-                                    <th class="p-3 text-center text-md font-bold text-gray-500">Status</th>                                    
+                                    <th class="p-3 text-center text-md font-bold text-gray-500">Status</th>
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Payment Type</th>
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Amount</th>
-<th>
-    <a href="{{ request()->fullUrlWithQuery([
-        'sortBy' => 'created_at',
-        'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
-    ]) }}" 
-       class="flex items-center gap-2 p-3  text-md font-bold text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
-        Created Date
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery([
+                                            'sortBy' => 'created_at',
+                                            'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+                                        ]) }}"
+                                            class="flex items-center gap-2 p-3  text-md font-bold text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                            Created Date
 
-        {{-- Neutral icon when not sorted --}}
-        @if(request('sortBy') !== 'created_at')
-            <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200" 
-                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6"/>
-            </svg>
-        @else
-            {{-- Sorting direction icon --}}
-            <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200" 
-                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                @if(request('sortOrder', 'desc') === 'asc')
-                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
-                @else
-                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
-                @endif
-            </svg>
-        @endif
-    </a>
-</th>
+                                            {{-- Neutral icon when not sorted --}}
+                                            @if(request('sortBy') !== 'created_at')
+                                            <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
+                                                fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
+                                            </svg>
+                                            @else
+                                            {{-- Sorting direction icon --}}
+                                            <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
+                                                fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                                @if(request('sortOrder', 'desc') === 'asc')
+                                                <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z" />
+                                                @else
+                                                <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z" />
+                                                @endif
+                                            </svg>
+                                            @endif
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ request()->fullUrlWithQuery([
+                                            'sortBy' => 'invoice_date',
+                                            'sortOrder' => (request('sortBy') === 'invoice_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+                                        ]) }}"
+                                            class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                            Invoice Date
 
-
-
-<th>
-    <a href="{{ request()->fullUrlWithQuery([
-        'sortBy' => 'invoice_date',
-        'sortOrder' => (request('sortBy') === 'invoice_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
-    ]) }}" 
-       class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
-        Invoice Date
-
-        {{-- Neutral icon when not sorted --}}
-        @if(request('sortBy') !== 'invoice_date')
-            <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200" 
-                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6"/>
-            </svg>
-        @else
-            {{-- Sorting direction icon --}}
-            <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200" 
-                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                @if(request('sortOrder', 'desc') === 'asc')
-                    <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z"/>
-                @else
-                    <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z"/>
-                @endif
-            </svg>
-        @endif
-    </a>
-</th>
-
-
-
+                                            {{-- Neutral icon when not sorted --}}
+                                            @if(request('sortBy') !== 'invoice_date')
+                                            <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
+                                                fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
+                                            </svg>
+                                            @else
+                                            {{-- Sorting direction icon --}}
+                                            <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
+                                                fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                                                @if(request('sortOrder', 'desc') === 'asc')
+                                                <path stroke-width="3" d="m26.71 10.29-10-10a1 1 0 0 0-1.41 0l-10 10 1.41 1.41L15 3.41V32h2V3.41l8.29 8.29z" />
+                                                @else
+                                                <path stroke-width="3" d="M26.29 20.29 18 28.59V0h-2v28.59l-8.29-8.3-1.42 1.42 10 10a1 1 0 0 0 1.41 0l10-10z" />
+                                                @endif
+                                            </svg>
+                                            @endif
+                                        </a>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -407,56 +407,144 @@
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         {{ $invoice->created_at }}
                                     </td>
-                                    
+
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         {{ $invoice->invoice_date }}
                                     </td>
-                                   
+
 
                                 </tr>
-                                {{-- @endforeach --}}
                                 @endforeach
                                 @endif
                             </tbody>
                         </table>
-
                     </div>
-                    <!-- ./table -->
-
-
-                    <!-- pagination -->
                     <div class="dataTable-bottom justify-center">
-                        <nav class="dataTable-pagination">
-                            <ul class="dataTable-pagination-list flex gap-2 mt-4">
-                                <li class="pager" id="prevPage">
-                                    <a href="#">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                            <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
-                                                stroke-linecap="round" stroke-linejoin="round"></path>
-                                            <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
-                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                                stroke-linejoin="round"></path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                <!-- Dynamic page numbers will be injected here -->
-                                <li class="pager" id="nextPage">
-                                    <a href="#">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                            <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
-                                                stroke-linecap="round" stroke-linejoin="round"></path>
-                                            <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
-                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                                stroke-linejoin="round"></path>
-                                        </svg>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
+                        <div class="flex flex-col gap-2 sm:flex-row justify-between items-center mt-4 px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-full">
+                            <!-- Showing results info -->
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mb-2 sm:mb-0">
+                                Showing {{ $invoices->firstItem() ?? 0 }} to {{ $invoices->lastItem() ?? 0 }} of {{ $invoices->total() ?? 0 }} results
+                            </div>
 
+                            <!-- Custom pagination -->
+                            @if ($invoices->hasPages())
+                            <nav class="dataTable-pagination">
+                                <ul class="dataTable-pagination-list flex gap-1">
+                                    {{-- Previous Page Link --}}
+                                    @if ($invoices->onFirstPage())
+                                    <li class="pager disabled">
+                                        <span class="flex items-center justify-center w-10 h-10 text-gray-400 cursor-not-allowed bg-gray-200 dark:bg-gray-600 rounded-full">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                                xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                                <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
+                                                    stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
+                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                                    stroke-linejoin="round"></path>
+                                            </svg>
+                                        </span>
+                                    </li>
+                                    @else
+                                    <li class="pager">
+                                        <a href="{{ $invoices->appends(request()->query())->previousPageUrl() }}"
+                                            class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                                xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                                <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
+                                                    stroke-linecap="round" stroke-linejoin="round"></path>
+                                                <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
+                                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                                    stroke-linejoin="round"></path>
+                                            </svg>
+                                        </a>
+                                    </li>
+                                    @endif
+
+                                    {{-- Pagination Elements --}}
+                                    @php
+                                    $start = max(1, $invoices->currentPage() - 2);
+                                    $end = min($invoices->lastPage(), $invoices->currentPage() + 2);
+                                    @endphp
+
+                                    @if ($start > 1)
+                                    <li class="pager">
+                                        <a href="{{ $invoices->appends(request()->query())->url(1) }}"
+                                            class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
+                                            1
+                                        </a>
+                                    </li>
+                                    @if ($start > 2)
+                                    <li class="pager">
+                                        <span class="flex items-center justify-center w-10 h-10 text-gray-500">...</span>
+                                    </li>
+                                    @endif
+                                    @endif
+
+                                    @for ($page = $start; $page <= $end; $page++)
+                                        @if ($page==$invoices->currentPage())
+                                        <li class="pager active">
+                                            <span class="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full font-semibold border border-blue-600">
+                                                {{ $page }}
+                                            </span>
+                                        </li>
+                                        @else
+                                        <li class="pager">
+                                            <a href="{{ $invoices->appends(request()->query())->url($page) }}"
+                                                class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
+                                                {{ $page }}
+                                            </a>
+                                        </li>
+                                        @endif
+                                        @endfor
+
+                                        @if ($end < $invoices->lastPage())
+                                            @if ($end < $invoices->lastPage() - 1)
+                                                <li class="pager">
+                                                    <span class="flex items-center justify-center w-10 h-10 text-gray-500">...</span>
+                                                </li>
+                                                @endif
+                                                <li class="pager">
+                                                    <a href="{{ $invoices->appends(request()->query())->url($invoices->lastPage()) }}"
+                                                        class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
+                                                        {{ $invoices->lastPage() }}
+                                                    </a>
+                                                </li>
+                                                @endif
+
+                                                {{-- Next Page Link --}}
+                                                @if ($invoices->hasMorePages())
+                                                <li class="pager">
+                                                    <a href="{{ $invoices->appends(request()->query())->nextPageUrl() }}"
+                                                        class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200">
+                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                                            xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                                            <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
+                                                                stroke-linecap="round" stroke-linejoin="round"></path>
+                                                            <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
+                                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                                                stroke-linejoin="round"></path>
+                                                        </svg>
+                                                    </a>
+                                                </li>
+                                                @else
+                                                <li class="pager disabled">
+                                                    <span class="flex items-center justify-center w-10 h-10 text-gray-400 cursor-not-allowed bg-gray-200 dark:bg-gray-600 rounded-full">
+                                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                                            xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                                            <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
+                                                                stroke-linecap="round" stroke-linejoin="round"></path>
+                                                            <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
+                                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                                                stroke-linejoin="round"></path>
+                                                        </svg>
+                                                    </span>
+                                                </li>
+                                                @endif
+                                </ul>
+                            </nav>
+                            @endif
+                        </div>
+                    </div>
                     <!-- ./pagination -->
                 </div>
             </div>
@@ -465,219 +553,7 @@
 
         </div>
         <!-- right -->
-
-        <div class="content-30 hidden" id="showRightDiv">
-            <div id="taskDetails" class="panel w-full xl:mt-0 rounded-lg h-auto"></div>
-            <div id="filterBox" class="panel w-full xl:mt-0 rounded-lg h-auto ">
-
-                <div class="flex justify-between items-center gap-5 mb-5 FiltersHeader">
-                    <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Filters</h1>
-                    <div
-                        class="filter-badge flex items-center gap-3 DarkBGcolor  
-                           FilltersAppliedPy FilltersAppliedPx  dark:bg-gray-700 dark:hover:bg-gray-600 rounded-full px-4 py-2 shadow">
-                        <span class="font-semibold">0 applied</span>
-                        <button id="clearFilters" data-tooltip="Clear Filters" class="transition">
-                            &times;
-                        </button>
-                    </div>
-                </div>
-
-                <div class="w-full mb-5">
-                    <div class="flex justify-between">
-                        <div class="flex flex-wrap gap-4">
-
-                            <div id="selected-statuses" class="flex flex-wrap gap-2">
-                                <!-- Selected statuses will appear here dynamically -->
-                            </div>
-
-                            <!-- Selected Types -->
-                            <div id="selected-types" class="flex flex-wrap gap-2">
-                                <!-- Selected types will appear here dynamically -->
-                            </div>
-
-                            <!-- Selected Suppliers -->
-                            <div id="selected-suppliers" class="flex flex-wrap gap-2">
-                                <!-- Selected suppliers will be displayed here dynamically -->
-                            </div>
-
-                            <!-- Selected Agents -->
-                            <div id="selected-agents" class="flex flex-wrap gap-2">
-                                <!-- Selected agents will be displayed here dynamically -->
-                            </div>
-
-                            <!-- Selected Branches -->
-                            <div id="selected-branches" class="flex flex-wrap gap-2">
-                                <!-- Selected branches will be displayed here dynamically -->
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex flex-col gap-5">
-                    <div class="w-full flex gap-5">
-                        <div class="w-full gap-5 space-y-8">
-
-                            <div
-                                class="bg-gray-50 dark:bg-gray-700 rounded-lg p-5 FilltersAppliedPx FilltersAppliedPy shadow-md hover:shadow-lg">
-                                <div class="flex items-center">
-                                    <input data-tooltip="filter by price" type="range" min="1"
-                                        max="1000" value="500" id="priceRange"
-                                        class="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none">
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">
-                                        <span id="ShowTaskFilters"
-                                            class="font-medium text-gray-800 dark:text-gray-100">0</span>
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- Filter by Status -->
-                            <div class="flex gap-4 items-center">
-                                <!-- Left Icon -->
-                                <div data-tooltip="Status"
-                                    class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
-                                    <!-- SVG Icon -->
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                        viewBox="0 0 12 12" class="icon">
-                                        <path fill-rule="evenodd"
-                                            d="M6 10a4 4 0 1 0 0-8a4 4 0 0 0 0 8m0 2A6 6 0 1 0 6 0a6 6 0 0 0 0 12"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                </div>
-
-
-
-                                <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
-                                    <select name="status_id" id="status_id"
-                                        class="selectize w-full appearance-none bg-transparent
-                                         outline-none cursor-pointer focus:outline-none focus:ring-0">
-                                        <option selected value="" class="">Select Status</option>
-                                        <option value="paid">Paid</option>
-                                        <option value="unpaid">Unpaid</option>
-                                    </select>
-
-                                </div>
-
-                            </div>
-
-                            <!-- Filter by Type -->
-                            <div class="flex gap-4 items-center">
-                                <!-- Left Icon -->
-                                <div data-tooltip="Type"
-                                    class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
-                                    <!-- SVG Icon -->
-                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20"
-                                        height="20" viewBox="0 0 24 24">
-                                        <path
-                                            d="M7.5 20q-1.45 0-2.475-1.025T4 16.5t1.025-2.475T7.5 13h11q1.45 0 2.475 1.025T22 16.5t-1.025 2.475T18.5 20zm-2-9q-1.45 0-2.475-1.025T2 7.5t1.025-2.475T5.5 4h11q1.45 0 2.475 1.025T20 7.5t-1.025 2.475T16.5 11z">
-                                        </path>
-                                    </svg>
-                                </div>
-
-                                <!-- Select Dropdown -->
-                                <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
-                                    <select name="type_id" id="type_id"
-                                        class="selectize w-full appearance-none bg-transparent
-                                         outline-none cursor-pointer focus:outline-none focus:ring-0">
-                                        <option selected value="" class="">Select Type</option>
-                                        @foreach ($types as $type)
-                                        <option value="{{ $type }}">{{ $type }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-
-
-                            <!-- Filter by Supplier -->
-                            <div class="flex gap-4 items-center">
-                                <!-- Left Icon -->
-                                <div data-tooltip="Supplier"
-                                    class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
-                                    <!-- SVG Icon -->
-                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20"
-                                        height="20" viewBox="0 0 24 24">
-                                        <path
-                                            d="M16.923 15.02q-.154-.59-.6-1.1q-.446-.512-1.135-.766l-6.992-2.62q-.136-.05-.27-.061t-.307-.012H7v-2.34q0-.385.177-.742q.177-.358.5-.575l4.885-3.479q.224-.159.458-.229q.234-.069.478-.069t.49.07t.45.228l4.885 3.479q.323.217.5.575T20 8.12v6.898zM14.5 8.441q.162 0 .283-.12q.12-.122.12-.284t-.12-.282q-.121-.122-.283-.122t-.283.122q-.12.121-.12.282t.12.283q.121.121.283.121m-2 0q.162 0 .283-.12q.12-.122.12-.284t-.12-.282q-.121-.122-.283-.122t-.283.122q-.12.121-.12.282t.12.283q.121.121.283.121m2 2q.162 0 .283-.12q.12-.122.12-.284t-.12-.282q-.121-.122-.283-.122t-.283.122q-.12.121-.12.282t.12.283q.121.121.283.121m-2 0q.162 0 .283-.12q.12-.122.12-.284t-.12-.282q-.121-.122-.283-.122t-.283.122q-.12.121-.12.282t.12.283q.121.121.283.121m1.01 11.23q.198.055.481.048q.284-.006.48-.06L21 19.5q0-.696-.475-1.136q-.475-.441-1.179-.441h-5.158q-.498 0-1.02-.06q-.524-.061-.977-.22l-1.572-.526q-.161-.056-.236-.211t-.025-.315q.05-.139.202-.21q.152-.072.313-.016l1.433.502q.408.146.893.217q.486.07 1.053.07h1.202q.283 0 .453-.162t.17-.456q0-.388-.309-.809q-.308-.421-.716-.565l-6.021-2.21q-.137-.042-.273-.074q-.137-.032-.292-.032H6.385v6.737zM2.384 19.922q0 .46.308.768q.309.309.769.309h.846q.46 0 .768-.309q.309-.308.309-.768v-6q0-.46-.309-.768q-.309-.309-.768-.309h-.846q-.46 0-.769.309q-.308.309-.308.768z" />
-                                    </svg>
-                                </div>
-
-                                <!-- Select Dropdown -->
-                                <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
-                                    <select name="supplier_id" id="supplier_id"
-                                        class="selectize w-full appearance-none bg-transparent
-                                         outline-none cursor-pointer focus:outline-none focus:ring-0">
-                                        <option selected value="" class="">Select Supplier</option>
-                                        @foreach ($suppliers as $supplier)
-                                        <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-
-                            <!-- Filter by Agent -->
-                            <div class="flex gap-4 items-center">
-                                <!-- Left Icon -->
-                                <div data-tooltip="Agent"
-                                    class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
-                                    <!-- SVG Icon -->
-                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20"
-                                        height="16" viewBox="0 0 640 512">
-                                        <path
-                                            d="M96 224c35.3 0 64-28.7 64-64s-28.7-64-64-64s-64 28.7-64 64s28.7 64 64 64m448 0c35.3 0 64-28.7 64-64s-28.7-64-64-64s-64 28.7-64 64s28.7 64 64 64m32 32h-64c-17.6 0-33.5 7.1-45.1 18.6c40.3 22.1 68.9 62 75.1 109.4h66c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64m-256 0c61.9 0 112-50.1 112-112S381.9 32 320 32S208 82.1 208 144s50.1 112 112 112m76.8 32h-8.3c-20.8 10-43.9 16-68.5 16s-47.6-6-68.5-16h-8.3C179.6 288 128 339.6 128 403.2V432c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48v-28.8c0-63.6-51.6-115.2-115.2-115.2m-223.7-13.4C161.5 263.1 145.6 256 128 256H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h65.9c6.3-47.4 34.9-87.3 75.2-109.4" />
-                                    </svg>
-                                </div>
-
-                                <!-- Select Dropdown -->
-                                <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
-                                    <select name="agent_id" id="agent_id"
-                                        class="selectize w-full appearance-none bg-transparent
-                                         outline-none cursor-pointer focus:outline-none focus:ring-0">
-                                        <option selected value="" class="">Select Agent</option>
-                                        @foreach ($agents as $agent)
-                                        <option value="{{ $agent->id }}">{{ $agent->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-
-                            <!-- Filter by Branch -->
-                            <div class="flex gap-4 items-center">
-                                <!-- Left Icon -->
-                                <div data-tooltip="Branch"
-                                    class="p-3 bg-white dark:bg-gray-700 rounded-full shadow-md hover:bg-gray-300/50 dark:hover:bg-gray-700/50 flex cursor-pointer items-center justify-center transition-all duration-200">
-                                    <!-- SVG Icon -->
-                                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="20"
-                                        height="20" viewBox="0 0 24 24">
-                                        <path fill-rule="evenodd"
-                                            d="M3.464 3.464C2 4.93 2 7.286 2 12s0 7.071 1.464 8.535C4.93 22 7.286 22 12 22s7.071 0 8.535-1.465C22 19.072 22 16.714 22 12s0-7.071-1.465-8.536C19.072 2 16.714 2 12 2S4.929 2 3.464 3.464M8.03 5.97a.75.75 0 0 1 0 1.06l-.22.22H8c1.68 0 3.155.872 4 2.187a4.75 4.75 0 0 1 4-2.187h.19l-.22-.22a.75.75 0 0 1 1.06-1.06l1.5 1.5a.75.75 0 0 1 0 1.06l-1.5 1.5a.75.75 0 1 1-1.06-1.06l.22-.22H16A3.25 3.25 0 0 0 12.75 12v6a.75.75 0 0 1-1.5 0v-6A3.25 3.25 0 0 0 8 8.75h-.19l.22.22a.75.75 0 1 1-1.06 1.06l-1.5-1.5a.75.75 0 0 1 0-1.06l1.5-1.5a.75.75 0 0 1 1.06 0"
-                                            clip-rule="evenodd" />
-                                    </svg>
-                                </div>
-
-                                <!-- Select Dropdown -->
-                                <div class="bg-white flex-1 relative rounded-lg shadow-md hover:shadow-lg">
-                                    <select name="branch_id" id="branch_id"
-                                        class="selectize w-full appearance-none bg-transparent outline-none cursor-pointer focus:outline-none focus:ring-0">
-                                        <option selected value="" class="">Select Branch</option>
-                                        @foreach ($branches as $branch)
-                                        <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- ./right -->
-            </div>
-        </div>
     </div>
-
-    @include('invoice.tasksjs')
-
     <script>
         function openInvoiceModal(invoiceNumber) {
             const modal = document.getElementById("viewInvoiceModal");

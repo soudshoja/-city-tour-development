@@ -376,6 +376,8 @@ Route::middleware(['auth'])->group(function () {
         // Route::patch('/invoice/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('updateStatus');
         Route::get('/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('edit');
         Route::post('/update-gateway', [InvoiceController::class, 'updatePaymentGateway'])->name('update-gateway');
+        Route::post('/add-task', [InvoiceController::class, 'addTask'])->name('add-task');
+        Route::post('/remove-task', [InvoiceController::class, 'removeTask'])->name('remove-task');
         Route::post('/partial', [InvoiceController::class, 'savePartial'])->name('partial');
         Route::post('/remove/partial', [InvoiceController::class, 'removePartial'])->name('removepartial');
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split');

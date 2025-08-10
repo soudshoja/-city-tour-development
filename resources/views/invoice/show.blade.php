@@ -127,8 +127,8 @@
                 <p class="text-sm text-gray-600">
                     <a href="mailto:{{ $invoice->client->email}}" class="hover:underline hover:text-blue-600">
                         {{ $invoice->client->email ?? 'N/A' }}
-                    </a>    
-            </p>
+                    </a>
+                </p>
                 <p class="text-sm text-gray-600">
                     <a href="tel:{{ $invoice->client->country_code }}{{ $invoice->client->phone }}" class="hover:underline hover:text-blue-600">
                         {{ $invoice->client->country_code ?? ''}}{{ $invoice->client->phone ?? 'N/A' }}
@@ -154,12 +154,16 @@
                 <tr class="text-sm text-gray-700">
                     <td class="px-4 py-2 border">
                         @if ($detail->task->type === 'hotel')
+                        @php
+                            $roomDetails = json_decode($detail->task->hotelDetails->room_details, true);
+                            $passengerCount = count($roomDetails['passengers'] ?? []);
+                        @endphp
                         <p>
-                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
                             <br>Hotel Name: {{ $detail->task->hotelDetails->hotel->name ?? 'N/A' }}
                             <br>Check In: {{ $detail->task->hotelDetails->check_in ?? 'N/A' }}
                             <br>Check Out: {{ $detail->task->hotelDetails->check_out ?? 'N/A' }}
-                            <br>Number of Pax: {{ $detail->task->hotelDetails->room_details ?? $detail->task->number_of_pax ?? 'N/A' }}
+                            <br>Number of Pax: {{ $passengerCount ?? $detail->task->number_of_pax ?? 'N/A' }}
                             <br>Room Category: {{ $detail->task->hotelDetails->room_type ?? $detail->task->hotelDetails->room_category ?? 'N/A' }}
                         </p>
                         @elseif ($detail->task->type === 'flight')

@@ -720,12 +720,12 @@
                                 <!-- Form -->
                                 <form id="importForm" class="space-y-4">
                                     <div>
-                                        <label for="import_payment_id" class="block text-sm font-medium text-gray-700 mb-1">
-                                            Existing Payment ID
+                                        <label for="import_invoice_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                            Existing Invoice ID
                                         </label>
-                                        <input type="text" id="import_payment_id"
+                                        <input type="text" id="import_invoice_id"
                                             class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                            placeholder="Enter payment ID" required>
+                                            placeholder="Enter invoice ID" required>
                                     </div>
 
                                     <!-- Success Message -->
@@ -3128,7 +3128,7 @@
             const closeBtn = document.getElementById('closeImportModalBtn');
             const cancelBtn = document.getElementById('cancelImport');
             const form = document.getElementById('importForm');
-            const input = document.getElementById('import_payment_id');
+            const input = document.getElementById('import_invoice_id');
 
             const successBox = document.getElementById('successBox');
             const errorBox = document.getElementById('errorBox');
@@ -3179,7 +3179,7 @@
 
                 const formData = new FormData();
                 formData.append('_token', '{{ csrf_token() }}');
-                formData.append('import_payment_id', paymentId);
+                formData.append('import_invoice_id', paymentId);
                 formData.append('agentName', agentName);
                 formData.append('receiverName', clientName);
                 formData.append('page', page);

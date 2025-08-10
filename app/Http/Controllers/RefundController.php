@@ -107,8 +107,8 @@ class RefundController extends Controller
     {   
         $request->validate([
             'total_nett_refund' => ['required', 'numeric', 'min:-999999.99'],
-            'reason' => ['required', 'string'],
-            // 'method' => ['required', 'in:Bank,Cash,Online'],
+            // 'reason' => ['required', 'string'],
+            'method' => ['required', 'in:Bank,Cash,Online,Credit'],
             'date' => ['required', 'date'],
         ]);
 
@@ -128,8 +128,8 @@ class RefundController extends Controller
                 'new_task_profit' => $request->input('new_task_profit'),
                 'total_nett_refund' => $request->input('total_nett_refund'),
                 'service_charge' => $request->input('service_charge'),
-                'reason' => $request->reason,
-                // 'method' => $request->method,
+                // 'reason' => $request->reason,
+                'method' => $request->method,
                 'date' => $request->date,
                 'reference' => $request->reference,
                 'status' => 'processed',

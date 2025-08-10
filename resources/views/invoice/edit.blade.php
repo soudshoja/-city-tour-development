@@ -194,24 +194,24 @@
                                 class="w-full form-input" placeholder="Invoice Number" />
                         </div>
 
-<form id="invoice-date-form" method="POST" action="{{ route('invoice.updateDate', $invoice->invoice_number) }}">
-    @csrf
-    @method('PUT')
-    <div class="flex items-center">
-        <label class="w-full text-sm font-semibold">Invoice Date:</label>
-        <!-- Save icon button -->
-        <button type="submit" class=" rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Save">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                 class="w-5 h-5 text-blue-600">
-                <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
-            </svg>
-        </button>
-        <input id="invdate" type="date" name="invdate" class="form-input w-full"
-            value="{{ $invoice->invoice_date }}"/>
-        
-        
-    </div>
-</form>
+                    <form id="invoice-date-form" method="POST" action="{{ route('invoice.updateDate', $invoice->invoice_number) }}">
+                        @csrf
+                        @method('PUT')
+                        <div class="flex items-center">
+                            <label class="w-full text-sm font-semibold">Invoice Date:</label>
+                            <!-- Save icon button -->
+                            <button type="submit" class=" rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Save">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    class="w-5 h-5 text-blue-600">
+                                    <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
+                                </svg>
+                            </button>
+                            <input id="invdate" type="date" name="invdate" class="form-input w-full"
+                                value="{{ $invoice->invoice_date }}"/>
+                            
+                            
+                        </div>
+                    </form>
 
 
                         <div class="mt-4 flex items-center">
@@ -366,6 +366,7 @@
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Branch Name</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Supplier Name</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Type</th>
+                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="items-body" class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -386,7 +387,6 @@
                                         d="M19 11h-4v4h-2v-4H9V9h4V5h2v4h4m1-7H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2M4 6H2v14a2 2 0 0 0 2 2h14v-2H4z" />
                                 </svg> Add Task
                             </button>
-
                         </div>
                         <div class="sm:w-2/5 flex justify-end">
                             <div class="mt-4 flex items-center font-semibold">
@@ -1447,17 +1447,17 @@
         const selectTab = document.getElementById('selectTab');
         const addTab = document.getElementById('addTab');
         const clientButton = document.getElementById("openClientModalButton");
-        const openTaskModalButton = document.getElementById("openTaskModalButton");
         const agentButton = document.getElementById("select-agent");
         const updateInvoiceBtn = document.getElementById("update-invoice-btn");
 
         const paymentTypeFull = document.getElementById("payment_type_full");
         const paymentTypePartial = document.getElementById("payment_type_partial");
         const paymentTypeSplit = document.getElementById("payment_type_split");
+        const isInvoicePaid = @json($invoice->status === 'paid');
+        const hasPaymentType = @json(!empty($invoice->payment_type));
 
         clientButton.disabled = true;
         agentButton.disabled = true;
-        openTaskModalButton.disabled = true;
 
         document.getElementById("openClientModalButton").onclick = openClientModal;
         document.getElementById("closeClientModalButton").onclick = closeClientModal;
@@ -1539,6 +1539,20 @@
             saveBtn.addEventListener('click', function() {
                 savePartial('full');
             });
+
+            const addTaskButton = document.getElementById('openTaskModalButton');
+            const actionsHeader = document.querySelector('#itemsTable th:last-child');
+            const actionCells = document.querySelectorAll('#itemsTable td:last-child');
+
+            if (isInvoicePaid || hasPaymentType) {
+                if (addTaskButton) {
+                    addTaskButton.style.display = 'none';
+                }
+                if (actionsHeader) {
+                    actionsHeader.style.display = 'none';
+                }
+                actionCells.forEach(cell => cell.style.display = 'none');
+            }
         });
 
 
@@ -1786,19 +1800,13 @@
         }
 
         function updateItemPrice(itemId) {
-            // Find the input field by ID
-            const inputField = document.getElementById(`invprice-${itemId}`);
-            const newPrice = parseFloat(inputField.value) || 0;
-
-            // Update the corresponding item in the `items` array
             const item = items.find(item => item.id === itemId);
-            if (item) {
-                item.task_price = newPrice; // Add or update the `invprice` property
+            const priceInput = document.getElementById(`invprice-table-${itemId}`);
+            if (item && priceInput) {
+                item.task_price = parseFloat(priceInput.value) || 0;
+                calculateSubtotal();
             }
-            calculateSubtotal();
         }
-
-
 
         function calculateSubtotal() {
             const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
@@ -1838,7 +1846,7 @@
                     clientName: item?.client_name ?? '',
                     agentName: item?.agent?.name ?? '',
                     branchName: item?.agent?.branch?.name ?? '',
-                    supplierName: item?.supplier_name ?? '',
+                    supplierName: item?.supplier_name ?? item?.supplier?.name ?? '',
                     type: (item?.type ?? ''),
                     typeCap: (item?.type ? (item.type.charAt(0).toUpperCase() + item.type.slice(1)) : ''),
                     id: item?.id ?? `row-${count+1}`,
@@ -1848,8 +1856,9 @@
                     hotel: item?.hotel_details ?? null,
                 };
 
+                const isSaved = item.saved === true;
                 const row = document.createElement('tr');
-                row.className = 'border-b border-[#e0e6ed] align-top dark:border-[#1b2e4b] TrX';
+                row.className = `border-b border-[#e0e6ed] align-top dark:border-[#1b2e4b] ${!isSaved ? 'bg-sky-100' : ''}`;
 
                 row.innerHTML = `
                     <td class="flex-grow"><p>${++count}</p></td>
@@ -1859,24 +1868,15 @@
                     <td><p>${task.total} KWD</p></td>
                     <td>
                     <div class="flex items-center">
-                        <input
-                        id="invprice-table-${task.id}"
-                        type="number"
-                        class="border border-gray-300 rounded-md w-full"
-                        value="${task.taskPrice}"
-                        oninput="updateField(${JSON.stringify(task.id)}, 'invprice-table')"
-                        />
-                        <button
-                        type="button"
-                        class="p-1 rounded hover:bg-gray-200"
-                        title="Save"
-                        onclick="saveTaskPrice(${JSON.stringify(task.id)})"
-                        >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                            class="w-5 h-5 text-blue-600">
-                            <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
-                        </svg>
-                        </button>
+                        <input id="invprice-table-${task.id}" type="number" class="border border-gray-300 rounded-md w-full" value="${task.taskPrice}" oninput="updateItemPrice(${item.id})" />
+                        ${isSaved ? `
+                            <button type="button" class="p-1 rounded hover:bg-gray-200" title="Save" onclick="saveTaskPrice(${JSON.stringify(task.id)})">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                                    class="w-5 h-5 text-blue-600">
+                                    <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
+                                </svg>
+                            </button>
+                        ` : ''}
                     </div>
                     </td>
                     <td><p>${task.clientName}</p></td>
@@ -1884,6 +1884,24 @@
                     <td><p>${task.branchName}</p></td>
                     <td><p>${task.supplierName}</p></td>
                     <td><p>${task.typeCap}</p></td>
+                    <td class="action-cell text-center">
+                        <div class="inline-flex space-x-2">
+                            ${!isSaved ? `
+                                <button onclick="saveSingleTask(${item.id})" class="text-blue-500 hover:text-blue-700" data-tooltip-left="Save This Task">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                        <polyline points="7 3 7 8 15 8"></polyline>
+                                    </svg>
+                                </button>
+                            ` : ''}
+                            <button onclick="removeTaskFromInvoice(${item.id} )" class="text-red-500 hover:text-red-700" data-tooltip-left="Remove Item">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
                 `;
 
                 frag.appendChild(row);
@@ -2145,18 +2163,23 @@
                     }
                 }
 
+                if (isInvoicePaid || hasPaymentType ) {
+                    const actionCell = row.querySelector('.action-cell');
+                    if(actionCell) actionCell.style.display = 'none';
+                }
+
                 const openButton  = document.getElementById('modal-open-button_' + task.id);
                 const closeButton = document.getElementById('modal-close-button_' + task.id);
                 const modal = document.querySelector('dialog[data-modal-invoice="' + task.id + '"]');
 
-                if (openButton && modal) {
-                    console.log(task.id);
-                    openButton.addEventListener('click', () => modal.showModal());
-                    modal.addEventListener('click', (e) => { if (e.target === modal) modal.close(); });
-                }
-                if (closeButton && modal) {
-                    closeButton.addEventListener('click', () => modal.close());
-                }
+                openButton.addEventListener('click', function() {
+                    // console.log(item.id);
+                    modalInvoice.showModal();
+                });
+
+                closeButton.addEventListener('click', function() {
+                    modalInvoice.close();
+                });
 
                 } catch (err) {
                 console.error('renderItems(): failed on item ->', item, err);
@@ -2214,6 +2237,22 @@
             renderTaskList(tasks);
         }
 
+        // The removeItem function now only needs to handle the front-end state.
+        // The back-end will determine what was removed by comparing the saved state with the new state.
+        function removeItem(itemId ) {
+            // Find the index of the item to remove
+            const itemIndex = items.findIndex(item => item.id === itemId);
+            if (itemIndex > -1) {
+                // Remove the item from the array
+                items.splice(itemIndex, 1);
+                // Re-render the table and update the total
+                renderItems();
+                calculateSubtotal();
+                // Re-render the task list in the modal to make the removed task available again
+                renderTaskList(tasks);
+            }
+        }
+
         function chooseTasksAgent(agent) {
 
             agent = JSON.parse(agent);
@@ -2262,30 +2301,130 @@
             selectTab.classList.add('hidden');
         });
 
-
-
-        // Function to select a task
-        function selectTask(task) {
-
-            const t = tasks;
-            items.push({
-                ...task, // Spread the properties of the task object
-                remark: '', // Add default empty remark
-                quantity: 1, // Default quantity is 1
-                //description: `${task.reference} - ${task.type} ${task.additional_info} (${task.venue})`, // Custom description format
-                description: `${task.reference}`,
-                client_name: task.client_name
-            });
-
-            // Set the selected task name
-            selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
-
-            // Call a function to update the total, passing the current items array
-            //  updateTotal(items);
-            renderTaskList(t);
-            closeTaskModal();
+        function loadInitialTasks(initialTasks) {
+            items = initialTasks.map(task => ({
+                ...task,
+                saved: true,
+                remark: task.remark || '',
+                quantity: task.quantity || 1,
+                description: task.description || `${task.reference}`,
+                client_name: task.client_name,
+                task_price: task.task_price || 0
+            }));
             renderItems();
             calculateSubtotal();
+        }
+
+        function selectTask(task) {
+            const newTask = {
+                ...task,
+                saved: false,
+                task_price: 0,
+                remark: '',
+                quantity: 1,
+                description: `${task.reference}`,
+                client_name: task.client_name
+            };
+
+            items.push(newTask);
+            renderItems();
+            calculateSubtotal();
+            renderTaskList(); 
+            closeTaskModal();
+        }
+
+        async function saveSingleTask(taskId) {
+            const taskToSave = items.find(item => item.id === taskId);
+
+            if (!taskToSave) {
+                console.error("Could not find the task to save.");
+                return;
+            }
+
+            const priceInput = document.getElementById(`invprice-table-${taskId}`);
+            const price = parseFloat(priceInput.value);
+
+            if (isNaN(price) || price <= 0) {
+                displayErrorMessage("Please enter a valid invoice price for the task before saving.");
+                priceInput.focus();
+                return;
+            }
+            
+            taskToSave.task_price = price;
+
+            try {
+                const response = await fetch('{{ route("invoice.add-task") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        invoice_id: invoice.id,
+                        task_id: taskToSave.id,
+                        task_price: taskToSave.task_price
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.message || 'Failed to save task.');
+                }
+
+                taskToSave.saved = true;
+                renderItems();
+                displaySuccessMessage('Task saved successfully!');
+
+            } catch (error) {
+                displayErrorMessage(error.message);
+            }
+        }
+
+        async function removeTaskFromInvoice(taskId) {
+            if (items.length <= 1) {
+                displayErrorMessage("An invoice must have at least one task. You cannot remove the last item.");
+                return;
+            }
+
+            const taskToRemove = items.find(item => item.id === taskId);
+            if (!taskToRemove) return;
+
+            if (taskToRemove.saved) {
+                if (!confirm('Are you sure you want to remove this saved task?')) {
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('{{ route("invoice.remove-task") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        },
+                        body: JSON.stringify({
+                            invoice_id: invoice.id,
+                            task_id: taskId
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.message || 'Failed to remove task.');
+                    
+                    displaySuccessMessage('Task removed successfully!');
+
+                } catch (error) {
+                    displayErrorMessage(error.message);
+                    return;
+                }
+            }
+
+            items = items.filter(item => item.id !== taskId);
+            
+            renderItems();
+            calculateSubtotal();
+            renderTaskList();
         }
 
         function updateTotal(items) {
@@ -2357,48 +2496,36 @@
         }
 
         function filterTasks() {
-            const searchValue = document.getElementById('taskSearchInput').value.toLowerCase();
-            const filteredTasks = tasks.filter(task =>
-                task.reference.toLowerCase().includes(searchValue) || task.type.toLowerCase().includes(searchValue)
-            );
-            renderTaskList(filteredTasks);
+            renderTaskList();
         }
 
-        if (Array.isArray(items)) {
-            // console.log('selected task', selectedTasks1);
-            // console.log('items1', items);
-            // Iterate over the array and select each task
-            selectedTasks1.forEach(task => selectTask(task));
-        } else {
-            // console.log('tow', items);
-            // If it's a single task object, select it directly
-            selectTask(items);
-            tasks = tasks.filter(task => task.id !== items.id);
-        }
-
-
-        function renderTaskList(taskData) {
-            // console.log('items', items);
-
-            taskData = taskData.filter(task =>
-                !items.some(selectedTask => selectedTask.id === task.id)
-            );
-
-
-            // console.log('items2', taskData);
+        function renderTaskList() {
             const taskList = document.getElementById('taskList');
+            const searchValue = document.getElementById('taskSearchInput').value.toLowerCase();
             taskList.innerHTML = '';
-            if (taskData.length == 0) {
-                const p = document.createElement('p');
-                p.className = 'text-center text-gray-500';
-                p.innerText = 'No Task Available';
-                taskList.appendChild(p);
 
+            let availableTasks = tasks.filter(task => 
+                !items.some(selectedItem => selectedItem.id === task.id)
+            );
+
+            if (searchValue) {
+                availableTasks = availableTasks.filter(task =>
+                    (task.reference && task.reference.toLowerCase().includes(searchValue)) ||
+                    (task.type && task.type.toLowerCase().includes(searchValue))
+                );
+            }
+
+            if (availableTasks.length === 0) {
+                const p = document.createElement('p');
+                p.className = 'text-center text-gray-500 p-4';
+                p.innerText = 'No more tasks available to add.';
+                taskList.appendChild(p);
                 return;
             }
-            taskData.forEach(task => {
+
+            availableTasks.forEach(task => {
                 const li = document.createElement('li');
-                li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
+                li.className = 'cursor-pointer p-3 hover:bg-gray-100 text-gray-800 border-b';
                 li.innerText = `${task.reference} - ${task.type} (${task.venue})`;
                 li.onclick = () => selectTask(task);
                 taskList.appendChild(li);
@@ -2407,7 +2534,6 @@
 
         // Call the function with the selectedClient object
         if (selectedClient && selectedAgent) {
-            // console.log('helloooooo');
             updateFormFields(selectedClient, selectedAgent);
         }
 
@@ -3060,17 +3186,17 @@
 
             tasks = @json($tasks);
             let clients = @json($clients);
-            // /const clients = @json($clients);
+            let initialTasks = @json($selectedTasks);
 
-            // Initial rendering of items
-            renderItems();
+            if (initialTasks && initialTasks.length > 0) {
+                loadInitialTasks(initialTasks);
+            }
 
             // Initialize modals with full data
             renderClientList(clients);
-            renderTaskList(tasks);
+            renderTaskList();
 
             const paymentTypeRadios = document.querySelectorAll('input[name="payment_type"]');
-
             const paymentTypeSavedInput = document.getElementById('paymentTypeSaved');
             const paymentTypeSaved = paymentTypeSavedInput ? paymentTypeSavedInput.value : '';
 
@@ -3218,9 +3344,4 @@
             });
         });
     </script>
-
-
-
-
-
 </x-app-layout>

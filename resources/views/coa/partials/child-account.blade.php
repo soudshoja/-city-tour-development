@@ -10,10 +10,20 @@
                     {{ $account->code }}
                 </div>
             </div>
-            <div
-                class="p-2  min-w-8 w-fit h-fit text-xs text-center rounded-full font-semibold text-{{ $color }}-600 bg-{{ $color }}-100">
-                {{ $account->balance }}
+            <div class="flex flex-col md:flex-row items-center gap-2">
+                <div
+                    class="p-2  min-w-8 w-fit h-fit text-xs text-center rounded-full font-semibold text-{{ $color }}-600 bg-{{ $color }}-100">
+                    {{ $account->balance }}
+                </div>
+                
+                @if(isset($account->excluded_payment_balance) && $account->excluded_payment_balance != 0)
+                    <div class="mt-1 px-2 py-1 text-xs text-center rounded bg-yellow-100 text-yellow-700 border border-yellow-300" 
+                         title="Payment accounts excluded from parent total: {{ number_format($account->excluded_payment_debit - $account->excluded_payment_credit, 2) }}">
+                        <span class="text-xs">※ Excl: {{ $account->excluded_payment_balance }}</span>
+                    </div>
+                @endif
             </div>
+            
             @if($account->currency !== null && $account->currency!== 'KWD')
             <div
                 class="p-2 min-w-8 w-fit h-fit text-xs text-center rounded-full font-semibold text-gray-600 bg-gray-100">

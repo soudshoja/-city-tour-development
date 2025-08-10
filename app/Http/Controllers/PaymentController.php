@@ -943,13 +943,13 @@ class PaymentController extends Controller
         return view('clients.response', ['status' => 'success', 'message' => 'Payment successful!']);
     }
 
-    public function getPaymentStatusMyFatoorah($paymentId) : JsonResponse
+    public function getPaymentStatusMyFatoorah($invoiceId) : JsonResponse
     {
         $apiKey = config('services.myfatoorah.api_key');
         $baseUrl = config('services.myfatoorah.base_url');
 
-        Log::info('getPaymentStatusMyFatoorah called with payment_id: ', [
-            'payment_id' => $paymentId,
+        Log::info('getPaymentStatusMyFatoorah called with invoice_id: ', [
+            'invoice_id' => $invoiceId,
             'apiKey' => $apiKey,
             'baseUrl' => $baseUrl,
         ]);
@@ -958,8 +958,8 @@ class PaymentController extends Controller
             'Authorization' => "Bearer $apiKey",
             'Content-Type' => 'application/json',
         ])->post("$baseUrl/getPaymentStatus", [
-            "Key" => $paymentId,
-            "KeyType" => "PaymentId"
+            "Key" => $invoiceId,
+            "KeyType" => "InvoiceId"
         ]);
 
         Log::info('getPaymentStatusMyFatoorah Response: ', $response->json());
@@ -969,7 +969,7 @@ class PaymentController extends Controller
             $message = $response->json()['Message'] ?? 'Unknown error';
 
             Log::error('Failed to fetch payment status from MyFatoorah', [
-                'paymentId' => $paymentId,
+                'invoiceId' => $invoiceId,
                 'response' => $response->body()
             ]);
 
@@ -1061,14 +1061,14 @@ class PaymentController extends Controller
         Log::info('Starting to import MyFatoorah payment from invoice');
 
         $request->validate([
-            'import_payment_id' => 'required|string',
+            'import_invoice_id' => 'required|string',
             'receiverName' => 'required|string',
             'agentName' => 'required|string',
         ]);
 
-        $importPaymentId = $request->input('import_payment_id');
+        $importinvoiceId = $request->input('import_invoice_id');
 
-        $response = $this->getPaymentStatusMyFatoorah($importPaymentId)->getData(true);
+        $response = $this->getPaymentStatusMyFatoorah($importinvoiceId)->getData(true);
 
         if($response['status'] === 'error') {
             Log::error('Error fetching payment status from MyFatoorah', ['message' => $response['message']]);
@@ -1083,7 +1083,7 @@ class PaymentController extends Controller
 
         if (!$agentId || !$clientId) {
 
-            Log::error('Payment ID, Client, or Agent is missing', [
+            Log::error('Invoice ID, Client, or Agent is missing', [
                 'clientId' => $clientId,
                 'agentId' => $agentId,
             ]);
@@ -1095,8 +1095,7 @@ class PaymentController extends Controller
         }
   
         $data = [
-            'payment_id' => $importPaymentId,
-            'invoice_id' => $response['invoice_id'],
+            'invoice_id' => $importinvoiceId,
             'payment_gateway' => $response['payment_gateway'],
             'payment_method' => $response['payment_method_id'],
             'amount' => $response['amount'],
@@ -1129,12 +1128,12 @@ class PaymentController extends Controller
     public function importMyFatoorahFromPayment(Request $request) : RedirectResponse
     {
         $request->validate([
-            'import_payment_id' => 'required|string',
+            'import_invoice_id' => 'required|string',
         ]);
 
-        $paymentId = $request->input('import_payment_id');
+        $invoiceId = $request->input('import_invoice_id');
 
-        $response = $this->getPaymentStatusMyFatoorah($paymentId)->getData(true);
+        $response = $this->getPaymentStatusMyFatoorah($invoiceId)->getData(true);
 
         if ($response['status'] === 'error') {
             Log::error('Error fetching payment status from MyFatoorah', ['message' => $response['message']]);
@@ -1142,7 +1141,6 @@ class PaymentController extends Controller
         }
 
         return redirect()->route('payment.link.create')->withInput([
-            'payment_id' => $paymentId,
             'invoice_id' => $response['invoice_id'],
             'payment_gateway' => $response['payment_gateway'],
             'payment_method' => $response['payment_method_id'],

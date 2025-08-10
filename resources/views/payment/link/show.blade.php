@@ -27,6 +27,16 @@
     @vite(['resources/css/app.css'])
 </head>
 
+@if ($payment->status === 'completed')
+<div
+    class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 flex items-center text-white rounded-lg">
+    <div class="flex items-center justify-between text-white">
+        <p class="text-3xl">PAID</p>
+        <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
+    </div>
+</div>
+@endif
+
 <body class="overflow-y-auto font-nunito antialiased bg-gray-100 py-10">
     <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         @if (session('status'))
@@ -51,7 +61,6 @@
                 <p class="text-sm text-gray-600">Date: {{ $payment->created_at->format('d M Y') }}</p>
             </div>
         </div>
-
         <!-- Header Ends -->
 
         <div class="flex justify-between items-start mb-8">
@@ -91,21 +100,63 @@
         <table class="w-full text-sm text-left text-gray-700 border border-gray-300 mb-5">
             <thead class="bg-gray-100">
                 <tr>
-                    <th colspan="2" class="py-3 px-4 text-lg font-semibold">Invoice Summary</th>
+                    <th colspan="2" class="py-3 px-4 text-lg font-semibold">Payment Details</th>
                 </tr>
             </thead>
             <tbody>
+                <tr>
+                    <td class="py-3 px-4">Client Name</td>
+                    <td class="py-3 px-4 text-right">{{ $payment->client->name }}</td>
+                </tr>
+                <tr>
+                    <td class="py-3 px-4">Payment Gateway</td>
+                    <td class="py-3 px-4 text-right">{{ $payment->payment_gateway }}</td>
+                </tr>
+                @if($payment->payment_gateway === 'MyFatoorah')
+                <tr>
+                    <td class="py-3 px-4">Payment Method</td>
+                    <td class="py-3 px-4 text-right">{{ $payment->paymentMethod->english_name ?? '-' }}</td>
+                </tr>
+                @endif
+            </tbody>
+        </table>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start mb-8 mt-10">
+            <div class="md:col-span-2">
+                @if ($payment->status === 'completed')
+                <span class="inline-flex items-center px-3 py-1 text-green-700 font-semibold text-lg">
+                    PAID
+                </span>
+                @else
+                @if($payment->notes && $payment->notes !== '')
+                <div class="text-left max-w-xs">
+                    <h3 class="text-lg text-gray-800">
+                        Notes from <span class="font-semibold">Agent {{ $payment->agent->name }}</span>
+                    </h3>
+                    <p class="text-sm text-gray-600 mt-1 break-words">
+                        {{ $payment->notes }}
+                    </p>
+                </div>
+                @else
+                <p class="text-sm text-gray-600 mt-1"></p>
+                @endif
+                @endif
+            </div>
+
+            {{-- Right slot: Totals --}}
+            <div class="md:col-span-1 w-full text-sm">
                 @php
                 $serviceCharge = $payment->service_charge ?? $gatewayFee;
                 $baseAmount = $payment->amount - $serviceCharge;
                 @endphp
 
-                <tr>
-                    <td class="py-3 px-4">Amount</td>
-                    <td class="py-3 px-4 text-right">{{ number_format($baseAmount, 2) }} {{ $payment->currency }}</td>
-                </tr>
+                <div class="flex justify-between py-2 border-b border-gray-200">
+                    <span>Amount:</span>
+                    <!--  <span>{{ number_format($payment->amount, 2) }}</span> -->
+                    <span>{{ number_format($finalAmount, 2) }} {{ $payment->currency }}</span>
+                </div>
 
-                @if ($serviceCharge > 0)
+                <!-- @if ($serviceCharge > 0)
                 <tr>
                     <td class="py-1 px-4">
                         <div class="ml-5">Service Charge</div>
@@ -114,64 +165,48 @@
                         {{ number_format($serviceCharge, 2) }} {{ $payment->currency }}
                     </td>
                 </tr>
-                @endif
+                @endif -->
 
-                <tr class="font-bold">
-                    <td class="py-3 px-4">Total</td>
-                    <td class="py-3 px-4 text-right">{{ number_format($finalAmount, 2) }} {{ $payment->currency }}</td>
-                </tr>
-            </tbody>
-        </table>
+                <div class="flex justify-between items-center py-2 font-bold text-gray-800">
+                    <span>Total:</span>
+                    <span>{{ number_format($finalAmount, 2) }} {{ $payment->currency }}</span>
+                </div>
+            </div>
+        </div>
 
-        <div class="mt-10 mb-5">
-            @unless ($payment->status === 'completed')
-            <div class="flex justify-between items-center">
-                <!-- Notes Section -->
-                @if($payment->notes && $payment->notes !== '')
-                <div class="text-left">
-                    <h3 class="text-lg text-gray-800">
-                        Notes from <span class="font-semibold">Agent {{ $payment->agent->name }}</span>
-                    </h3>
-                    <p class="text-sm text-gray-600 mt-1">
-                        {{ $payment->notes}}
+
+        <div class="mt-10 flex items-center justify-between w-full">
+            <div class="space-y-2">
+                <p class="text-lg font-bold text-gray-800">Thank you for your business!</p>
+                <div class="text-sm text-gray-600 w-full overflow-x-auto">
+                    <p class="whitespace-nowrap">
+                        If you have any questions about this voucher, please contact:
+                    </p>
+                    <p>
+                        {{ $payment->agent->name }} -
+                        <a href="mailto:{{ $payment->agent->email }}" class="hover:underline hover:text-blue-600">
+                            {{ $payment->agent->email }}
+                        </a>
+                        @if ($payment->agent->phone)
+                        || {{ $payment->agent->phone }}
+                        @endif
                     </p>
                 </div>
-                @else
-                <p class="text-sm text-gray-600 mt-1"></p>
-                @endif
-
-                <!-- Pay Now Button -->
-                <form action="{{ route('payment.link.initiate') }}" method="POST" class="flex items-center gap-4">
-                    @csrf
-                    <input type="hidden" name="payment_id" value="{{ $payment->id }}">
-                    <button type="submit"
-                        class="city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-4 py-2 shadow-md font-semibold">
-                        Pay Now
-                    </button>
-                </form>
             </div>
+
+            @unless ($payment->status === 'completed')
+            <!-- Pay Now Button -->
+            <form action="{{ route('payment.link.initiate') }}" method="POST" class="flex-shrink-0">
+                @csrf
+                <input type="hidden" name="payment_id" value="{{ $payment->id }}">
+                <button type="submit"
+                    class="city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-4 py-2 shadow-md font-semibold">
+                    Pay Now
+                </button>
+            </form>
             @endunless
         </div>
 
-        @if ($payment->status === 'completed')
-        <p class="text-green-600 font-bold">PAID</p>
-        @endif
-
-        <div class="mt-10 space-y-2">
-            <p class="text-lg font-bold text-gray-800">Thank you for your business!</p>
-
-            <div class="text-sm text-gray-600 w-full overflow-x-auto">
-                <p class="whitespace-nowrap">
-                    If you have any questions about this voucher, please contact:
-                </p>
-                <p>
-                    {{ $payment->agent->name }} - <a href="mailto:{{ $payment->agent->email }}" class="hover:underline hover:text-blue-600">{{ $payment->agent->email }}</a>
-                    @if ($payment->agent->phone)
-                    || {{ $payment->agent->phone }}
-                    @endif
-                </p>
-            </div>
-        </div>
     </div>
 </body>
 

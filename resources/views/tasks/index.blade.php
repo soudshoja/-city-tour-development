@@ -984,6 +984,7 @@
                                                         if ($task->invoiceDetail) $reasons[] = 'Invoice already created';
                                                         if ($task->status === 'refund' && $task->refundDetail) $reasons[] = 'Refund already processed';
                                                         if ($task->status === 'refund' && !$task->is_complete) $reasons[] = 'Refund not complete';
+                                                        if (!in_array($task->status, ['issued', 'confirmed']) && !$task->original_task_id) $reasons[] = 'No original task link';
                                                         $tooltipText = implode(', ', $reasons);
                                                         @endphp
                                                         <div class="relative group cursor-default">

@@ -384,6 +384,7 @@ class InvoiceController extends Controller
             ->map(function ($invoiceDetail) use ($invoice) {
                 $task = $invoiceDetail->task;
                 $task->agent_name = optional($task->agent)->name;
+                $task->supplier_name = optional($task->supplier)->name;
                 $task->branch_name = optional(optional($task->agent)->branch)->name;
                 $task->task_price = $invoiceDetail->task_price;
                 $task->invprice = (float) $invoice->amount;
@@ -1682,6 +1683,65 @@ public function updateTaskPrice(Request $request)
         }
     }
 
+    public function addTask(Request $request)
+    {
+        $request->validate([
+            'invoice_id' => 'required|exists:invoices,id',
+            'task_id' => 'required|exists:tasks,id',
+            'task_price' => 'required|numeric|min:0',
+        ]);
+
+        $invoice = Invoice::findOrFail($request->invoice_id);
+
+        if ($invoice->status === 'paid' || !empty($invoice->payment_type)) {
+            return response()->json(['message' => 'Cannot add tasks to a paid or processing invoice.'], 403);
+        }
+
+        $task = Task::findOrFail($request->task_id);
+
+        InvoiceDetail::create([
+            'invoice_id' => $invoice->id,
+            'invoice_number' => $invoice->invoice_number,
+            'task_id' => $task->id,
+            'task_description' => $task->reference,
+            'task_price' =>  $request->task_price,
+            'supplier_price' => $task->total,
+            'markup_price' => $request->task_price - $task->total,
+            'total' => $request->task_price,
+            'paid' => false,
+        ]);
+
+        $invoice->recalculateTotal();
+
+        return response()->json(['message' => 'Task added successfully!', 'invoice_total' => $invoice->amount]);
+    }
+
+    /**
+     * Remove a task from an existing unpaid invoice.
+     */
+    public function removeTask(Request $request)
+    {
+        $request->validate([
+            'invoice_id' => 'required|exists:invoices,id',
+            'task_id' => 'required|exists:tasks,id',
+        ]);
+
+        $invoice = Invoice::findOrFail($request->invoice_id);
+
+        if ($invoice->status === 'paid' || !empty($invoice->payment_type)) {
+            return response()->json(['message' => 'Cannot remove tasks from a paid or processing invoice.'], 403);
+        }
+
+        $invoiceDetail = InvoiceDetail::where('invoice_id', $invoice->id)
+            ->where('task_id', $request->task_id)
+            ->firstOrFail();
+
+        $invoiceDetail->delete();
+
+        $invoice->recalculateTotal();
+
+        return response()->json(['message' => 'Task removed successfully!', 'invoice_total' => $invoice->amount]);
+    }
 
     public function delete(Request $request, string $id)
     {

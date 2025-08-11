@@ -69,6 +69,7 @@ class CurrencyExchangeController extends Controller
                 'SGD',
                 'IDR',
                 'NPR',
+                'AED',
             ]);
         });
 

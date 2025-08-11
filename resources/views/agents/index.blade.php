@@ -34,20 +34,8 @@
         <div class="content-70">
             <!-- Table  -->
             <div class="panel oxShadow rounded-lg">
-                <!--  search icon -->
-                <div class="relative">
-                    <!-- Search Input -->
-                    <input type="text" placeholder="Find fast and search here..." class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider" id="searchInput">
 
-                    <!-- Search Button with SVG Icon -->
-                    <button type="button" class="btn DarkBGcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
-                        id="searchButton">
-                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5" opacity="0.5"></circle>
-                            <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"></path>
-                        </svg>
-                    </button>
-                </div>
+                <x-search action="{{ route('agents.index') }}" />
 
                 <!-- ./search icon -->
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
@@ -85,7 +73,7 @@
                                 @else
                                 @foreach ($agents as $agent)
                                 <tr id="agent_row_{{ $agent->id }}"> <!-- Ensure each row has a unique ID -->
-                                                                        <!-- Toggle Switch Column -->
+                                    <!-- Toggle Switch Column -->
                                     <td class="p-3 text-sm flex items-center gap-3">
                                         <label class="w-12 h-6 relative">
                                             <input type="checkbox" class="custom_switch absolute w-full h-full opacity-0 z-10 cursor-pointer peer"
@@ -169,37 +157,11 @@
                     </div>
                     <!-- ./table -->
 
-
-                    <!-- pagination -->
-                    @if ($agents->count() > 15)
-                    <div class="dataTable-bottom justify-center">
-                        <nav class="dataTable-pagination">
-                            <ul class="dataTable-pagination-list flex gap-2 mt-4">
-                                <li class="pager" id="prevPage">
-                                    <a href="#">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                            <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                            <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                <!-- Dynamic page numbers will be injected here -->
-                                <li class="pager" id="nextPage">
-                                    <a href="#">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                            <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                            <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                        </svg>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
-                    @endif
-                    <!-- ./pagination -->
                 </div>
-            </div>
 
+                <x-pagination :data="$agents" />
+
+            </div>
             <!-- ./Table  -->
 
         </div>

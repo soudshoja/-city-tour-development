@@ -2,91 +2,7 @@
     <div class="content-70">
         <div class="panel BoxShadow rounded-lg">
 
-            <div class="flex flex-col md:flex-row justify-between p-2 gap-3">
-                <!-- <div class="relative w-full">
-                    <input type="text" placeholder="Find fast and search here..."
-                        class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                        id="searchInput">
-
-                    <button data-tooltip="start searching" type="button"
-                        class="DarkBGcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
-                        id="searchButton">
-                        <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5"
-                                opacity="0.5" class="dark:stroke-gray-300"></circle>
-                            <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"
-                                class="dark:stroke-gray-300"></path>
-                        </svg>
-                    </button>
-                </div> -->
-
-                <form class="flex justify-between items-center gap-2 w-full" action="{{ route('clients.index') }}" method="GET">
-                    @csrf
-                    <div class="relative w-full">
-                        <input type="text" name="search" value="{{ request('search') }}"
-                            id="search-client"
-                            placeholder=""
-                            oninput=""
-                            class="block px-3 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-transparent border-b-2 border-gray-300 appearance-none
-                                    dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer rounded-full" />
-
-                        <label for="search-client"
-                            class="absolute text-md text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
-                                    bg-white dark:bg-gray-900 px-2 peer-focus:text-blue-600 peer-focus:dark:text-blue-500
-                                    peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2
-                                    peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">
-                            Quick search for client
-                        </label>
-                    </div>
-                    <button type="submit"
-                        class="DarkBGcolor dark:!bg-gray-700 dark:!hover:bg-gray-600 flex items-center justify-center h-10 w-12 rounded-full p-0">
-                        <svg class="mx-auto" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5"
-                                opacity="0.5" class="dark:stroke-gray-300"></circle>
-                            <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round"
-                                class="dark:stroke-gray-300"></path>
-                        </svg>
-                    </button>
-                    @if(request('search'))
-                    <button type="button" id="resetSearch"
-                        class="bg-red-600 dark:!bg-gray-700 dark:!hover:bg-gray-600 flex items-center justify-center h-10 w-12 rounded-full p-0">
-                        <svg class="mx-auto" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6 18L18 6M6 6L18 18" stroke="#fff" stroke-width="1.5"
-                                class="dark:stroke-gray-300"></path>
-                        </svg>
-                    </button>
-                    @endif
-                </form>
-
-                <div class="flex customCenter gap-5 w-full justify-end">
-
-                    <!-- <button class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
-                        <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
-                        </svg>
-                        <span class="dark:text-black">Customize</span>
-                    </button> -->
-
-                    <!-- <button id="toggleFilters" class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
-                        <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                            <path fill="#333333" d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
-                        </svg>
-                        <span class="text-xs md:text-sm dark:text-black">Filters</span>
-                    </button> -->
-
-                    <!-- <button class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
-                        <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path fill="#333333" d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
-                        </svg>
-                        <span class="text-xs md:text-sm dark:text-black">Export</span>
-                    </button> -->
-
-                </div>
-            </div>
-
+            <x-search action="{{ route('clients.index') }}" />
 
             <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                 <div class="dataTable-top"></div>
@@ -216,134 +132,8 @@
                     </table>
 
                 </div>
-                <!-- pagination -->
-                <div class="dataTable-bottom justify-center">
-                    <div class="flex flex-col gap-2 sm:flex-row justify-between items-center mt-4 px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-full">
-                        <!-- Showing results info -->
-                        <div class="text-sm text-gray-600 dark:text-gray-400 mb-2 sm:mb-0">
-                            Showing {{ $clients->firstItem() ?? 0 }} to {{ $clients->lastItem() ?? 0 }} of {{ $clients->total() ?? 0 }} results
-                        </div>
 
-                        <!-- Custom pagination -->
-                        @if ($clients->hasPages())
-                        <nav class="dataTable-pagination">
-                            <ul class="dataTable-pagination-list flex gap-1">
-                                {{-- Previous Page Link --}}
-                                @if ($clients->onFirstPage())
-                                <li class="pager disabled">
-                                    <span class="flex items-center justify-center w-10 h-10 text-gray-400 cursor-not-allowed bg-gray-200 dark:bg-gray-600 rounded-full">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
-                                            <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
-                                                stroke-linecap="round" stroke-linejoin="round"></path>
-                                            <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
-                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                                stroke-linejoin="round"></path>
-                                        </svg>
-                                    </span>
-                                </li>
-                                @else
-                                <li class="pager">
-                                    <a href="{{ $clients->appends(request()->query())->previousPageUrl() }}"
-                                        class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
-                                            <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
-                                                stroke-linecap="round" stroke-linejoin="round"></path>
-                                            <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
-                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                                stroke-linejoin="round"></path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                @endif
-
-                                {{-- Pagination Elements --}}
-                                @php
-                                $start = max(1, $clients->currentPage() - 2);
-                                $end = min($clients->lastPage(), $clients->currentPage() + 2);
-                                @endphp
-
-                                @if ($start > 1)
-                                <li class="pager">
-                                    <a href="{{ $clients->appends(request()->query())->url(1) }}"
-                                        class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
-                                        1
-                                    </a>
-                                </li>
-                                @if ($start > 2)
-                                <li class="pager">
-                                    <span class="flex items-center justify-center w-10 h-10 text-gray-500">...</span>
-                                </li>
-                                @endif
-                                @endif
-
-                                @for ($page = $start; $page <= $end; $page++)
-                                    @if ($page==$clients->currentPage())
-                                    <li class="pager active">
-                                        <span class="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full font-semibold border border-blue-600">
-                                            {{ $page }}
-                                        </span>
-                                    </li>
-                                    @else
-                                    <li class="pager">
-                                        <a href="{{ $clients->appends(request()->query())->url($page) }}"
-                                            class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
-                                            {{ $page }}
-                                        </a>
-                                    </li>
-                                    @endif
-                                    @endfor
-
-                                    @if ($end < $clients->lastPage())
-                                        @if ($end < $clients->lastPage() - 1)
-                                            <li class="pager">
-                                                <span class="flex items-center justify-center w-10 h-10 text-gray-500">...</span>
-                                            </li>
-                                            @endif
-                                            <li class="pager">
-                                                <a href="{{ $clients->appends(request()->query())->url($clients->lastPage()) }}"
-                                                    class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
-                                                    {{ $clients->lastPage() }}
-                                                </a>
-                                            </li>
-                                            @endif
-
-                                            {{-- Next Page Link --}}
-                                            @if ($clients->hasMorePages())
-                                            <li class="pager">
-                                                <a href="{{ $clients->appends(request()->query())->nextPageUrl() }}"
-                                                    class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200">
-                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                                        xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
-                                                        <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
-                                                            stroke-linecap="round" stroke-linejoin="round"></path>
-                                                        <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
-                                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                                            stroke-linejoin="round"></path>
-                                                    </svg>
-                                                </a>
-                                            </li>
-                                            @else
-                                            <li class="pager disabled">
-                                                <span class="flex items-center justify-center w-10 h-10 text-gray-400 cursor-not-allowed bg-gray-200 dark:bg-gray-600 rounded-full">
-                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                                        xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
-                                                        <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
-                                                            stroke-linecap="round" stroke-linejoin="round"></path>
-                                                        <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
-                                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                                            stroke-linejoin="round"></path>
-                                                    </svg>
-                                                </span>
-                                            </li>
-                                            @endif
-                            </ul>
-                        </nav>
-                        @endif
-                    </div>
-                </div>
-                <!-- ./pagination -->
+                <x-pagination :data="$clients" />
 
             </div>
         </div>
@@ -513,8 +303,8 @@
 
 <script>
     resetSearchButton = document.getElementById("resetSearch");
-                                    
-    if(resetSearchButton){
+
+    if (resetSearchButton) {
         resetSearchButton.addEventListener("click", function() {
             window.location.href = "{{ route('clients.index') }}"; // Redirect to the clients index route
         });

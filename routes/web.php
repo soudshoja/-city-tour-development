@@ -480,7 +480,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('update-manual', [CurrencyExchangeController::class, 'updateManual'])->name('update.manual');
         Route::put('update-auto', [CurrencyExchangeController::class, 'updateAuto'])->name('update.auto');
         Route::put('update-method/{id}', [CurrencyExchangeController::class, 'updateMethod'])->name('update.method');
-        Route::post('convert', [CurrencyExchangeController::class, 'convert'])->name('convert');
+        Route::post('convert', [CurrencyExchangeController::class, 'convertFromSidebar'])->name('convert');
     });
 
     Route::get('update-rate', [SystemExchangeRateController::class, 'updateExchangeRate'])->name('update-rate');

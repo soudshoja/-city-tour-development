@@ -230,7 +230,8 @@
                                         </a> -->
                                         <a data-tooltip="View Invoice" target="_blank"
                                             href="{{ url('/invoice/' . $invoice->invoice_number) }}"
-                                            class="viewInvoice text-blue-500 hover:underline">
+                                            class="viewInvoice {{ $invoice->payment_type ? 'text-blue-500 hover:underline' : 'text-gray-400 cursor-not-allowed' }}"
+                                            @unless($invoice->payment_type) onclick="return false;" @endunless>
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20"
                                                 height="20" viewBox="0 0 24 24">
                                                 <g fill="none" stroke="currentColor" stroke-width="1">
@@ -409,15 +410,46 @@
                                     </td>
 
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        {{ $invoice->invoice_date }}
+                                        @if ($invoice->status === 'paid')
+                                            <button
+                                                type="button"
+                                                class="underline text-blue-600 hover:text-blue-800"
+                                                data-number="{{ $invoice->invoice_number }}"
+                                                data-date="{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') }}"
+                                                onclick="openDateModal(this)">
+                                                {{ $invoice->invoice_date }}
+                                            </button>
+                                        @else
+                                            {{ $invoice->invoice_date }}
+                                        @endif
                                     </td>
-
-
                                 </tr>
                                 @endforeach
                                 @endif
                             </tbody>
                         </table>
+                    </div>
+                    <div id="dateModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/30">
+                        <div class="bg-white rounded-md shadow-lg w-full max-w-md">
+                            <div class="flex items-center justify-between p-4 border-b">
+                            <h3 class="font-semibold">Update Invoice Date</h3>
+                            <button type="button" class="text-gray-500" onclick="closeDateModal()">&times;</button>
+                            </div>
+
+                            <form id="dateForm" method="POST" action="">
+                            @csrf
+                            @method('PUT')
+                            <div class="p-4 space-y-3">
+                                <label class="block text-sm text-gray-700">Invoice Date</label>
+                                <input id="dateInput" type="date" name="invdate"
+                                    class="w-full border rounded px-3 py-2 text-sm" required>
+                            </div>
+                            <div class="p-4 border-t flex justify-end gap-2">
+                                <button type="button" class="px-3 py-2 text-sm rounded border" onclick="closeDateModal()">Cancel</button>
+                                <button type="submit" class="px-3 py-2 text-sm rounded bg-blue-600 text-white">Save</button>
+                            </div>
+                            </form>
+                        </div>
                     </div>
                     <div class="dataTable-bottom justify-center">
                         <div class="flex flex-col gap-2 sm:flex-row justify-between items-center mt-4 px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-full">
@@ -601,6 +633,31 @@
         function closeInvoiceModal() {
             const modal = document.getElementById("viewInvoiceModal");
             modal.classList.add("hidden");
+        }
+        
+        const updateUrlTemplate = "{{ route('invoice.updateDate', ['invoiceNumber' => 'INVOICE_NUM']) }}";
+
+        function openDateModal(btn) {
+            const number = btn.dataset.number;
+            const date   = btn.dataset.date;
+
+            const form   = document.getElementById('dateForm');
+            const input  = document.getElementById('dateInput');
+            const modal  = document.getElementById('dateModal');
+
+            form.action  = updateUrlTemplate.replace('INVOICE_NUM', encodeURIComponent(number));
+            input.value  = date;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            modal.onclick = (e) => { if (e.target === modal) closeDateModal(); };
+        }
+
+        function closeDateModal() {
+            const modal = document.getElementById('dateModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }
     </script>
 </x-app-layout>

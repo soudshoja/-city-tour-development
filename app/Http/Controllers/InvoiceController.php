@@ -374,11 +374,10 @@ class InvoiceController extends Controller
         $invoiceDetails = $invoice->invoiceDetails;
         $agentId = $invoice->agent_id;
         $clientId = $invoice->client_id;
-        $tasks = $agents->flatMap->tasks->map(function ($task) {
-            $task->agent_name = $task->agent->name ?? null; // Add agent_name dynamically
-            $task->branch_name = $task->agent->branch->name ?? null; // Add branch_name dynamically
-            return $task;
-        });
+        $tasks = Task::where('agent_id', $agentId)
+            ->whereDoesntHave('invoiceDetail')
+            ->with(['supplier', 'agent.branch', 'client'])
+            ->get();
         $selectedTasks = $invoice->invoiceDetails
             ->filter(fn($invoiceDetail) => $invoiceDetail->task) // Remove null tasks
             ->map(function ($invoiceDetail) use ($invoice) {
@@ -621,7 +620,11 @@ class InvoiceController extends Controller
 
             if (!$transaction) {
                 $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
-                $tasks = Task::with('invoiceDetail', 'agent')->whereIn('id', $tasksId)->get();
+                $tasks = Task::with(['invoiceDetail' => function ($q) use ($invoice) {
+                        $q->where('invoice_id', $invoice->id);
+                    },'agent'])
+                    ->whereIn('id', $tasksId)
+                    ->get();
 
                 if ($tasks->isEmpty()) {
                     throw new \Exception('No tasks found for this invoice to create a transaction.');
@@ -639,9 +642,8 @@ class InvoiceController extends Controller
                     'reference_type' => 'Invoice',
                 ]);
 
-                $invoiceDetail = InvoiceDetail::where('invoice_id', $invoice->id)->first();
-
                 foreach ($tasks as $task) {
+                    $invoiceDetail = $task->invoiceDetail ?: $invoice->invoiceDetails->firstWhere('task_id', $task->id);
                     Log::info('Preparing to add journal entry', [
                         'task_id' => $task->id ?? null,
                         'invoice_id' => $invoice->id,
@@ -917,6 +919,7 @@ class InvoiceController extends Controller
                         'branch_id' => $task->agent->branch_id ?? null,
                         'company_id' => $task->company_id ?? null,
                         'account_id' => $clientAdvance->id,
+                        'task_id' => $task->id ?? null,
                         'invoice_id' => $invoiceId,
                         'invoice_detail_id' => $invoiceDetailId,
                         'transaction_date' => $invoice->invoice_date,
@@ -947,6 +950,7 @@ class InvoiceController extends Controller
                         'branch_id' => $task->agent->branch_id ?? null,
                         'company_id' => $task->company_id ?? null,
                         'account_id' => $clientAccount->id,
+                        'task_id' => $task->id ?? null,
                         'invoice_id' => $invoiceId,
                         'invoice_detail_id' => $invoiceDetailId,
                         'transaction_date' => $invoice->invoice_date,
@@ -982,6 +986,7 @@ class InvoiceController extends Controller
                     'branch_id' => $task->agent->branch_id ?? null,
                     'company_id' => $task->company_id ?? null,
                     'account_id' => $detailsAccount->id,
+                    'task_id' => $task->id ?? null,
                     'invoice_id' => $invoiceId,
                     'invoice_detail_id' => $invoiceDetailId,
                     'transaction_date' => $invoice->invoice_date,
@@ -1018,7 +1023,10 @@ class InvoiceController extends Controller
             }
 
             if (in_array($agent->type_id, [2, 3])) {
-                $commission = ($agent->commission ?? 0.15) * ($task->invoiceDetail->task_price - $task->total);
+                $selling = (float) ($task->invoiceDetail->task_price ?? 0);
+                $supplier = (float) ($task->total ?? 0);
+                $rate = (float) ($agent->commission ?? 0.15);
+                $commission = $rate * ($selling - $supplier);
 
                 $commissionExpenses = Account::where('name', 'like', 'Commissions Expense (Agents)%')
                     ->where('company_id', $task->company_id)
@@ -1033,6 +1041,7 @@ class InvoiceController extends Controller
                     'branch_id' => $task->agent->branch_id ?? null,
                     'company_id' => $task->company_id ?? null,
                     'account_id' => $commissionExpenses->id,
+                    'task_id' => $task->id ?? null,
                     'invoice_id' => $invoiceId,
                     'invoice_detail_id' => $invoiceDetailId,
                     'transaction_date' => $invoice->invoice_date,
@@ -1060,7 +1069,10 @@ class InvoiceController extends Controller
             $agent = $task->agent;
 
             if (in_array($agent->type_id, [2, 3])) {
-                $commission = ($agent->commission ?? 0.15) * ($task->invoiceDetail->task_price - $task->total);
+                $selling = (float) ($task->invoiceDetail->task_price ?? 0);
+                $supplier = (float) ($task->total ?? 0);
+                $rate = (float) ($agent->commission ?? 0.15);
+                $commission = $rate * ($selling - $supplier);
 
                 $accruedCommissions = Account::where('name', 'like', 'Commissions (Agents)%')
                     ->where('company_id', $task->company_id)
@@ -1072,6 +1084,7 @@ class InvoiceController extends Controller
                         'branch_id' => $task->agent->branch_id ?? null,
                         'company_id' => $task->company_id ?? null,
                         'account_id' => $accruedCommissions->id,
+                        'task_id' => $task->id ?? null,
                         'invoice_id' => $invoiceId,
                         'invoice_detail_id' => $task->invoiceDetail->id,
                         'transaction_date' => $invoice->invoice_date,
@@ -1456,91 +1469,80 @@ class InvoiceController extends Controller
     /**
      * Update the specified resource in storage.
      */
-public function updateTaskPrice(Request $request)
-{
-    $request->validate([
-        'task_id' => 'required|integer',
-        'new_price' => 'required|numeric|min:0.01',
-    ]);
+    public function updateTaskPrice(Request $request)
+    {
+        $request->validate([
+            'task_id' => 'required|integer',
+            'new_price' => 'required|numeric|min:0.01',
+        ]);
 
-    $taskId = $request->input('task_id');
-    $newPrice = $request->input('new_price');
+        $taskId = $request->input('task_id');
+        $newPrice = $request->input('new_price');
 
-    // Find the InvoiceDetail for this task
-    $invoiceDetail = \App\Models\InvoiceDetail::where('task_id', $taskId)->first();
-    if (!$invoiceDetail) {
-        return response()->json(['success' => false, 'message' => 'Invoice detail not found.']);
-    }
-
-    $agent = $invoiceDetail->task->agent;
-
-    $oldPrice = $invoiceDetail->task_price;
-    $invoiceDetail->task_price = $newPrice;
-    $invoiceDetail->markup_price = $newPrice - $invoiceDetail->supplier_price;
-    $invoiceDetail->save();
-
-    // Update related JournalEntry records
-    $journalEntries = \App\Models\JournalEntry::where('invoice_detail_id', $invoiceDetail->id)->get();
-    foreach ($journalEntries as $entry) {
-        // ...e        $journalEntries = \App\Models\JournalEntry::where('invoice_detail_id', $invoiceDetail->id)->get();
-        foreach ($journalEntries as $entry) {
-    // Invoice created for (Assets)
-    if (str_contains($entry->description, 'Invoice created for (Assets)')) {
-        $entry->debit = $newPrice;
-        $entry->credit = 0;
-        $entry->amount = $newPrice;
-    }
-    // Invoice created for (Income)
-    elseif (str_contains($entry->description, 'Invoice created for (Income)')) {
-        $entry->debit = 0;
-        $entry->credit = $newPrice;
-        $entry->amount = $newPrice;
-    }
-    // Agent commission for (Expenses)
-    elseif (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
-        // Recalculate commission based on new price
-        $commission = ($agent->commission ?? 0.15) * max(0, $newPrice - $invoiceDetail->supplier_price);
-        $entry->debit = $commission;
-        $entry->credit = 0;
-        $entry->amount = $commission;
-    }
-    // Agent commission for (Liabilities)
-    elseif (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
-        $commission = ($agent->commission ?? 0.15) * max(0, $newPrice - $invoiceDetail->supplier_price);
-        $entry->debit = 0;
-        $entry->credit = $commission;
-        $entry->amount = $commission;
-    }
-    $entry->save();
-}
-    }
-
-    // Update Transaction (if needed)
-    $transaction = \App\Models\Transaction::where('invoice_id', $invoiceDetail->invoice_id)->first();
-    if ($transaction) {
-        $transaction->amount = $newPrice;
-        $transaction->save();
-    }
-
-    // --- NEW: Update Invoice and InvoicePartial amounts ---
-    $invoice = $invoiceDetail->invoice;
-    if ($invoice) {
-        // Recalculate total from all invoice details
-        $newTotal = $invoice->invoiceDetails()->sum('task_price');
-        $invoice->amount = $newTotal;
-        $invoice->sub_amount = $newTotal;
-        $invoice->save();
-
-        // Update all related invoice partials
-        foreach ($invoice->invoicePartials as $partial) {
-            $partial->amount = $newTotal;
-            $partial->save();
+        $invoiceDetail = InvoiceDetail::where('task_id', $taskId)->first();
+        if (!$invoiceDetail) {
+            return response()->json(['success' => false, 'message' => 'Invoice detail not found.']);
         }
-    }
-    // --- END NEW ---
 
-    return response()->json(['success' => true]);
-}
+        $agent = $invoiceDetail->task->agent;
+
+        $oldPrice = $invoiceDetail->task_price;
+        $invoiceDetail->task_price = $newPrice;
+        $invoiceDetail->markup_price = $newPrice - $invoiceDetail->supplier_price;
+        $invoiceDetail->save();
+
+        $journalEntries = JournalEntry::where('invoice_detail_id', $invoiceDetail->id)->get();
+        foreach ($journalEntries as $entry) {
+            // ...e        $journalEntries = \App\Models\JournalEntry::where('invoice_detail_id', $invoiceDetail->id)->get();
+            foreach ($journalEntries as $entry) {
+                if (str_contains($entry->description, 'Invoice created for (Assets)')) {
+                    $entry->debit = $newPrice;
+                    $entry->credit = 0;
+                    $entry->amount = $newPrice;
+                }
+                elseif (str_contains($entry->description, 'Invoice created for (Income)')) {
+                    $entry->debit = 0;
+                    $entry->credit = $newPrice;
+                    $entry->amount = $newPrice;
+                }
+                elseif (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
+                    $commission = ($agent->commission ?? 0.15) * max(0, $newPrice - $invoiceDetail->supplier_price);
+                    $entry->debit = $commission;
+                    $entry->credit = 0;
+                    $entry->amount = $commission;
+                }
+                elseif (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
+                    $commission = ($agent->commission ?? 0.15) * max(0, $newPrice - $invoiceDetail->supplier_price);
+                    $entry->debit = 0;
+                    $entry->credit = $commission;
+                    $entry->amount = $commission;
+                }
+                $entry->save();
+            }
+        }
+
+        $newTotal = $invoiceDetail->invoice->invoiceDetails()->sum('task_price');
+        $transaction = Transaction::where('invoice_id', $invoiceDetail->invoice_id)->first();
+        if ($transaction) {
+            $transaction->amount = $newTotal;
+            $transaction->save();
+        }
+
+        $invoice = $invoiceDetail->invoice;
+        if ($invoice) {
+            $invoice->amount = $newTotal;
+            $invoice->sub_amount = $newTotal;
+            $invoice->save();
+
+            foreach ($invoice->invoicePartials as $partial) {
+                $partial->amount = $newTotal;
+                $partial->save();
+            }
+        }
+
+        return response()->json(['success' => true]);
+    }
+
     public function updateDate(Request $request, $invoiceNumber)
     {
         $request->validate([

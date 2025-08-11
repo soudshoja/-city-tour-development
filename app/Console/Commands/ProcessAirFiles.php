@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use App\Services\FileProcessingLogger;
+use Illuminate\Http\JsonResponse;
 
 class ProcessAirFiles extends Command
 {
@@ -1089,7 +1090,7 @@ class ProcessAirFiles extends Command
         $this->moveFileWithLogging($fileRealPath, $errorPath, $fileName, $reason);
     }
 
-    protected function saveTask($companyId, $data, $supplierId)
+    protected function saveTask($companyId, $data, $supplierId) : array
     {
 
         try {
@@ -1100,22 +1101,27 @@ class ProcessAirFiles extends Command
             $request = new Request($data);
             $response = $taskController->store($request);
 
-            if ($response->getStatusCode() !== 201) {
-                // Use the improved logger to avoid duplicate messages
-                $responseContent = $response->getContent();
-                $this->logger->error("Task save failed with HTTP {$response->getStatusCode()}", [
-                    'response_content' => $responseContent,
-                    'task_data' => $data,
-                    'http_status' => $response->getStatusCode()
+            if(!$response instanceof JsonResponse) {
+                $this->logger->error("Unexpected response type from TaskController::store", [
+                    'expected' => JsonResponse::class,
+                    'actual' => get_class($response)
                 ]);
+                $this->error("Unexpected response from TaskController::store");
 
-                $this->error("Failed to save task: " . $responseContent);
-                
-                return [
-                    'status' => 'error',
-                    'message' => 'Failed to save task',
-                    'error' => $responseContent,
-                ];
+                throw new Exception("Unexpected response from TaskController", 500);
+            }
+
+            $response = $response->getData(true);
+
+            if (isset($response['status']) && $response['status'] === 'error') {
+
+                $this->logger->error("Failed to save task", [
+                    'error_message' => $response['message'] ?? 'Unknown error',
+                    'task_data' => $data
+                ]);
+                $this->error("Failed to save task: " . ($response['message'] ?? 'Unknown error'));
+
+                throw new Exception($response['message'] ?? 'Unknown error', $response['code'] ?? 500);
             }
 
             $this->info("Task saved successfully");
@@ -1136,7 +1142,7 @@ class ProcessAirFiles extends Command
             ];
         }
 
-        $task = $response->getData();
+        $task = $response['data'];
 
         return [
             'status' => 'success',

@@ -35,6 +35,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Date;
 use App\Models\FileUpload;
+use Illuminate\Database\Eloquent\Casts\Json;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;

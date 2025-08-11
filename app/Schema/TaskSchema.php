@@ -232,6 +232,12 @@ class TaskSchema
                 'example' => '2025-02-12 00:00:00',
                 'default' => null,
             ],
+            'is_exchanged' => [
+                'type' => 'boolean',
+                'desc' => "Indicates if the ticket total has been exchanged or converted to a different currency. Some suppliers already show the exchanged price in the document, so you can check if the total is different from the original price. If there is no indication that the total has been exchanged, set to false. Otherwise, set to true.",
+                'example' => true,
+                'default' => false,
+            ],
             'task_flight_details' => [
                 'type' => 'object',
                 'desc' => "Flight details associated with the task. For flight details that have multiple segments, you can use the same schema for each segment. For example, if the flight come from Kuwait to Singapore with a stopover in Dubai, you can use flight details schema for each segment like Kuwait to Dubai, and Dubai to Singapore. This means one task can have multiple flight details. and also notes that if the flight has multiple passenger, the same segment/flight details should be used for each passenger. If the flight details are not available, you can set it to null.",

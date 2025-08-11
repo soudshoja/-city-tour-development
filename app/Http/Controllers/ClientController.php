@@ -42,17 +42,7 @@ class ClientController extends Controller
         $clients = Client::with('agent.branch');
         $fullClients = clone $clients;
 
-        if($request->has('search') && $request->search != '') {
-            $search = $request->search;
-            $clients = $clients->where(function($query) use ($search) {
-                $query->where('name', 'LIKE', '%' . $search . '%')
-                      ->orWhere('email', 'LIKE', '%' . $search . '%')
-                      ->orWhere('phone', 'LIKE', '%' . $search . '%');
-            });
-
-        }
-
-        // if ($user->role_id == Role::COMPANY) {
+            // if ($user->role_id == Role::COMPANY) {
         //     $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
         //     $agent = Agent::whereIn('branch_id', $branch)->first();
         //     $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
@@ -86,7 +76,23 @@ class ClientController extends Controller
             $clients = $clients->where('agent_id', $agent->id);
             $fullClients = $fullClients->where('agent_id', $agent->id);
         
+        } 
+        
+        if($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $clients = $clients->where(function($query) use ($search) {
+                $searchTerm = '%' . strtolower($search) . '%';
+                $query->where('name', 'LIKE', $searchTerm)
+                      ->orWhere('email', 'LIKE', $searchTerm)
+                      ->orWhere('phone', 'LIKE', $searchTerm)
+                      ->orWhereHas('agent', function($q) use ($searchTerm) {
+                          $q->where('name', 'LIKE', $searchTerm);
+                      });
+            });
+
         }
+
+
         $clientsCount = $clients->count();
 
         $clients = $clients->orderByDesc('created_at')->paginate(20);

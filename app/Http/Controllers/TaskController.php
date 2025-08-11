@@ -229,7 +229,7 @@ class TaskController extends Controller
         return response()->json(['success', 'message' => 'Column preferences saved.']);
     }
 
-    public function store(Request $request)
+    public function store(Request $request) : JsonResponse
     {
         $request->validate([
             'reference' => 'required|string',
@@ -285,13 +285,78 @@ class TaskController extends Controller
         if($amadeus) $exceptionConvert[] = $amadeus->id;
 
         if ( !in_array($request->supplier_id, $exceptionConvert) && $request->original_currency && $request->original_price) {
+
+            $companyId = $request->company_id;
+            $originalCurrency = $request->original_currency;
+            $exchangeCurrency = $request->exchange_currency;
+            $originalPrice = $request->original_price;
+
             try {
                 $convertResponse = $this->convert(
-                    $request->company_id,
-                    $request->original_currency,
-                    $request->exchange_currency,
-                    $request->original_price
+                    $companyId,
+                    $originalCurrency,
+                    $exchangeCurrency,
+                    $originalPrice
                 );
+
+                if($convertResponse['status'] === 'error' || $convertResponse['exchange_rate'] === null) {
+                    $currencyExchangeController = new CurrencyExchangeController();
+
+
+                    $currencyExchangeResponse = $currencyExchangeController->storeProcess(new Request([
+                        'company_id' => $companyId,
+                        'base_currency' => $originalCurrency,
+                        'exchange_currency' => $exchangeCurrency,
+                        'is_manual' => false,
+                    ]));
+
+                    if(!$currencyExchangeResponse instanceof JsonResponse){
+                        Log::error('Response from updateJournalPaymentMethod is not a JsonResponse', [
+                            'expected_type' => JsonResponse::class,
+                            'actual_type' => is_object($currencyExchangeResponse) ? get_class($currencyExchangeResponse) : gettype($currencyExchangeResponse)
+                        ]);
+
+                        throw new Exception('Failed to update payment method journal entries.');
+                    }
+
+                    $currencyExchangeResponse = $currencyExchangeResponse->getData(true);
+
+                    if($currencyExchangeResponse['status'] === 'error') {
+                        Log::error('Failed to create currency exchange', [
+                            'error' => $currencyExchangeResponse['message'],
+                            'company_id' => $companyId,
+                            'base_currency' => $originalCurrency,
+                            'exchange_currency' => $exchangeCurrency,
+                        ]);
+
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => 'Failed to create currency exchange: ' . $currencyExchangeResponse['message'],
+                        ], 500);
+                    }
+
+                    $convertResponse = $this->convert(
+                        $companyId,
+                        $originalCurrency,
+                        $exchangeCurrency,
+                        $originalPrice
+                    );
+
+                    if($convertResponse['status'] === 'error') {
+                        Log::error('Failed to convert currency after creating exchange rate', [
+                            'error' => $convertResponse['message'],
+                            'company_id' => $companyId,
+                            'original_currency' => $originalCurrency,
+                            'exchange_currency' => $exchangeCurrency,
+                            'original_price' => $originalPrice
+                        ]);
+
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => 'Failed to convert currency after creating exchange rate: ' . $convertResponse['message'],
+                        ], 500);
+                    }
+                }
 
                 $price = $convertResponse['converted_amount'];
                 $exchangeRate = $convertResponse['exchange_rate'];

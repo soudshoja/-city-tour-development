@@ -4,6 +4,27 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
     </head>
     <style>
+        #myTable > thead > tr > th:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background-color: #f9fafb;
+        }
+
+        #myTable > tbody > tr > td:first-child {
+            position: -webkit-sticky;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            background-color: inherit;
+            transition: background-color 0.2s;
+        }
+
+        #myTable > thead > tr > th:first-child,
+        #myTable > tbody > tr > td:first-child {
+            box-shadow: 5px 0 5px -5px rgba(0, 0, 0, 0.1);
+        }
+        
         .no-client {
             color: red;
             /* position: relative; */
@@ -20,6 +41,7 @@
             font-weight: bold;
             right: 0.8rem;
             top: -2.2rem;
+            z-index: 5;
         }
 
         .switch input {
@@ -278,6 +300,7 @@
         .task-row {
             cursor: pointer;
             transition: background-color 0.2s;
+            background-color: #ffffff;
         }
 
         .task-row.not-selectable {

@@ -184,13 +184,21 @@
                                 </button>
                             </div>
 
-                            <!-- Error -->
-                            <template x-if="error">
+                            <!-- Success/Info notice -->
+                            <template x-if="notice">
                                 <div class="flex justify-center mt-2">
                                     <div
-                                        class="border border-red-500 bg-red-50 text-red-700 text-sm px-3 py-2 rounded max-w-lg overflow-hidden text-ellipsis whitespace-nowrap"
-                                        x-text="error">
+                                        class="border border-green-400 bg-green-50 text-green-700 text-sm px-3 py-2 rounded max-w-lg text-center"
+                                        x-text="notice">
                                     </div>
+                                </div>
+                            </template>
+
+                            <!-- Existing error block stays as-is -->
+                            <template x-if="error">
+                                <div class="flex justify-center mt-2">
+                                    <div class="border border-red-500 bg-red-50 text-red-700 text-sm px-3 py-2 rounded max-w-lg text-center"
+                                        x-text="error"></div>
                                 </div>
                             </template>
                         </div>
@@ -230,11 +238,9 @@
         return {
             showModal: false,
 
-            // config
             companyId,
             convertUrl,
 
-            // state
             amount: null,
             from: null,
             to: null,
@@ -244,6 +250,8 @@
             ready: false,
             error: null,
             lastUpdated: '',
+            notice: null,
+            loading: false,
 
             init() {
                 this.$nextTick(() => {
@@ -282,7 +290,9 @@
 
             async convert() {
                 this.error = null;
+                this.notice = null;
                 this.ready = false;
+                this.loading = true;
 
                 try {
                     const res = await fetch(this.convertUrl, {
@@ -300,41 +310,54 @@
                         })
                     });
 
-                    // Try to parse JSON either way (ok or error)
                     let payload = null,
                         fallbackText = '';
                     try {
                         payload = await res.json();
                     } catch {
-                        fallbackText = await res.text(); // non-JSON error fallback
+                        fallbackText = await res.text();
                     }
 
-                    // Normalize error detection
-                    const notOk = !res.ok || (payload && payload.ok === false);
-
-                    if (notOk) {
-                        const msg =
-                            (payload && (payload.message || payload.error)) ||
-                            fallbackText ||
-                            `Server error ${res.status}`;
+                    if (!res.ok || (payload && payload.status === 'success')) {
+                        const msg = (payload && (payload.message || payload.error)) || fallbackText || `Server error ${res.status}`;
                         throw new Error(msg);
                     }
 
-                    // Success
+                    // If backend says the rate was just created, show message then retry
+                    if (payload && payload.created === true) {
+                        this.notice = payload.message || 'Rate created. Refreshing…';
+                        // small delay so DB write is visible; 1500 ms as you asked
+                        setTimeout(() => {
+                            this.convert(); // re-run to fetch fresh numbers
+                        }, 3000);
+                        this.loading = false;
+                        return; // stop here; don't render numbers yet
+                    }
+
+                    // Normal success path
                     const data = payload ?? {};
                     this.rate = this.format(data.exchange_rate);
-                    this.inverse = data.inverse_rate != null ? this.format(data.inverse_rate) : null;
+                    this.inverse = (data.inverse_rate == null || data.inverse_rate === 'N/A') ?
+                        null :
+                        this.format(data.inverse_rate);
                     this.converted = data.converted_amount;
                     this.ready = true;
 
                     const now = new Date();
                     this.lastUpdated = `Last updated ${now.toLocaleString()}`;
                 } catch (e) {
-                    // fetch doesn't have e.response like axios — use e.message
                     this.error = e?.message || 'Failed to convert.';
-                    console.error(e);
+                } finally {
+                    this.loading = false;
                 }
-            }
-        }
+            },
+
+            format(n) {
+                if (n === 'N/A' || n === null || Number.isNaN(Number(n))) return 'N/A';
+                return Number(n ?? 0).toLocaleString(undefined, {
+                    maximumFractionDigits: 6
+                });
+            },
+        };
     }
 </script>

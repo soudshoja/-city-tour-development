@@ -143,7 +143,15 @@
             .slider.round:before {
                 border-radius: 50%;
             }
-
+            input[type="number"].no-spin::-webkit-outer-spin-button,
+            input[type="number"].no-spin::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+            input[type="number"].no-spin {
+                -moz-appearance: textfield;
+                appearance: textfield;
+            }
         }
     </style>
     <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
@@ -1986,7 +1994,7 @@
                     <td><p>${task.total} KWD</p></td>
                     <td>
                     <div class="flex items-center">
-                        <input id="invprice-table-${task.id}" type="number" class="border border-gray-300 rounded-md w-full" value="${task.taskPrice}" oninput="updateItemPrice(${item.id}); updateField(${JSON.stringify(task.id)}, 'invprice-table')" />
+                        <input id="invprice-table-${task.id}" type="number" class="no-spin border border-gray-300 rounded-md w-full" value="${task.taskPrice}" oninput="updateItemPrice(${item.id}); updateField(${JSON.stringify(task.id)}, 'invprice-table')" />
                         ${isSaved ? `
                             <button type="button" class="p-1 rounded hover:bg-gray-200" title="Save" onclick="saveTaskPrice(${JSON.stringify(task.id)})">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"

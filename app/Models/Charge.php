@@ -22,6 +22,8 @@ class Charge extends Model
         'acc_bank_id',
         'acc_fee_id',
         'acc_fee_bank_id',
+        'is_auto_paid',
+        'has_url',
     ];
 
     public function getAmountAttribute($value)

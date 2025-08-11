@@ -111,21 +111,7 @@
                                     class="w-full border border-gray-300 rounded-md px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                             </div>
 
-                            @php
-                            // Collect all unique ISO codes from both columns
-                            $base = App\Models\CurrencyExchange::pluck('base_currency')
-                            ->filter()->map(fn($c) => strtoupper($c))->unique()->values();
 
-                            $exchange = App\Models\CurrencyExchange::pluck('exchange_currency')
-                            ->filter()->map(fn($c) => strtoupper($c))->unique()->values();
-
-                            $allIso = $base->merge($exchange)->unique()->sort()->values();
-
-                            // Pull name + symbol for display
-                            $currencies = App\Models\Currency::whereIn('iso_code', $allIso)
-                            ->get(['iso_code','name','symbol'])
-                            ->keyBy('iso_code'); // ['KWD' => {iso_code,name,symbol}, ...]
-                            @endphp
 
                             <div class="flex items-center justify-between space-x-4">
                                 <!-- From -->
@@ -139,13 +125,14 @@
                                             @foreach($allIso as $code)
                                             @php
                                             $c = $currencies[$code] ?? null;
-                                            $label = trim(($c->symbol ?? '').' '.$code.' '.($c->name ?? ''));
+                                            $label = trim(($c->symbol ?? '') . ' ' . $code . ' ' . ($c->name ?? ''));
                                             @endphp
                                             <option value="{{ $code }}">{{ $label }}</option>
                                             @endforeach
                                         </select>
                                     </div>
                                 </div>
+
 
                                 <!-- Swap -->
                                 <button type="button" @click="swap(); convertIfReady()" class="rounded-full border p-2 bg-white shadow" title="Swap">
@@ -163,13 +150,14 @@
                                             @foreach($allIso as $code)
                                             @php
                                             $c = $currencies[$code] ?? null;
-                                            $label = trim(($c->symbol ?? '').' '.$code.' '.($c->name ?? ''));
+                                            $label = trim(($c->symbol ?? '') . ' ' . $code . ' ' . ($c->name ?? ''));
                                             @endphp
                                             <option value="{{ $code }}">{{ $label }}</option>
                                             @endforeach
                                         </select>
                                     </div>
                                 </div>
+
                             </div>
 
                             <!-- Result -->
@@ -228,11 +216,7 @@
                     </svg>
                 </button>
             </div>
-
         </div>
-
-
-
     </div>
 
 
@@ -329,7 +313,7 @@
                     const now = new Date();
                     this.lastUpdated = `Last updated ${now.toLocaleString()}`;
                 } catch (e) {
-                    this.error = e.message || 'Failed to convert.';
+                    this.error = e.response?.data?.message || 'Failed to convert.';
                     console.error(e);
                 }
             }

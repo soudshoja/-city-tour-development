@@ -16,10 +16,16 @@ trait CurrencyExchangeTrait{
         }
 
         if ($exchangeRate === null) {
-            throw new \Exception('Exchange rate not found for the given currencies. from: ' . $fromCurrency . ', to: ' . $toCurrency);
+            return [
+                'status' => 'error',
+                'message' => 'Exchange rate not found for the specified currencies.',
+                'exchange_rate' => null,
+            ];
         }
 
         return [
+            'status' => 'success',
+            'message' => 'Exchange rate retrieved successfully.',
             'exchange_rate' => $exchangeRate,
             'converted_amount' => round($amount * $exchangeRate, 3),
         ];

@@ -93,7 +93,8 @@
                 <div x-cloak x-show="showModal" x-trap="showModal" @click.self="showModal = false"
                     class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
 
-                    <div class="bg-white rounded-lg p-6 w-[1680px] max-w-[95vw] shadow-xl overflow-y-auto" style="max-height: 120vh;">
+                    <div class="bg-white rounded-lg p-6 w-full max-w-[900px] md:max-w-[1100px] lg:max-w-[1280px] shadow-xl overflow-y-auto max-h-[90vh]">
+
                         <div class="flex items-center justify-between mb-6">
                             <div>
                                 <h2 class="text-xl font-bold text-gray-800">Currency Exchange</h2>
@@ -111,21 +112,7 @@
                                     class="w-full border border-gray-300 rounded-md px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                             </div>
 
-                            @php
-                            // Collect all unique ISO codes from both columns
-                            $base = App\Models\CurrencyExchange::pluck('base_currency')
-                            ->filter()->map(fn($c) => strtoupper($c))->unique()->values();
 
-                            $exchange = App\Models\CurrencyExchange::pluck('exchange_currency')
-                            ->filter()->map(fn($c) => strtoupper($c))->unique()->values();
-
-                            $allIso = $base->merge($exchange)->unique()->sort()->values();
-
-                            // Pull name + symbol for display
-                            $currencies = App\Models\Currency::whereIn('iso_code', $allIso)
-                            ->get(['iso_code','name','symbol'])
-                            ->keyBy('iso_code'); // ['KWD' => {iso_code,name,symbol}, ...]
-                            @endphp
 
                             <div class="flex items-center justify-between space-x-4">
                                 <!-- From -->
@@ -139,13 +126,14 @@
                                             @foreach($allIso as $code)
                                             @php
                                             $c = $currencies[$code] ?? null;
-                                            $label = trim(($c->symbol ?? '').' '.$code.' '.($c->name ?? ''));
+                                            $label = trim(($c->symbol ?? '') . ' ' . $code . ' ' . ($c->name ?? ''));
                                             @endphp
                                             <option value="{{ $code }}">{{ $label }}</option>
                                             @endforeach
                                         </select>
                                     </div>
                                 </div>
+
 
                                 <!-- Swap -->
                                 <button type="button" @click="swap(); convertIfReady()" class="rounded-full border p-2 bg-white shadow" title="Swap">
@@ -163,13 +151,14 @@
                                             @foreach($allIso as $code)
                                             @php
                                             $c = $currencies[$code] ?? null;
-                                            $label = trim(($c->symbol ?? '').' '.$code.' '.($c->name ?? ''));
+                                            $label = trim(($c->symbol ?? '') . ' ' . $code . ' ' . ($c->name ?? ''));
                                             @endphp
                                             <option value="{{ $code }}">{{ $label }}</option>
                                             @endforeach
                                         </select>
                                     </div>
                                 </div>
+
                             </div>
 
                             <!-- Result -->
@@ -195,13 +184,21 @@
                                 </button>
                             </div>
 
-                            <!-- Error -->
-                            <template x-if="error">
+                            <!-- Success/Info notice -->
+                            <template x-if="notice">
                                 <div class="flex justify-center mt-2">
                                     <div
-                                        class="border border-red-500 bg-red-50 text-red-700 text-sm px-3 py-2 rounded max-w-lg overflow-hidden text-ellipsis whitespace-nowrap"
-                                        x-text="error">
+                                        class="border border-green-400 bg-green-50 text-green-700 text-sm px-3 py-2 rounded max-w-lg text-center"
+                                        x-text="notice">
                                     </div>
+                                </div>
+                            </template>
+
+                            <!-- Existing error block stays as-is -->
+                            <template x-if="error">
+                                <div class="flex justify-center mt-2">
+                                    <div class="border border-red-500 bg-red-50 text-red-700 text-sm px-3 py-2 rounded max-w-lg text-center"
+                                        x-text="error"></div>
                                 </div>
                             </template>
                         </div>
@@ -228,11 +225,7 @@
                     </svg>
                 </button>
             </div>
-
         </div>
-
-
-
     </div>
 
 
@@ -245,11 +238,9 @@
         return {
             showModal: false,
 
-            // config
             companyId,
             convertUrl,
 
-            // state
             amount: null,
             from: null,
             to: null,
@@ -259,6 +250,8 @@
             ready: false,
             error: null,
             lastUpdated: '',
+            notice: null,
+            loading: false,
 
             init() {
                 this.$nextTick(() => {
@@ -297,7 +290,9 @@
 
             async convert() {
                 this.error = null;
+                this.notice = null;
                 this.ready = false;
+                this.loading = true;
 
                 try {
                     const res = await fetch(this.convertUrl, {
@@ -315,24 +310,54 @@
                         })
                     });
 
-                    const text = await res.text();
-                    if (!res.ok) throw new Error(`Server error ${res.status}: ${text.slice(0, 200)}...`);
+                    let payload = null,
+                        fallbackText = '';
+                    try {
+                        payload = await res.json();
+                    } catch {
+                        fallbackText = await res.text();
+                    }
 
-                    const data = JSON.parse(text);
-                    if (!data.ok) throw new Error(data.error || 'Conversion failed');
+                    if (!res.ok || (payload && payload.status === 'success')) {
+                        const msg = (payload && (payload.message || payload.error)) || fallbackText || `Server error ${res.status}`;
+                        throw new Error(msg);
+                    }
 
+                    // If backend says the rate was just created, show message then retry
+                    if (payload && payload.created === true) {
+                        this.notice = payload.message || 'Rate created. Refreshing…';
+                        // small delay so DB write is visible; 1500 ms as you asked
+                        setTimeout(() => {
+                            this.convert(); // re-run to fetch fresh numbers
+                        }, 3000);
+                        this.loading = false;
+                        return; // stop here; don't render numbers yet
+                    }
+
+                    // Normal success path
+                    const data = payload ?? {};
                     this.rate = this.format(data.exchange_rate);
-                    this.inverse = data.inverse_rate ? this.format(data.inverse_rate) : null;
+                    this.inverse = (data.inverse_rate == null || data.inverse_rate === 'N/A') ?
+                        null :
+                        this.format(data.inverse_rate);
                     this.converted = data.converted_amount;
                     this.ready = true;
 
                     const now = new Date();
                     this.lastUpdated = `Last updated ${now.toLocaleString()}`;
                 } catch (e) {
-                    this.error = e.message || 'Failed to convert.';
-                    console.error(e);
+                    this.error = e?.message || 'Failed to convert.';
+                } finally {
+                    this.loading = false;
                 }
-            }
-        }
+            },
+
+            format(n) {
+                if (n === 'N/A' || n === null || Number.isNaN(Number(n))) return 'N/A';
+                return Number(n ?? 0).toLocaleString(undefined, {
+                    maximumFractionDigits: 6
+                });
+            },
+        };
     }
 </script>

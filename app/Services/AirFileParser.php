@@ -61,6 +61,7 @@ class AirFileParser
                 'cancellation_policy' => $this->extractCancellationPolicy(),
                 'venue' => $this->extractVenue(),
                 'issued_date' => $this->extractIssuedDate(),
+                'is_exchanged' => true,
                 'task_flight_details' => $this->parseFlightDetails(),
             ];
             
@@ -103,6 +104,7 @@ class AirFileParser
                 'cancellation_policy' => $this->extractCancellationPolicy(),
                 'venue' => $this->extractVenue(),
                 'issued_date' => $this->extractIssuedDate(),
+                'is_exchanged' => true,
                 'task_flight_details' => $this->parseFlightDetails(),
             ];
             

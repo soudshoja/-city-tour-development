@@ -143,7 +143,15 @@
             .slider.round:before {
                 border-radius: 50%;
             }
-
+            input[type="number"].no-spin::-webkit-outer-spin-button,
+            input[type="number"].no-spin::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+            input[type="number"].no-spin {
+                -moz-appearance: textfield;
+                appearance: textfield;
+            }
         }
     </style>
     <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
@@ -1962,8 +1970,8 @@
                     total: item?.total ?? 0,
                     taskPrice: item?.task_price ?? 0,
                     clientName: item?.client_name ?? '',
-                    agentName: item?.agent?.name ?? '',
-                    branchName: item?.agent?.branch?.name ?? '',
+                    agentName: item?.agent?.name ?? item?.agent_name ?? '',
+                    branchName: item?.agent?.branch?.name ?? item?.branch_name ?? '',
                     supplierName: item?.supplier_name ?? item?.supplier?.name ?? '',
                     type: (item?.type ?? ''),
                     typeCap: (item?.type ? (item.type.charAt(0).toUpperCase() + item.type.slice(1)) : ''),
@@ -1986,7 +1994,7 @@
                     <td><p>${task.total} KWD</p></td>
                     <td>
                     <div class="flex items-center">
-                        <input id="invprice-table-${task.id}" type="number" class="border border-gray-300 rounded-md w-full" value="${task.taskPrice}" oninput="updateItemPrice(${item.id})" />
+                        <input id="invprice-table-${task.id}" type="number" class="no-spin border border-gray-300 rounded-md w-full" value="${task.taskPrice}" oninput="updateItemPrice(${item.id}); updateField(${JSON.stringify(task.id)}, 'invprice-table')" />
                         ${isSaved ? `
                             <button type="button" class="p-1 rounded hover:bg-gray-200" title="Save" onclick="saveTaskPrice(${JSON.stringify(task.id)})">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
@@ -2355,18 +2363,12 @@
             renderTaskList(tasks);
         }
 
-        // The removeItem function now only needs to handle the front-end state.
-        // The back-end will determine what was removed by comparing the saved state with the new state.
         function removeItem(itemId ) {
-            // Find the index of the item to remove
             const itemIndex = items.findIndex(item => item.id === itemId);
             if (itemIndex > -1) {
-                // Remove the item from the array
                 items.splice(itemIndex, 1);
-                // Re-render the table and update the total
                 renderItems();
                 calculateSubtotal();
-                // Re-render the task list in the modal to make the removed task available again
                 renderTaskList(tasks);
             }
         }

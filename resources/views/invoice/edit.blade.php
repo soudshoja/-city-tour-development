@@ -412,6 +412,10 @@
                         <option value="GBP">GBP</option>
                     </select>
 
+                    <!-- Invoice Payment Settings Section -->
+                    <div class="mt-4">
+                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Invoice Settings</h2>
+                        
                     <!-- Payment Type Section -->
                     <div id="paymentMethod" class="mt-4">
                         <h2 class="text-lg font-semibold mb-3 text-gray-700">
@@ -776,9 +780,9 @@
                                         <select id="payment_gateway_option" name="payment_gateway_option"
                                             class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
                                             @foreach ($paymentGateways as $gateway)
-                                            <option value="{{ $gateway }}"
-                                                {{ $selectedGateway === $gateway ? 'selected' : '' }}>
-                                                {{ $gateway }}
+                                            <option value="{{ $gateway->name }}"
+                                                {{ $selectedGateway === $gateway->name ? 'selected' : '' }}>
+                                                {{ $gateway->name }}
                                             </option>
                                             @endforeach
                                         </select>
@@ -792,6 +796,29 @@
                                             <option value="{{ $methods->id }}" {{ $selectedMethod == $methods->id ? 'selected' : '' }}>{{ $methods->english_name }}</option>
                                             @endforeach
                                         </select>
+                                    </div>
+
+                                    <!-- External URL Field -->
+                                    <div class="mt-4" id="external_url_section" style="display: none;">
+                                        <h2 class="text-lg font-semibold mb-3 text-gray-700">External Payment URL (Optional)</h2>
+                                        <input type="url" id="external_url" name="external_url" 
+                                            class="border border-gray-300 p-2 rounded w-full" 
+                                            placeholder="Enter payment gateway URL (optional)" 
+                                            value="{{ $invoice->external_url ?? '' }}">
+                                        <p class="text-sm text-gray-500 mt-1">Optionally provide an external payment gateway URL for this invoice</p>
+                                    </div>
+
+                                    <!-- Auto Payment Notification -->
+                                    <div class="mt-4" id="auto_payment_notification" style="display: none;">
+                                        <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <div class="flex items-center">
+                                                <svg class="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                                </svg>
+                                                <p class="text-sm text-blue-800 font-medium">Auto Payment Enabled</p>
+                                            </div>
+                                            <p class="text-xs text-blue-700 mt-1">This payment gateway will automatically mark the invoice as paid when processing full payment.</p>
+                                        </div>
                                     </div>
                                 </div>
                                 <div id="payment-response-message" class="hidden mt-4 text-sm font-semibold rounded px-4 py-2"></div>
@@ -1437,8 +1464,99 @@
         let tasks = [];
         const itemsBody = document.getElementById('items-body');
         const appUrl = @json($appUrl);
+        const charges = @json($paymentGateways);
 
         console.log(items);
+        
+        // Function to check if external URL should be shown and handle auto-payment
+        function checkExternalUrlVisibility() {
+            const selectedGateway = document.getElementById('payment_gateway_option').value;
+            const externalUrlSection = document.getElementById('external_url_section');
+            const externalUrlInput = document.getElementById('external_url');
+            const autoPaymentNotification = document.getElementById('auto_payment_notification');
+            
+            // Find the charge settings for the selected gateway
+            const selectedCharge = charges.find(charge => charge.name === selectedGateway);
+
+            // Handle external URL visibility
+            if (selectedCharge && typeof selectedCharge.has_url !== 'undefined' && selectedCharge.has_url) {
+                externalUrlSection.style.display = 'block';
+                // External URL is optional, not required
+            } else {
+                externalUrlSection.style.display = 'none';
+                if (externalUrlInput) {
+                    externalUrlInput.value = '';
+                }
+            }
+
+            // Handle auto-payment logic
+            if (selectedCharge && selectedCharge.is_auto_paid) {
+                // Show auto-payment notification
+                autoPaymentNotification.style.display = 'block';
+
+                // Auto-select full payment
+                const fullPaymentRadio = document.getElementById('payment_type_full');
+                if (fullPaymentRadio) {
+                    fullPaymentRadio.checked = true;
+                    fullPaymentRadio.click(); // Trigger any onclick events
+                }
+
+                // Disable other payment options
+                const partialPaymentRadio = document.getElementById('payment_type_partial');
+                const splitPaymentRadio = document.getElementById('payment_type_split');
+                const importPaymentRadio = document.getElementById('payment_type_import');
+
+                if (partialPaymentRadio) {
+                    partialPaymentRadio.disabled = true;
+                    partialPaymentRadio.parentElement.style.opacity = '0.5';
+                    partialPaymentRadio.parentElement.style.pointerEvents = 'none';
+                }
+                if (splitPaymentRadio) {
+                    splitPaymentRadio.disabled = true;
+                    splitPaymentRadio.parentElement.style.opacity = '0.5';
+                    splitPaymentRadio.parentElement.style.pointerEvents = 'none';
+                }
+                if (importPaymentRadio) {
+                    importPaymentRadio.disabled = true;
+                    importPaymentRadio.parentElement.style.opacity = '0.5';
+                    importPaymentRadio.parentElement.style.pointerEvents = 'none';
+                }
+            } else {
+                // Hide auto-payment notification
+                autoPaymentNotification.style.display = 'none';
+
+                // Re-enable other payment options
+                const partialPaymentRadio = document.getElementById('payment_type_partial');
+                const splitPaymentRadio = document.getElementById('payment_type_split');
+                const importPaymentRadio = document.getElementById('payment_type_import');
+
+                if (partialPaymentRadio) {
+                    partialPaymentRadio.disabled = false;
+                    partialPaymentRadio.parentElement.style.opacity = '1';
+                    partialPaymentRadio.parentElement.style.pointerEvents = 'auto';
+                }
+                if (splitPaymentRadio) {
+                    splitPaymentRadio.disabled = false;
+                    splitPaymentRadio.parentElement.style.opacity = '1';
+                    splitPaymentRadio.parentElement.style.pointerEvents = 'auto';
+                }
+                if (importPaymentRadio) {
+                    importPaymentRadio.disabled = false;
+                    importPaymentRadio.parentElement.style.opacity = '1';
+                    importPaymentRadio.parentElement.style.pointerEvents = 'auto';
+                }
+            }
+        }
+
+        // Add event listener for gateway selection change
+        document.addEventListener('DOMContentLoaded', function() {
+            const gatewaySelect = document.getElementById('payment_gateway_option');
+            if (gatewaySelect) {
+                gatewaySelect.addEventListener('change', checkExternalUrlVisibility);
+                // Check on initial load
+                checkExternalUrlVisibility();
+            }
+        });
         
         // console.log('invoice', invoice);
         // Handle Tab Switching
@@ -2649,12 +2767,14 @@
                 const gateway = document.getElementById('payment_gateway_option')?.value;
                 const date = document.getElementById('duedate').value;
                 const amount = document.getElementById('subTotal').value;
+                const externalUrl = document.getElementById('external_url')?.value;
                 const fullData = [];
 
                 fullData.push({
                     date,
                     amount,
-                    gateway
+                    gateway,
+                    external_url: externalUrl
                 });
 
                 for (const item of fullData) {
@@ -2863,6 +2983,7 @@
                 date: item.date,
                 amount: item.amount,
                 gateway: item.gateway,
+                external_url: item.external_url || null,
             };
 
             if (type === 'full' || type === 'credit') {

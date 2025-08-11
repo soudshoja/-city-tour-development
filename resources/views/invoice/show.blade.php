@@ -107,21 +107,7 @@
         <!-- Header Ends -->
 
         <div class="flex justify-between items-center mb-8">
-            <div class="text-left max-w-xs">
-                <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
-                <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->address }}</p>
-                <p class="text-sm text-gray-600">
-                    <a href="mailto:{{ $invoice->agent->branch->company->email }}" class="hover:underline hover:text-blue-600">
-                        {{ $invoice->agent->branch->company->email }}
-                    </a>
-                </p>
-                <p class="text-sm text-gray-600">
-                    <a href="tel:{{ $invoice->agent->branch->company->phone }}" class="hover:underline hover:text-blue-600">
-                        {{ $invoice->agent->branch->company->phone }}
-                    </a>
-                </p>
-            </div>
-            <div class="text-right">
+            <div class="text-left">
                 <h3 class="text-lg font-bold text-gray-800">Billed To</h3>
                 <p class="text-sm text-gray-600">{{ $invoice->client->name ?? 'N/A' }}</p>
                 <p class="text-sm text-gray-600">
@@ -132,6 +118,20 @@
                 <p class="text-sm text-gray-600">
                     <a href="tel:{{ $invoice->client->country_code }}{{ $invoice->client->phone }}" class="hover:underline hover:text-blue-600">
                         {{ $invoice->client->country_code ?? ''}}{{ $invoice->client->phone ?? 'N/A' }}
+                    </a>
+                </p>
+            </div>
+            <div class="text-right max-w-xs">
+                <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
+                <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->address }}</p>
+                <p class="text-sm text-gray-600">
+                    <a href="mailto:{{ $invoice->agent->branch->company->email }}" class="hover:underline hover:text-blue-600">
+                        {{ $invoice->agent->branch->company->email }}
+                    </a>
+                </p>
+                <p class="text-sm text-gray-600">
+                    <a href="tel:{{ $invoice->agent->branch->company->phone }}" class="hover:underline hover:text-blue-600">
+                        {{ $invoice->agent->branch->company->phone }}
                     </a>
                 </p>
             </div>

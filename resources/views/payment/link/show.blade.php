@@ -64,7 +64,21 @@
         <!-- Header Ends -->
 
         <div class="flex justify-between items-start mb-8">
-            <div class="max-w-xs">
+            <div class="text-left">
+                <h3 class="text-lg font-bold text-gray-800 mb-1">Billed To</h3>
+                <p class="text-sm text-gray-600">{{ $payment->client->name }}</p>
+                <p class="text-sm text-gray-600">
+                    <a href="mailto:{{ $payment->client->email }}" class="hover:underline hover:text-blue-600">
+                        {{ $payment->client->email }}
+                    </a>
+                </p>
+                <p class="text-sm text-gray-600">
+                    <a href="tel:{{ $payment->agent->branch->company->phone }}" class="hover:underline hover:text-blue-600">
+                        {{ $payment->client->country_code }}{{ $payment->client->phone }}
+                    </a>
+                </p>
+            </div>
+            <div class="max-w-xs text-right">
                 <h2 class="text-xl font-bold text-gray-800">{{ $payment->agent->branch->company->name }}</h2>
                 <p class="text-sm text-gray-600 break-words">
                     {{ $payment->agent->branch->company->address }}
@@ -77,21 +91,6 @@
                 <p class="text-sm text-gray-600">
                     <a href="tel:{{ $payment->agent->branch->company->phone }}" class="hover:underline hover:text-blue-600">
                         {{ $payment->agent->branch->company->phone }}
-                    </a>
-                </p>
-            </div>
-
-            <div class="text-right">
-                <h3 class="text-lg font-bold text-gray-800 mb-1">Billed To</h3>
-                <p class="text-sm text-gray-600">{{ $payment->client->name }}</p>
-                <p class="text-sm text-gray-600">
-                    <a href="mailto:{{ $payment->client->email }}" class="hover:underline hover:text-blue-600">
-                        {{ $payment->client->email }}
-                    </a>
-                </p>
-                <p class="text-sm text-gray-600">
-                    <a href="tel:{{ $payment->agent->branch->company->phone }}" class="hover:underline hover:text-blue-600">
-                        {{ $payment->client->country_code }}{{ $payment->client->phone }}
                     </a>
                 </p>
             </div>
@@ -153,7 +152,7 @@
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Amount:</span>
                     <!--  <span>{{ number_format($payment->amount, 2) }}</span> -->
-                    <span>{{ number_format($finalAmount, 2) }} {{ $payment->currency }}</span>
+                    <span>{{ number_format(!empty($finalAmount) ? $finalAmount : $payment->amount, 2) }} {{ $payment->currency }}</span>
                 </div>
 
                 <!-- @if ($serviceCharge > 0)
@@ -169,19 +168,50 @@
 
                 <div class="flex justify-between items-center py-2 font-bold text-gray-800">
                     <span>Total:</span>
-                    <span>{{ number_format($finalAmount, 2) }} {{ $payment->currency }}</span>
+                    <span>{{ number_format(!empty($finalAmount) ? $finalAmount : $payment->amount, 2) }} {{ $payment->currency }}</span>
                 </div>
             </div>
         </div>
 
 
-        <div class="mt-10 flex items-center justify-between w-full">
-            <div class="space-y-2">
+        <!-- MOBILE -->
+        <div class="mt-10 md:hidden space-y-3 w-full">
+            @unless ($payment->status === 'completed')
+            <div class="mb-10">
+                <form action="{{ route('payment.link.initiate') }}" method="POST" class="w-full">
+                    @csrf
+                    <input type="hidden" name="payment_id" value="{{ $payment->id }}">
+                    <button type="submit"
+                        class="city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-5 py-2 shadow-md font-semibold w-[180px] text-left">
+                        Pay Now
+                    </button>
+                </form>
+            </div>
+            @endunless
+
+            <div class="space-y-2 text-center w-full">
                 <p class="text-lg font-bold text-gray-800">Thank you for your business!</p>
                 <div class="text-sm text-gray-600 w-full overflow-x-auto">
-                    <p class="whitespace-nowrap">
-                        If you have any questions about this voucher, please contact:
+                    <p class="whitespace-nowrap">If you have any questions about this voucher, please contact:</p>
+                    <p>
+                        {{ $payment->agent->name }} -
+                        <a href="mailto:{{ $payment->agent->email }}" class="hover:underline hover:text-blue-600">
+                            {{ $payment->agent->email }}
+                        </a>
+                        @if ($payment->agent->phone)
+                        || {{ $payment->agent->phone }}
+                        @endif
                     </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- DESKTOP -->
+        <div class="mt-10 hidden md:flex items-start justify-between w-full">
+            <div class="space-y-2 text-left">
+                <p class="text-lg font-bold text-gray-800">Thank you for your business!</p>
+                <div class="text-sm text-gray-600 w-full overflow-x-auto">
+                    <p class="whitespace-nowrap">If you have any questions about this voucher, please contact:</p>
                     <p>
                         {{ $payment->agent->name }} -
                         <a href="mailto:{{ $payment->agent->email }}" class="hover:underline hover:text-blue-600">
@@ -195,17 +225,21 @@
             </div>
 
             @unless ($payment->status === 'completed')
-            <!-- Pay Now Button -->
             <form action="{{ route('payment.link.initiate') }}" method="POST" class="flex-shrink-0">
                 @csrf
                 <input type="hidden" name="payment_id" value="{{ $payment->id }}">
                 <button type="submit"
-                    class="city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-4 py-2 shadow-md font-semibold">
+                    class="city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-6 py-2 shadow-md font-semibold">
                     Pay Now
                 </button>
             </form>
             @endunless
         </div>
+
+
+
+
+
 
     </div>
 </body>

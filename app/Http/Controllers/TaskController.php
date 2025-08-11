@@ -269,6 +269,7 @@ class TaskController extends Controller
             'task_flight_details' => 'nullable|array',
             'file_name' => 'nullable|string',
             'issued_date' => 'nullable|date',
+            'expiry_date' => 'nullable|date|after:now',
         ]);
 
         if($request->exchange_currency !== 'KWD'){
@@ -454,6 +455,18 @@ class TaskController extends Controller
             $request->merge(['status' => $status]);
         }
 
+        // Automatically set expiry date for "confirmed" tasks if not provided
+        if ($request->status === 'confirmed' && !$request->expiry_date) {
+            // Set default expiry to 48 hours from now for confirmed tasks
+            $request->merge(['expiry_date' => Carbon::now()->addHours(48)]);
+            
+            Log::info("Auto-set expiry date for confirmed task", [
+                'reference' => $request->reference,
+                'expiry_date' => $request->expiry_date,
+                'company_id' => $request->company_id
+            ]);
+        }
+
         // Set default values for nullable fields using merge()
         $request->merge([
             'penalty_fee' => $request->penalty_fee ?? 0,
@@ -561,6 +574,18 @@ class TaskController extends Controller
                 'message' => 'Task creation failed: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function triggerCheckTaskEvent(Task $task, string $reason = 'manual_trigger'){
+        // Trigger the check status event for the task
+        event(new \App\Events\CheckConfirmedOrIssuedTask($task, $reason));
+        
+        Log::info("Triggered CheckConfirmedOrIssuedTask event", [
+            'task_id' => $task->id,
+            'reference' => $task->reference,
+            'status' => $task->status,
+            'reason' => $reason
+        ]);
     }
 
     /**

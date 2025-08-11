@@ -52,6 +52,8 @@ class ChargeController extends Controller
             'paid_by' => $charge->paid_by,
             'description' => $charge->description,
             'amount' => $charge->amount,
+            'is_auto_paid' => $charge->is_auto_paid,
+            'has_url' => $charge->has_url,
         ]);
     }
 
@@ -118,7 +120,9 @@ class ChargeController extends Controller
             'type' => 'required|string|max:255',
             'charge_type' => 'required',
             'paid_by' => 'required',
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => 'required|numeric',
+            'is_auto_paid' => 'nullable|boolean',
+            'has_url' => 'nullable|boolean',
         ]);
 
         // Fetch COA for Payment Gateway
@@ -189,6 +193,8 @@ class ChargeController extends Controller
                 'branch_id' => Auth::user()->branch->id,
                 'charge_type' => $request->get('charge_type'),
                 'paid_by' => $request->get('paid_by'),
+                'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
+                'has_url' => $request->has('has_url') ? 1 : 0,
             ]);
 
             // Commit the transaction
@@ -245,7 +251,9 @@ class ChargeController extends Controller
             'description' => 'nullable|string|max:255',
             'paid_by' => 'required',
             'charge_type' => 'required',
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => 'required|numeric',
+            'is_auto_paid' => 'nullable|boolean',
+            'has_url' => 'nullable|boolean',
         ]);
 
         try {
@@ -261,6 +269,8 @@ class ChargeController extends Controller
                 'paid_by' => $request->get('paid_by'),
                 'description' => $request->get('description'),
                 'charge_type' => $request->get('charge_type'),
+                'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
+                'has_url' => $request->has('has_url') ? 1 : 0,
 
                 //'acc_bank_id' => $request->get('acc_bank_id'),
                 // 'acc_fee_id' => $request->get('acc_fee_id'),

@@ -10,11 +10,49 @@
                 </li>
             </ul>
             <div class="p-2 bg-white rounded shadow">
-                <div class="flex justify-between items-center mb-4 p-2">
+                <div class="flex justify-between items-center mb-2 p-2">
                     <h2 class="text-xl font-semibold">Payment Links</h2>
                     <a href="{{ route('payment.link.create') }}"
                         class="bg-blue-600 hover:bg-blue-700 rounded-full shadow-md text-white px-4 py-2">Create/Import Payment
                         Link</a>
+                </div>
+                <div class="flex justify-between items-center mb-4 p-2">
+                    <form action="{{ route('payment.link.index') }}" method="GET" class="flex items-center gap-2 w-1/2">
+                        <div class="relative w-full">
+                            <input type="text" name="q" value="{{ request('q') }}" id="searchInput" placeholder=" "
+                                class="block py-2.2 w-full text-sm text-gray-900 bg-transparent border-b-2 border-gray-300 appearance-none
+                                    dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0
+                                    focus:border-blue-600 peer rounded-full" />
+                            <label for="searchInput" class="absolute text-md text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
+                                    bg-white dark:bg-gray-900 px-2 peer-focus:text-blue-600 peer-focus:dark:text-blue-500
+                                    peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
+                                    peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">
+                                Quick search for payments
+                            </label>
+                        </div>
+                        <button type="submit" id="searchButton" data-tooltip="Search"
+                            class="relative group bg-blue-200 hover:bg-blue-600 text-black hover:text-white
+                                w-9 h-8 flex items-center justify-center rounded-full transition duration-300 ring-offset-2">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="11.5" cy="11.5" r="9.5"
+                                        stroke="currentColor" stroke-width="1.5" opacity="0.5" />
+                                <path d="M18.5 18.5L22 22"
+                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                            </svg>
+                        </button>
+                        <button type="button" data-tooltip="Reset" onclick="window.location='{{ route('payment.link.index') }}'" id="resetButton"
+                            class="relative group bg-red-200 hover:bg-red-500 text-black hover:text-white
+                                w-9 h-8 flex items-center justify-center rounded-full
+                                {{ request('q') ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none' }}
+                                transition-all duration-300">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </form>
                 </div>
 
                 @if ($payments->isEmpty())

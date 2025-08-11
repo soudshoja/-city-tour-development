@@ -1150,7 +1150,7 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function paymentLink()
+    public function paymentLink(Request $request)
     {
         $user = Auth::user();
 
@@ -1181,9 +1181,27 @@ class PaymentController extends Controller
                 $query->whereHas('invoice', function ($payment) use ($agentsId) {
                     $payment->whereIn('agent_id', $agentsId);
                 })->orWhereIn('agent_id', $agentsId);
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+            });
+
+        if ($search = $request->query('q')) {
+            $payments = $payments->where(function ($query) use ($search) {
+                $query->where('payment_reference', 'like', '%' . $search . '%')
+                    ->orWhere('payment_gateway', 'like', '%' . $search . '%')
+                    ->orWhereHas('paymentMethod', function ($q) use ($search) {
+                        $q->where('english_name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('agent', function ($q) use ($search) {
+                        $q->where('name', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('client', function ($q) use ($search) {
+                        $q->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('country_code', 'like', '%' . $search . '%')
+                            ->orWhere('phone', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        $payments = $payments->orderBy('created_at', 'desc')->paginate(15)->withQueryString();;
 
         $payments->getCollection()->transform(function ($payment) {
             if ($payment->payment_gateway === 'MyFatoorah') {

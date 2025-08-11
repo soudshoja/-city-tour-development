@@ -398,8 +398,7 @@ class InvoiceController extends Controller
         $suppliers = Supplier::all();
         $paymentGateways = Charge::where('company_id', $invoice->agent->branch->company_id)
             ->where('is_active', true)
-            ->pluck('name')
-            ->toArray();
+            ->get();
         $paymentMethods = PaymentMethod::where('is_active', true)->get();
         $invoiceDate = $invoice->invoice_date;
         $invprice = $invoice->amount;
@@ -503,7 +502,8 @@ class InvoiceController extends Controller
             'invoiceNumber' => 'required|string',
             'gateway' => 'required|string',
             'method' => 'nullable|string',
-            'credit' => 'nullable|boolean'
+            'credit' => 'nullable|boolean',
+            'external_url' => 'nullable|url'
         ]);
 
         $invoiceId = $request->input('invoiceId');
@@ -515,9 +515,20 @@ class InvoiceController extends Controller
         $gateway = $request->input('gateway');
         $method = $request->input('method') ?? null;
         $credit = $request->input('credit', false); // Default to false if not provided
+        $externalUrl = $request->input('external_url');
 
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
         $companyId = $invoice->agent->branch->company_id;
+
+        // Get the charge settings for the selected gateway
+        $charge = Charge::where('name', $gateway)
+            ->where('company_id', $companyId)
+            ->first();
+
+        // Update invoice with external URL only if the gateway supports URLs
+        if ($externalUrl && $charge && $charge->has_url) {
+            $invoice->update(['external_url' => $externalUrl]);
+        }
 
         if (strtolower($gateway) === 'myfatoorah' && $method) {
             try {
@@ -591,7 +602,18 @@ class InvoiceController extends Controller
             }
 
             $invoice->payment_type = $type;
-            $invoice->status = $credit ? 'paid' : 'unpaid';
+            
+            // Auto-payment logic: if charge has is_auto_paid = true, automatically mark as paid
+            if ($charge && $charge->is_auto_paid) {
+                $invoice->status = 'paid';
+                $invoice->paid_date = now();
+            } else {
+                $invoice->status = $credit ? 'paid' : 'unpaid';
+                if ($credit) {
+                    $invoice->paid_date = now();
+                }
+            }
+            
             $invoice->is_client_credit = $credit;
             $invoice->save();
 

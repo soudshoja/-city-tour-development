@@ -93,7 +93,8 @@
                 <div x-cloak x-show="showModal" x-trap="showModal" @click.self="showModal = false"
                     class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
 
-                    <div class="bg-white rounded-lg p-6 w-[1680px] max-w-[95vw] shadow-xl overflow-y-auto" style="max-height: 120vh;">
+                    <div class="bg-white rounded-lg p-6 w-full max-w-[900px] md:max-w-[1100px] lg:max-w-[1280px] shadow-xl overflow-y-auto max-h-[90vh]">
+
                         <div class="flex items-center justify-between mb-6">
                             <div>
                                 <h2 class="text-xl font-bold text-gray-800">Currency Exchange</h2>
@@ -299,21 +300,38 @@
                         })
                     });
 
-                    const text = await res.text();
-                    if (!res.ok) throw new Error(`Server error ${res.status}: ${text.slice(0, 200)}...`);
+                    // Try to parse JSON either way (ok or error)
+                    let payload = null,
+                        fallbackText = '';
+                    try {
+                        payload = await res.json();
+                    } catch {
+                        fallbackText = await res.text(); // non-JSON error fallback
+                    }
 
-                    const data = JSON.parse(text);
-                    if (!data.ok) throw new Error(data.error || 'Conversion failed');
+                    // Normalize error detection
+                    const notOk = !res.ok || (payload && payload.ok === false);
 
+                    if (notOk) {
+                        const msg =
+                            (payload && (payload.message || payload.error)) ||
+                            fallbackText ||
+                            `Server error ${res.status}`;
+                        throw new Error(msg);
+                    }
+
+                    // Success
+                    const data = payload ?? {};
                     this.rate = this.format(data.exchange_rate);
-                    this.inverse = data.inverse_rate ? this.format(data.inverse_rate) : null;
+                    this.inverse = data.inverse_rate != null ? this.format(data.inverse_rate) : null;
                     this.converted = data.converted_amount;
                     this.ready = true;
 
                     const now = new Date();
                     this.lastUpdated = `Last updated ${now.toLocaleString()}`;
                 } catch (e) {
-                    this.error = e.response?.data?.message || 'Failed to convert.';
+                    // fetch doesn't have e.response like axios — use e.message
+                    this.error = e?.message || 'Failed to convert.';
                     console.error(e);
                 }
             }

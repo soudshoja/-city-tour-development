@@ -286,52 +286,73 @@ class CurrencyExchangeController extends Controller
         ]);
 
         $user = Auth::user();
+        $companyId = $data['company_id']
+            ?? Company::where('user_id', $user->id)->value('id')
+            ?? 1;
 
-        $company = Company::where('user_id', $user->id)->first();
+        $from = strtoupper($data['from_currency']);
+        $to   = strtoupper($data['to_currency']);
+        $amt  = (float) $data['amount'];
 
-        if ($company) {
-            $companyId = $company->id;
-            Log::info('Exchange Rate Conversion made by Company ', ['company_id' => $companyId, 'user_id' => Auth::id()]);
-        } else {
-            Log::warning('No company found for this user', ['user_id' => $user->id]);
-        }
-
-        $result = $this->convertCurrencies(
-            $companyId,                                    // <- companyId (default 1)
-            strtoupper($data['from_currency']),            // <- from
-            strtoupper($data['to_currency']),              // <- to
-            (float) $data['amount']                         // <- amount
-        );
-
-        Log::info('Result:', [
-            'From Currency' => $data['from_currency'],
-            'To Currency'   => $data['to_currency'],
-            'Result'        => $result,
+        Log::info('Exchange Rate Conversion made by Company ', [
+            'company_id' => $companyId,
+            'user_id'    => $user->id
         ]);
 
-        $inverseExchange = CurrencyExchange::where('base_currency', strtoupper($data['to_currency']))
-            ->where('exchange_currency', strtoupper($data['from_currency']))
-            ->first();
-
-        if (!$inverseExchange) {
+        if ($from === $to) {
             return response()->json([
-                'status'  => 'error',
-                'message' => 'No rate found in the database. Contact Administrator to create new rate'
+                'ok'               => true,
+                'exchange_rate'    => 1,
+                'converted_amount' => $amt,
+                'inverse_rate'     => 1,
             ]);
         }
 
-        $inverse = $inverseExchange->exchange_rate;
+        // Forward rate
+        $forward = CurrencyExchange::where('company_id', $companyId)
+            ->where('base_currency', $from)
+            ->where('exchange_currency', $to)
+            ->first();
 
-        Log::info('Inverse rate fetched from DB', [
-            'base_currency'     => $inverseExchange->base_currency,
-            'exchange_currency' => $inverseExchange->exchange_currency,
-            'inverse_rate'      => $inverse,
+        if (!$forward) {
+            return response()->json([
+                'ok'      => false,
+                'message' => "No rate found for {$from} → {$to}.",
+            ], 422);
+        }
+
+        $rate      = (float) $forward->exchange_rate;
+        $converted = round($amt * $rate, 6);
+
+        // Inverse rate
+        $inverseRow = CurrencyExchange::where('company_id', $companyId)
+            ->where('base_currency', $to)
+            ->where('exchange_currency', $from)
+            ->first();
+
+        if (!$inverseRow) {
+            return response()->json([
+                'ok'      => false,
+                'message' => "No inverse rate found for {$to} → {$from}.",
+            ], 422);
+        }
+
+        $inverse = (float) $inverseRow->exchange_rate;
+
+        Log::info('Result:', [
+            'From Currency' => $from,
+            'To Currency'   => $to,
+            'Result'        => [
+                'exchange_rate'    => $rate,
+                'converted_amount' => $converted
+            ],
+            'Inverse Rate'  => $inverse,
         ]);
 
         return response()->json([
             'ok'               => true,
-            'exchange_rate'    => $result['exchange_rate'],
-            'converted_amount' => $result['converted_amount'],
+            'exchange_rate'    => $rate,
+            'converted_amount' => $converted,
             'inverse_rate'     => $inverse,
         ]);
     }

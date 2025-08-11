@@ -34,6 +34,7 @@ class Invoice extends Model
         'accept_payment',
         'payment_type',
         'is_client_credit',
+        'external_url',
     ];
 
     public function client()

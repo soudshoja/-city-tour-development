@@ -36,7 +36,7 @@
                 </div>
 
                 <!-- Create Charge Modal -->
-                <div x-show="createModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
+                <div x-cloak x-show="createModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
                     <div class="bg-white p-6 rounded-lg w-full max-w-lg shadow" @click.away="createModal = false">
                         <div class="flex items-center justify-between mb-4">
                             <h2 class="text-lg font-bold">Create New Charges</h2>
@@ -90,6 +90,24 @@
                             <div class="mb-4">
                                 <label class="block text-sm font-medium">Description</label>
                                 <input type="text" name="description" class="w-full border px-3 py-2 rounded-full">
+                            </div>
+
+                            <!-- Auto Payment and External URL Settings -->
+                            <div class="mb-4 flex gap-4">
+                                <div class="w-1/2">
+                                    <div class="flex items-center">
+                                        <input type="checkbox" name="is_auto_paid" id="is_auto_paid" value="1" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                        <label for="is_auto_paid" class="ml-2 text-sm font-medium text-gray-700">Auto Payment</label>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">Invoice will be automatically paid</p>
+                                </div>
+                                <div class="w-1/2">
+                                    <div class="flex items-center">
+                                        <input type="checkbox" name="has_url" id="has_url" value="1" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                        <label for="has_url" class="ml-2 text-sm font-medium text-gray-700">External URL</label>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">Can put external payment gateway URL</p>
+                                </div>
                             </div>
 
                             <div class="flex justify-between items-center mt-6">
@@ -149,6 +167,8 @@
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Service Charge</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Self Charge</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Charge Type</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Auto Payment</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">External URL</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
                                     </tr>
@@ -156,14 +176,14 @@
                                 <tbody>
                                     @forelse ($charges as $charge)
                                     <tr class="cursor-pointer bg-gray-100 hover:bg-gray-200" @click="open[{{ $charge->id }}] = !open[{{ $charge->id }}]">
-                                        <td class="p-3 font-bold text-gray-800 bg-gray-100" colspan="9">
+                                        <td class="p-3 font-bold text-gray-800 bg-gray-100" colspan="11">
                                             {{ $charge->name }}
                                         </td>
                                     </tr>
 
                                     @if ($charge->methods->isNotEmpty())
                                     @foreach ($charge->methods as $method)
-                                    <tr x-show="open[{{ $charge->id }}]" x-transition>
+                                    <tr x-cloak x-show="open[{{ $charge->id }}]" x-transition>
                                         <td class="p-3 pl-6 text-sm text-gray-600">{{ $method->english_name }}</td>
                                         <td class="p-3 text-sm text-gray-600">Payment Method</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $method->paid_by }}</td>
@@ -192,12 +212,12 @@
                                     </tr>
                                     @endforeach
                                     @else
-                                    <tr x-show="open[{{ $charge->id }}]" x-transition>
-                                        <td colspan="9" class="p-3 pl-6 italic text-sm text-red-500 text-center align-middle">
+                                    <tr x-cloak x-show="open[{{ $charge->id }}]" x-transition>
+                                        <td colspan="11" class="p-3 pl-6 italic text-sm text-red-500 text-center align-middle">
                                             No payment method for this payment gateway
                                         </td>
                                     </tr>
-                                    <tr x-show="open[{{ $charge->id }}]" x-transition>
+                                    <tr x-cloak x-show="open[{{ $charge->id }}]" x-transition>
                                         <td class="p-3 pl-6 text-sm text-gray-600">{{ $charge->name }}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->type }}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->paid_by }}</td>
@@ -205,6 +225,30 @@
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->amount }}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->self_charge}}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->charge_type }}</td>
+                                        <td class="p-3 text-sm text-gray-600">
+                                            @if($charge->is_auto_paid)
+                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    Auto
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Manual</span>
+                                            @endif
+                                        </td>
+                                        <td class="p-3 text-sm text-gray-600">
+                                            @if($charge->has_url)
+                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    Allowed
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Not Allowed</span>
+                                            @endif
+                                        </td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->description }}</td>
                                         <td class="p-3 text-sm flex items-center gap-3">
                                             <!-- Edit Button -->
@@ -245,7 +289,7 @@
                                     @endif
                                     @empty
                                     <tr>
-                                        <td colspan="9" class="p-6 text-center text-sm text-blue-500 align-middle">
+                                        <td colspan="11" class="p-6 text-center text-sm text-blue-500 align-middle">
                                             No charges found.
                                         </td>
                                     </tr>
@@ -254,7 +298,7 @@
                             </table>
                         </div>
                         <!-- Payment Method Edit Modal -->
-                        <div x-show="editChildModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
+                        <div x-cloak x-show="editChildModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
                             <div class="bg-white p-6 rounded-lg w-full max-w-lg shadow" @click.away="editChildModal = false">
                                 <div class="flex items-center justify-between mb-4">
                                     <h2 class="text-lg font-bold mb-4">Edit Payment Method Charges</h2>
@@ -326,7 +370,7 @@
                         </div>
 
                         <!-- Parent Method Edit Modal -->
-                        <div x-show="editParentModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
+                        <div x-cloak x-show="editParentModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
                             <div class="bg-white p-6 rounded-lg w-full max-w-lg shadow" @click.away="editParentModal = false">
                                 <div class="flex items-center justify-between mb-4">
                                     <h2 class="text-lg font-bold mb-4">Edit Gateway Charges</h2>
@@ -341,7 +385,7 @@
 
                                     <div class="mb-4">
                                         <label class="block text-sm font-medium">Name</label>
-                                        <input type="text" name="name" x-model="editData.name" class="w-full border px-3 py-2 rounded-full" x-show="editData.type" />
+                                        <input type="text" name="name" x-model="editData.name" class="w-full border px-3 py-2 rounded-full" x-cloak x-show="editData.type" />
                                     </div>
 
                                     <div class="mb-4">
@@ -369,6 +413,24 @@
                                     <div class="mb-4">
                                         <label class="block text-sm font-medium">Description</label>
                                         <input type="text" name="description" x-model="editData.description" class="w-full border px-3 py-2 rounded-full" />
+                                    </div>
+
+                                    <!-- Auto Payment and External URL Settings -->
+                                    <div class="mb-4 flex gap-4">
+                                        <div class="w-1/2">
+                                            <div class="flex items-center">
+                                                <input type="checkbox" name="is_auto_paid" id="edit_is_auto_paid" x-model="editData.is_auto_paid" value="1" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                <label for="edit_is_auto_paid" class="ml-2 text-sm font-medium text-gray-700">Auto Payment</label>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1">Invoice will be automatically paid</p>
+                                        </div>
+                                        <div class="w-1/2">
+                                            <div class="flex items-center">
+                                                <input type="checkbox" name="has_url" id="edit_has_url" x-model="editData.has_url" value="1" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                <label for="edit_has_url" class="ml-2 text-sm font-medium text-gray-700">External URL</label>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1">Can put external payment gateway URL</p>
+                                        </div>
                                     </div>
 
                                     <div class="flex justify-between items-center mt-6">

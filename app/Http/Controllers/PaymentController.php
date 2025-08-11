@@ -1155,20 +1155,16 @@ class PaymentController extends Controller
         $user = Auth::user();
 
         if ($user->role_id == Role::ADMIN) {
-
             $agents = Agent::all();
             $agentsId = $agents->pluck('id')->toArray();
         } else if ($user->role_id == Role::COMPANY) {
-
             $branches = Branch::where('company_id', $user->company->id)->get();
             $agents = Agent::where('branch_id', $branches->pluck('id')->toArray())->get();
             $agentsId = $agents->pluck('id')->toArray();
         } else if ($user->role_id == Role::BRANCH) {
-
             $agents = Agent::where('branch_id', $user->branch->id)->get();
             $agentsId = $agents->pluck('id')->toArray();
         } else if ($user->role_id == Role::AGENT) {
-
             $agents = Agent::where('id', $user->agent->id)->get();
             $agentsId = $agents->pluck('id')->toArray();
         } else {
@@ -1182,6 +1178,23 @@ class PaymentController extends Controller
                     $payment->whereIn('agent_id', $agentsId);
                 })->orWhereIn('agent_id', $agentsId);
             });
+
+        $filters = $request->input('filter');
+        if (is_null($filters)) {
+            $filters = session('filter', []);
+        } else {
+            session(['filter' => $filters]);
+            return redirect()->route('payment.link.index', array_filter([
+                'q' => $request->query('q'),
+            ]));
+        }
+
+        if ($request->boolean('clear')) {
+            session()->forget('filter');
+            return redirect()->route('payment.link.index', array_filter([
+                'q' => $request->query('q'),
+            ]));
+        }        
 
         if ($search = $request->query('q')) {
             $payments = $payments->where(function ($query) use ($search) {
@@ -1201,7 +1214,14 @@ class PaymentController extends Controller
             });
         }
 
-        $payments = $payments->orderBy('created_at', 'desc')->paginate(15)->withQueryString();;
+        $payments->when(data_get($filters, 'client_id'), fn($q,$v)=>$q->where('client_id',$v));
+        $payments->when(data_get($filters, 'agent_id'), fn($q,$v)=>$q->where('agent_id',$v));
+        $payments->when(data_get($filters, 'payment_method_id'), fn($q,$v)=>$q->where('payment_method_id',$v));
+        $payments->when(data_get($filters, 'created_by'), fn($q,$v)=>$q->where('created_by',$v));
+        $payments->when(data_get($filters, 'payment_gateway'), fn($q,$v)=>$q->whereIn('payment_gateway',(array)$v));
+        $payments->when(data_get($filters, 'status'), fn($q,$v)=>$q->whereIn('status',(array)$v));
+
+        $payments = $payments->orderBy('created_at', 'desc')->paginate(15)->appends($request->only('q'));
 
         $payments->getCollection()->transform(function ($payment) {
             if ($payment->payment_gateway === 'MyFatoorah') {
@@ -1213,21 +1233,21 @@ class PaymentController extends Controller
             return $payment;
         });
 
-        // $invoice = Invoice::where('id', $payment->invoice_id)->first();
-
-        // if (!$invoice) {
-        //     return redirect()->back()->with('error', 'Invoice not found.');
-        // }
         $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
             ->where('is_active', true)->get();
         $paymentMethods = PaymentMethod::where('is_active', true)->get();
+        $users = User::whereIn('id', Payment::select('created_by')->distinct()->pluck('created_by'))->get();
+        $status = ['pending','initiate','completed','failed','cancelled'];
 
         return view('payment.link.index', compact(
             'payments',
             'clients',
             'agents',
             'paymentGateways',
-            'paymentMethods'
+            'paymentMethods',
+            'users',
+            'status',
+            'filters',
         ));
     }
 

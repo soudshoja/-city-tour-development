@@ -18,29 +18,11 @@
                 </div>
                 <div x-data="{ openFilters: false }" class="mb-4 p-2">
                     <div class="flex items-center gap-3 md:flex-nowrap">
-                        <form action="{{ route('payment.link.index') }}" method="GET" class="flex flex-1 min-w-0 items-center gap-2">
-                            <div class="relative w-full">
-                                <input type="text" name="q" value="{{ request('q') }}" id="searchInput"
-                                    class="block w-full rounded-full border border-gray-300 bg-white py-3 pl-4 pr-10 text-sm text-gray-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition">
-                                <label for="searchInput" class="pointer-events-none absolute -top-2 left-3 inline-block bg-white px-2 text-xs text-gray-500">
-                                    Quick search for payments
-                                </label>
-                                <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-full
-                                    bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white transition">
-                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                        <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.6" />
-                                        <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                                    </svg>
-                                </button>
-                            </div>
-                            <button type="button" onclick="window.location='{{ route('payment.link.index') }}'"
-                                class="relative group bg-red-200 hover:bg-red-500 text-black hover:text-white w-9 h-9 flex items-center justify-center rounded-full 
-                                    transition-all duration-300 {{ request('q') ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none' }}">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </form>
+                        <x-search
+                            :action="route('payment.link.index')"
+                            searchParam="q"
+                            placeholder="Quick search for payments"
+                        />
                         <button @click="openFilters = !openFilters"
                             class="shrink-0 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-sm text-amber-800 ring-1 ring-amber-200 hover:bg-amber-200 transition">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,109 +103,6 @@
                         </form>
                     </div>
                 </div>
-                <!-- <div x-data="{ openFilters: false }" class="mb-4 p-2">
-                    <div class="flex items-center gap-3">
-                        <form action="{{ route('payment.link.index') }}" method="GET" class="flex items-center gap-2 w-full md:w-1/2">
-                            <div class="relative w-1/2">
-                                <input type="text" name="q" value="{{ request('q') }}" id="searchInput" placeholder=" "
-                                    class="block py-2.5 w-full text-sm text-gray-900 bg-transparent border-b-2 border-gray-300 appearance-none
-                                            dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0
-                                            focus:border-blue-600 peer rounded-full" />
-                                <label for="searchInput" class="absolute text-md text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0]
-                                            bg-white dark:bg-gray-900 px-2 peer-focus:text-blue-600 peer-focus:dark:text-blue-500
-                                            peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2
-                                            peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">
-                                    Quick search for payments
-                                </label>
-                            </div>
-                            <button type="submit" id="searchButton" data-tooltip="Search"
-                                class="relative group bg-blue-200 hover:bg-blue-600 text-black hover:text-white
-                                    w-9 h-9 flex items-center justify-center rounded-full transition duration-300 ring-offset-2">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5" />
-                                    <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                                </svg>
-                            </button>
-                            <button type="button" data-tooltip="Reset" onclick="window.location='{{ route('payment.link.index') }}'" id="resetButton"
-                                class="relative group bg-red-200 hover:bg-red-500 text-black hover:text-white
-                                    w-9 h-9 flex items-center justify-center rounded-full
-                                    {{ request('q') ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none' }}
-                                    transition-all duration-300">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </form>
-                        <div class="ml-auto">
-                            <button @click="openFilters=!openFilters" class="inline-flex items-center gap-2 px-4 h-9 rounded-full city-light-yellow text-sm hover:bg-yellow-100">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path d="M4 6h16M7 12h10M10 18h4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                                Filters
-                                @if (!empty($filters))
-                                    <span class="text-xs bg-blue-600 text-white px-2 rounded-full">
-                                        {{ collect($filters)->filter()->count() }}
-                                    </span>
-                                @endif
-                            </button>
-                        </div>
-                    </div>
-                    <div x-show="openFilters" x-cloak x-transition class="mt-3 p-3 bg-gray-50 border rounded-lg">
-                        <form action="{{ route('payment.link.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <input type="hidden" name="q" value="{{ request('q') }}"/>
-                            <x-searchable-dropdown
-                                name="filter[client_id]"
-                                :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                                :placeholder="'Select clients'"
-                                :selectedName="optional($clients->firstWhere('id', data_get($filters,'client_id')))->name"
-                                label="Client" />
-
-                            <x-searchable-dropdown
-                                name="filter[agent_id]"
-                                :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-                                :placeholder="'Select agents'"
-                                :selectedName="optional($agents->firstWhere('id', data_get($filters,'agent_id')))->name"
-                                label="Agent" />
-
-                            <x-searchable-dropdown
-                                name="filter[created_by]"
-                                :items="$users->map(fn($u) => ['id' => $u->id, 'name' => $u->name])"
-                                :placeholder="'Select users'"
-                                :selectedName="optional($users->firstWhere('id', data_get($filters,'created_by')))->name"
-                                label="Created By" />
-
-                            <x-searchable-dropdown
-                                name="filter[payment_gateway]"
-                                :items="$paymentGateways->map(fn($g) => ['id' => $g->name, 'name' => $g->name])"
-                                :placeholder="'Select gateways'"
-                                :selectedName="data_get($filters,'payment_gateway')"
-                                label="Payment Gateway" />
-
-                            <x-searchable-dropdown
-                                name="filter[payment_method_id]"
-                                :items="$paymentMethods->map(fn($m) => ['id' => $m->id, 'name' => $m->english_name])"
-                                :placeholder="'Select methods'"
-                                :selectedName="optional($paymentMethods->firstWhere('id', data_get($filters,'payment_method_id')))->english_name"
-                                label="Payment Method" />
-
-                            <x-searchable-dropdown
-                                name="filter[status]"
-                                :items="collect($status)->map(fn($s) => ['id' => $s, 'name' => ucfirst($s)])"
-                                :placeholder="'Select status'"
-                                :selectedName="data_get($filters,'status') ? ucfirst(data_get($filters,'status')) : null"
-                                label="Status" />
-                                
-                            <div class="md:col-span-3 flex items-center gap-2 pt-2">
-                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 py-2">
-                                    Apply Filters
-                                </button>
-                                <a href="{{ route('payment.link.index', array_filter(['q' => request('q'), 'clear' => 1])) }}" class="bg-gray-200 hover:bg-gray-300 rounded-full px-4 py-2">
-                                    Clear
-                                </a>
-                            </div>
-                        </form>
-                    </div>
-                </div> -->
                 @if ($payments->isEmpty())
                 <p class="text-gray-500">No payment links found.</p>
                 @else

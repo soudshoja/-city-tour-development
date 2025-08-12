@@ -493,149 +493,109 @@
         <div class="content-70">
             <div class="panel oxShadow rounded-lg">
                 <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
-                    <div class="w-full px-6">
-                        <form action="{{ route('tasks.index') }}" method="GET"
-                            class="flex items-center gap-3 max-w-full">
-
-                            <div class="relative flex-1">
-                                <input type="text" name="q" value="{{ request('q') }}"
-                                    id="searchInput"
-                                    placeholder=" "
-                                    oninput="handleSearchInteraction()"
-                                    class="block px-3 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-transparent border-b-2 border-gray-300 appearance-none
-                                    dark:text-white dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer rounded-full" />
-
-                                <label for="searchInput"
-                                    class="absolute text-md text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-4 scale-75 top-2 origin-[0]
-                                    bg-white dark:bg-gray-900 px-2 peer-focus:text-blue-600 peer-focus:dark:text-blue-500
-                                    peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2
-                                    peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1">
-                                    Quick search for tasks
-                                </label>
-                            </div>
-
-                            <button type="submit" id="searchButton"
-                                data-tooltip="Search"
-                                class="relative group bg-blue-200 hover:bg-blue-600 text-black hover:text-white w-9 h-9 flex items-center justify-center rounded-full transition duration-300 ring-offset-2">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5" />
-                                    <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                                </svg>
-                            </button>
-
-                            <button type="button"
-                                data-tooltip="Reset"
-                                onclick="window.location='{{ route('tasks.index') }}'"
-                                id="resetButton"
-                                class="relative group bg-red-200 hover:bg-red-500 text-black hover:text-white w-9 h-9 flex items-center justify-center rounded-full opacity-0 scale-95 pointer-events-none transition-all duration-300">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"
-                                    viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-
-                            <button type="button" id="toggleFilters"
-                                class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
-                                <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 32 32">
-                                    <path fill="#333333"
-                                        d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3-3-3-3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3-3-3-3s-3-1.3-3-3" />
-                                </svg>
-                                <span class="text-xs md:text-sm dark:text-black">Filters</span>
-                            </button>
-
-                            <div class="relative">
-                                <button type="button" id="customizeColumnsBtn"
-                                    class="flex px-3 py-2 w-full h-10 md:w-auto DarkBGcolor dark:!bg-blue-700 dark:!hover:bg-blue-600 rounded-full shadow-sm items-center text-xs text-white font-semibold md:text-sm">
-                                    <span>Customize columns</span>
+                    <x-search
+                        :action="route('tasks.index')"
+                        searchParam="q"
+                        placeholder="Quick search for tasks"
+                    />
+                    <button type="button" id="toggleFilters"
+                        class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
+                        <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 32 32">
+                            <path fill="#333333"
+                                d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3-3-3-3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3-3-3-3s-3-1.3-3-3" />
+                        </svg>
+                        <span class="text-xs md:text-sm dark:text-black">Filters</span>
+                    </button>
+                    <div class="relative">
+                        <button type="button" id="customizeColumnsBtn"
+                            class="flex px-3 py-2 w-full h-10 md:w-auto DarkBGcolor dark:!bg-blue-700 dark:!hover:bg-blue-600 rounded-full shadow-sm items-center text-xs text-white font-semibold md:text-sm">
+                            <span>Customize columns</span>
+                        </button>
+                        <div id="columnDropdownContent"
+                            class="hidden absolute z-50 mt-2 right-0 w-60 max-h-80 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg p-3 space-y-2">
+                            <div class="flex justify-between items-center mb-1">
+                                <h4 class="font-semibold text-sm text-gray-700">Visible Columns</h4>
+                                <button type="button" id="clearAllColumns" class="text-xs text-red-600 hover:underline focus:outline-none">
+                                    Clear All
                                 </button>
-                                <div id="columnDropdownContent"
-                                    class="hidden absolute z-50 mt-2 right-0 w-60 max-h-80 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg p-3 space-y-2">
-                                    <div class="flex justify-between items-center mb-1">
-                                        <h4 class="font-semibold text-sm text-gray-700">Visible Columns</h4>
-                                        <button type="button" id="clearAllColumns" class="text-xs text-red-600 hover:underline focus:outline-none">
-                                            Clear All
-                                        </button>
-                                    </div>
-                                    <hr class="border-gray-300 mb-2" />
-                                    <div class="space-y-2">
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                            <label for="col-reference" class="text-sm text-gray-700">Reference</label>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-bill-to" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                            <label for="col-bill-to" class="text-sm text-gray-700">Bill To</label>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-passenger-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                            <label for="col-passenger-name" class="text-sm text-gray-700">Passenger Name</label>
-                                        </div>
-                                        @if (Auth()->user()->role_id != \App\Models\Role::AGENT)
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-agent-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                            <label for="col-agent-name" class="text-sm text-gray-700">Agent Name</label>
-                                        </div>
-                                        @endif
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-price" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                            <label for="col-price" class="text-sm text-gray-700">Price</label>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-status" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                            <label for="col-status" class="text-sm text-gray-700">Status</label>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-supplier" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                            <label for="col-supplier" class="text-sm text-gray-700">Supplier</label>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-issue-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                            <label for="col-issue-date" class="text-sm text-gray-700">Issue Date</label>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                            <label for="col-created-at" class="text-sm text-gray-700">Created Date</label>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-info" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                            <label for="col-info" class="text-sm text-gray-700">Info</label>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-type" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                            <label for="col-type" class="text-sm text-gray-700">Type</label>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-gds-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                            <label for="col-gds-reference" class="text-sm text-gray-700">GDS Reference</label>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-amadeus-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                            <label for="col-amadeus-reference" class="text-sm text-gray-700">Amadeus Reference</label>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-created-by" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                            <label for="col-created-by" class="text-sm text-gray-700">Created By</label>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-issued-by" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                            <label for="col-issued-by" class="text-sm text-gray-700">Issued By</label>
-                                        </div>
-                                        @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-branch-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                            <label for="col-branch-name" class="text-sm text-gray-700">Branch Name</label>
-                                        </div>
-                                        @endif
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" id="col-invoice" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                            <label for="col-invoice" class="text-sm text-gray-700">Invoice</label>
-                                        </div>
-                                    </div>
+                            </div>
+                            <hr class="border-gray-300 mb-2" />
+                            <div class="space-y-2">
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <label for="col-reference" class="text-sm text-gray-700">Reference</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-bill-to" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <label for="col-bill-to" class="text-sm text-gray-700">Bill To</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-passenger-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <label for="col-passenger-name" class="text-sm text-gray-700">Passenger Name</label>
+                                </div>
+                                @if (Auth()->user()->role_id != \App\Models\Role::AGENT)
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-agent-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <label for="col-agent-name" class="text-sm text-gray-700">Agent Name</label>
+                                </div>
+                                @endif
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-price" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <label for="col-price" class="text-sm text-gray-700">Price</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-status" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <label for="col-status" class="text-sm text-gray-700">Status</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-supplier" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                                    <label for="col-supplier" class="text-sm text-gray-700">Supplier</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-issue-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <label for="col-issue-date" class="text-sm text-gray-700">Issue Date</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <label for="col-created-at" class="text-sm text-gray-700">Created Date</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-info" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <label for="col-info" class="text-sm text-gray-700">Info</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-type" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                                    <label for="col-type" class="text-sm text-gray-700">Type</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-gds-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                                    <label for="col-gds-reference" class="text-sm text-gray-700">GDS Reference</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-amadeus-reference" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                                    <label for="col-amadeus-reference" class="text-sm text-gray-700">Amadeus Reference</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-created-by" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                                    <label for="col-created-by" class="text-sm text-gray-700">Created By</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-issued-by" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                                    <label for="col-issued-by" class="text-sm text-gray-700">Issued By</label>
+                                </div>
+                                @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-branch-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                                    <label for="col-branch-name" class="text-sm text-gray-700">Branch Name</label>
+                                </div>
+                                @endif
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-invoice" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                                    <label for="col-invoice" class="text-sm text-gray-700">Invoice</label>
                                 </div>
                             </div>
-                        </form>
+                        </div>
                     </div>
                     <div id="filterModal" class="filter-modal">
                         <div class="filter-modal-content">
@@ -872,39 +832,39 @@
                                         <thead>
                                             <tr>
                                                 <th data-column="actions">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Actions</span>
                                                 </th>
                                                 <th data-column="reference">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Reference</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Reference</span>
                                                 </th>
                                                 <th data-column="bill-to">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Bill To</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Bill To</span>
                                                 </th>
                                                 <th data-column="passenger-name">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Passenger Name</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Passenger Name</span>
                                                 </th>
                                                 @if (Auth()->user()->role_id != \App\Models\Role::AGENT)
                                                 <th data-column="agent-name">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent Name</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Agent Name</span>
                                                 </th>
                                                 @endif
                                                 @can('viewPrice', 'App\Models\Task')
                                                 <th data-column="price">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Price</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Price</span>
                                                 </th>
                                                 @endcan
                                                 <th data-column="status">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Status</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Status</span>
                                                 </th>
                                                 <th data-column="supplier">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
                                                 </th>
                                                 <th data-column="issue-date">
                                                     <a href="{{ request()->fullUrlWithQuery([
                                                                 'sortBy' => 'issued_date',
                                                                 'sortOrder' => (request('sortBy') === 'issued_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
                                                             ]) }}"
-                                                        class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                                        class="flex items-center gap-2 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
                                                         Issued Date
                                                         @if(request('sortBy') !== 'issued_date')
                                                         <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
@@ -928,7 +888,7 @@
                                                                     'sortBy' => 'created_at',
                                                                     'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
                                                                 ]) }}"
-                                                        class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                                        class="flex items-center gap-2 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
                                                         Created Date
                                                         @if(request('sortBy') !== 'created_at')
                                                         <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
@@ -948,30 +908,30 @@
                                                     </a>
                                                 </th>
                                                 <th data-column="info">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Info</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Info</span>
                                                 </th>
                                                 <th data-column="type" class="column-hidden">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Type</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Type</span>
                                                 </th>
                                                 <th data-column="gds-reference" class="column-hidden">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">GDS Reference</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">GDS Reference</span>
                                                 </th>
                                                 <th data-column="amadeus-reference" class="column-hidden">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Amadeus Reference</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Amadeus Reference</span>
                                                 </th>
                                                 <th data-column="created-by" class="column-hidden">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Created By</span>
                                                 </th>
                                                 <th data-column="issued-by" class="column-hidden">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Issued By</span>
                                                 </th>
                                                 @if (Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                                 <th data-column="branch-name" class="column-hidden">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Branch Name</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Branch Name</span>
                                                 </th>
                                                 @endif
                                                 <th data-column="invoice" class="column-hidden">
-                                                    <span class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300">Invoice</span>
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Invoice</span>
                                                 </th>
                                             </tr>
                                         </thead>
@@ -2395,26 +2355,4 @@
             'text-sm', 'transition', 'duration-150');
         button.disabled = false;
     }
-
-    function handleSearchInteraction() {
-        const input = document.getElementById('searchInput');
-        const resetBtn = document.getElementById('resetButton');
-        const searchBtn = document.getElementById('searchButton');
-
-        const hasText = input.value.trim().length > 0;
-
-        if (hasText) {
-            resetBtn.classList.remove('opacity-0', 'scale-95', 'pointer-events-none');
-            resetBtn.classList.add('opacity-100', 'scale-100');
-
-            searchBtn.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
-        } else {
-            resetBtn.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
-            resetBtn.classList.remove('opacity-100', 'scale-100');
-
-            searchBtn.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
-        }
-    }
-
-    window.addEventListener('DOMContentLoaded', handleSearchInteraction);
 </script>

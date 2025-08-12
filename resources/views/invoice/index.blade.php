@@ -67,8 +67,11 @@
         <div class="content-70">
             <!-- Table  -->
             <div class="panel BoxShadow rounded-lg">
-
-                <x-search action="{{ route('invoices.index') }}" />
+                <x-search
+                    :action="route('invoices.index')"
+                    searchParam="search"
+                    placeholder="Quick search for invoices"
+                />
 
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>

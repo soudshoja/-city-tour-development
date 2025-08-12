@@ -1177,17 +1177,7 @@ class PaymentController extends Controller
                 $query->whereHas('invoice', function ($payment) use ($agentsId) {
                     $payment->whereIn('agent_id', $agentsId);
                 })->orWhereIn('agent_id', $agentsId);
-            });
-
-        $filters = $request->input('filter');
-        if (is_null($filters)) {
-            $filters = session('filter', []);
-        } else {
-            session(['filter' => $filters]);
-            return redirect()->route('payment.link.index', array_filter([
-                'q' => $request->query('q'),
-            ]));
-        }
+            });      
 
         if ($request->boolean('clear')) {
             session()->forget('filter');
@@ -1213,6 +1203,15 @@ class PaymentController extends Controller
                     });
             });
         }
+
+        $incoming = collect($request->input('filter', []))
+            ->filter(fn($v) => is_array($v) ? array_filter($v, fn($x)=>$x!=='' && $x!==null) : $v !== '' && $v !== null)
+            ->all();
+        if ($request->has('filter')) {
+            session(['filter' => array_replace(session('filter', []), $incoming)]);
+            return redirect()->route('payment.link.index', ['q' => $request->query('q')]);
+        }
+        $filters = session('filter', []);
 
         $payments->when(data_get($filters, 'client_id'), fn($q,$v)=>$q->where('client_id',$v));
         $payments->when(data_get($filters, 'agent_id'), fn($q,$v)=>$q->where('agent_id',$v));

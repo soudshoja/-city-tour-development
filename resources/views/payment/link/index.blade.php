@@ -334,7 +334,7 @@
                                                     $payment->client_id,
                                                     );
                                                     $clientPlaceholder = $selectedClient
-                                                    ? $selectedclient->first_name
+                                                    ? $selectedClient->first_name
                                                     : 'Select a Client';
                                                     @endphp
                                                     <div class="mb-4">
@@ -346,7 +346,7 @@
                                                                         ],
                                                                     )" :placeholder="$clientPlaceholder"
                                                             :selectedName="$selectedClient
-                                                                        ? $selectedclient->first_name
+                                                                        ? $selectedClient->first_name
                                                                         : null" label="Client" />
 
                                                         <input type="hidden" name="client_id_fallback"

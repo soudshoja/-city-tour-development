@@ -12,6 +12,7 @@ use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\WhatsAppHotelController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\SupplierController;
 
         Route::post('/login2', [MobileController::class, 'login2']);
         Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
@@ -104,6 +105,9 @@ use App\Http\Controllers\PaymentController;
                 Route::post('/update', [WhatsAppHotelController::class, 'updateStep']);
                 Route::post('/delete', [WhatsAppHotelController::class, 'deleteStep']);
             });
+
         });
+
+        Route::post('/magic/webhook/callback', [SupplierController::class, 'magicReserveWebhookCallback'])->name('magic-webhook-callback')->withoutMiddleware(['auth']);
         
 require __DIR__.'/auth.php';

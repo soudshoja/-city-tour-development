@@ -1197,7 +1197,9 @@ class PaymentController extends Controller
                         $q->where('name', 'like', '%' . $search . '%');
                     })
                     ->orWhereHas('client', function ($q) use ($search) {
-                        $q->where('name', 'like', '%' . $search . '%')
+                        $q->where('first_name', 'like', '%' . $search . '%')
+                            ->orWhere('middle_name', 'like', '%' . $search . '%')
+                            ->orWhere('last_name', 'like', '%' . $search . '%')
                             ->orWhere('country_code', 'like', '%' . $search . '%')
                             ->orWhere('phone', 'like', '%' . $search . '%');
                     });

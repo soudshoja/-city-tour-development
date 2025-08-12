@@ -242,7 +242,9 @@ class ClientTest extends TestCase
     public function test_client_creation_with_valid_data()
     {
         $clientData = [
-            'name' => 'Test Client',
+            'first_name' => 'Test Client',
+            'middle_name' => 'Middle',
+            'last_name' => 'Client',
             'email' => 'client@test.com',
             'dial_code' => '+965',
             'phone' => '12345678',
@@ -258,7 +260,9 @@ class ClientTest extends TestCase
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('clients', [
-            'name' => 'Test Client',
+            'first_name' => 'Test Client',
+            'middle_name' => 'Middle',
+            'last_name' => 'Client',
             'email' => 'client@test.com',
             'agent_id' => $this->agent->id
         ]);
@@ -267,7 +271,7 @@ class ClientTest extends TestCase
     public function test_client_creation_validation_fails_with_invalid_data()
     {
         $invalidData = [
-            'name' => '', // Required field missing
+            'first_name' => '', // Required field missing
             'email' => 'invalid-email', // Invalid email format
             'dial_code' => '', // Required field missing
             'phone' => '', // Required field missing
@@ -278,14 +282,14 @@ class ClientTest extends TestCase
         $response = $this->actingAs($this->adminUser)
                          ->post(route('clients.store'), $invalidData);
 
-        $response->assertSessionHasErrors(['name', 'email', 'dial_code', 'phone', 'agent_id', 'civil_no']);
+        $response->assertSessionHasErrors(['first_name', 'email', 'dial_code', 'phone', 'agent_id', 'civil_no']);
     }
 
     public function test_client_show_page_displays_correctly()
     {
         $client = Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Show Test Client'
+            'first_name' => 'Show Test Client'
         ]);
 
         $response = $this->actingAs($this->adminUser)
@@ -301,7 +305,7 @@ class ClientTest extends TestCase
     {
         $client = Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Edit Test Client'
+            'first_name' => 'Edit Test Client'
         ]);
 
         $response = $this->actingAs($this->adminUser)
@@ -317,11 +321,11 @@ class ClientTest extends TestCase
     {
         $client = Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Original Name'
+            'first_name' => 'Original Name'
         ]);
 
         $updateData = [
-            'name' => 'Updated Name',
+            'first_name' => 'Updated Name',
             'email' => 'updated@test.com',
             'phone' => '87654321',
             'country_code' => '+965',
@@ -336,7 +340,7 @@ class ClientTest extends TestCase
 
         $this->assertDatabaseHas('clients', [
             'id' => $client->id,
-            'name' => 'Updated Name',
+            'first_name' => 'Updated Name',
             'email' => 'updated@test.com'
         ]);
     }
@@ -404,13 +408,13 @@ class ClientTest extends TestCase
         // Create clients with specific names for searching
         Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'John Doe',
+            'first_name' => 'John Doe',
             'phone' => '12345678'
         ]);
         
         Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Jane Smith',
+            'first_name' => 'Jane Smith',
             'phone' => '87654321'
         ]);
 
@@ -424,7 +428,7 @@ class ClientTest extends TestCase
         // Check if search results contain the searched term
         $found = false;
         foreach ($clients->items() as $client) {
-            if (str_contains($client->name, 'John')) {
+            if (str_contains($client->first_name, 'John')) {
                 $found = true;
                 break;
             }
@@ -437,7 +441,7 @@ class ClientTest extends TestCase
         // Create enough clients to trigger pagination
         Client::factory()->count(25)->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Test Client'
+            'first_name' => 'Test Client'
         ]);
 
         $response = $this->actingAs($this->adminUser)->get(route('clients.index', ['search' => 'Test', 'page' => 1]));
@@ -513,17 +517,17 @@ class ClientTest extends TestCase
         // Create clients with different names
         Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'John Doe'
+            'first_name' => 'John Doe'
         ]);
         
         Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Jane Smith'
+            'first_name' => 'Jane Smith'
         ]);
         
         Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Bob Wilson'
+            'first_name' => 'Bob Wilson'
         ]);
 
         // Search for specific client
@@ -541,7 +545,7 @@ class ClientTest extends TestCase
         $this->assertGreaterThanOrEqual(6, $fullClients->count()); // 3 from setUp + 3 created = 6 clients
         
         // Check that fullClients contains all client names
-        $fullClientNames = $fullClients->pluck('name')->toArray();
+        $fullClientNames = $fullClients->pluck('first_name')->toArray();
         $this->assertContains('John Doe', $fullClientNames);
         $this->assertContains('Jane Smith', $fullClientNames);
         $this->assertContains('Bob Wilson', $fullClientNames);
@@ -566,12 +570,12 @@ class ClientTest extends TestCase
         
         Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Agent1 Client Search'
+            'first_name' => 'Agent1 Client Search'
         ]);
         
         Client::factory()->create([
             'agent_id' => $anotherAgent->id,
-            'name' => 'Agent2 Client Search'
+            'first_name' => 'Agent2 Client Search'
         ]);
 
         // Test agent user with search
@@ -589,7 +593,7 @@ class ClientTest extends TestCase
         }
         
         // Verify fullClients contains both searched and non-searched clients for the agent
-        $fullClientNames = $fullClients->pluck('name')->toArray();
+        $fullClientNames = $fullClients->pluck('first_name')->toArray();
         $this->assertContains('Agent1 Client Search', $fullClientNames);
     }
 
@@ -612,12 +616,12 @@ class ClientTest extends TestCase
         
         Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Agent1 Searchable Client'
+            'first_name' => 'Agent1 Searchable Client'
         ]);
         
         Client::factory()->create([
             'agent_id' => $anotherAgent->id,
-            'name' => 'Agent2 Different Client'
+            'first_name' => 'Agent2 Different Client'
         ]);
 
         // Admin searches for specific term
@@ -639,7 +643,7 @@ class ClientTest extends TestCase
         $this->assertContains($anotherAgent->id, $agentIds);
         
         // Check that fullClients contains both searchable and non-searchable clients
-        $fullClientNames = $fullClients->pluck('name')->toArray();
+        $fullClientNames = $fullClients->pluck('first_name')->toArray();
         $this->assertContains('Agent1 Searchable Client', $fullClientNames);
         $this->assertContains('Agent2 Different Client', $fullClientNames);
     }
@@ -683,7 +687,7 @@ class ClientTest extends TestCase
         
         Client::factory()->create([
             'agent_id' => $anotherAgent->id,
-            'name' => 'Other Company Client'
+            'first_name' => 'Other Company Client'
         ]);
 
         // Company user searches for term
@@ -701,7 +705,7 @@ class ClientTest extends TestCase
         }
         
         // Should not contain clients from other companies
-        $fullClientNames = $fullClients->pluck('name')->toArray();
+        $fullClientNames = $fullClients->pluck('first_name')->toArray();
         $this->assertNotContains('Other Company Client', $fullClientNames);
     }
 
@@ -733,12 +737,12 @@ class ClientTest extends TestCase
         // Create two clients for testing group functionality
         $parentClient = Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Parent Client'
+            'first_name' => 'Parent Client'
         ]);
         
         $childClient = Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Child Client'
+            'first_name' => 'Child Client'
         ]);
 
         $groupData = [
@@ -899,17 +903,17 @@ class ClientTest extends TestCase
     {
         $parentClient = Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Parent Client'
+            'first_name' => 'Parent Client'
         ]);
         
         $childClient1 = Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Child Client 1'
+            'first_name' => 'Child Client 1'
         ]);
         
         $childClient2 = Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Child Client 2'
+            'first_name' => 'Child Client 2'
         ]);
 
         // Create group relationships
@@ -932,9 +936,9 @@ class ClientTest extends TestCase
         $responseData = $response->json();
         
         $this->assertCount(2, $responseData);
-        $this->assertEquals('Child Client 1', $responseData[0]['client']['name']);
+        $this->assertEquals('Child Client 1', $responseData[0]['client']['first_name']);
         $this->assertEquals('Son', $responseData[0]['relation']);
-        $this->assertEquals('Child Client 2', $responseData[1]['client']['name']);
+        $this->assertEquals('Child Client 2', $responseData[1]['client']['first_name']);
         $this->assertEquals('Daughter', $responseData[1]['relation']);
     }
 
@@ -942,12 +946,12 @@ class ClientTest extends TestCase
     {
         $parentClient = Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Parent Client'
+            'first_name' => 'Parent Client'
         ]);
         
         $childClient = Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Child Client'
+            'first_name' => 'Child Client'
         ]);
 
         // Create group relationship
@@ -964,7 +968,7 @@ class ClientTest extends TestCase
         $responseData = $response->json();
         
         $this->assertCount(1, $responseData);
-        $this->assertEquals('Parent Client', $responseData[0]['client']['name']);
+        $this->assertEquals('Parent Client', $responseData[0]['client']['first_name']);
         $this->assertEquals('Father', $responseData[0]['relation']);
     }
 
@@ -1037,7 +1041,7 @@ class ClientTest extends TestCase
     {
         $client = Client::factory()->create([
             'agent_id' => $this->agent->id,
-            'name' => 'Test Client Details',
+            'first_name' => 'Test Client Details',
             'email' => 'details@test.com'
         ]);
 
@@ -1048,7 +1052,7 @@ class ClientTest extends TestCase
         $responseData = $response->json();
         
         $this->assertEquals($client->id, $responseData['id']);
-        $this->assertEquals('Test Client Details', $responseData['name']);
+        $this->assertEquals('Test Client Details', $responseData['first_name']);
         $this->assertEquals('details@test.com', $responseData['email']);
     }
 

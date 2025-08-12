@@ -204,7 +204,7 @@
                             View Details
                         </a>
                     </td>
-                    <td class="px-4 py-2 border">{{ $partial->client->name }}</td>
+                    <td class="px-4 py-2 border">{{ $partial->client->first_name }}</td>
                     <td class="px-4 py-2 border">
                         {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}
                     </td>

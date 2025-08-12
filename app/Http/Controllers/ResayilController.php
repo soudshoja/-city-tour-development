@@ -121,7 +121,7 @@ class ResayilController extends Controller
 
         $invoiceLink = route('invoice.show', ['invoiceNumber' => $invoiceNumber]);
 
-        $message = "👋 Hello {$client->name},\n\n🧾 Your invoice is ready!\n\nYou can view it here:\n🔗 $invoiceLink\n\nThank you for choosing us! 😊";
+        $message = "👋 Hello {$client->first_name},\n\n🧾 Your invoice is ready!\n\nYou can view it here:\n🔗 $invoiceLink\n\nThank you for choosing us! 😊";
 
         $response = $this->message($client->phone, $client->country_code, $message);
 
@@ -164,7 +164,7 @@ class ResayilController extends Controller
         // Assuming you have a method to generate the partial invoice link
         $partialInvoiceLink = route('invoice.split', ['invoiceNumber' => $invoiceNumber, 'clientId' => $client->id, 'partialId' => $invoicePartial->id]);
 
-        $message = "👋 Hello {$client->name},\n\n🧾 Your partial invoice is ready!\n\nYou can view it here:\n🔗 $partialInvoiceLink\n\nThank you for choosing us! 😊";
+        $message = "👋 Hello {$client->first_name},\n\n🧾 Your partial invoice is ready!\n\nYou can view it here:\n🔗 $partialInvoiceLink\n\nThank you for choosing us! 😊";
 
         $response = $this->message($client->phone, $message);
 
@@ -194,7 +194,7 @@ class ResayilController extends Controller
         // Assuming you have a method to generate the payment link
         $paymentLink = route('payment.link.show', ['voucherNumber' => $payment->voucher_number ]);
        
-        $message = "👋 Hello {$client->name},\n\n💳 Your payment link is ready!\n\nYou can complete your payment here:\n🔗 $paymentLink\n\nThank you for choosing us! 😊";
+        $message = "👋 Hello {$client->first_name},\n\n💳 Your payment link is ready!\n\nYou can complete your payment here:\n🔗 $paymentLink\n\nThank you for choosing us! 😊";
 
         $response = $this->message($client->phone, $client->country_code, $message);
 

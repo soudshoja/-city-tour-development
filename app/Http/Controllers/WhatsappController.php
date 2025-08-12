@@ -22,7 +22,7 @@ class WhatsappController extends Controller
         $client = json_decode($request->client);
         $agent = Agent::find($client->agent_id);
         $invoiceNumber = $request->invoiceNumber;
-        
+
         $header = "Your Invoice Is Ready!";
 
         $link = 'invoice/' . $invoiceNumber;
@@ -42,7 +42,7 @@ class WhatsappController extends Controller
                         "parameters" => [
                             [
                                 "type" => "text",
-                                "text" => $client->name,
+                                "text" => $client->first_name,
                             ]
                         ]
                     ],
@@ -70,7 +70,7 @@ class WhatsappController extends Controller
             $agent->name,
             $agent->company->name ?? 'N/A', // Use a fallback value if company is null
         ];
-        
+
         foreach ($bodies as $body) {
             $reqBody['template']['components'][1]['parameters'][] = [
                 "type" => "text",
@@ -90,8 +90,8 @@ class WhatsappController extends Controller
         );
 
         logger($response);
-        
-        if(!isset($response['messages'][0]['message_status'])){
+
+        if (!isset($response['messages'][0]['message_status'])) {
             return Redirect::back()->with('error', 'Failed to send message');
         }
 
@@ -109,8 +109,6 @@ class WhatsappController extends Controller
 
 
         $reqBody['template']['components'][2]['parameters'][0]['text'] = $link;
-
- 
     }
 
     public function sendMessage1(Request $request)
@@ -132,7 +130,7 @@ class WhatsappController extends Controller
                 "components" => [
                     [
                         "type" => "header",
-                        "parameters" => [["type" => "text", "text" => $client->name]]
+                        "parameters" => [["type" => "text", "text" => $client->first_name]]
                     ],
                     ["type" => "body", "parameters" => []],
                     [
@@ -167,74 +165,74 @@ class WhatsappController extends Controller
     }
 
     public function sendMessagepdf(Request $request)
-{      
-    $client = json_decode($request->client);
-    $agent = Agent::find($client->agent_id);
-    $invoiceNumber = $request->invoiceNumber;
-    $client = Client::findOrFail($client->id); 
-    $agent = Agent::find($client->agent_id);
+    {
+        $client = json_decode($request->client);
+        $agent = Agent::find($client->agent_id);
+        $invoiceNumber = $request->invoiceNumber;
+        $client = Client::findOrFail($client->id);
+        $agent = Agent::find($client->agent_id);
 
-    $header = "Your Invoice Is Ready!";
-    $link1 = "$invoiceNumber/pdf";
-    $link2 = "$invoiceNumber/pdf";
+        $header = "Your Invoice Is Ready!";
+        $link1 = "$invoiceNumber/pdf";
+        $link2 = "$invoiceNumber/pdf";
 
-    $reqBody = [
-        "messaging_product" => "whatsapp",
-        "to" => preg_replace('/[^0-9]/', '', $client->phone), 
-        "type" => "template",
-        "template" => [
-            "name" => "payment_complete",
-            "language" => ["code" => "en_US"],
-            "components" => [
-                [
-                    "type" => "body",
-                    "parameters" => [
-                        ["type" => "text", "text" => $client->name],
-                        ["type" => "text", "text" => $client->name]
+        $reqBody = [
+            "messaging_product" => "whatsapp",
+            "to" => preg_replace('/[^0-9]/', '', $client->phone),
+            "type" => "template",
+            "template" => [
+                "name" => "payment_complete",
+                "language" => ["code" => "en_US"],
+                "components" => [
+                    [
+                        "type" => "body",
+                        "parameters" => [
+                            ["type" => "text", "text" => $client->first_name],
+                            ["type" => "text", "text" => $client->first_name]
+                        ]
+                    ],
+                    [
+                        "type" => "button",
+                        "sub_type" => "url",
+                        "index" => 0,
+                        "parameters" => [["type" => "text", "text" => $link1]]
+                    ],
+                    [
+                        "type" => "button",
+                        "sub_type" => "url",
+                        "index" => 1,
+                        "parameters" => [["type" => "text", "text" => $link2]]
                     ]
-                ],
-                [
-                    "type" => "button",
-                    "sub_type" => "url",
-                    "index" => 0,
-                    "parameters" => [["type" => "text", "text" => $link1]]
-                ],
-                [
-                    "type" => "button",
-                    "sub_type" => "url",
-                    "index" => 1,
-                    "parameters" => [["type" => "text", "text" => $link2]]
                 ]
             ]
-        ]
-    ];
+        ];
 
-    // ✅ Append extra body parameters correctly
-    $bodies = [$invoiceNumber, $agent->name, $agent->company->name];
-    foreach ($bodies as $body) {
-        $reqBody['template']['components'][0]['parameters'][] = ["type" => "text", "text" => $body];
+        // ✅ Append extra body parameters correctly
+        $bodies = [$invoiceNumber, $agent->name, $agent->company->name];
+        foreach ($bodies as $body) {
+            $reqBody['template']['components'][0]['parameters'][] = ["type" => "text", "text" => $body];
+        }
+
+        // ✅ Log final request body & URL
+        logger("Final Request Body: " . json_encode($reqBody));
+        logger("Sending to URL: " . config('services.whatsapp.url') . '/' . config('services.whatsapp.phone-number-id') . '/messages');
+
+        // ✅ Make the API request
+        $response = $this->postRequest(
+            config('services.whatsapp.url') . '/' . config('services.whatsapp.phone-number-id') . '/messages',
+            ['Authorization: Bearer ' . config('services.whatsapp.token'), 'Content-Type: application/json'],
+            json_encode($reqBody),
+        );
+
+        logger("WhatsApp API Response: " . json_encode($response));
+
+        // ✅ Handle API response correctly
+        if (!isset($response['messages'][0]['message_status'])) {
+            return Redirect::back()->with('error', 'Failed to send message');
+        }
+
+        return response()->json(['message' => 'PDF sent successfully']);
     }
-
-    // ✅ Log final request body & URL
-    logger("Final Request Body: " . json_encode($reqBody));
-    logger("Sending to URL: " . config('services.whatsapp.url') . '/' . config('services.whatsapp.phone-number-id') . '/messages');
-
-    // ✅ Make the API request
-    $response = $this->postRequest(
-        config('services.whatsapp.url') . '/' . config('services.whatsapp.phone-number-id') . '/messages',
-        ['Authorization: Bearer ' . config('services.whatsapp.token'), 'Content-Type: application/json'],
-        json_encode($reqBody),
-    );
-
-    logger("WhatsApp API Response: " . json_encode($response));
-
-    // ✅ Handle API response correctly
-    if (!isset($response['messages'][0]['message_status'])) {
-        return Redirect::back()->with('error', 'Failed to send message');
-    }
-
-    return response()->json(['message' => 'PDF sent successfully']);
-}
 
     // $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
@@ -269,7 +267,7 @@ class WhatsappController extends Controller
     {
         $requestBody = $request->getContent();
         Log::info("Incoming WhatsApp Webhook: " . $requestBody);
-        
+
         $data = json_decode($requestBody, true);
 
         if (isset($data['entry'])) {
@@ -309,7 +307,7 @@ class WhatsappController extends Controller
     private function downloadMedia($mediaId)
     {
         $downloadScriptUrl = "https://tour.citycommerce.group/whatsapp_webhook/download_media.php?media_id=" . urlencode($mediaId);
-        
+
         $response = Http::timeout(20)->get($downloadScriptUrl);
 
         if ($response->successful()) {
@@ -350,7 +348,7 @@ class WhatsappController extends Controller
     //     }
     // }
 
-    
+
     // public function handleResayilWebhook(Request $request)
     // {
     //     // Log incoming webhook data
@@ -393,7 +391,7 @@ class WhatsappController extends Controller
 
         // Check if this is a media (image) message
         $message = $request->input('messages.0');
-        
+
         if ($message && $message['type'] === 'image') {
             $mediaId = $message['image']['id'] ?? null;
             $mimeType = $message['image']['mimeType'] ?? null;

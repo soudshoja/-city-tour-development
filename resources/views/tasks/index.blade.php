@@ -1516,9 +1516,9 @@
                                         </div>
 
                                         <!-- Manual Fill Form -->
-                                        <div x-show="showManualForm" x-transition x-cloak
+                                        <div x-show="showManualForm" x-cloak
                                             class="fixed inset-0 z-50 bg-gray-700 bg-opacity-60 flex items-center justify-center px-2">
-                                            <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 sm:max-h-none sm:overflow-visible max-h-[90vh] overflow-y-auto">
+                                            <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 h-[90vh] sm:overflow-visible overflow-y-auto transition-all duration-300">
                                                 <!-- Header with title and close button -->
                                                 <div class="flex items-center justify-between mb-2">
                                                     <h2 class="text-xl font-bold text-gray-800">Client Registration</h2>
@@ -1571,17 +1571,29 @@
                                                     </div>
                                                     <div class="mb-3">
                                                         <label
-                                                            class="block text-sm font-medium text-gray-700 mb-1">Client's
-                                                            Name</label>
-                                                        <input type="text" name="name" id="nameTask"
-                                                            :value="modalClientName" placeholder="Client's name"
+                                                            class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                                        <input type="text" name="first_name" id="nameTask"
+                                                            :value="modalClientName" placeholder="Client's First Name"
                                                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                             required>
                                                     </div>
                                                     <div class="mb-3">
                                                         <label
-                                                            class="block text-sm font-medium text-gray-700 mb-1">Passenger's
-                                                            Name</label>
+                                                            class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                                                        <input type="text" name="middle_name" id=""
+                                                            placeholder="Client's Middle Name"
+                                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label
+                                                            class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                                        <input type="text" name="last_name" id=""
+                                                            placeholder="Client's Last Name"
+                                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label
+                                                            class="block text-sm font-medium text-gray-700 mb-1">Passenger's Name</label>
                                                         <input type="text" name="passenger_name" id="passengerName"
                                                             :value="modalPassengerName" placeholder="Passengers's name"
                                                             class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 text-gray-500 focus:outline-none focus:ring-0 focus:border-gray-300 cursor-not-allowed"

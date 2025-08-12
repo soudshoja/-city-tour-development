@@ -686,11 +686,23 @@
                                         @csrf
 
                                         <div class="mb-4 flex items-center relative">
-                                            <input type="text" name="name" class="custom-input"
-                                                placeholder="Client Name *">
+                                            <input type="text" name="first_name" class="custom-input"
+                                                placeholder="Client First Name *">
                                             <span class="tooltip-container ml-2 cursor-pointer">
                                                 <span class="tooltip-icon">!</span>
-                                                <span class="tooltip">Enter the full name of the client.</span>
+                                                <span class="tooltip">Enter the first name of the client.</span>
+                                            </span>
+                                        </div>
+                                        <div class="mb-4 flex items-center relative">
+                                            <input type="text" name="middle_name" class="custom-input"
+                                                placeholder="Client Middle Name">
+                                            <span class="tooltip-container m-3 cursor-pointer">
+                                            </span>
+                                        </div>
+                                        <div class="mb-4 flex items-center relative">
+                                            <input type="text" name="last_name" class="custom-input"
+                                                placeholder="Client Last Name">
+                                            <span class="tooltip-container m-3 cursor-pointer">
                                             </span>
                                         </div>
 
@@ -705,7 +717,7 @@
                                                 </span>
                                             </div>
 
-                                            <div class="mb-4 flex items-center relative">
+                                            <div class="mb-4 flex items-center relative gap-2">
                                                 <div class="relative">
                                                     <select name="dial_code" id="dial_code"
                                                         class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
@@ -744,23 +756,27 @@
                                             </span>
                                         </div>
 
-                                        <!-- Options Container -->
-                                        {{-- <div
-                                                class="select-options hidden absolute left-0 top-full w-full rounded-md shadow-lg grid {{ count($agents) === 1 ? 'grid-cols-1' : 'grid-cols-2' }} gap-2 py-3"> --}}
-                                        @if(auth()->user()->agent)
-                                        <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
-                                        @else
-                                        <select
-                                            class="custom-select w-full border rounded-lg px-4 py-2 dark:text-white dark:bg-gray-700"
-                                            name="agent_id" id="agent_id">
-                                            <option value="" disabled> Select Agent </option>
-                                            @foreach ($agents as $agent)
-                                            <option class="" value="{{ $agent->id }}">
-                                                {{ $agent->name }}
-                                            </option>
-                                            @endforeach
-                                        </select>
-                                        @endif
+
+                                        <div class="mb-4 flex items-center relative">
+                                            @if(auth()->user()->agent)
+                                            <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
+                                            @else
+                                            <select
+                                                class="custom-select w-full border rounded-lg px-4 py-2 dark:text-white dark:bg-gray-700"
+                                                name="agent_id" id="agent_id">
+                                                <option value="" disabled> Select Agent </option>
+                                                @foreach ($agents as $agent)
+                                                <option class="" value="{{ $agent->id }}">
+                                                    {{ $agent->name }}
+                                                </option>
+                                                @endforeach
+                                            </select>
+                                            <span class="tooltip-container ml-2 cursor-pointer">
+                                                <span class="tooltip-icon">!</span>
+                                                <span class="tooltip">Please select the agent for this client</span>
+                                            </span>
+                                            @endif
+                                        </div>
 
                                         <!-- ./Agent Selection -->
                                         <button type="submit"

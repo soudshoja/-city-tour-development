@@ -1221,7 +1221,7 @@
                                                                                                 name="client_id"
                                                                                                 :items="$clients->map(fn($c) => [
                                                                                                 'id'   => $c->id,
-                                                                                                'name' => $c->name . ' - ' . $c->phone
+                                                                                                'name' => $c->first_name . ' - ' . $c->phone
                                                                                             ])"
                                                                                                 :selectedId="$task->client_id"
                                                                                                 :selectedName="$selectedClient ? $selectedClient->first_name . ' - '  .           $selectedClient->phone : null"

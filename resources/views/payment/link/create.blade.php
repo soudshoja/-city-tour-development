@@ -291,9 +291,9 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     @php
                     $selectedClient = null;
-                    $clientPlaceholder = $selectedClient ? $selectedclient->first_name : 'Select a Client';
+                    $clientPlaceholder = $selectedClient ? $selectedClient->first_name : 'Select a Client';
                     $selectedId   = old('client_id', $selectedClient->id ?? null);
-                    $selectedName = old('client_name', $selectedclient->first_name ?? null);
+                    $selectedName = old('client_name', $selectedClient->first_name ?? null);
                     @endphp
                     <div>
                         <label for="client_id" class="block text-sm font-medium text-gray-700">Client</label>

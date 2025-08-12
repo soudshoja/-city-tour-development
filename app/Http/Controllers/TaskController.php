@@ -42,6 +42,9 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
+use iio\libmergepdf\Merger;
+use iio\libmergepdf\Driver\Fpdi2Driver;
+use Illuminate\Support\Facades\Storage;
 
 // use Carbon\Carbon;
 
@@ -1712,9 +1715,49 @@ class TaskController extends Controller
             Log::info("Created source directory: {$filePath}, please ensure files are pushed here.");
         }
 
+        if ($supplier->name === 'TBO Air' || $supplier->name === 'TBO Car') {
+            $request->validate([
+                'task_file.*' => 'mimes:pdf|max:20480',
+            ]);
+
+            try {
+                $merger = new Merger(new Fpdi2Driver());
+                foreach ($files as $file) {
+                    $merger->addFile($file->getRealPath());
+                }
+                $mergedBytes = $merger->merge();
+    
+                $mergedName = 'TBO-'.now()->format('Ymd-His').'.pdf';
+                $mergedPath = "{$companyName}/{$supplierName}/files_unprocessed/{$mergedName}";
+                Storage::put($mergedPath, $mergedBytes);
+
+                FileUpload::create([
+                    'file_name'        => $mergedName,
+                    'destination_path' => Storage::path($mergedPath),
+                    'user_id'          => $user->id,
+                    'supplier_id'      => $supplier->id,
+                    'company_id'       => $company->id,
+                    'status'           => 'pending',
+                ]);
+
+                return [[
+                    'status'  => 'success',
+                    'message' => 'Merged TBO PDFs uploaded successfully.',
+                    'data'    => ['merged_file' => $mergedName],
+                ]];
+    
+            } catch (\Throwable $e) {
+                Log::error('TBO merge failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+                return [[
+                    'status'  => 'error',
+                    'message' => 'Failed to merge TBO PDFs.',
+                    'data'    => [$e->getMessage()],
+                ]];
+            }
+        }
+
         $error = false;
         $errorFilesWithMessage = [];
-
         $success = false;
         $successFiles = [];
 
@@ -1745,15 +1788,12 @@ class TaskController extends Controller
 
                     $errorFile['file_name'] = $fileName;
                     $errorFile['message'] = $message;
-
                     $errorFilesWithMessage[] = $errorFile;
 
                 } else {
                     Log::info("File {$fileName} already uploaded by the same user: {$user->name}.");
-
                     $errorFile['file_name'] = $fileName;
                     $errorFile['message'] = "File has already been uploaded by you";
-
                     $errorFilesWithMessage[] = $errorFile;
                 }
                 $error = true;
@@ -1761,7 +1801,6 @@ class TaskController extends Controller
             }
 
             $file->move($filePath, $fileName);
-
             Log::info("Uploading file: " . $file->getClientOriginalName() . " to: " . $filePath);
 
             try {

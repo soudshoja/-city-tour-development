@@ -107,7 +107,7 @@ class TboTask extends Command
                         return;
                     }
 
-                    logger('TBO Task Client: '. $client->name . ' created');
+                    logger('TBO Task Client: '. $client->first_name . ' created');
 
                     if($key == 0 ){
                         $leaderCustomer = $client;

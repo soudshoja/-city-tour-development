@@ -172,7 +172,7 @@
         <div class="client-section">
             <h5>Bill To:</h5>
             <div class="client-info">
-                <strong>{{ $invoice->client->name }}</strong>
+                <strong>{{ $invoice->client->first_name }}</strong>
                 {{ $invoice->client->address }}<br>
                 <span>{{ $invoice->client->country_code }}</span>{{ $invoice->client->phone }}
             </div>

@@ -52,7 +52,8 @@ class Task extends Model
         'refund_charge',
         'ticket_number',
         'file_name',
-        'issued_date'
+        'issued_date',
+        'expiry_date'
     ];
 
 
@@ -76,8 +77,20 @@ class Task extends Model
 
     protected $casts = [
         'issued_date' => 'datetime',
+        'expiry_date' => 'datetime',
     ];
-    
+
+    // protected static function boot()
+    // {
+    //     parent::boot();
+        
+    //     static::creating(function ($task) {
+    //         if (!empty($task->status)) {
+    //             $task->status = strtolower(str_replace(' ', '_', $task->status));
+    //         }
+    //     });
+    // }
+
     public function getRequiredColumns(): array
     {
         return $this->requiredColumn;

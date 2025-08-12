@@ -612,7 +612,7 @@
                                                             :items="$clients->map(
                                                                 fn($c) => [
                                                                     'id' => $c->id,
-                                                                    'name' => $c->name,
+                                                                    'name' => $c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name . ' - ' . $c->phone
                                                                 ],
                                                             )" :placeholder="$clientPlaceholder"
                                                             :selectedName="$selectedClient

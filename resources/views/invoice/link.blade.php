@@ -56,40 +56,8 @@
         <div class="content-70">
             <!-- Table  -->
             <div class="panel oxShadow rounded-lg">
-                <div class="customResponsiveClass flex flex-col md:flex-row justify-between p-2 gap-3">
-                    <!--  search icon -->
-                    <div class="relative w-full">
-                        <!-- Search Input -->
-                        <input type="text" placeholder="Find fast and search here..."
-                            class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                            id="searchInput">
 
-                        <!-- Search Button with SVG Icon -->
-                        <button type="button"
-                            class="btn DarkBGcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
-                            id="searchButton">
-                            <svg class="mx-auto" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="11.5" cy="11.5" r="9.5" stroke="#fff" stroke-width="1.5"
-                                    opacity="0.5"></circle>
-                                <path d="M18.5 18.5L22 22" stroke="#fff" stroke-width="1.5" stroke-linecap="round">
-                                </path>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- ./search icon -->
-                    <div class="flex customCenter gap-5 w-full justify-end">
-                        <button id="toggleFilters"
-                            class="flex px-3 py-2 gap-2 city-light-yellow rounded-lg shadow-sm items-center text-xs md:text-sm">
-                            <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                                <path fill="#333333"
-                                    d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
-                            </svg>
-                            <span class="text-xs md:text-sm dark:text-black">Filters</span>
-                        </button>
-                    </div>
-                </div>
+                <x-search :action="route('invoices.link')" searchParam='search' placeholder='Quick search of invoices link' />
 
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
@@ -162,7 +130,7 @@
                                         x-data="{ editClientPhone: false}">
                                         <p
                                             class="cursor-pointer text-blue-500 hover:underline" @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
-                                            {{ $invoice->client->first_name}}
+                                            {{ $invoice->client->first_name . ' ' . $invoice->client->middle_name . ' ' . $invoice->client->last_name }}
                                         </p>
                                         <div x-cloak x-show="editClientPhone" class="fixed bg-gray-800 inset-0 bg-opacity-75 flex items-center justify-center z-50">
                                             <div
@@ -282,7 +250,7 @@
                                         <p
                                             class="cursor-pointer text-blue-500 hover:underline"
                                             @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
-                                            {{ $partial->client->first_name }}
+                                            {{ $partial->client->first_name . ' ' . $partial->client->middle_name . ' ' . $partial->client->last_name }}
                                         </p>
                                         <div
                                             x-cloak
@@ -360,42 +328,7 @@
 
                     </div>
                     <!-- ./table -->
-
-
-                    <!-- pagination -->
-                    <div class="dataTable-bottom justify-center">
-                        <nav class="dataTable-pagination">
-                            <ul class="dataTable-pagination-list flex gap-2 mt-4">
-                                <li class="pager" id="prevPage">
-                                    <a href="#">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                            <path d="M13 19L7 12L13 5" stroke="currentColor" stroke-width="1.5"
-                                                stroke-linecap="round" stroke-linejoin="round"></path>
-                                            <path opacity="0.5" d="M16.9998 19L10.9998 12L16.9998 5"
-                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                                stroke-linejoin="round"></path>
-                                        </svg>
-                                    </a>
-                                </li>
-                                <!-- Dynamic page numbers will be injected here -->
-                                <li class="pager" id="nextPage">
-                                    <a href="#">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg" class="w-4.5 h-4.5">
-                                            <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
-                                                stroke-linecap="round" stroke-linejoin="round"></path>
-                                            <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
-                                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                                stroke-linejoin="round"></path>
-                                        </svg>
-                                    </a>
-                                </li>
-                            </ul>
-                        </nav>
-                    </div>
-
-                    <!-- ./pagination -->
+                    <x-pagination :data="$invoices" />
                 </div>
             </div>
 

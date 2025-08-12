@@ -101,8 +101,10 @@ class InvoiceController extends Controller
                       ->orWhere('due_date', 'like', "%{$search}%")
                       ->orWhere('paid_date', 'like', "%{$search}%")
                       ->orWhereHas('client', function($q) use ($search) {
-                          $q->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%");
+                          $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('middle_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
                       })
                       ->orWhereHas('agent', function($q) use ($search) {
                           $q->where('name', 'like', "%{$search}%");
@@ -1153,7 +1155,7 @@ class InvoiceController extends Controller
 
 
 
-    public function link()
+    public function link(Request $request)
     {
         $user = Auth::user();
 
@@ -1181,8 +1183,27 @@ class InvoiceController extends Controller
             'client'
         ])
             ->whereIn('agent_id', $agentIds)
-            ->whereHas('invoiceDetails.task.supplier') // Only invoices with suppliers
-            ->get();
+            ->whereHas('invoiceDetails.task.supplier'); // Only invoices with suppliers
+
+
+        if($request->has('search')){
+            $search = $request->input('search');
+            $invoices = $invoices->where(function ($query) use ($search) {
+                $searchTerm = '%' . $search . '%';
+                
+                $query->where('invoice_number', 'like', $searchTerm)
+                    ->orWhere('payment_type', 'like', $searchTerm)
+                    ->orWhere('status', $search)
+                    ->orWhereHas('client', function ($q) use ($searchTerm) {
+                        $q->where('first_name', 'like', $searchTerm)
+                        ->orWhere('middle_name', 'like', $searchTerm)
+                        ->orWhere('last_name', 'like', $searchTerm)
+                          ->orWhere('email', 'like', $searchTerm);
+                    });
+            });
+        }
+
+        $invoices = $invoices->orderBy('created_at', 'desc')->paginate(20);
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();

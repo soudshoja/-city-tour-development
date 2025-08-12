@@ -300,8 +300,9 @@
                         <x-searchable-dropdown
                             name="client_id"
                             id="client_id"
-                            :items="$clients->map(fn($c) => ['id' => $c->id,
-                                'name' => $c->name . ($c->phone && $c->country_code ? ' - ' . $c->country_code . $c->phone : ($c->phone ? ' - ' . $c->phone : ($c->country_code ? ' - ' . $c->country_code : '')))
+                            :items="$clients->map(fn($c) => [
+                                'id' => $c->id,
+                                'name' => $c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name . ' - ' . $c->phone
                             ])"
                             :selectedId="$selectedId"
                             :selectedName="$selectedName"

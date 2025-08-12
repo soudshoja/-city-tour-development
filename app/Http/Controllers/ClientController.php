@@ -109,7 +109,9 @@ class ClientController extends Controller
     public function storeProcess(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255', 
             'dial_code' => 'required|string|max:30',
             'phone' => 'required|string|max:15',
             'agent_id' => 'required|exists:agents,id',
@@ -120,7 +122,9 @@ class ClientController extends Controller
             $message = 'Client created successfully.';
 
             $client = Client::create([
-                'name' => $request->name,
+                'first_name' => $request->first_name,
+                'middle_name' => $request->middle_name,
+                'last_name' => $request->last_name,
                 'email' => $request->email,
                 'status' => 'active',
                 'phone' => preg_replace('/\s+/', '', $request->phone),

@@ -14,6 +14,7 @@ use App\Models\Task;
 use App\Schema\TaskSchema;
 use App\Schema\TaskFlightSchema;
 use App\Schema\TaskHotelSchema;
+use App\Schema\TaskInsuranceSchema;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -290,6 +291,7 @@ class OpenAIClient implements AIClientInterface
                     [
                         'task_flight_details' => $item['task_flight_details'] ?? [],
                         'task_hotel_details' => $item['task_hotel_details'] ?? [],
+                        'task_insurance_details' => $item['task_insurance_details'] ?? [],
                     ]
                 ));
                 $processedItems[] = $normalized;
@@ -681,6 +683,7 @@ class OpenAIClient implements AIClientInterface
         $taskFields = TaskSchema::getSchema();
         $flightFields = TaskFlightSchema::getSchema();
         $hotelFields = TaskHotelSchema::getSchema();
+        $insuranceFields = TaskInsuranceSchema::getSchema();
 
         $suppliers = Supplier::all();
 
@@ -705,12 +708,22 @@ class OpenAIClient implements AIClientInterface
         foreach ($hotelFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
+        $prompt .= "\n4. `task_insurance_details` model (for insurances) - THIS IS AN ARRAY that can contain multiple insurance details:\n";
+        foreach ($insuranceFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['description']}\n";
+        }
+        $prompt .= "\nINSURANCE TASK COLLAPSING RULE (CRITICAL):\n";
+        $prompt .= "- Do NOT create additional tasks for spouse/children/relatives listed on the certificate.\n";
+        $prompt .= "- Do NOT record or output any list of covered relatives/members. Ignore extra names.\n";
+        $prompt .= "- Set client_name to the buyer/policyholder (name nearest to the policy header or explicitly labeled).\n";
+        $prompt .= "- If currency symbols (e.g., KD, $, €) are found in the files, replace them with the proper ISO currency code (e.g., KWD, USD, EUR).\n";
 
         $prompt .= "\nIMPORTANT INSTRUCTIONS:\n";
         $prompt .= "- The PDF may contain multiple passengers/bookings. Return an array of task objects.\n";
         $prompt .= "- Each passenger should be a separate task object with their own ticket/booking details.\n";
         $prompt .= "- If multiple passengers share the same flight/booking, they may have the same flight details but different ticket numbers and passenger names.\n";
         $prompt .= "- task_flight_details and task_hotel_details are ARRAYS that can contain multiple flight/hotel segments for each task.\n";
+        $prompt .= "- For INSURANCE: follow the INSURANCE TASK COLLAPSING RULE (do NOT create a task per covered person).\n";
         $prompt .= "- Extract all available data, set missing fields to null.\n";
         $prompt .= "- All dates should be in 'Y-m-d H:i:s' format.\n";
         $prompt .= "- For supplier name, refer to this list: $supplierList\n";
@@ -791,7 +804,19 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "          \"is_refundable\": true,\n";
         $prompt .= "          \"supplements\": \"additional services\"\n";
         $prompt .= "        }\n";
-        $prompt .= "      ]\n";
+        $prompt .= "      ],\n";
+        $prompt .= "        \"task_insurance_details\": [\n";
+        $prompt .= "          {\n";
+        $prompt .= "            \"insurance_type\": \"Tr\",\n";
+        $prompt .= "            \"destination\": \"Worldwide\",\n";
+        $prompt .= "            \"plan_type\": \"Family Plan\",\n";
+        $prompt .= "            \"duration\": \"Up to 30 days\",\n";
+        $prompt .= "            \"package\": \"Worldwide (Silver) Plan\",\n";
+        $prompt .= "            \"document_reference\": \"policy/certificate reference\",\n";
+        $prompt .= "            \"date\": \"2025\",\n"; 
+        $prompt .= "            \"paid_leaves\": 0,\n";
+        $prompt .= "          }\n";
+        $prompt .= "        ]\n";
         $prompt .= "    }\n";
         $prompt .= "  ]\n";
         $prompt .= "}\n\n";
@@ -946,10 +971,11 @@ class OpenAIClient implements AIClientInterface
         $taskFields = TaskSchema::getSchema();
         $flightFields = TaskFlightSchema::getSchema();
         $hotelFields = TaskHotelSchema::getSchema();
+        $insuranceFields = TaskInsuranceSchema::getSchema();
         $supplierList = Supplier::all()->pluck('name')->toArray();
         $airportList = Airport::all()->toArray();
 
-        $prompt = $this->buildBatchProcessingPrompt($taskFields, $flightFields, $hotelFields, $supplierList, $airportList, $fileMetadata);
+        $prompt = $this->buildBatchProcessingPrompt($taskFields, $flightFields, $hotelFields, $insuranceFields, $supplierList, $airportList, $fileMetadata);
 
         // Build content array for the API call
         $content = [];
@@ -1096,7 +1122,7 @@ class OpenAIClient implements AIClientInterface
     /**
      * Build comprehensive prompt for batch processing multiple file types
      */
-    private function buildBatchProcessingPrompt($taskFields, $flightFields, $hotelFields, $supplierList, $airportList, $fileMetadata): string
+    private function buildBatchProcessingPrompt($taskFields, $flightFields, $hotelFields, $insuranceFields, $supplierList, $airportList, $fileMetadata): string
     {
         $supplierListJson = json_encode($supplierList);
         $airportListJson = json_encode($airportList);
@@ -1133,6 +1159,15 @@ class OpenAIClient implements AIClientInterface
         foreach ($hotelFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
+        $prompt .= "\n4. `task_insurance_details` model (for insurances) - THIS IS AN ARRAY that can contain multiple insurance details:\n";
+        foreach ($insuranceFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['description']}\n";
+        }
+        $prompt .= "\nINSURANCE TASK COLLAPSING RULE (CRITICAL):\n";
+        $prompt .= "- Do NOT create additional tasks for spouse/children/relatives listed on the certificate.\n";
+        $prompt .= "- Do NOT record or output any list of covered relatives/members. Ignore extra names.\n";
+        $prompt .= "- Set client_name to the buyer/policyholder (name nearest to the policy header or explicitly labeled).\n";
+        $prompt .= "- If currency symbols (e.g., KD, $, €) are found in the files, replace them with the proper ISO currency code (e.g., KWD, USD, EUR).\n";
 
         $prompt .= "\nSPECIAL PROCESSING RULES:\n";
         $prompt .= "- For AIR files (.air, .txt): Set supplier_name to 'Amadeus' and extract structured data according to AIR format\n";
@@ -1140,6 +1175,7 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- Each passenger should be a separate task object with their own ticket/booking details\n";
         $prompt .= "- If multiple passengers share the same flight/booking, they may have the same flight details but different ticket numbers and passenger names\n";
         $prompt .= "- task_flight_details and task_hotel_details are ARRAYS that can contain multiple flight/hotel segments for each task\n";
+        $prompt .= "- For INSURANCE: follow the INSURANCE TASK COLLAPSING RULE (do NOT create a task per covered person).\n";
         $prompt .= "- For multi-segment trips (connecting flights, multiple hotels), include all segments in the respective arrays\n";
         $prompt .= "- Extract all available data, set missing fields to null\n";
         $prompt .= "- All dates should be in 'Y-m-d H:i:s' format\n";
@@ -1229,6 +1265,18 @@ class OpenAIClient implements AIClientInterface
                 $prompt .= "            \"is_refundable\": true,\n";
                 $prompt .= "            \"supplements\": \"additional services\"\n";
                 $prompt .= "          }\n";
+                $prompt .= "        ],\n";
+                $prompt .= "        \"task_insurance_details\": [\n";
+                $prompt .= "          {\n";
+                $prompt .= "            \"insurance_type\": \"Tr\",\n";
+                $prompt .= "            \"destination\": \"Worldwide\",\n";
+                $prompt .= "            \"plan_type\": \"Family Plan\",\n";
+                $prompt .= "            \"duration\": \"Up to 30 days\",\n";
+                $prompt .= "            \"package\": \"Worldwide (Silver) Plan\",\n";
+                $prompt .= "            \"document_reference\": \"policy/certificate reference\",\n";
+                $prompt .= "            \"date\": 2025,\n"; 
+                $prompt .= "            \"paid_leaves\": 0,\n";
+                $prompt .= "          }\n";
                 $prompt .= "        ]\n";
                 $prompt .= "      }\n";
                 $prompt .= "    ]" . (array_search($fileName, array_keys($fileMetadata)) < count($fileMetadata) - 1 ? "," : "") . "\n";
@@ -1264,6 +1312,7 @@ class OpenAIClient implements AIClientInterface
         $taskFields = TaskSchema::getSchema();
         $flightFields = TaskFlightSchema::getSchema();
         $hotelFields = TaskHotelSchema::getSchema();
+        $insuranceFields = TaskInsuranceSchema::getSchema();
 
         $supplierList = Supplier::all()->pluck('name')->toArray();
         $supplierList = json_encode($supplierList);
@@ -1285,6 +1334,15 @@ class OpenAIClient implements AIClientInterface
         foreach ($hotelFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
+        $prompt .= "\n4. `task_insurance_details` model (for insurances) - THIS IS AN ARRAY that can contain multiple insurance details:\n";
+        foreach ($insuranceFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['description']}\n";
+        }
+        $prompt .= "\nINSURANCE TASK COLLAPSING RULE (CRITICAL):\n";
+        $prompt .= "- Do NOT create additional tasks for spouse/children/relatives listed on the certificate.\n";
+        $prompt .= "- Do NOT record or output any list of covered relatives/members. Ignore extra names.\n";
+        $prompt .= "- Set client_name to the buyer/policyholder (name nearest to the policy header or explicitly labeled).\n";
+        $prompt .= "- If currency symbols (e.g., KD, $, €) are found in the files, replace them with the proper ISO currency code (e.g., KWD, USD, EUR).\n";
 
         $prompt .= "\nIMPORTANT INSTRUCTIONS:\n";
         $prompt .= "- I am providing multiple PDF files for batch processing.\n";
@@ -1372,6 +1430,18 @@ class OpenAIClient implements AIClientInterface
             $prompt .= "            \"meal_type\": \"breakfast/half-board/full-board\",\n";
             $prompt .= "            \"is_refundable\": true,\n";
             $prompt .= "            \"supplements\": \"additional services\"\n";
+            $prompt .= "          }\n";
+            $prompt .= "        ],\n";
+            $prompt .= "        \"task_insurance_details\": [\n";
+            $prompt .= "          {\n";
+            $prompt .= "            \"insurance_type\": \"Tr\",\n";
+            $prompt .= "            \"destination\": \"Worldwide\",\n";
+            $prompt .= "            \"plan_type\": \"Family Plan\",\n";
+            $prompt .= "            \"duration\": \"Up to 30 days\",\n";
+            $prompt .= "            \"package\": \"Worldwide (Silver) Plan\",\n";
+            $prompt .= "            \"document_reference\": \"policy/certificate reference\",\n";
+            $prompt .= "            \"date\": \"2025\",\n"; 
+            $prompt .= "            \"paid_leaves\": 0,\n";
             $prompt .= "          }\n";
             $prompt .= "        ]\n";
             $prompt .= "      }\n";

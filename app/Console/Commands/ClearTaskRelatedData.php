@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\Transaction;
 use App\Models\TaskFlightDetail;
 use App\Models\TaskHotelDetail;
+use App\Models\TaskInsuranceDetail;
 use App\Models\Company;
 use App\Models\Supplier;
 use Exception;
@@ -292,6 +293,12 @@ class ClearTaskRelatedData extends Command
             if ($hotelDetailsCount > 0) {
                 TaskHotelDetail::withTrashed()->whereIn('task_id', $taskIds)->forceDelete();
                 $this->info("Hard deleted {$hotelDetailsCount} task hotel details.");
+            }
+
+            $insuranceDetailsCount = TaskInsuranceDetail::withTrashed()->whereIn('task_id', $taskIds)->count();
+            if ($insuranceDetailsCount > 0) {
+                TaskInsuranceDetail::withTrashed()->whereIn('task_id', $taskIds)->forceDelete();
+                $this->info("Hard deleted {$insuranceDetailsCount} task insurance details.");
             }
 
             // 10. Reset client credits (only for clients who had task-related invoices)

@@ -97,7 +97,7 @@
                     @php $client = $tasks->first()->client; @endphp
                     <div>
                         <div class="text-xs uppercase text-gray-500">Name</div>
-                        <div class="text-sm font-medium text-gray-900">{{ $client->name ?? '—' }}</div>
+                        <div class="text-sm font-medium text-gray-900">{{ $client->first_name ?? '—' }}</div>
                     </div>
                     <div>
                         <div class="text-xs uppercase text-gray-500">Email</div>
@@ -240,7 +240,7 @@
                     @endphp
                     <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4
                         flex justify-between items-center">
-                        <div class="font-medium text-gray-900">{{ $t->passenger_name ?? $t->client->name }}</div>
+                        <div class="font-medium text-gray-900">{{ $t->passenger_name ?? $t->client->first_name }}</div>
                         <span class="uppercase text-xs font-semibold px-2 py-1 rounded {{ "bg-{$c['bg']}" }} {{ "text-{$c['text']}" }}">
                             {{ ucfirst($status) }}
                         </span>

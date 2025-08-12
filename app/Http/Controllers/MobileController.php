@@ -568,11 +568,11 @@ class MobileController extends Controller
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'account_id' =>  $receivableAccount->id,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment received from: ' . $client->name,
+                            'description' => 'Payment received from: ' . $client->first_name,
                             'debit' => 0,
                             'credit' => $task['price'],
                             'balance' => $task['price'],
-                            'name' =>  $client->name,
+                            'name' =>  $client->first_name,
                             'type' => 'receivable',
                             'type_reference_id' => $client->id
                         ]);
@@ -738,11 +738,11 @@ class MobileController extends Controller
                         'account_id' =>  $client->id, // Example: assign client account
                         'invoiceDetail_id' =>  $invoiceDetail->id,
                         'transaction_date' => Carbon::now(),
-                        'description' => 'Updated Payment received from: ' . $client->name,
+                        'description' => 'Updated Payment received from: ' . $client->first_name,
                         'debit' => 0,
                         'credit' => $task['invprice'],
                         'balance' => $task['invprice'],
-                        'name' =>  $client->name,
+                        'name' =>  $client->first_name,
                         'type' => 'receivable',
                     ]);
     

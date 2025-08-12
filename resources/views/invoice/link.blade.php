@@ -162,7 +162,7 @@
                                         x-data="{ editClientPhone: false}">
                                         <p
                                             class="cursor-pointer text-blue-500 hover:underline" @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
-                                            {{ $invoice->client->name}}
+                                            {{ $invoice->client->first_name}}
                                         </p>
                                         <div x-cloak x-show="editClientPhone" class="fixed bg-gray-800 inset-0 bg-opacity-75 flex items-center justify-center z-50">
                                             <div
@@ -282,7 +282,7 @@
                                         <p
                                             class="cursor-pointer text-blue-500 hover:underline"
                                             @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
-                                            {{ $partial->client->name }}
+                                            {{ $partial->client->first_name }}
                                         </p>
                                         <div
                                             x-cloak

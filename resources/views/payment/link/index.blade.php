@@ -137,7 +137,7 @@
                                         class="text-blue-500 hover:underline text-sm font-semibold">{{ $payment->voucher_number }}</a>
                                 </td>
                                 <td class="px-3 py-2 text-sm break-words max-w-[350px] font-semibold">
-                                    {{ $payment->client ? $payment->client->name : 'N/A' }}
+                                    {{ $payment->client ? $payment->client->first_name : 'N/A' }}
                                 </td>
                                 <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
                                     {{ $payment->client ? $payment->client->country_code . $payment->client->phone : 'N/A' }}
@@ -334,7 +334,7 @@
                                                     $payment->client_id,
                                                     );
                                                     $clientPlaceholder = $selectedClient
-                                                    ? $selectedClient->name
+                                                    ? $selectedclient->first_name
                                                     : 'Select a Client';
                                                     @endphp
                                                     <div class="mb-4">
@@ -346,7 +346,7 @@
                                                                         ],
                                                                     )" :placeholder="$clientPlaceholder"
                                                             :selectedName="$selectedClient
-                                                                        ? $selectedClient->name
+                                                                        ? $selectedclient->first_name
                                                                         : null" label="Client" />
 
                                                         <input type="hidden" name="client_id_fallback"

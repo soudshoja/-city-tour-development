@@ -71,7 +71,7 @@
         <!-- Client Details -->
         <div class="mb-8">
             <h3 class="text-lg font-bold text-gray-800">Bill To:</h3>
-            <p class="text-sm text-gray-600">{{ $invoice->client->name ?? 'N/A' }}</p>
+            <p class="text-sm text-gray-600">{{ $invoice->client->first_name ?? 'N/A' }}</p>
             <p class="text-sm text-gray-600">{{ $invoice->client->address ?? 'N/A' }}</p>
             <p class="text-sm text-gray-600">{{ $invoice->client->email ?? 'N/A' }}</p>
         </div>
@@ -135,7 +135,7 @@
                     @csrf
                     <input type="hidden" name="total_amount" value="{{ $invoice->amount }}">
                     <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
-                    <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
+                    <input type="hidden" name="client_name" value="{{ $invoice->client->first_name }}">
                     <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
                     <input type="hidden" name="payment_method" value="credit_card">
                     <button type="submit" id="payNowBtn" class="btn btn-primary">

@@ -116,7 +116,7 @@
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->invoice_number }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->agent->name }}</td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->client->name }}</td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->client->first_name }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">{{ $invoice->amount }}</td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid')

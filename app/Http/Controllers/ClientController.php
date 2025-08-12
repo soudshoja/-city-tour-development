@@ -132,7 +132,7 @@ class ClientController extends Controller
 
                 // Link client
                 $task->client_id = $client->id;
-                $task->client_name = $client->name;
+                $task->client_name = $client->first_name;
 
                 // Attempt to auto-enable
                 if (!$task->enabled && $task->is_complete) {
@@ -445,7 +445,7 @@ class ClientController extends Controller
         // Add company data to CSV
         foreach ($clients as $client) {
             fputcsv($handle, [
-                $client->name,
+                $client->first_name,
                 $client->email,
                 $client->phone,
                 $client->agent->name,
@@ -686,7 +686,7 @@ class ClientController extends Controller
                 'entity_type' => 'client',
                 'transaction_type' => 'debit',
                 'amount' => $payment->amount,
-                'description' => 'Client Credit of ' . $client->name,
+                'description' => 'Client Credit of ' . $client->first_name,
                 'invoice_id' => null,
                 'reference_type' => 'Payment',
                 'reference_number' => $payment->voucher_number,
@@ -702,11 +702,11 @@ class ClientController extends Controller
                 //     'company_id' => $client->agent->branch->company->id,
                 //     'account_id' =>  $receivableAccountId,
                 //     'transaction_date' => Carbon::now(),
-                //     'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->name,
+                //     'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->first_name,
                 //     'debit' => 0,
                 //     'credit' => $payment->amount,
                 //     'balance' => null,
-                //     'name' =>  $client->name,
+                //     'name' =>  $client->first_name,
                 //     'type' => 'receivable',
                 //     'voucher_number' => $payment->voucher_number,
                 //     'type_reference_id' => $receivableAccountId
@@ -720,7 +720,7 @@ class ClientController extends Controller
                     'branch_id' => $client->agent->branch->id,
                     'account_id' =>  $bankPaymentFee->id,
                     'transaction_date' => Carbon::now(),
-                    'description' => 'Client Pays by ' . $client->name . ' via (Assets): ' . $bankPaymentFee->name,
+                    'description' => 'Client Pays by ' . $client->first_name . ' via (Assets): ' . $bankPaymentFee->name,
                     'debit' => $payment->amount,
                     'credit' => 0,
                     'name' =>  $bankPaymentFee->name,
@@ -806,7 +806,7 @@ class ClientController extends Controller
 
             Log::info('Credit Update', [
                 'client_id'       => $client->id,
-                'client_name'     => $client->name,
+                'client_name'     => $client->first_name,
                 'current_balance' => $balanceCredit,
                 'new_amount'      => $amount,
                 'difference'      => $difference,
@@ -818,7 +818,7 @@ class ClientController extends Controller
                     'company_id'  => $client->agent->branch->company->id,
                     'client_id'   => $client->id,
                     'type'        => 'Update Credit',
-                    'description' => 'Update Credit for ' . $client->name,
+                    'description' => 'Update Credit for ' . $client->first_name,
                     'amount'      => $difference,
                 ]);
             }
@@ -931,7 +931,7 @@ class ClientController extends Controller
                 'entity_type' => 'client',
                 'transaction_type' => 'credit',
                 'amount' => $request->amount,
-                'description' => 'Client Refund of ' . $client->name . ' of ' . $request->amount,
+                'description' => 'Client Refund of ' . $client->first_name . ' of ' . $request->amount,
                 'invoice_id' => null,
                 'reference_type' => 'Refund',
                 'reference_number' => null,
@@ -943,11 +943,11 @@ class ClientController extends Controller
                 'company_id' => $client->agent->branch->company->id,
                 'account_id' =>  $clientAdvance->id,
                 'transaction_date' => Carbon::now(),
-                'description' => 'Deduct Client Advance: ' . $client->name . ' of ' . $request->amount,
+                'description' => 'Deduct Client Advance: ' . $client->first_name . ' of ' . $request->amount,
                 'debit' => $request->amount,
                 'credit' => 0,
                 'balance' => null,
-                'name' =>  $client->name,
+                'name' =>  $client->first_name,
                 'type' => 'receivable',
                 'voucher_number' => null,
                 'type_reference_id' => $advances->id
@@ -959,11 +959,11 @@ class ClientController extends Controller
                 'company_id' => $client->agent->branch->company->id,
                 'account_id' =>  $clientRefund->id,
                 'transaction_date' => Carbon::now(),
-                'description' => 'Debit Client Refund Payable: ' . $client->name . ' of ' . $request->amount,
+                'description' => 'Debit Client Refund Payable: ' . $client->first_name . ' of ' . $request->amount,
                 'debit' => 0,
                 'credit' => $request->amount,
                 'balance' => null,
-                'name' =>  $client->name,
+                'name' =>  $client->first_name,
                 'type' => 'payable',
                 'voucher_number' => null,
                 'type_reference_id' => $refundPayable->id
@@ -988,7 +988,7 @@ class ClientController extends Controller
                     'company_id'  => $client->agent->branch->company->id,
                     'client_id'   => $client->id,
                     'type'        => 'Refund Credit',
-                    'description' => 'Refund Credit for ' . $client->name,
+                    'description' => 'Refund Credit for ' . $client->first_name,
                     'amount'      => - ($request->amount),
                 ]);
             } catch (Exception $e) {

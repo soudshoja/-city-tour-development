@@ -109,10 +109,14 @@
                                     <div class="my-2">
                                         <label for="nameTask" class="block text-sm font-medium text-gray-700 mb-1">Client's
                                             Name</label>
-                                        <input type="text" name="name" id="nameTask" :value="modalClientName"
+                                        <input type="text" name="first_name" id="nameTask" :value="modalClientName"
                                             placeholder="Client's name"
                                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                             required>
+                                        <input type="text" name="middle_name" id="middleNameTask" placeholder="Client's middle name"
+                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mt-2">
+                                        <input type="text" name="last_name" id="lastNameTask" placeholder="Client's last name"
+                                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mt-2">
                                     </div>
 
                                     <div class="mb-3">
@@ -287,9 +291,9 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     @php
                     $selectedClient = null;
-                    $clientPlaceholder = $selectedClient ? $selectedClient->name : 'Select a Client';
+                    $clientPlaceholder = $selectedClient ? $selectedclient->first_name : 'Select a Client';
                     $selectedId   = old('client_id', $selectedClient->id ?? null);
-                    $selectedName = old('client_name', $selectedClient->name ?? null);
+                    $selectedName = old('client_name', $selectedclient->first_name ?? null);
                     @endphp
                     <div>
                         <label for="client_id" class="block text-sm font-medium text-gray-700">Client</label>
@@ -505,7 +509,14 @@
                         console.log("Extracted client data:", client);
 
                         const nameInput = document.getElementById('nameTask');
-                        if (nameInput) nameInput.value = client.name || '';
+                        if (nameInput) nameInput.value = client.first_name || '';
+
+                        const middleNameInput = document.getElementById('middleNameTask');
+                        if (middleNameInput) middleNameInput.value = client.middle_name || '';
+
+                        const lastNameInput = document.getElementById('lastNameTask');
+                        if (lastNameInput) lastNameInput.value = client.last_name || '';
+
                         const passportInput = document.getElementById('passport_noTask');
                         if (passportInput) passportInput.value = client.passport_no || '';
 

@@ -141,7 +141,7 @@
                                                 <div class="client bg-white border border-gray-100 rounded-lg p-4" x-data="{ openClient: false }">
                                                     <div class="flex justify-between items-center">
                                                         <p class="text-md font-medium text-gray-700 cursor-pointer" @click="openClient = !openClient">
-                                                            {{ $client->name }} (Client)
+                                                            {{ $client->first_name }} (Client)
                                                         </p>
                                                         <div class="text-sm text-gray-700 flex space-x-4">
                                                             <p>Credits: <span class="font-semibold text-green-500">${{ number_format($client->total_credits, 2) }}</span></p>

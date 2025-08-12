@@ -30,7 +30,7 @@
     <ul class="list-disc list-inside">
         @foreach ($clients as $client)
             <li>
-                <a href="{{ route('clients.show', ['id' => $client->id]) }}" class="text-blue-500 hover:underline">{{ $client->name }}</a>
+                <a href="{{ route('clients.show', ['id' => $client->id]) }}" class="text-blue-500 hover:underline">{{ $client->first_name }}</a>
             </li>
         @endforeach
     </ul>

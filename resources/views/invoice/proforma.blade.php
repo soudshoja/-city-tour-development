@@ -39,7 +39,7 @@
                             <div class="row mb-4">
                                 <div class="col-5">
                                     <h5>Bill To:</h5>
-                                    <strong>{{ $invoice->client->name }}</strong><br>
+                                    <strong>{{ $invoice->client->first_name }}</strong><br>
                                     {{ $invoice->client->address }}<br>
                                     <span>{{$invoice->client->country_code}}</span>{{ $invoice->client->phone }}<br>
                                 </div>

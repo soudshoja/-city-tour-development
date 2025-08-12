@@ -426,7 +426,7 @@ public function updateExchangeRates(Request $request, $supplierId)
             'Accept: application/json',
         ];
         $data = [
-            'url' => route('suppliers.magic-webhook-callback'),
+            'url' => route('magic-webhook-callback'),
         ];
         
         Log::channel('magic_holidays')->info('Magic Holiday Webhook Request', [
@@ -456,7 +456,7 @@ public function updateExchangeRates(Request $request, $supplierId)
             return response()
                 ->json([
                     'title' => 'Invalid Webhook Data',
-                    'type' => route('suppliers.magic-webhook-docs'),
+                    'type' => route('magic-webhook-docs'),
                     'status' => 400,
                     'detail' => 'Missing required fields: id, event, or data.'
                 ], 400)

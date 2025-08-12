@@ -95,7 +95,7 @@
                             <option value="Cash" {{ old('method') == 'Cash' ? 'selected' : '' }}>Cash</option>
                             <option value="Bank" {{ old('method') == 'Bank' ? 'selected' : '' }}>Bank</option>
                             <option value="Online" {{ old('method') == 'Online' ? 'selected' : '' }}>Online</option>
-                            <option value="Credit" {{ old('method') == 'Credit' ? 'selected' : '' }}>{{ $tasks->client->name . ' Credit' }}</option>
+                            <option value="Credit" {{ old('method') == 'Credit' ? 'selected' : '' }}>{{ $tasks->client->first_name . ' Credit' }}</option>
                         </select>
                         @error('method')
                         <span class="text-red-500 text-sm">{{ $message }}</span>

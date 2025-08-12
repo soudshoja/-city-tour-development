@@ -198,7 +198,7 @@ class TaskController extends Controller
                         $task->client_id = $clientId;
                         $client = Client::find($clientId);
                         if ($client) {
-                            $task->client_name = $client->name;
+                            $task->client_name = $client->first_name;
                         }
                     }
                     if ($agentId) $task->agent_id = $agentId;
@@ -1577,7 +1577,7 @@ class TaskController extends Controller
             if ($request->filled('client_id')) {
                 $client = Client::findOrFail($request->client_id);
                 $data['client_id'] = $client->id;
-                $data['client_name'] = $client->name;
+                $data['client_name'] = $client->first_name;
             }
 
             if ($request->filled('agent_id')) {
@@ -1667,7 +1667,7 @@ class TaskController extends Controller
             if (isset($client) && $transaction) {
                 $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
                     if ($journalEntry->name === $prevClientName) {
-                        $journalEntry->name = $client->name;
+                        $journalEntry->name = $client->first_name;
                         $journalEntry->save();
                     }
                 });
@@ -2641,7 +2641,7 @@ class TaskController extends Controller
                         return;
                     }
 
-                    logger('TBO Task Client: ' . $client->name . ' created');
+                    logger('TBO Task Client: ' . $client->first_name . ' created');
 
                     if ($key == 0) {
                         $leaderCustomer = $client;

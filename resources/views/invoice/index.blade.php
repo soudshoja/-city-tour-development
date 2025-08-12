@@ -285,7 +285,7 @@
                                                                     </div>
                                                                     <div class="border-t-2 border-dashed border-gray-400"></div>
                                                                     <div class="grid grid-cols-1 sm:grid-cols-2 text-sm gap-y-2 gap-x-10 text-gray-800">
-                                                                        <div><strong>Name:</strong> {{ $invoiceDetail->task->client->name }}</div>
+                                                                        <div><strong>Name:</strong> {{ $invoiceDetail->task->client->first_name }}</div>
                                                                         <div><strong>Flight:</strong> {{ $invoiceDetail->task->flightDetails->flight_number }}</div>
                                                                         <div><strong>Date:</strong> {{ $invoiceDetail->task->flightDetails->readable_departure_time }}</div>
                                                                         <div><strong>Reference:</strong> {{ $invoiceDetail->task->reference }}</div>
@@ -311,7 +311,7 @@
                                                                     <div class="relative flex-1 rounded-md bg-[#fffaf2] border border-koromiko-200 p-4 shadow-inner overflow-hidden">
                                                                         <div class="absolute left-0 top-0 bottom-0 w-1 bg-koromiko-400 rounded-l-md"></div>
                                                                         <div class="relative z-10 text-sm text-gray-800 space-y-1">
-                                                                            <p><span class="font-semibold">Client:</span> {{ $invoiceDetail->task->client->name ?? 'n/a' }}</p>
+                                                                            <p><span class="font-semibold">Client:</span> {{ $invoiceDetail->task->client->first_name ?? 'n/a' }}</p>
                                                                             <p><span class="font-semibold">Reference:</span> {{ $invoiceDetail->task->hotelDetails->room->reference ?? 'n/a' }}</p>
                                                                             <p><span class="font-semibold">Room:</span> {{ $invoiceDetail->task->hotelDetails->room->name ?? 'n/a' }}</p>
                                                                         </div>
@@ -352,7 +352,7 @@
                                         {{ $invoice->agent->name }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        {{ $invoice->client->name }}
+                                        {{ $invoice->client->first_name }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid')

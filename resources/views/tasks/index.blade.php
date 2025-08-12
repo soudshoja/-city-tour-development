@@ -1158,7 +1158,7 @@
                                                                                         ->get();
                                                                                         $selectedOriginalTask = $originalTasks->firstWhere('id', $task->original_task_id);
                                                                                         $taskPlaceholder = $selectedOriginalTask
-                                                                                        ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name)
+                                                                                        ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->first_name ?? $selectedOriginalTask->client_name)
                                                                                         : 'Select Original Task';
                                                                                         @endphp
 
@@ -1167,11 +1167,11 @@
                                                                                             name="original_task_id"
                                                                                             :items="$originalTasks->map(fn($t) => [
                                                                                                 'id' => $t->id,
-                                                                                                'name' => $t->reference . ' - ' . ($t->client->name ?? $t->client_name)
+                                                                                                'name' => $t->reference . ' - ' . ($t->client->first_name ?? $t->client_name)
                                                                                             ])->values()"
                                                                                             :selectedId="$task->original_task_id"
                                                                                             :selectedName="$selectedOriginalTask
-                                                                                                ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->name ?? $selectedOriginalTask->client_name)
+                                                                                                ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->first_name ?? $selectedOriginalTask->client_name)
                                                                                                 : null"
                                                                                             :placeholder="$taskPlaceholder" />
                                                                                     </div>
@@ -1210,7 +1210,7 @@
                                                                                     @php
                                                                                     $selectedClient = \App\Models\Client::find($task->client_id);
                                                                                     $clientPlaceholder = $selectedClient
-                                                                                    ? $selectedClient->name . ' - ' . $selectedClient->phone
+                                                                                    ? $selectedClient->first_name . ' - ' . $selectedClient->phone
                                                                                     : 'Select a Client';
                                                                                     @endphp
                                                                                     <div class="flex-1">
@@ -1224,7 +1224,7 @@
                                                                                                 'name' => $c->name . ' - ' . $c->phone
                                                                                             ])"
                                                                                                 :selectedId="$task->client_id"
-                                                                                                :selectedName="$selectedClient ? $selectedClient->name . ' - '  .           $selectedClient->phone : null"
+                                                                                                :selectedName="$selectedClient ? $selectedClient->first_name . ' - '  .           $selectedClient->phone : null"
                                                                                                 :placeholder="$clientPlaceholder" />
                                                                                         </div>
                                                                                     </div>
@@ -1361,14 +1361,14 @@
                                                 </td>
                                                 <td data-column="bill-to" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300 ">
                                                     @if ($task->client)
-                                                    <p>{{ $task->client->name }}</p>
+                                                    <p>{{ $task->client->first_name }}</p>
                                                     <p>{{ $task->client->phone ?? 'No phone' }}</p>
                                                     @else
                                                     <p class="{{ $task->client ?? 'no-client relative' }}">
                                                         <button
                                                             @click.stop="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}' ,'{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
                                                             {{ $task->client !== null ? 'disabled' : '' }}>
-                                                            {{ $task->client->name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
+                                                            {{ $task->client->first_name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
                                                         </button>
                                                     </p>
                                                     @endif
@@ -1633,14 +1633,14 @@
                                                     <div class="mb-3">
                                                         <label
                                                             class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
-                                                        <input type="text" name="middle_name" id=""
+                                                        <input type="text" name="middle_name" id="middleNameTask"
                                                             placeholder="Client's Middle Name"
                                                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                     </div>
                                                     <div class="mb-3">
-                                                        <label
+                                                        <label 
                                                             class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                                                        <input type="text" name="last_name" id=""
+                                                        <input type="text" name="last_name" id="lastNameTask"
                                                             placeholder="Client's Last Name"
                                                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                     </div>
@@ -2372,6 +2372,13 @@
 
                     const nameInput = document.getElementById('nameTask');
                     if (nameInput) nameInput.value = client.name || '';
+
+                    const middleNameInput = document.getElementById('middleNameTask');
+                    if (middleNameInput) middleNameInput.value = client.middle_name || '';
+
+                    const lastNameInput = document.getElementById('lastNameTask');
+                    if (lastNameInput) lastNameInput.value = client.last_name || '';
+
                     const passportInput = document.getElementById('passport_noTask');
                     if (passportInput) passportInput.value = client.passport_no || '';
 

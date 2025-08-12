@@ -19,7 +19,7 @@
                                     <option value="">-- Select Client --</option>
                                     @foreach ($clients as $client)
                                         <option value="{{ $client->id }}">
-                                            {{ $client->name }} ({{ $client->phone }})
+                                            {{ $client->first_name }} ({{ $client->phone }})
                                         </option>
                                     @endforeach
                                 </select>

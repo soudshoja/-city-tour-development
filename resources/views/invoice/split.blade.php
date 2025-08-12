@@ -78,7 +78,7 @@
          <!-- Client Details -->
          <div class="mb-8">
              <h3 class="text-lg font-bold text-gray-800">Bill To:</h3>
-             <p class="text-sm text-gray-600">{{ $invoicePartial->client->name ?? 'N/A' }}</p>
+             <p class="text-sm text-gray-600">{{ $invoicePartial->client->first_name ?? 'N/A' }}</p>
              <p class="text-sm text-gray-600">{{ $invoicePartial->client->address ?? 'N/A' }}</p>
              <p class="text-sm text-gray-600">{{ $invoicePartial->client->email ?? 'N/A' }}</p>
          </div>
@@ -172,7 +172,7 @@
                      @csrf
                      <input type="hidden" name="total_amount" value="{{ $invoicePartial->final_amount - abs($checkUtilizeCredit->sum('amount')) }}">
                      <input type="hidden" name="client_email" value="{{ $invoicePartial->client->email }}">
-                     <input type="hidden" name="client_name" value="{{ $invoicePartial->client->name }}">
+                     <input type="hidden" name="client_name" value="{{ $invoicePartial->client->first_name }}">
                      <input type="hidden" name="client_phone" value="{{ $invoicePartial->client->phone }}">
                      <input type="hidden" name="payment_gateway" value="{{ $invoicePartial->payment_gateway }}">
                      <input type="hidden" name="payment_method" value="{{ $invoicePartial->payment_method }}">

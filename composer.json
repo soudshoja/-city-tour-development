@@ -11,6 +11,7 @@
         "convertapi/convertapi-php": "^3.0",
         "google/cloud-vision": "^1.10",
         "guzzlehttp/guzzle": "^7.9",
+        "iio/libmergepdf": "^4.0",
         "intervention/image": "^3.10",
         "josiasmontag/laravel-recaptchav3": "^1.0",
         "laravel/breeze": "^2.1",

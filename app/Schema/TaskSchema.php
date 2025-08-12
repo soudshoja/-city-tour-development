@@ -40,7 +40,8 @@ class TaskSchema
     // dump('VFS Child Accounts:', $vfsChildAccount);
     // dd($vfsChildAccount);
 
-        $taskTypes = Task::where('type', [TaskType::hotel, TaskType::flight])->get();
+        $taskTypes = ['hotel', 'flight', 'visa', 'insurance', 'tour' , 'curise' , 'car' , 'rail' , 'esim', 'event', 'lounge', 'ferry'];
+        $taskTypes = json_encode($taskTypes);
 
         $agentsAmadeusId = Agent::pluck('amadeus_id')->toArray();
 
@@ -279,6 +280,20 @@ class TaskSchema
                     'booking_reference' => 'GH123456',
                 ],
             ],
+            'task_insurance_details' => [
+                'type' => 'object',
+                'desc' => "Insurance details associated with the task.",
+                'example' => [
+                    'insurance_type' => 'Tr',
+                    'destination' => 'Worldwide',
+                    'plan_type' => 'Family Plan',
+                    'duration' => 'Up to 30 days',
+                    'package' => 'Worldwide (Silver) Plan',
+                    'document_reference' => 'policy/certificate reference',
+                    'date' => 2025,
+                    'paid_leaves' => 0,
+                ],
+            ],
         ];
     }
 
@@ -304,10 +319,11 @@ class TaskSchema
                 // Nested object normalization - handle arrays of objects
                 $nestedClass = null;
                 if ($field === 'task_flight_details' && class_exists('\App\Schema\TaskFlightSchema')) {
-                   
                     $nestedClass = '\App\Schema\TaskFlightSchema';
                 } elseif ($field === 'task_hotel_details' && class_exists('\App\Schema\TaskHotelSchema')) {
                     $nestedClass = '\App\Schema\TaskHotelSchema';
+                } elseif ($field === 'task_insurance_details' && class_exists('\App\Schema\TaskInsuranceSchema')) {
+                    $nestedClass = '\App\Schema\TaskInsuranceSchema';
                 }
                 
                 if (isset($input[$field]) && is_array($input[$field]) && $nestedClass) {

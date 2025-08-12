@@ -19,6 +19,7 @@ use App\Models\Supplier;
 use App\Models\Branch;
 use App\Models\Room;
 use App\Models\TaskHotelDetail;
+use App\Models\TaskInsuranceDetail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -273,6 +274,7 @@ class TaskController extends Controller
             'refund_charge' => 'nullable|numeric',
             'task_hotel_details' => 'nullable|array',
             'task_flight_details' => 'nullable|array',
+            'task_insurance_details' => 'nullable|array',
             'file_name' => 'nullable|string',
             'issued_date' => 'nullable|date',
         ]);
@@ -527,6 +529,8 @@ class TaskController extends Controller
                 $this->saveHotelDetails($request->task_hotel_details, $task->id);
             } elseif ($task->type === 'flight' && $request->has('task_flight_details') && !empty($request->task_flight_details)) {
                 $this->saveFlightDetails($request->task_flight_details, $task->id);
+            } elseif ($task->type === 'insurance' && $request->has('task_insurance_details') && !empty($request->task_insurance_details)) {
+                $this->saveInsuranceDetails($request->task_insurance_details, $task->id);
             }
            
             // Set enabled status: task must be complete AND have an agent assigned
@@ -2017,6 +2021,50 @@ class TaskController extends Controller
             ];
 
             TaskHotelDetail::create($hotelDetails);
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+        /**
+     * Save insurance details to the database
+     * 
+     * @param array $data
+     * @param int $taskId
+     * 
+     * @return void
+     */
+    public function saveInsuranceDetails(array $data, int $taskId)
+    {
+        try {
+            if (isset($data[0]) && is_array($data[0])) {
+            foreach ($data as $insuranceData) {
+                $this->createSingleInsuranceDetail($insuranceData, $taskId);
+            }
+            } else {
+            $this->createSingleInsuranceDetail($data, $taskId);
+            }
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public function createSingleInsuranceDetail(array $data, int $taskId)
+    {
+        try {
+            $insuranceDetails = [
+                'date' => $data['date'] ?? null,
+                'paid_leaves' => $data['paid_leaves'] ?? null,
+                'document_reference' => $data['document_reference'] ?? null,
+                'insurance_type' => $data['insurance_type'] ?? null,
+                'destination' => $data['destination'] ?? null,
+                'plan_type' => $data['plan_type'] ?? null,
+                'duration' => $data['duration'] ?? null,
+                'package' => $data['package'] ?? null,
+                'task_id' => $taskId
+            ];
+
+            TaskInsuranceDetail::create($insuranceDetails);
         } catch (Exception $e) {
             throw $e;
         }

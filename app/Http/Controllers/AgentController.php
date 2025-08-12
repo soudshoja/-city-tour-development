@@ -32,7 +32,7 @@ class AgentController extends Controller
 {
     use NotificationTrait;
 
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $agents = collect();
@@ -42,19 +42,36 @@ class AgentController extends Controller
             // Get agents belonging to the company
             $company_id = $user->company_id;
             $branchesId = Branch::where('company_id', $user->company->id)->pluck('id');
-            $agents = Agent::whereIn('branch_id', $branchesId)->get();
-            $agentCount = $agents->count();
+            $agents = Agent::whereIn('branch_id', $branchesId);
+
         } elseif ($user->role_id == Role::BRANCH) {
             // Get agents belonging to the branch
             $branch_id = $user->branch_id;
-            $agents = Agent::where('branch_id', $branch_id)->get();
-            $agentCount = $agents->count();
+            $agents = Agent::where('branch_id', $branch_id);
 
         } elseif ($user->role_id == Role::ADMIN) {
             // Admin can see all agents
-            $agents = Agent::all();
-            $agentCount = $agents->count();
+            $agents = new Agent;
         }
+
+        if($request->has('search')) {
+            $search = $request->input('search');
+            // Filter agents based on the search query
+            $agents = $agents->where(function ($query) use ($search) {
+                $searchTerm = '%' . strtolower($search) . '%';
+                $query->where('name', 'like', $searchTerm)
+                    ->orWhere('amadeus_id', 'like', $searchTerm)
+                    ->orWhere('email', 'like', $searchTerm)
+                    ->orWhere('phone_number', 'like', $searchTerm)
+                    ->orWhereHas('agentType', function ($q) use ($searchTerm) {
+                        $q->where('name', 'like', $searchTerm);
+                    });
+            });
+        }
+
+        $agentCount = $agents->count();
+
+        $agents = $agents->orderBy('created_at', 'desc')->paginate(20);
 
         // Pass both 'agents' and 'agentCount' to the view
         return view('agents.index', compact('agents', 'agentCount'));

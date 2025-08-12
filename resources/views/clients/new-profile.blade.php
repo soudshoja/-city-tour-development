@@ -15,7 +15,7 @@
 
             </li>
             <li class="before:content-['/'] before:mr-1 ">
-                <span>{{ $client->name }} </span>
+                <span>{{ $client->first_name }} </span>
             </li>
         </ul>
         <!-- ./Breadcrumbs -->
@@ -128,7 +128,7 @@
                         <div class="flex items-center rounded-full bg-black/50 p-1 font-semibold text-white  ">
                             <x-application-logo
                                 class="block h-8 w-8 rounded-full border-2 border-white/50 object-cover ltr:mr-1 rtl:ml-1" />
-                            <h3 class="px-2">{{ $client->name }}</h3>
+                            <h3 class="px-2">{{ $client->first_name }}</h3>
                             @if ($balanceCredit > 0)
                             <div x-data="{ clientCreditRefund: false }" class="flex items-center">
                                 <button @click="clientCreditRefund = true"
@@ -604,7 +604,7 @@
                                                             $payment->client_id,
                                                         );
                                                         $clientPlaceholder = $selectedClient
-                                                            ? $selectedClient->name
+                                                            ? $selectedClient->first_name
                                                             : 'Select a Client';
                                                     @endphp
                                                     <div class="mb-4">
@@ -616,7 +616,7 @@
                                                                 ],
                                                             )" :placeholder="$clientPlaceholder"
                                                             :selectedName="$selectedClient
-                                                                ? $selectedClient->name
+                                                                ? $selectedClient->first_name
                                                                 : null" label="Client" />
 
                                                         <input type="hidden" name="client_id_fallback"
@@ -750,7 +750,7 @@
     <!-- edit Agent details modal -->
     <div id="editClientModal"
         class="fixed z-10 inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm hidden">
-        <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+        <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
 
             <!-- Close Button (Top Right) -->
             <button onclick="closeClientModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
@@ -769,36 +769,67 @@
                     @csrf
                     @method('PUT')
                     <div class="grid gap-4">
-                        <input type="text" name="name" value="{{ $client->name }}"
-                            class="border border-gray-200 dark:border-gray-600 p-2 rounded-md"
-                            placeholder="Client Name">
-                        <input type="email" name="email" value="{{ $client->email }}"
-                            class="border border-gray-200 dark:border-gray-600 p-2 rounded-md"
-                            placeholder="Client Email">
-                        <select name="country_code" id="country_code"
-                            class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
-                            @foreach ($countries as $country)
-                            <option value="{{ $country->dialing_code }}"
-                                {{ $client->country_code == $country->dialing_code ? 'selected' : '' }}>
-                                {{ $country->name }} ({{ $country->dialing_code }})
-                            </option>
-                            @endforeach
-                        </select>
-                        <input type="text" name="phone" value="{{ $client->phone }}"
-                            class="border border-gray-200 dark:border-gray-600 p-2 rounded-md"
-                            placeholder="Client Phone">
-                        <input type="text" name="address" value="{{ $client->address }}"
-                            class="border border-gray-200 dark:border-gray-600 p-2 rounded-md whitespace-nowrap overflow-x-auto"
-                            placeholder="Client Address" style="white-space: nowrap; overflow-x: auto;">
-                        <select name="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
-                            @foreach ($agents as $agent)
-                            <option value="{{ $agent->id }}"
-                                {{ $client->agent_id == $agent->id ? 'selected' : '' }}>
-                                {{ $agent->name }}
-                            </option>
-                            @endforeach
-                        </select>
-                        <button type="submit" class="p-2 rounded-md bg-black text-white">Update</button>
+                        <div>
+                            <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                            <input type="text" name="first_name" id="first_name" value="{{ $client->first_name }}"
+                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full"
+                                placeholder="First Name" required>
+                        </div>
+                        <div>
+                            <label for="middle_name" class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                            <input type="text" name="middle_name" id="middle_name" value="{{ $client->middle_name }}"
+                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full"
+                                placeholder="Middle Name">
+                        </div>
+                        <div>
+                            <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                            <input type="text" name="last_name" id="last_name" value="{{ $client->last_name }}"
+                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full"
+                                placeholder="Last Name">
+                        </div>
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" name="email" id="email" value="{{ $client->email }}"
+                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full"
+                                placeholder="Client Email">
+                        </div>
+                        <div>
+                            <label for="country_code" class="block text-sm font-medium text-gray-700 mb-1">Country Code</label>
+                            <select name="country_code" id="country_code"
+                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
+                                @foreach ($countries as $country)
+                                <option value="{{ $country->dialing_code }}"
+                                    {{ $client->country_code == $country->dialing_code ? 'selected' : '' }}>
+                                    {{ $country->name }} ({{ $country->dialing_code }})
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                            <input type="text" name="phone" id="phone" value="{{ $client->phone }}"
+                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full"
+                                placeholder="Client Phone">
+                        </div>
+                        <div>
+                            <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                            <input type="text" name="address" id="address" value="{{ $client->address }}"
+                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full"
+                                placeholder="Client Address">
+                        </div>
+                        <div>
+                            <label for="agent_id" class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
+                            <select name="agent_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
+                                @foreach ($agents as $agent)
+                                <option value="{{ $agent->id }}"
+                                    {{ $client->agent_id == $agent->id ? 'selected' : '' }}>
+                                    {{ $agent->name }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="submit" class="p-2 rounded-md bg-black text-white mt-2">Update</button>
+                    </div>
                 </form>
             </div>
 

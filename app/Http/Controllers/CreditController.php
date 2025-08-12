@@ -23,28 +23,53 @@ use Illuminate\Support\Facades\Log;
 
 class CreditController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
 
+        $allCreditRecords = Credit::with('client');
+
         if ($user->role_id == Role::ADMIN) {
-            $allCreditRecords = Credit::with('client')
-                ->orderBy('id', 'desc')
-                ->get();
-            $totalCredits = Credit::count();
-            $totalCreditsAmount = Credit::sum('amount');
+
+            $allCreditRecords = $allCreditRecords; // this may seem redundant, but it allows for future modifications if needed
+
         } elseif ($user->role_id == Role::COMPANY) {
-            $allCreditRecords = Credit::with('client')
-                ->where('company_id', $user->company->id)
-                ->orderBy('id', 'desc')
-                ->get();
-            $totalCredits = Credit::where('company_id', $user->company->id)->count();
-            $totalCreditsAmount = Credit::where('company_id', $user->company->id)->sum('amount');
+
+            $allCreditRecords = $allCreditRecords->where('company_id', $user->company->id);
+
         } elseif ($user->role_id == Role::AGENT) {
             return abort(403, 'Unauthorized action.');
         } else {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
+
+        if($request->has('search')) {
+            $search = $request->input('search');
+            $allCreditRecords = $allCreditRecords->where(function ($query) use ($search) {
+
+                $searchTerm = '%' . strtolower($search) . '%';
+
+                $query->whereHas('client', function ($q) use ($searchTerm) {
+                    $q->where('name', 'like', $searchTerm)
+                        ->orWhere('email', 'like', $searchTerm)
+                        ->orWhere('phone', 'like', $searchTerm)
+                        ->orWhereHas('agent', function ($q) use ($searchTerm) {
+                            $q->where('name', 'like', $searchTerm)
+                                ->orWhere('amadeus_id', 'like', $searchTerm)
+                                ->orWhere('email', 'like', $searchTerm)
+                                ->orWhere('phone_number', 'like', $searchTerm);
+                        });
+                    
+                })->orWhere('description', 'like', $searchTerm);
+            });
+        }
+
+        $totalCredits = $allCreditRecords->count();
+        $totalCreditsAmount = $allCreditRecords->sum('amount');
+
+        $allCreditRecords = $allCreditRecords
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
 
         $agents = Agent::all();
         $agentId = $agents->pluck('id')->toArray();

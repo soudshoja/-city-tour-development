@@ -293,7 +293,7 @@ class TaskController extends Controller
 
         if($amadeus) $exceptionConvert[] = $amadeus->id;
 
-        if ( !in_array($request->supplier_id, $exceptionConvert) && $request->original_currency && $request->original_price) {
+        if ( !in_array($request->supplier_id, $exceptionConvert) && $request->original_currency && $request->original_price && !$request->is_exchanged) {
 
             $companyId = $request->company_id;
             $originalCurrency = $request->original_currency;

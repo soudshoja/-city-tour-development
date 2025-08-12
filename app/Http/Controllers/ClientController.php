@@ -42,18 +42,6 @@ class ClientController extends Controller
         $clients = Client::with('agent.branch');
         $fullClients = clone $clients;
 
-            // if ($user->role_id == Role::COMPANY) {
-        //     $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
-        //     $agent = Agent::whereIn('branch_id', $branch)->first();
-        //     $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
-        //     $clientsCount = $clients->whereIn('agent_id', $agentIds)->count();
-        // } elseif ($user->role_id == Role::AGENT) {
-        //     $agent = Agent::where('user_id', $user->id)->first();
-        //     $clientsCount = $clients->where('agent_id', $agent->id)->count();
-        // } else {
-        //     $clientsCount = $clients->count();
-        // }
-
         if ($user->role_id == Role::ADMIN) {
             $agentIds = Agent::all()->pluck('id')->toArray();
             $branch = Branch::pluck('id')->toArray();
@@ -77,17 +65,19 @@ class ClientController extends Controller
             $fullClients = $fullClients->where('agent_id', $agent->id);
         
         } 
-        
+
         if($request->has('search') && $request->search != '') {
             $search = $request->search;
             $clients = $clients->where(function($query) use ($search) {
                 $searchTerm = '%' . strtolower($search) . '%';
-                $query->where('name', 'LIKE', $searchTerm)
-                      ->orWhere('email', 'LIKE', $searchTerm)
-                      ->orWhere('phone', 'LIKE', $searchTerm)
-                      ->orWhereHas('agent', function($q) use ($searchTerm) {
-                          $q->where('name', 'LIKE', $searchTerm);
-                      });
+                $query->where('first_name', 'LIKE', $searchTerm)
+                    ->orWhere('middle_name', 'LIKE', $searchTerm)
+                    ->orWhere('last_name', 'LIKE', $searchTerm)
+                    ->orWhere('email', 'LIKE', $searchTerm)
+                    ->orWhere('phone', 'LIKE', $searchTerm)
+                    ->orWhereHas('agent', function ($q) use ($searchTerm) {
+                        $q->where('name', 'LIKE', $searchTerm);
+                    });
             });
 
         }
@@ -175,7 +165,9 @@ class ClientController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
             'email' => 'nullable|email|unique:clients,email',
             'dial_code' => 'required|string|max:30',
             'phone' => 'required|string|max:15',
@@ -316,8 +308,10 @@ class ClientController extends Controller
         Gate::authorize('update', [Client::class, $client = Client::findOrFail($id)]);
 
         // Validate the incoming request data
-        $validated = $request->validate([
-            'name' => 'string|max:255',
+        $request->validate([
+            'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
             'email' => 'email|unique:clients,email,' . $id,
             'status' => 'nullable',
             'phone' => 'string|max:15',
@@ -328,7 +322,17 @@ class ClientController extends Controller
 
         try {
             // Update the client data
-            $client->update($request->only(['name', 'email', 'status', 'country_code', 'phone', 'address', 'agent_id']));
+            $client->update($request->only([
+                'first_name',
+                'middle_name',
+                'last_name',
+                'email',
+                'status',
+                'country_code',
+                'phone',
+                'address',
+                'agent_id'
+            ]));
 
             // If a file (image) is uploaded, process it
             if ($request->hasFile('file')) {

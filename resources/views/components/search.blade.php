@@ -1,6 +1,6 @@
 @props([
     'action',
-    'searchParam' => 'q',
+    'searchParam',
     'placeholder' => 'Quick search',
 ])
 

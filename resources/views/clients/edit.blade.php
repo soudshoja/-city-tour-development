@@ -9,7 +9,7 @@
             <form action=" {{ route('clients.update', $client->id) }} " method="POST" class="w-full flex flex-col gap-2 justify-start items-center" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
-                <input type="text" name="name" id="name" value="{{ $client->name }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300" placeholder="Name">
+                <input type="text" name="name" id="name" value="{{ $client->first_name }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300" placeholder="Name">
                 <input type="email" name="email" id="email" value="{{ $client->email }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300" placeholder="Email">
                 <input type="text" name="phone_number" id="phone_number" value="{{ $client->phone }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300" placeholder="Phone Number">
                 @can('clientAgent', App\Models\Client::class)

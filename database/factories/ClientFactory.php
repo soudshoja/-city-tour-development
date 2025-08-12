@@ -30,7 +30,9 @@ class ClientFactory extends Factory
     {
         return [
             'agent_id' => 1, // Will be overridden in tests
-            'name' => $this->faker->name(),
+            'first_name' => $this->faker->firstName(),
+            'middle_name' => $this->faker->optional()->lastName(),
+            'last_name' => $this->faker->lastName(),
             'email' => $this->faker->unique()->safeEmail(),
             'address' => $this->faker->address(),
             'passport_no' => $this->faker->unique()->numberBetween(1000000, 9999999),

@@ -594,6 +594,12 @@
                                     <input type="checkbox" id="col-invoice" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
                                     <label for="col-invoice" class="text-sm text-gray-700">Invoice</label>
                                 </div>
+                                @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-file-name" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
+                                    <label for="col-file-name" class="text-sm text-gray-700">File Name</label>
+                                </div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -932,6 +938,9 @@
                                                 @endif
                                                 <th data-column="invoice" class="column-hidden">
                                                     <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Invoice</span>
+                                                </th>
+                                                <th data-column="file-name" class="column-hidden">
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">File Name</span>
                                                 </th>
                                             </tr>
                                         </thead>
@@ -1464,6 +1473,11 @@
                                                     </span>
                                                     @endif
                                                 </td>
+                                                @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                                <td data-column="file-name" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                                        {{ basename($task->file_name) ?? 'No Files' }}
+                                                </td>
+                                                @endif
                                             </tr>
                                             @endforeach
                                             @endif

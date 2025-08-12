@@ -188,7 +188,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/magic/request', [SupplierController::class, 'makeApiRequest'])->name('magic-request');
         Route::get('/magic/callback', [SupplierController::class, 'handleAuthorizationCallback'])->name('magic-callback');
         Route::get('/magic/provider', [SupplierController::class, 'redirectToAuthorization'])->name('magic-provider');
-        Route::post('/magic/webhook/callback', [SupplierController::class, 'magicReserveWebhookCallback'])->name('magic-webhook-callback');
         Route::get('/magic/webhook-initiate/{id}', [SupplierController::class, 'magicReserveWebhook'])->name('magic-webhook');
 
 

@@ -1727,7 +1727,7 @@ class TaskController extends Controller
                 }
                 $mergedBytes = $merger->merge();
     
-                $mergedName = 'TBO-'.now()->format('Ymd-His').'.pdf';
+                $mergedName = 'TBO-'.now()->format('YmdHi').'.pdf';
                 $mergedPath = "{$companyName}/{$supplierName}/files_unprocessed/{$mergedName}";
                 Storage::put($mergedPath, $mergedBytes);
 

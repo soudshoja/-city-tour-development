@@ -318,10 +318,11 @@
                         fallbackText = await res.text();
                     }
 
-                    if (!res.ok || (payload && payload.status === 'success')) {
+                    if (!res.ok || (payload && payload.status !== 'success')) {
                         const msg = (payload && (payload.message || payload.error)) || fallbackText || `Server error ${res.status}`;
                         throw new Error(msg);
                     }
+
 
                     // If backend says the rate was just created, show message then retry
                     if (payload && payload.created === true) {

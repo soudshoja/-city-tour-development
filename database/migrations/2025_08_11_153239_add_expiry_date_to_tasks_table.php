@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tasks', function (Blueprint $table) {
-            $table->timestamp('expiry_date')->nullable()->after('issued_date');
+            $table->datetime('expiry_date')->nullable()->after('issued_date');
             $table->index(['status', 'expiry_date']); // Add index for efficient querying
         });
     }

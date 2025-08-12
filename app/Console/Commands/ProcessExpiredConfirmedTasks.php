@@ -35,10 +35,21 @@ class ProcessExpiredConfirmedTasks extends Command
         $now = Carbon::now();
         $this->info("Processing expired confirmed tasks at: {$now}");
 
+        $suppliersToBeExecute = [
+            'jazeera'
+        ];
+
         // Get all confirmed tasks that have expired
         $expiredTasks = Task::where('status', 'confirmed')
             ->whereNotNull('expiry_date')
             ->where('expiry_date', '<', $now)
+            ->whereHas('supplier', function ($query) use ($suppliersToBeExecute) {
+                $query->where(function ($q) use ($suppliersToBeExecute) {
+                    foreach ($suppliersToBeExecute as $supplier) {
+                        $q->orWhere('name', 'like', '%' . $supplier . '%');
+                    }
+                });
+            })
             ->with(['agent.branch', 'client', 'supplier'])
             ->get();
 
@@ -48,6 +59,8 @@ class ProcessExpiredConfirmedTasks extends Command
         }
 
         $this->info("Found {$expiredTasks->count()} expired confirmed tasks to process");
+        $this->info("Tasks from suppliers: " . $expiredTasks->pluck('supplier.name')->unique()->implode(', '));
+        $this->line('');
 
         $processedCount = 0;
         $voidedCount = 0;

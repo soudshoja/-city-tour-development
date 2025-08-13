@@ -136,7 +136,7 @@ Run the comprehensive test suite:
 php artisan test
 
 # Run specific test class
-php artisan test tests/Feature/ExpiredOnHoldTasksTest.php
+php artisan test tests/Feature/ExpiredConfirmedTasksTest.php
 
 # Run with detailed output
 php artisan test --verbose

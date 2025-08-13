@@ -45,6 +45,7 @@ use Illuminate\Support\Facades\Schema;
 use iio\libmergepdf\Merger;
 use iio\libmergepdf\Driver\Fpdi2Driver;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 // use Carbon\Carbon;
 
@@ -1720,15 +1721,42 @@ class TaskController extends Controller
         }
 
         $request->validate([
-            'task_file' => 'required|array',
-            'task_file.*' => 'mimes:pdf,txt',
             'agent_id' => 'nullable|exists:agents,id',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
-        $files = $request->file('task_file');
         $supplier = Supplier::find($request->supplier_id);
+        $isTbo = in_array($supplier->name, ['TBO Air', 'TBO Car']);
 
+        $request->validate([
+            'task_file'     => [Rule::requiredIf(!$isTbo), 'array'],
+            'task_file.*'   => ['mimes:pdf,txt'],
+            'batches'       => [Rule::requiredIf($isTbo), 'array', 'min:1'],
+            'batches.*'     => ['array', 'min:2'],
+            'batches.*.*'   => ['file', 'mimes:pdf'],
+            'batch_names'   => ['nullable','array'],
+            'batch_names.*' => [ 'nullable','string','max:120',
+                function ($attribute, $value, $fail) use ($supplier, $company) {
+                    if (!is_string($value) || trim($value) === '') return;
+                    $candidate = $this->sanitizePdfName($value);
+                    if (!$candidate) return;
+
+                    $exists = FileUpload::where([
+                        'supplier_id' => $supplier->id,
+                        'company_id'  => $company->id,
+                        'file_name'   => $candidate,
+                    ])->exists();
+
+                    if ($exists) {
+                        $batchNo = 1;
+                        if (preg_match('/\.(\d+)$/', $attribute, $m)) $batchNo = ((int)$m[1]) + 1;
+                        $fail("Merged file name for Batch {$batchNo} is already used for this supplier. Choose a different name.");
+                    }
+                },
+            ],
+        ]);
+
+        $files = $request->file('task_file');
         $companyName = strtolower(preg_replace('/\s+/', '_', $company->name));
         $supplierName = strtolower(preg_replace('/\s+/', '_', $supplier->name));
 
@@ -1740,39 +1768,126 @@ class TaskController extends Controller
             Log::info("Created source directory: {$filePath}, please ensure files are pushed here.");
         }
 
-        if ($supplier->name === 'TBO Air' || $supplier->name === 'TBO Car') {
-            $request->validate([
-                'task_file.*' => 'mimes:pdf|max:20480',
-            ]);
-
+        if ($isTbo) {
             try {
-                $merger = new Merger(new Fpdi2Driver());
-                foreach ($files as $file) {
-                    $merger->addFile($file->getRealPath());
-                }
-                $mergedBytes = $merger->merge();
-    
-                $mergedName = 'TBO-'.now()->format('YmdHi').'.pdf';
-                $mergedPath = "{$companyName}/{$supplierName}/files_unprocessed/{$mergedName}";
-                Storage::put($mergedPath, $mergedBytes);
+                $allMessages = [];
+                $allData = [];
+                $hasError = false;
+                $batchIndex = 0;
 
-                FileUpload::create([
-                    'file_name'        => $mergedName,
-                    'destination_path' => Storage::path($mergedPath),
-                    'user_id'          => $user->id,
-                    'supplier_id'      => $supplier->id,
-                    'company_id'       => $company->id,
-                    'status'           => 'pending',
-                ]);
+                foreach ($request->file('batches') as $batchFiles) {
+                    $batchIndex++;
+                    $merger = new Merger(new Fpdi2Driver());
+                    $successFiles = [];
+                    $failedFiles  = [];
+                    $reasons = [];
+
+                    $names = array_map(fn($f) => $f->getClientOriginalName(), $batchFiles);
+
+                    $matches = FileUpload::with('user')
+                        ->where('supplier_id', $supplier->id)
+                        ->where('company_id', $company->id)
+                        ->where(function ($q) use ($names) {
+                            foreach ($names as $n) {
+                                $q->orWhere('file_name', $n)
+                                ->orWhereJsonContains('source_files', $n);
+                            }
+                        })
+                        ->get(['file_name','source_files','user_id']);
+
+                    foreach ($matches as $match) {
+                        $matchUser = $match->user;
+                        $message = ($matchUser && $matchUser->id === $user->id)
+                            ? 'File has already been uploaded by you'
+                            : (($matchUser && $matchUser->company !== null)
+                                ? 'File has been uploaded by your admin. Please contact them to resolve this issue.'
+                                : ($matchUser
+                                    ? "File has been uploaded by another user : {$matchUser->name}. Please contact them to resolve this issue."
+                                    : 'File has already been uploaded.'));
+
+                        if (!empty($match->file_name) && in_array($match->file_name, $names, true)) {
+                            $reasons[$match->file_name] = $message;
+                        }
+                        $arr = is_array($match->source_files) ? $match->source_files : (json_decode($match->source_files, true) ?: []);
+                        foreach ($arr as $n) {
+                            if (in_array($n, $names, true)) $reasons[$n] = $message;
+                        }
+                    }
+
+                    $duplicates = array_values(array_intersect($names, array_keys($reasons)));
+                    if ($duplicates) {
+                        $hasError = true;
+                        $allMessages[] = "Batch {$batchIndex} failed to merge.";
+                        foreach ($duplicates as $n) {
+                            $allData[] = ['file_name' => $n, 'message' => $reasons[$n]];
+                        }
+                        continue;
+                    }
+
+                    foreach ($batchFiles as $file) {
+                        try {
+                            $merger->addFile($file->getRealPath());
+                            $successFiles[] = $file->getClientOriginalName();
+                        } catch (\Throwable $e) {
+                            $failedFiles[] = $file->getClientOriginalName();
+                        }
+                    }
+
+                    if ($failedFiles) {
+                        $hasError = true;
+                        $allMessages[] = "Batch {$batchIndex} failed to merge. Failed files: " . implode(', ', $failedFiles);
+                        foreach ($failedFiles as $f) {
+                            $allData[] = ['file_name' => $f];
+                        }
+                        continue;
+                    }
+
+                    $mergedBytes = $merger->merge();
+                    $customBase  = $request->input("batch_names." . ($batchIndex - 1));
+                    $customName  = $this->sanitizePdfName($customBase);
+
+                    if ($customName) {
+                        $mergedName = $customName;
+                    } else {
+                        $shortSupplier = str_replace('TBO ', '', $supplier->name);
+                        $mergedName    = sprintf('TBO%s-%s-b%02d.pdf', ucfirst($shortSupplier), now()->format('ymdHi'), $batchIndex);
+                    }
+
+                    $mergedPath = "{$companyName}/{$supplierName}/files_unprocessed/{$mergedName}";
+                    if (Storage::exists($mergedPath) || FileUpload::where([
+                            'file_name'   => $mergedName,
+                            'supplier_id' => $supplier->id,
+                            'company_id'  => $company->id,
+                        ])->exists()) {
+                        $base = preg_replace('/\.pdf$/i', '', $mergedName);
+                        $mergedName = $base . '-' . now()->format('ymdHi') . '.pdf';
+                        $mergedPath = "{$companyName}/{$supplierName}/files_unprocessed/{$mergedName}";
+                    }
+                    Storage::put($mergedPath, $mergedBytes);
+
+                    FileUpload::create([
+                        'file_name'        => $mergedName,
+                        'destination_path' => Storage::path($mergedPath),
+                        'user_id'          => $user->id,
+                        'supplier_id'      => $supplier->id,
+                        'company_id'       => $company->id,
+                        'status'           => 'pending',
+                        'source_files'     => $successFiles,
+                    ]);
+
+                    $allMessages[] = "Batch {$batchIndex} merged successfully. Uploaded files: " . implode(', ', $successFiles);
+                    foreach ($successFiles as $f) {
+                        $allData[] = $f;
+                    }
+                }
 
                 return [[
-                    'status'  => 'success',
-                    'message' => 'Merged TBO PDFs uploaded successfully.',
-                    'data'    => ['merged_file' => $mergedName],
+                    'status'  => $hasError ? 'error' : 'success',
+                    'message' => implode(' | ', $allMessages),
+                    'data'    => $allData,
                 ]];
-    
             } catch (\Throwable $e) {
-                Log::error('TBO merge failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+                Log::error('TBO batch merge failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
                 return [[
                     'status'  => 'error',
                     'message' => 'Failed to merge TBO PDFs.',
@@ -1880,6 +1995,18 @@ class TaskController extends Controller
         }
 
         return $response;
+    }
+
+    private function sanitizePdfName(?string $name): ?string
+    {
+        if (!$name) return null;
+
+        $name = preg_replace('/[^\w\s\.\-]+/u', '', $name);
+        $name = preg_replace('/\s+/', '_', trim($name));
+        $name = ltrim($name, '._');
+
+        if ($name === '') return null;
+        return preg_replace('/\.pdf$/i', '', $name) . '.pdf';
     }
 
     public function exportCsv()

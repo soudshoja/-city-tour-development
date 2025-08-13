@@ -2050,6 +2050,7 @@
             let selectedSupplier = this.options[this.selectedIndex].getAttribute('data-supplier');
             let supplier = JSON.parse(selectedSupplier);
             let formTaskContainer = document.getElementById('form-task-container');
+            const form = document.getElementById('agent-supplier-task');
 
             formTaskContainer.innerHTML = '';
 
@@ -2068,6 +2069,256 @@
                     'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
                     'dark:text-gray-300', 'p-3', 'mb-1');
                 formTaskContainer.appendChild(input);
+            } else if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air') {
+                const batches = [];
+                let active = 0;
+
+                const toolbar = document.createElement('div');
+                toolbar.className = 'sticky top-0 bg-white -mx-4 px-4 pt-1 pb-2';
+                toolbar.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-medium text-gray-800 leading-5">Upload by batches</p>
+                            <p class="text-xs text-gray-500">Select your files. Each batch will be merged.</p>
+                        </div>
+                        <div class="flex items-center">
+                            <button type="button" id="add-batch" class="p-2 inline-flex items-center rounded-md border border-gray-300 text-xs font-medium hover:bg-gray-50">
+                                Add Batch
+                            </button>
+                        </div>
+                    </div>
+                `;
+                formTaskContainer.appendChild(toolbar);
+
+                const carousel = document.createElement('div');
+                carousel.className = 'relative';
+                carousel.innerHTML = `
+                    <div id="batch-viewport" class="overflow-hidden">
+                    <div id="batch-track" class="flex transition-transform duration-300 ease-out"></div>
+                    </div>
+                    <div class="mt-2 flex items-center justify-between">
+                    <div class="inline-flex gap-1">
+                        <button type="button" id="prev"
+                        class="rounded-md border px-2 py-1 text-xs hover:bg-gray-50">‹ Prev</button>
+                        <button type="button" id="next"
+                        class="rounded-md border px-2 py-1 text-xs hover:bg-gray-50">Next ›</button>
+                    </div>
+                    <div id="dots" class="flex items-center gap-1"></div>
+                    </div>
+                `;
+                formTaskContainer.appendChild(carousel);
+
+                const track = carousel.querySelector('#batch-track');
+                const dots  = carousel.querySelector('#dots');
+                const addBtn = toolbar.querySelector('#add-batch');
+                const prevBtn = carousel.querySelector('#prev');
+                const nextBtn = carousel.querySelector('#next');
+
+                function goTo(i) {
+                    if (batches.length === 0) return;
+                    active = Math.max(0, Math.min(i, batches.length - 1));
+                    track.style.transform = `translateX(-${active * 100}%)`;
+                    renderDots();
+                }
+
+                function renderDots() {
+                    dots.innerHTML = '';
+                    batches.forEach((_, i) => {
+                        const dot = document.createElement('button');
+                        dot.type = 'button';
+                        dot.className = `w-2.5 h-2.5 rounded-full ${i===active?'bg-gray-900':'bg-gray-300'}`
+                        dot.addEventListener('click', () => goTo(i));
+                        dots.appendChild(dot);
+                    });
+                    prevBtn.disabled = active === 0;
+                    nextBtn.disabled = active === batches.length - 1;
+                    prevBtn.classList.toggle('opacity-50', prevBtn.disabled);
+                    nextBtn.classList.toggle('opacity-50', nextBtn.disabled);
+                }
+
+                function addBatch() {
+                    const batchIndex = batches.length;
+                    batches.push([]);
+
+                    const slide = document.createElement('div');
+                    slide.className = 'w-full shrink-0';
+                    slide.innerHTML = `
+                        <div class="border rounded-md p-3 bg-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-semibold">Batch #${batchIndex + 1}</span>
+                                    <span class="text-xs text-gray-500"><span class="count">0</span> files</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button type="button" class="clear text-xs text-red-500 hover:text-red-600">Clear</button>
+                                    <button type="button" class="remove text-xs text-gray-500 hover:text-gray-700">Remove</button>
+                                </div>
+                            </div>
+                            <label class="block text-xs text-gray-600 mb-1">Merged file name (optional)</label>
+                            <input type="text" class="name-input w-full border rounded px-2 py-1 text-sm mb-2"
+                                placeholder="e.g. TBO_0001.pdf (leave blank to auto-name)" />
+                            <div class="drop flex flex-col items-center justify-center border-2 border-dashed border-gray-300
+                                        rounded-md text-center cursor-pointer bg-white hover:bg-gray-50 transition
+                                        text-sm text-gray-500 mb-2 p-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 64 64" fill="none" stroke="#5d5d5d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 48H16C9.37258 48 4 42.6274 4 36C4 29.7926 8.79161 24.6465 14.9268 24.0438C17.3056 16.5436 24.2807 11 32.5 11C42.165 11 50 18.835 50 28.5C50 29.6813 49.8904 30.8323 49.6816 31.9425C55.0597 33.3639 59 38.2443 59 44C59 50.6274 53.6274 56 47 56H44"/>
+                                    <path d="M32 38V20" />
+                                    <path d="M24 28L32 20L40 28" />
+                                </svg>
+                                <p class="font-medium text-gray-700 mt-1">Click or drag PDFs (min 2) here</p>
+                                <p class="text-xs text-gray-500">We’ll merge these into one PDF</p>
+                            </div>
+                            <input type="file" class="file hidden" accept="application/pdf" multiple />
+                            <div class="files hidden text-sm text-gray-700 border border-gray-200 rounded p-2 bg-white max-h-[160px] overflow-y-auto">
+                            </div>
+                            <p class="hint text-xs mt-2"></p>
+                        </div>
+                    `;
+
+                    const drop = slide.querySelector('.drop');
+                    const fileInput = slide.querySelector('.file');
+                    const filesBox = slide.querySelector('.files');
+                    const countEl = slide.querySelector('.count');
+                    const hint = slide.querySelector('.hint');
+                    const nameInput = slide.querySelector('.name-input');
+
+                    function updateUI() {
+                        countEl.textContent = batches[batchIndex].length;
+                        filesBox.innerHTML = '';
+                        if (batches[batchIndex].length === 0) {
+                            filesBox.classList.add('hidden');
+                        } else {
+                            filesBox.classList.remove('hidden');
+                            batches[batchIndex].forEach((f, i) => {
+                            const row = document.createElement('div');
+                                row.className = 'bg-gray-100 rounded px-3 py-1 mb-1 flex items-center justify-between';
+                                row.innerHTML = `
+                                    <span class="truncate text-xs max-w-[220px]">${f.name}</span>
+                                    <button type="button" class="rm text-xs text-red-500 hover:text-red-600">✕</button>
+                                `;
+                                row.querySelector('.rm').addEventListener('click', () => {
+                                    batches[batchIndex].splice(i, 1);
+                                    updateUI();
+                                });
+                                filesBox.appendChild(row);
+                            });
+                        }
+                        if (batches[batchIndex].length >= 2) {
+                            hint.textContent = 'Ready to merge';
+                            hint.className = 'hint text-xs mt-2 text-green-600';
+                        } else {
+                            hint.textContent = 'Need at least 2 PDFs in this batch';
+                            hint.className = 'hint text-xs mt-2 text-amber-600';
+                        }
+                    }
+
+                    ['dragenter', 'dragover'].forEach(evt =>
+                        drop.addEventListener(evt, (e) => {
+                            e.preventDefault(); e.stopPropagation();
+                            drop.classList.add('border-blue-400', 'bg-blue-50');
+                        })
+                    );
+                    ['dragleave', 'drop'].forEach(evt =>
+                        drop.addEventListener(evt, (e) => {
+                            e.preventDefault(); e.stopPropagation();
+                            drop.classList.remove('border-blue-400', 'bg-blue-50');
+                        })
+                    );
+
+                    drop.addEventListener('click', () => fileInput.click());
+                    drop.addEventListener('drop', (e) => {
+                        const newFiles = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+                        batches[batchIndex].push(...newFiles);
+                        updateUI();
+                    });
+                    fileInput.addEventListener('change', function() {
+                        const picked = Array.from(this.files).filter(f => f.type === 'application/pdf');
+                        batches[batchIndex].push(...picked);
+                        this.value = '';
+                        updateUI();
+                    });
+
+                    slide.querySelector('.clear').addEventListener('click', () => {
+                        batches[batchIndex] = [];
+                        updateUI();
+                    });
+
+                    slide.querySelector('.remove').addEventListener('click', () => {
+                        const wasActive = active === batchIndex;
+                        batches.splice(batchIndex, 1);
+                        slide.remove();
+                        Array.from(track.children).forEach((c, i) => {
+                            const label = c.querySelector('span.font-semibold');
+                            if (label) label.textContent = `Batch #${i + 1}`;
+                        });
+                        if (batches.length === 0) { active = 0; }
+                        else if (wasActive && active > 0) { active -= 1; }
+                        goTo(active);
+                    });
+
+                    track.appendChild(slide);
+                    const syncWidths = () => {
+                        const vw = carousel.querySelector('#batch-viewport').clientWidth;
+                        slide.style.width = vw + 'px';
+                        Array.from(track.children).forEach(s => s.style.width = vw + 'px');
+                    };
+                    syncWidths();
+                    window.addEventListener('resize', syncWidths);
+                    goTo(batches.length - 1);
+                    updateUI();
+                }
+
+                addBtn.addEventListener('click', addBatch);
+                prevBtn.addEventListener('click', () => goTo(active - 1));
+                nextBtn.addEventListener('click', () => goTo(active + 1));
+
+                addBatch();
+
+                const onSubmit = (e) => {
+                    Array.from(form.querySelectorAll('input[data-synth="1"]')).forEach(el => el.remove());
+                    const invalid = [];
+                    const slides = Array.from(track.children);
+
+                    batches.forEach((files, i) => {
+                        if (files.length < 2) invalid.push(i + 1);
+
+                        const dt = new DataTransfer();
+                        files.forEach(f => dt.items.add(f));
+
+                        const hidden = document.createElement('input');
+                        hidden.type = 'file';
+                        hidden.multiple = true;
+                        hidden.name = `batches[${i}][]`;
+                        hidden.files = dt.files;
+                        hidden.setAttribute('data-synth', '1');
+                        hidden.style.display = 'none';
+                        form.appendChild(hidden);
+
+                        const nameHidden = document.createElement('input');
+                        nameHidden.type  = 'hidden';
+                        nameHidden.name  = `batch_names[${i}]`;
+                        nameHidden.value = (slides[i]?.querySelector('.name-input')?.value || '').trim();
+                        nameHidden.setAttribute('data-synth', '1');
+                        form.appendChild(nameHidden);
+                    });
+
+                    if (batches.length === 0) {
+                        e.preventDefault();
+                        alert('Please add at least one batch (min 2 PDFs).');
+                        return;
+                    }
+                    if (invalid.length) {
+                        e.preventDefault();
+                        alert(`Each batch must have at least 2 PDFs.\nCheck batch(es): ${invalid.join(', ')}.`);
+                        return;
+                    }
+                };
+
+                form.removeEventListener('submit', form._tboSubmitHandler || (() => {}));
+                form._tboSubmitHandler = onSubmit;
+                form.addEventListener('submit', onSubmit);
+
+                return;
             } else {
                 const customFiles = [];
 

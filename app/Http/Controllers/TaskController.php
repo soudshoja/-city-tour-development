@@ -689,7 +689,7 @@ class TaskController extends Controller
     /**
      * Process all financial transactions for a task
      */
-    private function processTaskFinancial(Task $task)
+    public function processTaskFinancial(Task $task)
     {
         if(!($task->status == 'issued' || $task->status == 'reissued' || $task->status == 'void' || $task->status == 'refund' || $task->status == 'emd')) {
             Log::info('Skipping financial processing for task: ' . $task->reference . ' - status: ' . $task->status);
@@ -974,7 +974,7 @@ class TaskController extends Controller
             'reference_type' => 'Payment',
             'transaction_date' => $transactionDate,
         ]);
-
+        
         if (!$transaction) {
             throw new Exception('Transaction creation failed.');
         }

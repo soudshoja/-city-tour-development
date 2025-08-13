@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Log;
 use App\Models\Task;
-
+use App\Http\Controllers\TaskController;
 class UpdateHotelTaskStatus extends Command
 {
     protected $signature = 'app:update-hotel-status';
@@ -40,13 +40,22 @@ class UpdateHotelTaskStatus extends Command
             if (Date::now()->greaterThanOrEqualTo($cancellationDeadline)) {
                 $task->status = 'issued';
                 Log::info("Task ID {$task->id} - Deadline passed. Marked as issued.");
+
+                $task->updated_at = now();
+                $task->save();
+            
+                $response = new TaskController();
+                try {
+                    $response->processTaskFinancial($task);
+                    Log::info("Processed COA for Task ID {$task->id}");
+                } catch (\Throwable $e) {
+                    Log::error("Failed to process COA for Task ID {$task->id}: ".$e->getMessage());
+                }
             } else {
                 $task->status = 'confirmed';
                 Log::info("Task ID {$task->id} - Deadline still valid. Marked as confirmed.");
             }
 
-            $task->updated_at = now();
-            $task->save();
         }
 
         $this->info("Hotel task statuses updated.");

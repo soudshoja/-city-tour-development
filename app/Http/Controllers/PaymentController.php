@@ -2515,7 +2515,7 @@ class PaymentController extends Controller
 
     public function handleWebhookFatoorah(Request $request)
     {
-        $secretKey = env('MYFATOORAH_SECRET_KEY');
+        $secretKey = config('services.myfatoorah.webhook_secret_key');
 
         $incomingSignature = $request->header('MyFatoorah-Signature');
         Log::info('Received Signature From MyFatoorah: ' . $incomingSignature);

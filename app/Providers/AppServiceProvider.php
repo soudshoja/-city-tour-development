@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Events\CheckConfirmedOrIssuedTask;
+use App\Listeners\ProcessTaskFinancials;
 use App\Models\Client;
 use App\Models\CoaCategory;
 use App\Models\Company;
@@ -12,6 +14,7 @@ use App\Policies\ClientPolicy;
 use App\Policies\COAPolicy;
 use App\Policies\ItemPolicy;
 use App\Policies\TaskPolicy;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -35,5 +38,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Client::class, ClientPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);
         Gate::policy(CoaCategory::class, COAPolicy::class);
+        
+        // Register event listeners
+        Event::listen(
+            CheckConfirmedOrIssuedTask::class,
+            ProcessTaskFinancials::class
+        );
     }
 }

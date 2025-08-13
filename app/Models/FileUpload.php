@@ -13,11 +13,13 @@ class FileUpload extends Model
         'company_id',
         'supplier_id',
         'status',
+        'source_files',
     ];
     
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'source_files' => 'array',
     ];
 
     public function user()

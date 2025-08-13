@@ -346,7 +346,7 @@ class ChatController extends Controller
                 return [
                     'id' => $task->id, // Access Eloquent model attribute using ->id
                     'description' => $task->reference . ' ' . $task->additional_info, // Concatenate description fields
-                    'client' => $task->client ? $task->client->name : 'N/A', // Safely access client name
+                    'client' => $task->client ? $task->client->first_name : 'N/A', // Safely access client name
                     'taskprice' => $task->price, // The task price
                     'invprice' => $task->invprice, // The task price
                 ];
@@ -408,7 +408,7 @@ class ChatController extends Controller
                 }),
                 'clients' => $company->branches->flatMap->agents->flatMap->clients->map(function ($client) {
                     return [
-                        'name' => $client->name,
+                        'name' => $client->first_name,
                         'id' => $client->id,
                         'agentId' => $client->agent_id,
                         'agentName' => $client->agent->name,
@@ -428,7 +428,7 @@ class ChatController extends Controller
                             'agentId' => $task->agent_id,
                             'agentName' => $task->agent ? $task->agent->name : null,
                             'clientId' => $task->client_id,
-                            'clientName' => $task->client->name,
+                            'clientName' => $task->client->first_name,
                             'supplierName' => $task->supplier->name,
                             'supplierId' => $task->supplier_id,
                             'invprice' =>  $task->invoice_price,
@@ -450,7 +450,7 @@ class ChatController extends Controller
                             'agentId' => $task->agent_id,
                             'agentName' => $task->agent ? $task->agent->name : null,
                             'clientId' => $task->client_id,
-                            'clientName' => $task->client->name,
+                            'clientName' => $task->client->first_name,
                             'supplierName' => $task->supplier->name,
                             'supplierId' => $task->supplier_id,
                             'invprice' =>  $task->invoice_price,
@@ -469,7 +469,7 @@ class ChatController extends Controller
                         'agentId' => $invoice->agent_id,
                         'agentName' => $invoice->agent->name,
                         'clientId' => $invoice->client_id,
-                        'clientName' => $invoice->client->name,
+                        'clientName' => $invoice->client->first_name,
                         'payment_type' => $invoice->payment_type,
                         'paid_date' => $invoice->paid_date,
                     ];
@@ -524,7 +524,7 @@ class ChatController extends Controller
                 }),
                 'clients' => $company->branches->flatMap->agents->flatMap->clients->map(function ($client) {
                     return [
-                        'name' => $client->name,
+                        'name' => $client->first_name,
                         'id' => $client->id,
                         'agentId' => $client->agent_id,
                         'contact' => $client->contact_details,  // Only essential client details
@@ -538,7 +538,7 @@ class ChatController extends Controller
                         'agentId' => $task->agent_id,
                         'agentName' => $task->agent ? $task->agent->name : null,
                         'clientId' => $task->client_id,
-                        'clientName' => $task->client->name,
+                        'clientName' => $task->client->first_name,
                         'supplierId' => $task->supplier_id,
                         'invprice' =>  $task->invoice_price,
                         'price' => $task->total,
@@ -741,11 +741,11 @@ class ChatController extends Controller
                             'invoiceDetail_id' =>  $invoiceDetail->id,
                             'account_id' =>  $receivableAccount->id,
                             'transaction_date' => Carbon::now(),
-                            'description' => 'Payment received from: ' . $client->name,
+                            'description' => 'Payment received from: ' . $client->first_name,
                             'debit' => 0,
                             'credit' => $task['invprice'],
                             'balance' => $task['invprice'],
-                            'name' =>  $client->name,
+                            'name' =>  $client->first_name,
                             'type' => 'receivable',
                             'type_reference_id' => $client->id
                         ]);

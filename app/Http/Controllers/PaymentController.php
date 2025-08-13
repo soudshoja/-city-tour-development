@@ -236,7 +236,7 @@ class PaymentController extends Controller
 
         $payment = Payment::create([
             'voucher_number' => $voucherNumber,
-            'from' => $invoice->client->name,
+            'from' => $invoice->client->first_name,
             'pay_to' => $invoice->agent->branch->company->name,
             'currency' => 'KWD',
             'payment_date' => Carbon::now(),
@@ -310,7 +310,7 @@ class PaymentController extends Controller
             $invoiceNumber = $invoice->invoice_number;
             $paymentMethodId = $data['payment_method'];
 
-            $customerName = $invoice->client->name ?? 'Customer';
+            $customerName = $invoice->client->first_name ?? 'Customer';
             if (strpos($customerName, '/') !== false) {
                 $customerName = trim(explode('/', $customerName)[0]);
             }
@@ -530,7 +530,7 @@ class PaymentController extends Controller
 
                 $receivableAccount = Account::where('name', 'Clients')->first();
                 $receivableAccountId = $receivableAccount->id;
-                //dd($receivableAccount, $client->name);
+                //dd($receivableAccount, $client->first_name);
 
                 if (!$receivableAccount || !$receivableAccountId) {
                     Log::error('Receivable account not found', ['company_id' => $invoice->agent->branch->company->id]);
@@ -594,11 +594,11 @@ class PaymentController extends Controller
                     'account_id' =>  $receivableAccountId,
                     'invoice_detail_id' =>  $invoiceDetail->id,
                     'transaction_date' => Carbon::now(),
-                    'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->name,
+                    'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->first_namet_name,
                     'debit' => 0,
                     'credit' => $totalPaidAmount,
                     'balance' => $invoiceDetail['task_price'] - $totalPaidAmount,
-                    'name' =>  $client->name,
+                    'name' =>  $client->first_name,
                     'type' => 'receivable',
                     'voucher_number' => $payment->voucher_number,
                     'type_reference_id' => $receivableAccountId
@@ -615,7 +615,7 @@ class PaymentController extends Controller
                         'invoice_id' =>  $invoice->id,
                         'invoice_detail_id' =>  $invoiceDetail->id,
                         'transaction_date' => Carbon::now(),
-                        'description' => 'Client Pays by ' . $client->name . ' via (Assets): ' . $bankPaymentFee->name,
+                        'description' => 'Client Pays by ' . $client->first_name . ' via (Assets): ' . $bankPaymentFee->name,
                         'debit' => $totalPaidAmount, //$totalPaidAmount-$defaultPaymentGatewayFee
                         'credit' => 0,
                         'balance' => $invoiceDetail['task_price'] - $totalPaidAmount,
@@ -812,7 +812,7 @@ class PaymentController extends Controller
             'debit' => 0,
             'credit' => $totalPaidAmount,
             'balance' => $invoiceDetail->task_price - $totalPaidAmount,
-            'name' => $client->name,
+            'name' => $client->first_name,
             'type' => 'receivable',
             'voucher_number' => $payment->voucher_number,
             'type_reference_id' => $receivableAccount->id,
@@ -908,7 +908,7 @@ class PaymentController extends Controller
             'invoice' => $invoice,
             'total_amount' => $invoice->amount,
             'payment_method' => 'payment_gateway', // change to get from tap check charges later
-            'client_name' => $invoice->client->name,
+            'client_name' => $invoice->client->first_name,
             'client_email' => $invoice->client->email,
             'invoice_number' => $invoice->invoice_number,
             'redirect_url' => route('payment.process'),
@@ -1197,7 +1197,9 @@ class PaymentController extends Controller
                         $q->where('name', 'like', '%' . $search . '%');
                     })
                     ->orWhereHas('client', function ($q) use ($search) {
-                        $q->where('name', 'like', '%' . $search . '%')
+                        $q->where('first_name', 'like', '%' . $search . '%')
+                            ->orWhere('middle_name', 'like', '%' . $search . '%')
+                            ->orWhere('last_name', 'like', '%' . $search . '%')
                             ->orWhere('country_code', 'like', '%' . $search . '%')
                             ->orWhere('phone', 'like', '%' . $search . '%');
                     });
@@ -1345,7 +1347,7 @@ class PaymentController extends Controller
             $data = [
                 'voucher_number' => $voucherNumber,
                 'payment_reference' => $invoiceId,
-                'from' => $client->name,
+                'from' => $client->first_name,
                 'pay_to' => $agent->branch->company->name,
                 'currency' => 'KWD',
                 'payment_date' => Carbon::now(),
@@ -1534,7 +1536,7 @@ class PaymentController extends Controller
                 'currency' => $payment->currency,
                 'save_card' => false,
                 'customer' => [
-                    'first_name' => $payment->client->name,
+                    'first_name' => $payment->client->first_name,
                     'email' => $payment->client->email,
                 ],
                 'source' => [
@@ -1806,7 +1808,7 @@ class PaymentController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'debit',
                     'amount' => $payment->amount,
-                    'description' => 'Topup success by ' . $payment->client->name,
+                    'description' => 'Topup success by ' . $payment->client->first_name,
                     'payment_id' => $payment->id,
                     'invoice_id' => $payment->invoice_id,
                     'payment_reference' => $payment->payment_reference,
@@ -1824,7 +1826,7 @@ class PaymentController extends Controller
                     'debit' => 0,
                     'credit' => $payment->amount,
                     'balance' => $clientAdvance->actual_balance - $payment->amount,
-                    'name' => $payment->client->name,
+                    'name' => $payment->client->first_name,
                     'type' => 'receivable',
                     'voucher_number' => $payment->voucher_number,
                     'type_reference_id' => $clientAdvance->id
@@ -1864,7 +1866,7 @@ class PaymentController extends Controller
                 'entity_type' => 'company',
                 'transaction_type' => 'debit',
                 'amount' => $payment->amount,
-                'description' => 'Topup failed by ' . $payment->client->name,
+                'description' => 'Topup failed by ' . $payment->client->first_name,
                 'payment_id' => $payment->id,
                 'invoice_id' => $payment->invoice_id,
                 'payment_reference' => $response['id'],
@@ -1946,7 +1948,7 @@ class PaymentController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'debit',
                     'amount' => $payment->amount,
-                    'description' => 'Topup success by ' . $payment->client->name,
+                    'description' => 'Topup success by ' . $payment->client->first_name,
                     'payment_id' => $payment->id,
                     'invoice_id' => $payment->invoice_id,
                     'payment_reference' => $response['id'],
@@ -1964,7 +1966,7 @@ class PaymentController extends Controller
                     'debit' => 0,
                     'credit' => $payment->amount,
                     'balance' => $clientAdvance->actual_balance - $payment->amount,
-                    'name' => $payment->client->name,
+                    'name' => $payment->client->first_name,
                     'type' => 'receivable',
                     'voucher_number' => $payment->voucher_number,
                     'type_reference_id' => $clientAdvance->id
@@ -2007,7 +2009,7 @@ class PaymentController extends Controller
             //         'client_id'   => $invoice->client->id,
             //         'invoice_id'  => $invoice->id,
             //         'type'        => 'Topup',
-            //         'description' => 'Topup Client Credit for ' . $invoice->client->name,
+            //         'description' => 'Topup Client Credit for ' . $invoice->client->first_name,
             //         'amount'      => $invoice->amount,
             //     ]);    
             // }
@@ -2151,7 +2153,7 @@ class PaymentController extends Controller
                         'entity_type' => 'company',
                         'transaction_type' => 'debit',
                         'amount' => $payment->amount,
-                        'description' => 'Topup success by ' . $payment->client->name,
+                        'description' => 'Topup success by ' . $payment->client->first_name,
                         'payment_id' => $payment->id,
                         'invoice_id' => $payment->invoice_id,
                         'payment_reference' => $statusData['Data']['InvoiceReference'],
@@ -2169,7 +2171,7 @@ class PaymentController extends Controller
                         'debit' => 0,
                         'credit' => $payment->amount,
                         'balance' => $clientAdvance->actual_balance - $payment->amount,
-                        'name' => $payment->client->name,
+                        'name' => $payment->client->first_name,
                         'type' => 'receivable',
                         'voucher_number' => $payment->voucher_number,
                         'type_reference_id' => $clientAdvance->id
@@ -2281,7 +2283,7 @@ class PaymentController extends Controller
                             'debit' => 0,
                             'credit' => $statusData['Data']['InvoiceValue'],
                             'balance' => $invoiceDetail->task_price - $statusData['Data']['InvoiceValue'],
-                            'name' => $client->name,
+                            'name' => $client->first_name,
                             'type' => 'receivable',
                             'voucher_number' => $payment->voucher_number,
                             'type_reference_id' => $receivableAccount->id,
@@ -2435,7 +2437,7 @@ class PaymentController extends Controller
                 'entity_type' => 'company',
                 'transaction_type' => 'debit',
                 'amount' => $payment->amount,
-                'description' => 'Topup failed by ' . $payment->client->name,
+                'description' => 'Topup failed by ' . $payment->client->first_name,
                 'payment_id' => $payment->id,
                 'invoice_id' => $payment->invoice_id,
                 'payment_reference' => $payment->payment_reference,
@@ -2513,7 +2515,7 @@ class PaymentController extends Controller
 
     public function handleWebhookFatoorah(Request $request)
     {
-        $secretKey = env('MYFATOORAH_SECRET_KEY');
+        $secretKey = config('services.myfatoorah.webhook_secret_key');
 
         $incomingSignature = $request->header('MyFatoorah-Signature');
         Log::info('Received Signature From MyFatoorah: ' . $incomingSignature);

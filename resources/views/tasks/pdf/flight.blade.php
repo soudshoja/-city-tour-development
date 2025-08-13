@@ -93,7 +93,7 @@
                     <div>
                         <div class="text-xs uppercase text-gray-500">Client Name</div>
                         <div class="text-sm font-medium text-gray-900">
-                            {{ $tasks->first()->client->name ?? '—' }}
+                            {{ $tasks->first()->client->first_name ?? '—' }}
                         </div>
                     </div>
                     <div>

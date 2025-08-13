@@ -448,7 +448,7 @@
                                         bg-white text-gray-700 transition gap-2 
                                         hover:bg-green-500 hover:text-white hover:shadow-xl"
                                     {{ $invoice->amount > $balanceCredit ? 'disabled' : '' }}>
-                                    <span class="font-medium">{{ $selectedClient->name }}:
+                                    <span class="font-medium">{{ $selectedClient->first_name }}:
                                         KWD {{ $balanceCredit }}</span>
                                     @if ($invoice->amount > $balanceCredit)
                                     <span class="text-red-500">Credit Limit Exceeded</span>
@@ -488,7 +488,7 @@
                                                 has
                                                 been utilized.
                                             </span>
-                                            <span>Current balance of credit for {{ $selectedClient->name }}:
+                                            <span>Current balance of credit for {{ $selectedClient->first_name }}:
                                                 {{ $balanceCredit }} KWD</span>
                                         </button></a>
                                         @else
@@ -499,7 +499,7 @@
                                             bg-white text-gray-700 transition gap-2 
                                             hover:bg-green-500 hover:text-white hover:shadow-xl">
                                             <span> Still Paying With Client Credit?</span>
-                                            <span> Current balance of credit for {{ $selectedClient->name }}:
+                                            <span> Current balance of credit for {{ $selectedClient->first_name }}:
                                                 {{ $balanceCredit }} KWD</span>
                                         </button>
                                         @else
@@ -508,7 +508,7 @@
                                             px-4 py-2 border border-gray-300 
                                             bg-white text-gray-700 transition gap-2 shadow">
 
-                                            <span>Current balance of credit for {{ $selectedClient->name }}:
+                                            <span>Current balance of credit for {{ $selectedClient->first_name }}:
                                                 {{ $balanceCredit }} KWD</span>
                                         </button>
                                         @endif
@@ -519,7 +519,7 @@
                                                 @click.away="generateInvoiceWithCreditModal = false">
                                                 <header class="text-lg font-semibold mb-4">
                                                     Would you
-                                                    like to pay the invoice by using the {{ $selectedClient->name }}'s
+                                                    like to pay the invoice by using the {{ $selectedClient->first_name }}'s
                                                     credit balance
                                                     ({{ $balanceCredit }} KWD)?
                                                 </header>
@@ -641,7 +641,7 @@
                                         px-4 py-2 border border-gray-300 
                                         bg-white text-gray-700 transition gap-2 
                                         {{ $invoice->amount > $balanceCredit ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-500 hover:text-white hover:shadow-xl' }}">
-                                    <span class="font-medium">{{ $selectedClient->name }}: KWD {{ $balanceCredit }}</span>
+                                    <span class="font-medium">{{ $selectedClient->first_name }}: KWD {{ $balanceCredit }}</span>
                                 </div> -->
 
                             <!-- Full Payment Tab -->

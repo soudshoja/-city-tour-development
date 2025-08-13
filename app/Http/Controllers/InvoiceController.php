@@ -101,8 +101,10 @@ class InvoiceController extends Controller
                       ->orWhere('due_date', 'like', "%{$search}%")
                       ->orWhere('paid_date', 'like', "%{$search}%")
                       ->orWhereHas('client', function($q) use ($search) {
-                          $q->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%");
+                          $q->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('middle_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
                       })
                       ->orWhereHas('agent', function($q) use ($search) {
                           $q->where('name', 'like', "%{$search}%");
@@ -649,7 +651,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'invoice_detail_id' => $invoiceDetail->id ?? null,
                         'transaction_id' => $transaction->id ?? null,
-                        'client_name' => $invoice->client->name ?? null,
+                        'client_name' => $invoice->client->first_name ?? null,
                         'task' => $task,
                     ]);
 
@@ -658,7 +660,7 @@ class InvoiceController extends Controller
                         $invoice->id,
                         $invoiceDetail->id,
                         $transaction->id,
-                        $invoice->client->name,
+                        $invoice->client->first_name,
                     );
                     Log::info('Journal entry response', ['response' => $response]);
                     if ($response['status'] == 'error') {
@@ -1126,7 +1128,7 @@ class InvoiceController extends Controller
             $agent = Agent::where('email', $request->get('agent_email'))->first();
 
             Client::create([
-                'name' => $request->get('name'),
+                'first_name' => $request->get('name'),
                 'email' => $request->get('email'),
                 'status' => $request->get('status'),
                 'phone' => preg_replace('/\s+/', '', $request->get('phone')),
@@ -1153,7 +1155,7 @@ class InvoiceController extends Controller
 
 
 
-    public function link()
+    public function link(Request $request)
     {
         $user = Auth::user();
 
@@ -1181,8 +1183,27 @@ class InvoiceController extends Controller
             'client'
         ])
             ->whereIn('agent_id', $agentIds)
-            ->whereHas('invoiceDetails.task.supplier') // Only invoices with suppliers
-            ->get();
+            ->whereHas('invoiceDetails.task.supplier'); // Only invoices with suppliers
+
+
+        if($request->has('search')){
+            $search = $request->input('search');
+            $invoices = $invoices->where(function ($query) use ($search) {
+                $searchTerm = '%' . $search . '%';
+                
+                $query->where('invoice_number', 'like', $searchTerm)
+                    ->orWhere('payment_type', 'like', $searchTerm)
+                    ->orWhere('status', $search)
+                    ->orWhereHas('client', function ($q) use ($searchTerm) {
+                        $q->where('first_name', 'like', $searchTerm)
+                        ->orWhere('middle_name', 'like', $searchTerm)
+                        ->orWhere('last_name', 'like', $searchTerm)
+                          ->orWhere('email', 'like', $searchTerm);
+                    });
+            });
+        }
+
+        $invoices = $invoices->orderBy('created_at', 'desc')->paginate(20);
 
         // Get clients related to the agents
         $clients = Client::whereIn('agent_id', $agentIds)->get();
@@ -1679,11 +1700,11 @@ class InvoiceController extends Controller
                         'account_id' =>  $client->id, // Example: assign client account
                         'invoiceDetail_id' =>  $invoiceDetail->id,
                         'transaction_date' => Carbon::now(),
-                        'description' => 'Updated Payment received from: ' . $client->name,
+                        'description' => 'Updated Payment received from: ' . $client->first_name,
                         'debit' => 0,
                         'credit' => $task['invprice'],
                         'balance' => $task['invprice'],
-                        'name' =>  $client->name,
+                        'name' =>  $client->first_name,
                         'type' => 'receivable',
                     ]);
 
@@ -1966,7 +1987,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'invoice_detail_id' => $invoiceDetail->id ?? null,
                         'transaction_id' => $transaction->id ?? null,
-                        'client_name' => $invoice->client->name ?? null,
+                        'client_name' => $invoice->client->first_name ?? null,
                         'task' => $task,
                     ]);
 
@@ -1975,7 +1996,7 @@ class InvoiceController extends Controller
                         $invoice->id,
                         $invoiceDetail->id,
                         $transaction->id,
-                        $invoice->client->name,
+                        $invoice->client->first_name,
                     );
 
                     if ($response['status'] == 'error') {
@@ -2085,7 +2106,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $newinvoice->id,
                         'invoice_detail_id' => $newInvoiceDetail->id ?? null,
                         'transaction_id' => $transaction->id ?? null,
-                        'client_name' => $newinvoice->client->name ?? null,
+                        'client_name' => $newinvoice->client->first_name ?? null,
                     ]);
 
                     $journalResponse = $this->addJournalEntry(
@@ -2093,7 +2114,7 @@ class InvoiceController extends Controller
                         $newinvoice->id,
                         $newInvoiceDetail->id,
                         $transaction->id,
-                        $newinvoice->client->name
+                        $newinvoice->client->first_name
                     );
 
                     if ($journalResponse['status'] === 'error') {
@@ -2169,7 +2190,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'invoice_detail_id' => $invoiceDetail->id ?? null,
                         'transaction_id' => $transaction->id,
-                        'client_name' => $invoice->client->name ?? null,
+                        'client_name' => $invoice->client->first_name ?? null,
                         'task' => $task,
                     ]);
 
@@ -2178,7 +2199,7 @@ class InvoiceController extends Controller
                         $invoice->id,
                         $invoiceDetail->id,
                         $transaction->id,
-                        $invoice->client->name ?? null
+                        $invoice->client->first_name ?? null
                     );
 
                     if ($response['status'] === 'error') {

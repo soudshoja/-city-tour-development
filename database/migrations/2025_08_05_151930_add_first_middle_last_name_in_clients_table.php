@@ -18,7 +18,7 @@ return new class extends Migration
         });
 
         DB::table('clients')->get()->each(function ($client) {
-            $names = explode(' ', $client->name);
+            $names = explode(' ', $client->first_name);
             $firstName = $names[0] ?? null;
             $middleName = count($names) > 2 ? implode(' ', array_slice($names, 1, -1)) : null;
             $lastName = count($names) > 1 ? end($names) : null;

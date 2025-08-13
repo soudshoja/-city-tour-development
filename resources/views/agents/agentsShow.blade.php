@@ -51,7 +51,7 @@
                             <tbody>
                                 @foreach($clients as $client)
                                 <tr>
-                                    <td class="py-4 px-6 border-b">{{ $client->name }}</td>
+                                    <td class="py-4 px-6 border-b">{{ $client->first_name }}</td>
                                     <td class="py-4 px-6 border-b">
                                         <x-paid>
                                             {{ $client->paid }}
@@ -339,7 +339,7 @@
                                             {{ number_format($detail->markup_price, 2) }}
                                         </td>
                                         @endif
-                                        <td class="py-4 px-6 border-b">{{ $invoice->client->name }}</td>
+                                        <td class="py-4 px-6 border-b">{{ $invoice->client->first_name }}</td>
                                         <td class="py-4 px-6 border-b">
                                             <a href="{{ url('/invoice/' . $invoice->invoice_number) }}" class="text-blue-500 hover:underline" @click.stop>View</a>
                                         </td>
@@ -459,7 +459,7 @@
                                         <td class="py-4 px-6 border-b border-gray-300"> {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}</td>
                                         <td class="py-4 px-6 border-b border-gray-300">{{ $task->created_at }}</td>
                                         <td class="py-4 px-6 border-b border-gray-300">{{ $task->status }}</td>
-                                        <td class="py-4 px-6 border-b border-gray-300">{{ $task->client !== null ? $task->client->name : $task->client_name ?? 'Not Set' }}</td>
+                                        <td class="py-4 px-6 border-b border-gray-300">{{ $task->client !== null ? $task->client->first_name : $task->client_name ?? 'Not Set' }}</td>
                                         <td class="py-4 px-6 border-b border-gray-300">
                                             <a href="{{ url('/tasks?q=' . $task->reference) }}" class="text-blue-500">View</a>
                                         </td>

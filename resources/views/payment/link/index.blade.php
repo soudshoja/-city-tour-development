@@ -21,8 +21,7 @@
                         <x-search
                             :action="route('payment.link.index')"
                             searchParam="q"
-                            placeholder="Quick search for payments"
-                        />
+                            placeholder="Quick search for payments" />
                         <button @click="openFilters = !openFilters"
                             class="shrink-0 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-sm text-amber-800 ring-1 ring-amber-200 hover:bg-amber-200 transition">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -50,7 +49,10 @@
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                                 <x-searchable-dropdown
                                     name="filter[client_id]"
-                                    :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
+                                    :items="$clients->map(fn($c) => [
+                                        'id' => $c->id, 
+                                        'name' => $c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name . ' - ' . $c->phone
+                                    ])"
                                     :placeholder="'Select clients'"
                                     :selectedName="optional($clients->firstWhere('id', data_get($filters,'client_id')))->name"
                                     label="Client" />
@@ -137,7 +139,7 @@
                                         class="text-blue-500 hover:underline text-sm font-semibold">{{ $payment->voucher_number }}</a>
                                 </td>
                                 <td class="px-3 py-2 text-sm break-words max-w-[350px] font-semibold">
-                                    {{ $payment->client ? $payment->client->name : 'N/A' }}
+                                    {{ $payment->client ? $payment->client->first_name .'' . $payment->client->middle_name . ' ' . $payment->client->last_name : 'N/A' }}
                                 </td>
                                 <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
                                     {{ $payment->client ? $payment->client->country_code . $payment->client->phone : 'N/A' }}
@@ -334,7 +336,7 @@
                                                     $payment->client_id,
                                                     );
                                                     $clientPlaceholder = $selectedClient
-                                                    ? $selectedClient->name
+                                                    ? $selectedClient->first_name
                                                     : 'Select a Client';
                                                     @endphp
                                                     <div class="mb-4">
@@ -342,11 +344,11 @@
                                                             :items="$clients->map(
                                                                         fn($c) => [
                                                                             'id' => $c->id,
-                                                                            'name' => $c->name,
+                                                                            'name' => $c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name . ' - ' . $c->phone
                                                                         ],
                                                                     )" :placeholder="$clientPlaceholder"
                                                             :selectedName="$selectedClient
-                                                                        ? $selectedClient->name
+                                                                        ? $selectedClient->first_name
                                                                         : null" label="Client" />
 
                                                         <input type="hidden" name="client_id_fallback"
@@ -501,7 +503,7 @@
                         }
                     </script>
                 </div>
-                        
+
                 <x-pagination :data="$payments" />
 
             </div>

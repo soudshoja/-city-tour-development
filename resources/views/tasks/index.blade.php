@@ -11,6 +11,10 @@
             background-color: #f9fafb;
         }
 
+        .dark #myTable > thead > tr > th:first-child {
+            background-color: #374151;
+        }
+
         #myTable > tbody > tr > td:first-child {
             position: -webkit-sticky;
             position: sticky;
@@ -23,6 +27,11 @@
         #myTable > thead > tr > th:first-child,
         #myTable > tbody > tr > td:first-child {
             box-shadow: 5px 0 5px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark #myTable > thead > tr > th:first-child,
+        .dark #myTable > tbody > tr > td:first-child {
+            box-shadow: 5px 0 5px -5px rgba(255, 255, 255, 0.1);
         }
         
         .no-client {
@@ -303,6 +312,10 @@
             background-color: #ffffff;
         }
 
+        .dark .task-row {
+            background-color: #1f2937;
+        }
+
         .task-row.not-selectable {
             cursor: default;
         }
@@ -311,70 +324,90 @@
             background-color: #dbeafe;
         }
 
+        .dark .task-row.selected {
+            background-color: #1e40af;
+        }
+
+        .task-row:hover {
+            background-color: #f8fafc;
+        }
+
+        .dark .task-row:hover {
+            background-color: #374151;
+        }
+
+        .task-row.not-selectable:hover {
+            background-color: #f3f4f6;
+        }
+
+        .dark .task-row.not-selectable:hover {
+            background-color: #2d3748;
+        }
+
         @media (max-width: 640px) {
             .filter-modal-content {
-                width: 95vw;
-                max-width: none;
-                padding: 16px;
+            width: 95vw;
+            max-width: none;
+            padding: 16px;
             }
 
             .filter-modal-footer {
-                flex-direction: column;
-                gap: 1rem;
-                align-items: stretch;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: stretch;
             }
 
             .filter-row {
-                position: relative;
-                flex-direction: column;
-                align-items: stretch;
+            position: relative;
+            flex-direction: column;
+            align-items: stretch;
             }
 
             .filter-row input,
             .value-input {
-                width: 90% !important;
+            width: 90% !important;
             }
 
             .column-select {
-                width: 100% !important;
+            width: 100% !important;
             }
 
             .filter-row .remove-filter-btn {
-                position: absolute;
-                top: 8px;
-                right: 8px;
-                align-self: unset;
-                margin-top: 60px;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            align-self: unset;
+            margin-top: 60px;
             }
 
             .filter-modal-footer {
-                flex-direction: row !important;
-                flex-wrap: wrap;
-                gap: 4px;
+            flex-direction: row !important;
+            flex-wrap: wrap;
+            gap: 4px;
             }
 
             .filter-modal-footer .flex {
-                flex-direction: row;
-                flex-wrap: wrap;
-                gap: 4px;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 4px;
             }
 
             .add-filter-btn,
             .clear-all-filters-btn,
             .apply-filters-btn {
-                flex: 1 1 auto;
-                width: auto;
-                min-width: 100px;
+            flex: 1 1 auto;
+            width: auto;
+            min-width: 100px;
             }
         }
 
         @media (hover: none) {
             .group:hover .group-hover\:block {
-                display: none;
+            display: none;
             }
 
             .group:focus .group-focus\:block {
-                display: block;
+            display: block;
             }
         }
     </style>
@@ -1000,8 +1033,8 @@
                                                         </div>
                                                         <div x-data="{ open: false, editOpen: false }" @keydown.escape.window="open = false; editOpen = false" class="relative flex items-center justify-center h-full">
                                                             <button @click.stop="open = !open" x-ref="button"
-                                                                class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 focus:outline-none flex items-center justify-center">
-                                                                <svg class="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+                                                                class="p-2 rounded-full bg-gray-100 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none flex items-center justify-center">
+                                                                <svg class="w-5 h-5 text-gray-700 dark:text-white" fill="currentColor" viewBox="0 0 24 24">
                                                                     <circle cx="5" cy="12" r="2" />
                                                                     <circle cx="12" cy="12" r="2" />
                                                                     <circle cx="19" cy="12" r="2" />
@@ -1474,8 +1507,14 @@
                                                     @endif
                                                 </td>
                                                 @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                <td data-column="file-name" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                        {{ basename($task->file_name) ?? 'No Files' }}
+                                                <td data-column="file-name" class="column-hidden flex p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                                        <p> {{ basename($task->file_name) ?? 'No Files' }} </p>
+                                                        <div @click="navigator.clipboard.writeText('{{ basename($task->file_name) }}')" class="ml-2 text-black hover:text-blue-500 transition-colors flex items-center gap-1"
+                                                            data-tooltip-left="Copy filename">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </div>
                                                 </td>
                                                 @endif
                                             </tr>

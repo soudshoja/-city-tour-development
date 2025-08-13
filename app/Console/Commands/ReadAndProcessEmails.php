@@ -535,7 +535,7 @@ class ReadAndProcessEmails extends Command
             }),
             'clients' => $clients->map(function ($client) {
                 return [
-                    'name' => $client->name,
+                    'name' => $client->first_name,
                     'id' => $client->id,
                     'agentId' => $client->agent_id,
                     'agentName' => optional($client->agent)->name ?? 'N/A',

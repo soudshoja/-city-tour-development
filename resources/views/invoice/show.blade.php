@@ -109,7 +109,7 @@
         <div class="flex justify-between items-center mb-8">
             <div class="text-left">
                 <h3 class="text-lg font-bold text-gray-800">Billed To</h3>
-                <p class="text-sm text-gray-600">{{ $invoice->client->name ?? 'N/A' }}</p>
+                <p class="text-sm text-gray-600">{{ $invoice->client->first_name ?? 'N/A' }}</p>
                 <p class="text-sm text-gray-600">
                     <a href="mailto:{{ $invoice->client->email}}" class="hover:underline hover:text-blue-600">
                         {{ $invoice->client->email ?? 'N/A' }}
@@ -159,7 +159,7 @@
                             $passengerCount = count($roomDetails['passengers'] ?? []);
                         @endphp
                         <p>
-                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->first_name ?? 'N/A') }}
                             <br>Hotel Name: {{ $detail->task->hotelDetails->hotel->name ?? 'N/A' }}
                             <br>Check In: {{ $detail->task->hotelDetails->check_in ?? 'N/A' }}
                             <br>Check Out: {{ $detail->task->hotelDetails->check_out ?? 'N/A' }}
@@ -169,7 +169,7 @@
                         @elseif ($detail->task->type === 'flight')
                         <p>
                             GDS Reference: {{ $detail->task->gds_reference ?? 'N/A' }}
-                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->first_name ?? 'N/A') }}
                             <br>Route:
                             {{ $detail->task->flightDetails->countryFrom->name ?? '' }}
                             ({{ $detail->task->flightDetails->airport_from ?? '' }})
@@ -290,7 +290,7 @@
                     </td>
 
                     <td class="px-4 py-2 border">
-                        {{ $partial->client->name }}
+                        {{ $partial->client->first_name }}
 
                         @if ($creditBalance > 0 && $partial->status === 'unpaid')
                         <br>Credit Balance: {{ number_format($creditBalance, 2) }} |
@@ -446,7 +446,7 @@
     ? number_format($gatewayFee['finalAmount'], 2, '.', '') 
     : number_format($invoicePartials->sum('amount') - abs($checkUtilizeCredit->sum('amount')), 2, '.', '') }}">
                 <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
-                <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
+                <input type="hidden" name="client_name" value="{{ $invoice->client->first_name }}">
                 <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
                 <input type="hidden" name="payment_gateway" value="{{ $paymentGateway }}">
                 <input type="hidden" name="payment_method" value="{{ $paymentMethod }}">
@@ -504,7 +504,7 @@
         <input type="hidden" name="client" value='{{ json_encode($invoice->client) }}'>
         <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number }}'>
         <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
-        <input type="hidden" name="client_name" value="{{ $invoice->client->name }}">
+        <input type="hidden" name="client_name" value="{{ $invoice->client->first_name }}">
         <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
         <input type="hidden" name="payment_method" value="{{ $paymentGateway }}">
 
@@ -588,7 +588,7 @@
                         );
                         @endphp
                         @if ($paymentReferenceCredit)
-                        <td class="px-4 py-2 border">Client Credit by {{ $partial->client->name }}
+                        <td class="px-4 py-2 border">Client Credit by {{ $partial->client->first_name }}
                             ({{ $paymentReferenceCredit }})
                         </td>
                         </td>

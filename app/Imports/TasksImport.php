@@ -39,7 +39,7 @@ $existingClient = Client::where('email', $row['client_email'])->first();
 
 if (!$existingClient) {
     $client = Client::create([
-        'name' => $row['client_name'], 
+        'first_name' => $row['client_name'], 
         'email' => $row['client_email'], 
         'status' => 'active', 
         'phone'  => $row['client_phone'],

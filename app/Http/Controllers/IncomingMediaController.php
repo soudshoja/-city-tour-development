@@ -266,7 +266,7 @@ class IncomingMediaController extends Controller
                         'ai_data' => $data
                     ]);
 
-                    if ($data && isset($data['name'], $data['civil_no'])) {
+                    if ($data && isset($data['first_name'], $data['civil_no'])) {
                         // Start transaction for all database operations
                         DB::beginTransaction();
 
@@ -294,7 +294,9 @@ class IncomingMediaController extends Controller
 
                             if (!$client) {
                                 $client = Client::create([
-                                    'name' => $data['name'],
+                                    'first_name' => $data['first_name'],
+                                    'middle_name' => $data['middle_name'] ?? null,
+                                    'last_name' => $data['last_name'] ?? null,
                                     'email' => $agentEmail,
                                     'status' => 'active',
                                     'phone' => $localNumberClient,

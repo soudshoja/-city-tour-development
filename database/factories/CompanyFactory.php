@@ -18,14 +18,15 @@ class CompanyFactory extends Factory
     public function definition(): array
     {
         return [
-            'code' => $this->faker->unique()->randomNumber(5),
-            'country_id' => 1, // Will be overridden in tests
-            'name' => $this->faker->company,
-            'phone' => $this->faker->phoneNumber,
-            'email' => $this->faker->unique()->safeEmail,
-            'address' => $this->faker->address,
+            'name' => $this->faker->company(),
+            'user_id' => 1,
+            'country_id' => 1,
+            'gds_office_id' => $this->faker->randomLetter(),
             'status' => 1,
-            'user_id' => 1, // Will be overridden in tests
+            'code' => $this->faker->unique()->bothify('COMP-###'),
+            'email' => $this->faker->companyEmail(),
+            'address' => $this->faker->address(),
+            'phone' => $this->faker->phoneNumber(),
         ];
     }
 }

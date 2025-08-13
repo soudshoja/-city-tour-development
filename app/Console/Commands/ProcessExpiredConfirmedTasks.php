@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Events\CheckConfirmedOrIssuedTask;
 use App\Models\Task;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -118,17 +119,24 @@ class ProcessExpiredConfirmedTasks extends Command
         DB::transaction(function () use ($task) {
             $oldStatus = $task->status;
             
-            $task->status = 'void';
-            $task->save();
+            try{
+                $task->status = 'void';
+                $task->save();
+            } catch (Exception $e){
+                
+                Log::error("Failed to change task status: " . $e->getMessage(), [
+                    'task_id' => $task->id,
+                    'reference' => $task->reference,
+                    'expiry_date' => $task->expiry_date
+                ]);
+                throw $e; // Re-throw to handle in the main loop
+            }
 
             Log::info("Task status changed from '{$oldStatus}' to 'void' due to expiry", [
                 'task_id' => $task->id,
                 'reference' => $task->reference,
                 'expiry_date' => $task->expiry_date
             ]);
-
-            // Trigger the check task event for financial processing (void may need financial cleanup)
-            event(new CheckConfirmedOrIssuedTask($task, 'expired_confirmed_to_void'));
         });
     }
 }

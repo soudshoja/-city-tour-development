@@ -2039,7 +2039,8 @@ class TaskController extends Controller
                 'city' => $data['city'] ?? null,
                 'room_type' => $data['room_type'] ?? null,
                 'room_number' => $data['room_number'] ?? null,
-                'meal_plan' => $data['meal_plan'] ?? null,
+                'room_details' => $data['room_details'] ?? null,
+                'meal_type' => $data['meal_type'] ?? null,
                 'adults' => isset($data['adults']) ? (int) $data['adults'] : null,
                 'children' => isset($data['children']) ? (int) $data['children'] : null,
                 'task_id' => $taskId

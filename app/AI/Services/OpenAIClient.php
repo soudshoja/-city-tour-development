@@ -731,6 +731,15 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- All dates should be in 'Y-m-d H:i:s' format.\n";
         $prompt .= "- For supplier name, refer to this list: $supplierList\n";
         $prompt .= "- Airport codes should be matched against: $airportList\n";
+        $prompt .= "- HOTEL MEAL/BOARD RULES:\n";
+        $prompt .= "  • If the document mentions a meal plan (e.g., 'board', 'free breakfast', 'half board', 'full board'), copy the wording exactly as shown into task_hotel_details[*].meal_type.\n";
+        $prompt .= "  • If you're unsure which room line it belongs to, include the phrase in tasks.additional_info instead.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (SMILE HOLIDAYS):\n";
+        $prompt .= "  • For Smile Holidays proforma/invoices that have a 'Pax' column, copy that value into tasks.additional_info, e.g., 'Pax: 1'.\n";
+        $prompt .= "  • ADDITIONAL REQUESTS → ROOM DETAILS: If the document contains 'Additional Requests', 'Special Instructions', 'Remarks' or similar booking notes, append a concise version to task_hotel_details[*].room_details (for single-room bookings append to that room; for multi-room bookings, either repeat for each room or put it into tasks.additional_info with room labels).\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (BAHRAIN E-VISA):\n";
+        $prompt .= "  • Set tasks.reference to the Visa Number from the document.\n";
+        $prompt .= "  • Store the Application Number and other important visa details (e.g., Visa Expiry, Period of Stay, Number of Entries) in tasks.additional_info.\n";
         $prompt .= "- Return the result in this JSON format:\n\n";
 
         $prompt .= "{\n";
@@ -1357,6 +1366,12 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- All dates should be in 'Y-m-d H:i:s' format.\n";
         $prompt .= "- For supplier name, refer to this list: $supplierList\n";
         $prompt .= "- Airport codes should be matched against: $airportList\n";
+        $prompt .= "- HOTEL MEAL/BOARD RULES:\n";
+        $prompt .= "  • If the document mentions a meal plan (e.g., 'board', 'free breakfast', 'half board', 'full board'), copy the wording exactly as shown into task_hotel_details[*].meal_type.\n";
+        $prompt .= "  • If you're unsure which room line it belongs to, include the phrase in tasks.additional_info instead.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (SMILE HOLIDAYS):\n";
+        $prompt .= "  • For Smile Holidays proforma/invoices that have a 'Pax' column, copy that value into tasks.additional_info, e.g., 'Pax: 1'.\n";
+        $prompt .= "  • ADDITIONAL REQUESTS → ROOM DETAILS: If the document contains 'Additional Requests', 'Special Instructions', 'Remarks' or similar booking notes, append a concise version to task_hotel_details[*].room_details (for single-room bookings append to that room; for multi-room bookings, either repeat for each room or put it into tasks.additional_info with room labels).\n";
         $prompt .= "- Return the result in this JSON format:\n\n";
 
         $prompt .= "{\n";

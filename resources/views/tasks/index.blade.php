@@ -1455,9 +1455,9 @@
                                                                 <path d="M8 21V7a1 1 0 011-1h6a1 1 0 011 1v14M3 21v-4a1 1 0 011-1h4a1 1 0 011 1v4m10 0v-6a1 1 0 011-1h2a1 1 0 011 1v6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                                                             </svg>
                                                         </div>
-                                                        <div class="flex flex-col truncate">
-                                                            <div class="truncate max-w-[140px]" title="{{ $task->hotelDetails->hotel->name ?? '-' }}">
-                                                                {{ $task->hotelDetails->hotel->name ?? 'N/A' }}
+                                                        <div class="flex flex-col">
+                                                            <div class="relative max-w-[180px]" data-tooltip-left="{{ $task->hotelDetails->hotel->name ?? '-' }}">
+                                                                <div class="truncate">{{ $task->hotelDetails->hotel->name ?? 'N/A' }}</div>
                                                             </div>
                                                             <div class="text-sm text-gray-500 whitespace-nowrap">
                                                                 {{ $task->hotelDetails->check_in ?? 'N/A' }} - {{ $task->hotelDetails->check_out ?? 'N/A' }}
@@ -1466,7 +1466,9 @@
                                                     </div>
                                                     @endif
                                                     @else
-                                                    <div>{{ $task->additional_info ?? '-' }}</div>
+                                                    <div class="text-sm text-gray-700 whitespace-pre-line break-words leading-tight">
+                                                        {{ $task->additional_info ?? '-' }}
+                                                    </div>
                                                     @endif
                                                 </td>
                                                 <td data-column="type" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">

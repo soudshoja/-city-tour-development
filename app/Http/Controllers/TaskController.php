@@ -1727,12 +1727,12 @@ class TaskController extends Controller
         ]);
 
         $supplier = Supplier::find($request->supplier_id);
-        $isTbo = in_array($supplier->name, ['TBO Air', 'TBO Car']);
+        $isMergeSupplier = in_array($supplier->name, ['TBO Air', 'TBO Car', 'Smile Holidays']);
 
         $request->validate([
-            'task_file'     => [Rule::requiredIf(!$isTbo), 'array'],
+            'task_file'     => [Rule::requiredIf(!$isMergeSupplier), 'array'],
             'task_file.*'   => ['mimes:pdf,txt'],
-            'batches'       => [Rule::requiredIf($isTbo), 'array', 'min:1'],
+            'batches'       => [Rule::requiredIf($isMergeSupplier), 'array', 'min:1'],
             'batches.*'     => ['array', 'min:2'],
             'batches.*.*'   => ['file', 'mimes:pdf'],
             'batch_names'   => ['nullable','array'],
@@ -1769,7 +1769,7 @@ class TaskController extends Controller
             Log::info("Created source directory: {$filePath}, please ensure files are pushed here.");
         }
 
-        if ($isTbo) {
+        if ($isMergeSupplier) {
             try {
                 $allMessages = [];
                 $allData = [];

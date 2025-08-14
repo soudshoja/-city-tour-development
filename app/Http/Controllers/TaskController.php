@@ -202,7 +202,7 @@ class TaskController extends Controller
                         $task->client_id = $clientId;
                         $client = Client::find($clientId);
                         if ($client) {
-                            $task->client_name = $client->first_name;
+                            $task->client_name = trim($client->first_name . ' ' . ($client->middle_name ?? '') . ' ' . ($client->last_name ?? ''));
                         }
                     }
                     if ($agentId) $task->agent_id = $agentId;
@@ -218,6 +218,7 @@ class TaskController extends Controller
                                 Log::error('Failed to process task financial: ' . $e->getMessage());
                             }
                         }
+                        if($task->status === 'issued') $task->enabled = true;
                     }
                     $task->save();
                 }

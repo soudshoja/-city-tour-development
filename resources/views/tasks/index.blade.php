@@ -2075,7 +2075,7 @@
                     'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
                     'dark:text-gray-300', 'p-3', 'mb-1');
                 formTaskContainer.appendChild(input);
-            } else if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air') {
+            } else if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air' || supplier.name == 'Smile Holidays') {
                 const batches = [];
                 let active = 0;
 

@@ -1217,15 +1217,18 @@
                                                                                         <label for="client_id"
                                                                                             class="block text-sm font-medium text-gray-700">Client</label>
                                                                                         <div class="w-full">
-                                                                                            <x-searchable-dropdown
+                                                                                            <x-searchable-dropdown 
                                                                                                 name="client_id"
                                                                                                 :items="$clients->map(fn($c) => [
-                                                                                                'id'   => $c->id,
-                                                                                                'name' => $c->first_name . ' - ' . $c->phone
-                                                                                            ])"
+                                                                                                    'id' => $c->id, 
+                                                                                                    'name' => $c->first_name . ' ' . $c->last_name . ' - ' . $c->phone
+                                                                                                ])"
                                                                                                 :selectedId="$task->client_id"
-                                                                                                :selectedName="$selectedClient ? $selectedClient->first_name . ' - '  .           $selectedClient->phone : null"
-                                                                                                :placeholder="$clientPlaceholder" />
+                                                                                                :selectedName="$selectedClient ? $selectedClient->first_name . ' ' . $selectedClient->last_name . ' - ' . $selectedClient->phone : null"
+                                                                                                placeholder="Select Client" 
+                                                                                            />
+
+                                                                                            
                                                                                         </div>
                                                                                     </div>
 

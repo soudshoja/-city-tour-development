@@ -1850,8 +1850,13 @@ class TaskController extends Controller
                     if ($customName) {
                         $mergedName = $customName;
                     } else {
-                        $shortSupplier = str_replace('TBO ', '', $supplier->name);
-                        $mergedName    = sprintf('TBO%s-%s-b%02d.pdf', ucfirst($shortSupplier), now()->format('ymdHi'), $batchIndex);
+                        $mergePrefixMap = [
+                            'TBO Air'        => 'TBOAir',
+                            'TBO Car'        => 'TBOCar',
+                            'Smile Holidays' => 'SMLH',
+                        ];
+                        $prefix = $mergePrefixMap[$supplier->name] ?? preg_replace('/\s+/', '', $supplier->name);
+                        $mergedName = sprintf('%s-%s-b%02d.pdf', $prefix, now()->format('ymdHi'), $batchIndex);
                     }
 
                     $mergedPath = "{$companyName}/{$supplierName}/files_unprocessed/{$mergedName}";

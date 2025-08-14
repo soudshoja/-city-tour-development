@@ -2470,7 +2470,8 @@ class TaskController extends Controller
                 'invoice_price' => null,
                 'voucher_status' => null,
                 'refund_date' => null,
-                'issued_date' => Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
+                'issued_date' => $cancellationDate ?? null,
+                'supplier_created_date' => Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
                 'task_hotel_details' => [
                     'hotel_name' => $hotel['name'],
                     'hotel_country' => $hotel['countryId'],

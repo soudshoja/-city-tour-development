@@ -782,6 +782,7 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "      \"cancellation_deadline\": \"2025-06-01 10:00:00\",\n";
         $prompt .= "      \"venue\": \"service location\",\n";
         $prompt .= "      \"issued_date\": \"2025-07-03 00:00:00\",\n";
+        $prompt .= "      \"supplier_created_date\": \"2025-07-03 00:00:00\",\n";
         $prompt .= "      \"is_exchanged\": false,\n";
         $prompt .= "      \"task_flight_details\": [\n";
         $prompt .= "        {\n";

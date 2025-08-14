@@ -740,6 +740,11 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (BAHRAIN E-VISA):\n";
         $prompt .= "  • Set tasks.reference to the Visa Number from the document.\n";
         $prompt .= "  • Store the Application Number and other important visa details (e.g., Visa Expiry, Period of Stay, Number of Entries) in tasks.additional_info.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (TBO CAR):\n";
+        $prompt .= "  • If the file shows 'Net Amount' and 'Agent Markup': set price and total with Net Amount exactly as showen (ignore markup value).\n";
+        $prompt .= "  • Put the Agent Markup value in tasks.additional_info (e.g., 'Agent Markup: KWD 12.00').\n";
+        $prompt .= "  • If Net Amount is shown in another currency (e.g., 'KWD 209.45 (USD 685.25)'), store that other-currency value (e.g., USD 685.25) in original_price/original_currency.\n";
+
         $prompt .= "- Return the result in this JSON format:\n\n";
 
         $prompt .= "{\n";

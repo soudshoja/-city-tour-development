@@ -737,6 +737,9 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (SMILE HOLIDAYS):\n";
         $prompt .= "  • For Smile Holidays proforma/invoices that have a 'Pax' column, copy that value into tasks.additional_info, e.g., 'Pax: 1'.\n";
         $prompt .= "  • ADDITIONAL REQUESTS → ROOM DETAILS: If the document contains 'Additional Requests', 'Special Instructions', 'Remarks' or similar booking notes, append a concise version to task_hotel_details[*].room_details (for single-room bookings append to that room; for multi-room bookings, either repeat for each room or put it into tasks.additional_info with room labels).\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (BAHRAIN E-VISA):\n";
+        $prompt .= "  • Set tasks.reference to the Visa Number from the document.\n";
+        $prompt .= "  • Store the Application Number and other important visa details (e.g., Visa Expiry, Period of Stay, Number of Entries) in tasks.additional_info.\n";
         $prompt .= "- Return the result in this JSON format:\n\n";
 
         $prompt .= "{\n";

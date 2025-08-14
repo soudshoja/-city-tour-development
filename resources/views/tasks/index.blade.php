@@ -1761,9 +1761,10 @@
                                             <form id="bulk-edit-form" @submit.prevent="submitBulkEdit" class="flex flex-col gap-6">
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                                                    <x-searchable-dropdown name="bulk_client_id"
-                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                                                        placeholder="Select Client" />
+                                                    
+                                                        <x-searchable-dropdown name="bulk_client_id"
+                                                            :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->first_name . ' ' . $c->last_name . ' - ' . $c->phone])"
+                                                            placeholder="Select Client" />
                                                 </div>
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Agent</label>

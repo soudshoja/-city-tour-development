@@ -720,6 +720,7 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- Do NOT record or output any list of covered relatives/members. Ignore extra names.\n";
         $prompt .= "- Set client_name to the buyer/policyholder (name nearest to the policy header or explicitly labeled).\n";
         $prompt .= "- If currency symbols (e.g., KD, $, €) are found in the files, replace them with the proper ISO currency code (e.g., KWD, USD, EUR).\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (FIRST TAKAFUL INSURANCE) If the supplier or insurer is 'First Takaful' (case-insensitive), set issued_by to 'First Takaful' and agent_name to null.\n";
 
         $prompt .= "\nIMPORTANT INSTRUCTIONS:\n";
         $prompt .= "- The PDF may contain multiple passengers/bookings. Return an array of task objects.\n";

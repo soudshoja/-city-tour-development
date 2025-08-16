@@ -400,6 +400,10 @@ class InvoiceController extends Controller
         $paymentGateways = Charge::where('company_id', $invoice->agent->branch->company_id)
             ->where('is_active', true)
             ->get();
+        $invoiceCharges = Charge::where('company_id', $invoice->agent->branch->company_id)
+            ->where('is_active', true)
+            ->where('can_charge_invoice', true)
+            ->get();
         $paymentMethods = PaymentMethod::where('is_active', true)->get();
         $invoiceDate = $invoice->invoice_date;
         $invprice = $invoice->amount;
@@ -431,6 +435,7 @@ class InvoiceController extends Controller
             'selectedAgent',
             'selectedClient',
             'paymentGateways',
+            'invoiceCharges',
             'paymentMethods',
             'invoiceDate',
             'invprice',

@@ -1364,7 +1364,7 @@
                                                 </td>
                                                 <td data-column="bill-to" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300 ">
                                                     @if ($task->client)
-                                                    <p>{{ $task->client->first_name }}</p>
+                                                    <p>{{ $task->client->first_name }}{{ $task->client->middle_name ?? '' }} {{ $task->client->last_name ?? '' }}</p>
                                                     <p>{{ $task->client->phone ?? 'No phone' }}</p>
                                                     @else
                                                     <p class="{{ $task->client ?? 'no-client relative' }}">
@@ -2075,7 +2075,7 @@
                     'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
                     'dark:text-gray-300', 'p-3', 'mb-1');
                 formTaskContainer.appendChild(input);
-            } else if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air') {
+            } else if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air' || supplier.name == 'Smile Holidays') {
                 const batches = [];
                 let active = 0;
 

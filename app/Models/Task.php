@@ -53,7 +53,8 @@ class Task extends Model
         'ticket_number',
         'file_name',
         'issued_date',
-        'expiry_date'
+        'expiry_date',
+        'supplier_created_date'
     ];
 
 

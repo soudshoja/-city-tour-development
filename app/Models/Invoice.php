@@ -17,6 +17,7 @@ class Invoice extends Model
         'agent_id',
         'currency',
         'sub_amount',
+        'invoice_charge',
         'amount',
         'status',
         'invoice_date',

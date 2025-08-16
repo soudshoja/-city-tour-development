@@ -66,7 +66,7 @@
         <div class="flex justify-between items-start mb-8">
             <div class="text-left">
                 <h3 class="text-lg font-bold text-gray-800 mb-1">Billed To</h3>
-                <p class="text-sm text-gray-600">{{ $payment->client->first_name }}</p>
+                <p class="text-sm text-gray-600">{{ $payment->client->first_name }} {{ $payment->client->middle_name ?? '' }} {{ $payment->client->last_name ?? '' }}</p>
                 <p class="text-sm text-gray-600">
                     <a href="mailto:{{ $payment->client->email }}" class="hover:underline hover:text-blue-600">
                         {{ $payment->client->email }}
@@ -105,7 +105,7 @@
             <tbody>
                 <tr>
                     <td class="py-3 px-4">Client Name</td>
-                    <td class="py-3 px-4 text-right">{{ $payment->client->first_name }}</td>
+                    <td class="py-3 px-4 text-right">{{ $payment->client->first_name }} {{ $payment->client->middle_name ?? '' }} {{ $payment->client->last_name ?? '' }}</td>
                 </tr>
                 <tr>
                     <td class="py-3 px-4">Payment Gateway</td>

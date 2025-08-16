@@ -166,7 +166,7 @@ class ResayilController extends Controller
 
         $message = "👋 Hello {$client->first_name},\n\n🧾 Your partial invoice is ready!\n\nYou can view it here:\n🔗 $partialInvoiceLink\n\nThank you for choosing us! 😊";
 
-        $response = $this->message($client->phone, $message);
+        $response = $this->message($client->phone, $client->country_code, $message);
 
         Log::debug('Resayil API Response:', $response);
 

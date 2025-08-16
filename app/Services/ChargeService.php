@@ -9,6 +9,43 @@ use Illuminate\Support\Facades\Log;
 
 class ChargeService
 {
+    /**
+     * Standard return structure for all charge calculations
+     */
+    private static function standardReturn(
+        float $finalAmount,
+        float $fee,
+        ?string $paidBy,
+        float $netReceived,
+        ?string $chargeType = null,
+        ?string $selfChargeType = null,
+        ?float $selfCharge = null,
+        ?float $apiServiceCharge = null
+    ): array {
+        return [
+            'finalAmount' => $finalAmount,
+            'fee' => $fee,
+            'paid_by' => $paidBy,
+            'netReceived' => $netReceived,
+            'charge_type' => $chargeType,
+            'self_charge_type' => $selfChargeType,
+            'self_charge' => $selfCharge,
+            'api_service_charge' => $apiServiceCharge,
+            'amount' => $fee,
+        ];
+    }
+
+    /**
+     * Calculate charge amount based on type (Percent or Fixed)
+     */
+    private static function calculateChargeAmount(float $baseAmount, float $chargeValue, string $chargeType): float
+    {
+        if ($chargeType === 'Percent') {
+            return ($chargeValue / 100) * $baseAmount;
+        }
+        return $chargeValue;
+    }
+
     public static function TapCharge(array $data, $gatewayName)
     {
         $amount = $data['amount'];
@@ -32,36 +69,36 @@ class ChargeService
             ->first();
 
         if (!$charge) {
-            return [
-                'finalAmount' => $amount,
-                'fee' => 0,
-                'paid_by' => null,
-                'netReceived' => $amount,
-                'charge_type' => null,
-                'amount' => 0,
-            ];
-        }
-        $chargeType = $charge->charge_type;
-        $paidBy = $charge->paid_by;
-        $serviceCharge = $charge->amount;
-        
-        if ($chargeType === 'Percent') {
-            $fee = ($serviceCharge / 100) * $amount;
-        } else {
-            $fee = $serviceCharge;
+            return self::standardReturn(
+                finalAmount: $amount,
+                fee: 0,
+                paidBy: null,
+                netReceived: $amount
+            );
         }
 
+        // Determine which charge to use: self_charge takes priority over amount
+        $chargeValue = !is_null($charge->self_charge) ? $charge->self_charge : $charge->amount;
+        $chargeType = !is_null($charge->self_charge) ? ($charge->self_charge_type ?? 'Flat Rate') : $charge->charge_type;
+        $paidBy = $charge->paid_by;
+
+        // Calculate the fee
+        $fee = self::calculateChargeAmount($amount, $chargeValue, $chargeType);
+
+        // Calculate final amounts based on who pays
         if ($paidBy === 'Client') {
             $finalAmount = $amount + $fee;
             $netReceived = $amount;
-        } else{
+        } else {
             $finalAmount = $amount;
             $netReceived = $amount - $fee;
         }
 
         Log::info('Tap Gateway charge calculated', [
-            'charge_type' => $charge->charge_type,
-            'paid_by' => $charge->paid_by,
+            'using_self_charge' => !is_null($charge->self_charge),
+            'charge_value' => $chargeValue,
+            'charge_type' => $chargeType,
+            'paid_by' => $paidBy,
             'fee' => $fee,
             'finalAmount' => $finalAmount,
             'netReceived' => $netReceived,
@@ -69,16 +106,16 @@ class ChargeService
             'gateway' => $gatewayName
         ]);
 
-        return [
-            'finalAmount'  => $finalAmount,
-            'fee'          => $fee,
-            'paid_by'      => $charge->paid_by,
-            'netReceived'  => $netReceived,
-            'charge_type'  => $charge->charge_type,
-            'amount'       => $fee,
-        ];
+        return self::standardReturn(
+            finalAmount: $finalAmount,
+            fee: $fee,
+            paidBy: $paidBy,
+            netReceived: $netReceived,
+            chargeType: $charge->charge_type,
+            selfChargeType: $charge->self_charge_type,
+            selfCharge: $charge->self_charge
+        );
     }
-
 
     public static function FatoorahCharge($amount, $methodCode, $companyId)
     {
@@ -91,45 +128,57 @@ class ChargeService
         }
 
         $paidBy = $method->paid_by;
-        $apiServiceCharge = $method->service_charge;
-        $selfServiceCharge = $method->self_charge;
-        $selfChargeType = $method->charge_type;
+        $apiServiceCharge = $method->service_charge ?? 0;
         
-        if ($selfServiceCharge === 'Percent')
-        {
-            $selfCharge = ($selfServiceCharge / 100)  * $amount;
-        } else {
-            $selfCharge = $selfServiceCharge;
+        // Determine which self charge to use: self_charge takes priority over self_charge (amount)
+        $selfChargeValue = !is_null($method->self_charge) ? $method->self_charge : 0;
+        $selfChargeType = $method->self_charge_type ?? 'Flat Rate';
+        
+        // Calculate self charge amount
+        $selfChargeAmount = 0;
+        if ($selfChargeValue > 0) {
+            $selfChargeAmount = self::calculateChargeAmount($amount, $selfChargeValue, $selfChargeType);
         }
 
-        $fee = $apiServiceCharge + $selfCharge;
+        // If self_charge is set, we ignore gateway charges and use only our charge
+        if (!is_null($method->self_charge)) {
+            $totalFee = $selfChargeAmount;
+        } else {
+            // Use both API service charge and self charge
+            $totalFee = $apiServiceCharge + $selfChargeAmount;
+        }
 
-        if($paidBy === 'Client') {
-            $finalAmount = $amount + $fee;
-            $netReceived = $amount + $selfServiceCharge;        
+        // Calculate final amounts based on who pays
+        if ($paidBy === 'Client') {
+            $finalAmount = $amount + $totalFee;
+            $netReceived = $amount;
         } else {
             $finalAmount = $amount;
-            $netReceived = $amount - $fee;
+            $netReceived = $amount - $totalFee;
         }
 
         Log::info('MyFatoorah Gateway charge calculated from PaymentMethod table', [
             'amount' => $amount,
+            'using_self_charge' => !is_null($method->self_charge),
             'api_service_charge' => $apiServiceCharge,
-            'self_charge' => $selfCharge,
-            'total_fee' => $fee,
+            'self_charge_value' => $selfChargeValue,
+            'self_charge_amount' => $selfChargeAmount,
+            'self_charge_type' => $selfChargeType,
+            'total_fee' => $totalFee,
             'finalAmount' => $finalAmount,
             'netReceived' => $netReceived,
             'paid_by' => $paidBy,
         ]);
 
-        return [
-            'finalAmount'  => $finalAmount,
-            'fee'          => $fee,
-            'self_charge'  => $selfCharge,
-            'paid_by'      => $paidBy,
-            'netReceived'  => $netReceived,
-            'charge_type'  => $selfChargeType,
-            'amount'       => $fee,
-        ];
+        return self::standardReturn(
+            finalAmount: $finalAmount,
+            fee: $totalFee,
+            paidBy: $paidBy,
+            netReceived: $netReceived,
+            chargeType: $method->charge_type,
+            selfChargeType: $method->self_charge_type,
+            selfCharge: $method->self_charge,
+            apiServiceCharge: $apiServiceCharge
+        );
     }
 }

@@ -841,6 +841,9 @@
                                             </div>
                                         </div>
 
+                                        <!-- Hidden input for invoice charge (always present for calculations) -->
+                                        <input type="hidden" id="invoice_charge" name="invoice_charge" value="{{ $invoice->invoice_charge }}">
+
                                         <!-- Invoice Charge Section (Initially Hidden) -->
                                         @if($invoiceCharges->count() > 0)
                                         <div id="invoice_charge_section" class="mt-4" style="display: none;">
@@ -869,7 +872,6 @@
                                                 <label id="calculated_charge_label" class="block text-sm font-medium text-gray-700 mb-1">Calculated Invoice Charge:</label>
                                                 <input type="text" id="calculated_invoice_charge" class="form-input bg-gray-100"
                                                     value="{{ number_format($invoice->invoice_charge, 2) }}" readonly>
-                                                <input type="hidden" id="invoice_charge" name="invoice_charge" value="{{ $invoice->invoice_charge }}">
                                             </div>
 
                                             <!-- Important Note -->
@@ -1536,7 +1538,7 @@
             const charges = @json($paymentGateways);
             const invoiceCharges = @json($invoiceCharges);
 
-            console.log(items);
+            // console.log(items);
 
             // Invoice Charge Functions
             function calculateInvoiceCharge() {
@@ -1627,42 +1629,42 @@
                     return true;
                 }
             }
-        
-        // Function to update invoice charge labels with payment gateway name
-        function updateInvoiceChargeLabels(gatewayName) {
-            const invoiceChargeTitle = document.getElementById('invoice_charge_title');
-            const invoiceChargeLabel = document.getElementById('invoice_charge_label');
-            const calculatedChargeLabel = document.getElementById('calculated_charge_label');
-            
-            if (gatewayName) {
-                const chargeText = `${gatewayName} Charge`;
-                const calculatedChargeText = `Calculated ${gatewayName} Charge:`;
-                
-                if (invoiceChargeTitle) {
-                    invoiceChargeTitle.textContent = chargeText;
-                }
-                if (invoiceChargeLabel) {
-                    invoiceChargeLabel.textContent = chargeText + ':';
-                }
-                if (calculatedChargeLabel) {
-                    calculatedChargeLabel.textContent = calculatedChargeText;
-                }
-            } else {
-                // Fallback to default labels
-                if (invoiceChargeTitle) {
-                    invoiceChargeTitle.textContent = 'Invoice Charge';
-                }
-                if (invoiceChargeLabel) {
-                    invoiceChargeLabel.textContent = 'Invoice Charge:';
-                }
-                if (calculatedChargeLabel) {
-                    calculatedChargeLabel.textContent = 'Calculated Invoice Charge:';
+
+            // Function to update invoice charge labels with payment gateway name
+            function updateInvoiceChargeLabels(gatewayName) {
+                const invoiceChargeTitle = document.getElementById('invoice_charge_title');
+                const invoiceChargeLabel = document.getElementById('invoice_charge_label');
+                const calculatedChargeLabel = document.getElementById('calculated_charge_label');
+
+                if (gatewayName) {
+                    const chargeText = `${gatewayName} Charge`;
+                    const calculatedChargeText = `Calculated ${gatewayName} Charge:`;
+
+                    if (invoiceChargeTitle) {
+                        invoiceChargeTitle.textContent = chargeText;
+                    }
+                    if (invoiceChargeLabel) {
+                        invoiceChargeLabel.textContent = chargeText + ':';
+                    }
+                    if (calculatedChargeLabel) {
+                        calculatedChargeLabel.textContent = calculatedChargeText;
+                    }
+                } else {
+                    // Fallback to default labels
+                    if (invoiceChargeTitle) {
+                        invoiceChargeTitle.textContent = 'Invoice Charge';
+                    }
+                    if (invoiceChargeLabel) {
+                        invoiceChargeLabel.textContent = 'Invoice Charge:';
+                    }
+                    if (calculatedChargeLabel) {
+                        calculatedChargeLabel.textContent = 'Calculated Invoice Charge:';
+                    }
                 }
             }
-        }
 
 
-        // Function to check if external URL should be shown and handle auto-payment
+            // Function to check if external URL should be shown and handle auto-payment
             function checkExternalUrlVisibility() {
                 const selectedGateway = document.getElementById('payment_gateway_option').value;
                 const externalUrlSection = document.getElementById('external_url_section');
@@ -1686,7 +1688,7 @@
                 // Handle invoice charge section visibility
                 const invoiceChargeSection = document.getElementById('invoice_charge_section');
                 const invoiceChargeDisplayRow = document.getElementById('invoice_charge_display_row');
-                
+
                 if (selectedCharge && selectedCharge.can_charge_invoice) {
                     if (invoiceChargeSection) {
                         invoiceChargeSection.style.display = 'block';
@@ -1812,7 +1814,7 @@
                     const currentCharge = charges.find(charge => charge.name === currentGateway);
                     const invoiceChargeSection = document.getElementById('invoice_charge_section');
                     const invoiceChargeDisplayRow = document.getElementById('invoice_charge_display_row');
-                    
+
                     if (currentCharge && currentCharge.can_charge_invoice && invoice.invoice_charge > 0) {
                         if (invoiceChargeSection) {
                             invoiceChargeSection.style.display = 'block';
@@ -2196,20 +2198,24 @@
 
             function calculateSubtotal() {
                 const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
-                const invoiceCharge = parseFloat(document.getElementById('invoice_charge').value) || 0;
+                const invoiceChargeElement = document.getElementById('invoice_charge');
+                const invoiceCharge = invoiceChargeElement ? parseFloat(invoiceChargeElement.value) || 0 : 0;
                 const finalTotal = subtotal + invoiceCharge;
 
-                //console.log(typeof subtotal, subtotal); // Debugging
-                //console.log(subtotal.toFixed(2)); // Ensure it works
-                //console.log(subtotal);
+                // console.log('Calculating subtotal:', { subtotal, invoiceCharge, finalTotal, itemsCount: items.length });
 
                 // Update all display elements
                 document.getElementById('subTotalDisplay').textContent = `${subtotal.toFixed(2)}`;
                 document.getElementById('invoiceChargeDisplay').textContent = `${invoiceCharge.toFixed(2)}`;
                 document.getElementById('subT').textContent = `${finalTotal.toFixed(2)}`;
-                document.getElementById('subT1').textContent = `${finalTotal.toFixed(2)}`;
+                
+                const subT1Element = document.getElementById('subT1');
+                if (subT1Element) subT1Element.textContent = `${finalTotal.toFixed(2)}`;
+                
                 document.getElementById('subTotal').value = subtotal;
-                document.getElementById('total-amount').value = finalTotal;
+                
+                const totalAmountElement = document.getElementById('total-amount');
+                if (totalAmountElement) totalAmountElement.value = finalTotal;
             }
 
 
@@ -3257,13 +3263,14 @@
             }
 
             async function save(type, item) {
-                console.log("Sending single item:", item);
+                // console.log("Sending single item:", item);
 
                 const invoiceUrl = "{{ route('invoice.partial') }}";
                 const csrfToken = "{{ csrf_token() }}";
                 const invoiceId = document.getElementById('invoiceId').value;
                 const invoiceNumber = document.getElementById('invoiceNumber').value;
-                const invoiceCharge = document.getElementById('invoice_charge').value;
+
+                const invoiceCharge = document.getElementById('invoice_charge') ? document.getElementById('invoice_charge').value : 0;
 
                 let payload = {
                     invoiceId,
@@ -3306,13 +3313,15 @@
                         body: JSON.stringify(payload),
                     });
 
+                    // console.log("Response status:", response.status);
+
                     if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.message || `Failed to process ${type} payment.`);
                     }
 
                     const result = await response.json();
-                    console.log("Backend response for single item:", result);
+                    // console.log("Backend response for single item:", result);
                     displaySuccessMessage(result.message || `${type} payment processed successfully!`);
 
                 } catch (error) {
@@ -3601,6 +3610,9 @@
 
                 if (initialTasks && initialTasks.length > 0) {
                     loadInitialTasks(initialTasks);
+                } else {
+                    // Ensure subtotal is calculated even with no initial tasks
+                    calculateSubtotal();
                 }
 
                 // Initialize modals with full data
@@ -3641,7 +3653,7 @@
                 yesChosen = document.getElementById('yes-chosen');
                 noChosen = document.getElementById('no-chosen');
 
-                if(yesChosen && noChosen) {
+                if (yesChosen && noChosen) {
                     yesChosen.style.display = 'none';
                     noChosen.style.display = 'none';
                 }

@@ -71,7 +71,7 @@
         <!-- Client Details -->
         <div class="mb-8">
             <h3 class="text-lg font-bold text-gray-800">Bill To:</h3>
-            <p class="text-sm text-gray-600">{{ $invoice->client->first_name ?? 'N/A' }}</p>
+            <p class="text-sm text-gray-600">{{ $invoice->client->first_name }} {{ $invoice->client->middle_name ?? '' }} {{ $invoice->client->last_name ?? '' }}</p>
             <p class="text-sm text-gray-600">{{ $invoice->client->address ?? 'N/A' }}</p>
             <p class="text-sm text-gray-600">{{ $invoice->client->email ?? 'N/A' }}</p>
         </div>

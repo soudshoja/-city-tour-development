@@ -109,7 +109,7 @@
         <div class="flex justify-between items-center mb-8">
             <div class="text-left">
                 <h3 class="text-lg font-bold text-gray-800">Billed To</h3>
-                <p class="text-sm text-gray-600">{{ $invoice->client->first_name ?? 'N/A' }}</p>
+                <p class="text-sm text-gray-600">{{ $invoice->client->first_name }} {{ $invoice->client->middle_name ?? '' }} {{ $invoice->client->last_name ?? '' }}</p>
                 <p class="text-sm text-gray-600">
                     <a href="mailto:{{ $invoice->client->email}}" class="hover:underline hover:text-blue-600">
                         {{ $invoice->client->email ?? 'N/A' }}
@@ -159,7 +159,7 @@
                             $passengerCount = count($roomDetails['passengers'] ?? []);
                         @endphp
                         <p>
-                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->first_name ?? 'N/A') }}
+                            <br>Client Name: {{ $detail->task->client_name ?? (($invoice->client->first_name ?? '') . ' ' . ($invoice->client->last_name ?? '')) }}
                             <br>Hotel Name: {{ $detail->task->hotelDetails->hotel->name ?? 'N/A' }}
                             <br>Check In: {{ $detail->task->hotelDetails->check_in ?? 'N/A' }}
                             <br>Check Out: {{ $detail->task->hotelDetails->check_out ?? 'N/A' }}
@@ -588,7 +588,7 @@
                         );
                         @endphp
                         @if ($paymentReferenceCredit)
-                        <td class="px-4 py-2 border">Client Credit by {{ $partial->client->first_name }}
+                        <td class="px-4 py-2 border">Client Credit by {{ $partial->client->first_name }} {{ $partial->client->last_name }}
                             ({{ $paymentReferenceCredit }})
                         </td>
                         </td>
@@ -787,4 +787,4 @@
 
 </body>
 
-</html>
+</html>H

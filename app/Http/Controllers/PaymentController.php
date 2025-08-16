@@ -1592,10 +1592,11 @@ class PaymentController extends Controller
 
 
             //filter record
-            $customerName = optional($payment->client)->name ?? 'Customer';
-            if (strpos($customerName, '/') !== false) {
-                $customerName = trim(explode('/', $customerName)[0]);
-            }
+            $firstName = $payment->client->first_name;
+            $middleName = $payment->client->middle_name ?? '';
+            $lastName = $payment->client->last_name ?? '';
+
+            $customerName = trim("$firstName $middleName $lastName");
 
             $client = $payment->client;
             $clientPhone = $client->phone ?? null;
@@ -1693,10 +1694,11 @@ class PaymentController extends Controller
 
         $companyId = optional($payment->agent->branch)->company_id;
 
-        $customerName = optional($payment->client)->name ?? 'Customer';
-        if (strpos($customerName, '/') !== false) {
-            $customerName = trim(explode('/', $customerName)[0]);
-        }
+        $firstName = $payment->client->first_name;
+        $middleName = $payment->client->middle_name ?? '';
+        $lastName = $payment->client->last_name ?? '';
+
+        $customerName = trim("$firstName $middleName $lastName");
 
         $client = $payment->client;
         $clientPhone = $client->phone ?? '50000000';

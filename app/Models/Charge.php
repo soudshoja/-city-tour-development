@@ -24,6 +24,7 @@ class Charge extends Model
         'acc_fee_bank_id',
         'is_auto_paid',
         'has_url',
+        'can_charge_invoice', // New column added for invoice charge capability
     ];
 
     public function getAmountAttribute($value)

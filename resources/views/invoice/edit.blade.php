@@ -397,10 +397,20 @@
                             </button>
                         </div>
                         <div class="sm:w-2/5 flex justify-end">
-                            <div class="mt-4 flex items-center font-semibold">
-                                <div class="mr-2">Total:</div>
-                                <span id="subT">0.00</span>
-                                <input id="subTotal" type="hidden" name="subTotal" />
+                            <div class="mt-4 font-semibold">
+                                <div class="flex items-center mb-1">
+                                    <div class="mr-2">Subtotal:</div>
+                                    <span id="subTotalDisplay">0.00</span>
+                                </div>
+                                <div class="flex items-center mb-1">
+                                    <div class="mr-2">Invoice Charge:</div>
+                                    <span id="invoiceChargeDisplay">0.00</span>
+                                </div>
+                                <div class="flex items-center border-t pt-1">
+                                    <div class="mr-2">Total:</div>
+                                    <span id="subT">0.00</span>
+                                    <input id="subTotal" type="hidden" name="subTotal" />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -419,6 +429,69 @@
                         <option value="EUR">EUR</option>
                         <option value="GBP">GBP</option>
                     </select>
+
+                    <!-- Invoice Charge Section -->
+                    @if($invoiceCharges->count() > 0)
+                    <div class="mt-4">
+                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Invoice Charge</h2>
+                        
+                        <!-- Charge Selection -->
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Select Charge:</label>
+                            <select id="invoice_charge_select" name="invoice_charge_select" class="form-select">
+                                <option value="">No Charge</option>
+                                @foreach($invoiceCharges as $charge)
+                                    <option value="{{ $charge->id }}" data-amount="{{ $charge->amount }}" 
+                                        {{ $invoice->invoice_charge > 0 ? 'selected' : '' }}>
+                                        {{ $charge->name }} ({{ $charge->amount }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Calculation Method -->
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Calculation Method:</label>
+                            <select id="charge_calculation_method" name="charge_calculation_method" class="form-select">
+                                <option value="flat">Flat Rate</option>
+                                <option value="percentage">Percentage (%)</option>
+                            </select>
+                        </div>
+
+                        <!-- Charge Amount Input -->
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Charge Amount:</label>
+                            <input type="number" id="invoice_charge_amount" name="invoice_charge_amount" 
+                                   class="form-input" step="0.01" min="0" 
+                                   value="{{ $invoice->invoice_charge }}"
+                                   placeholder="Enter charge amount">
+                        </div>
+
+                        <!-- Calculated Invoice Charge (Read-only display) -->
+                        <div class="mb-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Calculated Invoice Charge:</label>
+                            <input type="text" id="calculated_invoice_charge" class="form-input bg-gray-100" 
+                                   value="{{ number_format($invoice->invoice_charge, 2) }}" readonly>
+                            <input type="hidden" id="invoice_charge" name="invoice_charge" value="{{ $invoice->invoice_charge }}">
+                        </div>
+
+                        <!-- Important Note -->
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                                <div>
+                                    <h4 class="text-sm font-medium text-yellow-800">Important Note</h4>
+                                    <p class="text-sm text-yellow-700 mt-1">
+                                        When using percentage calculation, only the final calculated amount is saved in our database. 
+                                        The percentage and calculation method are for your convenience only and are not stored.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
 
                     <!-- Invoice Payment Settings Section -->
                     <div class="mt-4">
@@ -1473,8 +1546,64 @@
         const itemsBody = document.getElementById('items-body');
         const appUrl = @json($appUrl);
         const charges = @json($paymentGateways);
+        const invoiceCharges = @json($invoiceCharges);
 
         console.log(items);
+        
+        // Invoice Charge Functions
+        function calculateInvoiceCharge() {
+            const chargeSelect = document.getElementById('invoice_charge_select');
+            const calculationMethod = document.getElementById('charge_calculation_method').value;
+            const chargeAmountInput = document.getElementById('invoice_charge_amount');
+            const calculatedChargeInput = document.getElementById('calculated_invoice_charge');
+            const invoiceChargeHidden = document.getElementById('invoice_charge');
+            
+            const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
+            const chargeAmount = parseFloat(chargeAmountInput.value) || 0;
+            
+            let finalChargeAmount = 0;
+            
+            if (chargeSelect.value && chargeAmount > 0) {
+                if (calculationMethod === 'percentage') {
+                    finalChargeAmount = (subtotal * chargeAmount) / 100;
+                } else {
+                    finalChargeAmount = chargeAmount;
+                }
+            }
+            
+            calculatedChargeInput.value = finalChargeAmount.toFixed(2);
+            invoiceChargeHidden.value = finalChargeAmount;
+            
+            calculateSubtotal();
+        }
+        
+        function resetInvoiceCharge() {
+            const chargeSelect = document.getElementById('invoice_charge_select');
+            const chargeAmountInput = document.getElementById('invoice_charge_amount');
+            const calculatedChargeInput = document.getElementById('calculated_invoice_charge');
+            const invoiceChargeHidden = document.getElementById('invoice_charge');
+            
+            if (!chargeSelect.value) {
+                chargeAmountInput.value = '';
+                calculatedChargeInput.value = '0.00';
+                invoiceChargeHidden.value = '0';
+                calculateSubtotal();
+            }
+        }
+        
+        function populateChargeAmount() {
+            const chargeSelect = document.getElementById('invoice_charge_select');
+            const chargeAmountInput = document.getElementById('invoice_charge_amount');
+            
+            if (chargeSelect.value) {
+                const selectedOption = chargeSelect.options[chargeSelect.selectedIndex];
+                const chargeAmount = selectedOption.getAttribute('data-amount');
+                chargeAmountInput.value = chargeAmount || '';
+                calculateInvoiceCharge();
+            } else {
+                resetInvoiceCharge();
+            }
+        }
         
         // Function to check if external URL should be shown and handle auto-payment
         function checkExternalUrlVisibility() {
@@ -1563,6 +1692,28 @@
                 gatewaySelect.addEventListener('change', checkExternalUrlVisibility);
                 // Check on initial load
                 checkExternalUrlVisibility();
+            }
+            
+            // Invoice Charge Event Listeners
+            const invoiceChargeSelect = document.getElementById('invoice_charge_select');
+            const chargeCalculationMethod = document.getElementById('charge_calculation_method');
+            const invoiceChargeAmount = document.getElementById('invoice_charge_amount');
+            
+            if (invoiceChargeSelect) {
+                invoiceChargeSelect.addEventListener('change', populateChargeAmount);
+            }
+            
+            if (chargeCalculationMethod) {
+                chargeCalculationMethod.addEventListener('change', calculateInvoiceCharge);
+            }
+            
+            if (invoiceChargeAmount) {
+                invoiceChargeAmount.addEventListener('input', calculateInvoiceCharge);
+            }
+            
+            // Calculate initial invoice charge if set
+            if (invoiceChargeSelect && invoiceChargeSelect.value) {
+                calculateInvoiceCharge();
             }
         });
         
@@ -1936,13 +2087,20 @@
 
         function calculateSubtotal() {
             const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
+            const invoiceCharge = parseFloat(document.getElementById('invoice_charge').value) || 0;
+            const finalTotal = subtotal + invoiceCharge;
+            
             //console.log(typeof subtotal, subtotal); // Debugging
             //console.log(subtotal.toFixed(2)); // Ensure it works
             //console.log(subtotal);
-            document.getElementById('subT').textContent = `${subtotal.toFixed(2)}`;
-            document.getElementById('subT1').textContent = `${subtotal.toFixed(2)}`;
+            
+            // Update all display elements
+            document.getElementById('subTotalDisplay').textContent = `${subtotal.toFixed(2)}`;
+            document.getElementById('invoiceChargeDisplay').textContent = `${invoiceCharge.toFixed(2)}`;
+            document.getElementById('subT').textContent = `${finalTotal.toFixed(2)}`;
+            document.getElementById('subT1').textContent = `${finalTotal.toFixed(2)}`;
             document.getElementById('subTotal').value = subtotal;
-            document.getElementById('total-amount').value = subtotal;
+            document.getElementById('total-amount').value = finalTotal;
         }
 
 

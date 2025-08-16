@@ -509,7 +509,8 @@ class InvoiceController extends Controller
             'gateway' => 'required|string',
             'method' => 'nullable|string',
             'credit' => 'nullable|boolean',
-            'external_url' => 'nullable|url'
+            'external_url' => 'nullable|url',
+            'invoice_charge' => 'nullable|numeric|min:0'
         ]);
 
         $invoiceId = $request->input('invoiceId');
@@ -522,6 +523,7 @@ class InvoiceController extends Controller
         $method = $request->input('method') ?? null;
         $credit = $request->input('credit', false); // Default to false if not provided
         $externalUrl = $request->input('external_url');
+        $invoiceCharge = $request->input('invoice_charge', 0);
 
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
         $companyId = $invoice->agent->branch->company_id;
@@ -534,6 +536,13 @@ class InvoiceController extends Controller
         // Update invoice with external URL only if the gateway supports URLs
         if ($externalUrl && $charge && $charge->has_url) {
             $invoice->update(['external_url' => $externalUrl]);
+        }
+
+        // Update invoice charge
+        if ($invoiceCharge !== null) {
+            $invoice->invoice_charge = $invoiceCharge;
+            $invoice->amount = $invoice->sub_amount + $invoiceCharge;
+            $invoice->save();
         }
 
         if (strtolower($gateway) === 'myfatoorah' && $method) {
@@ -1357,7 +1366,9 @@ class InvoiceController extends Controller
             }
         }
 
-        $totalGatewayFee['finalAmount'] = $invoice->amount + $invoice->tax + $totalGatewayFee['fee'];
+        $totalGatewayFee['fee'] += $invoice->invoice_charge ?? 0;
+
+        $totalGatewayFee['finalAmount'] = $invoice->sub_amount + $invoice->tax + $totalGatewayFee['fee'];
         $paidPartials = $invoicePartials->where('status', 'paid');
         $invoiceDetails = $invoice->invoiceDetails;
         $company = $invoice->agent->branch->company;

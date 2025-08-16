@@ -368,7 +368,7 @@
             <div class="w-1/3 text-sm">
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Subtotal:</span>
-                    <span>{{ number_format($invoice->amount, 2) }}</span>
+                    <span>{{ number_format($invoice->sub_amount, 2) }}</span>
                 </div>
                 @if ($checkUtilizeCredit && $checkUtilizeCredit->count())
                 @foreach ($checkUtilizeCredit as $credit)
@@ -407,7 +407,7 @@
                 <div class="flex justify-between py-2 font-bold text-gray-800">
                     <span>Total:</span>
                     <span>
-                        {{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}
+                        {{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}
                     </span>
                 </div>
             </div>

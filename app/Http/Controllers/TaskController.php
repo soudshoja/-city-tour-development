@@ -198,7 +198,7 @@ class TaskController extends Controller
                         $task->client_id = $clientId;
                         $client = Client::find($clientId);
                         if ($client) {
-                            $task->client_name = $client->first_name;
+                            $task->client_name = trim($client->first_name . ' ' . ($client->middle_name ?? '') . ' ' . ($client->last_name ?? ''));
                         }
                     }
                     if ($agentId) $task->agent_id = $agentId;
@@ -214,6 +214,7 @@ class TaskController extends Controller
                                 Log::error('Failed to process task financial: ' . $e->getMessage());
                             }
                         }
+                        if($task->status === 'issued') $task->enabled = true;
                     }
                     $task->save();
                 }
@@ -1725,7 +1726,37 @@ class TaskController extends Controller
 
         $files = $request->file('task_file');
         $supplier = Supplier::find($request->supplier_id);
+        $isMergeSupplier = in_array($supplier->name, ['TBO Air', 'TBO Car', 'Smile Holidays']);
 
+        $request->validate([
+            'task_file'     => [Rule::requiredIf(!$isMergeSupplier), 'array'],
+            'task_file.*'   => ['mimes:pdf,txt'],
+            'batches'       => [Rule::requiredIf($isMergeSupplier), 'array', 'min:1'],
+            'batches.*'     => ['array', 'min:2'],
+            'batches.*.*'   => ['file', 'mimes:pdf'],
+            'batch_names'   => ['nullable','array'],
+            'batch_names.*' => [ 'nullable','string','max:120',
+                function ($attribute, $value, $fail) use ($supplier, $company) {
+                    if (!is_string($value) || trim($value) === '') return;
+                    $candidate = $this->sanitizePdfName($value);
+                    if (!$candidate) return;
+
+                    $exists = FileUpload::where([
+                        'supplier_id' => $supplier->id,
+                        'company_id'  => $company->id,
+                        'file_name'   => $candidate,
+                    ])->exists();
+
+                    if ($exists) {
+                        $batchNo = 1;
+                        if (preg_match('/\.(\d+)$/', $attribute, $m)) $batchNo = ((int)$m[1]) + 1;
+                        $fail("Merged file name for Batch {$batchNo} is already used for this supplier. Choose a different name.");
+                    }
+                },
+            ],
+        ]);
+
+        $files = $request->file('task_file');
         $companyName = strtolower(preg_replace('/\s+/', '_', $company->name));
         $supplierName = strtolower(preg_replace('/\s+/', '_', $supplier->name));
 
@@ -1735,6 +1766,139 @@ class TaskController extends Controller
             Log::error("Source directory {$filePath} not found.");
             File::makeDirectory($filePath, 0755, true, true);
             Log::info("Created source directory: {$filePath}, please ensure files are pushed here.");
+        }
+
+        if ($isMergeSupplier) {
+            try {
+                $allMessages = [];
+                $allData = [];
+                $hasError = false;
+                $batchIndex = 0;
+
+                foreach ($request->file('batches') as $batchFiles) {
+                    $batchIndex++;
+                    $merger = new Merger(new Fpdi2Driver());
+                    $successFiles = [];
+                    $failedFiles  = [];
+                    $reasons = [];
+
+                    $names = array_map(fn($f) => $f->getClientOriginalName(), $batchFiles);
+
+                    $matches = FileUpload::with('user')
+                        ->where('supplier_id', $supplier->id)
+                        ->where('company_id', $company->id)
+                        ->where(function ($q) use ($names) {
+                            foreach ($names as $n) {
+                                $q->orWhere('file_name', $n)
+                                ->orWhereJsonContains('source_files', $n);
+                            }
+                        })
+                        ->get(['file_name','source_files','user_id']);
+
+                    foreach ($matches as $match) {
+                        $matchUser = $match->user;
+                        $message = ($matchUser && $matchUser->id === $user->id)
+                            ? 'File has already been uploaded by you'
+                            : (($matchUser && $matchUser->company !== null)
+                                ? 'File has been uploaded by your admin. Please contact them to resolve this issue.'
+                                : ($matchUser
+                                    ? "File has been uploaded by another user : {$matchUser->name}. Please contact them to resolve this issue."
+                                    : 'File has already been uploaded.'));
+
+                        if (!empty($match->file_name) && in_array($match->file_name, $names, true)) {
+                            $reasons[$match->file_name] = $message;
+                        }
+                        $arr = is_array($match->source_files) ? $match->source_files : (json_decode($match->source_files, true) ?: []);
+                        foreach ($arr as $n) {
+                            if (in_array($n, $names, true)) $reasons[$n] = $message;
+                        }
+                    }
+
+                    $duplicates = array_values(array_intersect($names, array_keys($reasons)));
+                    if ($duplicates) {
+                        $hasError = true;
+                        $allMessages[] = "Batch {$batchIndex} failed to merge.";
+                        foreach ($duplicates as $n) {
+                            $allData[] = ['file_name' => $n, 'message' => $reasons[$n]];
+                        }
+                        continue;
+                    }
+
+                    foreach ($batchFiles as $file) {
+                        try {
+                            $merger->addFile($file->getRealPath());
+                            $successFiles[] = $file->getClientOriginalName();
+                        } catch (\Throwable $e) {
+                            $failedFiles[] = $file->getClientOriginalName();
+                        }
+                    }
+
+                    if ($failedFiles) {
+                        $hasError = true;
+                        $allMessages[] = "Batch {$batchIndex} failed to merge. Failed files: " . implode(', ', $failedFiles);
+                        foreach ($failedFiles as $f) {
+                            $allData[] = ['file_name' => $f];
+                        }
+                        continue;
+                    }
+
+                    $mergedBytes = $merger->merge();
+                    $customBase  = $request->input("batch_names." . ($batchIndex - 1));
+                    $customName  = $this->sanitizePdfName($customBase);
+
+                    if ($customName) {
+                        $mergedName = $customName;
+                    } else {
+                        $mergePrefixMap = [
+                            'TBO Air'        => 'TBOAir',
+                            'TBO Car'        => 'TBOCar',
+                            'Smile Holidays' => 'SMLH',
+                        ];
+                        $prefix = $mergePrefixMap[$supplier->name] ?? preg_replace('/\s+/', '', $supplier->name);
+                        $mergedName = sprintf('%s-%s-b%02d.pdf', $prefix, now()->format('ymdHi'), $batchIndex);
+                    }
+
+                    $mergedPath = "{$companyName}/{$supplierName}/files_unprocessed/{$mergedName}";
+                    if (Storage::exists($mergedPath) || FileUpload::where([
+                            'file_name'   => $mergedName,
+                            'supplier_id' => $supplier->id,
+                            'company_id'  => $company->id,
+                        ])->exists()) {
+                        $base = preg_replace('/\.pdf$/i', '', $mergedName);
+                        $mergedName = $base . '-' . now()->format('ymdHi') . '.pdf';
+                        $mergedPath = "{$companyName}/{$supplierName}/files_unprocessed/{$mergedName}";
+                    }
+                    Storage::put($mergedPath, $mergedBytes);
+
+                    FileUpload::create([
+                        'file_name'        => $mergedName,
+                        'destination_path' => Storage::path($mergedPath),
+                        'user_id'          => $user->id,
+                        'supplier_id'      => $supplier->id,
+                        'company_id'       => $company->id,
+                        'status'           => 'pending',
+                        'source_files'     => $successFiles,
+                    ]);
+
+                    $allMessages[] = "Batch {$batchIndex} merged successfully. Uploaded files: " . implode(', ', $successFiles);
+                    foreach ($successFiles as $f) {
+                        $allData[] = $f;
+                    }
+                }
+
+                return [[
+                    'status'  => $hasError ? 'error' : 'success',
+                    'message' => implode(' | ', $allMessages),
+                    'data'    => $allData,
+                ]];
+            } catch (\Throwable $e) {
+                Log::error('TBO batch merge failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+                return [[
+                    'status'  => 'error',
+                    'message' => 'Failed to merge TBO PDFs.',
+                    'data'    => [$e->getMessage()],
+                ]];
+            }
         }
 
         $error = false;
@@ -2298,7 +2462,8 @@ class TaskController extends Controller
                 'invoice_price' => null,
                 'voucher_status' => null,
                 'refund_date' => null,
-                'issued_date' => Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
+                'issued_date' => $cancellationDate ?? null,
+                'supplier_created_date' => Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
                 'task_hotel_details' => [
                     'hotel_name' => $hotel['name'],
                     'hotel_country' => $hotel['countryId'],

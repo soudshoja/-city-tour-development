@@ -59,6 +59,12 @@
                                 <input type="number" name="amount" step="0.01" class="w-full border px-3 py-2 rounded-full" placeholder="Enter charge amount" required>
                             </div>
 
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium">Self Charge</label>
+                                <input type="number" name="self_charge" step="0.01" class="w-full border px-3 py-2 rounded-full" placeholder="Enter self charge amount (optional)">
+                                <p class="text-xs text-gray-500 mt-1">If set, this will override the gateway amount</p>
+                            </div>
+
                             <div class="mb-4 flex gap-4">
                                 <div class="w-1/2">
                                     <label class="block text-sm font-medium">Paid By</label>
@@ -94,19 +100,26 @@
 
                             <!-- Auto Payment and External URL Settings -->
                             <div class="mb-4 flex gap-4">
-                                <div class="w-1/2">
+                                <div class="w-1/3">
                                     <div class="flex items-center">
                                         <input type="checkbox" name="is_auto_paid" id="is_auto_paid" value="1" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                         <label for="is_auto_paid" class="ml-2 text-sm font-medium text-gray-700">Auto Payment</label>
                                     </div>
                                     <p class="text-xs text-gray-500 mt-1">Invoice will be automatically paid</p>
                                 </div>
-                                <div class="w-1/2">
+                                <div class="w-1/3">
                                     <div class="flex items-center">
                                         <input type="checkbox" name="has_url" id="has_url" value="1" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                         <label for="has_url" class="ml-2 text-sm font-medium text-gray-700">External URL</label>
                                     </div>
                                     <p class="text-xs text-gray-500 mt-1">Can put external payment gateway URL</p>
+                                </div>
+                                <div class="w-1/3">
+                                    <div class="flex items-center">
+                                        <input type="checkbox" name="can_charge_invoice" id="can_charge_invoice" value="1" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                        <label for="can_charge_invoice" class="ml-2 text-sm font-medium text-gray-700">Invoice Charge</label>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">Allow charging additional fees on invoices</p>
                                 </div>
                             </div>
 
@@ -167,6 +180,7 @@
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Service Charge</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Self Charge</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Charge Type</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Charge</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Auto Payment</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">External URL</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
@@ -176,7 +190,7 @@
                                 <tbody>
                                     @forelse ($charges as $charge)
                                     <tr class="cursor-pointer bg-gray-100 hover:bg-gray-200" @click="open[{{ $charge->id }}] = !open[{{ $charge->id }}]">
-                                        <td class="p-3 font-bold text-gray-800 bg-gray-100" colspan="11">
+                                        <td class="p-3 font-bold text-gray-800 bg-gray-100" colspan="12">
                                             {{ $charge->name }}
                                         </td>
                                     </tr>
@@ -191,6 +205,9 @@
                                         <td class="p-3 text-sm text-gray-600">{{ $method->service_charge }}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $method->self_charge}}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $method->charge_type }}</td>
+                                        <td class="p-3 text-sm text-gray-600">-</td>
+                                        <td class="p-3 text-sm text-gray-600">-</td>
+                                        <td class="p-3 text-sm text-gray-600">-</td>
                                         <td class="p-3 text-sm text-gray-600">
                                             {{ $method->description ? $method->description : 'Not Set' }}
                                         </td>
@@ -213,7 +230,7 @@
                                     @endforeach
                                     @else
                                     <tr x-cloak x-show="open[{{ $charge->id }}]" x-transition>
-                                        <td colspan="11" class="p-3 pl-6 italic text-sm text-red-500 text-center align-middle">
+                                        <td colspan="12" class="p-3 pl-6 italic text-sm text-red-500 text-center align-middle">
                                             No payment method for this payment gateway
                                         </td>
                                     </tr>
@@ -225,6 +242,18 @@
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->amount }}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->self_charge}}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->charge_type }}</td>
+                                        <td class="p-3 text-sm text-gray-600">
+                                            @if($charge->can_charge_invoice)
+                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                                    </svg>
+                                                    Enabled
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Disabled</span>
+                                            @endif
+                                        </td>
                                         <td class="p-3 text-sm text-gray-600">
                                             @if($charge->is_auto_paid)
                                                 <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
@@ -289,7 +318,7 @@
                                     @endif
                                     @empty
                                     <tr>
-                                        <td colspan="11" class="p-6 text-center text-sm text-blue-500 align-middle">
+                                        <td colspan="12" class="p-6 text-center text-sm text-blue-500 align-middle">
                                             No charges found.
                                         </td>
                                     </tr>
@@ -393,6 +422,12 @@
                                         <input type="text" name="amount" x-model="editData.amount" class="w-full border px-3 py-2 rounded-full">
                                     </div>
 
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium">Self Charge</label>
+                                        <input type="number" name="self_charge" x-model="editData.self_charge" step="0.01" class="w-full border px-3 py-2 rounded-full" placeholder="Enter self charge amount (optional)">
+                                        <p class="text-xs text-gray-500 mt-1">If set, this will override the gateway amount</p>
+                                    </div>
+
                                     <div class="mb-4 flex gap-4">
                                         <div class="w-1/2">
                                             <label class="block text-sm font-medium">Paid By</label>
@@ -417,19 +452,26 @@
 
                                     <!-- Auto Payment and External URL Settings -->
                                     <div class="mb-4 flex gap-4">
-                                        <div class="w-1/2">
+                                        <div class="w-1/3">
                                             <div class="flex items-center">
                                                 <input type="checkbox" name="is_auto_paid" id="edit_is_auto_paid" x-model="editData.is_auto_paid" value="1" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                 <label for="edit_is_auto_paid" class="ml-2 text-sm font-medium text-gray-700">Auto Payment</label>
                                             </div>
                                             <p class="text-xs text-gray-500 mt-1">Invoice will be automatically paid</p>
                                         </div>
-                                        <div class="w-1/2">
+                                        <div class="w-1/3">
                                             <div class="flex items-center">
                                                 <input type="checkbox" name="has_url" id="edit_has_url" x-model="editData.has_url" value="1" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                 <label for="edit_has_url" class="ml-2 text-sm font-medium text-gray-700">External URL</label>
                                             </div>
                                             <p class="text-xs text-gray-500 mt-1">Can put external payment gateway URL</p>
+                                        </div>
+                                        <div class="w-1/3">
+                                            <div class="flex items-center">
+                                                <input type="checkbox" name="can_charge_invoice" id="edit_can_charge_invoice" x-model="editData.can_charge_invoice" value="1" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                <label for="edit_can_charge_invoice" class="ml-2 text-sm font-medium text-gray-700">Invoice Charge</label>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1">Allow charging additional fees on invoices</p>
                                         </div>
                                     </div>
 

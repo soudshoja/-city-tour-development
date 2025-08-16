@@ -1364,7 +1364,7 @@
                                                 </td>
                                                 <td data-column="bill-to" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300 ">
                                                     @if ($task->client)
-                                                    <p>{{ $task->client->first_name }}</p>
+                                                    <p>{{ $task->client->first_name }}{{ $task->client->middle_name ?? '' }} {{ $task->client->last_name ?? '' }}</p>
                                                     <p>{{ $task->client->phone ?? 'No phone' }}</p>
                                                     @else
                                                     <p class="{{ $task->client ?? 'no-client relative' }}">

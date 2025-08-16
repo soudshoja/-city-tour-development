@@ -952,11 +952,29 @@
                                         <div class="mb-4 flex gap-4">
                                             <!-- Name Field -->
                                             <div class="w-1/2">
-                                                <label for="name"
-                                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Name</label>
-                                                <input id="name" name="name" type="text" required
+                                                <label for="first_name"
+                                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">First Name</label>
+                                                <input id="first_name" name="first_name" type="text" required
                                                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                                    placeholder="Client Name *" />
+                                                    placeholder="First Name *" />
+                                            </div>
+                                            
+                                            <div class="w-1/2">
+                                                <label for="middle_name"
+                                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Middle Name</label>
+                                                <input id="middle_name" name="middle_name" type="text"
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                    placeholder="Middle Name (Optional)" />
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-4 flex gap-4">
+                                            <div class="w-1/2">
+                                                <label for="last_name"
+                                                    class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Last Name</label>
+                                                <input id="last_name" name="last_name" type="text"
+                                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                                    placeholder="Last Name" />
                                             </div>
 
                                             <!-- Email Field -->
@@ -1358,7 +1376,7 @@
                         <td class="border-b px-4 py-2">${i}</td>
                         <td class="border-b px-4 py-2">
                         <select  id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
-                            ${clients.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
+                            ${clients.map(client => `<option value="${client.id}">${client.first_name}</option>`).join('')}
                         </select>
                         </td>
                         <td class="border-b px-4 py-2">
@@ -2054,7 +2072,9 @@
         function filterClients() {
             const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
             const filteredClients = clients.filter(client =>
-                (client.name && client.name.toLowerCase().includes(searchValue)) ||
+                (client.first_name && client.first_name.toLowerCase().includes(searchValue)) ||
+                (client.middle_name && client.middle_name.toLowerCase().includes(searchValue)) ||
+                (client.last_name && client.last_name.toLowerCase().includes(searchValue)) ||
                 (client.email && client.email.toLowerCase().includes(searchValue))
             );
             renderClientList(filteredClients);
@@ -2066,7 +2086,7 @@
             clientData.forEach(client => {
                 const li = document.createElement('li');
                 li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
-                li.innerText = `${client.name} - ${client.email}`;
+                li.innerText = `${client.first_name} ${client.middle_name ? client.middle_name + ' ' : ''} ${client.last_name ? client.last_name : ''} (${client.email})`;
                 li.onclick = () => selectClient(client);
                 clientList.appendChild(li);
             });
@@ -2079,8 +2099,8 @@
             document.getElementById('receiverId').value = client.id;
 
             // Update input fields
-            document.getElementById('receiverName').value = client.name;
-            document.getElementById('receiverName1').textContent = client.name;
+            document.getElementById('receiverName').value = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
+            document.getElementById('receiverName1').textContent = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
             document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
             closeClientModal();
@@ -2206,8 +2226,8 @@
                 document.getElementById('receiverId').value = client.id;
                 document.getElementById('clientid').value = client.id;
                 // Update input fields for client
-                document.getElementById('receiverName').value = client.name;
-                document.getElementById('receiverName1').textContent = client.name;
+                document.getElementById('receiverName').value = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
+                document.getElementById('receiverName1').textContent = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
                 document.getElementById('receiverEmail').value = client.email;
                 document.getElementById('receiverPhone').value = client.phone;
 
@@ -2233,8 +2253,8 @@
             document.getElementById('receiverId').value = client.id;
             document.getElementById('clientid').value = client.id;
             // Update input fields
-            document.getElementById('receiverName').value = client.name;
-            document.getElementById('receiverName1').textContent = client.name;
+            document.getElementById('receiverName').value = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
+            document.getElementById('receiverName1').textContent = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
             document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
 
@@ -2342,7 +2362,7 @@
                 const splitData = [];
                 rows.forEach(row => {
                     const selectElement = row.querySelector('select');
-                    const clientId = selectElement.value;
+                    const clientId = selectElement.value
                     const date = row.querySelector('input[type="date"]').value;
                     const gateway = row.querySelector('#payment_gateway2').value || null;
                     const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
@@ -3142,7 +3162,7 @@
                     console.log('Total Amount:', totalAmount);
 
                     clientCredit.innerHTML = `
-                <p class="text-gray-700 font-semibold">${client.name} Credit: 
+                <p class="text-gray-700 font-semibold">${client.first_name} Credit: 
                     <span class="${currentCredit >= 0 ? 'text-green-600' : 'text-red-600'}">
                         ${currentCredit.toFixed(2)} KWD
                     </span>
@@ -3151,7 +3171,7 @@
 
                     if (totalAmount > currentCredit) {
                         clientCredit.innerHTML += `
-                    <p class="text-red-500 font-medium">Total Amount exceeds ${client.name}'s Credit</p>
+                    <p class="text-red-500 font-medium">Total Amount exceeds ${client.first_name}'s Credit</p>
                 `;
                     } else {
                         clientCredit.innerHTML += `

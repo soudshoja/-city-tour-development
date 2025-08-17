@@ -42,6 +42,10 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
+use iio\libmergepdf\Merger;
+use iio\libmergepdf\Driver\Fpdi2Driver;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 // use Carbon\Carbon;
 
@@ -2033,6 +2037,18 @@ class TaskController extends Controller
         }
 
         return $response;
+    }
+
+    private function sanitizePdfName(?string $name): ?string
+    {
+        if (!$name) return null;
+
+        $name = preg_replace('/[^\w\s\.\-]+/u', '', $name);
+        $name = preg_replace('/\s+/', '_', trim($name));
+        $name = ltrim($name, '._');
+
+        if ($name === '') return null;
+        return preg_replace('/\.pdf$/i', '', $name) . '.pdf';
     }
 
     public function exportCsv()

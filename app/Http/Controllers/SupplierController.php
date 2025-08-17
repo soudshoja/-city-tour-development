@@ -15,10 +15,14 @@ use App\Models\SupplierCompany;
 use App\Models\SupplierCredential;
 use App\Models\Task;
 use DateTime;
+use Exception;
 use Generator;
 use GuzzleHttp\Client;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
@@ -276,7 +280,7 @@ public function updateExchangeRates(Request $request, $supplierId)
 
         $client = new Client();
         try {
-            $response = $client->post($tokenUrl, [
+            $response = $client->post('https://example.com', [
                 'form_params' => [
                     'grant_type' => 'authorization_code',
                     'code' => $code,
@@ -299,7 +303,7 @@ public function updateExchangeRates(Request $request, $supplierId)
         }
     }
 
-    public function getMagicHoliday($ref = null)
+    public function getMagicHoliday($ref = null) : JsonResponse
     {
         if($ref) {
             $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations/' . $ref;
@@ -309,8 +313,8 @@ public function updateExchangeRates(Request $request, $supplierId)
 
         $scopes = ['read:reservations'];
 
-        $response = $this->magicApiRequest('GET', $url, [], [], $scopes);
-
+        $response = $this->magicApiRequest('GET', $url, [], [], $scopes, ['id' => $ref]);
+        
         return response()->json($response);
     }
 
@@ -319,8 +323,9 @@ public function updateExchangeRates(Request $request, $supplierId)
         string $url,
         array $header = [],
         array $data = [],
-        array $scopes = ['read:reservations']
-    )
+        array $scopes = ['read:reservations'],
+        array $queryParams = []
+    ) : array
     {
         
         $responseCredential = $this->getClientCredential($scopes);
@@ -336,9 +341,9 @@ public function updateExchangeRates(Request $request, $supplierId)
         $accessToken = $responseCredential['token_type'] . ' ' . $responseCredential['access_token'];
 
         $header = [
-            'Authorization: ' . $accessToken,
-            'Accept: application/json',
-            'Content-Type: application/json',
+            'Authorization' => $accessToken,
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json',
         ];
 
         Log::channel('magic_holidays')->info('Request', [
@@ -349,62 +354,113 @@ public function updateExchangeRates(Request $request, $supplierId)
         ]);
 
         $data = json_encode($data);
+
+        // test
+
+        // $apiUrl = config('services.open-ai.url');
+        // $apiKey = config('services.open-ai.key');
+
+        // $url = $apiUrl . '/chat/completions';
+        // $header = [
+        //     'Authorization: Bearer ' . config('services.open-ai.key'),
+        //     'Content-Type: application/json',
+        // ];
+
+        // $message = [
+        //     [
+        //         'role' => 'user',
+        //         'content' => 'Please respond with JSON format',
+        //     ]
+        // ];
+
+        // $data = [
+        //     'model' => config('services.open-ai.model'),
+        //     'messages' => $message,
+        //     'response_format' => [
+        //         'type' => 'json_object',
+        //     ]
+        // ];
+
+        // $response = Http::timeout(120)->withHeaders([
+        //     'Authorization' => 'Bearer ' . $apiKey,
+        //     'Content-Type' => 'application/json',
+        // ])->post($url, $data);
+
+        // dd($response->json());
+
+        //end test
         
          
          switch ($method) {
             case 'GET':
-            $response = $this->getRequest($url, $header);
+
+            if (strpos($url, '?') !== false) {
+                $url .= '&' . http_build_query($queryParams);
+            } else {
+                $url .= '?' . http_build_query($queryParams);
+            }
+
+            $response = Http::withoutVerifying()->withHeaders($header)->get($url);
             break;
             case 'POST':
-            $response = $this->postRequest($url, $header, $data);
+            $response = Http::withoutVerifying()->withHeaders($header)->post($url, $data);
             break;
             case 'PUT':
-            $response = $this->putRequest($url, $header, $data);
+            $response = Http::withoutVerifying()->withHeaders($header)->put($url, $data);
             break;
             case 'DELETE':
-            $response = $this->deleteRequest($url, $header);
+            $response = Http::withoutVerifying()->withHeaders($header)->delete($url);
             break;
             default:
             throw new \InvalidArgumentException("Unsupported HTTP method: $method");
         }
 
-        Log::channel('magic_holidays')->info('Response', $response);
+        Log::channel('magic_holidays')->info('Response', $response->json());
 
         if(isset($response['status']) && $response['status'] !== 200){
             return [
                 'status' => 'error',
-                'data' => $response,
+                'data' => $response->json(),
                 'message' => $response['detail']
             ];
         }
 
         return [
             'status' => 'success',
-            'data' => $response
+            'data' => $response->json()
         ];
     }
 
-    public function getClientCredential(array $scopes)
+    public function getClientCredential(array $scopes) : array
     {
-        $tokenUrl = config('services.magic-holiday.token-url');
+        $key = 'magic_holiday_client_credential_' . implode('_', $scopes);
 
-        $data = [
-            'client_id' => config('services.magic-holiday.client-id'),
-            'client_secret' => config('services.magic-holiday.client-secret'),
-            'grant_type' => 'client_credentials',
-            'scope' => $scopes,
-        ];
+        $ttl = 60 * 60 * 24; // seconds * minutes * hours (1 day)
 
-        Log::channel('magic_holidays')->info('Credential Request', [
-            'token-url' => $tokenUrl,
-            'data' => $data
-        ]);
+        return Cache::remember($key, $ttl, function () use ($scopes) {
 
-        $response = $this->postRequest($tokenUrl, [], $data);
+            $tokenUrl = config('services.magic-holiday.token-url');
 
-        Log::channel('magic_holidays')->info('Credential Response', $response);
+            $data = [
+                'client_id' => config('services.magic-holiday.client-id'),
+                'client_secret' => config('services.magic-holiday.client-secret'),
+                'grant_type' => 'client_credentials',
+                'scope' => $scopes,
+            ];
 
-        return $response;
+            $response = Http::withoutVerifying()->post($tokenUrl, $data);
+            
+            Log::channel('magic_holidays')->info('Credential Response', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]); 
+            
+            if (!$response->successful()) {
+                throw new Exception('Unable to retrieve access token.');
+            }
+
+            return $response->json();
+        });
     }
 
     public function magicReserveWebhook($id)

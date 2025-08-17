@@ -745,6 +745,11 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • If the file shows 'Net Amount' and 'Agent Markup': set price and total with Net Amount exactly as showen (ignore markup value).\n";
         $prompt .= "  • Put the Agent Markup value in tasks.additional_info (e.g., 'Agent Markup: KWD 12.00').\n";
         $prompt .= "  • If Net Amount is shown in another currency (e.g., 'KWD 209.45 (USD 685.25)'), store that other-currency value (e.g., USD 685.25) in original_price/original_currency.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (FLY DUBAI):\n";
+        $prompt .= "  • Set tasks.issued_by and tasks.created_by to the first invoice name from the document. Set agent to null if the agent cannot be found in the document.\n";
+        $prompt .= "  • Set tasks.original_price with the Base fare, tasks.price with the Fare total, and tasks.total with the Booking total from the document.\n";
+        $prompt .= "  • If the document contains multiple passengers, always use the Booking total as the basis and divide it equally among all passengers to compute each passenger’s price. Do NOT assign the full total to each passenger.\n";
+        $prompt .= "  • Place all other monetary details (e.g., Optional extras, Transaction fee, Admin fees, Taxes/fees, etc.) into tasks.additional_info.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (NDC SUPPLIERS): If the supplier has 'NDC' in its name (case-insensitive), set created_by to exactly match issued_by.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (EMIRATES NDC): Set issued_by to the agency/office name that appears immediately next to the 'IATA:' number.\n";
 

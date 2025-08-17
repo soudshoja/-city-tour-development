@@ -1764,10 +1764,9 @@
                                             <form id="bulk-edit-form" @submit.prevent="submitBulkEdit" class="flex flex-col gap-6">
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                                                    
-                                                        <x-searchable-dropdown name="bulk_client_id"
-                                                            :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->first_name . ' ' . $c->last_name . ' - ' . $c->phone])"
-                                                            placeholder="Select Client" />
+                                                    <x-searchable-dropdown name="bulk_client_id"
+                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name . ' - ' . $c->phone])"
+                                                        placeholder="Select Client" />
                                                 </div>
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
@@ -2059,6 +2058,7 @@
             const form = document.getElementById('agent-supplier-task');
 
             formTaskContainer.innerHTML = '';
+            const isHotel = (supplier?.has_hotel == 1 ||  supplier?.has_hotel == '1')&& supplier.name != 'Amadeus';
 
             console.log('Selected Supplier:', supplier);
             if (supplier.name == 'Magic Holiday') {
@@ -2075,7 +2075,7 @@
                     'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
                     'dark:text-gray-300', 'p-3', 'mb-1');
                 formTaskContainer.appendChild(input);
-            } else if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air' || supplier.name == 'Smile Holidays') {
+            } else if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air' || isHotel) {
                 const batches = [];
                 let active = 0;
 
@@ -2160,9 +2160,9 @@
                                     <button type="button" class="remove text-xs text-gray-500 hover:text-gray-700">Remove</button>
                                 </div>
                             </div>
-                            <label class="block text-xs text-gray-600 mb-1">Merged file name (optional)</label>
+                            <label class="block text-xs text-gray-600 mb-1 name-label">Merged file name (optional)</label>
                             <input type="text" class="name-input w-full border rounded px-2 py-1 text-sm mb-2"
-                                placeholder="e.g. TBO_0001.pdf (leave blank to auto-name)" />
+                                placeholder="e.g. TBO_0001.pdf (only for 2+ files)" />
                             <div class="drop flex flex-col items-center justify-center border-2 border-dashed border-gray-300
                                         rounded-md text-center cursor-pointer bg-white hover:bg-gray-50 transition
                                         text-sm text-gray-500 mb-2 p-4">
@@ -2171,8 +2171,8 @@
                                     <path d="M32 38V20" />
                                     <path d="M24 28L32 20L40 28" />
                                 </svg>
-                                <p class="font-medium text-gray-700 mt-1">Click or drag PDFs (min 2) here</p>
-                                <p class="text-xs text-gray-500">We’ll merge these into one PDF</p>
+                                <p class="font-medium text-gray-700 mt-1">Click or drag PDF(s) here to upload</p>
+                                <p class="text-xs text-gray-500">Multiple PDFs supported</p>
                             </div>
                             <input type="file" class="file hidden" accept="application/pdf" multiple />
                             <div class="files hidden text-sm text-gray-700 border border-gray-200 rounded p-2 bg-white max-h-[160px] overflow-y-auto">
@@ -2187,8 +2187,10 @@
                     const countEl = slide.querySelector('.count');
                     const hint = slide.querySelector('.hint');
                     const nameInput = slide.querySelector('.name-input');
+                    const nameLabel = slide.querySelector('.name-label');
 
                     function updateUI() {
+                        const count = batches[batchIndex].length;
                         countEl.textContent = batches[batchIndex].length;
                         filesBox.innerHTML = '';
                         if (batches[batchIndex].length === 0) {
@@ -2216,6 +2218,19 @@
                             hint.textContent = 'Need at least 2 PDFs in this batch';
                             hint.className = 'hint text-xs mt-2 text-amber-600';
                         }
+                        if (count >= 1) {
+                            hint.textContent = count === 1
+                            ? 'Ready: single file (original name will be used)'
+                            : 'Ready to merge (you may set a custom merged name)';
+                            hint.className = 'hint text-xs mt-2 text-green-600';
+                        } else {
+                            hint.textContent = 'Add at least 1 PDF to this batch';
+                            hint.className = 'hint text-xs mt-2 text-amber-600';
+                        }
+                        const showName = count >= 2;
+                        nameInput.classList.toggle('hidden', !showName);
+                        nameLabel.classList.toggle('hidden', !showName);
+                        nameInput.disabled = !showName;
                     }
 
                     ['dragenter', 'dragover'].forEach(evt =>
@@ -2286,7 +2301,7 @@
                     const slides = Array.from(track.children);
 
                     batches.forEach((files, i) => {
-                        if (files.length < 2) invalid.push(i + 1);
+                        if (files.length < 1) invalid.push(i + 1);
 
                         const dt = new DataTransfer();
                         files.forEach(f => dt.items.add(f));
@@ -2310,12 +2325,12 @@
 
                     if (batches.length === 0) {
                         e.preventDefault();
-                        alert('Please add at least one batch (min 2 PDFs).');
+                        alert('Please add at least one batch (min 1 PDF).');
                         return;
                     }
                     if (invalid.length) {
                         e.preventDefault();
-                        alert(`Each batch must have at least 2 PDFs.\nCheck batch(es): ${invalid.join(', ')}.`);
+                        alert(`Each batch must have at least 1 PDF.\nCheck batch(es): ${invalid.join(', ')}.`);
                         return;
                     }
                 };

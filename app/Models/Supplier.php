@@ -67,4 +67,17 @@ class Supplier extends Model
     {
         return $this->hasMany(SupplierExchangeRate::class);
     }
+
+    public function isMergeSupplier(): bool
+    {
+        if (in_array($this->name, ['TBO Air', 'TBO Car'])) {
+            return true;
+        }
+
+        if ($this->has_hotel == 1 && $this->name !== 'Amadeus') {
+            return true;
+        }
+
+        return false;
+    }
 }

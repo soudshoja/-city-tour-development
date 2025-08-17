@@ -10,12 +10,11 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class getMagicHolidayReservationList extends Command
 {
-    use HttpRequestTrait;
-    
     /**
      * The name and signature of the console command.
      *
@@ -179,9 +178,9 @@ class getMagicHolidayReservationList extends Command
         $accessToken = $responseCredential['token_type'] . ' ' . $responseCredential['access_token'];
 
         $header = [
-            'Authorization: ' . $accessToken,
-            'Accept: application/json',
-            'Content-Type: application/json',
+            'Authorization' => $accessToken,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
         ];
 
         Log::channel('magic_holidays')->info('Request', [
@@ -195,19 +194,19 @@ class getMagicHolidayReservationList extends Command
 
         switch ($method) {
             case 'GET':
-                $response = $this->getRequest($url, $header, $params);
-                break;
+            $response = Http::withoutVerifying()->withHeaders($header)->get($url, $params)->json();
+            break;
             case 'POST':
-                $response = $this->postRequest($url, $header, $data);
-                break;
+            $response = Http::withoutVerifying()->withHeaders($header)->post($url, json_decode($data, true))->json();
+            break;
             case 'PUT':
-                $response = $this->putRequest($url, $header, $data);
-                break;
+            $response = Http::withoutVerifying()->withHeaders($header)->put($url, json_decode($data, true))->json();
+            break;
             case 'DELETE':
-                $response = $this->deleteRequest($url, $header);
-                break;
+            $response = Http::withoutVerifying()->withHeaders($header)->delete($url)->json();
+            break;
             default:
-                throw new \InvalidArgumentException("Unsupported HTTP method: $method");
+            throw new \InvalidArgumentException("Unsupported HTTP method: $method");
         }
 
         Log::channel('magic_holidays')->info('Response', $response);
@@ -245,7 +244,8 @@ class getMagicHolidayReservationList extends Command
             'data' => $data
         ]);
 
-        $response = $this->postRequest($tokenUrl, [], $data);
+        // $response = $this->postRequest($tokenUrl, [], $data);
+        $response = Http::withoutVerifying()->post($tokenUrl, $data)->json();
 
         Log::channel('magic_holidays')->info('Credential Response', $response);
 
@@ -272,7 +272,7 @@ class getMagicHolidayReservationList extends Command
             'Accept: application/json',
         ];
         $data = [
-            'url' => route('suppliers.magic-webhook-callback'),
+            'url' => route('magic-webhook-callback'),
         ];
 
         Log::channel('magic_holidays')->info('Magic Holiday Webhook Request', [

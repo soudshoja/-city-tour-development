@@ -1871,7 +1871,7 @@ class TaskController extends Controller
                                 'Como Travels' => 'COMO',
                                 'Smile Holidays' => 'SMIL',
                                 'Jnan Tours' => 'JNAN',
-                                'Wolrd of Luxry' => 'WOLX',
+                                'World of Luxury' => 'WLUX',
                                 'Heysam Group' => 'HEYS',
                                 'DARINA HOLIDAYS' => 'DARIN',
                                 'HOTEL TOURS' => 'HTOUR',

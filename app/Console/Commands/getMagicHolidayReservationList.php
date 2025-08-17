@@ -9,6 +9,7 @@ use App\Models\Hotel;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -229,27 +230,43 @@ class getMagicHolidayReservationList extends Command
         string $clientId,
         string $clientSecret,
         array $scopes
-    ) {
+    ) : array
+    {
         $tokenUrl = config('services.magic-holiday.token-url');
 
-        $data = [
-            'client_id' => $clientId,
-            'client_secret' => $clientSecret,
-            'grant_type' => 'client_credentials',
-            'scope' => $scopes,
-        ];
+        if (empty($tokenUrl)) {
+            Log::channel('magic_holidays')->error('Magic Holiday token URL is not configured.');
+            return [
+                'status' => 'error',
+                'message' => 'Magic Holiday token URL is not configured.'
+            ];
+        }
 
-        Log::channel('magic_holidays')->info('Credential Request', [
-            'token-url' => $tokenUrl,
-            'data' => $data
-        ]);
+        $key = 'magic_holiday_credentials_' . $clientId . '_' . implode('_', $scopes);
 
-        // $response = $this->postRequest($tokenUrl, [], $data);
-        $response = Http::withoutVerifying()->post($tokenUrl, $data)->json();
+        $ttl = 60 * 60 * 24; // 24 hours
 
-        Log::channel('magic_holidays')->info('Credential Response', $response);
+        return Cache::remember($key, $ttl, function () use ($clientId, $clientSecret, $tokenUrl, $scopes) {
 
-        return $response;
+            $data = [
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+                'grant_type' => 'client_credentials',
+                'scope' => $scopes,
+            ];
+
+            Log::channel('magic_holidays')->info('Credential Request', [
+                'token-url' => $tokenUrl,
+                'data' => $data
+            ]);
+
+            $response = Http::withoutVerifying()->post($tokenUrl, $data);
+
+            Log::channel('magic_holidays')->info('Credential Response', $response->json());
+
+            return $response->json();
+        });
+
     }
 
 

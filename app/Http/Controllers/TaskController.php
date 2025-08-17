@@ -2714,14 +2714,26 @@ class TaskController extends Controller
                 }
 
                 $response = $supplierController->getMagicHoliday($request->supplier_ref);
-                $response = json_decode($response->getContent(), true);
+                
+                if(!$response instanceof \Illuminate\Http\JsonResponse){
+                    Log::channel('magic_holidays')->error('Invalid response from Magic Holiday API',[
+                        'supplier_ref' => $request->supplier_ref,
+                        'expected_type' => 'Illuminate\Http\JsonResponse',
+                        'actual_type' => get_class($response)
+                    ]);
 
-                Log::channel('magic_holidays')->info('Magic Holiday response: ', $response);
-
-                if (isset($response['status']) && $response['status'] == 'error') {
-                    return redirect()->back()->with('error', $response['message']);
+                    return redirect()->back()->with('error', 'Something went wrong in fetching data from Magic Holiday API');
                 }
-                $data = $response['data'];
+
+                $responseData = $response->getData(true);
+
+                Log::channel('magic_holidays')->info('Magic Holiday response: ', $responseData);
+
+                if (isset($responseData['status']) && $responseData['status'] == 'error') {
+                    return redirect()->back()->with('error', $responseData['message']);
+                }
+
+                $data = $responseData['data'];
 
                 if (isset($data['_embedded'])) { // Check if it's a list
                     foreach ($data['_embedded']['reservation'] as $reservation) {
@@ -2734,7 +2746,6 @@ class TaskController extends Controller
                         $supplierController->magicReserveWebhook($reservation['id']);
                     }
                 } else {
-
                     $response = $this->processSingleReservation($data, $agentId, $companyId);
 
                     if ($response['status'] == 'error') {

@@ -1726,13 +1726,13 @@ class TaskController extends Controller
 
         $files = $request->file('task_file');
         $supplier = Supplier::find($request->supplier_id);
-        $isMergeSupplier = in_array($supplier->name, ['TBO Air', 'TBO Car', 'Smile Holidays']);
+        $isMergeSupplier = $supplier->isMergeSupplier();
 
         $request->validate([
             'task_file'     => [Rule::requiredIf(!$isMergeSupplier), 'array'],
             'task_file.*'   => ['mimes:pdf,txt'],
             'batches'       => [Rule::requiredIf($isMergeSupplier), 'array', 'min:1'],
-            'batches.*'     => ['array', 'min:2'],
+            'batches.*'     => ['array'],
             'batches.*.*'   => ['file', 'mimes:pdf'],
             'batch_names'   => ['nullable','array'],
             'batch_names.*' => [ 'nullable','string','max:120',
@@ -1777,7 +1777,6 @@ class TaskController extends Controller
 
                 foreach ($request->file('batches') as $batchFiles) {
                     $batchIndex++;
-                    $merger = new Merger(new Fpdi2Driver());
                     $successFiles = [];
                     $failedFiles  = [];
                     $reasons = [];
@@ -1817,13 +1816,14 @@ class TaskController extends Controller
                     $duplicates = array_values(array_intersect($names, array_keys($reasons)));
                     if ($duplicates) {
                         $hasError = true;
-                        $allMessages[] = "Batch {$batchIndex} failed to merge.";
+                        $allMessages[] = "Batch {$batchIndex} failed.";
                         foreach ($duplicates as $n) {
                             $allData[] = ['file_name' => $n, 'message' => $reasons[$n]];
                         }
                         continue;
                     }
 
+                    $merger = new Merger(new Fpdi2Driver());
                     foreach ($batchFiles as $file) {
                         try {
                             $merger->addFile($file->getRealPath());
@@ -1835,27 +1835,53 @@ class TaskController extends Controller
 
                     if ($failedFiles) {
                         $hasError = true;
-                        $allMessages[] = "Batch {$batchIndex} failed to merge. Failed files: " . implode(', ', $failedFiles);
-                        foreach ($failedFiles as $f) {
-                            $allData[] = ['file_name' => $f];
-                        }
+                        $allMessages[] = "Batch {$batchIndex} failed. Failed files: " . implode(', ', $failedFiles);
+                        foreach ($failedFiles as $f) $allData[] = ['file_name' => $f];
                         continue;
                     }
 
-                    $mergedBytes = $merger->merge();
-                    $customBase  = $request->input("batch_names." . ($batchIndex - 1));
-                    $customName  = $this->sanitizePdfName($customBase);
+                    $mergedBytes = null;
+                    $mergedName  = null;
 
-                    if ($customName) {
-                        $mergedName = $customName;
+                    if (count($batchFiles) === 1) {
+                        $only = $batchFiles[0];
+                        $mergedBytes = file_get_contents($only->getRealPath());
+                        $mergedName  = $only->getClientOriginalName();
+                        if (!preg_match('/\.pdf$/i', $mergedName)) {
+                            $mergedName .= '.pdf';
+                        }
                     } else {
-                        $mergePrefixMap = [
-                            'TBO Air'        => 'TBOAir',
-                            'TBO Car'        => 'TBOCar',
-                            'Smile Holidays' => 'SMLH',
-                        ];
-                        $prefix = $mergePrefixMap[$supplier->name] ?? preg_replace('/\s+/', '', $supplier->name);
-                        $mergedName = sprintf('%s-%s-b%02d.pdf', $prefix, now()->format('ymdHi'), $batchIndex);
+                        $mergedBytes = $merger->merge();
+
+                        $customBase  = $request->input("batch_names." . ($batchIndex - 1));
+                        $customName  = $this->sanitizePdfName($customBase);
+
+                        if ($customName) {
+                            $mergedName = $customName;
+                        } else {
+                            $mergePrefixMap = [
+                                'TBO Air' => 'TBOAir',
+                                'TBO Car'  => 'TBOCar',
+                                'TBO Holiday' => 'TBOHol',
+                                'DOTW' => 'DOTW',
+                                'Rate Hawk' => 'RateH',
+                                'Travel Collection' => 'TravC',
+                                'Mamlakat Alasfar' => 'MAMLK',
+                                'Como Travels' => 'COMO',
+                                'Smile Holidays' => 'SMIL',
+                                'Jnan Tours' => 'JNAN',
+                                'World of Luxury' => 'WLUX',
+                                'Heysam Group' => 'HEYS',
+                                'DARINA HOLIDAYS' => 'DARIN',
+                                'HOTEL TOURS' => 'HTOUR',
+                                'Supreme Services' => 'SUPR',
+                                'Blue Sky' => 'BSKY',
+                                'Sky Rooms' => 'SKYR',
+                                'Rezlive' => 'REZL',
+                            ];
+                            $prefix = $mergePrefixMap[$supplier->name] ?? preg_replace('/\s+/', '', $supplier->name);
+                            $mergedName = sprintf('%s-%s-b%02d.pdf', $prefix, now()->format('ymdHi'), $batchIndex);
+                        }
                     }
 
                     $mergedPath = "{$companyName}/{$supplierName}/files_unprocessed/{$mergedName}";
@@ -1880,10 +1906,12 @@ class TaskController extends Controller
                         'source_files'     => $successFiles,
                     ]);
 
-                    $allMessages[] = "Batch {$batchIndex} merged successfully. Uploaded files: " . implode(', ', $successFiles);
-                    foreach ($successFiles as $f) {
-                        $allData[] = $f;
+                    if (count($successFiles) === 1) {
+                        $allMessages[] = "Batch {$batchIndex} uploaded single PDF: " . $successFiles[0];
+                    } else {
+                        $allMessages[] = "Batch {$batchIndex} merged successfully. Uploaded files: " . implode(', ', $successFiles);
                     }
+                    foreach ($successFiles as $f) $allData[] = $f;
                 }
 
                 return [[
@@ -2673,14 +2701,26 @@ class TaskController extends Controller
                 }
 
                 $response = $supplierController->getMagicHoliday($request->supplier_ref);
-                $response = json_decode($response->getContent(), true);
+                
+                if(!$response instanceof \Illuminate\Http\JsonResponse){
+                    Log::channel('magic_holidays')->error('Invalid response from Magic Holiday API',[
+                        'supplier_ref' => $request->supplier_ref,
+                        'expected_type' => 'Illuminate\Http\JsonResponse',
+                        'actual_type' => get_class($response)
+                    ]);
 
-                Log::channel('magic_holidays')->info('Magic Holiday response: ', $response);
-
-                if (isset($response['status']) && $response['status'] == 'error') {
-                    return redirect()->back()->with('error', $response['message']);
+                    return redirect()->back()->with('error', 'Something went wrong in fetching data from Magic Holiday API');
                 }
-                $data = $response['data'];
+
+                $responseData = $response->getData(true);
+
+                Log::channel('magic_holidays')->info('Magic Holiday response: ', $responseData);
+
+                if (isset($responseData['status']) && $responseData['status'] == 'error') {
+                    return redirect()->back()->with('error', $responseData['message']);
+                }
+
+                $data = $responseData['data'];
 
                 if (isset($data['_embedded'])) { // Check if it's a list
                     foreach ($data['_embedded']['reservation'] as $reservation) {
@@ -2693,7 +2733,6 @@ class TaskController extends Controller
                         $supplierController->magicReserveWebhook($reservation['id']);
                     }
                 } else {
-
                     $response = $this->processSingleReservation($data, $agentId, $companyId);
 
                     if ($response['status'] == 'error') {

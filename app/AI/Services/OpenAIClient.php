@@ -745,6 +745,17 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • If the file shows 'Net Amount' and 'Agent Markup': set price and total with Net Amount exactly as showen (ignore markup value).\n";
         $prompt .= "  • Put the Agent Markup value in tasks.additional_info (e.g., 'Agent Markup: KWD 12.00').\n";
         $prompt .= "  • If Net Amount is shown in another currency (e.g., 'KWD 209.45 (USD 685.25)'), store that other-currency value (e.g., USD 685.25) in original_price/original_currency.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (FLY DUBAI):\n";
+        $prompt .= "  • Set tasks.issued_by and tasks.created_by to the first invoice name from the document. Set agent to null if the agent in the document is not in the agent list.\n";
+        $prompt .= "  • Set tasks.original_price with the Base fare, tasks.price with the Fare total, and tasks.total with the Booking total from the document.\n";
+        $prompt .= "  • If the document contains multiple passengers, always use the Booking total as the basis and divide it equally among all passengers to compute each passenger’s price. Do NOT assign the full total to each passenger.\n";
+        $prompt .= "  • Place all other monetary details (e.g., Optional extras, Transaction fee, Admin fees, Taxes/fees, etc.) into tasks.additional_info.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (World of Luxury):\n";
+        $prompt .= "  • Create one task per passenger per accommodation segment. Do NOT combine multiple segments under one task.\n";
+        $prompt .= "  • For each task, set reference to the Inv.Nr; set issued_by and created_by to the Tour Operator; set agent and issued_date to null; use the document currency.\n";
+        $prompt .= "  • Set task.price and task.total to (segment Grand Total ÷ passenger_count)\n";
+        $prompt .= "  • If Pax Price exists, set task.original_price to Pax Price; otherwise set it to the per-passenger price.\n";
+        $prompt .= "  • Populate task_hotel_details with Hotel, Room, Type, Board, Nights, Check-in, Check-out, and the segment total.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (NDC SUPPLIERS): If the supplier has 'NDC' in its name (case-insensitive), set created_by to exactly match issued_by.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (EMIRATES NDC): Set issued_by to the agency/office name that appears immediately next to the 'IATA:' number.\n";
 

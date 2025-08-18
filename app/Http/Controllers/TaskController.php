@@ -283,6 +283,7 @@ class TaskController extends Controller
             'file_name' => 'nullable|string',
             'issued_date' => 'nullable|date',
             'expiry_date' => 'nullable|date|after:now',
+            'supplier_pay_date' => 'nullable|date',
         ]);
 
         if($request->exchange_currency !== 'KWD'){
@@ -540,9 +541,25 @@ class TaskController extends Controller
         try {
             Log::debug('Task Data:', $request->all());
 
-            $task = Task::create($request->all());
+            $issuedDate            = $request->input('issued_date');               
+            $cancellationDeadline  = $request->input('cancellation_deadline');     
+            $task_type             = $request->input('service.type') ?? $request->input('type');
 
-            // Save flight/hotel details if provided (regardless of enabled status)
+            $supplier_pay_date = $issuedDate; 
+
+            if ($task_type === 'hotel' && $cancellationDeadline) {
+                if ($cancellationDeadline <= $issuedDate) {
+                    $supplier_pay_date = $issuedDate;
+                } elseif ($cancellationDeadline > $issuedDate) {
+                    $supplier_pay_date = $cancellationDeadline;
+                }
+            } 
+
+            $data = $request->all();
+            $data['supplier_pay_date'] = $supplier_pay_date;
+
+            $task = Task::create($data);
+
             if ($task->type === 'hotel' && $request->has('task_hotel_details') && !empty($request->task_hotel_details)) {
                 $this->saveHotelDetails($request->task_hotel_details, $task->id);
             } elseif ($task->type === 'flight' && $request->has('task_flight_details') && !empty($request->task_flight_details)) {
@@ -566,7 +583,7 @@ class TaskController extends Controller
             // This ensures company liability to supplier is tracked immediately
             // Special case: Void tasks should ALWAYS process financials if they have an original_task_id
             $shouldProcessFinancials = $task->is_complete || 
-                                     ($task->status === 'void' && $task->original_task_id);
+            ($task->status === 'void' && $task->original_task_id);
             
             if ($shouldProcessFinancials) {
                 $reason = $task->is_complete ? 'complete task' : 'void task with original_task_id';
@@ -966,7 +983,7 @@ class TaskController extends Controller
     private function processIssuedTask(Task $task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId, $currencySpecificAccount = null)
     {
         // Use task's issued_date as transaction_date
-        $transactionDate = $task->issued_date ? Carbon::parse($task->issued_date) : Carbon::now();
+        $transactionDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : Carbon::now();
         
         $transaction = Transaction::create([
             'branch_id' => $branchId,
@@ -2346,7 +2363,7 @@ class TaskController extends Controller
             $response = $supplierController->getMagicHoliday();
 
             $data = json_decode($response->getContent(), true);
-
+            
             Log::channel('magic_holidays')->info('Magic Holiday response: ', $data);
 
             if (isset($data['error'])) {
@@ -2360,7 +2377,7 @@ class TaskController extends Controller
             }
 
             $data = $data['data'];
-
+            Log::info('Data dari Magic Holiday: ', $data);
             if (isset($data['_embedded'])) { // Check if it's a list
                 foreach ($data['_embedded']['reservation'] as $reservation) {
                     $response = $this->processSingleReservation($reservation, null, $companyId);
@@ -2466,6 +2483,7 @@ class TaskController extends Controller
             return; // Skip this reservation if no rooms are found
         }
 
+
         $processResult = [];
         $processResult['success'] = [];
         $processResult['failed'] = [];
@@ -2503,8 +2521,7 @@ class TaskController extends Controller
                 'invoice_price' => null,
                 'voucher_status' => null,
                 'refund_date' => null,
-                'issued_date' => $cancellationDate ?? null,
-                'supplier_created_date' => Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
+                'issued_date' => Carbon::parse($reservation['added']['time'])->toDateTimeString() ?? null,
                 'task_hotel_details' => [
                     'hotel_name' => $hotel['name'],
                     'hotel_country' => $hotel['countryId'],

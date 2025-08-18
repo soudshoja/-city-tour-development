@@ -215,7 +215,7 @@ class OpenAIClient implements AIClientInterface
 
         logger('input: ', $input);
 
-        $response = Http::timeout(120)->withHeaders([
+        $response = Http::timeout(300)->withHeaders([
             'Authorization' => 'Bearer ' . $this->apiKey,
             'Content-Type' => 'application/json',
         ])->post($this->apiUrl . '/responses', [

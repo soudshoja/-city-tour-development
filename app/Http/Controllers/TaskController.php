@@ -1722,13 +1722,10 @@ class TaskController extends Controller
         }
 
         $request->validate([
-            'task_file' => 'required|array',
-            'task_file.*' => 'mimes:pdf,txt',
             'agent_id' => 'nullable|exists:agents,id',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
-        $files = $request->file('task_file');
         $supplier = Supplier::find($request->supplier_id);
         $isMergeSupplier = $supplier->isMergeSupplier();
 

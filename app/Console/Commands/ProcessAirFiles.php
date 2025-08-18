@@ -727,6 +727,7 @@ class ProcessAirFiles extends Command
         int $index
     ): array {
         try {
+            $agent = null;
             $agentName = $taskData['agent_name'] ?? null;
             $agentEmail = $taskData['agent_email'] ?? null;
             $agentAmadeusId = $taskData['agent_amadeus_id'] ?? null;
@@ -842,7 +843,9 @@ class ProcessAirFiles extends Command
                 $this->logger->info("Flight Details for Task ID {$taskData['original_task_id']}: ", $flightDetailsArray);
                 $taskData['task_flight_details'] = $flightDetailsArray;
 
-                $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail, $companyId);
+                if($agentAmadeusId !== null || $agentName !== null || $agentEmail !== null){
+                    $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail, $companyId);
+                }
 
                 if (!$agent) {
                     $this->logger->warning("AIR File Processing: Agent not found for {$fileName} item {$index}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
@@ -904,7 +907,9 @@ class ProcessAirFiles extends Command
             } else {
                 $this->logger->info("Task is " . $taskData['status'] . ". No original task processing needed for item {$index} in file {$fileName}.");
 
-                $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail, $companyId);
+                if($agentAmadeusId !== null || $agentName !== null || $agentEmail !== null){
+                    $agent = $this->findAgent($agentAmadeusId, $agentName, $agentEmail, $companyId);
+                }
 
                 if (!$agent) {
                     $this->logger->warning("AIR File Processing: Agent not found for {$fileName} item {$index}. Agent name: {$agentName}, email: {$agentEmail}, Amadeus ID: {$agentAmadeusId}");
@@ -1016,14 +1021,10 @@ class ProcessAirFiles extends Command
     /**
      * Find agent by Amadeus ID, name, or email.
      */
-   protected function findAgent($amadeusId, $name, $email, $companyId)
+    protected function findAgent($amadeusId, $name, $email, $companyId) : ?Agent
     {
         $agentQuery = Agent::query();
         $branchesId = Branch::where('company_id', $companyId)->pluck('id');
-
-        // First apply company and branch constraints
-        $agentQuery->whereIn('branch_id', $branchesId)
-                   ->where('company_id', $companyId);
 
         // Then add the OR conditions for agent identification within a grouped where clause
         $agentQuery->where(function($query) use ($amadeusId, $name, $email) {
@@ -1069,6 +1070,12 @@ class ProcessAirFiles extends Command
                 }
             }
         });
+
+        if ($agentQuery->first()) {
+            return $agentQuery->whereIn('branch_id', $branchesId)
+                ->where('company_id', $companyId)
+                ->first();
+        }
 
         return $agentQuery->first();
     }

@@ -735,6 +735,12 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- HOTEL MEAL/BOARD RULES:\n";
         $prompt .= "  • If the document mentions a meal plan (e.g., 'board', 'free breakfast', 'half board', 'full board'), copy the wording exactly as shown into task_hotel_details[*].meal_type.\n";
         $prompt .= "  • If you're unsure which room line it belongs to, include the phrase in tasks.additional_info instead.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Como Travels):\n";
+        $prompt .= "  • Create ONE task per ROOM (never per passenger, never one combined task for all rooms). Always set tasks.issued_by and tasks.created_by to Como Travels.\n";
+        $prompt .= "  • For each ROOM task: set tasks.total and tasks.price to that room’s TOTAL (sell) across its nights only.\n";
+        $prompt .= "  • If there is ONLY ONE room in the booking, then set tasks.total and tasks.price to the booking 'Sell Price' only.\n";
+        $prompt .= "  • Example (2 rooms R1 and R2): produce exactly 2 tasks; task(R1) uses R1’s nightly 'Total (sell)' sum; task(R2) uses R2’s nightly 'Total (sell)' sum.\n";
+        $prompt .= "  • STATUS: Read the value labeled 'Reservation status' in the document.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (SMILE HOLIDAYS):\n";
         $prompt .= "  • For Smile Holidays proforma/invoices that have a 'Pax' column, copy that value into tasks.additional_info, e.g., 'Pax: 1'.\n";
         $prompt .= "  • ADDITIONAL REQUESTS → ROOM DETAILS: If the document contains 'Additional Requests', 'Special Instructions', 'Remarks' or similar booking notes, append a concise version to task_hotel_details[*].room_details (for single-room bookings append to that room; for multi-room bookings, either repeat for each room or put it into tasks.additional_info with room labels).\n";

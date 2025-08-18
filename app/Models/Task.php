@@ -54,7 +54,7 @@ class Task extends Model
         'file_name',
         'issued_date',
         'expiry_date',
-        'supplier_created_date'
+        'supplier_pay_date'
     ];
 
 

@@ -761,6 +761,10 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Set task.original_price to the per-passenger share of 'Amount in Booking Currency' (total ÷ passenger_count). Set task.price and task.total to the same amount after conversion using exchange_rate.\n";
         $prompt .= "  • Store fee breakdown: set surcharge = Admin Fee + Fuel Surcharge; set tax = sum of VATs + passenger/service/security charges; penalty_fee = 0 unless stated.\n";
         $prompt .= "  • Copy all labeled amounts into additional_info as 'Label: Amount' pairs (e.g., Base Fare, Administrative Fee, Fuel Surcharge, VAT for Admin Fees, and so on).\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cham Wings Airlines):\n";
+        $prompt .= "  • Set ticket_number = full E-Ticket Number exactly as shown (e.g. 3862304374206/1). Set issued_by and created_by to null.\n";
+        $prompt .= "  • Set reference = last 10 digits of the E-Ticket Number, before the slash (e.g. 3862304374206/1 → 2304374206).\n";
+        $prompt .= "  • If the document shows totals in a currency other than KWD, store that paid amount with its currency in original_price and original_currency, and store the KWD total amount in price and total.\n";
 
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (NDC SUPPLIERS): If the supplier has 'NDC' in its name (case-insensitive), set created_by to exactly match issued_by.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (EMIRATES NDC): Set issued_by to the agency/office name that appears immediately next to the 'IATA:' number.\n";

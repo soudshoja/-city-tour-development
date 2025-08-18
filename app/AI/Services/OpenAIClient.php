@@ -463,7 +463,9 @@ class OpenAIClient implements AIClientInterface
                 'original_price': 100.00,
                 'original_currency': 'USD',
                 'total': 115.00,
+                'original_surcharge': 10.00,
                 'surcharge': 10.00,
+                'original_tax': 5.00,
                 'tax': 5.00,
                 'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
                 'penalty_fee': '10.00',
@@ -519,7 +521,9 @@ class OpenAIClient implements AIClientInterface
                 'original_price': 100.00,
                 'original_currency': 'USD',
                 'total': 115.00,
+                'original_surcharge': 10.00,
                 'surcharge': 10.00,
+                'original_tax': 5.00,
                 'tax': 5.00,
                 'taxes_record': 'KRF:7.500,CJ:7.600,F6:1.000,GZ:2.000,KW:5.000,N4:10.650,RN:9.900,VV:80.300,YQ:0.250,YX:0.900',
                 'penalty_fee': '10.00',
@@ -765,14 +769,15 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Set task.original_price to the per-passenger share of 'Amount in Booking Currency' (total ÷ passenger_count). Set task.price and task.total to the same amount after conversion using exchange_rate.\n";
         $prompt .= "  • Store fee breakdown: set surcharge = Admin Fee + Fuel Surcharge; set tax = sum of VATs + passenger/service/security charges; penalty_fee = 0 unless stated.\n";
         $prompt .= "  • Copy all labeled amounts into additional_info as 'Label: Amount' pairs (e.g., Base Fare, Administrative Fee, Fuel Surcharge, VAT for Admin Fees, and so on).\n";
-        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cham Wings Airlines):\n";
-        $prompt .= "  • Set ticket_number = full E-Ticket Number exactly as shown (e.g. 3862304374206/1). Set issued_by and created_by to Como Travels.\n";
-        $prompt .= "  • Set reference = last 10 digits of the E-Ticket Number, before the slash (e.g. 3862304374206/1 → 2304374206).\n";
-        $prompt .= "  • If the document shows totals in a currency other than KWD, store that paid amount with its currency in original_price and original_currency, and store the KWD total amount in price and total.\n";
-        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Travel Collection):\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cham Wings Airlines and Air Arabia):\n";
+        $prompt .= "  • Set tasks.ticket_number = full E-Ticket Number exactly as shown (e.g. 3862304374206/1). Set issued_by and created_by to Como Travels.\n";
+        $prompt .= "  • Set tasks.reference = last 10 digits of the E-Ticket Number, before the slash (e.g. 3862304374206/1 → 2304374206).\n";
+        $prompt .= "  • For every non-KWD amount (Fare/Charges/Taxes/etc.), append to additional_info exactly as 'Label: CUR 999.99' (e.g., 'Fare: AED 278.17'); keep the document’s grand original in original_price/original_tax/original_currency.\n";
+        $prompt .= "  • Map the itinerary column 'Charges' to tax only; do not populate surcharge unless the document explicitly has a 'Surcharge' line.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Travel Collection and Heysam Group):\n";
         $prompt .= "  • Create ONE task per ROOM (NEVER per passenger). If the file has N rooms, output N tasks; if it has 1 room, output 1 task.\n";
-        $prompt .= "  • totals: set price and total to the booking GRAND TOTAL shown on the invoice (e.g., EUR 375.00).\n";
-        $prompt .= "  • Set reference to the Inv.Nr; set issued_by and created_by to the Tour Operator name only (without country); set agent and issued_date to null.\n";
+        $prompt .= "  • totals: set price and total to the booking GRAND TOTAL shown on the invoice (e.g., EUR 375.00). set issued_date to print date.\n";
+        $prompt .= "  • Set reference to the Inv.Nr; set issued_by and created_by to the Tour Operator name only (without country); set agent to null.\n";
         $prompt .= "  • Populate task_hotel_details with Hotel, Room, Type, Board, Nights, Check-in, Check-out, and the segment total.\n";
 
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (NDC SUPPLIERS): If the supplier has 'NDC' in its name (case-insensitive), set created_by to exactly match issued_by.\n";
@@ -795,8 +800,10 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "      \"original_price\": 100.00,\n";
         $prompt .= "      \"original_currency\": \"USD\",\n";
         $prompt .= "      \"total\": 115.00,\n";
+        $prompt .= "      \"original_surcharge\": 10.00,\n";
         $prompt .= "      \"surcharge\": 10.00,\n";
         $prompt .= "      \"penalty_fee\": 0.00,\n";
+        $prompt .= "      \"original_tax\": 5.00,\n";
         $prompt .= "      \"tax\": 5.00,\n";
         $prompt .= "      \"taxes_record\": \"tax breakdown if available\",\n";
         $prompt .= "      \"refund_charge\": 0.00,\n";
@@ -1257,8 +1264,10 @@ class OpenAIClient implements AIClientInterface
                 $prompt .= "        \"original_price\": 100.00,\n";
                 $prompt .= "        \"original_currency\": \"USD\",\n";
                 $prompt .= "        \"total\": 115.00,\n";
+                $prompt .= "        \"original_surcharge\": 10.00,\n";
                 $prompt .= "        \"surcharge\": 10.00,\n";
                 $prompt .= "        \"penalty_fee\": 0.00,\n";
+                $prompt .= "        \"original_tax\": 5.00,\n";
                 $prompt .= "        \"tax\": 5.00,\n";
                 $prompt .= "        \"taxes_record\": \"tax breakdown if available\",\n";
                 $prompt .= "        \"refund_charge\": 0.00,\n";
@@ -1429,8 +1438,10 @@ class OpenAIClient implements AIClientInterface
             $prompt .= "        \"original_price\": 100.00,\n";
             $prompt .= "        \"original_currency\": \"USD\",\n";
             $prompt .= "        \"total\": 115.00,\n";
+            $prompt .= "        \"original_surcharge\": 10.00,\n";
             $prompt .= "        \"surcharge\": 10.00,\n";
             $prompt .= "        \"penalty_fee\": 0.00,\n";
+            $prompt .= "        \"original_tax\": 5.00,\n";
             $prompt .= "        \"tax\": 5.00,\n";
             $prompt .= "        \"taxes_record\": \"tax breakdown if available\",\n";
             $prompt .= "        \"refund_charge\": 0.00,\n";

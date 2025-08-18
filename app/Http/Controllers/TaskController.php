@@ -266,7 +266,10 @@ class TaskController extends Controller
             'original_price' => 'nullable|numeric',
             'original_currency' => 'nullable|string',
             'total' => 'nullable|numeric',
+            'original_tax' => 'nullable|numeric',
             'tax' => 'nullable|numeric',
+            'original_surcharge' => 'nullable|numeric',
+            'surcharge' => 'nullable|numeric',
             'penalty_fee' => 'nullable|numeric',
             'client_name' => 'nullable|string',
             'agent_id' => 'nullable',
@@ -383,6 +386,19 @@ class TaskController extends Controller
                     'exchange_rate' => $exchangeRate,
                 ]);
 
+                $map = ['tax' => 'original_tax', 'surcharge' => 'original_surcharge'];
+                foreach ($map as $dst => $src) {
+                    $base = $request->input($src, $request->input($dst));
+                    if ($base === null || $base === '') {
+                        continue;
+                    }
+            
+                    $resp = $this->convert($companyId, $originalCurrency, $exchangeCurrency, $base);
+            
+                    if (($resp['status'] ?? 'success') !== 'error' && isset($resp['converted_amount'])) {
+                        $request->merge([$dst => round($resp['converted_amount'], 3)]);
+                    }
+                }
             } catch (Exception $e) {
                 Log::error('Currency conversion failed: ' . $e->getMessage(), [
                     'original_currency' => $request->original_currency,

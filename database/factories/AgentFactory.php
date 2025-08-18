@@ -20,6 +20,8 @@ class AgentFactory extends Factory
             'phone_number' => $this->faker->phoneNumber,
             'branch_id' => 1, // Will be overridden in tests
             'type_id' => 1, // Default type ID
+            'target' => 0, 
+            'salary' => 0,
         ];
     }
 }

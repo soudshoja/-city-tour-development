@@ -427,8 +427,16 @@ class TaskController extends Controller
         $existingTask = $queryChkExistTask->first();
 
         if ($existingTask) {
+            if ($existingTask->total != $request->total && $existingTask->status == 'issued') {
+                Log::warning('This reference has already existed for task: ' . $existingTask->reference . '. Proceeding for Reissued task.');
 
-            if ($existingTask->gds_reference == null || $existingTask->airline_reference == null) {
+                $newTaskTotal = (float)$request->total - (float)$existingTask->total;
+
+                $request->merge([
+                    'total' => $newTaskTotal,
+                    'status' => 'reissued',
+                ]);
+            } elseif ($existingTask->gds_reference == null || $existingTask->airline_reference == null) {
                 $existingTask->gds_reference = $request->gds_reference;
                 $existingTask->airline_reference = $request->airline_reference;
                 $existingTask->save();
@@ -444,10 +452,10 @@ class TaskController extends Controller
                 $existingTask->save();
             }
 
-            return response()->json([
+            /*  return response()->json([
                 'status' => 'error',
                 'message' => 'Task with this reference already exists.',
-            ], 422);
+            ], 422); */
         }
         $amadeusId = Supplier::where('name', 'Amadeus')->value('id');
 

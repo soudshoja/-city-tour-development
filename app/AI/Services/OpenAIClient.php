@@ -769,6 +769,11 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Set ticket_number = full E-Ticket Number exactly as shown (e.g. 3862304374206/1). Set issued_by and created_by to Como Travels.\n";
         $prompt .= "  • Set reference = last 10 digits of the E-Ticket Number, before the slash (e.g. 3862304374206/1 → 2304374206).\n";
         $prompt .= "  • If the document shows totals in a currency other than KWD, store that paid amount with its currency in original_price and original_currency, and store the KWD total amount in price and total.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Travel Collection):\n";
+        $prompt .= "  • Create ONE task per ROOM (NEVER per passenger). If the file has N rooms, output N tasks; if it has 1 room, output 1 task.\n";
+        $prompt .= "  • totals: set price and total to the booking GRAND TOTAL shown on the invoice (e.g., EUR 375.00).\n";
+        $prompt .= "  • Set reference to the Inv.Nr; set issued_by and created_by to the Tour Operator name only (without country); set agent and issued_date to null.\n";
+        $prompt .= "  • Populate task_hotel_details with Hotel, Room, Type, Board, Nights, Check-in, Check-out, and the segment total.\n";
 
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (NDC SUPPLIERS): If the supplier has 'NDC' in its name (case-insensitive), set created_by to exactly match issued_by.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (EMIRATES NDC): Set issued_by to the agency/office name that appears immediately next to the 'IATA:' number.\n";

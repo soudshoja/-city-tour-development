@@ -751,10 +751,8 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • If the document contains multiple passengers, always use the Booking total as the basis and divide it equally among all passengers to compute each passenger’s price. Do NOT assign the full total to each passenger.\n";
         $prompt .= "  • Place all other monetary details (e.g., Optional extras, Transaction fee, Admin fees, Taxes/fees, etc.) into tasks.additional_info.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (World of Luxury):\n";
-        $prompt .= "  • Create one task per passenger per accommodation segment. Do NOT combine multiple segments under one task.\n";
-        $prompt .= "  • For each task, set reference to the Inv.Nr; set issued_by and created_by to the Tour Operator; set agent and issued_date to null; use the document currency.\n";
-        $prompt .= "  • Set task.price and task.total to (segment Grand Total ÷ passenger_count)\n";
-        $prompt .= "  • If Pax Price exists, set task.original_price to Pax Price; otherwise set it to the per-passenger price.\n";
+        $prompt .= "  • Create one task per room. Set task.total and task.price to the booking Grand Total.\n";
+        $prompt .= "  • Set reference to the Inv.Nr; set issued_by and created_by to the Tour Operator; set agent and issued_date to null.\n";
         $prompt .= "  • Populate task_hotel_details with Hotel, Room, Type, Board, Nights, Check-in, Check-out, and the segment total.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cebu Pacific):\n";
         $prompt .= "  • Set reference = Booking Reference No. and issued_date = Booking Date. Set agent, created_by and issued_by to null.\n";
@@ -762,7 +760,7 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Store fee breakdown: set surcharge = Admin Fee + Fuel Surcharge; set tax = sum of VATs + passenger/service/security charges; penalty_fee = 0 unless stated.\n";
         $prompt .= "  • Copy all labeled amounts into additional_info as 'Label: Amount' pairs (e.g., Base Fare, Administrative Fee, Fuel Surcharge, VAT for Admin Fees, and so on).\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cham Wings Airlines):\n";
-        $prompt .= "  • Set ticket_number = full E-Ticket Number exactly as shown (e.g. 3862304374206/1). Set issued_by and created_by to null.\n";
+        $prompt .= "  • Set ticket_number = full E-Ticket Number exactly as shown (e.g. 3862304374206/1). Set issued_by and created_by to Como Travels.\n";
         $prompt .= "  • Set reference = last 10 digits of the E-Ticket Number, before the slash (e.g. 3862304374206/1 → 2304374206).\n";
         $prompt .= "  • If the document shows totals in a currency other than KWD, store that paid amount with its currency in original_price and original_currency, and store the KWD total amount in price and total.\n";
 

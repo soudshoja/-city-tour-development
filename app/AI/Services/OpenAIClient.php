@@ -760,10 +760,6 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Set tasks.original_price with the Base fare, tasks.price with the Fare total, and tasks.total with the Booking total from the document.\n";
         $prompt .= "  • If the document contains multiple passengers, always use the Booking total as the basis and divide it equally among all passengers to compute each passenger’s price. Do NOT assign the full total to each passenger.\n";
         $prompt .= "  • Place all other monetary details (e.g., Optional extras, Transaction fee, Admin fees, Taxes/fees, etc.) into tasks.additional_info.\n";
-        $prompt .= "- SUPPLIER-SPECIFIC HINTS (World of Luxury):\n";
-        $prompt .= "  • Create one task per room. Set task.total and task.price to the booking Grand Total.\n";
-        $prompt .= "  • Set reference to the Inv.Nr; set issued_by and created_by to the Tour Operator; set agent and issued_date to null.\n";
-        $prompt .= "  • Populate task_hotel_details with Hotel, Room, Type, Board, Nights, Check-in, Check-out, and the segment total.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cebu Pacific):\n";
         $prompt .= "  • Set reference = Booking Reference No. and issued_date = Booking Date. Set agent, created_by and issued_by to null.\n";
         $prompt .= "  • Set task.original_price to the per-passenger share of 'Amount in Booking Currency' (total ÷ passenger_count). Set task.price and task.total to the same amount after conversion using exchange_rate.\n";
@@ -776,10 +772,10 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • When multiple passengers are listed, create a separate task for each passenger:\n";
         $prompt .= "      – tasks.total = that passenger’s Paid Amount (e.g. 636.06 AED).\n";
         $prompt .= "      – tasks.price = that passenger’s Fare amount (e.g. 335.50 AED).\n";
-        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Travel Collection and Heysam Group):\n";
-        $prompt .= "  • Create ONE task per ROOM (NEVER per passenger). If the file has N rooms, output N tasks; if it has 1 room, output 1 task.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (World of Luxury, Travel Collection and Heysam Group):\n";
+        $prompt .= "  • Create EXACTLY ONE task per ROOM (NEVER per passenger). If the file has N rooms, output N tasks; if it has 1 room, output 1 task.\n";
         $prompt .= "  • totals: set price and total to the booking GRAND TOTAL shown on the invoice (e.g., EUR 375.00). set issued_date to print date.\n";
-        $prompt .= "  • Set reference to the Inv.Nr; set issued_by and created_by to the Tour Operator name only (without country); set agent to null.\n";
+        $prompt .= "  • Set reference to the Voucher number; set issued_by and created_by to the Tour Operator name only (without country, if have); set agent to null.\n";
         $prompt .= "  • Populate task_hotel_details with Hotel, Room, Type, Board, Nights, Check-in, Check-out, and the segment total.\n";
 
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (NDC SUPPLIERS): If the supplier has 'NDC' in its name (case-insensitive), set created_by to exactly match issued_by.\n";

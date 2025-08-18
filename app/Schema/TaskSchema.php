@@ -120,6 +120,12 @@ class TaskSchema
                 'example' => 115.00,
                 'default' => 0.0,
             ],
+            'original_surcharge' => [
+                'type' => 'float',
+                'desc' => "Additional surcharge or service fee as printed in the document, in original_currency (before conversion). For air files: Any surcharge mentioned. For other documents: Look for surcharges, service fees, booking fees, or additional charges. May be labeled as 'Surcharge', 'Service Fee', 'Booking Fee', or 'Additional Charge'.",
+                'example' => 10.00,
+                'default' => 0.0,
+            ],
             'surcharge' => [
                 'type' => 'float',
                 'desc' => "Additional surcharge or service fee. For air files: Any surcharge mentioned. For other documents: Look for surcharges, service fees, booking fees, or additional charges. May be labeled as 'Surcharge', 'Service Fee', 'Booking Fee', or 'Additional Charge'.",
@@ -130,6 +136,12 @@ class TaskSchema
                 'type' => 'float',
                 'desc' => "Penalty or change fee amount. For air files: Especially for reissued tickets or EMD documents. For other documents: Look for penalty fees, change fees, cancellation fees, or similar charges related to modifications or cancellations.",
                 'example' => 10.00,
+                'default' => 0.0,
+            ],
+            'original_tax' => [
+                'type' => 'float',
+                'desc' => "Total tax amount exactly as printed in the document, in original_currency (before conversion). For air files: Sum of all tax components. For other documents: Look for tax amounts, VAT, government fees, or similar charges. May be labeled as 'Tax', 'VAT', 'Government Tax', 'Fees', or 'Taxes'.",
+                'example' => 5.00,
                 'default' => 0.0,
             ],
             'tax' => [

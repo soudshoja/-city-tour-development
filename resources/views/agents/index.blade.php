@@ -35,7 +35,7 @@
             <!-- Table  -->
             <div class="panel oxShadow rounded-lg">
 
-                <x-search action="{{ route('agents.index') }}" />
+                <x-search action="{{ route('agents.index') }}" searchParam="search"/>
 
                 <!-- ./search icon -->
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">

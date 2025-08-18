@@ -772,8 +772,10 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cham Wings Airlines and Air Arabia):\n";
         $prompt .= "  • Set tasks.ticket_number = full E-Ticket Number exactly as shown (e.g. 3862304374206/1). Set issued_by and created_by to Como Travels.\n";
         $prompt .= "  • Set tasks.reference = last 10 digits of the E-Ticket Number, before the slash (e.g. 3862304374206/1 → 2304374206).\n";
-        $prompt .= "  • For every non-KWD amount (Fare/Charges/Taxes/etc.), append to additional_info exactly as 'Label: CUR 999.99' (e.g., 'Fare: AED 278.17'); keep the document’s grand original in original_price/original_tax/original_currency.\n";
-        $prompt .= "  • Map the itinerary column 'Charges' to tax only; do not populate surcharge unless the document explicitly has a 'Surcharge' line.\n";
+        $prompt .= "  • For every non-KWD amount (Fare/Charges/Taxes/etc.), append to additional_info exactly as 'Label: CUR 999.99' (e.g., 'Fare: AED 278.17'); keep the document’s grand original in original_price/original_tax/original_currency. Map the itinerary column 'Charges' to tax only.\n";
+        $prompt .= "  • When multiple passengers are listed, create a separate task for each passenger:\n";
+        $prompt .= "      – tasks.total = that passenger’s Paid Amount (e.g. 636.06 AED).\n";
+        $prompt .= "      – tasks.price = that passenger’s Fare amount (e.g. 335.50 AED).\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Travel Collection and Heysam Group):\n";
         $prompt .= "  • Create ONE task per ROOM (NEVER per passenger). If the file has N rooms, output N tasks; if it has 1 room, output 1 task.\n";
         $prompt .= "  • totals: set price and total to the booking GRAND TOTAL shown on the invoice (e.g., EUR 375.00). set issued_date to print date.\n";

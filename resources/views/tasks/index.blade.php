@@ -328,14 +328,6 @@
             background-color: #1e40af;
         }
 
-        .task-row:hover {
-            background-color: #f8fafc;
-        }
-
-        .dark .task-row:hover {
-            background-color: #374151;
-        }
-
         .task-row.not-selectable:hover {
             background-color: #f3f4f6;
         }
@@ -1513,13 +1505,17 @@
                                                 </td>
                                                 @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                                 <td data-column="file-name" class="column-hidden flex p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                                    @if(!empty($task->file_name))
                                                         <p> {{ basename($task->file_name) ?? 'No Files' }} </p>
-                                                        <div @click="navigator.clipboard.writeText('{{ basename($task->file_name) }}')" class="ml-2 text-black hover:text-blue-500 transition-colors flex items-center gap-1"
+                                                        <div @click.stop="navigator.clipboard.writeText('{{ basename($task->file_name) }}')" class="ml-2 text-black hover:text-blue-500 transition-colors flex items-center gap-1"
                                                             data-tooltip-left="Copy filename">
                                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                                             </svg>
                                                         </div>
+                                                    @else
+                                                        <p>No Files</p>
+                                                    @endif
                                                 </td>
                                                 @endif
                                             </tr>

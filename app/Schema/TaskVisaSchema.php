@@ -25,7 +25,7 @@ class TaskVisaSchema
                 'example' => '2024-02-10',
                 'default' => null,
             ],
-            'num_of_entry' => [
+            'number_of_entries' => [
                 'type' => 'string',
                 'description' => 'Entries permitted. Use enum when known, or a number.',
                 'enum'        => ['single', 'double', 'multiple'],

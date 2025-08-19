@@ -3587,7 +3587,7 @@ class TaskController extends Controller
         
     }
 
-    public function getTaskFileFromEmail(Request $request) : JsonResponse {
+    public function handleTaskFromEmail(Request $request) : JsonResponse {
 
         $request->validate([
             'email' => 'required|email',

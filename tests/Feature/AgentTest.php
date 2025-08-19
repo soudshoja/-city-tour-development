@@ -48,6 +48,13 @@ class AgentTest extends TestCase
         AgentType::create(['id' => 3, 'name' => 'Both-A']);
         AgentType::create(['id' => 4, 'name' => 'Both-B']);
 
+        Role::create(['id' => Role::ADMIN, 'name' => 'Admin', 'guard_name' => 'web']);
+        Role::create(['id' => Role::COMPANY, 'name' => 'Company', 'guard_name' => 'web']);
+        Role::create(['id' => Role::BRANCH, 'name' => 'Branch', 'guard_name' => 'web']);
+        Role::create(['id' => Role::AGENT, 'name' => 'Agent', 'guard_name' => 'web']);
+        Role::create(['id' => Role::ACCOUNTANT, 'name' => 'Accountant', 'guard_name' => 'web']);
+        Role::create(['id' => Role::CLIENT, 'name' => 'Client', 'guard_name' => 'web']);
+
         // Create admin user
         $this->adminUser = User::factory()->create([
             'role_id' => Role::ADMIN,
@@ -90,7 +97,7 @@ class AgentTest extends TestCase
         $this->branchUser->update(['branch_id' => $this->branch->id]);
 
         // Create root Assets account
-        $account = Account::create([
+        $rootAccount = Account::create([
             'id' => 1,
             'name' => 'Assets',
             'level' => 0,
@@ -104,18 +111,17 @@ class AgentTest extends TestCase
         ]);
 
         // Create branch account (this creates the relationship with branch)
-        Account::create([
+        $parentAccount = Account::create([
             'name' => 'Branch Account',
             'level' => 1,
             'actual_balance' => 0.00,
             'budget_balance' => 0.00,
             'variance' => 0.00,
-            'parent_id' => 1,
-            'root_id' => 1,
+            'parent_id' => $rootAccount->id,
+            'root_id' => $rootAccount->id,
             'company_id' => $this->company->id,
             'branch_id' => $this->branch->id, // This creates the branch->account relationship
             'code' => 'BRANCH-001',
-            'reference_id' => $this->branchUser->id,
         ]);
 
         // Create Agent Salaries account for salary tests
@@ -126,8 +132,8 @@ class AgentTest extends TestCase
             'actual_balance' => 0.00,
             'budget_balance' => 0.00,
             'variance' => 0.00,
-            'parent_id' => 1,
-            'root_id' => 1,
+            'parent_id' => $parentAccount->id,
+            'root_id' => $rootAccount->id,
             'code' => 'SAL-001',
         ]);
 

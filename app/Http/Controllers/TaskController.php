@@ -1399,35 +1399,6 @@ class TaskController extends Controller
         ]);
     }
 
-    /**
-     * Enable task and process financials when task is complete
-     */
-    // public function enableTask(Task $task)
-    // {
-    //     if (!$task->is_complete) {
-    //         throw new Exception('Task is not complete. Missing required fields: ' . $this->getMissingFields($task));
-    //     }
-
-    //     DB::beginTransaction();
-
-    //     try {
-    //         $task->enabled = true;
-    //         $task->save();
-
-    //         $this->processTaskFinancial($task);
-
-    //         DB::commit();
-
-    //         return [
-    //             'status' => 'success',
-    //             'message' => 'Task enabled and processed successfully.',
-    //         ];
-    //     } catch (Exception $e) {
-    //         DB::rollBack();
-    //         throw $e;
-    //     }
-    // }
-
     public function toggleStatus(Request $request, Task $task)
     {
         $task->enabled = $request->is_enabled;
@@ -3614,6 +3585,24 @@ class TaskController extends Controller
         }
 
         
+    }
+
+    public function handleTaskFromEmail(Request $request) : JsonResponse {
+
+        $request->validate([
+            'email' => 'required|email',
+            'file' => 'required|file|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx,txt|max:2048',
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'File received successfully.',
+            'data' => [
+                'email' => $request->email,
+                'file_name' => $request->file->getClientOriginalName(),
+                'file_size' => $request->file->getSize(),
+            ]
+        ], 200);
     }
 
 }

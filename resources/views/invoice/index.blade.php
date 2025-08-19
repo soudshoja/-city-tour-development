@@ -257,7 +257,7 @@
                                                             <div class="w-full max-w-2xl mx-auto bg-white rounded-2xl overflow-hidden shadow-lg border-2 border-blue-700 flex flex-row">
                                                                 <div class="bg-blue-700 text-white w-1/4 p-4 flex flex-col justify-between">
                                                                     <div>
-                                                                        <h2 class="text-xl font-bold">{{ $invoice->currency }} {{ $invoice->amount }}</h2>
+                                                                        <h2 class="text-xl font-bold">{{ $invoice->currency }} {{ $invoiceDetail->task_price }}</h2>
                                                                         <p class="text-xs uppercase font-semibold">Travel Voucher</p>
                                                                     </div>
                                                                     <div class="text-sm">

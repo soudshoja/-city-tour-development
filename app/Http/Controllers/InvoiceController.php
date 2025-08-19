@@ -1173,21 +1173,21 @@ class InvoiceController extends Controller
     {
         $user = Auth::user();
 
+        $agents = Agent::with('branch');
+
         // Gate::authorize('viewAny', Invoice::class);
         if ($user->role_id == Role::ADMIN) {
-            $agents = Agent::with('branch')->get();
+            $agents = $agents->get();
         } else if ($user->role_id == Role::COMPANY) {
-            $agents = Agent::with(['branch' => function ($query) use ($user) {
-                $query->where('company_id', $user->company->id);
-            }])->get();
+            $agents = $agents->where('branch_id', $user->company->branches->pluck('id'))->get();
         } else if ($user->role_id == Role::BRANCH) {
-            $agents = Agent::with('branch')->where('branch_id', $user->branch->id)->get();
+            $agents = $agents->where('branch_id', $user->branch->id)->get();
         } else if ($user->role_id == Role::AGENT) {
-            $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
+            $agents = $agents->where('id', $user->agent->id)->get();
         }
 
         $agentIds = $agents->pluck('id');
-        $branches = $agents->pluck('branch')->unique('id');
+        $branches = $agents->pluck('branch')->unique('id') ?? collect();
         // $company = $agents->pluck('branch.company')->unique('id')->first();
 
         $invoices = Invoice::with([

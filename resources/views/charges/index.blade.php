@@ -213,7 +213,7 @@
                                         </td>
                                         <td class="p-3 text-sm text-gray-600">
                                             <div class="relative group inline-block">
-                                                <button @click="openModal({{ $method->id }}, 'methods')" class="text-blue-600 hover:text-blue-800">
+                                                <button @click="openModal({{ $method->myfatoorah_id }}, 'methods')" class="text-blue-600 hover:text-blue-800">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <title>Edit</title>
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

@@ -309,6 +309,7 @@ class PaymentController extends Controller
             $baseUrl = config('services.myfatoorah.base_url');
             $invoiceNumber = $invoice->invoice_number;
             $paymentMethodId = $data['payment_method'];
+            $paymentMethod = PaymentMethod::findOrFail($paymentMethodId);
 
             $customerName = $invoice->client->first_name ?? 'Customer';
             if (strpos($customerName, '/') !== false) {
@@ -323,7 +324,7 @@ class PaymentController extends Controller
             }
 
             $executePayload = [
-                "PaymentMethodId"     => $paymentMethodId,
+                "PaymentMethodId"     => $paymentMethod->myfatoorah_id,
                 "InvoiceValue"        => $finalAmount,
                 "CustomerName"        => $customerName,
                 "CustomerEmail"       => 'shoja@citytravelers.co',
@@ -1378,7 +1379,7 @@ class PaymentController extends Controller
             $request = new Request([
                 'payment_id' => $payment->id,
                 'payment_gateway' => $payment->payment_gateway,
-                'payment_method' => $payment->payment_method_id,
+                'payment_method' => $payment->paymentMethod?->myfatoorah_id,
                 'amount' => $payment->amount,
                 'client_id' => $payment->client_id,
                 'agent_id' => $payment->agent_id,
@@ -1516,7 +1517,7 @@ class PaymentController extends Controller
             $process = 'invoice';
         }
         $paymentGateway = $payment->payment_gateway;
-        $paymentMethod = $payment->payment_method_id;
+        $paymentMethod = $payment->paymentMethod?->myfatoorah_id;
 
 
         if (strtolower($paymentGateway) === 'tap') {
@@ -1711,7 +1712,7 @@ class PaymentController extends Controller
         $finalAmount = $chargeResult['finalAmount'];
 
         $executePayload = [
-            "PaymentMethodId"     => $payment->payment_method_id,
+            "PaymentMethodId"     => $payment->paymentMethod?->myfatoorah_id,
             "InvoiceValue"        => $finalAmount,
             "CustomerName"        => $customerName,
             "CustomerEmail"       => $client->email ?? 'email@example.com',
@@ -1725,7 +1726,7 @@ class PaymentController extends Controller
                 'voucher_number'   => $payment->voucher_number,
                 'payment_id'       => $payment->id,
                 'payment_gateway'  => $payment->payment_gateway,
-                'payment_method'   => $payment->payment_method_id,
+                'payment_method'   => $payment->paymentMethod?->myfatoorah_id,
                 'process'          => $payment->invoice ? 'invoice' : 'topup',
             ]),
             "InvoiceItems" => [

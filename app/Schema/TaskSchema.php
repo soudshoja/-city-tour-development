@@ -74,13 +74,13 @@ class TaskSchema
             ],
             'status' => [
                 'type' => 'string',
-                'desc' => "Current status of the booking/ticket. For air files: 'refund' (RF indicator), 'reissued' (FO + original ticket), 'emd' (EMD ticket/penalty), 'issued', 'void'. For other documents: Look for status indicators like 'Confirmed', 'Cancelled', 'Pending', 'Issued', 'Refunded', 'Voided', 'On Hold', or similar status information. Then map them to the following statuses: 'issued', 'reissued', 'void', 'refund', 'emd', 'on hold'.",
+                'desc' => "Look for status indicators like 'Confirmed', 'Cancelled', 'Pending', 'Issued', 'Refunded', 'Voided', 'On Hold', or similar status information. Then map them to the following statuses: 'issued', 'reissued', 'void', 'refund', 'emd', 'on hold', 'confirmed' in no particular order.",
                 'example' => 'refund',
                 'default' => '',
             ],
             'supplier_status' => [
                 'type' => 'string',
-                'desc' => "Status from supplier's perspective. Should mirror the 'status' field. Represents the same booking status but from the supplier's system viewpoint.",
+                'desc' => "Status from supplier's perspective. Represents the same booking status but from the supplier's system viewpoint.",
                 'example' => 'refund',
                 'default' => '',
             ],

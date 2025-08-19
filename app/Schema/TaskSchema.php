@@ -306,6 +306,18 @@ class TaskSchema
                     'paid_leaves' => 0,
                 ],
             ],
+            'task_visa_details' => [
+                'type' => 'object',
+                'desc' => "Visa details associated with the task.",
+                'example' => [
+                    'visa_type' => 'Tourist Visa',
+                    'application_number' => '8637300',
+                    'expiry_date' => '2025-10-02',
+                    'number_of_entries' => 'single',
+                    'stay_duration' => 14,
+                    'issuing_country' => 'Kuwait',
+                ],
+            ],
         ];
     }
 
@@ -336,6 +348,8 @@ class TaskSchema
                     $nestedClass = '\App\Schema\TaskHotelSchema';
                 } elseif ($field === 'task_insurance_details' && class_exists('\App\Schema\TaskInsuranceSchema')) {
                     $nestedClass = '\App\Schema\TaskInsuranceSchema';
+                } elseif ($field === 'task_visa_details' && class_exists('\App\Schema\TaskVisaSchema')) {
+                    $nestedClass = '\App\Schema\TaskVisaSchema';
                 }
                 
                 if (isset($input[$field]) && is_array($input[$field]) && $nestedClass) {

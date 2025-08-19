@@ -390,7 +390,6 @@ class AgentController extends Controller
                 'parent_id' =>  $branch->account->id,
                 'root_id' => $assetsAccount->id,
                 'code' => 'AGT-' . rand(1000000, 9999999),
-                'reference_id' => $user->id,
                 'company_id' => $branch->company_id,
                 'agent_id' => $agent->id,
             ]);

@@ -2,9 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Account;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class SeedCompanyCoaCommand extends Command
 {
@@ -13,7 +15,9 @@ class SeedCompanyCoaCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'company-coa:seed';
+    protected $signature = 'company-coa:seed
+                            {--remove : Remove existing accounts before seeding}
+    ';
 
     /**
      * The console command description.
@@ -27,8 +31,20 @@ class SeedCompanyCoaCommand extends Command
      */
     public function handle()
     {
+        $companyId = $this->ask('Enter the company ID to seed COA for');
+
+        if ($this->option('remove')) {
+            // Remove accounts only for the specified company
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            Account::where('company_id', $companyId)->delete();
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            $this->info("Existing accounts for company {$companyId} removed.");
+        }
+
         (new DatabaseSeeder())->callWith(CoaSeeder::class, [
-            'companyId' => $this->ask('Enter the company ID to seed COA for')
+            'companyId' => $companyId
         ]);
+
+        $this->info("COA seeded for company {$companyId}.");
     }
 }

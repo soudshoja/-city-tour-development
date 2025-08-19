@@ -20,6 +20,7 @@ use App\Models\Branch;
 use App\Models\Room;
 use App\Models\TaskHotelDetail;
 use App\Models\TaskInsuranceDetail;
+use App\Models\TaskVisaDetail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -283,6 +284,7 @@ class TaskController extends Controller
             'task_hotel_details' => 'nullable|array',
             'task_flight_details' => 'nullable|array',
             'task_insurance_details' => 'nullable|array',
+            'task_visa_details' => 'nullable|array',
             'file_name' => 'nullable|string',
             'issued_date' => 'nullable|date',
             'expiry_date' => 'nullable|date|after:now',
@@ -590,6 +592,8 @@ class TaskController extends Controller
                 $this->saveFlightDetails($request->task_flight_details, $task->id);
             } elseif ($task->type === 'insurance' && $request->has('task_insurance_details') && !empty($request->task_insurance_details)) {
                 $this->saveInsuranceDetails($request->task_insurance_details, $task->id);
+            } elseif ($task->type === 'visa' && $request->has('task_visa_details') && !empty($request->task_visa_details)) {
+                $this->saveVisaDetails($request->task_visa_details, $task->id);
             }
            
             // Set enabled status: task must be complete AND have an agent assigned
@@ -2310,11 +2314,11 @@ class TaskController extends Controller
     {
         try {
             if (isset($data[0]) && is_array($data[0])) {
-            foreach ($data as $insuranceData) {
-                $this->createSingleInsuranceDetail($insuranceData, $taskId);
-            }
+                foreach ($data as $insuranceData) {
+                    $this->createSingleInsuranceDetail($insuranceData, $taskId);
+                }
             } else {
-            $this->createSingleInsuranceDetail($data, $taskId);
+                $this->createSingleInsuranceDetail($data, $taskId);
             }
         } catch (Exception $e) {
             throw $e;
@@ -2337,6 +2341,40 @@ class TaskController extends Controller
             ];
 
             TaskInsuranceDetail::create($insuranceDetails);
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public function saveVisaDetails(array $data, int $taskId)
+    {
+        try {
+            if (isset($data[0]) && is_array($data[0])) {
+                foreach ($data as $visaData) {
+                    $this->createSingleVisaDetail($visaData, $taskId);
+                }
+            } else {
+                $this->createSingleVisaDetail($data, $taskId);
+            }
+        } catch (Exception $e) {
+            throw $e;
+        }
+    }
+
+    public function createSingleVisaDetail(array $data, int $taskId)
+    {
+        try {
+            $visaDetails = [
+                'visa_type' => $data['visa_type'] ?? null,
+                'application_number' => $data['application_number'] ?? null,
+                'expiry_date' => $data['expiry_date'] ?? null,
+                'number_of_entries' => $data['number_of_entries'] ?? null,
+                'stay_duration' => $data['stay_duration'] ?? null,
+                'issuing_country' => $data['issuing_country'] ?? null,
+                'task_id' => $taskId
+            ];
+
+            TaskVisaDetail::create($visaDetails);
         } catch (Exception $e) {
             throw $e;
         }

@@ -15,6 +15,7 @@ use App\Schema\TaskSchema;
 use App\Schema\TaskFlightSchema;
 use App\Schema\TaskHotelSchema;
 use App\Schema\TaskInsuranceSchema;
+use App\Schema\TaskVisaSchema;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -295,6 +296,7 @@ class OpenAIClient implements AIClientInterface
                         'task_flight_details' => $item['task_flight_details'] ?? [],
                         'task_hotel_details' => $item['task_hotel_details'] ?? [],
                         'task_insurance_details' => $item['task_insurance_details'] ?? [],
+                        'task_visa_details' => $item['task_visa_details'] ?? [],
                     ]
                 ));
                 $processedItems[] = $normalized;
@@ -691,6 +693,7 @@ class OpenAIClient implements AIClientInterface
         $flightFields = TaskFlightSchema::getSchema();
         $hotelFields = TaskHotelSchema::getSchema();
         $insuranceFields = TaskInsuranceSchema::getSchema();
+        $visaFields = TaskVisaSchema::getSchema();
 
         $suppliers = Supplier::all();
 
@@ -717,6 +720,10 @@ class OpenAIClient implements AIClientInterface
         }
         $prompt .= "\n4. `task_insurance_details` model (for insurances) - THIS IS AN ARRAY that can contain multiple insurance details:\n";
         foreach ($insuranceFields as $field => $meta) {
+            $prompt .= "   - `$field`: {$meta['description']}\n";
+        }
+        $prompt .= "\n5. `task_visa_details` model (for visa):\n";
+        foreach ($visaFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
         $prompt .= "\nINSURANCE TASK COLLAPSING RULE (CRITICAL):\n";
@@ -872,6 +879,14 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "            \"paid_leaves\": 0,\n";
         $prompt .= "          }\n";
         $prompt .= "        ]\n";
+        $prompt .= "      \"task_visa_details\": {\n";
+        $prompt .= "          \"visa_type\": \"common\",\n";
+        $prompt .= "          \"application_number\": \"8637300\",\n";
+        $prompt .= "          \"expiry_date\": \"2026-07-03\",\n";
+        $prompt .= "          \"number_of_entries\": \"single\",\n";
+        $prompt .= "          \"stay_duration\": 14,\n";
+        $prompt .= "          \"issuing_country\": \"Kuwait\",\n";
+        $prompt .= "      }\n";
         $prompt .= "    }\n";
         $prompt .= "  ]\n";
         $prompt .= "}\n\n";

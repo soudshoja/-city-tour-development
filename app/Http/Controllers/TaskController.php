@@ -266,7 +266,10 @@ class TaskController extends Controller
             'original_price' => 'nullable|numeric',
             'original_currency' => 'nullable|string',
             'total' => 'nullable|numeric',
+            'original_tax' => 'nullable|numeric',
             'tax' => 'nullable|numeric',
+            'original_surcharge' => 'nullable|numeric',
+            'surcharge' => 'nullable|numeric',
             'penalty_fee' => 'nullable|numeric',
             'client_name' => 'nullable|string',
             'agent_id' => 'nullable',
@@ -383,6 +386,19 @@ class TaskController extends Controller
                     'exchange_rate' => $exchangeRate,
                 ]);
 
+                $map = ['tax' => 'original_tax', 'surcharge' => 'original_surcharge'];
+                foreach ($map as $dst => $src) {
+                    $base = $request->input($src, $request->input($dst));
+                    if ($base === null || $base === '') {
+                        continue;
+                    }
+            
+                    $resp = $this->convert($companyId, $originalCurrency, $exchangeCurrency, $base);
+            
+                    if (($resp['status'] ?? 'success') !== 'error' && isset($resp['converted_amount'])) {
+                        $request->merge([$dst => round($resp['converted_amount'], 3)]);
+                    }
+                }
             } catch (Exception $e) {
                 Log::error('Currency conversion failed: ' . $e->getMessage(), [
                     'original_currency' => $request->original_currency,
@@ -411,8 +427,16 @@ class TaskController extends Controller
         $existingTask = $queryChkExistTask->first();
 
         if ($existingTask) {
+            if ($existingTask->total != $request->total && $existingTask->status == 'issued') {
+                Log::warning('This reference has already existed for task: ' . $existingTask->reference . '. Proceeding for Reissued task.');
 
-            if ($existingTask->gds_reference == null || $existingTask->airline_reference == null) {
+                $newTaskTotal = (float)$request->total - (float)$existingTask->total;
+
+                $request->merge([
+                    'total' => $newTaskTotal,
+                    'status' => 'reissued',
+                ]);
+            } elseif ($existingTask->gds_reference == null || $existingTask->airline_reference == null) {
                 $existingTask->gds_reference = $request->gds_reference;
                 $existingTask->airline_reference = $request->airline_reference;
                 $existingTask->save();
@@ -428,10 +452,10 @@ class TaskController extends Controller
                 $existingTask->save();
             }
 
-            return response()->json([
+            /*  return response()->json([
                 'status' => 'error',
                 'message' => 'Task with this reference already exists.',
-            ], 422);
+            ], 422); */
         }
         $amadeusId = Supplier::where('name', 'Amadeus')->value('id');
 

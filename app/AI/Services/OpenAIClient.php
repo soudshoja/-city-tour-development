@@ -883,7 +883,7 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "          \"visa_type\": \"common\",\n";
         $prompt .= "          \"application_number\": \"8637300\",\n";
         $prompt .= "          \"expiry_date\": \"2026-07-03\",\n";
-        $prompt .= "          \"num_of_entry\": \"single\",\n";
+        $prompt .= "          \"number_of_entries\": \"single\",\n";
         $prompt .= "          \"stay_duration\": 14,\n";
         $prompt .= "          \"issuing_country\": \"Kuwait\",\n";
         $prompt .= "      }\n";

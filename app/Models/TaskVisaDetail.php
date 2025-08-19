@@ -15,7 +15,7 @@ class TaskVisaDetail extends Model
         'visa_type',
         'application_number',
         'expiry_date',
-        'num_of_entry',
+        'number_of_entries',
         'stay_duration',
         'issuing_country',
     ];

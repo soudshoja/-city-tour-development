@@ -25,7 +25,7 @@ class PaymentMethodController extends Controller
         }
 
         return response()->json([
-            'id' => $paymentMethod->id,
+            'id' => $paymentMethod->myfatoorah_id,
             'gateway' => $paymentMethod->type,
             'arabic_name' => $paymentMethod->arabic_name,
             'english_name' => $paymentMethod->english_name,

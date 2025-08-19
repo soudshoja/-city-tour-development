@@ -9,7 +9,7 @@ use Throwable;
 
 class MFMethodSyncService
 {
-    public function sync(): bool
+    public function sync(int $companyId)
     {
         try {
             $response = Http::withToken(config('services.myfatoorah.api_key'))
@@ -27,20 +27,24 @@ class MFMethodSyncService
 
             if (!data_get($result, 'IsSuccess')) {
                 Log::warning('MyFatoorah payment methods sync failed.', [
+                    'company_id' => $companyId,
                     'message' => $result['Message'] ?? 'Unknown',
                     'errors' => $result['ValidationErrors'] ?? [],
                 ]);
                 return false;
             }
 
-              // Mark all existing MyFatoorah methods as inactive
-            PaymentMethod::where('type', 'myfatoorah')->update(['is_active' => false]);
+            PaymentMethod::withoutGlobalScopes()
+                ->where('company_id', $companyId)
+                ->where('type', 'myfatoorah')
+                ->update(['is_active' => false]);
 
             $methods = data_get($result, 'Data.PaymentMethods', []);
             foreach ($methods as $method) {
                 PaymentMethod::updateOrCreate(
                     [
-                        'id' => $method['PaymentMethodId'],
+                        'myfatoorah_id' => $method['PaymentMethodId'],
+                        'company_id' => $companyId,
                         'type' => 'myfatoorah',
                     ],
                     [
@@ -55,12 +59,12 @@ class MFMethodSyncService
                 );
             }
 
-            Log::info('Synced ' . count($methods) . ' MyFatoorah payment methods.');
-            return true;
-
+            Log::info('MF methods synced', ['company_id' => $companyId, 'count' => count($methods)]);
+            return count($methods);
         } catch (Throwable $e) {
-            Log::error('Failed to sync MyFatoorah payment methods: ' . $e->getMessage(), [
-                'exception' => $e,
+            Log::error('MF sync exception', [
+                'company_id' => $companyId,
+                'error' => $e->getMessage(),
             ]);
             return false;
         }

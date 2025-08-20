@@ -1319,7 +1319,7 @@ class TaskController extends Controller
         ]);
 
         // Use task's issued_date as transaction_date
-        $transactionDate = $task->issued_date ? Carbon::parse($task->issued_date) : Carbon::now();
+        $transactionDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : Carbon::now();
 
         // Create Transaction Record
         $transaction = Transaction::create([
@@ -1462,7 +1462,7 @@ class TaskController extends Controller
         Log::info("Void for task [{$task->reference}]: Client credit before = {$oldCredit}, after = {$client->credit}");
 
         // Use task's issued_date as transaction_date
-        $transactionDate = $task->issued_date ? Carbon::parse($task->issued_date) : Carbon::now();
+        $transactionDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : Carbon::now();
 
         $voidTransaction = Transaction::create([
             'branch_id'        => $client->agent->branch_id,
@@ -3127,7 +3127,7 @@ class TaskController extends Controller
         Log::info('Recording reversal journal & transaction for task ID: ' . $originalTask->id);
 
         // Use task's issued_date as transaction_date
-        $transactionDate = $originalTask->issued_date ? Carbon::parse($originalTask->issued_date) : Carbon::now();
+        $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
 
         $transaction = Transaction::create([
             'branch_id' => $originalTask->agent->branch_id,

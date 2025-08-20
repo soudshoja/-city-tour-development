@@ -55,42 +55,45 @@ class IncomingMediaController extends Controller
 
         try {
             Log::info("Sender is an agent: {$agent->name} ({$phone})");
-                Log::info("Sender is an agent: {$agent->name} ({$phone})");
 
-                $waitingForClientPhone = Cache::get('agent_waiting_for_client_phone_' . $phone);
+            $waitingForClientPhone = Cache::get('agent_waiting_for_client_phone_' . $phone);
 
-                $clientPhoneReply = trim(
-                    $request->input('data.text')
-                        ?? $request->input('data.body')
-                        ?? $request->input('messages.0.body')
-                        ?? $request->input('messages.0.text')
-                        ?? ''
-                );
+            $clientPhoneReply = trim(
+                $request->input('data.text')
+                    ?? $request->input('data.body')
+                    ?? $request->input('messages.0.body')
+                    ?? $request->input('messages.0.text')
+                    ?? ''
+            );
 
-                if (strtolower($clientPhoneReply) === 'restart') {
-                    Cache::forget('pending_media_' . $phone);
-                    Cache::forget('agent_client_phone_' . $phone);
-                    Cache::forget('agent_waiting_for_client_phone_' . $phone);
-                    
-                    $to = $request->input('data.from') ?? $request->input('from');
-                    $this->sendWhatsAppMessage($to, "Okay, let's start fresh. Please send your client's media document again.", 'agent_restart');
-                    return response()->json(['message' => 'Restart triggered'], 200);
-                }
+            // Handle restart command
+            if (strtolower($clientPhoneReply) === 'restart') {
+                Cache::forget('pending_media_' . $phone);
+                Cache::forget('agent_client_phone_' . $phone);
+                Cache::forget('agent_waiting_for_client_phone_' . $phone);
+                
+                $to = $request->input('data.from') ?? $request->input('from');
+                $this->sendWhatsAppMessage($to, "Okay, let's start fresh. Please send your client's media document again.", 'agent_restart');
+                return response()->json(['message' => 'Restart triggered'], 200);
+            }
 
-                if (!$waitingForClientPhone) {
-                    $mediaData = $request->input('media') ?? $request->input('data.media');
-                    if ($mediaData) {
-                        Cache::put('pending_media_' . $phone, $mediaData, now()->addMinutes(30));
-                        Log::info("Media cached for agent {$phone} until client phone is received.");
-                    }
+            // Check if media is received first
+            $mediaData = $request->input('media') ?? $request->input('data.media');
+            
+            // If agent sends media but we're not waiting for client phone yet
+            if ($mediaData && !$waitingForClientPhone) {
+                Cache::put('pending_media_' . $phone, $mediaData, now()->addMinutes(30));
+                Log::info("Media cached for agent {$phone} until client phone is received.");
+                
+                $to = $request->input('data.from') ?? $request->input('from');
+                $this->sendWhatsAppMessage($to, "Hello {$agent->name}, please reply with your client's phone number to proceed.\n(eg: +96522210017)", 'agent_phone_request');
 
-                    $to = $request->input('data.from') ?? $request->input('from');
-                    $this->sendWhatsAppMessage($to, "Hello {$agent->name}, please reply with your client's phone number to proceed.\n(eg: +96522210017)", 'agent_phone_request');
+                Cache::put('agent_waiting_for_client_phone_' . $phone, true, now()->addMinutes(30));
+                return response()->json(['message' => 'Agent prompt sent, waiting for client phone input.'], 200);
+            }
 
-                    Cache::put('agent_waiting_for_client_phone_' . $phone, true, now()->addMinutes(30));
-                    return response()->json(['message' => 'Agent prompt sent, waiting for client phone input.'], 200);
-                }
-
+            // If we're waiting for client phone and agent sends text (not media)
+            if ($waitingForClientPhone && !$mediaData && $clientPhoneReply) {
                 if (preg_match('/^\+?\d{6,15}$/', $clientPhoneReply)) {
                     Cache::put('agent_client_phone_' . $phone, $clientPhoneReply, now()->addHour());
                     Cache::forget('agent_waiting_for_client_phone_' . $phone);
@@ -98,7 +101,7 @@ class IncomingMediaController extends Controller
                     $to = $request->input('data.from') ?? $request->input('from');
                     $this->sendWhatsAppMessage($to, "Your client's phone number {$clientPhoneReply} received.\nPlease hold while we process the data...", 'agent_phone_confirmed');
                     
-                    // Don't return here - continue processing with cached media
+                    // Continue to process cached media
                     Log::info("Agent phone confirmed, continuing with media processing", [
                         'agent_phone' => $phone,
                         'client_phone' => $clientPhoneReply
@@ -109,11 +112,24 @@ class IncomingMediaController extends Controller
                     Cache::forget('pending_media_' . $phone);
                     return response()->json(['message' => 'Invalid client phone number received.'], 200);
                 }
+            }
 
-                $agentId = $agent->id;
-                $agentPhone = $agent->phone_number;
-                $agentEmail = $agent->email;
-                $senderAgent = 'yes';
+            // If we're still waiting for client phone and no valid phone received, return
+            if ($waitingForClientPhone && !Cache::has('agent_client_phone_' . $phone)) {
+                return response()->json(['message' => 'Still waiting for client phone number.'], 200);
+            }
+
+            // NEW: If agent sends text but no media exists and we're not in any process
+            if (!$mediaData && !$waitingForClientPhone && !Cache::has('pending_media_' . $phone) && $clientPhoneReply) {
+                $to = $request->input('data.from') ?? $request->input('from');
+                $this->sendWhatsAppMessage($to, "Hello {$agent->name}! To create a client profile, please send your client's identification document (Civil ID or Passport) first.", 'agent_no_media_instruction');
+                return response()->json(['message' => 'Agent instructed to send media first.'], 200);
+            }
+
+            $agentId = $agent->id;
+            $agentPhone = $agent->phone_number;
+            $agentEmail = $agent->email;
+            $senderAgent = 'yes';
         } catch (Exception $e) {
             Log::error("Error processing agent webhook: " . $e->getMessage());
             $agentPhone = $fallbackPhone;
@@ -134,12 +150,21 @@ class IncomingMediaController extends Controller
 
         if (!$mediaData) {
             $to = $request->input('data.from') ?? $request->input('from');
-            $this->sendWhatsAppMessage($to, "It looks like the document you sent has expired or wasn't received. Please re-upload it.", 'media_missing');
-            return response()->json(['message' => 'Media missing or expired.'], 200);
+            
+            // Check if there was a previous session that expired
+            $hadPreviousSession = Cache::has('agent_waiting_for_client_phone_' . $phone) || 
+                                Cache::has('agent_client_phone_' . $phone);
+            
+            if ($hadPreviousSession) {
+                $this->sendWhatsAppMessage($to, "Your previous session has expired. Please send your client's identification document again to start fresh.", 'session_expired');
+            } else {
+                $this->sendWhatsAppMessage($to, "Hello {$agent->name}! To create a client profile, please send your client's identification document (Civil ID or Passport).", 'no_media_found');
+            }
+            
+            return response()->json(['message' => 'No media available for processing.'], 200);
         }
 
-        // Clear text message counter since client sent media
-        Cache::forget('client_text_count_' . $phone);
+        // Clear cached media after retrieval since we're about to process it
         Cache::forget('pending_media_' . $phone);
 
         $downloadLink = $mediaData['links']['download'] ?? null;
@@ -209,21 +234,27 @@ class IncomingMediaController extends Controller
 
         $incomingMedia = null;
 
-        // Retrieve client phone from cache if exists (only for actual agents, not random agents)
-        $clientPhoneFromAgent = null;
-        if ($senderAgent === 'yes' && Cache::has('agent_client_phone_' . $phone)) {
-            $clientPhoneFromAgent = Cache::get('agent_client_phone_' . $phone);
-            // Clear cache after use to avoid reuse
-            Cache::forget('agent_client_phone_' . $phone);
-            Log::info("Retrieved client phone from agent cache", [
+        // Retrieve client phone from cache - this should exist if we reached this point
+        $clientPhoneFromAgent = Cache::get('agent_client_phone_' . $phone);
+        
+        if (!$clientPhoneFromAgent) {
+            Log::error("No client phone found in cache during media processing", [
                 'agent_phone' => $phone,
-                'client_phone' => $clientPhoneFromAgent
+                'media_id' => $mediaId
             ]);
+            $to = $request->input('data.from') ?? $request->input('from');
+            $this->sendWhatsAppMessage($to, "Session expired. Please send the document and client phone number again.", 'session_expired');
+            return response()->json(['message' => 'Session expired - client phone missing.'], 200);
         }
 
-        // Since sender is always an agent, use the client phone from their reply
-        $clientPhoneNumber = $clientPhoneReply;
+        // Since sender is always an agent, use the client phone from cache
+        $clientPhoneNumber = $clientPhoneFromAgent;
         $autoReplyAdd = "your client's";
+
+        Log::info("Using client phone from cache", [
+            'agent_phone' => $phone,
+            'client_phone' => $clientPhoneNumber
+        ]);
 
         // Normalize client phone number
         $normalizedClientPhone = $this->normalizePhoneNumber($clientPhoneNumber);
@@ -343,7 +374,7 @@ class IncomingMediaController extends Controller
                                 ]);
                             }
 
-                            // Clean up cache
+                            // Clean up cache after successful processing
                             Cache::forget('agent_client_phone_' . $phone);
                             Cache::forget('agent_waiting_for_client_phone_' . $phone);
 

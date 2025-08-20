@@ -582,8 +582,8 @@
                                 </div>
                                 @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                 <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                    <label for="col-cancellation_deadline" class="text-sm text-gray-700">Cancellation Deadline</label>
+                                    <input type="checkbox" id="col-cancellation-deadline" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <label for="col-cancellation-deadline" class="text-sm text-gray-700">Cancellation Deadline</label>
                                 </div>
                                 @endif
                                 <div class="flex items-center gap-2">

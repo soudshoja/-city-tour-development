@@ -59,7 +59,7 @@ class TaskController extends Controller
         $user = Auth::user();
 
         $defaultColumns = [
-            'reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'issue-date', 'created-at', 'info'
+            'reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'issue-date', 'cancellation-deadline', 'created-at', 'info'
         ];
 
         if ($user->role_id === Role::AGENT) {

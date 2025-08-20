@@ -23,17 +23,18 @@ class UpdateHotelTaskWithSupplierPayDate extends Command
 
     public function handle()
     {
-
         $supplierId = $this->option('supplier');
         $reference  = $this->option('reference');
 
+        Log::info('Starting to update Hotel task with reference ' . $reference . ' from supplier ' . $supplierId . ' with supplier_pay_date');
+
         if (!$supplierId) {
-            $this->error('Supplier ID is required when using this operation');
+            $this->error('Supplier ID is required when using this command');
             return;
         }
 
         if (!$reference) {
-            $this->error('Task reference is required when using this operation');
+            $this->error('Task reference is required when using this command');
             return;
         }
 
@@ -53,76 +54,64 @@ class UpdateHotelTaskWithSupplierPayDate extends Command
             $cancellationDeadline = $task->cancellation_deadline;
             $supplierPayDate = $task->supplier_pay_date;
 
-            if ($status = 'issued') {
-                Log::info('Task status is issued. Cancel the operation.');
-                $this->error('Status is issued. No need to proceed.');
+            if ($status == 'issued') {
+                Log::info('Task status is issued. Cannot proceed the rest of the command process.');
+                $this->error('Status is issued. Cannot proceed determining the SupplierPayDate.');
+                return;
             }
 
-            if (!$supplierPayDate) {
-                Log::info('Empty SupplierPayDate. Checking Issued Date and Cancellation Deadline');
+            if (empty($supplierPayDate)) {
+                Log::info('SupplierPayDate is missing for task '. $task->reference . '. Checking IssuedDate and CancellationDeadline.');
 
-                if (!$issuedDate) {
-                    Log::info('Checking missing data: ', [
-                        'Issued Date: ' => $issuedDate,
-                    ]);
+                if (empty($issuedDate)) {
+                    Log::info('IssuedDate is required. Cannot proceed the rest of the command process.');
 
-                    $this->error('Issued date is missing. Cannot proceed determining the supplier pay date');
-                } elseif (!$cancellationDeadline) {
-                    Log::info('Cancellation Deadline is missing. Proceed to use Issued Date as the Supplier Pay Date');
-                    
-                    $supplierPayDate = $issuedDate;
-                    $task->status = 'issued';
-                    $task->updated_at = now();
+                    $this->error('IssuedDate is missing. Cannot proceed determining the SupplierPayDate.');
+                    return;
+                } elseif (empty($cancellationDeadline)) {
+                    Log::info('Status is ' . $status . '. CancellationDeadline is missing. Proceed to use IssuedDate ' . $issuedDate . ' as the SupplierPayDate');
 
-                    $task->save();
-                    
+                    $task->supplier_pay_date = $issuedDate;
                 } elseif ($cancellationDeadline) {
-                    Log::info('Checking the crucial data: ', [
-                        'Status: ' => $status,
-                        'Issued Date: ' => $issuedDate,
-                        'Cancellation Deadline: ' => $cancellationDeadline,
-                        'Supplier Pay Date: ' => $supplierPayDate,
-                    ]);
+                    Log::info('Status is ' . $status . '. CancellationDeadline is present. Determining the SupplierPayDate based on IssuedDate ' . $issuedDate);
 
                     if ($cancellationDeadline <= $issuedDate) {
+                        Log::info('SupplierPayDate is using IssuedDate');
                         $supplierPayDate = $issuedDate;
                     } elseif ($cancellationDeadline > $issuedDate) {
+                        Log::info('SupplierPayDate is using CancellationDeadline');
                         $supplierPayDate = $cancellationDeadline;
                     }
 
-                    $task->status = 'issued';
                     $task->supplier_pay_date =  $supplierPayDate;
-                    $task->updated_at = now();
-
-                    $task->save();
                 }
-                    Log::info('Date in table tasks has been updated.', [
-                        'Status: ' => $status,
-                        'Issued Date: ' => $issuedDate,
-                        'Cancellation Deadline: ' => $cancellationDeadline,
-                        'Supplier Pay Date: ' => $supplierPayDate,
-                    ]);
+                $task->status = 'issued';
+                $task->updated_at = now();
+                $task->save();
 
-                    $response = new TaskController();
+                $response = new TaskController();
 
-                    try {
-                        $response->processTaskFinancial($task);
-                        Log::info("Processed COA for Task ID {$task->id}");
-                    } catch (\Throwable $e) {
-                        Log::error("Failed to process COA for Task ID {$task->id}: " . $e->getMessage());
-                    }
-
-                    Log::info("Tasks without Supplier Pay Date has been updated: ", [
-                        'task_id' => $task->id,
-                        'reference' => $task->reference,
-                        'status' => $task->status,
-                        'issued_date' => $task->issued_date,
-                        'cancellation_deadline' => $task->cancellation_deadline,
-                        'supplier_pay_date' => $task->supplier_pay_date,
-                    ]);
-
+                try {
+                    $response->processTaskFinancial($task);
+                    Log::info('Processed COA for Task ID ' . $task->id);
+                } catch (\Throwable $e) {
+                    Log::error('Failed to process COA for Task ID ' . $task->id . ' : ' . $e->getMessage());
                 }
+
+                Log::info('Task without SupplierPayDate has been updated: ', [
+                    'TaskID'               => $task->id,
+                    'TaskReference'        => $task->reference,
+                    'Status'               => $task->status,
+                    'IssuedDate'           => $task->issued_date,
+                    'CancellationDeadline' => $task->cancellation_deadline,
+                    'SupplierPayDate'      => $task->supplier_pay_date,
+                ]);
+            } else {
+                Log::info('SupplierPayDate is not null. Cannot proceed the rest of the command process.');
+                $this->error('SupplierPayDate is already exist for task ' . $task->reference);
+                return;
             }
-            $this->info("Hotel tasks has been updated to the latest mechanism");
         }
+        $this->info('Hotel with task reference ' . $task->reference . ' has its SupplierPayDate updated to the mechanism.');
     }
+}

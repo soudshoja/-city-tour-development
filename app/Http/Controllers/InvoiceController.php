@@ -1006,7 +1006,7 @@ class InvoiceController extends Controller
                     'invoice_id' => $invoiceId,
                     'invoice_detail_id' => $invoiceDetailId,
                     'transaction_date' => $invoice->invoice_date,
-                    'description' => 'Invoice created for (Income): ' . $task['additional_info'],
+                    'description' => 'Invoice created for (Income): ' . $task['reference'],
                     'debit' => 0,
                     'credit' => $task->invoiceDetail->task_price,
                     'balance' => $detailsAccount->balance ?? 0,

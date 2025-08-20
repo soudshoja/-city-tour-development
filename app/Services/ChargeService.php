@@ -119,9 +119,7 @@ class ChargeService
 
     public static function FatoorahCharge($amount, $methodCode, $companyId)
     {
-        $method = PaymentMethod::where('id', $methodCode)
-            ->where('type', 'myfatoorah')
-            ->first();
+        $method = PaymentMethod::findOrFail($methodCode);
 
         if (!$method) {
             throw new \Exception("Payment method [$methodCode] not found.");

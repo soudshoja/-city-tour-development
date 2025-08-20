@@ -270,7 +270,8 @@
                 </div>
             </div>
 
-            <form action="{{ route('payment.link.store') }}" method="POST" class="space-y-6">
+            <form action="{{ route('payment.link.store') }}" method="POST" class="space-y-6"
+                x-data="{ submitting:false }" x-on:submit.prevent=" if (submitting) return; submitting = true; $el.submit();">
                 @csrf
                 @php
                     $prefill = session('prefill_data');
@@ -408,7 +409,7 @@
                             Cancel
                         </button>
                     </a>
-                    <button type="submit"
+                    <button type="submit" :disabled="submitting"
                         class="px-6 py-2 bg-blue-600 text-white rounded-full shadow-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                         Create Payment Link
                     </button>

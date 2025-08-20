@@ -4,18 +4,18 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
     </head>
     <style>
-        #myTable > thead > tr > th:first-child {
+        #myTable>thead>tr>th:first-child {
             position: sticky;
             left: 0;
             z-index: 2;
             background-color: #f9fafb;
         }
 
-        .dark #myTable > thead > tr > th:first-child {
+        .dark #myTable>thead>tr>th:first-child {
             background-color: #374151;
         }
 
-        #myTable > tbody > tr > td:first-child {
+        #myTable>tbody>tr>td:first-child {
             position: -webkit-sticky;
             position: sticky;
             left: 0;
@@ -24,16 +24,16 @@
             transition: background-color 0.2s;
         }
 
-        #myTable > thead > tr > th:first-child,
-        #myTable > tbody > tr > td:first-child {
+        #myTable>thead>tr>th:first-child,
+        #myTable>tbody>tr>td:first-child {
             box-shadow: 5px 0 5px -5px rgba(0, 0, 0, 0.1);
         }
 
-        .dark #myTable > thead > tr > th:first-child,
-        .dark #myTable > tbody > tr > td:first-child {
+        .dark #myTable>thead>tr>th:first-child,
+        .dark #myTable>tbody>tr>td:first-child {
             box-shadow: 5px 0 5px -5px rgba(255, 255, 255, 0.1);
         }
-        
+
         .no-client {
             color: red;
             /* position: relative; */
@@ -338,68 +338,68 @@
 
         @media (max-width: 640px) {
             .filter-modal-content {
-            width: 95vw;
-            max-width: none;
-            padding: 16px;
+                width: 95vw;
+                max-width: none;
+                padding: 16px;
             }
 
             .filter-modal-footer {
-            flex-direction: column;
-            gap: 1rem;
-            align-items: stretch;
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
             }
 
             .filter-row {
-            position: relative;
-            flex-direction: column;
-            align-items: stretch;
+                position: relative;
+                flex-direction: column;
+                align-items: stretch;
             }
 
             .filter-row input,
             .value-input {
-            width: 90% !important;
+                width: 90% !important;
             }
 
             .column-select {
-            width: 100% !important;
+                width: 100% !important;
             }
 
             .filter-row .remove-filter-btn {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            align-self: unset;
-            margin-top: 60px;
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                align-self: unset;
+                margin-top: 60px;
             }
 
             .filter-modal-footer {
-            flex-direction: row !important;
-            flex-wrap: wrap;
-            gap: 4px;
+                flex-direction: row !important;
+                flex-wrap: wrap;
+                gap: 4px;
             }
 
             .filter-modal-footer .flex {
-            flex-direction: row;
-            flex-wrap: wrap;
-            gap: 4px;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 4px;
             }
 
             .add-filter-btn,
             .clear-all-filters-btn,
             .apply-filters-btn {
-            flex: 1 1 auto;
-            width: auto;
-            min-width: 100px;
+                flex: 1 1 auto;
+                width: auto;
+                min-width: 100px;
             }
         }
 
         @media (hover: none) {
             .group:hover .group-hover\:block {
-            display: none;
+                display: none;
             }
 
             .group:focus .group-focus\:block {
-            display: block;
+                display: block;
             }
         }
     </style>
@@ -521,8 +521,7 @@
                     <x-search
                         :action="route('tasks.index')"
                         searchParam="q"
-                        placeholder="Quick search for tasks"
-                    />
+                        placeholder="Quick search for tasks" />
                     <button type="button" id="toggleFilters"
                         class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
                         <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
@@ -578,9 +577,15 @@
                                     <label for="col-supplier" class="text-sm text-gray-700">Supplier</label>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-issue-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
-                                    <label for="col-issue-date" class="text-sm text-gray-700">Issue Date</label>
+                                    <input type="checkbox" id="col-supplier-pay-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <label for="col-supplier-pay-date" class="text-sm text-gray-700">Issue Date</label>
                                 </div>
+                                @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="col-cancellation-deadline" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <label for="col-cancellation-deadline" class="text-sm text-gray-700">Cancellation Deadline</label>
+                                </div>
+                                @endif
                                 <div class="flex items-center gap-2">
                                     <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
                                     <label for="col-created-at" class="text-sm text-gray-700">Created Date</label>
@@ -890,14 +895,14 @@
                                                 <th data-column="supplier">
                                                     <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
                                                 </th>
-                                                <th data-column="issue-date">
+                                                <th data-column="supplier-pay-date" class="text-center">
                                                     <a href="{{ request()->fullUrlWithQuery([
-                                                                'sortBy' => 'issued_date',
-                                                                'sortOrder' => (request('sortBy') === 'issued_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
+                                                                'sortBy' => 'supplier_pay_date',
+                                                                'sortOrder' => (request('sortBy') === 'supplier_pay_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
                                                             ]) }}"
-                                                        class="flex items-center gap-2 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                                        class="inline-flex w-full items-center justify-center gap-2 text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
                                                         Issued Date
-                                                        @if(request('sortBy') !== 'issued_date')
+                                                        @if(request('sortBy') !== 'supplier_pay_date')
                                                         <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
                                                             fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                                             <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
@@ -938,6 +943,11 @@
                                                         @endif
                                                     </a>
                                                 </th>
+                                                 @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                                <th data-column="cancellation-deadline">
+                                                    <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Cancellation Deadline</span>
+                                                </th>
+                                                @endif
                                                 <th data-column="info">
                                                     <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Info</span>
                                                 </th>
@@ -1209,7 +1219,7 @@
                                                                                         <label for="client_id"
                                                                                             class="block text-sm font-medium text-gray-700">Client</label>
                                                                                         <div class="w-full">
-                                                                                            <x-searchable-dropdown 
+                                                                                            <x-searchable-dropdown
                                                                                                 name="client_id"
                                                                                                 :items="$clients->map(fn($c) => [
                                                                                                     'id' => $c->id, 
@@ -1217,10 +1227,9 @@
                                                                                                 ])"
                                                                                                 :selectedId="$task->client_id"
                                                                                                 :selectedName="$selectedClient ? $selectedClient->first_name . ' ' . $selectedClient->last_name . ' - ' . $selectedClient->phone : null"
-                                                                                                placeholder="Select Client" 
-                                                                                            />
+                                                                                                placeholder="Select Client" />
 
-                                                                                            
+
                                                                                         </div>
                                                                                     </div>
 
@@ -1400,12 +1409,17 @@
                                                 <td data-column="supplier" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->supplier->name }}
                                                 </td>
-                                                <td data-column="issue-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->formatted_date ?? 'Not Set' }}
+                                                <td data-column="supplier-pay-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                                    {{ $task->supplier_pay_date ?? 'Not Set' }}
                                                 </td>
                                                 <td data-column="created-at" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->created_at ?  \Carbon\Carbon::parse($task->created_at)->format('d-m-Y H:i') : 'Not Set' }}
                                                 </td>
+                                                @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                                <td data-column="cancellation-deadline" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                                    {{ $task->cancellation_deadline ?  \Carbon\Carbon::parse($task->cancellation_deadline)->format('d-m-Y H:i') : 'Not Set' }}
+                                                </td>
+                                                @endif
                                                 <td data-column="info" class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
                                                     @if ($task->type === 'flight')
                                                     @php
@@ -1506,15 +1520,15 @@
                                                 @if (Auth()->user()->role_id == \App\Models\Role::ADMIN || Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                                 <td data-column="file-name" class="column-hidden flex p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     @if(!empty($task->file_name))
-                                                        <p> {{ basename($task->file_name) ?? 'No Files' }} </p>
-                                                        <div @click.stop="navigator.clipboard.writeText('{{ basename($task->file_name) }}')" class="ml-2 text-black hover:text-blue-500 transition-colors flex items-center gap-1"
-                                                            data-tooltip-left="Copy filename">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                            </svg>
-                                                        </div>
+                                                    <p> {{ basename($task->file_name) ?? 'No Files' }} </p>
+                                                    <div @click.stop="navigator.clipboard.writeText('{{ basename($task->file_name) }}')" class="ml-2 text-black hover:text-blue-500 transition-colors flex items-center gap-1"
+                                                        data-tooltip-left="Copy filename">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                        </svg>
+                                                    </div>
                                                     @else
-                                                        <p>No Files</p>
+                                                    <p>No Files</p>
                                                     @endif
                                                 </td>
                                                 @endif
@@ -1639,7 +1653,7 @@
                                                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                     </div>
                                                     <div class="mb-3">
-                                                        <label 
+                                                        <label
                                                             class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
                                                         <input type="text" name="last_name" id="lastNameTask"
                                                             placeholder="Client's Last Name"
@@ -1667,7 +1681,7 @@
                                                             <label
                                                                 class="block text-sm font-medium text-gray-700 mb-1">Date
                                                                 of Birth</label>
-                                                            <input type="date" name="date_of_birthTask"
+                                                            <input type="date" name="date_of_birth" id="date_of_birthTask"
                                                                 class="w-full text-gray-700 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                         </div>
                                                     </div>
@@ -1700,7 +1714,7 @@
                                                             <label
                                                                 class="block text-sm font-medium text-gray-700 mb-1">Passport
                                                                 Number</label>
-                                                            <input type="text" name="passport" id="passport_noTask"
+                                                            <input type="text" name="passport_no" id="passport_noTask"
                                                                 class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                         </div>
                                                         <div class="w-1/2">
@@ -2054,7 +2068,7 @@
             const form = document.getElementById('agent-supplier-task');
 
             formTaskContainer.innerHTML = '';
-            const isHotel = (supplier?.has_hotel == 1 ||  supplier?.has_hotel == '1')&& supplier.name != 'Amadeus';
+            const isHotel = (supplier?.has_hotel == 1 || supplier?.has_hotel == '1') && supplier.name != 'Amadeus';
 
             console.log('Selected Supplier:', supplier);
             if (supplier.name == 'Magic Holiday') {
@@ -2111,7 +2125,7 @@
                 formTaskContainer.appendChild(carousel);
 
                 const track = carousel.querySelector('#batch-track');
-                const dots  = carousel.querySelector('#dots');
+                const dots = carousel.querySelector('#dots');
                 const addBtn = toolbar.querySelector('#add-batch');
                 const prevBtn = carousel.querySelector('#prev');
                 const nextBtn = carousel.querySelector('#next');
@@ -2194,7 +2208,7 @@
                         } else {
                             filesBox.classList.remove('hidden');
                             batches[batchIndex].forEach((f, i) => {
-                            const row = document.createElement('div');
+                                const row = document.createElement('div');
                                 row.className = 'bg-gray-100 rounded px-3 py-1 mb-1 flex items-center justify-between';
                                 row.innerHTML = `
                                     <span class="truncate text-xs max-w-[220px]">${f.name}</span>
@@ -2215,9 +2229,9 @@
                             hint.className = 'hint text-xs mt-2 text-amber-600';
                         }
                         if (count >= 1) {
-                            hint.textContent = count === 1
-                            ? 'Ready: single file (original name will be used)'
-                            : 'Ready to merge (you may set a custom merged name)';
+                            hint.textContent = count === 1 ?
+                                'Ready: single file (original name will be used)' :
+                                'Ready to merge (you may set a custom merged name)';
                             hint.className = 'hint text-xs mt-2 text-green-600';
                         } else {
                             hint.textContent = 'Add at least 1 PDF to this batch';
@@ -2231,13 +2245,15 @@
 
                     ['dragenter', 'dragover'].forEach(evt =>
                         drop.addEventListener(evt, (e) => {
-                            e.preventDefault(); e.stopPropagation();
+                            e.preventDefault();
+                            e.stopPropagation();
                             drop.classList.add('border-blue-400', 'bg-blue-50');
                         })
                     );
                     ['dragleave', 'drop'].forEach(evt =>
                         drop.addEventListener(evt, (e) => {
-                            e.preventDefault(); e.stopPropagation();
+                            e.preventDefault();
+                            e.stopPropagation();
                             drop.classList.remove('border-blue-400', 'bg-blue-50');
                         })
                     );
@@ -2268,8 +2284,11 @@
                             const label = c.querySelector('span.font-semibold');
                             if (label) label.textContent = `Batch #${i + 1}`;
                         });
-                        if (batches.length === 0) { active = 0; }
-                        else if (wasActive && active > 0) { active -= 1; }
+                        if (batches.length === 0) {
+                            active = 0;
+                        } else if (wasActive && active > 0) {
+                            active -= 1;
+                        }
                         goTo(active);
                     });
 
@@ -2312,8 +2331,8 @@
                         form.appendChild(hidden);
 
                         const nameHidden = document.createElement('input');
-                        nameHidden.type  = 'hidden';
-                        nameHidden.name  = `batch_names[${i}]`;
+                        nameHidden.type = 'hidden';
+                        nameHidden.name = `batch_names[${i}]`;
                         nameHidden.value = (slides[i]?.querySelector('.name-input')?.value || '').trim();
                         nameHidden.setAttribute('data-synth', '1');
                         form.appendChild(nameHidden);

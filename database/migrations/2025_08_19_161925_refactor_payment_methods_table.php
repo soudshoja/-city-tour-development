@@ -17,7 +17,9 @@ return new class extends Migration
     {
         $paymentMethods = PaymentMethod::all();
 
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         DB::table('payment_methods')->truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         Schema::table('payment_methods', function (Blueprint $table) {
             $table->unsignedBigInteger('myfatoorah_id')->nullable()->after('id');

@@ -47,6 +47,11 @@ class PaymentMethod extends Model
         }
 
         $user = Auth::user();
+        
+        // Return null if no authenticated user (like in tests)
+        if (!$user) {
+            return null;
+        }
 
         return match ($user->role_id) {
             Role::AGENT => $user->agent?->branch?->company_id ?? $user->company_id ?? $user->company?->id,
@@ -59,9 +64,12 @@ class PaymentMethod extends Model
     protected static function booted(): void
     {
         static::addGlobalScope('company', function (Builder $q) {
-            $id = static::resolveCompanyId();
-            if ($id !== null) {
-                $q->where($q->qualifyColumn('company_id'), $id);
+            // Only apply scope if user is authenticated
+            if (Auth::check()) {
+                $id = static::resolveCompanyId();
+                if ($id !== null) {
+                    $q->where($q->qualifyColumn('company_id'), $id);
+                }
             }
         });
     }

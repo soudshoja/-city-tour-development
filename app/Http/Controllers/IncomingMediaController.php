@@ -330,38 +330,44 @@ class IncomingMediaController extends Controller
                                     'last_name' => $data['last_name'] ?? null,
                                     'email' => $agentEmail,
                                     'status' => 'active',
-                                    'phone' => $localNumberClient,
+                                    'phone' => $localNumberClient ?? '',
                                     'country_code' => $matchedCodeClientPhone ?? '+965',
                                     'date_of_birth' => $data['date_of_birth'] ?? null,
                                     'address' => $data['place_of_birth'] ?? null,
-                                    'civil_no' => $data['civil_no'] ?? null,
+                                    'civil_no' => $data['civil_no'],
                                     'passport_no' => $data['passport_no'] ?? null,
                                     'old_passport_no' => $data['passport_no'] ?? null,
                                     'agent_id' => $agentId
                                 ]);
-                                $autoReplyText = "Thank you, {$autoReplyAdd} profile has been created.";
+                                $autoReplyText = "✅ Thank you, {$autoReplyAdd} profile has been created successfully.\n\nClient: {$data['first_name']} {$data['last_name']}\nCivil ID: {$data['civil_no']}";
                                 Log::info("Client created within transaction", [
                                     'client_id' => $client->id,
                                     'civil_no' => $data['civil_no']
                                 ]);
                             } else {
+                                // Update client with latest information
+                                $updateData = [
+                                    'phone' => $localNumberClient ?? $client->phone,
+                                    'country_code' => $matchedCodeClientPhone ?? $client->country_code,
+                                    'date_of_birth' => $data['date_of_birth'] ?? $client->date_of_birth,
+                                    'address' => $data['place_of_birth'] ?? $client->address,
+                                    'updated_at' => Carbon::parse($receivedAt),
+                                ];
+
+                                // Check if passport number is different and update
                                 if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
-                                    $client->update([
-                                        'phone' => $localNumberClient,
-                                        'country_code' => $matchedCodeClientPhone ?? '+965',
-                                        'date_of_birth' => $data['date_of_birth'] ?? null,
-                                        'address' => $data['place_of_birth'] ?? null,
-                                        'passport_no' => $data['passport_no'],
-                                        'updated_at' => Carbon::parse($receivedAt),
-                                    ]);
-                                    $autoReplyText = "Thank you for updating {$autoReplyAdd} passport details.";
+                                    $updateData['passport_no'] = $data['passport_no'];
+                                    $autoReplyText = "✅ Thank you, {$autoReplyAdd} passport details have been updated.\n\nClient: {$client->first_name} {$client->last_name}\nNew Passport: {$data['passport_no']}";
                                     Log::info("Client passport updated within transaction", [
                                         'client_id' => $client->id,
+                                        'old_passport' => $client->passport_no,
                                         'new_passport' => $data['passport_no']
                                     ]);
                                 } else {
-                                    $autoReplyText = "Thank you. We already have {$autoReplyAdd} passport information.";
+                                    $autoReplyText = "✅ Thank you. We already have {$autoReplyAdd} information on file.\n\nClient: {$client->first_name} {$client->last_name}\nCivil ID: {$client->civil_no}";
                                 }
+
+                                $client->update($updateData);
                             }
 
                             // Link IncomingMedia to client
@@ -392,18 +398,29 @@ class IncomingMediaController extends Controller
                                 'media_id' => $mediaId,
                                 'phone' => $phone
                             ]);
-                            throw $e; // Re-throw to be caught by outer catch
+                            
+                            $to = $request->input('data.from') ?? $request->input('from');
+                            $this->sendWhatsAppMessage($to, "❌ Sorry, there was an error creating the client profile. Please try again or contact support.", 'client_creation_failed');
+                            return response()->json(['message' => 'Client creation failed'], 500);
                         }
                     } else {
                         Log::error("No valid data from upload response", [
                             'response_data' => $data
                         ]);
+                        
+                        $to = $request->input('data.from') ?? $request->input('from');
+                        $this->sendWhatsAppMessage($to, "❌ Sorry, I couldn't read the information from the document. Please ensure the document is clear and try again.", 'ai_extraction_failed');
+                        return response()->json(['message' => 'AI extraction failed'], 400);
                     }
                 } else {
                     Log::error("Upload failed", [
                         'status' => $uploadResponse->status(),
                         'body' => $uploadResponse->body()
                     ]);
+                    
+                    $to = $request->input('data.from') ?? $request->input('from');
+                    $this->sendWhatsAppMessage($to, "❌ Sorry, there was an issue processing your document. Please try again.", 'upload_processing_failed');
+                    return response()->json(['message' => 'Upload processing failed'], 500);
                 }
             } catch (Exception $e) {
                 Log::error("Client creation/upload error", [
@@ -411,12 +428,18 @@ class IncomingMediaController extends Controller
                     'media_id' => $mediaId,
                     'phone' => $phone
                 ]);
+                
+                $to = $request->input('data.from') ?? $request->input('from');
+                $this->sendWhatsAppMessage($to, "❌ Sorry, there was an unexpected error processing your request. Please try again.", 'unexpected_error');
             }
         } else {
             Log::warning("File not found for processing", [
                 'local_path' => $localPath,
                 'media_id' => $mediaId
             ]);
+            
+            $to = $request->input('data.from') ?? $request->input('from');
+            $this->sendWhatsAppMessage($to, "❌ The uploaded file could not be found. Please try uploading again.", 'file_not_found');
         }
 
         // Auto-reply

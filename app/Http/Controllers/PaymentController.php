@@ -601,7 +601,7 @@ class PaymentController extends Controller
                     'account_id' =>  $receivableAccountId,
                     'invoice_detail_id' =>  $invoiceDetail->id,
                     'transaction_date' => Carbon::now(),
-                    'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->first_namet_name,
+                    'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->first_name,
                     'debit' => 0,
                     'credit' => $totalPaidAmount,
                     'balance' => $invoiceDetail['task_price'] - $totalPaidAmount,

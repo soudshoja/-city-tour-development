@@ -113,6 +113,7 @@ class PaymentController extends Controller
             'selected_items' => $request->selected_items,
             'redirect_url' => route('payment.process'),
             'webhook_url' => route('payment.webhook'),
+            'invoice_partial_ids' => $request->invoice_partial_id,
         ];
 
 
@@ -323,6 +324,11 @@ class PaymentController extends Controller
                 $clientPhone = ltrim($clientPhone, '0');
             }
 
+            $userDefinedField = json_encode([
+                'invoice_id'          => $invoice->id,
+                'invoice_partial_ids' => array_values($invoicePartialIds ?? []),
+            ]);            
+
             $executePayload = [
                 "PaymentMethodId"     => $paymentMethod->myfatoorah_id,
                 "InvoiceValue"        => $finalAmount,
@@ -335,7 +341,7 @@ class PaymentController extends Controller
                 "ErrorUrl"            => route('payments.error', ['invoice_id' => $invoice->id]),
                 "Language"            => "en",
                 "CustomerReference"   => $invoiceNumber,
-                "UserDefinedField"    => (string) $invoice->id,
+                "UserDefinedField"    => $userDefinedField,
                 "InvoiceItems" => [
                     [
                         "ItemName"   => "Invoice " . $invoiceNumber,
@@ -2084,10 +2090,16 @@ class PaymentController extends Controller
             $statusData = $statusResponse->json();
             Log::info('MyFatoorah payment status', $statusData);
 
+            if ($statusData['Data']['UserDefinedField']) {
+                $userDefinedField = json_decode($statusData['Data']['UserDefinedField'], true);
+            } else {
+                $userDefinedField = [];
+            }
+
             $invoiceId = $statusData['Data']['InvoiceId'] ?? null;
             $voucherNumber = $statusData['Data']['UserDefinedField'] ?? null;
             $invoiceStatus = strtolower($statusData['Data']['InvoiceStatus'] ?? '');
-            $userDefinedField = $statusData['Data']['UserDefinedField'] ?? null;
+            $selectedPartialIds = $userDefinedField['invoice_partial_ids'] ?? [];
 
             if (!$invoiceId || $invoiceStatus !== 'paid') {
                 return redirect()->to('/invoices')->with('error', 'Payment was not completed.');
@@ -2106,12 +2118,6 @@ class PaymentController extends Controller
             if (!$payment) {
                 Log::error('Payment not found', ['invoiceId' => $invoiceId]);
                 return redirect()->to('/invoices')->with('error', 'Payment record not found.');
-            }
-
-            if ($statusData['Data']['UserDefinedField']) {
-                $userDefinedField = json_decode($statusData['Data']['UserDefinedField'], true);
-            } else {
-                $userDefinedField = [];
             }
 
             $process = $userDefinedField['process'] ?? 'invoice';
@@ -2193,7 +2199,6 @@ class PaymentController extends Controller
             $finalPaidAmount = $statusData['Data']['InvoiceValue'];
             $companyId = optional($payment->agent->branch)->company_id;
             $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
-            $serviceFeePaid = $chargeResult['fee'] ?? 0;
 
             //Mark payment as completed
             $payment->status = 'completed';
@@ -2201,19 +2206,30 @@ class PaymentController extends Controller
             $payment->save();
 
             if ($payment->invoice) {
-                $payment->invoice->status = 'paid';
-                $payment->invoice->save();
-
-                $matchingPartial = $payment->invoice->invoicePartials
-                    ->where('invoice_number', $payment->invoice->invoice_number)
-                    ->first();
-
-                if ($matchingPartial) {
-                    $matchingPartial->amount = $finalPaidAmount;
-                    $matchingPartial->status = 'paid';
-                    $matchingPartial->payment_id = $payment->id; // Save the payment ID to each partial
-                    $matchingPartial->save();
-                }
+                DB::transaction(function () use ($payment, $selectedPartialIds) {
+                    if (!empty($selectedPartialIds)) {
+                        $partials = InvoicePartial::where('invoice_id', $payment->invoice_id)
+                            ->whereIn('id', $selectedPartialIds)
+                            ->get();
+                
+                        foreach ($partials as $partial) {
+                            $partial->status = 'paid';
+                            $partial->payment_id = $payment->id;
+                            $partial->save();
+                        }
+                    }
+                
+                    $invoice = $payment->invoice()->with('invoicePartials:id,invoice_id,status')->first();
+                    $hasUnpaid = $invoice->invoicePartials()->where('status', '!=', 'paid')->exists();
+                    $hasPaid   = $invoice->invoicePartials()->where('status', 'paid')->exists();
+                
+                    if (!$hasUnpaid && $hasPaid) {
+                        $invoice->status = 'paid';
+                    } elseif ($hasUnpaid && $hasPaid) {
+                        $invoice->status = 'partial';
+                    }
+                    $invoice->save();
+                });
 
                 $transaction = $statusData['Data']['InvoiceTransactions'][0] ?? [];
 

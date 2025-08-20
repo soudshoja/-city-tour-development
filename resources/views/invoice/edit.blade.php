@@ -1153,7 +1153,7 @@
 
                                                     <!-- Buttons -->
 
-                                                    <div>
+                                                    <div class="flex space-x-4 mt-5">
                                                         <button type="button" id="splitbutton"
                                                             onclick="savePartial('split')"
                                                             class="inline-flex items-center justify-center text-sm text-black font-semibold
@@ -2034,7 +2034,8 @@
                         <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="border-gray-300 rounded-md shadow-sm" />
                     </td>
                     <td class="border-b px-4 py-2">
-                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" />
+                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" 
+                            onblur="checkInputAmount('split', ${i})" oninput="checkInputAmount('split', ${i})" />
                     </td>
                     <td class="border-b px-4 py-2">
                         <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="border border-gray-300 p-2 rounded w-full">
@@ -2099,7 +2100,8 @@
                         <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="border-gray-300 rounded-md shadow-sm" />
                     </td>
                     <td class="border-b px-4 py-2">
-                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount1}" />
+                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount1}" 
+                            onblur="checkInputAmountOnInput('partial', ${i})" oninput="checkInputAmount('partial', ${i})" />
                     </td>
                 `;
                     tbody.appendChild(row);
@@ -3057,6 +3059,15 @@
             }
 
             function savePartial(mode) {
+                const validation = checkPaymentAmount(mode);
+    
+                if (!validation.isValid) {
+                    showErrorAlert(validation.errorMessage);
+                    return;
+                }
+
+                clearErrorAlert();
+
                 if (mode === 'full') {
                     const gateway = document.getElementById('payment_gateway_option')?.value;
                     const date = document.getElementById('duedate').value;
@@ -3671,6 +3682,121 @@
                 });
 
             });
+
+            function showErrorAlert(message) {
+                clearErrorAlert();
+
+                let errorNotification = document.createElement('div');
+                errorNotification.id = "paymentValidationError";
+                errorNotification.innerHTML = ` 
+                    <div class="alert alert-danger fixed top-5 right-5 bg-red-500 text-white p-4 rounded shadow-lg z-50">
+                        ${message}
+                        <button type="button" class="close text-white ml-2" aria-label="Close"
+                            onclick="clearErrorAlert();">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>`;
+
+                document.body.appendChild(errorNotification);
+
+                setTimeout(() => { clearErrorAlert(); }, 10000);
+            }
+
+            function clearErrorAlert() {
+                let existingAlert = document.getElementById("paymentValidationError");
+                if (existingAlert) {
+                    existingAlert.remove();
+                }
+            }
+
+            function checkPaymentAmount(mode) {
+                const totalInvoiceAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+                let totalEnteredAmount = 0;
+                let isValid = true;
+                let errorMessage = '';
+
+                if (mode === 'split') {
+                    const rows = document.querySelectorAll('#split-rows tr');
+                    
+                    rows.forEach((row, index) => {
+                        const amountInput = row.querySelector(`input[type="number"]`);
+                        const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
+                        totalEnteredAmount += amount;
+                    });
+
+                    if (totalEnteredAmount !== totalInvoiceAmount) {
+                        isValid = false;
+                        errorMessage = `Total split payment amounts (${totalEnteredAmount.toFixed(2)} KWD) must equal the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Please adjust the amounts to match exactly.`;
+                    }
+
+                } else if (mode === 'partial') {
+                    const partialRows = document.querySelectorAll('#split-rows1 tr');
+                    
+                    partialRows.forEach(row => {
+                        const amountInput = row.querySelector('input[type="number"]');
+                        const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
+                        totalEnteredAmount += amount;
+                    });
+
+                    if (totalEnteredAmount > totalInvoiceAmount) {
+                        isValid = false;
+                        errorMessage = `Total partial payment amounts (${totalEnteredAmount.toFixed(2)} KWD) exceed the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Partial payments cannot exceed the invoice total.`;
+                    } else if (totalEnteredAmount < totalInvoiceAmount) {
+                        isValid = false;
+                        errorMessage = `Total partial payment amounts (${totalEnteredAmount.toFixed(2)} KWD) are less than the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Partial payments cannot be less than the invoice total.`;
+                    }
+                }
+
+                return {
+                    isValid,
+                    errorMessage,
+                    totalEnteredAmount,
+                    totalInvoiceAmount
+                };
+            }
+
+            function checkInputAmount(mode, rowIndex = null) {
+                const validation = checkPaymentAmount(mode);
+                
+                const existingError = document.getElementById('payment-validation-error');
+                if (existingError) {
+                    existingError.remove();
+                }
+
+                if (!validation.isValid) {
+                    showErrorAlert(validation.errorMessage);
+
+                    const modalContent = mode === 'split' ? 
+                        document.querySelector('#paymentModal .bg-white') : 
+                        document.querySelector('#paymentModal1 .bg-white');
+                    
+                    if (modalContent) {
+                        modalContent.insertBefore(errorDiv, modalContent.firstChild);
+                    }
+
+                    const saveButton = mode === 'split' ? 
+                        document.getElementById('splitbutton') : 
+                        document.getElementById('partialbutton');
+                    
+                    if (saveButton) {
+                        saveButton.disabled = true;
+                        saveButton.style.opacity = '0.5';
+                        saveButton.style.cursor = 'not-allowed';
+                    }
+                } else {
+                    clearErrorAlert();
+
+                    const saveButton = mode === 'split' ? 
+                        document.getElementById('splitbutton') : 
+                        document.getElementById('partialbutton');
+                    
+                    if (saveButton) {
+                        saveButton.disabled = false;
+                        saveButton.style.opacity = '1';
+                        saveButton.style.cursor = 'pointer';
+                    }
+                }
+            }
         </script>
         <script>
             document.addEventListener('DOMContentLoaded', () => {

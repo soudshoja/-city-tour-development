@@ -88,6 +88,15 @@
         </div>
     </div>
     @endif
+    @if ($invoice->status === 'partial')
+    <div class="max-w-4xl mx-auto rounded-lg border border-yellow-300 bg-yellow-100 p-6 flex items-center rounded-lg">
+        <div class="flex items-center gap-2 text-yellow-800">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zM9 5h2v5H9V5zm0 6h2v2H9v-2z" clip-rule="evenodd"/></svg>
+            <div class="font-semibold">Invoice is partially paid.</div>
+            <div class="text-sm">Some installments are paid, some are pending. You can continue below.</div>
+        </div>
+    </div>
+    @endif
     <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         <!-- Header -->
         <div class="flex justify-between items-center mb-10">
@@ -222,7 +231,7 @@
                     <td class="px-4 py-2 border">
                         <input type="checkbox" class="partial-checkbox" name="selected_partials[]"
                             value="{{ $partial->id }}" data-amount="{{ $partial->amount }}" data-final-amount="{{ $partial->final_amount }}"
-                            @if ($partial->status == 'paid') checked disabled @endif>
+                            @if ($partial->status == 'paid') disabled @endif>
                     </td>
                     <td class="px-4 py-2 border">
                         {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}
@@ -678,7 +687,6 @@
 
 
             checkboxes.forEach((checkbox) => {
-
                 const partialId = checkbox.value;
 
                 if (checkbox.disabled) {
@@ -787,4 +795,4 @@
 
 </body>
 
-</html>H
+</html>

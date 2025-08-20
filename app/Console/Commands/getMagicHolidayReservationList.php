@@ -24,6 +24,8 @@ class getMagicHolidayReservationList extends Command
     protected $signature = 'app:magic-holiday-reservation 
                             { --from= : Start date for reservations in format YYYY-MM-DD }
                             { --to= : End date for reservations in format YYYY-MM-DD }
+                            { --reservation : Fetch by booking date }
+                            { --cancellation : Fetch by cancellation deadline }
                             { --toSql : Generate SQL insert statements instead of storing to database }';
     protected $companies;
     protected $hotelCreationSqls = [];
@@ -47,6 +49,15 @@ class getMagicHolidayReservationList extends Command
             return 0;
         }
 
+        if (!$this->option('reservation') && !$this->option('cancellation')) {
+            $this->error('Provide one choice to proceed: --reservation OR --cancellation');
+            return 0;
+        }
+
+        if ($this->option('reservation') && $this->option('cancellation')) {
+            $this->error('Choose only one: --reservation OR --cancellation.');
+            return 0;
+        }
         $fromDate = $this->option('from') ?? date('Y-m-d', strtotime('-1 day'));
         $toDate = $this->option('to') ?? date('Y-m-d');
 
@@ -129,14 +140,26 @@ class getMagicHolidayReservationList extends Command
             'size' => $size
         ];
 
-        if($fromDate) {
+        /*  if($fromDate) {
             $params['reservationDate'] = $fromDate;
         }
 
         if($toDate) {
             $params['reservationDate'] .= '|' . $toDate;
         }
-
+ */
+        $dateRange = $fromDate && $toDate ? ($fromDate . '|' . $toDate) : ($fromDate ?: $toDate);
+        
+        if ($this->option('reservation')) {
+            $params['reservationDate'] = $dateRange;
+        } elseif ($this->option('cancellation')) {
+            $params['cancellationPolicyDate'] = $dateRange;
+        } else {
+            return [
+                'status'  => 'error',
+                'message' => 'Provide either --reservation or --cancellation.'
+            ];
+        }
         $response = $this->magicApiRequest(
             $clientId,
             $clientSecret,

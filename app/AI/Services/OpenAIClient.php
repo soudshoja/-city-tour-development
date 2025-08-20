@@ -779,11 +779,15 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • When multiple passengers are listed, create a separate task for each passenger:\n";
         $prompt .= "      – tasks.total = that passenger’s Paid Amount (e.g. 636.06 AED).\n";
         $prompt .= "      – tasks.price = that passenger’s Fare amount (e.g. 335.50 AED).\n";
-        $prompt .= "- SUPPLIER-SPECIFIC HINTS (World of Luxury, Travel Collection and Heysam Group):\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Bella Vita, World of Luxury, Travel Collection and Heysam Group):\n";
         $prompt .= "  • Create EXACTLY ONE task per ROOM (NEVER per passenger). If the file has N rooms, output N tasks; if it has 1 room, output 1 task.\n";
         $prompt .= "  • totals: set price and total to the booking GRAND TOTAL shown on the invoice (e.g., EUR 375.00). set issued_date to print date.\n";
         $prompt .= "  • Set reference to the Voucher number; set issued_by and created_by to the Tour Operator name only (without country, if have); set agent to null.\n";
         $prompt .= "  • Populate task_hotel_details with Hotel, Room, Type, Board, Nights, Check-in, Check-out, and the segment total.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Bedzinn):\n";
+        $prompt .= "  • Create EXACTLY ONE task per ROOM (NEVER per passenger). If the file has N rooms, output N tasks; if it has 1 room, output 1 task.\n";
+        $prompt .= "  • Bedzinn vouchers that say something like “Booking confirmed”, set `status` = 'issued', set `issued_by`and `created_by` = 'Ojeen Travel'.\n";
+        $prompt .= "  • Set the client to the first passenger; if there are additional passengers, list them in additional_details.\n";
 
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (NDC SUPPLIERS): If the supplier has 'NDC' in its name (case-insensitive), set created_by to exactly match issued_by.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (EMIRATES NDC): Set issued_by to the agency/office name that appears immediately next to the 'IATA:' number.\n";

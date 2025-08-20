@@ -895,12 +895,12 @@
                                                 <th data-column="supplier">
                                                     <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
                                                 </th>
-                                                <th data-column="supplier-pay-date">
+                                                <th data-column="supplier-pay-date" class="text-center">
                                                     <a href="{{ request()->fullUrlWithQuery([
                                                                 'sortBy' => 'supplier_pay_date',
                                                                 'sortOrder' => (request('sortBy') === 'supplier_pay_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
                                                             ]) }}"
-                                                        class="flex items-center gap-2 text-left text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
+                                                        class="inline-flex w-full items-center justify-center gap-2 text-md font-bold text-gray-900 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
                                                         Issued Date
                                                         @if(request('sortBy') !== 'supplier_pay_date')
                                                         <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
@@ -1409,7 +1409,7 @@
                                                 <td data-column="supplier" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->supplier->name }}
                                                 </td>
-                                                <td data-column="issue-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                                <td data-column="supplier-pay-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->supplier_pay_date ?? 'Not Set' }}
                                                 </td>
                                                 <td data-column="created-at" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">

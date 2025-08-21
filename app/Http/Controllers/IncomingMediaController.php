@@ -300,35 +300,26 @@ class IncomingMediaController extends Controller
                     if ($data && isset($data['first_name'])) {
                         // Start transaction for all database operations
                         DB::beginTransaction();
-                         if (
-        isset($data['nationality']) 
-        && strtoupper(trim($data['nationality'])) === 'KUWAIT' 
-        && empty($data['civil_no'])
-    ) {
-        Log::warning("Civil No. is mandatory for Kuwait nationals but missing", [
-            'phone' => $phone,
-            'data' => $data
-        ]);
 
-        $to = $request->input('data.from') ?? $request->input('from');
-        $this->sendWhatsAppMessage(
-            $to,
-            "❌ Sorry, Civil ID is required for Kuwait nationals. Please resend with Civil ID.",
-            'civil_id_required'
-        );
-        return response()->json(['message' => 'Civil ID required for Kuwait nationals'], 422);
-    }
+                        if (
+                            isset($data['nationality'])
+                            && strtoupper(trim($data['nationality'])) === 'KUWAIT'
+                            && empty($data['civil_no'])
+                        ) {
+                            Log::warning("Civil No. is mandatory for Kuwait nationals but missing", [
+                                'phone' => $phone,
+                                'data' => $data
+                            ]);
 
-    if (isset($data['civil_no'])) {
-        // ✅ proceed with your existing transaction logic
-        DB::beginTransaction();
-        try {
-            // ... all your existing IncomingMedia / Client creation code here ...
-        } catch (Exception $e) {
-            DB::rollBack();
-            // ... existing rollback handling ...
-        }
-    }
+                            $to = $request->input('data.from') ?? $request->input('from');
+                            $this->sendWhatsAppMessage(
+                                $to,
+                                "❌ Sorry, Civil ID is required for Kuwait nationals. Please resend with Civil ID.",
+                                'civil_id_required'
+                            );
+                            return response()->json(['message' => 'Civil ID required for Kuwait nationals'], 422);
+                        }
+
                         try {
                             // Create IncomingMedia record first (within transaction)
                             $incomingMedia = IncomingMedia::create([
@@ -418,7 +409,6 @@ class IncomingMediaController extends Controller
                                 'client_id' => $client->id,
                                 'media_id' => $incomingMedia->id
                             ]);
-
                         } catch (Exception $e) {
                             DB::rollBack();
                             Log::error("Transaction failed, rolling back", [
@@ -426,7 +416,7 @@ class IncomingMediaController extends Controller
                                 'media_id' => $mediaId,
                                 'phone' => $phone
                             ]);
-                            
+
                             $to = $request->input('data.from') ?? $request->input('from');
                             $this->sendWhatsAppMessage($to, "❌ Sorry, there was an error creating the client profile. Please try again or contact support.", 'client_creation_failed');
                             return response()->json(['message' => 'Client creation failed'], 500);

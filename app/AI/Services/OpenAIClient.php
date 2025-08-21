@@ -3,6 +3,7 @@
 namespace App\AI\Services;
 
 use App\AI\Contracts\AIClientInterface;
+use App\AI\Support\AIResponse;
 use App\Enums\TaskType;
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Agent;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 class OpenAIClient implements AIClientInterface
 {
@@ -30,30 +32,88 @@ class OpenAIClient implements AIClientInterface
     protected string $apiUrl;
     protected string $apiKey;
     protected string $model;
+    protected $logger;
 
     public function __construct()
     {
-        $this->apiUrl = config('services.open-ai.url');
-        $this->apiKey = config('services.open-ai.key');
-        $this->model = config('services.open-ai.model');
+        $this->apiUrl = config('ai.providers.openai.url');
+        $this->apiKey = config('ai.providers.openai.key');
+        $this->model = config('ai.providers.openai.model');
+        $this->logger = Log::channel('ai');
+
+        if (empty($this->apiUrl) || empty($this->apiKey)) {
+            throw new Exception('OpenAi configuration is missing. Please check your AI_PROVIDER settings.');
+        }
     }
 
     public function chat(array $messages): array
     {
+        $requestId = Str::uuid();
         $url = $this->apiUrl . '/chat/completions';
+        
+        $payload = [
+            'model' => $this->model,
+            'messages' => $messages,
+        ];
+
+        // Log request
+        $this->logger->info('OpenAI Chat Request', [
+            'request_id' => $requestId,
+            'method' => 'chat',
+            'endpoint' => $url,
+            'model' => $this->model,
+            'payload' => $payload,
+            'timestamp' => now()->toISOString(),
+        ]);
+
         $response = Http::withToken($this->apiKey)
             ->withoutVerifying()
-            ->post($url, [
-                'model' => $this->model,
-                'messages' => $messages,
+            ->post($url, $payload);
+
+        // Log response
+        if ($response->successful()) {
+            $result = $response->json();
+            $this->logger->info('OpenAI Chat Response', [
+                'request_id' => $requestId,
+                'status_code' => $response->status(),
+                'response_data' => $result,
+                'usage' => $result['usage'] ?? [],
+                'timestamp' => now()->toISOString(),
             ]);
+        } else {
+            $this->logger->error('OpenAI Chat Request Failed', [
+                'request_id' => $requestId,
+                'status_code' => $response->status(),
+                'response_body' => $response->body(),
+                'timestamp' => now()->toISOString(),
+            ]);
+        }
 
         // Check if the API call failed
         if ($response->failed()) {
-            throw new \Exception('OpenAI API request failed: ' . $response->body());
+            $this->logger->error('OpenAI Chat Request Failed', [
+                'request_id' => $requestId,
+                'status_code' => $response->status(),
+                'response_body' => $response->body(),
+                'timestamp' => now()->toISOString(),
+            ]);
+            return AIResponse::error('OpenAI API request failed: ' . $response->body());
         }
 
-        return $response->json();
+        $result = $response->json();
+        $content = $result['choices'][0]['message']['content'] ?? 'No response received';
+
+        // Return in standardized format
+        return AIResponse::success(
+            $content,
+            'Chat completed successfully',
+            [
+                'usage' => $result['usage'] ?? [],
+                'model' => $this->model,
+                'provider_response' => $result,
+                'request_id' => $requestId
+            ]
+        );
     }
 
     public function extractPassportData($file, string $fileName): array
@@ -65,11 +125,7 @@ class OpenAIClient implements AIClientInterface
             $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
             if (!in_array($extension, ['jpg', 'jpeg', 'png', 'pdf'])) {
-                return [
-                    'status' => 'error',
-                    'message' => 'Unsupported file type. Only JPG, JPEG, PNG, and PDF files are supported.',
-                    'data' => null
-                ];
+                return AIResponse::error('Unsupported file type. Only JPG, JPEG, PNG, and PDF files are supported.');
             }
 
             // Prepare the prompt for OpenAI API
@@ -119,37 +175,33 @@ class OpenAIClient implements AIClientInterface
 
             $response = $this->createResponse($messages);
 
-            if ($response['status'] === 'error') {
-                return $response; 
+            if (isset($response['status']) && $response['status'] === 'error') {
+                return AIResponse::error($response['message'] ?? 'Failed to process passport data');
             }
 
             $extractedContent = $response['output'][0]['content'][0]['text'] ?? null;
 
             if (!$extractedContent) {
-                return [
-                    'status' => 'error',
-                    'message' => 'No passport data found or invalid response format',
-                    'data' => null
-                ];
+                return AIResponse::error('No passport data found or invalid response format');
             }
 
             $passportData = json_decode($extractedContent, true);
 
             $this->deleteFileFromOpenAI($fileId);
 
-            return [
-                'status' => 'success',
-                'message' => 'Passport data extracted successfully',
-                'data' => $passportData
-            ];
+            return AIResponse::success(
+                $passportData,
+                'Passport data extracted successfully',
+                [
+                    'file_name' => $fileName,
+                    'file_extension' => $extension,
+                    'extracted_content' => $extractedContent
+                ]
+            );
         } catch (\Exception $e) {
             Log::error('Exception in extractPassportData: ' . $e->getMessage());
 
-            return [
-                'status' => 'error',
-                'message' => 'Exception occurred during passport extraction: ' . $e->getMessage(),
-                'data' => null
-            ];
+            return AIResponse::error('Exception occurred during passport extraction: ' . $e->getMessage());
         }
     }
 
@@ -164,7 +216,7 @@ class OpenAIClient implements AIClientInterface
 
         $url = $this->apiUrl . '/chat/completions';
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiUrl,
             'Content-Type: application/json',
         ];
 
@@ -174,7 +226,7 @@ class OpenAIClient implements AIClientInterface
         ]);
 
         $data = [
-            'model' => config('services.open-ai.model'),
+            'model' => $this->model,
             'messages' => $message,
             'response_format' => [
                 'type' => 'json_object',
@@ -1659,15 +1711,21 @@ class OpenAIClient implements AIClientInterface
 
     public function uploadFileToOpenAI($file, string $purpose = 'user_data')
     {
+        $requestId = Str::uuid();
+        
         try {
             if ($file instanceof UploadedFile) {
                 $filePath = $file->getRealPath();
                 $fileName = $file->getClientOriginalName();
+                $fileSize = $file->getSize();
+                $mimeType = $file->getMimeType();
             } elseif (is_string($file)) {
                 // Sanitize and validate string path
                 $file = str_replace("\0", '', $file); // Remove null bytes
                 $filePath = $file;
                 $fileName = basename($file);
+                $fileSize = file_exists($filePath) ? filesize($filePath) : 0;
+                $mimeType = mime_content_type($filePath) ?: 'unknown';
 
                 if (!file_exists($filePath)) {
                     throw new \Exception("File not found at path: $filePath");
@@ -1676,7 +1734,18 @@ class OpenAIClient implements AIClientInterface
                 throw new \InvalidArgumentException('Invalid file type. Expected UploadedFile or file path string.');
             }
 
-            logger('Uploading to OpenAI', ['filePath' => $filePath, 'fileName' => $fileName]);
+            // Log upload request
+            $this->logger->info('OpenAI File Upload Request', [
+                'request_id' => $requestId,
+                'method' => 'uploadFileToOpenAI',
+                'endpoint' => $this->apiUrl . '/files',
+                'file_name' => $fileName,
+                'file_path' => $filePath,
+                'file_size' => $fileSize,
+                'mime_type' => $mimeType,
+                'purpose' => $purpose,
+                'timestamp' => now()->toISOString(),
+            ]);
 
             $fileResource = fopen($filePath, 'r');
 
@@ -1688,7 +1757,24 @@ class OpenAIClient implements AIClientInterface
 
             fclose($fileResource);
 
-            logger('upload file response: ', $response->json());
+            // Log upload response
+            if ($response->successful()) {
+                $result = $response->json();
+                $this->logger->info('OpenAI File Upload Response', [
+                    'request_id' => $requestId,
+                    'status_code' => $response->status(),
+                    'response_data' => $result,
+                    'file_id' => $result['id'] ?? null,
+                    'timestamp' => now()->toISOString(),
+                ]);
+            } else {
+                $this->logger->error('OpenAI File Upload Failed', [
+                    'request_id' => $requestId,
+                    'status_code' => $response->status(),
+                    'response_body' => $response->body(),
+                    'timestamp' => now()->toISOString(),
+                ]);
+            }
 
             if ($response->failed()) {
                 throw new \Exception('Error uploading file: ' . $response->body());
@@ -1697,7 +1783,12 @@ class OpenAIClient implements AIClientInterface
             return $response->json('id');
 
         } catch (\Throwable $e) {
-            logger()->error('Failed to upload file to OpenAI', ['error' => $e->getMessage()]);
+            $this->logger->error('OpenAI File Upload Error', [
+                'request_id' => $requestId,
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString(),
+                'timestamp' => now()->toISOString(),
+            ]);
             throw $e; // re-throw for handling elsewhere if needed
         }
     }

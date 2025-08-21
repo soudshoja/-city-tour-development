@@ -168,5 +168,14 @@ return [
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
         ],
+
+        'ai' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ai/ai.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_AI_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
     ],
 ];

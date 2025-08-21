@@ -1410,7 +1410,7 @@
                                                     {{ $task->supplier->name }}
                                                 </td>
                                                 <td data-column="supplier-pay-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->supplier_pay_date ?? 'Not Set' }}
+                                                    {{ $task->supplier_pay_date ?? $task->issued_date }}
                                                 </td>
                                                 <td data-column="created-at" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->created_at ?  \Carbon\Carbon::parse($task->created_at)->format('d-m-Y H:i') : 'Not Set' }}

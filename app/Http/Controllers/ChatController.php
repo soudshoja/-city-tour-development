@@ -7,7 +7,6 @@ use App\Http\Traits\NotificationTrait;
 use thiagoalessio\TesseractOCR\TesseractOCR;
 use Illuminate\Http\Request;
 use App\Services\OpenAIService;
-use Illuminate\Support\FacadesLog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -90,7 +89,17 @@ class ChatController extends Controller
             } else {
                 // Pass the message to OpenAI if it's not recognized as data or action
                 $response = $this->aiManager->chat($messages);
-                return response()->json($response, 200);
+                Log::info('Chat response:', ['response' => $response]); 
+                // Return standardized response format
+                if ($response['success']) {
+                    return response()->json([
+                        'success' => true,
+                        'data' => $response['data'],
+                        'metadata' => $response['metadata'] ?? []
+                    ], 200);
+                } else {
+                    return response()->json(['error' => $response['message']], 500);
+                }
             }
         } catch (\Exception $e) {
             Log::error('Chatbot error: ' . $e->getMessage());
@@ -115,9 +124,9 @@ class ChatController extends Controller
 
         $response = $this->aiManager->chat($classificationMessages);
 
-        // Extract the classification result
-        if (isset($response['choices'][0]['message']['content'])) {
-            return trim($response['choices'][0]['message']['content']);
+        // Extract the classification result from standardized response
+        if ($response['success']) {
+            return trim($response['data']);
         }
 
         return 'GeneralMessage'; // Default to GeneralMessage if no classification is returned
@@ -194,7 +203,16 @@ class ChatController extends Controller
 
         $response = $this->aiManager->chat($messagesData);
 
-        return response()->json($response, 200);
+        // Return standardized response format
+        if ($response['success']) {
+            return response()->json([
+                'success' => true,
+                'data' => $response['data'],
+                'metadata' => $response['metadata'] ?? []
+            ], 200);
+        } else {
+            return response()->json(['error' => $response['message']], 500);
+        }
     }
 
 
@@ -217,8 +235,9 @@ class ChatController extends Controller
 
         $response = $this->aiManager->chat($actionMessages);
 
-        if (isset($response['choices'][0]['message']['content'])) {
-            $responseContent = $response['choices'][0]['message']['content'];
+        // Handle standardized response format
+        if ($response['success']) {
+            $responseContent = $response['data'];
 
             // Attempt to decode the JSON response
             $parsedResponse = json_decode($responseContent, true);
@@ -252,12 +271,16 @@ class ChatController extends Controller
                     default:
                         return response()->json(['error' => 'Action not recognized: ' . $action], 400);
                 }
+            } else {
+                // Log and return error if JSON structure is invalid or no action found
+                Log::error('Invalid JSON structure or missing action in response:', ['response' => $responseContent]);
+                return response()->json(['error' => 'Unable to parse action from response.'], 400);
             }
+        } else {
+            // Handle error from AI service
+            Log::error('AI action classification failed:', ['error' => $response['message']]);
+            return response()->json(['error' => 'Unable to classify action: ' . $response['message']], 400);
         }
-
-        // Log and return error if JSON structure is invalid
-        Log::error('Invalid response from OpenAI:', ['response' => $response]);
-        return response()->json(['error' => 'Unable to classify action.'], 400);
     }
 
 
@@ -909,7 +932,7 @@ class ChatController extends Controller
                 
                 Log::info('AI passport extraction response:', ['response' => $response]);
 
-                if ($response['status'] === 'success') {
+                if ($response['success']) {
                     $passportData = $response['data'];
 
                     return response()->json([

@@ -676,8 +676,20 @@
                     }]
                 })
             })
-            .then(response => response.json())
             .then(response => {
+                console.log('Response:', response);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(response => {
+                // Handle error responses first
+                if (response.error) {
+                    appendMessage('cityTour', "Error: " + response.error);
+                    return;
+                }
+
                 if (response.tasks) {
                     loadTaskSelection(response.tasks);
                 } else if (response.taskPricing) {
@@ -689,10 +701,15 @@
                 } else if (response.branch) {
                     loadBranch(response.branch);
                 } else {
-                    if (response?.choices?.length > 0) {
-                        let botMessage = response.choices[0].message.content;
-
+                    // Handle new standardized AI response format
+                    if (response.success && response.data) {
+                        let botMessage = response.data;
                         // Clean up the message to remove any extra characters
+                        botMessage = botMessage.replace(/^(\|?)/, '').replace(/\s+/g, ' ').trim();
+                        appendMessage('cityTour', botMessage);
+                    } else if (response?.choices?.length > 0) {
+                        // Fallback for old format (backward compatibility)
+                        let botMessage = response.choices[0].message.content;
                         botMessage = botMessage.replace(/^(\|?)/, '').replace(/\s+/g, ' ').trim();
                         appendMessage('cityTour', botMessage);
                     } else {
@@ -732,8 +749,19 @@
                         }]
                     })
                 })
-                .then(response => response.json())
                 .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(response => {
+                    // Handle error responses first
+                    if (response.error) {
+                        appendMessage('cityTour', "Error: " + response.error);
+                        return;
+                    }
+
                     if (response.tasks) {
                         loadTaskSelection(response.tasks);
                     } else if (response.taskPricing) {
@@ -745,10 +773,15 @@
                     } else if (response.branch) {
                         loadBranch(response.branch);
                     } else {
-                        if (response?.choices?.length > 0) {
-                            let botMessage = response.choices[0].message.content;
-
+                        // Handle new standardized AI response format
+                        if (response.success && response.data) {
+                            let botMessage = response.data;
                             // Clean up the message to remove any extra characters
+                            botMessage = botMessage.replace(/^(\|?)/, '').replace(/\s+/g, ' ').trim();
+                            appendMessage('cityTour', botMessage);
+                        } else if (response?.choices?.length > 0) {
+                            // Fallback for old format (backward compatibility)
+                            let botMessage = response.choices[0].message.content;
                             botMessage = botMessage.replace(/^(\|?)/, '').replace(/\s+/g, ' ').trim();
                             appendMessage('cityTour', botMessage);
                         } else {

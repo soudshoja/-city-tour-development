@@ -15,9 +15,6 @@ class UpdateHotelStatusWithoutCancellationDate extends Command{
 
     public function handle()
     {
-        $taskWithTransaction = [];
-        $taskWithoutTransaction = [];
-
         $tasks = Task::where('type', 'hotel')
             ->where('status', '!=', 'issued')
             ->whereNull('cancellation_deadline')

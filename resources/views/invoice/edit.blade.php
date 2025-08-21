@@ -707,6 +707,24 @@
                                     </div>
                                 </label>
 
+                                <!-- Cash Payment Tab -->
+                                <label class="cursor-pointer rounded-full shadow">
+                                    <input type="radio" id="payment_type_cash" name="payment_type" value="cash"
+                                        onclick="hideModal()" hidden class="peer"
+                                        {{ $invoice->payment_type == 'cash' ? 'checked' : '' }} />
+                                    <div
+                                        class="rounded-full flex items-center justify-center 
+                                        peer-checked:ring-2 peer-checked:ring-blue-500 
+                                        peer-checked:bg-green-500
+                                        peer-checked:text-white
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        hover:bg-green-500 hover:text-white hover:shadow-xl"
+                                        title="Client owes cash payment. Invoice remains unpaid until receipt voucher is processed by accountant.">
+                                        <span class="font-medium">Cash Payment</span>
+                                    </div>
+                                </label>
+
                                 <!-- Trigger Button -->
                                 <label class="cursor-pointer rounded-full shadow">
                                     <input type="radio" id="payment_type_import" name="payment_type" value="import"
@@ -722,9 +740,6 @@
                                         <span id="openImportModalBtn" class="font-medium">Import from MyFatoorah</span>
                                     </div>
                                 </label>
-                                <!-- <button id="openImportModalBtn" class="rounded-full px-4 py-2 bg-green-500 text-white shadow">
-                                Import from MyFatoorah
-                            </button> -->
                             </div>
                             <!-- Modal -->
                             <div id="importModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50 hidden">
@@ -912,7 +927,7 @@
                                             </svg>
                                         </span>
 
-                                        <span id="button-text-full">Save Full Payment</span>
+                                        <span id="button-text-full">Save Payment</span>
                                     </button>
                                     <div class="mt-4">
                                         <a target="_blank" href="{{ route('invoice.proforma', $invoice->invoice_number) }}"
@@ -1925,7 +1940,24 @@
                 const saveBtn = document.getElementById('update-invoice-btn');
 
                 saveBtn.addEventListener('click', function() {
-                    savePartial('full');
+                    // Check which payment type is selected
+                    const selectedPaymentType = document.querySelector('input[name="payment_type"]:checked');
+                    
+                    if (selectedPaymentType) {
+                        const paymentTypeValue = selectedPaymentType.value;
+                        
+                        if (paymentTypeValue === 'cash') {
+                            savePartial('cash');
+                        } else if (paymentTypeValue === 'full') {
+                            savePartial('full');
+                        } else {
+                            // For other payment types, default to full
+                            savePartial('full');
+                        }
+                    } else {
+                        // No payment type selected, default to full
+                        savePartial('full');
+                    }
                 });
 
                 const addTaskButton = document.getElementById('openTaskModalButton');
@@ -3068,22 +3100,28 @@
 
                 clearErrorAlert();
 
-                if (mode === 'full') {
+                if (mode === 'full' || mode === 'cash') {
                     const gateway = document.getElementById('payment_gateway_option')?.value;
                     const date = document.getElementById('duedate').value;
                     const amount = document.getElementById('subTotal').value;
                     const externalUrl = document.getElementById('external_url')?.value;
                     const fullData = [];
 
+                    // Set appropriate gateway based on mode
+                    let paymentGateway = gateway;
+                    if (mode === 'cash') {
+                        paymentGateway = 'Cash';
+                    }
+
                     fullData.push({
                         date,
                         amount,
-                        gateway,
+                        gateway: paymentGateway,
                         external_url: externalUrl
                     });
 
                     for (const item of fullData) {
-                        save('full', item);
+                        save(mode, item); // Use the actual mode (full or cash)
                     }
 
                     const button = document.getElementById('update-invoice-btn');
@@ -3307,6 +3345,9 @@
                 } else if (type === 'split') {
                     payload.clientId = item.clientId;
                     payload.method = item.method;
+                } else if (type === 'cash') {
+                    payload.clientId = document.getElementById('receiverId').value;
+                    payload.method = null;
                 }
 
                 if (type === 'credit') {

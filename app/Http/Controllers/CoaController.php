@@ -616,7 +616,7 @@ class CoaController extends Controller
             return Carbon::parse($item->transaction_date)->format('Y-m-d');
         });
     
-        $perPage = 5;
+        $perPage = 10;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
         $dateKeys = $grouped->keys();
         $paginatedKeys = $dateKeys->slice(($currentPage - 1) * $perPage, $perPage);

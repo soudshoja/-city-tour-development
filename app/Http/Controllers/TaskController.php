@@ -110,7 +110,6 @@ class TaskController extends Controller
             $tasks = $tasks;
             $clients = Client::all();
             $agents = Agent::all();
-            $suppliers = Supplier::all();
         } elseif ($user->role_id == Role::COMPANY) {
 
             $branches = Branch::where('company_id', $user->company->id)->get();

@@ -297,9 +297,9 @@ class IncomingMediaController extends Controller
                         'ai_data' => $data
                     ]);
 
-}
                     if ($data && isset($data['first_name'])) {
                         // Start transaction for all database operations
+                        DB::beginTransaction();
                          if (
         isset($data['nationality']) 
         && strtoupper(trim($data['nationality'])) === 'KUWAIT' 
@@ -329,8 +329,6 @@ class IncomingMediaController extends Controller
             // ... existing rollback handling ...
         }
     }
-                        DB::beginTransaction();
-
                         try {
                             // Create IncomingMedia record first (within transaction)
                             $incomingMedia = IncomingMedia::create([

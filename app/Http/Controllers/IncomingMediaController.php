@@ -349,7 +349,7 @@ class IncomingMediaController extends Controller
                             ]);
 
                             // Find or create client
-                            $client = Client::where('civil_no', $data['civil_no'])->first();
+                            $client = $data['civil_no'] !== null ? Client::where('civil_no', $data['civil_no'])->first() : null;
 
                             if (!$client) {
                                 $client = Client::create([

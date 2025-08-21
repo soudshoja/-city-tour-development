@@ -297,8 +297,38 @@ class IncomingMediaController extends Controller
                         'ai_data' => $data
                     ]);
 
-                    if ($data && isset($data['first_name'], $data['civil_no'])) {
+}
+                    if ($data && isset($data['first_name'])) {
                         // Start transaction for all database operations
+                         if (
+        isset($data['nationality']) 
+        && strtoupper(trim($data['nationality'])) === 'KUWAIT' 
+        && empty($data['civil_no'])
+    ) {
+        Log::warning("Civil No. is mandatory for Kuwait nationals but missing", [
+            'phone' => $phone,
+            'data' => $data
+        ]);
+
+        $to = $request->input('data.from') ?? $request->input('from');
+        $this->sendWhatsAppMessage(
+            $to,
+            "❌ Sorry, Civil ID is required for Kuwait nationals. Please resend with Civil ID.",
+            'civil_id_required'
+        );
+        return response()->json(['message' => 'Civil ID required for Kuwait nationals'], 422);
+    }
+
+    if (isset($data['civil_no'])) {
+        // ✅ proceed with your existing transaction logic
+        DB::beginTransaction();
+        try {
+            // ... all your existing IncomingMedia / Client creation code here ...
+        } catch (Exception $e) {
+            DB::rollBack();
+            // ... existing rollback handling ...
+        }
+    }
                         DB::beginTransaction();
 
                         try {

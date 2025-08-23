@@ -707,6 +707,23 @@
                                     </div>
                                 </label>
 
+                                <!-- Cash Payment Tab -->
+                                <label class="cursor-pointer rounded-full shadow">
+                                    <input type="radio" id="payment_type_cash" name="payment_type" value="cash" hidden class="peer"
+                                        {{ $invoice->payment_type == 'cash' ? 'checked' : '' }} />
+                                    <div
+                                        class="rounded-full flex items-center justify-center 
+                                        peer-checked:ring-2 peer-checked:ring-blue-500 
+                                        peer-checked:bg-green-500
+                                        peer-checked:text-white
+                                        px-4 py-2 border border-gray-300 
+                                        bg-white text-gray-700 transition gap-2 
+                                        hover:bg-green-500 hover:text-white hover:shadow-xl"
+                                        title="Client owes cash payment. Invoice remains unpaid until receipt voucher is processed by accountant.">
+                                        <span class="font-medium">Cash Payment</span>
+                                    </div>
+                                </label>
+
                                 <!-- Trigger Button -->
                                 <label class="cursor-pointer rounded-full shadow">
                                     <input type="radio" id="payment_type_import" name="payment_type" value="import"
@@ -722,9 +739,6 @@
                                         <span id="openImportModalBtn" class="font-medium">Import from MyFatoorah</span>
                                     </div>
                                 </label>
-                                <!-- <button id="openImportModalBtn" class="rounded-full px-4 py-2 bg-green-500 text-white shadow">
-                                Import from MyFatoorah
-                            </button> -->
                             </div>
                             <!-- Modal -->
                             <div id="importModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50 hidden">
@@ -912,7 +926,7 @@
                                             </svg>
                                         </span>
 
-                                        <span id="button-text-full">Save Full Payment</span>
+                                        <span id="button-text-full">Save Payment</span>
                                     </button>
                                     <div class="mt-4">
                                         <a target="_blank" href="{{ route('invoice.proforma', $invoice->invoice_number) }}"
@@ -996,6 +1010,7 @@
                                     </svg>
                                     View
                                 </button> --}}
+                                    @if($invoice->payment_type !== 'cash')
                                     <a target="_blank" href="{{ url('/invoice/' . $invoice->invoice_number) }}"
                                         class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -1009,6 +1024,7 @@
                                         </svg>
                                         View
                                     </a>
+                                    @endif
 
                                     <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to
                                         clipboard!</p>
@@ -1724,6 +1740,7 @@
                     // Disable other payment options
                     const partialPaymentRadio = document.getElementById('payment_type_partial');
                     const splitPaymentRadio = document.getElementById('payment_type_split');
+                    const cashPaymentRadio = document.getElementById('payment_type_cash');
                     const importPaymentRadio = document.getElementById('payment_type_import');
 
                     if (partialPaymentRadio) {
@@ -1735,6 +1752,11 @@
                         splitPaymentRadio.disabled = true;
                         splitPaymentRadio.parentElement.style.opacity = '0.5';
                         splitPaymentRadio.parentElement.style.pointerEvents = 'none';
+                    }
+                    if (cashPaymentRadio) {
+                        cashPaymentRadio.disabled = true;
+                        cashPaymentRadio.parentElement.style.opacity = '0.5';
+                        cashPaymentRadio.parentElement.style.pointerEvents = 'none';
                     }
                     if (importPaymentRadio) {
                         importPaymentRadio.disabled = true;
@@ -1748,6 +1770,7 @@
                     // Re-enable other payment options
                     const partialPaymentRadio = document.getElementById('payment_type_partial');
                     const splitPaymentRadio = document.getElementById('payment_type_split');
+                    const cashPaymentRadio = document.getElementById('payment_type_cash');
                     const importPaymentRadio = document.getElementById('payment_type_import');
 
                     if (partialPaymentRadio) {
@@ -1759,6 +1782,11 @@
                         splitPaymentRadio.disabled = false;
                         splitPaymentRadio.parentElement.style.opacity = '1';
                         splitPaymentRadio.parentElement.style.pointerEvents = 'auto';
+                    }
+                    if (cashPaymentRadio) {
+                        cashPaymentRadio.disabled = false;
+                        cashPaymentRadio.parentElement.style.opacity = '1';
+                        cashPaymentRadio.parentElement.style.pointerEvents = 'auto';
                     }
                     if (importPaymentRadio) {
                         importPaymentRadio.disabled = false;
@@ -1841,6 +1869,8 @@
             const paymentTypeFull = document.getElementById("payment_type_full");
             const paymentTypePartial = document.getElementById("payment_type_partial");
             const paymentTypeSplit = document.getElementById("payment_type_split");
+            const paymentTypeCash = document.getElementById("payment_type_cash");
+            const paymentTypeImport = document.getElementById('payment_type_import');
             const isInvoicePaid = @json($invoice->status === 'paid');
             const hasPaymentType = @json(!empty($invoice->payment_type));
 
@@ -1882,13 +1912,15 @@
 
                 const paymentGatewayDropdowns = document.getElementById('payment_gateway_dropdowns');
 
-                if (paymentType === 'full') {
+                if (paymentType === 'full' || paymentType === 'cash') {
                     paymentGatewaySection.style.display = 'block'; // Show the section
                     additionalActions.style.display = 'block';
                     updateInvoiceBtn.disabled = true;
                     paymentTypeFull.disabled = true;
                     paymentTypePartial.disabled = true;
                     paymentTypeSplit.disabled = true;
+                    paymentTypeCash.disabled = true;
+                    paymentTypeImport.disabled = true;
                     paymentGatewayDropdowns.classList.remove('hidden');
                 } else if (paymentType === 'partial') {
                     paymentGatewaySection.style.display = 'block'; // Show the section
@@ -1897,6 +1929,8 @@
                     paymentTypeFull.disabled = true;
                     paymentTypePartial.disabled = true;
                     paymentTypeSplit.disabled = true;
+                    paymentTypeCash.disabled = true;
+                    paymentTypeImport.disabled = true;
                     paymentGatewayDropdowns.classList.add('hidden');
                     paymentModal1.classList.add('hidden');
                 } else if (paymentType === 'split') {
@@ -1906,6 +1940,8 @@
                     paymentTypeFull.disabled = true;
                     paymentTypePartial.disabled = true;
                     paymentTypeSplit.disabled = true;
+                    paymentTypeCash.disabled = true;
+                    paymentTypeImport.disabled = true;
                     paymentGatewayDropdowns.classList.add('hidden');
                     paymentModal.classList.add('hidden');
                 } else {
@@ -1915,6 +1951,8 @@
                     paymentTypeFull.disabled = false;
                     paymentTypePartial.disabled = false;
                     paymentTypeSplit.disabled = false;
+                    paymentTypeCash.disabled = false;
+                    paymentTypeImport.disabled = false;
                 }
 
             }
@@ -1925,7 +1963,24 @@
                 const saveBtn = document.getElementById('update-invoice-btn');
 
                 saveBtn.addEventListener('click', function() {
-                    savePartial('full');
+                    // Check which payment type is selected
+                    const selectedPaymentType = document.querySelector('input[name="payment_type"]:checked');
+                    
+                    if (selectedPaymentType) {
+                        const paymentTypeValue = selectedPaymentType.value;
+                        
+                        if (paymentTypeValue === 'cash') {
+                            savePartial('cash');
+                        } else if (paymentTypeValue === 'full') {
+                            savePartial('full');
+                        } else {
+                            // For other payment types, default to full
+                            savePartial('full');
+                        }
+                    } else {
+                        // No payment type selected, default to full
+                        savePartial('full');
+                    }
                 });
 
                 const addTaskButton = document.getElementById('openTaskModalButton');
@@ -2258,6 +2313,7 @@
                         };
 
                         const isSaved = item.saved === true;
+                        const canSavePrice = (!invoice.payment_type || invoice.payment_type === 'full' || invoice.payment_type === 'cash');
                         const row = document.createElement('tr');
                         row.className = `border-b border-[#e0e6ed] align-top dark:border-[#1b2e4b] ${!isSaved ? 'bg-sky-100' : ''}`;
 
@@ -2270,7 +2326,7 @@
                     <td>
                     <div class="flex items-center">
                         <input id="invprice-table-${task.id}" type="number" class="no-spin border border-gray-300 rounded-md w-full" value="${task.taskPrice}" oninput="updateItemPrice(${item.id}); updateField(${JSON.stringify(task.id)}, 'invprice-table')" />
-                        ${isSaved ? `
+                        ${isSaved && canSavePrice ? `
                             <button type="button" class="p-1 rounded hover:bg-gray-200" title="Save" onclick="saveTaskPrice(${JSON.stringify(task.id)})">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                                     class="w-5 h-5 text-blue-600">
@@ -3068,22 +3124,28 @@
 
                 clearErrorAlert();
 
-                if (mode === 'full') {
+                if (mode === 'full' || mode === 'cash') {
                     const gateway = document.getElementById('payment_gateway_option')?.value;
                     const date = document.getElementById('duedate').value;
                     const amount = document.getElementById('subTotal').value;
                     const externalUrl = document.getElementById('external_url')?.value;
                     const fullData = [];
 
+                    // Set appropriate gateway based on mode
+                    let paymentGateway = gateway;
+                    if (mode === 'cash') {
+                        paymentGateway = 'Cash';
+                    }
+
                     fullData.push({
                         date,
                         amount,
-                        gateway,
+                        gateway: paymentGateway,
                         external_url: externalUrl
                     });
 
                     for (const item of fullData) {
-                        save('full', item);
+                        save(mode, item); // Use the actual mode (full or cash)
                     }
 
                     const button = document.getElementById('update-invoice-btn');
@@ -3307,6 +3369,9 @@
                 } else if (type === 'split') {
                     payload.clientId = item.clientId;
                     payload.method = item.method;
+                } else if (type === 'cash') {
+                    payload.clientId = document.getElementById('receiverId').value;
+                    payload.method = null;
                 }
 
                 if (type === 'credit') {
@@ -3376,8 +3441,6 @@
                 const update = document.getElementById('update-invoice-btn');
                 const updateSplitButton = document.getElementById('splitbutton');
                 const updatePartialButton = document.getElementById('partialbutton');
-
-
             }
 
             function showNotification(message, type) {

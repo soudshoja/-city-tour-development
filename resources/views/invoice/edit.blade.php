@@ -709,8 +709,7 @@
 
                                 <!-- Cash Payment Tab -->
                                 <label class="cursor-pointer rounded-full shadow">
-                                    <input type="radio" id="payment_type_cash" name="payment_type" value="cash"
-                                        onclick="hideModal()" hidden class="peer"
+                                    <input type="radio" id="payment_type_cash" name="payment_type" value="cash" hidden class="peer"
                                         {{ $invoice->payment_type == 'cash' ? 'checked' : '' }} />
                                     <div
                                         class="rounded-full flex items-center justify-center 
@@ -1011,6 +1010,7 @@
                                     </svg>
                                     View
                                 </button> --}}
+                                    @if($invoice->payment_type !== 'cash')
                                     <a target="_blank" href="{{ url('/invoice/' . $invoice->invoice_number) }}"
                                         class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -1024,6 +1024,7 @@
                                         </svg>
                                         View
                                     </a>
+                                    @endif
 
                                     <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to
                                         clipboard!</p>
@@ -1739,6 +1740,7 @@
                     // Disable other payment options
                     const partialPaymentRadio = document.getElementById('payment_type_partial');
                     const splitPaymentRadio = document.getElementById('payment_type_split');
+                    const cashPaymentRadio = document.getElementById('payment_type_cash');
                     const importPaymentRadio = document.getElementById('payment_type_import');
 
                     if (partialPaymentRadio) {
@@ -1750,6 +1752,11 @@
                         splitPaymentRadio.disabled = true;
                         splitPaymentRadio.parentElement.style.opacity = '0.5';
                         splitPaymentRadio.parentElement.style.pointerEvents = 'none';
+                    }
+                    if (cashPaymentRadio) {
+                        cashPaymentRadio.disabled = true;
+                        cashPaymentRadio.parentElement.style.opacity = '0.5';
+                        cashPaymentRadio.parentElement.style.pointerEvents = 'none';
                     }
                     if (importPaymentRadio) {
                         importPaymentRadio.disabled = true;
@@ -1763,6 +1770,7 @@
                     // Re-enable other payment options
                     const partialPaymentRadio = document.getElementById('payment_type_partial');
                     const splitPaymentRadio = document.getElementById('payment_type_split');
+                    const cashPaymentRadio = document.getElementById('payment_type_cash');
                     const importPaymentRadio = document.getElementById('payment_type_import');
 
                     if (partialPaymentRadio) {
@@ -1774,6 +1782,11 @@
                         splitPaymentRadio.disabled = false;
                         splitPaymentRadio.parentElement.style.opacity = '1';
                         splitPaymentRadio.parentElement.style.pointerEvents = 'auto';
+                    }
+                    if (cashPaymentRadio) {
+                        cashPaymentRadio.disabled = false;
+                        cashPaymentRadio.parentElement.style.opacity = '1';
+                        cashPaymentRadio.parentElement.style.pointerEvents = 'auto';
                     }
                     if (importPaymentRadio) {
                         importPaymentRadio.disabled = false;
@@ -1856,6 +1869,8 @@
             const paymentTypeFull = document.getElementById("payment_type_full");
             const paymentTypePartial = document.getElementById("payment_type_partial");
             const paymentTypeSplit = document.getElementById("payment_type_split");
+            const paymentTypeCash = document.getElementById("payment_type_cash");
+            const paymentTypeImport = document.getElementById('payment_type_import');
             const isInvoicePaid = @json($invoice->status === 'paid');
             const hasPaymentType = @json(!empty($invoice->payment_type));
 
@@ -1897,13 +1912,15 @@
 
                 const paymentGatewayDropdowns = document.getElementById('payment_gateway_dropdowns');
 
-                if (paymentType === 'full') {
+                if (paymentType === 'full' || paymentType === 'cash') {
                     paymentGatewaySection.style.display = 'block'; // Show the section
                     additionalActions.style.display = 'block';
                     updateInvoiceBtn.disabled = true;
                     paymentTypeFull.disabled = true;
                     paymentTypePartial.disabled = true;
                     paymentTypeSplit.disabled = true;
+                    paymentTypeCash.disabled = true;
+                    paymentTypeImport.disabled = true;
                     paymentGatewayDropdowns.classList.remove('hidden');
                 } else if (paymentType === 'partial') {
                     paymentGatewaySection.style.display = 'block'; // Show the section
@@ -1912,6 +1929,8 @@
                     paymentTypeFull.disabled = true;
                     paymentTypePartial.disabled = true;
                     paymentTypeSplit.disabled = true;
+                    paymentTypeCash.disabled = true;
+                    paymentTypeImport.disabled = true;
                     paymentGatewayDropdowns.classList.add('hidden');
                     paymentModal1.classList.add('hidden');
                 } else if (paymentType === 'split') {
@@ -1921,6 +1940,8 @@
                     paymentTypeFull.disabled = true;
                     paymentTypePartial.disabled = true;
                     paymentTypeSplit.disabled = true;
+                    paymentTypeCash.disabled = true;
+                    paymentTypeImport.disabled = true;
                     paymentGatewayDropdowns.classList.add('hidden');
                     paymentModal.classList.add('hidden');
                 } else {
@@ -1930,6 +1951,8 @@
                     paymentTypeFull.disabled = false;
                     paymentTypePartial.disabled = false;
                     paymentTypeSplit.disabled = false;
+                    paymentTypeCash.disabled = false;
+                    paymentTypeImport.disabled = false;
                 }
 
             }
@@ -2290,6 +2313,7 @@
                         };
 
                         const isSaved = item.saved === true;
+                        const canSavePrice = (!invoice.payment_type || invoice.payment_type === 'full' || invoice.payment_type === 'cash');
                         const row = document.createElement('tr');
                         row.className = `border-b border-[#e0e6ed] align-top dark:border-[#1b2e4b] ${!isSaved ? 'bg-sky-100' : ''}`;
 
@@ -2302,7 +2326,7 @@
                     <td>
                     <div class="flex items-center">
                         <input id="invprice-table-${task.id}" type="number" class="no-spin border border-gray-300 rounded-md w-full" value="${task.taskPrice}" oninput="updateItemPrice(${item.id}); updateField(${JSON.stringify(task.id)}, 'invprice-table')" />
-                        ${isSaved ? `
+                        ${isSaved && canSavePrice ? `
                             <button type="button" class="p-1 rounded hover:bg-gray-200" title="Save" onclick="saveTaskPrice(${JSON.stringify(task.id)})">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                                     class="w-5 h-5 text-blue-600">
@@ -3417,8 +3441,6 @@
                 const update = document.getElementById('update-invoice-btn');
                 const updateSplitButton = document.getElementById('splitbutton');
                 const updatePartialButton = document.getElementById('partialbutton');
-
-
             }
 
             function showNotification(message, type) {

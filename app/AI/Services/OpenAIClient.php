@@ -748,9 +748,9 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • If you're unsure which room line it belongs to, include the phrase in tasks.additional_info instead.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Como Travels):\n";
         $prompt .= "  • Create ONE task per ROOM (never per passenger, never one combined task for all rooms). Always set tasks.issued_by and tasks.created_by to Como Travels.\n";
-        $prompt .= "  • For each ROOM task: set tasks.total and tasks.price to that room’s TOTAL (sell) across its nights only.\n";
-        $prompt .= "  • If there is ONLY ONE room in the booking, then set tasks.total and tasks.price to the booking 'Sell Price' only.\n";
-        $prompt .= "  • Example (2 rooms R1 and R2): produce exactly 2 tasks; task(R1) uses R1’s nightly 'Total (sell)' sum; task(R2) uses R2’s nightly 'Total (sell)' sum.\n";
+        $prompt .= "  • For each ROOM task, set client_name to the FIRST passenger listed under that room’s guest list (put extra name into tasks.additional_info).\n";
+        $prompt .= "  • PRICE/TOTAL SOURCE: Use ONLY the nightly values in the “Total (net)” column for that room. Sum those nights for that room and set BOTH tasks.price and tasks.total to that sum.\n";
+        $prompt .= "  • Example: If R1 shows 10 nights at net 28.74 for 5 nights and 28.73 for 5 nights → tasks.price = tasks.total = 5*28.74 + 5*28.73 = 287.35 KWD. \n";
         $prompt .= "  • STATUS: Read the value labeled 'Reservation status' in the document.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (SMILE HOLIDAYS):\n";
         $prompt .= "  • For Smile Holidays proforma/invoices that have a 'Pax' column, copy that value into tasks.additional_info, e.g., 'Pax: 1'.\n";
@@ -780,14 +780,22 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "      – tasks.total = that passenger’s Paid Amount (e.g. 636.06 AED).\n";
         $prompt .= "      – tasks.price = that passenger’s Fare amount (e.g. 335.50 AED).\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Bella Vita, World of Luxury, Travel Collection and Heysam Group):\n";
-        $prompt .= "  • Create EXACTLY ONE task per ROOM (NEVER per passenger). If the file has N rooms, output N tasks; if it has 1 room, output 1 task.\n";
-        $prompt .= "  • totals: set price and total to the booking GRAND TOTAL shown on the invoice (e.g., EUR 375.00). set issued_date to print date.\n";
+        $prompt .= "  • SEGMENTATION: Treat each Accomodation block as EXACTLY ONE task. NEVER merge blocks even if Voucher/Hotel/guests are the same.\n";
+        $prompt .= "  • TASK COUNT ASSERTION: tasks.length MUST equal the number of Accomodation occurrences found in the text.\n";
+        $prompt .= "  • TOTALS PER BLOCK: Read that block’s own 'Grand Total :' (ignore page-level 'VOUCHER INVOICE TOTALS' / 'GRAND TOTALS'). Compute per_room_total = block_grand_total / room_count. Set tasks.price = tasks.total = per_room_total.\n";
         $prompt .= "  • Set reference to the Voucher number; set issued_by and created_by to the Tour Operator name only (without country, if have); set agent to null.\n";
         $prompt .= "  • Populate task_hotel_details with Hotel, Room, Type, Board, Nights, Check-in, Check-out, and the segment total.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Bedzinn):\n";
         $prompt .= "  • Create EXACTLY ONE task per ROOM (NEVER per passenger). If the file has N rooms, output N tasks; if it has 1 room, output 1 task.\n";
         $prompt .= "  • Bedzinn vouchers that say something like “Booking confirmed”, set `status` = 'issued', set `issued_by`and `created_by` = 'Ojeen Travel'.\n";
         $prompt .= "  • Set the client to the first passenger; if there are additional passengers, list them in additional_details.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Supreme Services):\n";
+        $prompt .= "  • Create EXACTLY ONE task per ROOM (NEVER per passenger). If the file has N rooms, output N tasks; if it has 1 room, output 1 task.\n";
+        $prompt .= "  • Set tasks.client_name from the 'Ref.' line. Set tasks.reference and tasks.ticket_number from the 'File No.' line. Set tasks.status = 'issued'.\n";
+        $prompt .= "  • Set tasks.issued_date from the 'Date' line; parse dd/mm/yyyy to 'YYYY-MM-DD 00:00:00'. Set tasks.issued_by and tasks.created_by from the 'Client' line.\n";
+        $prompt .= "  • For each room, tasks.price and tasks.total = unit_price × nights using the accommodation line (e.g., '1 ROOM(S) × 184.00 × 2 NIGHT(S) = 368.00').\n";
+        $prompt .= "  • If VAT/Tax/Surcharge lines exist, set tasks.tax and/or tasks.surcharge to the numeric amounts; set tasks.original_tax and/or tasks.original_surcharge to the same values in the document currency. Also set tasks.taxes_record to the raw tax line (e.g., 'TOTAL VAT 11% USD 67.69 …').\n";
+
 
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (NDC SUPPLIERS): If the supplier has 'NDC' in its name (case-insensitive), set created_by to exactly match issued_by.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (EMIRATES NDC): Set issued_by to the agency/office name that appears immediately next to the 'IATA:' number.\n";

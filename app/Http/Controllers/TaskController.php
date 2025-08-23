@@ -104,12 +104,12 @@ class TaskController extends Controller
             });
         }
         $countries = Country::all();
+        $suppliers = Supplier::with('companies');
 
         if ($user->role_id == Role::ADMIN) {
             $tasks = $tasks;
             $clients = Client::all();
             $agents = Agent::all();
-            $suppliers = Supplier::all();
         } elseif ($user->role_id == Role::COMPANY) {
 
             $branches = Branch::where('company_id', $user->company->id)->get();
@@ -118,25 +118,24 @@ class TaskController extends Controller
             $clients = Client::whereIn('agent_id', $agentsId)->get();
             $tasks = $tasks->where('company_id', $user->company->id);
 
-            $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
-                $query->where('company_id', $user->company->id)->where('is_active', true);
-            })->get();
+            // $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
+            //     $query->where('company_id', $user->company->id)->where('is_active', true);
+            // })->get();
 
-            // Add is_active property for each supplier based on pivot 'active' field
-            $suppliers->transform(function ($supplier) use ($user) {
-                $company = $supplier->companies()->where('company_id', $user->company->id)->first();
-                $supplier->is_active = $company && isset($company->pivot->is_active) ? (bool)$company->pivot->is_active : false;
-                return $supplier;
+            $suppliers = $suppliers->whereHas('companies', function ($query) use ($user) {
+                $query->where('company_id', $user->company->id); 
             });
+
         } elseif ($user->role_id == Role::BRANCH) {
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
             $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
 
-            $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
-                $query->where('company_id', $user->branch->company_id);
-            })->get();
+            $suppliers = $suppliers->whereHas('companies', function ($query) use ($user) {
+                $query->where('company_id', $user->company_id);
+            });
+
         } elseif ($user->role_id == Role::AGENT) {
 
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
@@ -152,13 +151,18 @@ class TaskController extends Controller
             })->where('company_id', $user->agent->branch->company_id);
 
             $companyId = $user->agent->branch->company_id;
-            $suppliers = Supplier::whereHas('companies', function ($query) use ($companyId) {
+            $suppliers = $suppliers->whereHas('companies', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
-            })->get();
+            });
+        
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
-  
+
+        $suppliers = $suppliers->whereHas('companies', function ($query){  
+            $query->where('is_active', true);
+        })->get();
+
         $taskCount = $tasks->count();
         $tasks = $tasks->orderBy($sortBy, $sortOrder)
             ->orderBy('id', $sortOrder)
@@ -429,7 +433,7 @@ class TaskController extends Controller
         $existingTask = $queryChkExistTask->first();
 
         if ($existingTask) {
-            if ($existingTask->total != $request->total && $existingTask->status == 'issued') {
+            if ($existingTask->total != $request->total && $existingTask->status == 'issued' && $existingTask->supplier->name === 'Jazeera Airways') {
                 Log::warning('This reference has already existed for task: ' . $existingTask->reference . '. Proceeding for Reissued task.');
 
                 $newTaskTotal = (float)$request->total - (float)$existingTask->total;

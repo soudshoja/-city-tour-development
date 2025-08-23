@@ -123,7 +123,7 @@
             <!-- Table  -->
             <div class="panel oxShadow rounded-lg">
 
-                <x-search :action="route('credits.index')" />
+                <x-search :action="route('credits.index')" searchParam='search' placeholder="Quick search for credit transactions" />
 
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
@@ -153,7 +153,7 @@
                                         {{ $recCredits->created_at }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
-                                        {{ $recCredits->client->first_name ?? '' }}
+                                        {{ $recCredits->client->name ?? '' }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         {{ $recCredits->client->agent->name ?? '' }}

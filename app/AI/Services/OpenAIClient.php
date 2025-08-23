@@ -748,9 +748,9 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • If you're unsure which room line it belongs to, include the phrase in tasks.additional_info instead.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Como Travels):\n";
         $prompt .= "  • Create ONE task per ROOM (never per passenger, never one combined task for all rooms). Always set tasks.issued_by and tasks.created_by to Como Travels.\n";
-        $prompt .= "  • For each ROOM task: set tasks.total and tasks.price to that room’s TOTAL (sell) across its nights only.\n";
-        $prompt .= "  • If there is ONLY ONE room in the booking, then set tasks.total and tasks.price to the booking 'Sell Price' only.\n";
-        $prompt .= "  • Example (2 rooms R1 and R2): produce exactly 2 tasks; task(R1) uses R1’s nightly 'Total (sell)' sum; task(R2) uses R2’s nightly 'Total (sell)' sum.\n";
+        $prompt .= "  • For each ROOM task, set client_name to the FIRST passenger listed under that room’s guest list (put extra name into tasks.additional_info).\n";
+        $prompt .= "  • PRICE/TOTAL SOURCE: Use ONLY the nightly values in the “Total (net)” column for that room. Sum those nights for that room and set BOTH tasks.price and tasks.total to that sum.\n";
+        $prompt .= "  • Example: If R1 shows 10 nights at net 28.74 for 5 nights and 28.73 for 5 nights → tasks.price = tasks.total = 5*28.74 + 5*28.73 = 287.35 KWD. \n";
         $prompt .= "  • STATUS: Read the value labeled 'Reservation status' in the document.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (SMILE HOLIDAYS):\n";
         $prompt .= "  • For Smile Holidays proforma/invoices that have a 'Pax' column, copy that value into tasks.additional_info, e.g., 'Pax: 1'.\n";

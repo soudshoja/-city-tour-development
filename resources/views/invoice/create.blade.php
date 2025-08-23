@@ -1049,36 +1049,26 @@
                         <!-- Tasks Modal -->
                         <div id="taskModal"
                             class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
-                            <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2">
-                                <div
-                                    class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
+                            <div class="bg-white border rounded-lg shadow-lg w-10/12 max-h-[80vh] flex flex-col">
+                                <div class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
                                     <h5 class="text-lg font-bold">Choose Task</h5>
-                                    <!-- Close Modal Button -->
-                                    <button type="button" class="text-white-dark hover:text-dark"
-                                        id="closeTaskModalButton">
+                                    <button type="button" class="text-white-dark hover:text-dark" id="closeTaskModalButton">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px"
                                             viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-                                            class="h-6 w-6">
-                                            <line x1="18" y1="6" x2="6" y2="18">
-                                            </line>
-                                            <line x1="6" y1="6" x2="18" y2="18">
-                                            </line>
+                                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
                                         </svg>
                                     </button>
                                 </div>
                                 <div class="m-6">
                                     <div class="flex items-center justify-between mb-6 gap-4">
-                                        <!-- Search Box -->
                                         <div class="w-full max-w-xs">
                                             <input type="text" placeholder="Search Task..."
                                                 class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
                                                 id="taskSearchInput" oninput="filterTasks()">
                                         </div>
-                                        <!-- ./Search Box -->
-                                        <!-- Add Task -->
                                         <div x-data="{ addTaskModal: false }">
-                                            <!-- Trigger Button -->
                                             <div @click="addTaskModal = true"
                                                 class="p-2 text-center bg-white rounded-full shadow group hover:bg-black dark:hover:bg-gray-600 dark:bg-gray-700 cursor-pointer"
                                                 data-tooltip-left="Add Task">
@@ -1092,8 +1082,6 @@
                                                         stroke-width="1.5" stroke-linecap="round" />
                                                 </svg>
                                             </div>
-
-                                            <!-- Modal -->
                                             <div x-cloak x-show="addTaskModal"
                                                 class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
                                                 <div @click.away="addTaskModal = false" class="bg-white rounded shadow w-96">
@@ -1138,21 +1126,22 @@
                                     </div>
 
                                     <!-- List of Tasks -->
-                                    <table id="taskList" class="min-w-full table-auto border-collapse border rounded-lg">
-                                        <thead class="">
-                                            <tr class="bg-gray-100">
-                                                <th class="px-4 py-2 text-left">GDS Reference</th>
-                                                <th class="px-4 py-2 text-left">Airline Reference</th>
-                                                <th class="px-4 py-2 text-left">Type</th>
-                                                <th class="px-4 py-2 text-left">Client</th>
-                                                <th class="px-4 py-2 text-left">Agent</th>
-                                                <th class="px-4 py-2 text-left">Branch</th>
-                                                <th class="px-4 py-2 text-left">Supplier</th>
-
-                                            </tr>
-                                        </thead>
-                                        <tbody id="taskListBody"></tbody>
-                                    </table>
+                                    <div class="overflow-y-auto max-h-[calc(80vh-12rem)]">
+                                        <table id="taskList" class="min-w-full table-auto border-collapse border rounded-lg">
+                                            <thead class="sticky top-0 bg-gray-100 z-10">
+                                                <tr class="bg-gray-100">
+                                                    <th class="px-4 py-2 text-left">GDS Reference</th>
+                                                    <th class="px-4 py-2 text-left">Airline Reference</th>
+                                                    <th class="px-4 py-2 text-left">Type</th>
+                                                    <th class="px-4 py-2 text-left">Client</th>
+                                                    <th class="px-4 py-2 text-left">Agent</th>
+                                                    <th class="px-4 py-2 text-left">Branch</th>
+                                                    <th class="px-4 py-2 text-left">Supplier</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="taskListBody"></tbody>
+                                        </table>
+                                    </div>
 
                                     <!-- Scrollable Body Wrapper -->
                                     <div class="overflow-y-auto max-h-60">
@@ -1162,12 +1151,9 @@
                                             </tbody>
                                         </table>
                                     </div>
-
-
                                 </div>
                             </div>
                         </div>
-                        <!-- end main content section -->
                     </div>
                 </div>
             </div>

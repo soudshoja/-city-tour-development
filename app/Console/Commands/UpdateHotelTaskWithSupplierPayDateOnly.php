@@ -35,18 +35,15 @@ class UpdateHotelTaskWithSupplierPayDateOnly extends Command
             ->whereNull('supplier_pay_date')
             ->get();
 
-        if (!$tasks) {
+        if ($tasks->isEmpty()) {
             $this->error('No hotel task found for supplier ' . $supplierId);
             return;
         }
 
         $updated = 0;
-        $status = $tasks->status;
-        $issuedDate = $tasks->issued_date;
-        $cancellationDeadline = $tasks->cancellation_deadline;
-        $supplierPayDate = $tasks->supplier_pay_date;
         
         foreach ($tasks as $task) {
+            $status               = $task->status;
             $issuedDate           = $task->issued_date;
             $cancellationDeadline = $task->cancellation_deadline;
 
@@ -63,7 +60,7 @@ class UpdateHotelTaskWithSupplierPayDateOnly extends Command
             } elseif (empty($cancellationDeadline)) {
                 Log::info('Status is ' . $status . '. CancellationDeadline is missing. Proceed to use IssuedDate ' . $issuedDate . ' as the SupplierPayDate');
 
-                $task->supplier_pay_date = $issuedDate;
+                $supplierPayDate = $issuedDate;
             } elseif ($cancellationDeadline) {
                 Log::info('Status is ' . $status . '. CancellationDeadline is present. Determining the SupplierPayDate based on IssuedDate ' . $issuedDate);
 
@@ -103,6 +100,7 @@ class UpdateHotelTaskWithSupplierPayDateOnly extends Command
             Log::info('SupplierPayDate updated without creating new COA', [
                 'task_id'               => $task->id,
                 'task_reference'        => $task->reference,
+                'task_status'           => $task->status,
                 'issued_date'           => $issuedDate,
                 'cancellation_deadline' => $cancellationDeadline,
                 'supplier_pay_date'     => $supplierPayDate,

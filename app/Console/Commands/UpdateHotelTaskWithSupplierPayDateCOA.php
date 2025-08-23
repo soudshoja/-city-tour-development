@@ -13,9 +13,9 @@ use Carbon\Carbon;
 
 use function Laravel\Prompts\error;
 
-class UpdateHotelTaskWithSupplierPayDate extends Command
+class UpdateHotelTaskWithSupplierPayDateCOA extends Command
 {
-    protected $signature = 'app:update-hotel-supplier-pay-date
+    protected $signature = 'app:update-hotel-supplier-pay-date-with-coa
                                 { --supplier= : The ID of the supplier to filter the mechanism operation.}
                                 { --reference= : The reference of the hotel task within the supplier}
                             ';
@@ -90,7 +90,7 @@ class UpdateHotelTaskWithSupplierPayDate extends Command
                 $task->save();
 
                 $response = new TaskController();
-
+                
                 try {
                     $response->processTaskFinancial($task);
                     Log::info('Processed COA for Task ID ' . $task->id);

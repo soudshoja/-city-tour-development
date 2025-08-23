@@ -433,7 +433,7 @@ class TaskController extends Controller
         $existingTask = $queryChkExistTask->first();
 
         if ($existingTask) {
-            if ($existingTask->total != $request->total && $existingTask->status == 'issued') {
+            if ($existingTask->total != $request->total && $existingTask->status == 'issued' && $existingTask->supplier->name === 'Jazeera Airways') {
                 Log::warning('This reference has already existed for task: ' . $existingTask->reference . '. Proceeding for Reissued task.');
 
                 $newTaskTotal = (float)$request->total - (float)$existingTask->total;

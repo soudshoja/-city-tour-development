@@ -82,6 +82,7 @@ class UpdateTaskWithSupplierPayDate extends Command
             Log::info('SupplierPayDate updated for supplier ' . $supplierId, [
                 'task_id' => $task->id,
                 'task_reference' => $task->reference,
+                'task_status' => $task->status,
                 'issued_date' => $issuedDate,
                 'supplier_pay_date' => $supplierPayDate,
                 'updated_at' => $task->updated_at,

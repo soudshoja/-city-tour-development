@@ -1682,6 +1682,19 @@ class InvoiceController extends Controller
             }
         }
 
+        if ($invoiceDetail->invoice && $invoiceDetail->invoice->payment_type === 'cash') {
+            $cashEntry = JournalEntry::where('invoice_id', $invoiceDetail->invoice->id)
+                ->where('description', 'like', '%Cash payment obligation for client%')
+                ->first();
+    
+            if ($cashEntry) {
+                $cashEntry->debit  = $newTotal;
+                $cashEntry->credit = 0;
+                $cashEntry->amount = $newTotal;
+                $cashEntry->save();
+            }
+        }
+
         return response()->json(['success' => true]);
     }
 

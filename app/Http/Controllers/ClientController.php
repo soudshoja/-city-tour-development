@@ -261,26 +261,26 @@ class ClientController extends Controller
             }
         }
 
-        $unpaid = 0;
+        $paid   = 0.0;
+        $unpaid = 0.0;
 
-        $invoicesPart = Invoice::with('invoicePartials', 'agent')->where('client_id', $id);
+        $invoicesPart = Invoice::where('client_id', $id)->get(['id','amount','status']);
 
-        $paid = (clone $invoicesPart)->whereHas('invoicePartials', function ($query) {
-            $query->where('status', 'paid');
-        })->sum('amount');
+        foreach ($invoicesPart as $invoice) {
+            $total = $invoice->amount;
+            $paidPartials = $invoice->invoicePartials->where('status', 'paid')->sum('amount');
 
-        $unpaidInvoicesHasPartial = (clone $invoicesPart)->whereHas('invoicePartials', function ($query) {
-            $query->where('status', 'unpaid');
-        });
+            if ($invoice->status === 'paid') {
+                $paid   += $total;
+                continue;
+            }
 
-        $unpaid += $unpaidInvoicesHasPartial->sum('amount');
+            $paidOnInvoice   = min($paidPartials, $total);
+            $outstanding     = max(0.0, $total - $paidOnInvoice);
 
-        $removeFromUnpaidCalcId = $unpaidInvoicesHasPartial->pluck('id')->toArray();
-
-        $unpaidInvoiceNotHasPartial = $invoicesPart->whereNotIn('id', $removeFromUnpaidCalcId)
-            ->where('status', 'unpaid');
-
-        $unpaid += $unpaidInvoiceNotHasPartial->sum('amount');
+            $paid   += $paidOnInvoice;
+            $unpaid += $outstanding;
+        }
 
         $clients = Client::with('agent.branch')->get();
         $balanceCredit = Credit::getTotalCreditsByClient($id);

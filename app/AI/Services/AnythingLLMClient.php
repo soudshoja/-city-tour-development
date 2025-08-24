@@ -388,7 +388,6 @@ class AnythingLLMClient implements WorkspaceAIInterface
             $upload = $this->http()
                 ->attach('file', fopen($file->getRealPath(), 'r'), $file->getClientOriginalName())
                 ->post($endpoint);
-            dd($upload->body());
 
             $uploadJson = $upload->json();
             
@@ -519,7 +518,7 @@ class AnythingLLMClient implements WorkspaceAIInterface
             'timestamp' => now()->toISOString(),
         ]);
 
-        return $result;
+        return $result ?? [];
     }
 
     /**

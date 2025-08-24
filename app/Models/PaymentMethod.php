@@ -30,7 +30,7 @@ class PaymentMethod extends Model
 
     public function gateways()
     {
-        return $this->belongsTo(Charge::class, 'name');
+        return $this->belongsTo(Charge::class, 'type', 'name');
     }
 
     public function company()

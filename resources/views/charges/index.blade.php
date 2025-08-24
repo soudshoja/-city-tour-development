@@ -431,7 +431,7 @@
                                     </div>
 
                                     <div class="flex justify-between items-center mt-6">
-                                        <button type="button" @click="editModal = false" class="bg-gray-300 px-4 py-2 rounded-full">Cancel</button>
+                                        <button type="button" @click="editChildModal = false" class="bg-gray-300 px-4 py-2 rounded-full">Cancel</button>
                                         <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-full">Save</button>
                                     </div>
                                 </form>

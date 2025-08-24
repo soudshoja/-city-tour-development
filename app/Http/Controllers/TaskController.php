@@ -430,7 +430,43 @@ class TaskController extends Controller
             $queryChkExistTask->where('supplier_id', $request->supplier_id);
         }
 
-        $existingTask = $queryChkExistTask->first();
+        $existingTask = null;
+        if ($request->type === 'hotel') {
+            $hotelName = data_get($request->task_hotel_details, '0.hotel_name');
+            $roomType  = data_get($request->task_hotel_details, '0.room_type');
+            $checkIn   = data_get($request->task_hotel_details, '0.check_in');
+            $checkOut  = data_get($request->task_hotel_details, '0.check_out');
+
+            $checkIn  = $checkIn  ? Carbon::parse($checkIn)->toDateString()  : null;
+            $checkOut = $checkOut ? Carbon::parse($checkOut)->toDateString() : null;
+
+            $existingTask = (clone $queryChkExistTask)
+                ->whereHas('hotelDetails', function ($q) use ($checkIn, $checkOut, $hotelName, $roomType) {
+                    if (!empty($hotelName)) {
+                        $q->whereHas('hotel', function ($qh) use ($hotelName) {
+                            $qh->where('name', 'LIKE', $hotelName);
+                        });
+                    }
+                    if (!empty($checkIn)) {
+                        $q->whereDate('check_in', $checkIn);
+                    }
+                    if (!empty($checkOut)) {
+                        $q->whereDate('check_out', $checkOut);
+                    }
+                    if (!empty($roomType)) {
+                        $q->where('room_type', $roomType);
+                    }   
+                })->first();
+            Log::info('Existing hotel task check', [
+                'existing_task_id' => optional($existingTask)->id,
+                'hotel_name'       => $hotelName,
+                'room_type'        => $roomType,
+                'check_in'         => $checkIn,
+                'check_out'        => $checkOut,
+            ]);
+        } else {
+            $existingTask = (clone $queryChkExistTask)->first();
+        }
 
         if ($existingTask) {
             if ($existingTask->total != $request->total && $existingTask->status == 'issued' && $existingTask->supplier->name === 'Jazeera Airways') {

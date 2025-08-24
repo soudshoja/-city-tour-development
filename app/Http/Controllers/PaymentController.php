@@ -722,6 +722,9 @@ class PaymentController extends Controller
             $invoice->status = 'unpaid'; // No partials are paid
         }
 
+        // Cash payments remain unpaid until receipt voucher is processed
+        // Only credit_payment type was removed as per business requirements
+
         $invoice->paid_date = now();
         $invoice->save();
 

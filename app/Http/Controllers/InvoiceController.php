@@ -595,7 +595,7 @@ class InvoiceController extends Controller
 
             //if ($credit && $type == 'full') {
             if ($type == 'credit') {
-                //insert credit record
+                //insert credit record to reduce client's existing credit balance
                 try {
                     Credit::create([
                         'company_id'  => $invoice->client->agent->branch->company_id,
@@ -616,12 +616,40 @@ class InvoiceController extends Controller
                 }
             }
 
+            // Handle new payment types: cash
+            if ($type === 'cash') {
+                try {
+                    // For cash payment, do NOT mark invoice as paid - stays unpaid until receipt voucher
+                    $invoicePartial->status = 'unpaid';
+                    $invoicePartial->save();
+                    
+                    // Create journal entries for cash payment
+                    $journalResponse = $this->createPaymentJournalEntries($invoice, $invoicePartial, $amount, $type);
+                    
+                    if ($journalResponse['status'] == 'error') {
+                        throw new Exception($journalResponse['message']);
+                    }
+                    
+                } catch (Exception $e) {
+                    Log::error('Failed to create payment journal entries: ' . $e->getMessage());
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to create payment journal entries: ' . $e->getMessage(),
+                    ]);
+                }
+            }
+
             $invoice->payment_type = $type;
             
             // Auto-payment logic: if charge has is_auto_paid = true, automatically mark as paid
             if ($charge && $charge->is_auto_paid) {
                 $invoice->status = 'paid';
                 $invoice->paid_date = now();
+            } elseif ($type === 'cash') {
+                // For cash payment, keep invoice as unpaid until receipt voucher is processed
+                $invoice->status = 'unpaid';
+                // Don't set paid_date for cash payments
             } else {
                 $invoice->status = $credit ? 'paid' : 'unpaid';
                 if ($credit) {
@@ -1127,6 +1155,83 @@ class InvoiceController extends Controller
         return ['status' => 'success'];
     }
 
+    /**
+     * Create journal entries for cash and credit payment types
+     */
+    public function createPaymentJournalEntries($invoice, $invoicePartial, $amount, $paymentType)
+    {
+        try {
+            $companyId = $invoice->agent->branch->company_id;
+            $branchId = $invoice->agent->branch_id;
+            $clientName = $invoice->client->first_name;
+            
+            // Create transaction for the payment
+            $transaction = Transaction::create([
+                'company_id' => $companyId,
+                'branch_id' => $branchId,
+                'entity_id' => $invoice->client_id,
+                'entity_type' => 'Client',
+                'transaction_type' => 'debit',
+                'amount' => $amount,
+                'description' => ucfirst($paymentType) . ' payment for invoice: ' . $invoice->invoice_number,
+                'invoice_id' => $invoice->id,
+                'reference_type' => 'Payment',
+                'transaction_date' => $invoice->invoice_date,
+            ]);
+
+            // Find required accounts
+            $receivableAccount = Account::where('name', 'Accounts Receivable')
+                ->where('company_id', $companyId)
+                ->first();
+
+            $clientAccount = Account::where('name', 'Clients')
+                ->where('company_id', $companyId)
+                ->where('parent_id', $receivableAccount->id ?? null)
+                ->first();
+
+            if (!$clientAccount) {
+                throw new Exception('Client receivable account not found');
+            }
+
+            if ($paymentType === 'cash') {
+                // For cash payment:
+                // Only debit the client (client owes us money)
+                // Invoice remains unpaid until receipt voucher is processed
+                
+                // Debit client receivable (client owes money for cash payment)
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'branch_id' => $branchId,
+                    'company_id' => $companyId,
+                    'account_id' => $clientAccount->id,
+                    'invoice_id' => $invoice->id,
+                    'transaction_date' => now(),
+                    'description' => 'Cash payment obligation for client: ' . $clientName,
+                    'debit' => $amount,
+                    'credit' => 0,
+                    'balance' => $clientAccount->actual_balance + $amount,
+                    'name' => $clientName,
+                    'type' => 'receivable',
+                    'voucher_number' => 'CSH-' . now()->timestamp,
+                    'type_reference_id' => $clientAccount->id,
+                ]);
+
+                // Update account balance
+                $clientAccount->actual_balance += $amount;
+                $clientAccount->save();
+            }
+
+            return ['status' => 'success'];
+
+        } catch (Exception $e) {
+            Log::error('Error creating payment journal entries: ' . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => 'Failed to create payment journal entries: ' . $e->getMessage()
+            ];
+        }
+    }
+
 
 
     public function clientAdd(Request $request)
@@ -1574,6 +1679,19 @@ class InvoiceController extends Controller
             foreach ($invoice->invoicePartials as $partial) {
                 $partial->amount = $newTotal;
                 $partial->save();
+            }
+        }
+
+        if ($invoiceDetail->invoice && $invoiceDetail->invoice->payment_type === 'cash') {
+            $cashEntry = JournalEntry::where('invoice_id', $invoiceDetail->invoice->id)
+                ->where('description', 'like', '%Cash payment obligation for client%')
+                ->first();
+    
+            if ($cashEntry) {
+                $cashEntry->debit  = $newTotal;
+                $cashEntry->credit = 0;
+                $cashEntry->amount = $newTotal;
+                $cashEntry->save();
             }
         }
 

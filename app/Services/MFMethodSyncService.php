@@ -6,20 +6,24 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Models\PaymentMethod;
 use Throwable;
+use App\Services\GatewayConfigService;
 
 class MFMethodSyncService
 {
     public function sync(int $companyId)
     {
         try {
-            $response = Http::withToken(config('services.myfatoorah.api_key'))
-                ->post(config('services.myfatoorah.base_url') . '/InitiatePayment', [
+            $configService = new GatewayConfigService();
+            $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
+            $response = Http::withToken($myfatoorahConfig['api_key'])
+                ->post($myfatoorahConfig['base_url'] . '/InitiatePayment', [
                     'InvoiceAmount' => 100,
                     'CurrencyIso' => 'KWD',
                 ]);
 
             Log::info('MyFatoorah payment methods sync request sent.', [
-                'url' => config('services.myfatoorah.base_url') . 'InitiatePayment',
+                'url' => $myfatoorahConfig['base_url'] . 'InitiatePayment',
                 'response' => $response->body(),
             ]);
 

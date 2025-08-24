@@ -3,6 +3,7 @@
 namespace App\Support\PaymentGateway;
 
 use App\Http\Traits\HttpRequestTrait;
+use App\Services\GatewayConfigService;
 
 class Tap
 {
@@ -10,10 +11,13 @@ class Tap
 
     public function createCharge($req)
     {
+        $configService = new GatewayConfigService();
+        $tapConfig = $configService->getTapConfig();
+
         $response = $this->postRequest(
-            config('services.tap.url') . '/charges',
+            $tapConfig['url'] . '/charges',
             array(
-                'Authorization: Bearer ' . config('services.tap.secret'),
+                'Authorization: Bearer ' . $tapConfig['secret'],
                 'Content-Type: application/json'
             ),
             json_encode($req),
@@ -27,10 +31,13 @@ class Tap
 
     public function getCharge($chargeId)
     {
+        $configService = new GatewayConfigService();
+        $tapConfig = $configService->getTapConfig();
+
         $response = $this->getRequest(
-            config('services.tap.url') . '/charges/' . $chargeId,
+            $tapConfig['url'] . '/charges/' . $chargeId,
             array(
-                'Authorization: Bearer ' . config('services.tap.secret'),
+                'Authorization: Bearer ' . $tapConfig['secret'],
             ),
             [],
         );

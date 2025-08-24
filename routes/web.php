@@ -499,6 +499,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{id}', [ChargeController::class, 'update'])->name('update');
         Route::get('/{id}', [ChargeController::class, 'show'])->name('show');
         Route::delete('/{id}', [ChargeController::class, 'destroy'])->name('destroy');
+        Route::put('/{id}/credentials', [ChargeController::class, 'updateCredentials'])->name('credentials.update');
     });
 
     Route::group([

@@ -3,6 +3,7 @@
 namespace App\Support\PaymentGateway;
 
 use App\Http\Traits\HttpRequestTrait;
+use App\Services\GatewayConfigService;
 
 class MyFatoorah
 {
@@ -10,10 +11,13 @@ class MyFatoorah
 
     public function createCharge($req)
     {
+        $configService = new GatewayConfigService();
+        $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
         $response = $this->postRequest(
-            config('services.myfatoorah.base_url') . '/charges',
+            $myfatoorahConfig['base_url'] . '/charges',
             array(
-                'Authorization: Bearer ' . config('services.myfatoorah.api_key'),
+                'Authorization: Bearer ' . $myfatoorahConfig['api_key'],
                 'Content-Type: application/json'
             ),
             json_encode($req),
@@ -27,10 +31,13 @@ class MyFatoorah
 
     public function getCharge($chargeId)
     {
+        $configService = new GatewayConfigService();
+        $myfatoorahConfig = $configService->getMyFatoorahConfig();
+        
         $response = $this->getRequest(
-            config('services.myfatoorah.base_url') . '/charges/' . $chargeId,
+            $myfatoorahConfig['base_url'] . '/charges/' . $chargeId,
             array(
-                'Authorization: Bearer ' . config('services.myfatoorah.api_key'),
+                'Authorization: Bearer ' . $myfatoorahConfig['api_key'],
             ),
             [],
         );

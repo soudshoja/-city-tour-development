@@ -822,7 +822,6 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • For task that is from Appointment Letter, the status should be set to 'issued' by default.\n";
         $prompt .= "  • Fetch the value of Payment Order No, Amount and Payment Date. Embed them all into additional_info.\n";
 
-
         $prompt .= "- Return the result in this JSON format:\n\n";
 
         $prompt .= "{\n";

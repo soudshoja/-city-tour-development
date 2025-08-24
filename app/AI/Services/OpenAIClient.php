@@ -806,7 +806,6 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Set tasks.issued_date from the 'Date' line; parse dd/mm/yyyy to 'YYYY-MM-DD 00:00:00'. Set tasks.issued_by and tasks.created_by from the 'Client' line.\n";
         $prompt .= "  • For each line: tasks.price=rooms×rate×nights, total=price. tax/surcharge from VAT lines; original_* match document currency. taxes_record = raw VAT line.\n";
         $prompt .= "  • task_hotel_details: room_type, check_in/out, rate, room_amount=price, meal_type, hotel_name. Put quantity/nights in additional_info.\n";
-
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (NDC SUPPLIERS): If the supplier has 'NDC' in its name (case-insensitive), set created_by to exactly match issued_by.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (EMIRATES NDC): Set issued_by to the agency/office name that appears immediately next to the 'IATA:' number.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (LONDON VISA):\n";
@@ -817,6 +816,12 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • For venue, use United Kingdom.\n";
         $prompt .= "  • Fetch the bank name (e.g. World Bank) and the bank information (e.g. ETAWEB00005361649) with the original_price with original_currency and embed it into additional_info. Different task should have the bank information as an unique value.\n";   
         $prompt .= "  • The reference and ticket_number hold the same value, that is the value of ETA reference number (e.g. 2021-2506-1004-1787). Different task should have the values as an unique value.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (BLS SPAIN VISA):\n";
+        $prompt .= "  • For task that is from Appointment Letter, set the reference and ticket_number using the value Reference Number in table Appointment Details.\n";
+        $prompt .= "  • For task that is from Appointment Letter, fetch the value in Amount as it is in USD, then set the value for original_price using the fetched value. For price and total in database should be the converted value of original_price in KWD.\n";
+        $prompt .= "  • For task that is from Appointment Letter, the status should be set to 'issued' by default.\n";
+        $prompt .= "  • Fetch the value of Payment Order No, Amount and Payment Date. Embed them all into additional_info.\n";
+
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

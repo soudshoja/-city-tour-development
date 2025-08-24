@@ -769,6 +769,16 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Place all other monetary details (e.g., Optional extras, Transaction fee, Admin fees, Taxes/fees, etc.) into tasks.additional_info.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cebu Pacific):\n";
         $prompt .= "  • Set reference = Booking Reference No. and issued_date = Booking Date. Set agent, created_by and issued_by to null.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Indigo):\n";
+        $prompt .= "  • Set the reference and ticket_number using 'PNR/Booking Ref' value (e.g. G5BQFJ).\n";
+        $prompt .= "  • Set issued_date and supplier_pay_date to use the value of 'Date of Booking' (e.g. 09Aug25) to the format yyyy-mm-dd.\n";
+        $prompt .= "  • In table Fare Summary that is found at the end of the page, find 'Airfare Charges' and get the value. Use it to set the price.\n";
+        $prompt .= "  • In table Fare Summary that is found at the end of the page, set the total using the value of 'Total Fare' that is in the footer of the table.\n";
+        $prompt .= "  • Set the value of tax with sum up of the list under 'Airfare Charges'. The value of sum between the tax and price should be the same with 'Total Fare' and total.\n";
+        $prompt .= "  • Fetch the information of taxes_record with flight from and flight to. Embed them all into additional_info.\n";
+        $prompt .= "  • Set created_by and issued_by to the Company Name that is in Personal Information table at the end of the page.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cebu Pacific and Indigo):\n";
+        $prompt .= "  • Set status to issued if the task file shows 'Confirmed'. Else if the task file showed 'On Hold', the status should be set to confirmed.\n";
         $prompt .= "  • Set task.original_price to the per-passenger share of 'Amount in Booking Currency' (total ÷ passenger_count). Set task.price and task.total to the same amount after conversion using exchange_rate.\n";
         $prompt .= "  • Store fee breakdown: set surcharge = Admin Fee + Fuel Surcharge; set tax = sum of VATs + passenger/service/security charges; penalty_fee = 0 unless stated.\n";
         $prompt .= "  • Copy all labeled amounts into additional_info as 'Label: Amount' pairs (e.g., Base Fare, Administrative Fee, Fuel Surcharge, VAT for Admin Fees, and so on).\n";
@@ -805,8 +815,8 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • For task that is uploaded by Outlook, the status of the task is default to issued.\n";
         $prompt .= "  • For task that is uploaded by Outlook, it doesn't have created_by, expiry_date, cancellation_policy and cancellation_deadline.\n";
         $prompt .= "  • For venue, use United Kingdom.\n";
-        $prompt .= "  • Fetch the bank name (e.g., World Bank) and the bank information (e.g., ETAWEB00005361649) with the original_price with original_currency and embed it into additional_info. Different task should have the bank information as an unique value.\n";   
-        $prompt .= "  • The reference and ticket_number hold the same value, that is the value of ETA reference number (e.g., 2021-2506-1004-1787). Different task should have the values as an unique value.\n";
+        $prompt .= "  • Fetch the bank name (e.g. World Bank) and the bank information (e.g. ETAWEB00005361649) with the original_price with original_currency and embed it into additional_info. Different task should have the bank information as an unique value.\n";   
+        $prompt .= "  • The reference and ticket_number hold the same value, that is the value of ETA reference number (e.g. 2021-2506-1004-1787). Different task should have the values as an unique value.\n";
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

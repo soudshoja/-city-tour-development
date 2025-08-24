@@ -790,11 +790,13 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Bedzinn vouchers that say something like “Booking confirmed”, set `status` = 'issued', set `issued_by`and `created_by` = 'Ojeen Travel'.\n";
         $prompt .= "  • Set the client to the first passenger; if there are additional passengers, list them in additional_details.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Supreme Services):\n";
-        $prompt .= "  • Create EXACTLY ONE task per ROOM (NEVER per passenger). If the file has N rooms, output N tasks; if it has 1 room, output 1 task.\n";
+        $prompt .= "  • Create ONE task per accommodation line (room type), never per room or passenger.\n";
+        $prompt .= "  • Example: '3 ROOM(S) × 184.00 × 6 NIGHT(S)' = 1 task, price=3312.00, additional_info='Rooms:3; Nights:6; Calc:3×184×6=3312'.\n";
         $prompt .= "  • Set tasks.client_name from the 'Ref.' line. Set tasks.reference and tasks.ticket_number from the 'File No.' line. Set tasks.status = 'issued'.\n";
         $prompt .= "  • Set tasks.issued_date from the 'Date' line; parse dd/mm/yyyy to 'YYYY-MM-DD 00:00:00'. Set tasks.issued_by and tasks.created_by from the 'Client' line.\n";
-        $prompt .= "  • For each room, tasks.price and tasks.total = unit_price × nights using the accommodation line (e.g., '1 ROOM(S) × 184.00 × 2 NIGHT(S) = 368.00').\n";
-        $prompt .= "  • If VAT/Tax/Surcharge lines exist, set tasks.tax and/or tasks.surcharge to the numeric amounts; set tasks.original_tax and/or tasks.original_surcharge to the same values in the document currency. Also set tasks.taxes_record to the raw tax line (e.g., 'TOTAL VAT 11% USD 67.69 …').\n";
+        $prompt .= "  • For each line: tasks.price=rooms×rate×nights, total=price. tax/surcharge from VAT lines; original_* match document currency. taxes_record = raw VAT line.\n";
+        $prompt .= "  • task_hotel_details: room_type, check_in/out, rate, room_amount=price, meal_type, hotel_name. Put quantity/nights in additional_info.\n";
+
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (NDC SUPPLIERS): If the supplier has 'NDC' in its name (case-insensitive), set created_by to exactly match issued_by.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (EMIRATES NDC): Set issued_by to the agency/office name that appears immediately next to the 'IATA:' number.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (LONDON VISA):\n";

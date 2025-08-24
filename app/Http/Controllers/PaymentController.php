@@ -48,6 +48,7 @@ use Illuminate\Support\Arr;
 use App\Http\Controllers\ClientController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use App\Services\GatewayConfigService;
 
 class PaymentController extends Controller
 {
@@ -306,8 +307,11 @@ class PaymentController extends Controller
         }
 
         if (strtolower($data['payment_gateway']) === 'myfatoorah') {
-            $apiKey = config('services.myfatoorah.api_key');
-            $baseUrl = config('services.myfatoorah.base_url');
+            $configService = new GatewayConfigService();
+            $myfatoorahConfig = $configService->getMyFatoorahConfig();
+    
+            $apiKey  = $myfatoorahConfig['api_key'];
+            $baseUrl = $myfatoorahConfig['base_url'];
             $invoiceNumber = $invoice->invoice_number;
             $paymentMethodId = $data['payment_method'];
             $paymentMethod = PaymentMethod::findOrFail($paymentMethodId);
@@ -955,8 +959,11 @@ class PaymentController extends Controller
 
     public function getPaymentStatusMyFatoorah($invoiceId) : JsonResponse
     {
-        $apiKey = config('services.myfatoorah.api_key');
-        $baseUrl = config('services.myfatoorah.base_url');
+        $configService = new GatewayConfigService();
+        $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
+        $apiKey  = $myfatoorahConfig['api_key'];
+        $baseUrl = $myfatoorahConfig['base_url'];
 
         Log::info('getPaymentStatusMyFatoorah called with invoice_id: ', [
             'invoice_id' => $invoiceId,
@@ -1579,8 +1586,11 @@ class PaymentController extends Controller
 
             return redirect($response['transaction']['url']);
         } else if (strtolower($paymentGateway) === 'myfatoorah') {
-            $apiKey = config('services.myfatoorah.api_key');
-            $baseUrl = config('services.myfatoorah.base_url');
+            $configService = new GatewayConfigService();
+            $myfatoorahConfig = $configService->getMyFatoorahConfig();
+    
+            $apiKey  = $myfatoorahConfig['api_key'];
+            $baseUrl = $myfatoorahConfig['base_url'];
 
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $companyId = optional($payment->agent->branch)->company_id;
@@ -1699,8 +1709,11 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'Invalid or already processed payment.');
         }
 
-        $apiKey = config('services.myfatoorah.api_key');
-        $baseUrl = config('services.myfatoorah.base_url');
+        $configService = new GatewayConfigService();
+        $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
+        $apiKey  = $myfatoorahConfig['api_key'];
+        $baseUrl = $myfatoorahConfig['base_url'];
 
         $companyId = optional($payment->agent->branch)->company_id;
 
@@ -2074,8 +2087,11 @@ class PaymentController extends Controller
             }
 
             //Get payment status from MyFatoorah
-            $apiKey = config('services.myfatoorah.api_key');
-            $baseUrl = config('services.myfatoorah.base_url');
+            $configService = new GatewayConfigService();
+            $myfatoorahConfig = $configService->getMyFatoorahConfig();
+    
+            $apiKey  = $myfatoorahConfig['api_key'];
+            $baseUrl = $myfatoorahConfig['base_url'];
 
             $statusResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",

@@ -50,7 +50,9 @@ class CreditController extends Controller
                 $searchTerm = '%' . strtolower($search) . '%';
 
                 $query->whereHas('client', function ($q) use ($searchTerm) {
-                    $q->where('name', 'like', $searchTerm)
+                    $q->where('first_name', 'like', $searchTerm)
+                        ->orWhere('middle_name', 'like', $searchTerm)
+                        ->orWhere('last_name', 'like', $searchTerm)
                         ->orWhere('email', 'like', $searchTerm)
                         ->orWhere('phone', 'like', $searchTerm)
                         ->orWhereHas('agent', function ($q) use ($searchTerm) {

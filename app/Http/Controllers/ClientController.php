@@ -23,6 +23,7 @@ use App\Models\Role;
 use App\Models\Transaction;
 use App\Models\Credit;
 use App\Enums\ChargeType;
+use App\Models\InvoicePartial;
 use App\Models\PaymentMethod;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -78,6 +79,36 @@ class ClientController extends Controller
                     ->orWhereHas('agent', function ($q) use ($searchTerm) {
                         $q->where('name', 'LIKE', $searchTerm);
                     });
+                
+                // Handle multi-word search for name combinations
+                if (str_word_count($search) > 1) {
+                    $searchWords = explode(' ', trim($search));
+                    $query->orWhere(function($nameQuery) use ($searchWords) {
+                        $firstWord = $searchWords[0];
+                        $lastWord = end($searchWords);
+                        $middleWords = array_slice($searchWords, 1, -1);
+                        
+                        // For 2 words: first_name + last_name
+                        if (count($searchWords) == 2) {
+                            $nameQuery->where(function($q) use ($firstWord, $lastWord) {
+                                $q->where('first_name', 'LIKE', '%' . $firstWord . '%')
+                                  ->where('last_name', 'LIKE', '%' . $lastWord . '%');
+                            });
+                        }
+                        // For 3+ words: first_name + middle_name(s) + last_name
+                        else if (count($searchWords) >= 3) {
+                            $nameQuery->where(function($q) use ($firstWord, $middleWords, $lastWord) {
+                                $q->where('first_name', 'LIKE', '%' . $firstWord . '%')
+                                  ->where('last_name', 'LIKE', '%' . $lastWord . '%');
+                                
+                                // Add middle name conditions
+                                foreach ($middleWords as $middleWord) {
+                                    $q->where('middle_name', 'LIKE', '%' . $middleWord . '%');
+                                }
+                            });
+                        }
+                    });
+                }
             });
 
         }
@@ -230,9 +261,26 @@ class ClientController extends Controller
             }
         }
 
-        $invoicesPart = Invoice::with('invoicePartials', 'agent')->where('client_id', $id)->get();
-        $paid = $invoicesPart->flatMap->invoicePartials->where('status', 'paid')->sum('amount');
-        $unpaid = $invoicesPart->flatMap->invoicePartials->where('status', '<>', 'paid')->sum('amount');
+        $paid   = 0.0;
+        $unpaid = 0.0;
+
+        $invoicesPart = Invoice::where('client_id', $id)->get(['id','amount','status']);
+
+        foreach ($invoicesPart as $invoice) {
+            $total = $invoice->amount;
+            $paidPartials = $invoice->invoicePartials->where('status', 'paid')->sum('amount');
+
+            if ($invoice->status === 'paid') {
+                $paid   += $total;
+                continue;
+            }
+
+            $paidOnInvoice   = min($paidPartials, $total);
+            $outstanding     = max(0.0, $total - $paidOnInvoice);
+
+            $paid   += $paidOnInvoice;
+            $unpaid += $outstanding;
+        }
 
         $clients = Client::with('agent.branch')->get();
         $balanceCredit = Credit::getTotalCreditsByClient($id);

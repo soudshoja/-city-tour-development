@@ -795,10 +795,16 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Set tasks.issued_date from the 'Date' line; parse dd/mm/yyyy to 'YYYY-MM-DD 00:00:00'. Set tasks.issued_by and tasks.created_by from the 'Client' line.\n";
         $prompt .= "  • For each room, tasks.price and tasks.total = unit_price × nights using the accommodation line (e.g., '1 ROOM(S) × 184.00 × 2 NIGHT(S) = 368.00').\n";
         $prompt .= "  • If VAT/Tax/Surcharge lines exist, set tasks.tax and/or tasks.surcharge to the numeric amounts; set tasks.original_tax and/or tasks.original_surcharge to the same values in the document currency. Also set tasks.taxes_record to the raw tax line (e.g., 'TOTAL VAT 11% USD 67.69 …').\n";
-
-
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (NDC SUPPLIERS): If the supplier has 'NDC' in its name (case-insensitive), set created_by to exactly match issued_by.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (EMIRATES NDC): Set issued_by to the agency/office name that appears immediately next to the 'IATA:' number.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (LONDON VISA):\n";
+        $prompt .= "  • For task that is uploaded by Outlook, find the details of the sender at 'From' field. Use that information as indicator for if it is from 'UK Visas and Immigration Home Office', automatically store London Visa as the issued_by.\n";
+        $prompt .= "  • For task that is uploaded by Outlook, find the 'Date' field in sender details, use the date as issued_date and supplier_pay_date.\n";
+        $prompt .= "  • For task that is uploaded by Outlook, the status of the task is default to issued.\n";
+        $prompt .= "  • For task that is uploaded by Outlook, it doesn't have created_by, expiry_date, cancellation_policy and cancellation_deadline.\n";
+        $prompt .= "  • For venue, use United Kingdom.\n";
+        $prompt .= "  • Fetch the bank name (e.g., World Bank) and the bank information (e.g., ETAWEB00005361649) with the original_price with original_currency and embed it into additional_info. Different task should have the bank information as an unique value.\n";   
+        $prompt .= "  • The reference and ticket_number hold the same value, that is the value of ETA reference number (e.g., 2021-2506-1004-1787). Different task should have the values as an unique value.\n";
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

@@ -70,7 +70,7 @@ class Charge extends Model
 
     public function methods()
     {
-        return $this->hasMany(PaymentMethod::class, 'type');
+        return $this->hasMany(PaymentMethod::class, 'type', 'name');
     }
 
     protected static ?int $resolvedCompanyId = null;

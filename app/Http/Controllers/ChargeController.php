@@ -30,9 +30,7 @@ class ChargeController extends Controller
             // $charges = collect();
         }
 
-        $gateways = Charge::with('methods')->get();
-
-        return view('charges.index', compact('charges', 'totalCharges', 'gateways'));
+        return view('charges.index', compact('charges', 'totalCharges'));
     }
 
 

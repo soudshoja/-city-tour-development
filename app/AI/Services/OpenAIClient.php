@@ -36,10 +36,15 @@ class OpenAIClient implements AIClientInterface
 
     public function __construct()
     {
+        $this->logger = Log::channel('ai');
+
+        if (config('ai.default') !== 'openai') {
+            return;
+        }
+
         $this->apiUrl = config('ai.providers.openai.url');
         $this->apiKey = config('ai.providers.openai.key');
         $this->model = config('ai.providers.openai.model');
-        $this->logger = Log::channel('ai');
 
         if (empty($this->apiUrl) || empty($this->apiKey)) {
             throw new Exception('OpenAi configuration is missing. Please check your AI_PROVIDER settings.');

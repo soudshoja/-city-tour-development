@@ -798,7 +798,7 @@
                             </div>
 
                             <!-- Payment Gateway Section -->
-                            <section id="payment_gateway_section" class="mb-6">
+                            <section id="payment_gateway_section" class="mb-6" x-data="{ paymentType: '{{ $invoice->payment_type ?? '' }}' }" x-show="paymentType === '' || paymentType === 'full'" x-cloak>
                                 @php
                                 $selectedGateway = optional($invoice->invoicePartials->first())->payment_gateway ?? '';
                                 $selectedMethod = optional($invoice->invoicePartials->first())->payment_method ?? '';
@@ -814,6 +814,7 @@
                                             <select id="payment_gateway_option" name="payment_gateway_option"
                                                 class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
                                                 @foreach ($paymentGateways as $gateway)
+                                                <option value="">Choose a Payment Gateway</option>
                                                 <option value="{{ $gateway->name }}"
                                                     {{ $selectedGateway === $gateway->name ? 'selected' : '' }}>
                                                     {{ $gateway->name }}

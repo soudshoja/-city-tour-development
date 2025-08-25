@@ -453,6 +453,11 @@
                                             <p class="text-xs text-gray-500 mt-1">If set, this will override the gateway amount</p>
                                         </div>
 
+                                        <div class="mb-4">
+                                            <label class="block text-sm font-medium">Extra Charge (KWD)</label>
+                                            <input type="number" name="extra-charge" x-model="editData.extra_charge" class="w-full border px-3 py-2 rounded-full" />
+                                        </div>
+
                                         <div class="mb-4 flex gap-4">
                                             <div class="w-1/2">
                                                 <label class="block text-sm font-medium">Paid By</label>

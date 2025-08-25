@@ -402,6 +402,14 @@ class InvoiceController extends Controller
         $invprice = $invoice->amount;
         $dueDate =  $invoice->due_date;
 
+        foreach($paymentGateways as $gateway){
+            // Only set self_charge to amount if both are null or self_charge is explicitly null
+            // but don't override self_charge if it has a value (including 0)
+            if (is_null($gateway->self_charge) && !is_null($gateway->amount)) {
+                $gateway->self_charge = $gateway->amount;
+            }
+        }
+
         $appUrl = config('app.url');
 
         // Check if the credit has been used for this invoice

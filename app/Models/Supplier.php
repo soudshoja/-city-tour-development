@@ -38,6 +38,10 @@ class Supplier extends Model
         'is_online',
     ];
 
+    protected $casts = [
+        'is_online' => 'bool',
+    ];
+    
     public function country()
     {
         return $this->belongsTo(Country::class);
@@ -81,4 +85,5 @@ class Supplier extends Model
 
         return false;
     }
+    
 }

@@ -58,25 +58,53 @@
             <div
                 @click.away="addSupplierModal = false"
                 class="bg-white w-1/2 max-h-1/4 rounded-md shadow-md p-5">
-                <h1 class="font-semibold">
-                    Add Supplier To The System
-                </h1>
+                <div class="mb-5 flex items-start justify-between">
+                    <div>
+                        <h1 class="text-lg md:text-xl font-semibold text-gray-900">Add Supplier</h1>
+                        <p class="mt-1 text-sm text-gray-500 italic">Fill in the details to add a new supplier</p>
+                    </div>
+
+                    <button type="button"
+                        @click="addSupplierModal = false"
+                        class="p-2 -mr-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M6.225 4.811a1 1 0 0 1 1.414 0L12 9.172l4.361-4.361a1 1 0 1 1 1.414 1.414L13.414 10.586l4.361 4.361a1 1 0 0 1-1.414 1.414L12 12l-4.361 4.361a1 1 0 0 1-1.414-1.414l4.361-4.361-4.361-4.361a1 1 0 0 1 0-1.414z"
+                                clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
                 <form action="{{ route('suppliers.store') }}" method="POST" class="flex flex-col gap-2 mb-2">
                     @csrf
-                    <div class="mb-3">
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Supplier Name</label>
-                        <input type="text" name="name" id="name" placeholder="Supplier Name"
-                            class="border border-gray-300 rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                    <div class="mb-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Supplier Name</label>
+                            <input type="text" name="name" id="name" placeholder="Supplier Name"
+                                class="border border-gray-300 rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                        </div>
+                        <div>
+                            <label for="auth_type" class="block text-sm font-medium text-gray-700 mb-1">Authentication Type</label>
+                            <select name="auth_type" id="auth_type"
+                                class="border border-gray-300 rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                                @foreach ($supplierAuthTypes as $type)
+                                <option value="{{ $type }}">{{ strtolower($type->name) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="auth_type" class="block text-sm font-medium text-gray-700 mb-1">Authentication Type</label>
-                        <select name="auth_type" id="auth_type"
-                            class="border border-gray-300 rounded-md p-2 w-full focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
-                            @foreach ($supplierAuthTypes as $type)
-                            <option value="{{ $type }}">{{ strtolower($type->name) }}</option>
-                            @endforeach
-                        </select>
+                    <span class="text-sm font-medium text-gray-700 mr-3 whitespace-nowrap shrink-0">
+                        Country of Origin
+                    </span>
+                    <div>
+                        <x-searchable-dropdown
+                            name="country_id"
+                            :items="$countries->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
+                            placeholder="Select Country" />
                     </div>
+                   <!--  <span class="text-sm font-medium text-gray-700 mr-3 whitespace-nowrap shrink-0 mt-3">
+                        Service Type
+                    </span>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 mb-4">
                         <div class="flex items-center">
                             <input type="checkbox" name="has_hotel" id="has_hotel"
@@ -138,15 +166,110 @@
                                 class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
                             <label for="has_ferry" class="ml-2 text-sm text-gray-700">Has Ferry</label>
                         </div>
-                    </div>
+                    </div> -->
+                    @php($supplier = $supplier ?? new \App\Models\Supplier())
 
-                    <div>
-                        <x-searchable-dropdown
-                            name="country_id"
-                            :items="$countries->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
-                            placeholder="Select Country" />
+                     <div x-data="{
+    hasHotel: {{ old('has_hotel', optional($supplier)->has_hotel) ? 'true' : 'false' }},
+    hotelChannel: '{{ old('hotel_channel', is_null(optional($supplier)->is_online) ? '' : (optional($supplier)->is_online ? 'online' : 'offline')) }}'
+}" class="mt-2">
+                                        <span class="text-sm font-medium text-gray-700 mr-3 whitespace-nowrap shrink-0">
+                                            Service Type
+                                        </span>
+                                        <div class="flex items-center mb-2">
+                                            <input type="checkbox"
+                                                name="has_hotel"
+                                                id="has_hotel"
+                                                x-model="hasHotel"
+                                                @change="if(!hasHotel) hotelChannel = ''"
+                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
+                                            <label for="has_hotel" class="ml-2 text-sm text-gray-700">Has Hotel</label>
+
+                                            <input type="checkbox" name="has_flight" id="has_flight"
+                                                {{ $supplier->has_flight ? 'checked' : '' }}
+                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                            <label for="has_flight" class="ml-2 text-sm text-gray-700">Has Flight</label>
+
+                                            <input type="checkbox" name="has_visa" id="has_visa"
+                                                {{ $supplier->has_visa ? 'checked' : '' }}
+                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                            <label for="has_visa" class="ml-2 text-sm text-gray-700">Has Visa</label>
+
+                                            <input type="checkbox" name="has_insurance" id="has_insurance"
+                                                {{ $supplier->has_insurance ? 'checked' : '' }}
+                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                            <label for="has_insurance" class="ml-2 text-sm text-gray-700">Has Insurance</label>
+
+                                            <input type="checkbox" name="has_tour" id="has_tour"
+                                                {{ $supplier->has_tour ? 'checked' : '' }}
+                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                            <label for="has_tour" class="ml-2 text-sm text-gray-700">Has Tour</label>
+
+                                            <input type="checkbox" name="has_cruise" id="has_cruise"
+                                                {{ $supplier->has_cruise ? 'checked' : '' }}
+                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                            <label for="has_cruise" class="ml-2 text-sm text-gray-700">Has Cruise</label>
+
+                                            <input type="checkbox" name="has_car" id="has_car"
+                                                {{ $supplier->has_car ? 'checked' : '' }}
+                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                            <label for="has_car" class="ml-2 text-sm text-gray-700">Has Car</label>
+
+                                            <input type="checkbox" name="has_rail" id="has_rail"
+                                                {{ $supplier->has_rail ? 'checked' : '' }}
+                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                            <label for="has_rail" class="ml-2 text-sm text-gray-700">Has Rail</label>
+
+                                            <input type="checkbox" name="has_esim" id="has_esim"
+                                                {{ $supplier->has_esim ? 'checked' : '' }}
+                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                            <label for="has_esim" class="ml-2 text-sm text-gray-700">Has Esim</label>
+
+                                            <input type="checkbox" name="has_event" id="has_event"
+                                                {{ $supplier->has_event ? 'checked' : '' }}
+                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                            <label for="has_event" class="ml-2 text-sm text-gray-700">Has Event</label>
+
+                                            <input type="checkbox" name="has_lounge" id="has_lounge"
+                                                {{ $supplier->has_lounge ? 'checked' : '' }}
+                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                            <label for="has_lounge" class="ml-2 text-sm text-gray-700">Has Lounge</label>
+
+                                            <input type="checkbox" name="has_ferry" id="has_ferry"
+                                                {{ $supplier->has_ferry ? 'checked' : '' }}
+                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
+                                            <label for="has_ferry" class="ml-2 text-sm text-gray-700">Has Ferry</label>
+                                        </div>
+
+                                        <div x-cloak x-show="hasHotel" class="mt-2">
+                                            <label for="hotel_channel" class="block text-sm font-medium text-gray-700 mb-1">
+                                                Supplier Mode
+                                            </label>
+                                            <select
+                                                name="hotel_channel"
+                                                id="hotel_channel"
+                                                x-model="hotelChannel"
+                                                :disabled="!hasHotel"
+                                                class="block h-10 w-64 md:w-72 min-w-[16rem] border border-gray-300 rounded px-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                                                <option value="" disabled>Select mode</option>
+                                                <option value="online">Online</option>
+                                                <option value="offline">Offline</option>
+                                            </select>
+                                            <input type="hidden" name="is_online" :value="hasHotel ? (hotelChannel === 'online' ? 1 : 0) : ''">
+                                        </div>
+                                    </div>
+                    <div class="mt-5 flex items-center justify-between">
+                        <button type="button"
+                            @click="addSupplierModal = false"
+                            class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                            Cancel
+                        </button>
+
+                        <button type="submit"
+                            class="py-2 px-6 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700">
+                            Update
+                        </button>
                     </div>
-                    <x-primary-button type="submit" class="py-2 px-6 bg-blue-500 text-white w-fit rounded shadow">Submit</x-primary-button>
                 </form>
 
             </div>

@@ -659,10 +659,16 @@ class TaskController extends Controller
                 Log::info('Task disabled - reason: ' . (!$task->is_complete ? 'incomplete' : 'no agent assigned') . ' - task: ' . $task->reference);
             }
 
+            $task->loadMissing('supplier');
+
+            $offline = ($task->type === 'hotel' && $task->supplier_id)
+                ? ! (bool) data_get($task, 'supplier.is_online', true)
+                : false;
+            
             // Process financial transactions immediately if task is complete (regardless of agent assignment)
             // This ensures company liability to supplier is tracked immediately
             // Special case: Void tasks should ALWAYS process financials if they have an original_task_id
-            $shouldProcessFinancials = $task->is_complete || 
+            $shouldProcessFinancials = $offline || $task->is_complete ||
             ($task->status === 'void' && $task->original_task_id);
             
             if ($shouldProcessFinancials) {

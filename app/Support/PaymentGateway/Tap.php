@@ -12,7 +12,16 @@ class Tap
     public function createCharge($req)
     {
         $configService = new GatewayConfigService();
-        $tapConfig = $configService->getTapConfig();
+        $tapConfigResponse = $configService->getTapConfig();
+
+        if($tapConfigResponse['status'] === 'error') {
+            return [
+                'status' => 'error',
+                'message' => $tapConfigResponse['message'],
+            ];
+        }
+        
+        $tapConfig = $tapConfigResponse['data'];
 
         $response = $this->postRequest(
             $tapConfig['url'] . '/charges',
@@ -32,7 +41,16 @@ class Tap
     public function getCharge($chargeId)
     {
         $configService = new GatewayConfigService();
-        $tapConfig = $configService->getTapConfig();
+        $tapConfigResponse = $configService->getTapConfig();
+
+        if($tapConfigResponse['status'] === 'error') {
+            return [
+                'status' => 'error',
+                'message' => $tapConfigResponse['message'],
+            ];
+        }
+
+        $tapConfig = $tapConfigResponse['data'];
 
         $response = $this->getRequest(
             $tapConfig['url'] . '/charges/' . $chargeId,

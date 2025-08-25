@@ -14,6 +14,10 @@ class MyFatoorah
         $configService = new GatewayConfigService();
         $myfatoorahConfig = $configService->getMyFatoorahConfig();
 
+        if($myfatoorahConfig['status'] === 'error') {
+            return $myfatoorahConfig;
+        }
+
         $response = $this->postRequest(
             $myfatoorahConfig['base_url'] . '/charges',
             array(
@@ -33,6 +37,10 @@ class MyFatoorah
     {
         $configService = new GatewayConfigService();
         $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
+        if($myfatoorahConfig['status'] === 'error') {
+            return $myfatoorahConfig;
+        }
         
         $response = $this->getRequest(
             $myfatoorahConfig['base_url'] . '/charges/' . $chargeId,

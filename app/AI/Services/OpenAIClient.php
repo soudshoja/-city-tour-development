@@ -46,8 +46,10 @@ class OpenAIClient implements AIClientInterface
         $this->apiKey = config('ai.providers.openai.key');
         $this->model = config('ai.providers.openai.model');
 
-        if (empty($this->apiUrl) || empty($this->apiKey)) {
-            throw new Exception('OpenAi configuration is missing. Please check your AI_PROVIDER settings.');
+        if(config('app.env') !== 'testing'){
+            if (empty($this->apiUrl) || empty($this->apiKey)) {
+                throw new Exception('OpenAi configuration is missing. Please check your AI_PROVIDER settings.');
+            }
         }
     }
 
@@ -878,6 +880,14 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • For task that is from Appointment Letter, fetch the value in Amount as it is in USD, then set the value for original_price using the fetched value. For price and total in database should be the converted value of original_price in KWD.\n";
         $prompt .= "  • For task that is from Appointment Letter, the status should be set to 'issued' by default.\n";
         $prompt .= "  • Fetch the value of Payment Order No, Amount and Payment Date. Embed them all into additional_info.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Enlite):\n";
+        $prompt .= "  • Set issued_by and created_by to null. Extract only the text before the first hyphen '-' from the given room name (e.g., 'Deluxe Courtyard - Breakfast', room_type = 'Deluxe Courtyard', meal_type = 'Breakfast').\n";
+        $prompt .= "  • If additional structured room information is present (e.g., name, board, passengers, etc), insert it into task_hotel_details.room_details as JSON.\n";
+        $prompt .= "  • Example: {\"name\":\"Standard Room with twin beds\",\"board\":\"ROOM ONLY\",\"info\":null,\"type\":\"TWN.ST\",\"passengers\":[Mrs. Hassah ALHAIDARI]}\n";
+        $prompt .= "  • When assigning amounts: if each accommodation already has its own amount, use that value. If only a total amount is provided for multiple rooms, then divide the total equally among them (e.g., total 1245 USD for 2 rooms → each task.amount = 622.50 USD). Always round to two decimal places.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Rezlive):\n";
+        $prompt .= "  • If additional structured room information is present (e.g., name, board, passengers, etc), insert it into task_hotel_details.room_details as JSON.\n";
+        $prompt .= "  • Example: {\"name\":\"Standard Room with twin beds\",\"board\":\"ROOM ONLY\",\"info\":null,\"type\":\"TWN.ST\",\"passengers\":[Mrs. Hassah ALHAIDARI]}\n";
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

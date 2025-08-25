@@ -12,6 +12,7 @@ use App\Models\Company;
 use App\Models\Branch;
 use App\Models\Role;
 use App\Models\Refund;
+use Illuminate\Support\Facades\Log;
 
 class BankPaymentController extends Controller
 {
@@ -406,16 +407,28 @@ class BankPaymentController extends Controller
 
     public function fetchPaymentsByDate(Request $request)
     {
-        // Validate input dates
         $request->validate([
             'from' => 'required|date',
-            'to' => 'required|date|after_or_equal:from',
+            'to'   => 'required|date|after_or_equal:from',
         ]);
 
-        $supplierName = $request->get('supplier');
+        $supplierName = (string) $request->get('supplier');
         $user = auth()->user();
 
-        //group by account_id
+        $accountIds = [];
+        $supplierNameTrimmed = trim($supplierName);
+        if ($supplierNameTrimmed !== '') {
+            $acc = Account::where('name', $supplierNameTrimmed)->first()
+                ?? Account::where('name', 'LIKE', "%{$supplierNameTrimmed}%")->first();
+
+            if ($acc) {
+                $accountIds = [$acc->id];
+                Log::info('Resolved supplier account', ['name' => $supplierNameTrimmed, 'account_id' => $acc->id]);
+            } else {
+                Log::info('Supplier name not found in accounts', ['name' => $supplierNameTrimmed]);
+            }
+        }
+
         $totalsByAccountQuery = DB::table('journal_entries')
             ->join('accounts as a', 'journal_entries.account_id', '=', 'a.id')
             ->join('accounts as root_a', 'a.root_id', '=', 'root_a.id')
@@ -426,51 +439,34 @@ class BankPaymentController extends Controller
             ->where('journal_entries.company_id', $user->company->id)
             ->where('journal_entries.branch_id', $user->branch->id)
             ->whereBetween('journal_entries.transaction_date', [$request->from, $request->to])
-            ->whereIn('root_a.name', ['Liabilities']);
-
-        // Apply supplier filter if set (using 'name' field on journal_entries)
-        if ($supplierName) {
-            $totalsByAccountQuery->where('journal_entries.name', 'LIKE', "%{$supplierName}%");
-        }
+            ->whereIn('root_a.name', ['Liabilities'])
+            ->when(!empty($accountIds), fn($q) => $q->whereIn('journal_entries.account_id', $accountIds));
 
         $totalsByAccount = $totalsByAccountQuery
             ->groupBy('journal_entries.account_id')
             ->get()
-            ->filter(function ($entry) {
-                // Filter out any entries with a total of 0 or less
-                return $entry->total > 0;
-            })
+            ->filter(fn($e) => $e->total > 0)
             ->pluck('total', 'account_id');
 
-        // Base query for detailed journal entries
-        $entriesQuery = JournalEntry::whereIn('account_id', $totalsByAccount->keys())
+        $entriesQuery = \App\Models\JournalEntry::whereIn('account_id', $totalsByAccount->keys())
             ->where('company_id', $user->company->id)
             ->where('branch_id', $user->branch->id)
             ->whereBetween('transaction_date', [$request->from, $request->to])
             ->where('credit', '!=', 0)
-            ->where('reconciled', '==', 0)
-            ->where('voucher_number', NULL)
-            ->whereHas('account.root', function ($q) {
-                $q->whereIn('name', ['Liabilities']);
-            });
-
-        // Apply supplier filter if set
-        if ($supplierName) {
-            $entriesQuery->where('name', 'LIKE', "%{$supplierName}%");
-        }
-
-        $entries = $entriesQuery
+            ->where('reconciled', 0)              
+            ->whereNull('voucher_number')         
+            ->whereHas('account.root', fn($q) => $q->whereIn('name', ['Liabilities']))
+            ->when(!empty($accountIds), fn($q) => $q->whereIn('account_id', $accountIds))
             ->with(['account', 'account.root', 'task'])
-            ->orderBy('transaction_date')
-            ->get();
+            ->orderBy('transaction_date');
 
+        $entries = $entriesQuery->get();
 
-        // Format results
         $payments = $entries->map(function ($entry) use ($totalsByAccount) {
             $description = '';
-            if($entry->task) $description = $entry->task->reference . ' - ';
+            if ($entry->task) $description = $entry->task->reference . ' - ';
 
-            if(isset($entry->task->client_name)) {
+            if (isset($entry->task->client_name)) {
                 $description .= $entry->task->client_name;
             } elseif (isset($entry->task->passenger_name)) {
                 $description .= $entry->task->passenger_name;
@@ -479,16 +475,17 @@ class BankPaymentController extends Controller
             } else {
                 $description .= 'No Client';
             }
-            
+
             if ($entry->task) {
                 if ($entry->task->type === 'flight') {
                     $ticketNumber = $entry->task->ticket_number;
-                    $description = $description . ($ticketNumber ? ' - ' . $ticketNumber : '');
-                } elseif ($entry->task->hotel === 'hotel') {
+                    $description .= $ticketNumber ? ' - ' . $ticketNumber : '';
+                } elseif ($entry->task->hotel === 'hotel') { 
                     $hotelName = $entry->task->hotelDetails->hotel->name ?? '';
-                    $description = $description . ($hotelName ? ' - ' . $hotelName : '');
+                    $description .= $hotelName ? ' - ' . $hotelName : '';
                 }
             }
+            
             return [
                 'id'               => $entry->id,
                 'transaction_id'   => $entry->transaction_id,

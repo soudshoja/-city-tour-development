@@ -12,6 +12,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\ClientController;
+use App\Services\GatewayConfigService;
 
 class CheckMyFatoorahPayments extends Command
 {
@@ -174,8 +175,17 @@ class CheckMyFatoorahPayments extends Command
 
     private function getMFPaymentStatus($invoiceId): array
     {
-        $apiKey  = config('services.myfatoorah.api_key');
-        $baseUrl = config('services.myfatoorah.base_url');
+        $configService = new GatewayConfigService();
+        $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
+        if($myfatoorahConfig['status'] === 'error') {
+            return $myfatoorahConfig;
+        }
+
+        $myfatoorahConfig = $myfatoorahConfig['data'];
+
+        $apiKey  = $myfatoorahConfig['api_key'];
+        $baseUrl = $myfatoorahConfig['base_url'];
 
         $response = Http::withHeaders([
             'Authorization' => "Bearer {$apiKey}",

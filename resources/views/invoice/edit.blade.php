@@ -401,6 +401,14 @@
                                     <div class="mr-2">Subtotal:</div>
                                     <span id="subTotalDisplay">0.00</span>
                                 </div>
+                                <div id="service_charge_display_row" class="flex items-center mb-1" style="display: none;">
+                                    <div id="service_charge_label" class="mr-2">Service Charge:</div>
+                                    <span id="serviceChargeDisplay">0.00</span>
+                                </div>
+                                <div id="final_amount_display_row" class="flex items-center mb-1 font-medium border-t pt-1" style="display: none;">
+                                    <div class="mr-2">Final Amount:</div>
+                                    <span id="finalAmountDisplay">0.00</span>
+                                </div>
                                 <div id="invoice_charge_display_row" class="flex items-center mb-1" style="display: none;">
                                     <div id="invoice_charge_label" class="mr-2">Invoice Charge:</div>
                                     <span id="invoiceChargeDisplay">0.00</span>
@@ -830,16 +838,6 @@
                                             </select>
                                         </div>
 
-                                        <!-- External URL Field -->
-                                        <div class="mt-4" id="external_url_section" style="display: none;">
-                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">External Payment URL (Optional)</h2>
-                                            <input type="url" id="external_url" name="external_url"
-                                                class="border border-gray-300 p-2 rounded w-full"
-                                                placeholder="Enter payment gateway URL (optional)"
-                                                value="{{ $invoice->external_url ?? '' }}">
-                                            <p class="text-sm text-gray-500 mt-1">Optionally provide an external payment gateway URL for this invoice</p>
-                                        </div>
-
                                         <!-- Auto Payment Notification -->
                                         <div class="mt-4" id="auto_payment_notification" style="display: none;">
                                             <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -872,6 +870,17 @@
                                             </div>
                                         </div>
                                         @endif
+
+                                        <!-- External URL Field -->
+                                        <div class="mt-4" id="external_url_section" style="display: none;">
+                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">External Payment URL (Optional)</h2>
+                                            <input type="url" id="external_url" name="external_url"
+                                                class="border border-gray-300 p-2 rounded w-full"
+                                                placeholder="Enter payment gateway URL (optional)"
+                                                value="{{ $invoice->external_url ?? '' }}">
+                                            <p class="text-sm text-gray-500 mt-1">Optionally provide an external payment gateway URL for this invoice</p>
+                                        </div>
+
                                     </div>
                                     <div id="payment-response-message" class="hidden mt-4 text-sm font-semibold rounded px-4 py-2"></div>
                                 </div>
@@ -1745,9 +1754,13 @@
             document.addEventListener('DOMContentLoaded', function() {
                 const gatewaySelect = document.getElementById('payment_gateway_option');
                 if (gatewaySelect) {
-                    gatewaySelect.addEventListener('change', checkExternalUrlVisibility);
+                    gatewaySelect.addEventListener('change', function() {
+                        checkExternalUrlVisibility();
+                        calculateSubtotal(); // Recalculate when gateway changes
+                    });
                     // Check on initial load
                     checkExternalUrlVisibility();
+                    calculateSubtotal(); // Calculate on initial load
                 }
 
                 // Invoice Charge Event Listeners
@@ -2198,12 +2211,51 @@
                 const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
                 const invoiceChargeElement = document.getElementById('invoice_charge');
                 const invoiceCharge = invoiceChargeElement ? parseFloat(invoiceChargeElement.value) || 0 : 0;
-                const finalTotal = subtotal + invoiceCharge;
+                const paymentMethods = @json($paymentMethods);
 
-                // console.log('Calculating subtotal:', { subtotal, invoiceCharge, finalTotal, itemsCount: items.length });
+                // Get service charge from selected payment gateway
+                let serviceCharge = 0;
+                const selectedGateway = document.getElementById('payment_gateway_option')?.value;
+                let selectedPaymentMethod = document.getElementById('payment_method_full')?.value;
+
+                if (selectedGateway) {
+                    if(selectedGateway.toLowerCase() === 'myfatoorah' && selectedPaymentMethod) {
+                        const method = paymentMethods.find(m => m.id === parseInt(selectedPaymentMethod));
+                        // Use the backend-calculated gateway_fee directly
+                        serviceCharge = method ? (method.gateway_fee || 0) : 0;
+                    } else {
+                        const selectedCharge = charges.find(charge => charge.name === selectedGateway);
+                        // Use the backend-calculated gateway_fee directly
+                        serviceCharge = selectedCharge ? (selectedCharge.gateway_fee || 0) : 0;
+                    }
+                }
+                
+                const finalAmount = subtotal + serviceCharge;
+                const finalTotal = finalAmount + invoiceCharge;
 
                 // Update all display elements
                 document.getElementById('subTotalDisplay').textContent = `${subtotal.toFixed(2)}`;
+                
+                // Update service charge display
+                const serviceChargeDisplayElement = document.getElementById('serviceChargeDisplay');
+                const serviceChargeDisplayRow = document.getElementById('service_charge_display_row');
+                if (serviceChargeDisplayElement) {
+                    serviceChargeDisplayElement.textContent = `${serviceCharge.toFixed(2)}`;
+                }
+                if (serviceChargeDisplayRow) {
+                    serviceChargeDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
+                }
+                
+                // Update final amount display (subtotal + service charge)
+                const finalAmountDisplayElement = document.getElementById('finalAmountDisplay');
+                const finalAmountDisplayRow = document.getElementById('final_amount_display_row');
+                if (finalAmountDisplayElement) {
+                    finalAmountDisplayElement.textContent = `${finalAmount.toFixed(2)}`;
+                }
+                if (finalAmountDisplayRow) {
+                    finalAmountDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
+                }
+                
                 document.getElementById('invoiceChargeDisplay').textContent = `${invoiceCharge.toFixed(2)}`;
                 document.getElementById('subT').textContent = `${finalTotal.toFixed(2)}`;
                 
@@ -2216,6 +2268,7 @@
                 if (totalAmountElement) totalAmountElement.value = finalTotal;
             }
 
+            document.getElementById('payment_method_full')?.addEventListener('change', calculateSubtotal);
 
             function renderItems() {
                 const tbody = itemsBody;
@@ -2588,7 +2641,7 @@
 
                 tbody.appendChild(frag);
 
-                console.info('renderItems(): rendered rows =', tbody.rows.length, 'from items len =', items.length);
+                // console.info('renderItems(): rendered rows =', tbody.rows.length, 'from items len =', items.length);
             }
 
             function saveTaskPrice(itemId) {

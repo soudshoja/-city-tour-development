@@ -402,11 +402,31 @@ class InvoiceController extends Controller
         $invprice = $invoice->amount;
         $dueDate =  $invoice->due_date;
 
-        foreach($paymentGateways as $gateway){
+        foreach ($paymentGateways as $gateway) {
             // Only set self_charge to amount if both are null or self_charge is explicitly null
             // but don't override self_charge if it has a value (including 0)
-            if (is_null($gateway->self_charge) && !is_null($gateway->amount)) {
-                $gateway->self_charge = $gateway->amount;
+            if (strtolower($gateway->name) === 'myfatoorah') {
+                foreach($paymentMethods as $method){
+                    if($method->company_id == $invoice->agent->branch->company_id && $method->type == 'myfatoorah'){
+                        try {
+                            $method->gateway_fee = ChargeService::FatoorahCharge($invprice, $method->myfatoorah_id, $invoice->agent->branch->company_id)['fee'] ?? 0;
+                        } catch (Exception $e) {
+                            Log::error('FatoorahCharge exception', [
+                                'message' => $e->getMessage(),
+                                'paymentMethod' => $method->myfatoorah_id,
+                                'company_id' => $invoice->agent->branch->company_id,
+                            ]);
+                            $method->gateway_fee = 0;
+                        }
+                    }
+                }
+            } else {
+                $gateway->gateway_fee = ChargeService::TapCharge([
+                    'amount' => $invprice,
+                    'client_id' => $invoice->client_id,
+                    'agent_id' => $invoice->agent_id,
+                    'currency' => $invoice->currency
+                ], $gateway->name)['fee'] ?? 0;
             }
         }
 
@@ -1426,7 +1446,15 @@ class InvoiceController extends Controller
         $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)
             ->with('client', 'invoice', 'payment')
             ->get();
+        
+        if($invoicePartials->isEmpty()){
+            if(auth()->user()){
+                return redirect()->route('invoices.index')->with('error', 'No invoice partials found for this invoice!');
+            }
 
+            return abort(404);
+        }
+        
         $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'Tap';
         $paymentMethod = $invoicePartials->first()?->payment_method;
         $companyId = $invoice->agent->branch->company_id;
@@ -1457,7 +1485,7 @@ class InvoiceController extends Controller
                         'company_id' => $companyId,
                     ]);
                 }
-                $partial->service_charge = ($gatewayFee['paid_by'] === 'Company') ? 0 : $gatewayFee['fee'];
+                $partial->service_charge = $gatewayFee['fee'];
                 $partial->save();
                 $partial->final_amount = $partial->amount + $partial->service_charge;
                 $chargePayer = $gatewayFee['paid_by'] ?? 'Company';

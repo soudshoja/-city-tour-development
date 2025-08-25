@@ -36,14 +36,18 @@ class ChargeService
     }
 
     /**
-     * Calculate charge amount based on type (Percent or Fixed)
+     * Calculate charge amount based on type (Percent or Fixed) and round up
      */
     private static function calculateChargeAmount(float $baseAmount, float $chargeValue, string $chargeType): float
     {
         if ($chargeType === 'Percent') {
-            return ($chargeValue / 100) * $baseAmount;
+            $calculated = ($chargeValue / 100) * $baseAmount;
+        } else {
+            $calculated = $chargeValue;
         }
-        return $chargeValue;
+        
+        // Round up to nearest whole number (ceiling)
+        return ceil($calculated);
     }
 
     public static function TapCharge(array $data, $gatewayName)
@@ -82,8 +86,8 @@ class ChargeService
         $chargeType = !is_null($charge->self_charge) ? ($charge->self_charge_type ?? 'Flat Rate') : $charge->charge_type;
         $paidBy = $charge->paid_by;
 
-        // Calculate the fee
-        $fee = self::calculateChargeAmount($amount, $chargeValue, $chargeType);
+        // Calculate the fee and round up
+        $fee = ceil(self::calculateChargeAmount($amount, $chargeValue, $chargeType));
 
         // Calculate final amounts based on who pays
         if ($paidBy === 'Client') {
@@ -119,7 +123,10 @@ class ChargeService
 
     public static function FatoorahCharge($amount, $methodCode, $companyId)
     {
-        $method = PaymentMethod::findOrFail($methodCode);
+        $method = PaymentMethod::where('myfatoorah_id', $methodCode)
+            // ->where('company_id', $companyId)
+            // ->where('type', 'myfatoorah')
+            ->first();
 
         if (!$method) {
             throw new \Exception("Payment method [$methodCode] not found.");
@@ -128,24 +135,16 @@ class ChargeService
         $paidBy = $method->paid_by;
         $apiServiceCharge = $method->service_charge ?? 0;
         
-        // Determine which self charge to use: self_charge takes priority over self_charge (amount)
-        $selfChargeValue = !is_null($method->self_charge) ? $method->self_charge : 0;
-        $selfChargeType = $method->self_charge_type ?? 'Flat Rate';
-        
-        // Calculate self charge amount
+        // Determine which self charge to use: self_charge takes priority over service_charge (amount)
+        $selfChargeValue = $method->self_charge ? $method->self_charge : $method->service_charge;
+        $selfChargeType = $method->charge_type ?? 'Flat Rate';
+        // Calculate self charge amount and round up
         $selfChargeAmount = 0;
         if ($selfChargeValue > 0) {
-            $selfChargeAmount = self::calculateChargeAmount($amount, $selfChargeValue, $selfChargeType);
+            $selfChargeAmount = ceil(self::calculateChargeAmount($amount, $selfChargeValue, $selfChargeType));
         }
 
-        // If self_charge is set, we ignore gateway charges and use only our charge
-        if (!is_null($method->self_charge)) {
-            $totalFee = $selfChargeAmount;
-        } else {
-            // Use both API service charge and self charge
-            $totalFee = $apiServiceCharge + $selfChargeAmount;
-        }
-
+        $totalFee = $selfChargeAmount;
         // Calculate final amounts based on who pays
         if ($paidBy === 'Client') {
             $finalAmount = $amount + $totalFee;

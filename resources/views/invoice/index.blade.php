@@ -194,7 +194,7 @@
                                         </svg>
                                         </a> -->
                                         <a data-tooltip="View Invoice" target="_blank"
-                                            href="{{ url('/invoice/' . $invoice->invoice_number) }}"
+                                            href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                             class="viewInvoice {{ $invoice->payment_type ? 'text-blue-500 hover:underline' : 'text-gray-400 cursor-not-allowed' }}"
                                             @unless($invoice->payment_type) onclick="return false;" @endunless>
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20"

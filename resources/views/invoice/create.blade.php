@@ -2658,6 +2658,8 @@
 
             let errorMessages = [];
 
+            const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
+
             // Validate all inputs and add specific messages
             if (!currency) errorMessages.push("Currency is missing.");
             if (!invoiceNumber) errorMessages.push("Invoice number is missing.");
@@ -2742,9 +2744,9 @@
                     checkInvoiceId();
                 }, 100);
 
-                location.href = "{{ route('invoice.edit', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(
+                location.href = "{{ route('invoice.edit', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(
                     ":invoiceNumber", invoiceNumber
-                );
+                )
 
             } catch (error) {
                 console.error(error);

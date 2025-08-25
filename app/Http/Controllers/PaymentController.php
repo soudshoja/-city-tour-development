@@ -138,7 +138,10 @@ class PaymentController extends Controller
         $response = json_decode($this->initiatePayment($data)->content(), true);
 
         if (isset($response['error'])) {
-            return redirect()->back()->with('error', $response['error']);
+            if(auth()->user()){
+                return redirect()->back()->with('error', $response['error']);
+            }
+            return abort(400);
         }
 
         $this->storeNotification([
@@ -1560,7 +1563,12 @@ class PaymentController extends Controller
         $payment = Payment::with('invoice')->find($request->payment_id);
 
         if (!$payment) {
-            return redirect()->back()->with('error', 'Payment not found.');
+
+            if(auth()->user()){
+                return redirect()->back()->with('error', 'Payment not found.');
+            }
+
+            return abort(404);
         }
 
         $process = 'topup';
@@ -1838,6 +1846,11 @@ class PaymentController extends Controller
     {   
         $source = $request->input('source');
         if ($source === 'import') {
+
+            if(!auth()->user()){
+                return abort(403, 'Unauthorized action.');
+            }
+
             $paymentId = $request->payment_id;
             $payment = Payment::findorFail($paymentId);
 
@@ -1916,17 +1929,25 @@ class PaymentController extends Controller
             DB::commit();
 
             return redirect()->back()->with('success', 'Import payment from myFatoorah portal is success!');
-        }
-        else if ($request->tap_id) {
+        } else if ($request->tap_id) {
             $tapId = $request->tap_id;
             $tap = new Tap();
             $response = $tap->getCharge($tapId);
         } else {
-            return redirect()->back()->with('error', 'Payment not found.');
+            if(auth()->user()){
+                return redirect()->back()->with('error', 'Payment not found.');
+            }
+
+            return abort(404);
         }
 
         if (isset($response['errors'])) {
-            return redirect()->back()->with('error', $response['errors'][0]['description']);
+
+            if (auth()->user()) {
+                return redirect()->back()->with('error', $response['errors'][0]['description']);
+            }
+
+            return abort(500);
         }
 
         if ($response['status'] != 'CAPTURED') {
@@ -1944,7 +1965,12 @@ class PaymentController extends Controller
                 'payment_reference' => $response['id'],
                 'reference_type' => 'Payment',
             ]);
-            return redirect()->back()->with('error', 'Payment error');
+
+            if (auth()->user()) {
+                return redirect()->back()->with('error', 'Payment ' . strtolower($response['status']));
+            }
+
+            return abort(500);
         }
 
         $paymentId = $response['metadata']['payment_id'];
@@ -1957,6 +1983,7 @@ class PaymentController extends Controller
                 'tap_id' => $tapId,
             ]);
             return redirect()->back()->with('error', 'Payment not found.');
+
         }
 
         $finalPaidAmount = $response['amount'];
@@ -1990,7 +2017,12 @@ class PaymentController extends Controller
                     'message' => $addCreditResponse['error'],
                     'payment_id' => $paymentId,
                 ]);
-                return redirect()->back()->with('error', 'Payment cannot be updated');
+
+                if (auth()->user()) {
+                    return redirect()->back()->with('error', 'Payment cannot be updated');
+                } else {
+                    return abort(500);
+                }
             }
 
             $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
@@ -1998,7 +2030,12 @@ class PaymentController extends Controller
                 ->first();
 
             if (!$liabilitiesAccount) {
-                return redirect()->back()->with('error', 'Liabilities account not found.');
+
+                if (auth()->user()) {
+                    return redirect()->back()->with('error', 'Liabilities account not found.');
+                } else {
+                    return abort(500);
+                }
             }
 
             $clientAdvance = Account::where('name', 'Client')
@@ -2007,7 +2044,11 @@ class PaymentController extends Controller
                 ->first();
 
             if (!$clientAdvance) {
-                return redirect()->back()->with('error', 'Client advance account not found.');
+                if (auth()->user()) {
+                    return redirect()->back()->with('error', 'Client advance account not found.');
+                } else {
+                    return abort(500);
+                }
             }
 
             DB::beginTransaction();
@@ -2049,16 +2090,30 @@ class PaymentController extends Controller
                     'message' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return redirect()->back()->with('error', 'Payment cannot be updated');
+                if (auth()->user()) {
+                    return redirect()->back()->with('error', 'Payment cannot be updated');
+                } else {
+                    return abort(500);
+                }
             }
             DB::commit();
         } else if ($process == 'invoice') {
             $invoice = Invoice::where('id', $payment->invoice_id)->first();
             if (!$invoice) {
-                return redirect()->back()->with('error', 'Invoice not found.');
+                if (auth()->user()) {
+                    return redirect()->back()->with('error', 'Invoice not found.');
+                } else {
+                    return abort(500);
+                }
             }
         } else {
-            return redirect()->back()->with('error', 'Invalid process type.');
+
+            if (auth()->user()) {
+                return redirect()->back()->with('error', 'Invalid process type.');
+            } else {
+                return abort(500);
+            }
+            
         }
 
         try {
@@ -2110,16 +2165,29 @@ class PaymentController extends Controller
 
             //dd($process);
 
+            if(auth()->user()){
             return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+            } else {
+                return redirect()->route('payment.success');
+            }
         } catch (Exception $e) {
             logger('Failed to update payment status', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('error', 'Payment cannot be updated.');
+
+            if (auth()->user()) {
+                return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('error', 'Payment cannot be updated.');
+            } else {
+                return abort(500);
+            }
         }
 
-        return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+        if (auth()->user()) {
+            return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+        } else {
+            return redirect()->route('payment.success');
+        }
     }
 
     public function handleMyFatoorahCallback(Request $request)

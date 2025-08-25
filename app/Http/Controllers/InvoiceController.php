@@ -1379,7 +1379,10 @@ class InvoiceController extends Controller
             ->first();
 
         if (!$invoice) {
-            return redirect()->back()->with('error', 'Invoice not found!');
+            if(auth()->user()){
+                return redirect()->route('invoices.index')->with('error', 'Invoice not found!');
+            }
+            return abort(404);
         }
 
         // Check authorization - similar to other invoice methods
@@ -1395,7 +1398,10 @@ class InvoiceController extends Controller
         }
 
         if (!$hasAccess) {
-            return redirect()->back()->with('error', 'Unauthorized access.');
+            if(auth()->user()){
+                return redirect()->route('invoices.index')->with('error', 'Unauthorized access.');
+            }
+            return abort(403);
         }
 
         $invoiceDetails = $invoice->invoiceDetails;
@@ -1421,7 +1427,10 @@ class InvoiceController extends Controller
             ->first();
 
         if (!$invoice) {
-            return redirect()->back()->with('error', 'Invoice not found!');
+            if(auth()->user()){
+                return redirect()->route('invoices.index')->with('error', 'Invoice not found!');
+            }
+            return abort(404);
         }
 
         $invoiceDetails = $invoice->invoiceDetails;
@@ -1440,7 +1449,10 @@ class InvoiceController extends Controller
             ->first();
 
         if (!$invoice) {
-            return redirect()->back()->with('error', 'Invoice not found!');
+            if(auth()->user()){
+                return redirect()->route('invoices.index')->with('error', 'Invoice not found!');
+            }
+            return abort(404);
         }
 
         $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)

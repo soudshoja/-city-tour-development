@@ -861,45 +861,14 @@
                                         <div id="invoice_charge_section" class="mt-4" style="display: none;">
                                             <h2 id="invoice_charge_title" class="text-lg font-semibold mb-3 text-gray-700">Invoice Charge</h2>
 
-                                            <!-- Calculation Method -->
-                                            <div class="mb-3">
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">Calculation Method:</label>
-                                                <select id="charge_calculation_method" name="charge_calculation_method" class="form-select">
-                                                    <option value="flat">Flat Rate</option>
-                                                    <option value="percentage">Percentage (%)</option>
-                                                </select>
-                                            </div>
-
-                                            <!-- Charge Amount Input -->
+                                            <!-- Simple Charge Amount Input -->
                                             <div class="mb-3">
                                                 <label class="block text-sm font-medium text-gray-700 mb-1">Charge Amount:</label>
-                                                <input type="number" id="invoice_charge_amount" name="invoice_charge_amount"
+                                                <input type="number" id="invoice_charge_amount_input" name="invoice_charge_amount_input"
                                                     class="form-input" step="0.01" min="0"
                                                     value="{{ $invoice->invoice_charge }}"
                                                     placeholder="Enter charge amount">
-                                            </div>
-
-                                            <!-- Calculated Invoice Charge (Read-only display) -->
-                                            <div class="mb-3">
-                                                <label id="calculated_charge_label" class="block text-sm font-medium text-gray-700 mb-1">Calculated Invoice Charge:</label>
-                                                <input type="text" id="calculated_invoice_charge" class="form-input bg-gray-100"
-                                                    value="{{ number_format($invoice->invoice_charge, 2) }}" readonly>
-                                            </div>
-
-                                            <!-- Important Note -->
-                                            <div class="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                                                <div class="flex items-start">
-                                                    <svg class="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                    </svg>
-                                                    <div>
-                                                        <h4 class="text-sm font-medium text-yellow-800">Important Note</h4>
-                                                        <p class="text-sm text-yellow-700 mt-1">
-                                                            When using percentage calculation, only the final calculated amount is saved in our database.
-                                                            The percentage and calculation method are for your convenience only and are not stored.
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                                <input type="hidden" id="invoice_charge_amount" name="invoice_charge_amount" value="{{ $invoice->invoice_charge }}">
                                             </div>
                                         </div>
                                         @endif
@@ -1539,51 +1508,44 @@
 
             // console.log(items);
 
-            // Invoice Charge Functions
-            function calculateInvoiceCharge() {
-                const calculationMethod = document.getElementById('charge_calculation_method').value;
-                const chargeAmountInput = document.getElementById('invoice_charge_amount');
-                const calculatedChargeInput = document.getElementById('calculated_invoice_charge');
-                const invoiceChargeHidden = document.getElementById('invoice_charge');
-
-                const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
-                let chargeAmount = parseFloat(chargeAmountInput.value) || 0;
-
+            // Simple Invoice Charge Function
+            function updateInvoiceChargeFromInput() {
+                const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
+                const invoiceChargeAmount = parseFloat(invoiceChargeAmountInput.value) || 0;
+                
                 // Validate and prevent negative values
-                if (chargeAmount < 0) {
-                    chargeAmount = 0;
-                    chargeAmountInput.value = 0;
-                    showValidationError(chargeAmountInput, 'Charge amount cannot be negative');
+                if (invoiceChargeAmount < 0) {
+                    invoiceChargeAmountInput.value = 0;
+                    showValidationError(invoiceChargeAmountInput, 'Charge amount cannot be negative');
                     return;
                 } else {
-                    hideValidationError(chargeAmountInput);
+                    hideValidationError(invoiceChargeAmountInput);
                 }
-
-                let finalChargeAmount = 0;
-
-                if (chargeAmount > 0) {
-                    if (calculationMethod === 'percentage') {
-                        finalChargeAmount = (subtotal * chargeAmount) / 100;
-                    } else {
-                        finalChargeAmount = chargeAmount;
-                    }
+                
+                // Update hidden fields
+                const invoiceChargeElement = document.getElementById('invoice_charge');
+                const invoiceChargeAmountHidden = document.getElementById('invoice_charge_amount');
+                
+                if (invoiceChargeElement) {
+                    invoiceChargeElement.value = invoiceChargeAmount.toFixed(2);
                 }
-
-                calculatedChargeInput.value = finalChargeAmount.toFixed(2);
-                invoiceChargeHidden.value = finalChargeAmount;
-
+                if (invoiceChargeAmountHidden) {
+                    invoiceChargeAmountHidden.value = invoiceChargeAmount.toFixed(2);
+                }
+                
+                // Update displays
                 calculateSubtotal();
             }
 
             function resetInvoiceCharge() {
-                const chargeAmountInput = document.getElementById('invoice_charge_amount');
-                const calculatedChargeInput = document.getElementById('calculated_invoice_charge');
-                const invoiceChargeHidden = document.getElementById('invoice_charge');
+                const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
+                const invoiceChargeElement = document.getElementById('invoice_charge');
+                const invoiceChargeAmountHidden = document.getElementById('invoice_charge_amount');
                 const invoiceChargeDisplay = document.getElementById('invoiceChargeDisplay');
 
-                if (chargeAmountInput) chargeAmountInput.value = '';
-                if (calculatedChargeInput) calculatedChargeInput.value = '0.00';
-                if (invoiceChargeHidden) invoiceChargeHidden.value = '0';
+                if (invoiceChargeAmountInput) invoiceChargeAmountInput.value = '';
+                if (invoiceChargeElement) invoiceChargeElement.value = '0';
+                if (invoiceChargeAmountHidden) invoiceChargeAmountHidden.value = '0';
                 if (invoiceChargeDisplay) invoiceChargeDisplay.textContent = '0.00';
 
                 calculateSubtotal();
@@ -1789,23 +1751,19 @@
                 }
 
                 // Invoice Charge Event Listeners
-                const chargeCalculationMethod = document.getElementById('charge_calculation_method');
-                const invoiceChargeAmount = document.getElementById('invoice_charge_amount');
+                const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
 
-                if (chargeCalculationMethod) {
-                    chargeCalculationMethod.addEventListener('change', calculateInvoiceCharge);
-                }
-
-                if (invoiceChargeAmount) {
-                    invoiceChargeAmount.addEventListener('input', calculateInvoiceCharge);
+                if (invoiceChargeAmountInput) {
+                    invoiceChargeAmountInput.addEventListener('input', updateInvoiceChargeFromInput);
+                    invoiceChargeAmountInput.addEventListener('change', updateInvoiceChargeFromInput);
 
                     // Add real-time validation for negative values
-                    invoiceChargeAmount.addEventListener('input', function() {
+                    invoiceChargeAmountInput.addEventListener('input', function() {
                         validateInvoiceChargeAmount(this);
                     });
 
                     // Prevent negative values on keydown
-                    invoiceChargeAmount.addEventListener('keydown', function(e) {
+                    invoiceChargeAmountInput.addEventListener('keydown', function(e) {
                         // Prevent typing minus sign
                         if (e.key === '-' || e.key === 'Minus') {
                             e.preventDefault();
@@ -1813,7 +1771,7 @@
                     });
 
                     // Validate on blur (when user leaves the field)
-                    invoiceChargeAmount.addEventListener('blur', function() {
+                    invoiceChargeAmountInput.addEventListener('blur', function() {
                         validateInvoiceChargeAmount(this);
                     });
                 }

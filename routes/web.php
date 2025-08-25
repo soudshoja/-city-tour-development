@@ -625,8 +625,8 @@ Route::post('/webhook/resayil', [WhatsappController::class, 'handleResayilWebhoo
 
 //Payment Method
 Route::group([
-    'prefix' => 'paymentMethod',
-    'as'     => 'paymentMethod.',
+    'prefix' => 'payment-method',
+    'as'     => 'payment-method.',
 ], function () {
     Route::get('/{id}', [PaymentMethodController::class, 'show'])->name('show');
     Route::put('/{id}', [PaymentMethodController::class, 'update'])->name('update');

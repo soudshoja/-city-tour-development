@@ -32,6 +32,7 @@ class SyncMyFatoorahPaymentMethods extends Command
         $companyIds = $limit->isNotEmpty()
             ? $limit
             : Charge::query()
+                ->withoutGlobalScopes()
                 ->where('is_active', true)
                 ->where(function ($q) {
                     $q->where('name', 'like', '%myfatoorah%');

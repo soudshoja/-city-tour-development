@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Models\Role;
 use Exception;
+use Illuminate\Support\Facades\Log;
 
 class ChargeController extends Controller
 {
@@ -28,6 +29,16 @@ class ChargeController extends Controller
             return redirect()->route('dashboard')->with('error', 'You do not have permission to view charges.');
             // $totalCharges = 0;
             // $charges = collect();
+        }
+
+        $inactiveCharges = [];
+
+        foreach($charges as $charge){
+            if($charge->api_key == null){
+                $charge->is_active = false;
+                $charge->save();
+                $inactiveCharges[] = $charge->name;
+            }
         }
 
         return view('charges.index', compact('charges', 'totalCharges'));
@@ -52,8 +63,8 @@ class ChargeController extends Controller
             'amount' => $charge->amount,
             'is_auto_paid' => $charge->is_auto_paid,
             'has_url' => $charge->has_url,
-            'auth_type' => $charge->auth_type,
-            'base_url'    => $charge->base_url,
+            // 'auth_type' => $charge->auth_type,
+            // 'base_url'    => $charge->base_url,
             'api_key'    => $charge->api_key,
         ]);
     }
@@ -124,9 +135,9 @@ class ChargeController extends Controller
             'amount' => 'required|numeric',
             'is_auto_paid' => 'nullable|boolean',
             'has_url' => 'nullable|boolean',
-            'auth_type' => 'required|in:basic,oauth',
-            'base_url' => 'nullable|url',
-            'api_key' => 'nullable|string',
+            // 'auth_type' => 'required|in:basic,oauth',
+            // 'base_url' => 'nullable|url',
+            'api_key' => 'required|string',
         ]);
 
         // Fetch COA for Payment Gateway
@@ -199,8 +210,8 @@ class ChargeController extends Controller
                 'paid_by' => $request->get('paid_by'),
                 'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
                 'has_url' => $request->has('has_url') ? 1 : 0,
-                'auth_type' => $request->get('auth_type'),
-                'base_url' => $request->get('base_url'),
+                // 'auth_type' => $request->get('auth_type'),
+                // 'base_url' => $request->get('base_url'),
                 'api_key' => $request->get('api_key'),
             ]);
 
@@ -261,8 +272,8 @@ class ChargeController extends Controller
             'amount' => 'required|numeric',
             'is_auto_paid' => 'nullable|boolean',
             'has_url' => 'nullable|boolean',
-            'auth_type' => 'required|in:basic,oauth',
-            'base_url'    => 'nullable|url',
+            // 'auth_type' => 'required|in:basic,oauth',
+            // 'base_url'    => 'nullable|url',
             'api_key'     => 'nullable|string',
         ]);
 
@@ -281,9 +292,9 @@ class ChargeController extends Controller
                 'charge_type' => $request->get('charge_type'),
                 'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
                 'has_url' => $request->has('has_url') ? 1 : 0,
-                'auth_type' => $request->get('auth_type'),
-                'base_url'    => $request->get('base_url'),
-                'api_key'    => $request->get('api_key'),
+                // 'auth_type' => $request->get('auth_type'),
+                // 'base_url'    => $request->get('base_url'),
+                // 'api_key'    => $request->get('api_key'),
 
                 //'acc_bank_id' => $request->get('acc_bank_id'),
                 // 'acc_fee_id' => $request->get('acc_fee_id'),
@@ -404,17 +415,32 @@ class ChargeController extends Controller
     public function updateCredentials(Request $request, $id)
     {
         $request->validate([
-            'auth_type' => 'required|in:basic,oauth',
-            'base_url'    => 'required|url',
             'api_key'     => 'required|string',
         ]);
 
         $charge = Charge::findOrFail($id);
 
-        $charge->auth_type = $request->get('auth_type');
-        $charge->base_url  = $request->get('base_url');
-        $charge->api_key = $request->get('api_key');
-        $charge->save();
+        if (!$charge) {
+            return redirect()->route('charges.index')->with('error', 'Charge not found.');
+        }
+
+        try{
+            $charge->update([
+                'api_key' => $request->get('api_key'),
+            ]);
+        } catch (Exception $e) {
+
+            Log::error('Failed to update charge credentials', ['error' => $e->getMessage()]);
+
+            return redirect()->back()->withInput()->with('error', 'Something went wrong while updating credentials.');
+        }
+
+        if($charge->api_key != null && $charge->is_active == false){
+            $charge->is_active = true;
+            $charge->save();
+
+            return redirect()->route('charges.index')->with('success', 'Gateway is now active and credentials updated.');
+        }
 
         return redirect()->route('charges.index')->with('success', 'Gateway credentials updated.');
     }

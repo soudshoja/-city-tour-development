@@ -16,6 +16,16 @@ class MFMethodSyncService
             $configService = new GatewayConfigService();
             $myfatoorahConfig = $configService->getMyFatoorahConfig();
 
+            if($myfatoorahConfig['status'] === 'error') {
+                Log::warning('MyFatoorah config error during method sync.', [
+                    'company_id' => $companyId,
+                    'message' => $myfatoorahConfig['message'],
+                ]);
+                return false;
+            }
+
+            $myfatoorahConfig = $myfatoorahConfig['data'];
+
             $response = Http::withToken($myfatoorahConfig['api_key'])
                 ->post($myfatoorahConfig['base_url'] . '/InitiatePayment', [
                     'InvoiceAmount' => 100,

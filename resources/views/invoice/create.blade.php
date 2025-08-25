@@ -28,20 +28,6 @@
             transition: all 0.3s ease-in-out;
         }
 
-        #coa-activities-container {
-            padding: 20px;
-            background-color: #f8f9fa;
-            /* Light background for activities */
-            display: none;
-            /* Initially hide */
-        }
-
-        #invoice-container {
-            position: relative;
-            z-index: 1;
-            /* Ensure invoice content is above activities */
-        }
-
         .table-container {
             overflow-x: auto;
             /* Enable horizontal scrolling */
@@ -155,10 +141,7 @@
     <div id="invoiceModalComponent">
 
         <div class="flex flex-col gap-2.5 xl:flex-row">
-            <!-- <div class="panel flex-1 px-0 py-6 max-w-[900px] sm:max-w-[500px] md:max-w-[500px] lg:max-w-[600px] xl:max-w-[1200px]"> -->
             <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
-
-                <!-- company details -->
                 <div class="flex flex-wrap justify-between px-6 ">
                     <div class=" shrink-0 items-center text-black dark:text-white min-w-96">
                         <x-application-logo class="custom-logo-size" />
@@ -182,12 +165,9 @@
                                 </div>
                                 @endforeach
                             </div>
-
                             <input type="hidden" name="branch_id" id="selectedBranch">
                         </div>
-
                         @endif
-
                         <div class="custom-select w-full border rounded-lg mt-4">
                             <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Branch</div>
                             <div
@@ -199,30 +179,23 @@
                                 </div>
                                 @endforeach
                             </div>
-
                             <input type="hidden" name="branch_id" id="selectedBranch">
                         </div>
-
                     </div>
-                    <!-- invoice details -->
                     <div class="space-y-1 text-gray-900 dark:text-gray-400 mt-2">
-
                         <div class="flex items-center w-full">
                             <label for="invoiceNumber" class="w-full text-sm font-semibold">Invoice Number</label>
                             <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{ $invoiceNumber }}"
                                 class="w-full form-input" placeholder="Invoice Number" />
                         </div>
-
                         <div class="mt-4 flex items-center">
                             <label for="invoiceDate" class="w-full text-sm font-semibold">Invoice Date</label>
                             <input id="invoiceDate" type="date" name="invoiceDate" class="w-full form-input" value="{{ $todayDate }}" />
                         </div>
-
                         <div class="mt-4 flex items-center">
                             <label for="dueDate" class="w-full text-sm font-semibold">Due Date</label>
                             <input id="dueDate" type="date" name="dueDate" class="w-full form-input" value="{{$invoiceExpireDefault}}" />
                         </div>
-                        <!-- Refresh Button -->
                         <div class="mt-6 flex justify-end">
                             <button type="button" onclick="location.reload()"
                                 class="px-2 py-2 city-light-yellow text-white rounded hover:text-[#004c9e] flex items-center">
@@ -233,22 +206,11 @@
                                 </svg>
                             </button>
                         </div>
-
                     </div>
-
-                    <!--./invoice details -->
                 </div>
-                <!-- ./company details -->
-
-
                 <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
-
-                <!-- users details -->
                 <div class="flex justify-between px-4 gird gird-cols-2 gap-4">
-                    <!-- client details -->
                     <div class="w-full">
-
-                        <!-- choose client button -->
                         <div class="flex items-center">
                             <button type="button" id="openClientModalButton"
                                 class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
@@ -267,34 +229,23 @@
                             <input id="agentId" type="hidden" name="agentId"
                                 value="{{ is_string($agentId) || is_numeric($agentId) ? $agentId : '' }}" />
                         </div>
-
                         <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing a
                             client</p>
-                        <!-- client name -->
                         <div class="mt-4 flex items-center">
                             <input id="receiverName" type="text" name="receiverName" class="form-input flex-1"
                                 placeholder="Client Name" disabled />
                         </div>
-
-                        <!-- client email -->
                         <div class="mt-4 flex items-center">
                             <input id="receiverEmail" type="email" name="receiverEmail" class="form-input flex-1"
                                 placeholder="Client Email" disabled />
                         </div>
-
-                        <!-- client phone -->
                         <div class="mt-4 flex items-center">
                             <input id="receiverPhone" type="text" name="receiverPhone" class="form-input flex-1"
                                 placeholder="Client Phone Number" disabled />
                         </div>
-
                     </div>
-                    <!-- ./client details -->
 
-                    <!-- Agent details -->
                     <div class="w-full">
-
-                        <!-- choose agent button -->
                         <div class="flex items-center">
                             @can('pickAgent', App\Models\Invoice::class)
                             <button id="select-agent" type="button" onclick="openAgentModal()"
@@ -575,24 +526,6 @@
                                     </svg>
                                     Copy Link
                                 </button>
-
-                                <!-- View Button -->
-                                {{-- <button onclick="viewInvoice()"
-                                    class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
-                                        <path opacity="0.5"
-                                            d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z"
-                                            stroke="currentColor" stroke-width="1.5"></path>
-                                        <path
-                                            d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z"
-                                            stroke="currentColor" stroke-width="1.5"></path>
-                                    </svg>
-                                    View
-                                </button>
-                                <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to
-                                    clipboard!</p> --}}
-
                                 <a target="_blank" href="{{ url('/invoice/' . $invoiceNumber) }}"
                                     class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -1304,42 +1237,6 @@
             checkInvoiceId();
         }
 
-
-        function showClientModal() {
-            // Create the modal container
-            const modalContainer = document.createElement('div');
-            modalContainer.id = 'clientModal';
-            modalContainer.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
-
-            // Modal content
-            modalContainer.innerHTML = `
-                    <div class="bg-white w-full max-w-lg rounded-lg shadow-lg p-6 relative">
-                        <!-- Close Button -->
-                        <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" onclick="closeClientModal1()">✕</button>
-
-                        <!-- Search Box -->
-                        <div id="selectTab" class="p-6">
-                            <div class="relative mb-4">
-                                <input type="text" placeholder="Search Client..."
-                                    class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                                    id="clientSearchInput">
-                            </div>
-                            <!-- ./Search Box -->
-
-                            <!-- List of Clients -->
-                            <ul id="clientList1"
-                                class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar">
-                                <!-- Dynamic list items go here -->
-                            </ul>
-                            <!-- ./List of Clients -->
-                        </div>
-                    </div>
-                `;
-
-            // Append the modal to the body
-            document.body.appendChild(modalContainer);
-        }
-
         function closeClientModal1() {
             // Remove the modal from the DOM
             const modal = document.getElementById('clientModal');
@@ -1450,11 +1347,6 @@
 
                     const nettValue = (item.invprice - item.total);
                     netTotal = nettValue;
-
-                    // console.log(item);
-                    // console.log('Supplier price: ' + item.total);
-                    // console.log('Invoice price: ' + item.invprice);
-                    // console.log('Nett of markup: ' + nettValue);
 
                     let existingAlert = document.getElementById("errorNotification");
 
@@ -1919,12 +1811,6 @@
                             modalInvoice.close();
                         }
                     });
-
-                    // removeButton = document.getElementById('remove-button-' + item.id);
-
-                    // removeButton.addEventListener('click', function() {
-                    //     removeItem(item.id);
-                    // });
                 });
             }
 
@@ -1967,21 +1853,10 @@
             document.getElementById('agentName').value = agentName;
             document.getElementById('agentEmail').value = agentEmail;
             document.getElementById('agentPhone').value = agentPhone;
-            // let url = "{{ route('tasks.agent', ['agentId' => '_agentId_']) }}";
-            // url = url.replace('_agentId_', agentId);
-
-            // fetch(url)
-            //     .then(response => response.json())
-            //     .then(data => {
-            //         tasks = data;
-            //         renderTaskList(tasks);
-            //     })
-            //     .catch(error => console.error(error));
 
             closeAgentModal();
-            // items = [];
         }
-        // Show Select Client Tab
+
         selectTabButton.addEventListener('click', () => {
             selectTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
             selectTabButton.classList.remove('text-gray-500');
@@ -1992,7 +1867,6 @@
             addTab.classList.add('hidden');
         });
 
-        // Show Add New Client Tab
         addTabButton.addEventListener('click', () => {
             addTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
             addTabButton.classList.remove('text-gray-500');
@@ -2004,9 +1878,7 @@
         });
 
 
-        // Function to select a task
         function selectTask(task) {
-            // console.log('task selected', task);
             items.push({
                 ...task, // Spread the properties of the task object
                 remark: '', // Add default empty remark
@@ -2020,18 +1892,10 @@
             selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
 
             updateClientAgent(task.client_id, task.agent_id);
-            //  updateTotal(items);
             renderTaskList(tasks);
             closeTaskModal();
             renderItems();
         }
-
-        function updateTotal(items) {
-            const total = items.reduce((sum, item) => sum + (item.invoice_price * item.quantity),
-                0); // Calculate total based on price and quantity
-            this.subtotal = total;
-            // this.updateSubTotal();
-        };
 
         function openClientModal() {
             const modal = document.getElementById("clientModal");
@@ -2079,7 +1943,6 @@
         }
 
         function selectClient(client) {
-            // renderPaymentLink(client.id);
             renderClientCredit(client);
             document.getElementById('clientid').value = client.id;
             document.getElementById('receiverId').value = client.id;
@@ -2194,7 +2057,6 @@
         if (selectedClient && selectedAgent) {
             updateFormFields(selectedClient, selectedAgent);
             renderClientCredit(selectedClient);
-            // renderPaymentLink(selectedClient.id);
         }
 
         function updateClientAgent(clientId, agentId) {
@@ -2791,21 +2653,8 @@
             const selectedBranchValue = selectedBranch ? selectedBranch.value : null;
             const tasks = items;
 
-            // Show loading state
             buttonText.style.display = "none";
             buttonLoading.style.display = "inline";
-
-            // console.log(
-            //     'clientId:', clientId,
-            //     'agentId:', agentId,
-            //     'tasksLength:', tasks.length,
-            //     'selectedBranchValue:', selectedBranchValue,
-            //     'currency:', currency,
-            //     'invoiceNumber:', invoiceNumber,
-            //     'invdate:', invdate,
-            //     'duedate:', duedate,
-            //     'subTotal:', subTotal,
-            // );
 
             let errorMessages = [];
 
@@ -2873,7 +2722,6 @@
                     throw new Error("Failed to generate");
                 }
 
-                // ...existing code...
                 const result = await response.json();
                 const {
                     invoiceId: newInvoiceId,
@@ -2886,18 +2734,12 @@
                 }
                 document.getElementById('invoiceId').value = newInvoiceId;
                 const generatedLink = appUrl + '/invoice/' + (invoiceNumber || newInvoiceNumber);
-                // ...existing code...
 
-                // Show success state
-                isSaved = true; // Mark as saved after generating
+                isSaved = true;
                 updateButtonState();
-
-                // coaActivities(items, subTotal);
 
                 setTimeout(() => {
                     checkInvoiceId();
-                    // Show COA activities container
-                    // document.getElementById("coa-activities-container").style.display = "block";
                 }, 100);
 
                 location.href = "{{ route('invoice.edit', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
@@ -2924,72 +2766,6 @@
                 // Reset button states
             }
         };
-
-
-        function coaActivities(items, subTotal) { // FUNCTION CLOSED/NOT USED
-
-            //  const supplierTotals = new Map(); // To track cumulative amounts for each supplier
-            let cumulativeMarkup = 0; // Total markup income
-
-            const clientNameInput = document.getElementById("receiverName");
-            const defaultClientName = "Unknown Client"; // Fallback if input is empty or unavailable
-            const clientNameFromInput = clientNameInput ? clientNameInput.value.trim() : defaultClientName;
-
-            const activities = items.map(item => {
-                // Extract relevant details for each activity
-                const taskId = item.reference || "Unknown Task ID"; // Task ID
-                const supplierName = item.supplier_name || "Unknown Supplier";
-                const agentName = item.agent_name || "Unknown Agent";
-                // const totalAmount = parseFloat(item.price || 0); // Payable amount to the supplier
-                const totalAmount = parseFloat(item.total || 0); // Payable amount to the supplier
-                const markupValue = parseFloat(item.invprice || 0) - parseFloat(item.total ||
-                    0); // Markup = invprice - price
-
-                // Update cumulative totals per supplier
-                if (!supplierTotals.has(supplierName)) {
-                    supplierTotals.set(supplierName, 0);
-                }
-                supplierTotals.set(supplierName, supplierTotals.get(supplierName) + totalAmount);
-
-                // Update cumulative markup
-                cumulativeMarkup += markupValue;
-
-                // Construct the activities
-                return [
-                    `Task ID: ${taskId} - Income of KWD${markupValue.toFixed(2)} from agent: ${agentName}`
-                ];
-            }).flat(); // Flatten the array since map creates a nested array for each item
-
-            activities.push(
-                `Receive payment from Client: ${clientNameFromInput} with amount: KWD${parseFloat(subTotal || 0).toFixed(2)}`
-            );
-            // Add cumulative totals for each supplier
-            let number = 1; // Start sequence from 1
-
-            supplierTotals.forEach((total, supplierName) => {
-                activities.push(
-                    `Payment to Supplier #${number} - ${supplierName}: KWD${total.toFixed(2)}`
-                );
-                number++; // Increment sequence number
-            });
-
-
-            // Add overall cumulative totals
-            activities.push(`Total Marked-Up Revenue: KWD${cumulativeMarkup.toFixed(2)}`);
-
-            // Get the container where activities will be displayed
-            const activitiesList = document.getElementById("coa-activities-list");
-
-            // Clear any previous content
-            activitiesList.innerHTML = "";
-
-            // Display the activities
-            activities.forEach(activity => {
-                const listItem = document.createElement("li");
-                listItem.textContent = activity;
-                activitiesList.appendChild(listItem);
-            });
-        }
 
         function viewInvoice() {
             openInvoiceModal(document.getElementById('invoiceNumber').value);
@@ -3042,7 +2818,6 @@
             const modal = document.getElementById("viewInvoiceModal");
             modal.classList.add("hidden");
         }
-
 
         function resetButtonState() {
             isSaving = false;
@@ -3105,23 +2880,6 @@
             document.getElementById("spinner").classList.remove("hidden");
         }
 
-        function handleInvoiceUpdate() {
-            const button = document.getElementById('update-invoice-btn');
-
-            button.disabled = true;
-            button.innerHTML = `
-                <svg class="animate-spin h-5 w-5 mr-2 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                </svg>
-                Saving...
-            `;
-
-            setTimeout(() => {
-                button.innerHTML = 'Saved ✅';
-            }, 500);
-        }
-
         function renderClientCredit(client) {
             const clientCredit = document.getElementById('client-credit');
             clientCredit.innerHTML = '';
@@ -3171,123 +2929,13 @@
                 });
         }
 
-
-        function renderPaymentLink(clientId = null) {
-
-            let filteredPayments = [];
-            if (clientId) {
-                filteredPayments = payments.filter(payment => payment.client_id === clientId);
-            }
-
-            let paymentLinkContainer = document.getElementById('payment-link-container');
-            paymentLinkContainer.innerHTML = ''; // Clear previous content
-
-            if (filteredPayments.length === 0) {
-                paymentLinkContainer.innerHTML = `<p class="text-blue-500">No payment's link found for this client.</p>`;
-                return;
-            }
-
-            filteredPayments.forEach(payment => {
-                let paymentDiv = document.createElement('button');
-                paymentDiv.className = 'mb-2';
-                paymentDiv.classList.add('payment-link-button', 'p-2', 'border', 'rounded', 'bg-gray-100',
-                    'hover:bg-blue-200');
-                paymentDiv.onclick = function() {
-
-                    paymentDiv.classList.remove('bg-gray-100', 'hover:bg-blue-200');
-                    paymentDiv.classList.add('border-blue-500', 'bg-blue-200');
-
-                    selectedPaymentLink = payment.id;
-                    amount = payment.amount;
-
-                    amount = parseFloat(amount).toFixed(3);
-
-                    let eachInvoicePrice = parseFloat(amount) / items.length;
-
-                    items.forEach(item => {
-                        let invoicePrice;
-                        // if the item is the last one, set the invoice price to the remaining amount
-                        if (item.id === items[items.length - 1].id) {
-                            invoicePrice = parseFloat(amount)
-                        } else {
-                            invoicePrice = eachInvoicePrice;
-                        }
-
-                        item.invoice_price = invoicePrice;
-                        invoicePriceInputs = document.querySelectorAll('.invoice-price-' + item.id);
-
-                        invoicePriceInputs.forEach(input => {
-                            input.value = invoicePrice;
-                        });
-
-                        amount = parseFloat(amount) - eachInvoicePrice;
-                    });
-
-                    isSaved = true;
-                    updateButtonState();
-
-                    removeButton.classList.remove('hidden');
-                };
-                paymentDiv.innerHTML = `
-                     <span>${payment.voucher_number} - ${payment.amount} KWD</span>
-                     `;
-                paymentLinkContainer.appendChild(paymentDiv);
-            });
-
-
-            // Add a button to remove the selected payment link
-            let removeButton = document.createElement('button');
-            removeButton.className = 'mt-2 p-2 border rounded bg-red-500 text-white hover:bg-red-600 hidden';
-            removeButton.innerHTML = 'Remove Selected Payment Link';
-            removeButton.onclick = function() {
-                selectedPaymentLink = null;
-                isSaved = false;
-                updateButtonState();
-
-                items.forEach(item => {
-                    invoicePriceInputs = document.querySelectorAll('.invoice-price-' + item.id);
-                    invoicePriceInputs.forEach(input => {
-                        input.value = '';
-                    });
-                });
-
-                removeButton.classList.add('hidden');
-
-                let paymentLinkButton = document.querySelectorAll('.payment-link-button');
-
-                paymentLinkButton.forEach(button => {
-                    button.classList.remove('border-blue-500', 'bg-blue-200');
-                    button.classList.add('bg-gray-100', 'hover:bg-blue-200');
-                });
-            };
-            paymentLinkContainer.appendChild(removeButton);
-
-            let paymentLinkButton = document.querySelectorAll('.payment-link-button');
-            paymentLinkButton.forEach(button => {
-                button.addEventListener('click', function() {
-                    paymentLinkButton.forEach(btn => {
-                        if (btn !== this) {
-                            btn.classList.remove('border-blue-500', 'bg-blue-200');
-                            btn.classList.add('bg-gray-100', 'hover:bg-blue-200');
-                        }
-                    });
-                });
-            });
-
-        }
-
         document.addEventListener("DOMContentLoaded", function() {
 
             tasks = @json($tasks);
             tasks = Array.isArray(tasks) ? tasks : Object.values(tasks);
             let clients = @json($clients);
-            // console.log('tasks', tasks);
-            // console.log(Array.isArray(tasks));
-            // Initial rendering of items
             renderItems();
 
-
-            // Initialize modals with full data
             renderClientList(clients);
             renderTaskList(tasks);
             renderClientCredit(selectedClient);

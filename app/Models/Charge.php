@@ -15,6 +15,9 @@ class Charge extends Model
         'name',
         'type',
         'description',
+        'auth_type',
+        'base_url',
+        'api_key',
         'paid_by',
         'amount',
         'self_charge',
@@ -67,7 +70,7 @@ class Charge extends Model
 
     public function methods()
     {
-        return $this->hasMany(PaymentMethod::class, 'type');
+        return $this->hasMany(PaymentMethod::class, 'type', 'name');
     }
 
     protected static ?int $resolvedCompanyId = null;
@@ -79,6 +82,10 @@ class Charge extends Model
         }
 
         $user = Auth::user();
+
+        if(!$user){
+            return null;
+        }
 
         return match ($user->role_id) {
             Role::AGENT => $user->agent?->branch?->company_id ?? $user->company_id ?? $user->company?->id,

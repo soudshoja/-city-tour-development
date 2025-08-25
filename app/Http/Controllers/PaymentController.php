@@ -48,6 +48,7 @@ use Illuminate\Support\Arr;
 use App\Http\Controllers\ClientController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use App\Services\GatewayConfigService;
 
 class PaymentController extends Controller
 {
@@ -95,6 +96,7 @@ class PaymentController extends Controller
             'payment_method' => 'nullable|string',
             'invoice_partial_id' => 'required|array'
         ]);
+       
         Log::info('Received payment request', $request->all());
 
         $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
@@ -155,7 +157,7 @@ class PaymentController extends Controller
     }
 
 
-    public function initiatePayment($data)
+    public function initiatePayment($data) : JsonResponse
     {
         $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
         if (!$voucherSequence) {
@@ -306,8 +308,19 @@ class PaymentController extends Controller
         }
 
         if (strtolower($data['payment_gateway']) === 'myfatoorah') {
-            $apiKey = config('services.myfatoorah.api_key');
-            $baseUrl = config('services.myfatoorah.base_url');
+            $configService = new GatewayConfigService();
+            $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
+            if($myfatoorahConfig['status'] === 'error') {
+                $payment->delete();
+            
+                return response()->json(['error' => $myfatoorahConfig['message']], 500);
+            }
+
+            $myfatoorahConfig = $myfatoorahConfig['data'];
+    
+            $apiKey  = $myfatoorahConfig['api_key'];
+            $baseUrl = $myfatoorahConfig['base_url'];
             $invoiceNumber = $invoice->invoice_number;
             $paymentMethodId = $data['payment_method'];
             $paymentMethod = PaymentMethod::findOrFail($paymentMethodId);
@@ -955,8 +968,21 @@ class PaymentController extends Controller
 
     public function getPaymentStatusMyFatoorah($invoiceId) : JsonResponse
     {
-        $apiKey = config('services.myfatoorah.api_key');
-        $baseUrl = config('services.myfatoorah.base_url');
+        $configService = new GatewayConfigService();
+        $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
+        if(!$myfatoorahConfig['status'] || !$myfatoorahConfig['data']) {
+            Log::error('MyFatoorah configuration is missing or inactive');
+            return response()->json([
+                'status' => 'error',
+                'message' => $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive'
+            ], 500);
+        }
+
+        $myfatoorahConfig = $myfatoorahConfig['data'];
+
+        $apiKey  = $myfatoorahConfig['api_key'];
+        $baseUrl = $myfatoorahConfig['base_url'];
 
         Log::info('getPaymentStatusMyFatoorah called with invoice_id: ', [
             'invoice_id' => $invoiceId,
@@ -1579,8 +1605,17 @@ class PaymentController extends Controller
 
             return redirect($response['transaction']['url']);
         } else if (strtolower($paymentGateway) === 'myfatoorah') {
-            $apiKey = config('services.myfatoorah.api_key');
-            $baseUrl = config('services.myfatoorah.base_url');
+            $configService = new GatewayConfigService();
+            $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
+            if(!$myfatoorahConfig['status'] || !$myfatoorahConfig['data']) {
+                return redirect()->back()->with('error', $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive');
+            }
+
+            $myfatoorahConfig = $myfatoorahConfig['data'];
+    
+            $apiKey  = $myfatoorahConfig['api_key'];
+            $baseUrl = $myfatoorahConfig['base_url'];
 
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $companyId = optional($payment->agent->branch)->company_id;
@@ -1699,8 +1734,17 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'Invalid or already processed payment.');
         }
 
-        $apiKey = config('services.myfatoorah.api_key');
-        $baseUrl = config('services.myfatoorah.base_url');
+        $configService = new GatewayConfigService();
+        $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
+        if(!$myfatoorahConfig['status'] || !$myfatoorahConfig['data']) {
+            return redirect()->back()->with('error', $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive');
+        }
+
+        $myfatoorahConfig = $myfatoorahConfig['data'];
+
+        $apiKey  = $myfatoorahConfig['api_key'];
+        $baseUrl = $myfatoorahConfig['base_url'];
 
         $companyId = optional($payment->agent->branch)->company_id;
 
@@ -2074,8 +2118,17 @@ class PaymentController extends Controller
             }
 
             //Get payment status from MyFatoorah
-            $apiKey = config('services.myfatoorah.api_key');
-            $baseUrl = config('services.myfatoorah.base_url');
+            $configService = new GatewayConfigService();
+            $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
+            if(!$myfatoorahConfig['status'] || !$myfatoorahConfig['data']) {
+                return redirect()->to('/invoices')->with('error', $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive');
+            }
+
+            $myfatoorahConfig = $myfatoorahConfig['data'];
+    
+            $apiKey  = $myfatoorahConfig['api_key'];
+            $baseUrl = $myfatoorahConfig['base_url'];
 
             $statusResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",

@@ -3,6 +3,7 @@
 namespace App\Support\PaymentGateway;
 
 use App\Http\Traits\HttpRequestTrait;
+use App\Services\GatewayConfigService;
 
 class Tap
 {
@@ -10,10 +11,22 @@ class Tap
 
     public function createCharge($req)
     {
+        $configService = new GatewayConfigService();
+        $tapConfigResponse = $configService->getTapConfig();
+
+        if($tapConfigResponse['status'] === 'error') {
+            return [
+                'status' => 'error',
+                'message' => $tapConfigResponse['message'],
+            ];
+        }
+        
+        $tapConfig = $tapConfigResponse['data'];
+
         $response = $this->postRequest(
-            config('services.tap.url') . '/charges',
+            $tapConfig['url'] . '/charges',
             array(
-                'Authorization: Bearer ' . config('services.tap.secret'),
+                'Authorization: Bearer ' . $tapConfig['secret'],
                 'Content-Type: application/json'
             ),
             json_encode($req),
@@ -27,10 +40,22 @@ class Tap
 
     public function getCharge($chargeId)
     {
+        $configService = new GatewayConfigService();
+        $tapConfigResponse = $configService->getTapConfig();
+
+        if($tapConfigResponse['status'] === 'error') {
+            return [
+                'status' => 'error',
+                'message' => $tapConfigResponse['message'],
+            ];
+        }
+
+        $tapConfig = $tapConfigResponse['data'];
+
         $response = $this->getRequest(
-            config('services.tap.url') . '/charges/' . $chargeId,
+            $tapConfig['url'] . '/charges/' . $chargeId,
             array(
-                'Authorization: Bearer ' . config('services.tap.secret'),
+                'Authorization: Bearer ' . $tapConfig['secret'],
             ),
             [],
         );

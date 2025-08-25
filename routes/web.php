@@ -499,6 +499,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{id}', [ChargeController::class, 'update'])->name('update');
         Route::get('/{id}', [ChargeController::class, 'show'])->name('show');
         Route::delete('/{id}', [ChargeController::class, 'destroy'])->name('destroy');
+        Route::put('/{id}/credentials', [ChargeController::class, 'updateCredentials'])->name('credentials.update');
     });
 
     Route::group([
@@ -624,8 +625,8 @@ Route::post('/webhook/resayil', [WhatsappController::class, 'handleResayilWebhoo
 
 //Payment Method
 Route::group([
-    'prefix' => 'paymentMethod',
-    'as'     => 'paymentMethod.',
+    'prefix' => 'payment-method',
+    'as'     => 'payment-method.',
 ], function () {
     Route::get('/{id}', [PaymentMethodController::class, 'show'])->name('show');
     Route::put('/{id}', [PaymentMethodController::class, 'update'])->name('update');

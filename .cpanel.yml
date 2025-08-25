@@ -17,7 +17,7 @@ deployment:
     - /usr/local/bin/php artisan down
 
     # Install Composer dependencies (CORRECTED PATH)
-    - /usr/local/bin/php /opt/cpanel/composer/bin/composer install --no-dev --prefer-dist
+    #- /usr/local/bin/php /opt/cpanel/composer/bin/composer install --no-dev --prefer-dist
 
     # # Run database migrations
     - /usr/local/bin/php artisan migrate --force

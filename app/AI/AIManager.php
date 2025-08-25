@@ -4,7 +4,10 @@ namespace App\AI;
 
 use App\AI\Contracts\AIClientInterface;
 use App\AI\Services\OpenAIClient;
+use App\AI\Services\AnythingLLMClient;
+use App\AI\Support\AIResponse;
 use App\Models\Supplier;
+use Exception;
 
 class AIManager
 {
@@ -12,46 +15,132 @@ class AIManager
 
     public function __construct()
     {
-        $this->client = new OpenAIClient();
+        $this->client = $this->createClient();
     }
 
-    public function chat(array $parameter)
+    protected function createClient(): AIClientInterface
     {
-        return $this->client->chat($parameter);
+        $provider = config('ai.default', 'openai');
+
+        return match ($provider) {
+            'openai' => new OpenAIClient(),
+            'anythingllm' => new AnythingLLMClient(),
+            default => throw new Exception("Unsupported AI provider: {$provider}")
+        };
     }
 
-    public function processWithAiTool(string $filePath, string $fileName)
+    public function getClient(): AIClientInterface
     {
-        return $this->client->processWithAiTool($filePath, $fileName);
+        return $this->client;
     }
 
-    public function extractAirFiles($parameter)
+    public function switchProvider(string $provider): void
     {
-        return $this->client->extractAirFiles($parameter);
+        $oldProvider = config('ai.default');
+        config(['ai.default' => $provider]);
+        
+        try {
+            $this->client = $this->createClient();
+        } catch (Exception $e) {
+            // Rollback on failure
+            config(['ai.default' => $oldProvider]);
+            throw $e;
+        }
     }
 
-    public function extractPdfFiles($parameter)
+    /**
+     * Standardized chat method - returns simple, consistent format
+     */
+    public function chat(array $messages): array
     {
-        return $this->client->extractPdfFiles($parameter);
+        try {
+            return $this->client->chat($messages);
+        } catch (Exception $e) {
+            return AIResponse::error('Chat failed: ' . $e->getMessage());
+        }
     }
 
-    public function extractMultiplePdfFiles(array $fileIds)
+    /**
+     * Standardized file processing - returns simple, consistent format
+     */
+    public function processWithAiTool(string $filePath, string $fileName): array
     {
-        return $this->client->extractMultiplePdfFiles($fileIds);
+        try {
+            return $this->client->processWithAiTool($filePath, $fileName);
+        } catch (Exception $e) {
+            return AIResponse::error('File processing failed: ' . $e->getMessage());
+        }
     }
 
-    public function extractPassportData(string $filePath, string $fileName)
+    /**
+     * Standardized passport extraction - returns simple, consistent format
+     */
+    public function extractPassportData(string $filePath, string $fileName): array
     {
-        return $this->client->extractPassportData($filePath, $fileName);
+        try {
+            return $this->client->extractPassportData($filePath, $fileName);
+        } catch (Exception $e) {
+            return AIResponse::error('Passport extraction failed: ' . $e->getMessage());
+        }
     }
 
-    public function uploadFileToAI($file)
+    /**
+     * Standardized air files extraction - returns simple, consistent format
+     */
+    public function extractAirFiles($parameter): array
     {
-        return $this->client->uploadFileToOpenAI($file);
+        try {
+            return $this->client->extractAirFiles($parameter);
+        } catch (Exception $e) {
+            return AIResponse::error('Air files extraction failed: ' . $e->getMessage());
+        }
     }
 
-    public function processBatchFiles(array $files)
+    /**
+     * Standardized PDF extraction - returns simple, consistent format
+     */
+    public function extractPdfFiles($parameter): array
     {
-        return $this->client->processBatchFiles($files);
+        try {
+            return $this->client->extractPdfFiles($parameter);
+        } catch (Exception $e) {
+            return AIResponse::error('PDF extraction failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Standardized multiple PDF extraction - returns simple, consistent format
+     */
+    public function extractMultiplePdfFiles(array $fileIds): array
+    {
+        try {
+            return $this->client->extractMultiplePdfFiles($fileIds);
+        } catch (Exception $e) {
+            return AIResponse::error('Multiple PDF extraction failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Standardized file upload - returns simple, consistent format
+     */
+    public function uploadFileToAI($file): array
+    {
+        try {
+            return $this->client->uploadFileToOpenAI($file);
+        } catch (Exception $e) {
+            return AIResponse::error('File upload failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Standardized batch processing - returns simple, consistent format
+     */
+    public function processBatchFiles(array $files): array
+    {
+        try {
+            return $this->client->processBatchFiles($files);
+        } catch (Exception $e) {
+            return AIResponse::error('Batch processing failed: ' . $e->getMessage());
+        }
     }
 }

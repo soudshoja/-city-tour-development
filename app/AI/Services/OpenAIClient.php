@@ -791,6 +791,9 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- Set client_name to the buyer/policyholder (name nearest to the policy header or explicitly labeled).\n";
         $prompt .= "- If currency symbols (e.g., KD, $, €) are found in the files, replace them with the proper ISO currency code (e.g., KWD, USD, EUR).\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (FIRST TAKAFUL INSURANCE): If the supplier or insurer is 'First Takaful' (case-insensitive), set issued_by to 'First Takaful' and agent_name to null.\n";
+        $prompt .= "HOTEL TASK COLLAPSING RULE (CRITICAL):\n";
+        $prompt .= "- For all hotel suppliers except Magic Holiday: if additional structured room information is present (e.g., name, board, passengers, etc), insert it into task_hotel_details.room_details as JSON. For Magic Holiday: always use task_hotel_details.room_details for the room information.\n";
+        $prompt .= "- Example: {\"name\":\"Standard Room with twin beds\",\"board\":\"ROOM ONLY\",\"info\":null,\"type\":\"TWN.ST\",\"passengers\":[\"Mrs. Hassah ALHAIDARI\"]}\n";
 
         $prompt .= "\nIMPORTANT INSTRUCTIONS:\n";
         $prompt .= "- The PDF may contain multiple passengers/bookings. Return an array of task objects.\n";
@@ -802,6 +805,7 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- All dates should be in 'Y-m-d H:i:s' format.\n";
         $prompt .= "- For supplier name, refer to this list: $supplierList\n";
         $prompt .= "- Airport codes should be matched against: $airportList\n";
+        $prompt .= "- If amounts are shown in a currency other than KWD, record them in additional_info as plain text. Example: 'Original price: 71.33 USD, Original tax: 7 USD'.\n";
         $prompt .= "- HOTEL MEAL/BOARD RULES:\n";
         $prompt .= "  • If the document mentions a meal plan (e.g., 'board', 'free breakfast', 'half board', 'full board'), copy the wording exactly as shown into task_hotel_details[*].meal_type.\n";
         $prompt .= "  • If you're unsure which room line it belongs to, include the phrase in tasks.additional_info instead.\n";
@@ -841,7 +845,7 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Set task.original_price to the per-passenger share of 'Amount in Booking Currency' (total ÷ passenger_count). Set task.price and task.total to the same amount after conversion using exchange_rate.\n";
         $prompt .= "  • Store fee breakdown: set surcharge = Admin Fee + Fuel Surcharge; set tax = sum of VATs + passenger/service/security charges; penalty_fee = 0 unless stated.\n";
         $prompt .= "  • Copy all labeled amounts into additional_info as 'Label: Amount' pairs (e.g., Base Fare, Administrative Fee, Fuel Surcharge, VAT for Admin Fees, and so on).\n";
-        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cham Wings Airlines and Air Arabia):\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Fly Cham, Cham Wings Airlines and Air Arabia):\n";
         $prompt .= "  • Set tasks.ticket_number = full E-Ticket Number exactly as shown (e.g. 3862304374206/1). Set issued_by and created_by to Como Travels.\n";
         $prompt .= "  • Set tasks.reference = last 10 digits of the E-Ticket Number, before the slash (e.g. 3862304374206/1 → 2304374206).\n";
         $prompt .= "  • For every non-KWD amount (Fare/Charges/Taxes/etc.), append to additional_info exactly as 'Label: CUR 999.99' (e.g., 'Fare: AED 278.17'); keep the document’s grand original in original_price/original_tax/original_currency. Map the itinerary column 'Charges' to tax only.\n";
@@ -881,13 +885,17 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • For task that is from Appointment Letter, the status should be set to 'issued' by default.\n";
         $prompt .= "  • Fetch the value of Payment Order No, Amount and Payment Date. Embed them all into additional_info.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Enlite):\n";
+        $prompt .= "  • If only a booking voucher page exists, set status = confirmed. If both voucher and invoice pages exist, set status = issued.\n";
         $prompt .= "  • Set issued_by and created_by to null. Extract only the text before the first hyphen '-' from the given room name (e.g., 'Deluxe Courtyard - Breakfast', room_type = 'Deluxe Courtyard', meal_type = 'Breakfast').\n";
-        $prompt .= "  • If additional structured room information is present (e.g., name, board, passengers, etc), insert it into task_hotel_details.room_details as JSON.\n";
-        $prompt .= "  • Example: {\"name\":\"Standard Room with twin beds\",\"board\":\"ROOM ONLY\",\"info\":null,\"type\":\"TWN.ST\",\"passengers\":[Mrs. Hassah ALHAIDARI]}\n";
         $prompt .= "  • When assigning amounts: if each accommodation already has its own amount, use that value. If only a total amount is provided for multiple rooms, then divide the total equally among them (e.g., total 1245 USD for 2 rooms → each task.amount = 622.50 USD). Always round to two decimal places.\n";
-        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Rezlive):\n";
-        $prompt .= "  • If additional structured room information is present (e.g., name, board, passengers, etc), insert it into task_hotel_details.room_details as JSON.\n";
-        $prompt .= "  • Example: {\"name\":\"Standard Room with twin beds\",\"board\":\"ROOM ONLY\",\"info\":null,\"type\":\"TWN.ST\",\"passengers\":[Mrs. Hassah ALHAIDARI]}\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (TBO Holiday):\n";
+        $prompt .= "  • Set tasks.reference from the TBOH Confirmation No line.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Restel):\n";
+        $prompt .= "  • Set tasks.reference from the Ref. Number in the documents. Set tasks.issued_date from the header date next to 'FROM' sections.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Rate Hawk):\n";
+        $prompt .= "  • Store transfer details (from, to, and date/time) in tasks.additional_info as plain text. Example: 'Transfer from Hilton Abu Dhabi Yas Island Resort to Sharjah International Airport (SHJ) on 2025-09-01 11:30'. Do not use JSON for this; keep it as readable text for display only.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Webbeds):\n";
+        $prompt .= "  • Set tasks.reference from the Booking Reference No by taking everything after the last '-' (e.g., WBD-658484445 → reference = 658484445). Set tasks.ticket_number to the full Booking Reference No (e.g., ticket_number = WBD-658484445).\n";        
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

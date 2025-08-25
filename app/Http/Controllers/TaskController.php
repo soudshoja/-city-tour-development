@@ -16,6 +16,7 @@ use App\Models\Country;
 use App\Models\Hotel;
 use App\Models\Role;
 use App\Models\Supplier;
+use App\Models\Company;
 use App\Models\Branch;
 use App\Models\Room;
 use App\Models\TaskHotelDetail;
@@ -523,6 +524,17 @@ class TaskController extends Controller
         }
 
         $supplierName = Supplier::where('id', $request->supplier_id)->value('name');
+        if (strtolower($supplierName) !== 'amadeus') {
+            $request->merge([
+                'created_by' => null,
+                'issued_by'  => null,
+            ]);
+        }
+
+        $companyName = Company::where('id', $request->company_id)->value('name');
+        if (strtolower($companyName) === 'test ojeen' && strtolower($request->status) === 'confirmed') {
+            $request->merge(['status' => 'issued']);
+        }
 
         if(strtolower($supplierName) == 'jazeera airways' || strtolower($supplierName) == 'fly dubai' || strtolower($supplierName) == 'vfs') {
             if ($request->status == 'confirmed') {

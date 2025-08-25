@@ -3,6 +3,7 @@
 namespace App\AI\Services;
 
 use App\AI\Contracts\AIClientInterface;
+use App\AI\Support\AIResponse;
 use App\Enums\TaskType;
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Agent;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 class OpenAIClient implements AIClientInterface
 {
@@ -30,30 +32,95 @@ class OpenAIClient implements AIClientInterface
     protected string $apiUrl;
     protected string $apiKey;
     protected string $model;
+    protected $logger;
 
     public function __construct()
     {
-        $this->apiUrl = config('services.open-ai.url');
-        $this->apiKey = config('services.open-ai.key');
-        $this->model = config('services.open-ai.model');
+        $this->logger = Log::channel('ai');
+
+        if (config('ai.default') !== 'openai') {
+            return;
+        }
+
+        $this->apiUrl = config('ai.providers.openai.url');
+        $this->apiKey = config('ai.providers.openai.key');
+        $this->model = config('ai.providers.openai.model');
+
+        if(config('app.env') !== 'testing'){
+            if (empty($this->apiUrl) || empty($this->apiKey)) {
+                throw new Exception('OpenAi configuration is missing. Please check your AI_PROVIDER settings.');
+            }
+        }
     }
 
     public function chat(array $messages): array
     {
+        $requestId = Str::uuid();
         $url = $this->apiUrl . '/chat/completions';
+        
+        $payload = [
+            'model' => $this->model,
+            'messages' => $messages,
+        ];
+
+        // Log request
+        $this->logger->info('OpenAI Chat Request', [
+            'request_id' => $requestId,
+            'method' => 'chat',
+            'endpoint' => $url,
+            'model' => $this->model,
+            'payload' => $payload,
+            'timestamp' => now()->toISOString(),
+        ]);
+
         $response = Http::withToken($this->apiKey)
             ->withoutVerifying()
-            ->post($url, [
-                'model' => $this->model,
-                'messages' => $messages,
+            ->post($url, $payload);
+
+        // Log response
+        if ($response->successful()) {
+            $result = $response->json();
+            $this->logger->info('OpenAI Chat Response', [
+                'request_id' => $requestId,
+                'status_code' => $response->status(),
+                'response_data' => $result,
+                'usage' => $result['usage'] ?? [],
+                'timestamp' => now()->toISOString(),
             ]);
+        } else {
+            $this->logger->error('OpenAI Chat Request Failed', [
+                'request_id' => $requestId,
+                'status_code' => $response->status(),
+                'response_body' => $response->body(),
+                'timestamp' => now()->toISOString(),
+            ]);
+        }
 
         // Check if the API call failed
         if ($response->failed()) {
-            throw new \Exception('OpenAI API request failed: ' . $response->body());
+            $this->logger->error('OpenAI Chat Request Failed', [
+                'request_id' => $requestId,
+                'status_code' => $response->status(),
+                'response_body' => $response->body(),
+                'timestamp' => now()->toISOString(),
+            ]);
+            return AIResponse::error('OpenAI API request failed: ' . $response->body());
         }
 
-        return $response->json();
+        $result = $response->json();
+        $content = $result['choices'][0]['message']['content'] ?? 'No response received';
+
+        // Return in standardized format
+        return AIResponse::success(
+            $content,
+            'Chat completed successfully',
+            [
+                'usage' => $result['usage'] ?? [],
+                'model' => $this->model,
+                'provider_response' => $result,
+                'request_id' => $requestId
+            ]
+        );
     }
 
     public function extractPassportData($file, string $fileName): array
@@ -65,11 +132,7 @@ class OpenAIClient implements AIClientInterface
             $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
             if (!in_array($extension, ['jpg', 'jpeg', 'png', 'pdf'])) {
-                return [
-                    'status' => 'error',
-                    'message' => 'Unsupported file type. Only JPG, JPEG, PNG, and PDF files are supported.',
-                    'data' => null
-                ];
+                return AIResponse::error('Unsupported file type. Only JPG, JPEG, PNG, and PDF files are supported.');
             }
 
             // Prepare the prompt for OpenAI API
@@ -119,37 +182,33 @@ class OpenAIClient implements AIClientInterface
 
             $response = $this->createResponse($messages);
 
-            if ($response['status'] === 'error') {
-                return $response; 
+            if (isset($response['status']) && $response['status'] === 'error') {
+                return AIResponse::error($response['message'] ?? 'Failed to process passport data');
             }
 
             $extractedContent = $response['output'][0]['content'][0]['text'] ?? null;
 
             if (!$extractedContent) {
-                return [
-                    'status' => 'error',
-                    'message' => 'No passport data found or invalid response format',
-                    'data' => null
-                ];
+                return AIResponse::error('No passport data found or invalid response format');
             }
 
             $passportData = json_decode($extractedContent, true);
 
             $this->deleteFileFromOpenAI($fileId);
 
-            return [
-                'status' => 'success',
-                'message' => 'Passport data extracted successfully',
-                'data' => $passportData
-            ];
+            return AIResponse::success(
+                $passportData,
+                'Passport data extracted successfully',
+                [
+                    'file_name' => $fileName,
+                    'file_extension' => $extension,
+                    'extracted_content' => $extractedContent
+                ]
+            );
         } catch (\Exception $e) {
             Log::error('Exception in extractPassportData: ' . $e->getMessage());
 
-            return [
-                'status' => 'error',
-                'message' => 'Exception occurred during passport extraction: ' . $e->getMessage(),
-                'data' => null
-            ];
+            return AIResponse::error('Exception occurred during passport extraction: ' . $e->getMessage());
         }
     }
 
@@ -164,7 +223,7 @@ class OpenAIClient implements AIClientInterface
 
         $url = $this->apiUrl . '/chat/completions';
         $header = [
-            'Authorization: Bearer ' . config('services.open-ai.key'),
+            'Authorization: Bearer ' . $this->apiUrl,
             'Content-Type: application/json',
         ];
 
@@ -174,7 +233,7 @@ class OpenAIClient implements AIClientInterface
         ]);
 
         $data = [
-            'model' => config('services.open-ai.model'),
+            'model' => $this->model,
             'messages' => $message,
             'response_format' => [
                 'type' => 'json_object',
@@ -769,6 +828,16 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Place all other monetary details (e.g., Optional extras, Transaction fee, Admin fees, Taxes/fees, etc.) into tasks.additional_info.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cebu Pacific):\n";
         $prompt .= "  • Set reference = Booking Reference No. and issued_date = Booking Date. Set agent, created_by and issued_by to null.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Indigo):\n";
+        $prompt .= "  • Set the reference and ticket_number using 'PNR/Booking Ref' value (e.g. G5BQFJ).\n";
+        $prompt .= "  • Set issued_date and supplier_pay_date to use the value of 'Date of Booking' (e.g. 09Aug25) to the format yyyy-mm-dd.\n";
+        $prompt .= "  • In table Fare Summary that is found at the end of the page, find 'Airfare Charges' and get the value. Use it to set the price.\n";
+        $prompt .= "  • In table Fare Summary that is found at the end of the page, set the total using the value of 'Total Fare' that is in the footer of the table.\n";
+        $prompt .= "  • Set the value of tax with sum up of the list under 'Airfare Charges'. The value of sum between the tax and price should be the same with 'Total Fare' and total.\n";
+        $prompt .= "  • Fetch the information of taxes_record with flight from and flight to. Embed them all into additional_info.\n";
+        $prompt .= "  • Set created_by and issued_by to the Company Name that is in Personal Information table at the end of the page.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cebu Pacific and Indigo):\n";
+        $prompt .= "  • Set status to issued if the task file shows 'Confirmed'. Else if the task file showed 'On Hold', the status should be set to confirmed.\n";
         $prompt .= "  • Set task.original_price to the per-passenger share of 'Amount in Booking Currency' (total ÷ passenger_count). Set task.price and task.total to the same amount after conversion using exchange_rate.\n";
         $prompt .= "  • Store fee breakdown: set surcharge = Admin Fee + Fuel Surcharge; set tax = sum of VATs + passenger/service/security charges; penalty_fee = 0 unless stated.\n";
         $prompt .= "  • Copy all labeled amounts into additional_info as 'Label: Amount' pairs (e.g., Base Fare, Administrative Fee, Fuel Surcharge, VAT for Admin Fees, and so on).\n";
@@ -790,15 +859,35 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Bedzinn vouchers that say something like “Booking confirmed”, set `status` = 'issued', set `issued_by`and `created_by` = 'Ojeen Travel'.\n";
         $prompt .= "  • Set the client to the first passenger; if there are additional passengers, list them in additional_details.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Supreme Services):\n";
-        $prompt .= "  • Create EXACTLY ONE task per ROOM (NEVER per passenger). If the file has N rooms, output N tasks; if it has 1 room, output 1 task.\n";
+        $prompt .= "  • Create ONE task per accommodation line (room type), never per room or passenger.\n";
+        $prompt .= "  • Example: '3 ROOM(S) × 184.00 × 6 NIGHT(S)' = 1 task, price=3312.00, additional_info='Rooms:3; Nights:6; Calc:3×184×6=3312'.\n";
         $prompt .= "  • Set tasks.client_name from the 'Ref.' line. Set tasks.reference and tasks.ticket_number from the 'File No.' line. Set tasks.status = 'issued'.\n";
         $prompt .= "  • Set tasks.issued_date from the 'Date' line; parse dd/mm/yyyy to 'YYYY-MM-DD 00:00:00'. Set tasks.issued_by and tasks.created_by from the 'Client' line.\n";
-        $prompt .= "  • For each room, tasks.price and tasks.total = unit_price × nights using the accommodation line (e.g., '1 ROOM(S) × 184.00 × 2 NIGHT(S) = 368.00').\n";
-        $prompt .= "  • If VAT/Tax/Surcharge lines exist, set tasks.tax and/or tasks.surcharge to the numeric amounts; set tasks.original_tax and/or tasks.original_surcharge to the same values in the document currency. Also set tasks.taxes_record to the raw tax line (e.g., 'TOTAL VAT 11% USD 67.69 …').\n";
-
-
+        $prompt .= "  • For each line: tasks.price=rooms×rate×nights, total=price. tax/surcharge from VAT lines; original_* match document currency. taxes_record = raw VAT line.\n";
+        $prompt .= "  • task_hotel_details: room_type, check_in/out, rate, room_amount=price, meal_type, hotel_name. Put quantity/nights in additional_info.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (NDC SUPPLIERS): If the supplier has 'NDC' in its name (case-insensitive), set created_by to exactly match issued_by.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (EMIRATES NDC): Set issued_by to the agency/office name that appears immediately next to the 'IATA:' number.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (LONDON VISA):\n";
+        $prompt .= "  • For task that is uploaded by Outlook, find the details of the sender at 'From' field. Use that information as indicator for if it is from 'UK Visas and Immigration Home Office', automatically store London Visa as the issued_by.\n";
+        $prompt .= "  • For task that is uploaded by Outlook, find the 'Date' field in sender details, use the date as issued_date and supplier_pay_date.\n";
+        $prompt .= "  • For task that is uploaded by Outlook, the status of the task is default to issued.\n";
+        $prompt .= "  • For task that is uploaded by Outlook, it doesn't have created_by, expiry_date, cancellation_policy and cancellation_deadline.\n";
+        $prompt .= "  • For venue, use United Kingdom.\n";
+        $prompt .= "  • Fetch the bank name (e.g. World Bank) and the bank information (e.g. ETAWEB00005361649) with the original_price with original_currency and embed it into additional_info. Different task should have the bank information as an unique value.\n";   
+        $prompt .= "  • The reference and ticket_number hold the same value, that is the value of ETA reference number (e.g. 2021-2506-1004-1787). Different task should have the values as an unique value.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (BLS SPAIN VISA):\n";
+        $prompt .= "  • For task that is from Appointment Letter, set the reference and ticket_number using the value Reference Number in table Appointment Details.\n";
+        $prompt .= "  • For task that is from Appointment Letter, fetch the value in Amount as it is in USD, then set the value for original_price using the fetched value. For price and total in database should be the converted value of original_price in KWD.\n";
+        $prompt .= "  • For task that is from Appointment Letter, the status should be set to 'issued' by default.\n";
+        $prompt .= "  • Fetch the value of Payment Order No, Amount and Payment Date. Embed them all into additional_info.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Enlite):\n";
+        $prompt .= "  • Set issued_by and created_by to null. Extract only the text before the first hyphen '-' from the given room name (e.g., 'Deluxe Courtyard - Breakfast', room_type = 'Deluxe Courtyard', meal_type = 'Breakfast').\n";
+        $prompt .= "  • If additional structured room information is present (e.g., name, board, passengers, etc), insert it into task_hotel_details.room_details as JSON.\n";
+        $prompt .= "  • Example: {\"name\":\"Standard Room with twin beds\",\"board\":\"ROOM ONLY\",\"info\":null,\"type\":\"TWN.ST\",\"passengers\":[Mrs. Hassah ALHAIDARI]}\n";
+        $prompt .= "  • When assigning amounts: if each accommodation already has its own amount, use that value. If only a total amount is provided for multiple rooms, then divide the total equally among them (e.g., total 1245 USD for 2 rooms → each task.amount = 622.50 USD). Always round to two decimal places.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Rezlive):\n";
+        $prompt .= "  • If additional structured room information is present (e.g., name, board, passengers, etc), insert it into task_hotel_details.room_details as JSON.\n";
+        $prompt .= "  • Example: {\"name\":\"Standard Room with twin beds\",\"board\":\"ROOM ONLY\",\"info\":null,\"type\":\"TWN.ST\",\"passengers\":[Mrs. Hassah ALHAIDARI]}\n";
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 
@@ -1667,15 +1756,21 @@ class OpenAIClient implements AIClientInterface
 
     public function uploadFileToOpenAI($file, string $purpose = 'user_data')
     {
+        $requestId = Str::uuid();
+        
         try {
             if ($file instanceof UploadedFile) {
                 $filePath = $file->getRealPath();
                 $fileName = $file->getClientOriginalName();
+                $fileSize = $file->getSize();
+                $mimeType = $file->getMimeType();
             } elseif (is_string($file)) {
                 // Sanitize and validate string path
                 $file = str_replace("\0", '', $file); // Remove null bytes
                 $filePath = $file;
                 $fileName = basename($file);
+                $fileSize = file_exists($filePath) ? filesize($filePath) : 0;
+                $mimeType = mime_content_type($filePath) ?: 'unknown';
 
                 if (!file_exists($filePath)) {
                     throw new \Exception("File not found at path: $filePath");
@@ -1684,7 +1779,18 @@ class OpenAIClient implements AIClientInterface
                 throw new \InvalidArgumentException('Invalid file type. Expected UploadedFile or file path string.');
             }
 
-            logger('Uploading to OpenAI', ['filePath' => $filePath, 'fileName' => $fileName]);
+            // Log upload request
+            $this->logger->info('OpenAI File Upload Request', [
+                'request_id' => $requestId,
+                'method' => 'uploadFileToOpenAI',
+                'endpoint' => $this->apiUrl . '/files',
+                'file_name' => $fileName,
+                'file_path' => $filePath,
+                'file_size' => $fileSize,
+                'mime_type' => $mimeType,
+                'purpose' => $purpose,
+                'timestamp' => now()->toISOString(),
+            ]);
 
             $fileResource = fopen($filePath, 'r');
 
@@ -1696,7 +1802,24 @@ class OpenAIClient implements AIClientInterface
 
             fclose($fileResource);
 
-            logger('upload file response: ', $response->json());
+            // Log upload response
+            if ($response->successful()) {
+                $result = $response->json();
+                $this->logger->info('OpenAI File Upload Response', [
+                    'request_id' => $requestId,
+                    'status_code' => $response->status(),
+                    'response_data' => $result,
+                    'file_id' => $result['id'] ?? null,
+                    'timestamp' => now()->toISOString(),
+                ]);
+            } else {
+                $this->logger->error('OpenAI File Upload Failed', [
+                    'request_id' => $requestId,
+                    'status_code' => $response->status(),
+                    'response_body' => $response->body(),
+                    'timestamp' => now()->toISOString(),
+                ]);
+            }
 
             if ($response->failed()) {
                 throw new \Exception('Error uploading file: ' . $response->body());
@@ -1705,7 +1828,12 @@ class OpenAIClient implements AIClientInterface
             return $response->json('id');
 
         } catch (\Throwable $e) {
-            logger()->error('Failed to upload file to OpenAI', ['error' => $e->getMessage()]);
+            $this->logger->error('OpenAI File Upload Error', [
+                'request_id' => $requestId,
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString(),
+                'timestamp' => now()->toISOString(),
+            ]);
             throw $e; // re-throw for handling elsewhere if needed
         }
     }

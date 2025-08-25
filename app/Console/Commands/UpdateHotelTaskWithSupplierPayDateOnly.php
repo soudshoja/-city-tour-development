@@ -15,21 +15,51 @@ class UpdateHotelTaskWithSupplierPayDateOnly extends Command
 {
     protected $signature = 'app:update-hotel-supplier-pay-date-only
                                 {--supplier= : The ID of the supplier to use this command}
+                                {--reference= : The reference of the task, can handle one or more tasks to update}
                             ';
     protected $description = 'Update the existing hotel task with of status issued for its supplier pay date without creating new COA';
 
     public function handle()
     {
         $supplierId = $this->option('supplier');
+        $reference = collect($this->option('reference'))
+                    ->flatMap(fn($r) => array_map('trim', explode(',', (string) $r)))
+                    ->filter()
+                    ->unique()
+                    ->values();
 
         Log::info('Starting to update the supplier_pay_date for issued Hotel tasks');
 
-        if (!$supplierId) {
-            $this->error('Supplier ID is required when using this command');
+        if($supplierId && $reference->isNotEmpty()) {
+            $this->error('Use either --supplier or --reference, not both.');
+            return;
+        }
+        
+        if (!$supplierId && $reference->isEmpty()) {
+            $this->error('Provide either --supplier or --reference.');
             return;
         }
 
-        $tasks = Task::where('type', 'hotel')
+        $query = Task::query()
+                ->where('type', 'hotel')
+                ->where('status', 'issued')
+                ->whereNull('supplier_pay_date');
+        
+        if ($supplierId) {
+            $query->where('supplier_id', $supplierId);
+        } else {
+            $query->whereIn('reference', $reference);
+        }
+
+        $tasks = $query->get();
+
+        if ($tasks->isEmpty()) {
+            $target = $supplierId ? "supplier {$supplierId}" : 'reference [' . $reference->implode(', ') . ']';
+            $this->error("No hotel task found for {$target}");
+            return;
+        }
+
+        /* $tasks = Task::where('type', 'hotel')
             ->where('supplier_id', $supplierId)
             ->where('status', 'issued')
             ->whereNull('supplier_pay_date')
@@ -38,7 +68,7 @@ class UpdateHotelTaskWithSupplierPayDateOnly extends Command
         if ($tasks->isEmpty()) {
             $this->error('No hotel task found for supplier ' . $supplierId);
             return;
-        }
+        } */
 
         $updated = 0;
         

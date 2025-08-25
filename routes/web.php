@@ -379,8 +379,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/remove-task', [InvoiceController::class, 'removeTask'])->name('remove-task');
         Route::post('/partial', [InvoiceController::class, 'savePartial'])->name('partial');
         Route::post('/remove/partial', [InvoiceController::class, 'removePartial'])->name('removepartial');
-        Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split');
+        Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split')->withoutMiddleware(['auth']);
         Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
+        Route::get('/{invoiceNumber}' , function(){
+            return redirect()->route('invoice.show', ['companyId' => 1, 'invoiceNumber' => request()->invoiceNumber]);
+        })->withoutMiddleware(['auth']);
         Route::get('/{companyId}/{invoiceNumber}', [InvoiceController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
         Route::get('/{companyId}/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('pdf')->withoutMiddleware(['auth']);
         Route::get('/{companyId}/{invoiceNumber}/proforma', [InvoiceController::class, 'proforma'])->name('proforma')->withoutMiddleware(['auth']);
@@ -415,6 +418,7 @@ Route::middleware(['auth'])->group(function () {
         //Route::match(['get', 'post'], '/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
+        Route::get('/success', [PaymentController::class, 'success'])->name('success')->withoutMiddleware(['auth']);
         Route::get('/clients/{companyId}/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
         Route::get('/clients-process', [PaymentController::class, 'paymentClientProcess'])->name('clients.process');
 

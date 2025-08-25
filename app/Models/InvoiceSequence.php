@@ -11,5 +11,5 @@ class InvoiceSequence extends Model
 
     protected $table = 'invoice_sequence';
 
-    protected $fillable = ['current_sequence'];
+    protected $fillable = ['company_id', 'current_sequence'];
 }

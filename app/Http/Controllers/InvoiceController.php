@@ -200,7 +200,7 @@ class InvoiceController extends Controller
 
         foreach ($selectedTasks as $task) {
             if ($task->invoiceDetail) {
-                return Redirect::route('invoice.edit', ['invoiceNumber' => $task->invoiceDetail->invoice->invoice_number]);
+                return Redirect::route('invoice.edit', ['companyId' => $task->company_id, 'invoiceNumber' => $task->invoiceDetail->invoice->invoice_number]);
             }
 
             // if ($task->flightDetails && (!isset($task->flightDetails->country_id_to) || !isset($task->flightDetails->country_id_from))) {
@@ -260,10 +260,15 @@ class InvoiceController extends Controller
             $agentId = Agent::pluck('id');
         } elseif ($user->role_id == Role::COMPANY) {
             $agentId = $user->company->branches->flatMap->agents->pluck('id');
+            $companyId = $user->company->id;
+            $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
         } elseif ($user->role_id == Role::BRANCH) {
             $agentId = $user->branch->agents->pluck('id');
+            $companyId = $user->branch->company->id;
+            $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
         } elseif ($user->role_id == Role::AGENT) {
             $agentId = (array)$user->agent->id;
+            $companyId = $user->agent->branch->company->id;
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
@@ -284,18 +289,6 @@ class InvoiceController extends Controller
             })
             : collect();
 
-        // 🔽 REQUIRED FOR MODAL
-        if ($user->role_id === Role::AGENT) {
-            $companyId = $user->agent->branch->company_id;
-        } elseif ($user->role_id === Role::COMPANY) {
-            $companyId = $user->company->id;
-        } elseif ($user->role_id === Role::BRANCH) {
-            $companyId = $user->branch->company_id;
-        } else {
-            $companyId = null;
-        }
-
-        $agents = Agent::all(); // Can scope this if needed
         $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
         $todayDate = Carbon::now()->format('Y-m-d');
@@ -304,7 +297,7 @@ class InvoiceController extends Controller
 
         $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
 
-        $invoiceSequence = InvoiceSequence::first();
+        $invoiceSequence = InvoiceSequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
         $currentSequence = $invoiceSequence->current_sequence;
         $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
 
@@ -334,7 +327,7 @@ class InvoiceController extends Controller
         ));
     }
 
-    public function edit(string $invoiceNumber)
+    public function edit(int $companyId, string $invoiceNumber)
     {
         $user = Auth::user();
         $agents = collect();
@@ -442,7 +435,8 @@ class InvoiceController extends Controller
             'dueDate',
             'appUrl',
             'creditUsed',
-            'invoiceExpireDefault'
+            'invoiceExpireDefault',
+            'companyId',
         ));
     }
 
@@ -901,10 +895,7 @@ class InvoiceController extends Controller
             }
         }
 
-        $invoiceSequence = InvoiceSequence::first();
-        if (!$invoiceSequence) {
-            $invoiceSequence = InvoiceSequence::create(['current_sequence' => 1]);
-        }
+        $invoiceSequence = InvoiceSequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
         $currentSequence = $invoiceSequence->current_sequence;
         $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
         $invoiceSequence->current_sequence++;
@@ -1351,7 +1342,7 @@ class InvoiceController extends Controller
      * Display the specified resource.
      */
 
-    public function proforma(string $invoiceNumber)
+    public function proforma(int $companyId, string $invoiceNumber)
     {
         $user = Auth::user();
         
@@ -1395,7 +1386,7 @@ class InvoiceController extends Controller
         ));
     }
 
-    public function proformaGeneratePdf(string $invoiceNumber)
+    public function proformaGeneratePdf(int $companyId, string $invoiceNumber)
     {
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
             ->with('agent.branch.company', 'client', 'invoiceDetails.task.supplier')
@@ -1414,7 +1405,7 @@ class InvoiceController extends Controller
         return $pdf->download("Proforma_Invoice_{$invoiceNumber}.pdf");
     }
 
-    public function show(string $invoiceNumber)
+    public function show(int $companyId, string $invoiceNumber)
     {
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
             ->with('agent.branch.company', 'client', 'invoiceDetails')
@@ -1698,7 +1689,7 @@ class InvoiceController extends Controller
         return response()->json(['success' => true]);
     }
 
-    public function updateDate(Request $request, $invoiceNumber)
+    public function updateDate(Request $request, $companyId, $invoiceNumber)
     {
         $request->validate([
             'invdate' => 'required|date',
@@ -2142,7 +2133,7 @@ class InvoiceController extends Controller
 
                 DB::commit();
 
-                return redirect()->route('invoice.show', $invoice->invoice_number)->with('success', 'Client credit applied. Invoice link created successfully!');
+                return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])->with('success', 'Client credit applied. Invoice link created successfully!');
             } catch (Exception $e) {
                 logger('Failed to pay invoice by credit: ' . $e->getMessage());
                 return redirect()->back()->with('error', 'Failed to pay invoice by credit.');
@@ -2345,7 +2336,7 @@ class InvoiceController extends Controller
 
                 DB::commit();
 
-                return redirect()->route('invoice.show', $invoice->invoice_number)->with('success', 'Invoice paid successfully!');
+                return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])->with('success', 'Invoice paid successfully!');
             } catch (Exception $e) {
                 DB::rollBack();
                 logger('Failed to process invoice/payment: ' . $e->getMessage());

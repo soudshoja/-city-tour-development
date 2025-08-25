@@ -128,7 +128,7 @@ return [
     
                 $invoiceId = $data->CustomerReference;
                 $invoice = \App\Models\Invoice::find($invoiceId);
-                $redirectUrl = route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]);
+                $redirectUrl = route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]);
     
                 return response()->view('myfatoorah.redirect', ['redirectUrl' => $redirectUrl]);
             }

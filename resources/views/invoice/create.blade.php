@@ -2742,9 +2742,8 @@
                     checkInvoiceId();
                 }, 100);
 
-                location.href = "{{ route('invoice.edit', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
-                    ":invoiceNumber",
-                    invoiceNumber
+                location.href = "{{ route('invoice.edit', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(
+                    ":invoiceNumber", invoiceNumber
                 );
 
             } catch (error) {
@@ -2774,17 +2773,14 @@
         function openInvoiceModal(invoiceNumber) {
             const modal = document.getElementById("viewInvoiceModal");
             const contentDiv = document.getElementById("invoiceContent");
+            const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
 
             // Clear previous content
             contentDiv.innerHTML = "";
 
             // Open the modal
             modal.classList.remove("hidden");
-            url =
-                "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
-                    ":invoiceNumber",
-                    invoiceNumber
-                );
+            url = "{{ route('invoice.show', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
 
             // Fetch the invoice details
             fetch(url)
@@ -2831,11 +2827,8 @@
             const copyFeedback = document.getElementById('copyFeedback');
             const baseUrl = window.location.origin;
             const invoiceLink = `${baseUrl}/invoice/${invoiceNumber}/pdf`;
-            const fetchUrl =
-                "{{ route('invoice.pdf', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
-                    ":invoiceNumber",
-                    invoiceNumber
-                );
+            const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
+            const fetchUrl = "{{ route('invoice.pdf', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
 
             navigator.clipboard.writeText(invoiceLink).then(() => {
                 alert('Link copied to clipboard: ' + invoiceLink); // Use invoiceLink here

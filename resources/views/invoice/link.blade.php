@@ -552,17 +552,14 @@
         function openInvoiceModal(invoiceNumber) {
             const modal = document.getElementById("viewInvoiceModal");
             const contentDiv = document.getElementById("invoiceInvoiceContent");
+            const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
 
             // Clear previous content
             contentDiv.innerHTML = "";
 
             // Open the modal
             modal.classList.remove("hidden");
-            url =
-                "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
-                    ":invoiceNumber",
-                    invoiceNumber
-                );
+            url = "{{ route('invoice.show', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
 
             // Fetch the invoice details
             fetch(url)

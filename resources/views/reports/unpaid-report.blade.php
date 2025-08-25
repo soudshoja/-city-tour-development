@@ -237,7 +237,7 @@
                                             <small>Ref:
                                                 {{ $transaction->type_reference_id ?? $transaction->invoice->invoice_number }}
                                                 <a target="_blank"
-                                                    href="{{ route('invoice.show', ['invoiceNumber' => $transaction->invoice->invoice_number]) }}"
+                                                    href="{{ route('invoice.show', ['companyId' => $transaction->company_id, 'invoiceNumber' => $transaction->invoice->invoice_number]) }}"
                                                     class="text-blue-500 ml-0">
                                                     🔍
                                                 </a>

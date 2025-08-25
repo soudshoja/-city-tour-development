@@ -204,12 +204,11 @@
                                 class="w-full form-input" placeholder="Invoice Number" />
                         </div>
 
-                        <form id="invoice-date-form" method="POST" action="{{ route('invoice.updateDate', $invoice->invoice_number) }}">
+                        <form id="invoice-date-form" method="POST" action="{{ route('invoice.updateDate', ['companyId' => optional($invoice->agent->branch->company)->id, 'invoiceNumber' => $invoiceNumber]) }}">
                             @csrf
                             @method('PUT')
                             <div class="flex items-center">
                                 <label class="w-full text-sm font-semibold">Invoice Date:</label>
-                                <!-- Save icon button -->
                                 <button type="submit" class=" rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Save">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                                         class="w-5 h-5 text-blue-600">
@@ -218,8 +217,6 @@
                                 </button>
                                 <input id="invdate" type="date" name="invdate" class="form-input w-full"
                                     value="{{ $invoice->invoice_date }}" />
-
-
                             </div>
                         </form>
 
@@ -813,8 +810,8 @@
                                             </div>
                                             <select id="payment_gateway_option" name="payment_gateway_option"
                                                 class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
-                                                @foreach ($paymentGateways as $gateway)
                                                 <option value="">Choose a Payment Gateway</option>
+                                                @foreach ($paymentGateways as $gateway)
                                                 <option value="{{ $gateway->name }}"
                                                     {{ $selectedGateway === $gateway->name ? 'selected' : '' }}>
                                                     {{ $gateway->name }}
@@ -930,7 +927,7 @@
                                         <span id="button-text-full">Save Payment</span>
                                     </button>
                                     <div class="mt-4">
-                                        <a target="_blank" href="{{ route('invoice.proforma', $invoice->invoice_number) }}"
+                                        <a target="_blank" href="{{ route('invoice.proforma', ['companyId' => optional($invoice->agent->branch->company)->id, 'invoiceNumber' => $invoiceNumber]) }}"
                                             class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 bg-blue-500 hover:bg-blue-700">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -996,23 +993,8 @@
                                         </svg>
                                         Copy Link
                                     </button>
-
-                                    <!-- View Button -->
-                                    {{-- <button onclick="viewInvoice()"
-                                    class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
-                                        <path opacity="0.5"
-                                            d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z"
-                                            stroke="currentColor" stroke-width="1.5"></path>
-                                        <path
-                                            d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z"
-                                            stroke="currentColor" stroke-width="1.5"></path>
-                                    </svg>
-                                    View
-                                </button> --}}
                                     @if($invoice->payment_type !== 'cash')
-                                    <a target="_blank" href="{{ url('/invoice/' . $invoice->invoice_number) }}"
+                                    <a target="_blank" href="{{ route('invoice.show', ['companyId' => optional($invoice->agent->branch->company)->id, 'invoiceNumber' => $invoiceNumber]) }}"
                                         class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                             xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
@@ -3575,17 +3557,14 @@
             function openInvoiceModal(invoiceNumber) {
                 const modal = document.getElementById("viewInvoiceModal");
                 const contentDiv = document.getElementById("invoiceContent");
+                const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
 
                 // Clear previous content
                 contentDiv.innerHTML = "";
 
                 // Open the modal
                 modal.classList.remove("hidden");
-                url =
-                    "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
-                        ":invoiceNumber",
-                        invoiceNumber
-                    );
+                url = "{{ route('invoice.show', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
 
                 // Fetch the invoice details
                 fetch(url)
@@ -3625,11 +3604,8 @@
             function copyLink() {
                 const invoiceNumber = document.getElementById('invoiceNumber').value;
                 const copyFeedback = document.getElementById('copyFeedback');
-                const fetchUrl =
-                    "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
-                        ":invoiceNumber",
-                        invoiceNumber
-                    );
+                const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
+                const fetchUrl = "{{ route('invoice.show', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
 
                 navigator.clipboard.writeText(fetchUrl).then(() => {
                     alert('Link copied to clipboard: ' + fetchUrl); // Use invoiceLink here

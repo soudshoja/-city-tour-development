@@ -178,6 +178,12 @@ class CheckMyFatoorahPayments extends Command
         $configService = new GatewayConfigService();
         $myfatoorahConfig = $configService->getMyFatoorahConfig();
 
+        if($myfatoorahConfig['status'] === 'error') {
+            return $myfatoorahConfig;
+        }
+
+        $myfatoorahConfig = $myfatoorahConfig['data'];
+
         $apiKey  = $myfatoorahConfig['api_key'];
         $baseUrl = $myfatoorahConfig['base_url'];
 

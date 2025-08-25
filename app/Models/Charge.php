@@ -83,6 +83,10 @@ class Charge extends Model
 
         $user = Auth::user();
 
+        if(!$user){
+            return null;
+        }
+
         return match ($user->role_id) {
             Role::AGENT => $user->agent?->branch?->company_id ?? $user->company_id ?? $user->company?->id,
             Role::BRANCH => $user->branch?->company_id ?? $user->company_id ?? $user->company?->id,

@@ -12,9 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('charges', function (Blueprint $table) {
-            $table->enum('auth_type', ['basic', 'oauth' ])->default('basic')->after('description');
-            $table->string('base_url')->nullable()->after('auth_type');
-            $table->text('api_key')->nullable()->after('base_url');
+            $table->text('api_key')->nullable()->after('description');
         });
     }
 
@@ -24,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('charges', function (Blueprint $table) {
-            $table->dropColumn(['auth_type', 'base_url', 'api_key']);
+            $table->dropColumn(['api_key']);
         });
     }
 };

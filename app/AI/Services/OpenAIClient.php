@@ -896,6 +896,10 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Store transfer details (from, to, and date/time) in tasks.additional_info as plain text. Example: 'Transfer from Hilton Abu Dhabi Yas Island Resort to Sharjah International Airport (SHJ) on 2025-09-01 11:30'. Do not use JSON for this; keep it as readable text for display only.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Webbeds):\n";
         $prompt .= "  • Set tasks.reference from the Booking Reference No by taking everything after the last '-' (e.g., WBD-658484445 → reference = 658484445). Set tasks.ticket_number to the full Booking Reference No (e.g., ticket_number = WBD-658484445).\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Alpha Maldives):\n";
+        $prompt .= "  • Create only ONE task per accommodation/voucher (do not split by nights or pax).\n";
+        $prompt .= "  • If text says 'All Government Taxes and 10% Accommodation service charge by the resort', treat tax & service charge as included (tax_amount = 0, service_charge_included = true, service_charge_rate = 0.10). 'Bank/Credit Card Charge' is not tax; capture it separately as bank_charge and store it into additional_info.\n";
+        $prompt .= "  • Use 'Total in XXX' and 'Net Total in XXX' for original price and original total; currency from these lines.\n";
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

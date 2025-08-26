@@ -255,20 +255,33 @@ class InvoiceController extends Controller
         }
 
         $payments = Payment::whereIn('agent_id', $agents->pluck('id'))->whereNull('invoice_id')->get();
+        $suppliers = Supplier::all();
 
         if ($user->role_id == Role::ADMIN) {
             $agentId = Agent::pluck('id');
+            $suppliers = Supplier::with(['companies' => function($query) {
+                $query->where('is_active', true);
+                }])->get();
         } elseif ($user->role_id == Role::COMPANY) {
             $agentId = $user->company->branches->flatMap->agents->pluck('id');
             $companyId = $user->company->id;
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
+            $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
+                $query->where('company_id', $user->company->id)->where('is_active', true);
+            })->with('companies')->get();
         } elseif ($user->role_id == Role::BRANCH) {
             $agentId = $user->branch->agents->pluck('id');
             $companyId = $user->branch->company->id;
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
+            $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
+                $query->where('company_id', $user->branch->company_id)->where('is_active', true);
+            })->with('companies')->get();
         } elseif ($user->role_id == Role::AGENT) {
             $agentId = (array)$user->agent->id;
             $companyId = $user->agent->branch->company->id;
+            $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
+                $query->where('company_id', $user->agent->branch->company_id)->where('is_active', true);
+            })->with('companies')->get();
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
@@ -289,7 +302,6 @@ class InvoiceController extends Controller
             })
             : collect();
 
-        $suppliers = Supplier::all();
         $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
         $todayDate = Carbon::now()->format('Y-m-d');
         $appUrl = config('app.url');
@@ -332,6 +344,8 @@ class InvoiceController extends Controller
         $user = Auth::user();
         $agents = collect();
         $branches = collect();
+        $clients = collect();
+
         if ($user->role_id == Role::ADMIN) {
             return view('invoice.maintenance'); // Show the maintenance page
         } elseif ($user->role_id == Role::COMPANY) {
@@ -339,11 +353,13 @@ class InvoiceController extends Controller
             $company = Company::with('branches.agents')->find($company->id);
             $agents = $company->branches->flatMap->agents;
             $branches = $company->branches;
+            $clients = $agents->flatMap->clients;
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
             $agents = $company->branches->flatMap->agents;
             $branches = $company->branches;
+            $clients = $agents->flatMap->clients;
         }
 
         // Retrieve the invoice based on the invoice number
@@ -356,15 +372,6 @@ class InvoiceController extends Controller
         if ($invoice->status == 'paid') {
             return redirect()->route('invoices.index')->with('error', 'Cannot edit a paid invoice!');
         }
-
-        $clients = Client::with(['agent.branch' => function ($query) {
-            if (auth()->user()->role_id == Role::COMPANY) {
-                $companyId = auth()->user()->company->id;
-            } elseif (auth()->user()->role_id == Role::AGENT) {
-                $companyId = auth()->user()->agent->branch->company_id;
-            }
-            $query->where('company_id', $companyId);
-        }])->get();
 
         $invoiceDetails = $invoice->invoiceDetails;
         $agentId = $invoice->agent_id;
@@ -387,9 +394,7 @@ class InvoiceController extends Controller
 
         $selectedAgent = $invoice->agent;
         $selectedClient = $invoice->client;
-        //dd('testing',$clients);
 
-        $suppliers = Supplier::all();
         $paymentGateways = Charge::where('company_id', $invoice->agent->branch->company_id)
             ->where('is_active', true)
             ->get();
@@ -409,11 +414,11 @@ class InvoiceController extends Controller
                 foreach($paymentMethods as $method){
                     if($method->company_id == $invoice->agent->branch->company_id && $method->type == 'myfatoorah'){
                         try {
-                            $method->gateway_fee = ChargeService::FatoorahCharge($invprice, $method->myfatoorah_id, $invoice->agent->branch->company_id)['fee'] ?? 0;
+                            $method->gateway_fee = ChargeService::FatoorahCharge($invprice, $method->id, $invoice->agent->branch->company_id)['fee'] ?? 0;
                         } catch (Exception $e) {
                             Log::error('FatoorahCharge exception', [
                                 'message' => $e->getMessage(),
-                                'paymentMethod' => $method->myfatoorah_id,
+                                'paymentMethod' => $method->id,
                                 'company_id' => $invoice->agent->branch->company_id,
                             ]);
                             $method->gateway_fee = 0;
@@ -450,7 +455,6 @@ class InvoiceController extends Controller
             'clientId',
             'tasks',
             'company',
-            'suppliers',
             'invoiceNumber',
             'selectedTasks',
             'selectedAgent',

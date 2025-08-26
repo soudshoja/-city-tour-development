@@ -162,23 +162,6 @@ class PaymentController extends Controller
 
     public function initiatePayment($data) : JsonResponse
     {
-        $companyId = null;
-        $user = Auth::user();
-
-        if ($user->role_id == Role::COMPANY) {
-            $companyId = $user->company->id;
-        } elseif ($user->role_id == Role::BRANCH) {
-            $companyId = $user->branch->company->id;
-        } elseif ($user->role_id == Role::AGENT) {
-            $companyId = $user->agent->branch->company->id;
-        }
-
-        $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
-        $currentSequence = $voucherSequence->current_sequence;
-        $voucherNumber = $this->generateVoucherNumber($currentSequence);
-        $voucherSequence->current_sequence++;
-        $voucherSequence->save();
-
         $invoice = $data['invoice'];
 
         $client = $invoice->client;
@@ -197,6 +180,12 @@ class PaymentController extends Controller
         $totalServiceFee = 0;
         $baseAmount = $selectedPartials->sum('amount');
         $companyId = $invoice->agent->branch->company_id;
+
+        $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
+        $currentSequence = $voucherSequence->current_sequence;
+        $voucherNumber = $this->generateVoucherNumber($currentSequence);
+        $voucherSequence->current_sequence++;
+        $voucherSequence->save();
 
         foreach ($selectedPartials as $partial) {
             $chargeResult = [];
@@ -1824,7 +1813,8 @@ class PaymentController extends Controller
 
         if (!$executeResponse->successful()) {
             Log::error('Reinitiate MyFatoorah ExecutePayment failed', ['response' => $executeResponse->body()]);
-            return redirect()->to('/invoices')->with('error', 'Failed to reinitiate payment.');
+            
+            return auth()->user() ? redirect()->route('invoices.index')->with('error', 'Failed to reinitiate payment.') : abort(500);
         }
 
         $resData = $executeResponse->json();
@@ -1839,7 +1829,7 @@ class PaymentController extends Controller
             return redirect($invoiceUrl);
         }
 
-        return redirect()->to('/invoices')->with('error', 'Failed to retrieve reinitiation URL.');
+        return auth()->user() ? redirect()->route('invoices.index')->with('error', 'Failed to retrieve reinitiation URL.') : abort(500);
     }
 
     public function paymentLinkProcess(Request $request)

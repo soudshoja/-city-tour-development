@@ -173,7 +173,6 @@ public function updateExchangeRates(Request $request, $supplierId)
         return redirect()->back()->with('success', 'Supplier created successfully.');
     }
 
-
     public function update($id)
     {
         if (Auth::user()->role_id != Role::ADMIN) {
@@ -198,10 +197,12 @@ public function updateExchangeRates(Request $request, $supplierId)
             'has_lounge' => 'nullable',
             'has_ferry' => 'nullable',
             'country_id' => 'required|exists:countries,id',
-            'is_online'   => 'nullable|required_if:has_hotel,on|boolean',
+            'is_online'   => 'exclude_unless:has_hotel,on|boolean',
         ]);
 
         $supplier = Supplier::findOrFail($id);
+        $hasHotel = $request->has('has_hotel');
+        $isOnline = $hasHotel ? (int)$request->boolean('is_online') : 0;
 
         $supplier->update([
             'name' => $request->input('name'),
@@ -219,12 +220,11 @@ public function updateExchangeRates(Request $request, $supplierId)
             'has_lounge' => $request->has('has_lounge'),
             'has_ferry' => $request->has('has_ferry'),
             'country_id' => $request->input('country_id'),
-            'is_online'    => $request->has('has_hotel') ? (int)$request->boolean('is_online') : null,
+            'is_online'    => $isOnline,
         ]);
 
         return redirect()->back()->with('success', 'Supplier updated successfully.');
     }
-
 
     public function getTotalDebitCredit($supplierId, $endDate)
     {

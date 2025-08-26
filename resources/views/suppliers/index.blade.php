@@ -102,171 +102,230 @@
                             :items="$countries->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
                             placeholder="Select Country" />
                     </div>
-                   <!--  <span class="text-sm font-medium text-gray-700 mr-3 whitespace-nowrap shrink-0 mt-3">
-                        Service Type
-                    </span>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 mb-4">
-                        <div class="flex items-center">
-                            <input type="checkbox" name="has_hotel" id="has_hotel"
-                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                            <label for="has_hotel" class="ml-2 text-sm text-gray-700">Has Hotel</label>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="checkbox" name="has_flight" id="has_flight"
-                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                            <label for="has_flight" class="ml-2 text-sm text-gray-700">Has Flight</label>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="checkbox" name="has_visa" id="has_visa"
-                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                            <label for="has_visa" class="ml-2 text-sm text-gray-700">Has Visa</label>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="checkbox" name="has_insurance" id="has_insurance"
-                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                            <label for="has_insurance" class="ml-2 text-sm text-gray-700">Has Insurance</label>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="checkbox" name="has_tour" id="has_tour"
-                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                            <label for="has_tour" class="ml-2 text-sm text-gray-700">Has Tour</label>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="checkbox" name="has_cruise" id="has_cruise"
-                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                            <label for="has_cruise" class="ml-2 text-sm text-gray-700">Has Cruise</label>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="checkbox" name="has_car" id="has_car"
-                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                            <label for="has_car" class="ml-2 text-sm text-gray-700">Has Car</label>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="checkbox" name="has_rail" id="has_rail"
-                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                            <label for="has_rail" class="ml-2 text-sm text-gray-700">Has Rail</label>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="checkbox" name="has_esim" id="has_esim"
-                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                            <label for="has_esim" class="ml-2 text-sm text-gray-700">Has Esim</label>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="checkbox" name="has_event" id="has_event"
-                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                            <label for="has_event" class="ml-2 text-sm text-gray-700">Has Event</label>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="checkbox" name="has_lounge" id="has_lounge"
-                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                            <label for="has_lounge" class="ml-2 text-sm text-gray-700">Has Lounge</label>
-                        </div>
-                        <div class="flex items-center">
-                            <input type="checkbox" name="has_ferry" id="has_ferry"
-                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                            <label for="has_ferry" class="ml-2 text-sm text-gray-700">Has Ferry</label>
-                        </div>
-                    </div> -->
+                   
                     @php($supplier = $supplier ?? new \App\Models\Supplier())
+                    <div x-data="{
+                            hasHotel: {{ $supplier->has_hotel ? 'true' : 'false' }},
+                            hasFlight: {{ $supplier->has_flight ? 'true' : 'false' }},
+                            hasVisa: {{ $supplier->has_visa ? 'true' : 'false' }},
+                            hasInsurance: {{ $supplier->has_insurance ? 'true' : 'false' }},
+                            hasTour: {{ $supplier->has_tour ? 'true' : 'false' }},
+                            hasCruise: {{ $supplier->has_cruise ? 'true' : 'false' }},
+                            hasCar: {{ $supplier->has_car ? 'true' : 'false' }},
+                            hasRail: {{ $supplier->has_rail ? 'true' : 'false' }},
+                            hasEsim: {{ $supplier->has_esim ? 'true' : 'false' }},
+                            hasEvent: {{ $supplier->has_event ? 'true' : 'false' }},
+                            hasLounge: {{ $supplier->has_lounge ? 'true' : 'false' }},
+                            hasFerry: {{ $supplier->has_ferry ? 'true' : 'false' }},
+                            hotelChannel: '{{ old('hotel_channel', ($supplier->is_online === null ? '' : ($supplier->is_online ? 'online' : 'offline'))) }}'
+                        }" class="mt-2">
+                        <span class="text-sm font-medium text-gray-700 mr-3 whitespace-nowrap shrink-0">Service Type</span>
 
-                     <div x-data="{
-    hasHotel: {{ old('has_hotel', optional($supplier)->has_hotel) ? 'true' : 'false' }},
-    hotelChannel: '{{ old('hotel_channel', is_null(optional($supplier)->is_online) ? '' : (optional($supplier)->is_online ? 'online' : 'offline')) }}'
-}" class="mt-2">
-                                        <span class="text-sm font-medium text-gray-700 mr-3 whitespace-nowrap shrink-0">
-                                            Service Type
-                                        </span>
-                                        <div class="flex items-center mb-2">
-                                            <input type="checkbox"
-                                                name="has_hotel"
-                                                id="has_hotel"
-                                                x-model="hasHotel"
-                                                @change="if(!hasHotel) hotelChannel = ''"
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                                            <label for="has_hotel" class="ml-2 text-sm text-gray-700">Has Hotel</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-24 gap-y-2" @click.stop>
 
-                                            <input type="checkbox" name="has_flight" id="has_flight"
-                                                {{ $supplier->has_flight ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_flight" class="ml-2 text-sm text-gray-700">Has Flight</label>
+                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                <span class="text-sm text-gray-700">Has Hotel</span>
 
-                                            <input type="checkbox" name="has_visa" id="has_visa"
-                                                {{ $supplier->has_visa ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_visa" class="ml-2 text-sm text-gray-700">Has Visa</label>
+                                <button type="button"
+                                    @click="hasHotel = !hasHotel; if(!hasHotel) hotelChannel='';"
+                                    :aria-pressed="hasHotel.toString()"
+                                    class="w-11 h-6 rounded-full relative transition"
+                                    :class="hasHotel ? 'bg-blue-600' : 'bg-gray-200'">
+                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                        :class="hasHotel ? 'translate-x-5' : ''"></span>
+                                </button>
 
-                                            <input type="checkbox" name="has_insurance" id="has_insurance"
-                                                {{ $supplier->has_insurance ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_insurance" class="ml-2 text-sm text-gray-700">Has Insurance</label>
+                                <input type="hidden" name="has_hotel" :value="hasHotel ? 1 : ''">
+                            </div>
 
-                                            <input type="checkbox" name="has_tour" id="has_tour"
-                                                {{ $supplier->has_tour ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_tour" class="ml-2 text-sm text-gray-700">Has Tour</label>
+                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                <span class="text-sm text-gray-700">Has Flight</span>
 
-                                            <input type="checkbox" name="has_cruise" id="has_cruise"
-                                                {{ $supplier->has_cruise ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_cruise" class="ml-2 text-sm text-gray-700">Has Cruise</label>
+                                <button type="button"
+                                    @click="hasFlight = !hasFlight; if(!hasFlight) flightChannel='';"
+                                    :aria-pressed="hasFlight.toString()"
+                                    class="w-11 h-6 rounded-full relative transition"
+                                    :class="hasFlight ? 'bg-blue-600' : 'bg-gray-200'">
+                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                        :class="hasFlight ? 'translate-x-5' : ''"></span>
+                                </button>
+                                <template x-if="hasFlight">
+                                    <input type="hidden" name="has_flight" value="1">
+                                </template>
+                            </div>
 
-                                            <input type="checkbox" name="has_car" id="has_car"
-                                                {{ $supplier->has_car ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_car" class="ml-2 text-sm text-gray-700">Has Car</label>
+                            <!-- Has Visa -->
+                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                <span class="text-sm text-gray-700">Has Visa</span>
+                                <button type="button" @click="hasVisa = !hasVisa"
+                                    :aria-pressed="hasVisa.toString()"
+                                    class="w-11 h-6 rounded-full relative transition"
+                                    :class="hasVisa ? 'bg-blue-600' : 'bg-gray-200'">
+                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                        :class="hasVisa ? 'translate-x-5' : ''"></span>
+                                </button>
+                                <template x-if="hasVisa">
+                                    <input type="hidden" name="has_visa" value="1">
+                                </template>
+                            </div>
 
-                                            <input type="checkbox" name="has_rail" id="has_rail"
-                                                {{ $supplier->has_rail ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_rail" class="ml-2 text-sm text-gray-700">Has Rail</label>
+                            <!-- Has Insurance -->
+                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                <span class="text-sm text-gray-700">Has Insurance</span>
+                                <button type="button" @click="hasInsurance = !hasInsurance"
+                                    :aria-pressed="hasInsurance.toString()"
+                                    class="w-11 h-6 rounded-full relative transition"
+                                    :class="hasInsurance ? 'bg-blue-600' : 'bg-gray-200'">
+                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                        :class="hasInsurance ? 'translate-x-5' : ''"></span>
+                                </button>
+                                <template x-if="hasInsurance">
+                                    <input type="hidden" name="has_insurance" value="1">
+                                </template>
+                            </div>
 
-                                            <input type="checkbox" name="has_esim" id="has_esim"
-                                                {{ $supplier->has_esim ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_esim" class="ml-2 text-sm text-gray-700">Has Esim</label>
+                            <!-- Has Tour -->
+                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                <span class="text-sm text-gray-700">Has Tour</span>
+                                <button type="button" @click="hasTour = !hasTour"
+                                    :aria-pressed="hasTour.toString()"
+                                    class="w-11 h-6 rounded-full relative transition"
+                                    :class="hasTour ? 'bg-blue-600' : 'bg-gray-200'">
+                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                        :class="hasTour ? 'translate-x-5' : ''"></span>
+                                </button>
+                                <template x-if="hasTour">
+                                    <input type="hidden" name="has_tour" value="1">
+                                </template>
+                            </div>
 
-                                            <input type="checkbox" name="has_event" id="has_event"
-                                                {{ $supplier->has_event ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_event" class="ml-2 text-sm text-gray-700">Has Event</label>
+                            <!-- Has Cruise -->
+                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                <span class="text-sm text-gray-700">Has Cruise</span>
+                                <button type="button" @click="hasCruise = !hasCruise"
+                                    :aria-pressed="hasCruise.toString()"
+                                    class="w-11 h-6 rounded-full relative transition"
+                                    :class="hasCruise ? 'bg-blue-600' : 'bg-gray-200'">
+                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                        :class="hasCruise ? 'translate-x-5' : ''"></span>
+                                </button>
+                                <template x-if="hasCruise">
+                                    <input type="hidden" name="has_cruise" value="1">
+                                </template>
+                            </div>
 
-                                            <input type="checkbox" name="has_lounge" id="has_lounge"
-                                                {{ $supplier->has_lounge ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_lounge" class="ml-2 text-sm text-gray-700">Has Lounge</label>
+                            <!-- Has Car -->
+                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                <span class="text-sm text-gray-700">Has Car</span>
+                                <button type="button" @click="hasCar = !hasCar"
+                                    :aria-pressed="hasCar.toString()"
+                                    class="w-11 h-6 rounded-full relative transition"
+                                    :class="hasCar ? 'bg-blue-600' : 'bg-gray-200'">
+                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                        :class="hasCar ? 'translate-x-5' : ''"></span>
+                                </button>
+                                <template x-if="hasCar">
+                                    <input type="hidden" name="has_car" value="1">
+                                </template>
+                            </div>
 
-                                            <input type="checkbox" name="has_ferry" id="has_ferry"
-                                                {{ $supplier->has_ferry ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_ferry" class="ml-2 text-sm text-gray-700">Has Ferry</label>
-                                        </div>
+                            <!-- Has Rail -->
+                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                <span class="text-sm text-gray-700">Has Rail</span>
+                                <button type="button" @click="hasRail = !hasRail"
+                                    :aria-pressed="hasRail.toString()"
+                                    class="w-11 h-6 rounded-full relative transition"
+                                    :class="hasRail ? 'bg-blue-600' : 'bg-gray-200'">
+                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                        :class="hasRail ? 'translate-x-5' : ''"></span>
+                                </button>
+                                <template x-if="hasRail">
+                                    <input type="hidden" name="has_rail" value="1">
+                                </template>
+                            </div>
 
-                                        <div x-cloak x-show="hasHotel" class="mt-2">
-                                            <label for="hotel_channel" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Supplier Mode
-                                            </label>
-                                            <select
-                                                name="hotel_channel"
-                                                id="hotel_channel"
-                                                x-model="hotelChannel"
-                                                :disabled="!hasHotel"
-                                                class="block h-10 w-64 md:w-72 min-w-[16rem] border border-gray-300 rounded px-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
-                                                <option value="" disabled>Select mode</option>
-                                                <option value="online">Online</option>
-                                                <option value="offline">Offline</option>
-                                            </select>
-                                            <input type="hidden" name="is_online" :value="hasHotel ? (hotelChannel === 'online' ? 1 : 0) : ''">
-                                        </div>
-                                    </div>
+                            <!-- Has Esim -->
+                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                <span class="text-sm text-gray-700">Has Esim</span>
+                                <button type="button" @click="hasEsim = !hasEsim"
+                                    :aria-pressed="hasEsim.toString()"
+                                    class="w-11 h-6 rounded-full relative transition"
+                                    :class="hasEsim ? 'bg-blue-600' : 'bg-gray-200'">
+                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                        :class="hasEsim ? 'translate-x-5' : ''"></span>
+                                </button>
+                                <template x-if="hasEsim">
+                                    <input type="hidden" name="has_esim" value="1">
+                                </template>
+                            </div>
+
+                            <!-- Has Event -->
+                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                <span class="text-sm text-gray-700">Has Event</span>
+                                <button type="button" @click="hasEvent = !hasEvent"
+                                    :aria-pressed="hasEvent.toString()"
+                                    class="w-11 h-6 rounded-full relative transition"
+                                    :class="hasEvent ? 'bg-blue-600' : 'bg-gray-200'">
+                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                        :class="hasEvent ? 'translate-x-5' : ''"></span>
+                                </button>
+                                <template x-if="hasEvent">
+                                    <input type="hidden" name="has_event" value="1">
+                                </template>
+                            </div>
+
+                            <!-- Has Lounge -->
+                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                <span class="text-sm text-gray-700">Has Lounge</span>
+                                <button type="button" @click="hasLounge = !hasLounge"
+                                    :aria-pressed="hasLounge.toString()"
+                                    class="w-11 h-6 rounded-full relative transition"
+                                    :class="hasLounge ? 'bg-blue-600' : 'bg-gray-200'">
+                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                        :class="hasLounge ? 'translate-x-5' : ''"></span>
+                                </button>
+                                <template x-if="hasLounge">
+                                    <input type="hidden" name="has_lounge" value="1">
+                                </template>
+                            </div>
+
+                            <!-- Has Ferry -->
+                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                <span class="text-sm text-gray-700">Has Ferry</span>
+                                <button type="button" @click="hasFerry = !hasFerry"
+                                    :aria-pressed="hasFerry.toString()"
+                                    class="w-11 h-6 rounded-full relative transition"
+                                    :class="hasFerry ? 'bg-blue-600' : 'bg-gray-200'">
+                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                        :class="hasFerry ? 'translate-x-5' : ''"></span>
+                                </button>
+                                <template x-if="hasFerry">
+                                    <input type="hidden" name="has_ferry" value="1">
+                                </template>
+                            </div>
+
+                        </div>
+
+                        <div x-cloak x-show="hasHotel" class="mt-2" @click.stop>
+                            <label for="hotel_channel" class="block text-sm font-medium text-gray-700 mb-1">Hotel Supplier Mode</label>
+                            <select name="hotel_channel" id="hotel_channel" x-model="hotelChannel" :disabled="!hasHotel"
+                                class="block h-10 w-64 md:w-72 min-w-[16rem] border border-gray-300 rounded px-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                                <option value="" disabled>Select mode</option>
+                                <option value="online">Online</option>
+                                <option value="offline">Offline</option>
+                            </select>
+                            <input type="hidden" name="is_online" :value="hasHotel ? (hotelChannel === 'online' ? 1 : 0) : ''">
+                        </div>
+                    </div>
                     <div class="mt-5 flex items-center justify-between">
                         <button type="button"
                             @click="addSupplierModal = false"
-                            class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                            class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 shadow-md hover:bg-gray-50">
                             Cancel
                         </button>
 
                         <button type="submit"
-                            class="py-2 px-6 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700">
+                            class="py-2 px-6 bg-blue-600 text-white rounded-md shadow-md hover:bg-blue-700">
                             Update
                         </button>
                     </div>
@@ -344,7 +403,7 @@
                                 <div class="mb-5 flex items-start justify-between">
                                     <div>
                                         <h1 class="text-lg md:text-xl font-semibold text-gray-900">Edit Supplier</h1>
-                                        <p class="mt-1 text-sm text-gray-500 italic">Edit the supplier's details as you go</p>
+                                        <p class="mt-1 text-sm text-gray-500 italic">Edit the details of the supplier for accurate information</p>
                                     </div>
 
                                     <button type="button"
@@ -400,85 +459,209 @@
                                     </div>
                                     <div x-data="{
                                             hasHotel: {{ $supplier->has_hotel ? 'true' : 'false' }},
+                                            hasFlight: {{ $supplier->has_flight ? 'true' : 'false' }},
+                                            hasVisa: {{ $supplier->has_visa ? 'true' : 'false' }},
+                                            hasInsurance: {{ $supplier->has_insurance ? 'true' : 'false' }},
+                                            hasTour: {{ $supplier->has_tour ? 'true' : 'false' }},
+                                            hasCruise: {{ $supplier->has_cruise ? 'true' : 'false' }},
+                                            hasCar: {{ $supplier->has_car ? 'true' : 'false' }},
+                                            hasRail: {{ $supplier->has_rail ? 'true' : 'false' }},
+                                            hasEsim: {{ $supplier->has_esim ? 'true' : 'false' }},
+                                            hasEvent: {{ $supplier->has_event ? 'true' : 'false' }},
+                                            hasLounge: {{ $supplier->has_lounge ? 'true' : 'false' }},
+                                            hasFerry: {{ $supplier->has_ferry ? 'true' : 'false' }},
                                             hotelChannel: '{{ old('hotel_channel', ($supplier->is_online === null ? '' : ($supplier->is_online ? 'online' : 'offline'))) }}'
                                         }" class="mt-2">
-                                        <span class="text-sm font-medium text-gray-700 mr-3 whitespace-nowrap shrink-0">
-                                            Service Type
-                                        </span>
-                                        <div class="flex items-center mb-2">
-                                            <input type="checkbox"
-                                                name="has_hotel"
-                                                id="has_hotel"
-                                                x-model="hasHotel"
-                                                @change="if(!hasHotel) hotelChannel = ''"
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition">
-                                            <label for="has_hotel" class="ml-2 text-sm text-gray-700">Has Hotel</label>
+                                        <span class="text-sm font-medium text-gray-700 mr-3 whitespace-nowrap shrink-0">Service Type</span>
 
-                                            <input type="checkbox" name="has_flight" id="has_flight"
-                                                {{ $supplier->has_flight ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_flight" class="ml-2 text-sm text-gray-700">Has Flight</label>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-24 gap-y-2" @click.stop>
 
-                                            <input type="checkbox" name="has_visa" id="has_visa"
-                                                {{ $supplier->has_visa ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_visa" class="ml-2 text-sm text-gray-700">Has Visa</label>
+                                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                                <span class="text-sm text-gray-700">Has Hotel</span>
 
-                                            <input type="checkbox" name="has_insurance" id="has_insurance"
-                                                {{ $supplier->has_insurance ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_insurance" class="ml-2 text-sm text-gray-700">Has Insurance</label>
+                                                <button type="button"
+                                                    @click="hasHotel = !hasHotel; if(!hasHotel) hotelChannel='';"
+                                                    :aria-pressed="hasHotel.toString()"
+                                                    class="w-11 h-6 rounded-full relative transition"
+                                                    :class="hasHotel ? 'bg-blue-600' : 'bg-gray-200'">
+                                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                        :class="hasHotel ? 'translate-x-5' : ''"></span>
+                                                </button>
 
-                                            <input type="checkbox" name="has_tour" id="has_tour"
-                                                {{ $supplier->has_tour ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_tour" class="ml-2 text-sm text-gray-700">Has Tour</label>
+                                                <input type="hidden" name="has_hotel" :value="hasHotel ? 1 : ''">
+                                            </div>
 
-                                            <input type="checkbox" name="has_cruise" id="has_cruise"
-                                                {{ $supplier->has_cruise ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_cruise" class="ml-2 text-sm text-gray-700">Has Cruise</label>
+                                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                                <span class="text-sm text-gray-700">Has Flight</span>
 
-                                            <input type="checkbox" name="has_car" id="has_car"
-                                                {{ $supplier->has_car ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_car" class="ml-2 text-sm text-gray-700">Has Car</label>
+                                                <button type="button"
+                                                    @click="hasFlight = !hasFlight; if(!hasFlight) flightChannel='';"
+                                                    :aria-pressed="hasFlight.toString()"
+                                                    class="w-11 h-6 rounded-full relative transition"
+                                                    :class="hasFlight ? 'bg-blue-600' : 'bg-gray-200'">
+                                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                        :class="hasFlight ? 'translate-x-5' : ''"></span>
+                                                </button>
+                                                <template x-if="hasFlight">
+                                                    <input type="hidden" name="has_flight" value="1">
+                                                </template>
+                                            </div>
 
-                                            <input type="checkbox" name="has_rail" id="has_rail"
-                                                {{ $supplier->has_rail ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_rail" class="ml-2 text-sm text-gray-700">Has Rail</label>
+                                            <!-- Has Visa -->
+                                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                                <span class="text-sm text-gray-700">Has Visa</span>
+                                                <button type="button" @click="hasVisa = !hasVisa"
+                                                    :aria-pressed="hasVisa.toString()"
+                                                    class="w-11 h-6 rounded-full relative transition"
+                                                    :class="hasVisa ? 'bg-blue-600' : 'bg-gray-200'">
+                                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                        :class="hasVisa ? 'translate-x-5' : ''"></span>
+                                                </button>
+                                                <template x-if="hasVisa">
+                                                    <input type="hidden" name="has_visa" value="1">
+                                                </template>
+                                            </div>
 
-                                            <input type="checkbox" name="has_esim" id="has_esim"
-                                                {{ $supplier->has_esim ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_esim" class="ml-2 text-sm text-gray-700">Has Esim</label>
+                                            <!-- Has Insurance -->
+                                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                                <span class="text-sm text-gray-700">Has Insurance</span>
+                                                <button type="button" @click="hasInsurance = !hasInsurance"
+                                                    :aria-pressed="hasInsurance.toString()"
+                                                    class="w-11 h-6 rounded-full relative transition"
+                                                    :class="hasInsurance ? 'bg-blue-600' : 'bg-gray-200'">
+                                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                        :class="hasInsurance ? 'translate-x-5' : ''"></span>
+                                                </button>
+                                                <template x-if="hasInsurance">
+                                                    <input type="hidden" name="has_insurance" value="1">
+                                                </template>
+                                            </div>
 
-                                            <input type="checkbox" name="has_event" id="has_event"
-                                                {{ $supplier->has_event ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_event" class="ml-2 text-sm text-gray-700">Has Event</label>
+                                            <!-- Has Tour -->
+                                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                                <span class="text-sm text-gray-700">Has Tour</span>
+                                                <button type="button" @click="hasTour = !hasTour"
+                                                    :aria-pressed="hasTour.toString()"
+                                                    class="w-11 h-6 rounded-full relative transition"
+                                                    :class="hasTour ? 'bg-blue-600' : 'bg-gray-200'">
+                                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                        :class="hasTour ? 'translate-x-5' : ''"></span>
+                                                </button>
+                                                <template x-if="hasTour">
+                                                    <input type="hidden" name="has_tour" value="1">
+                                                </template>
+                                            </div>
 
-                                            <input type="checkbox" name="has_lounge" id="has_lounge"
-                                                {{ $supplier->has_lounge ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_lounge" class="ml-2 text-sm text-gray-700">Has Lounge</label>
+                                            <!-- Has Cruise -->
+                                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                                <span class="text-sm text-gray-700">Has Cruise</span>
+                                                <button type="button" @click="hasCruise = !hasCruise"
+                                                    :aria-pressed="hasCruise.toString()"
+                                                    class="w-11 h-6 rounded-full relative transition"
+                                                    :class="hasCruise ? 'bg-blue-600' : 'bg-gray-200'">
+                                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                        :class="hasCruise ? 'translate-x-5' : ''"></span>
+                                                </button>
+                                                <template x-if="hasCruise">
+                                                    <input type="hidden" name="has_cruise" value="1">
+                                                </template>
+                                            </div>
 
-                                            <input type="checkbox" name="has_ferry" id="has_ferry"
-                                                {{ $supplier->has_ferry ? 'checked' : '' }}
-                                                class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-400 transition ml-4">
-                                            <label for="has_ferry" class="ml-2 text-sm text-gray-700">Has Ferry</label>
+                                            <!-- Has Car -->
+                                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                                <span class="text-sm text-gray-700">Has Car</span>
+                                                <button type="button" @click="hasCar = !hasCar"
+                                                    :aria-pressed="hasCar.toString()"
+                                                    class="w-11 h-6 rounded-full relative transition"
+                                                    :class="hasCar ? 'bg-blue-600' : 'bg-gray-200'">
+                                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                        :class="hasCar ? 'translate-x-5' : ''"></span>
+                                                </button>
+                                                <template x-if="hasCar">
+                                                    <input type="hidden" name="has_car" value="1">
+                                                </template>
+                                            </div>
+
+                                            <!-- Has Rail -->
+                                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                                <span class="text-sm text-gray-700">Has Rail</span>
+                                                <button type="button" @click="hasRail = !hasRail"
+                                                    :aria-pressed="hasRail.toString()"
+                                                    class="w-11 h-6 rounded-full relative transition"
+                                                    :class="hasRail ? 'bg-blue-600' : 'bg-gray-200'">
+                                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                        :class="hasRail ? 'translate-x-5' : ''"></span>
+                                                </button>
+                                                <template x-if="hasRail">
+                                                    <input type="hidden" name="has_rail" value="1">
+                                                </template>
+                                            </div>
+
+                                            <!-- Has Esim -->
+                                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                                <span class="text-sm text-gray-700">Has Esim</span>
+                                                <button type="button" @click="hasEsim = !hasEsim"
+                                                    :aria-pressed="hasEsim.toString()"
+                                                    class="w-11 h-6 rounded-full relative transition"
+                                                    :class="hasEsim ? 'bg-blue-600' : 'bg-gray-200'">
+                                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                        :class="hasEsim ? 'translate-x-5' : ''"></span>
+                                                </button>
+                                                <template x-if="hasEsim">
+                                                    <input type="hidden" name="has_esim" value="1">
+                                                </template>
+                                            </div>
+
+                                            <!-- Has Event -->
+                                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                                <span class="text-sm text-gray-700">Has Event</span>
+                                                <button type="button" @click="hasEvent = !hasEvent"
+                                                    :aria-pressed="hasEvent.toString()"
+                                                    class="w-11 h-6 rounded-full relative transition"
+                                                    :class="hasEvent ? 'bg-blue-600' : 'bg-gray-200'">
+                                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                        :class="hasEvent ? 'translate-x-5' : ''"></span>
+                                                </button>
+                                                <template x-if="hasEvent">
+                                                    <input type="hidden" name="has_event" value="1">
+                                                </template>
+                                            </div>
+
+                                            <!-- Has Lounge -->
+                                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                                <span class="text-sm text-gray-700">Has Lounge</span>
+                                                <button type="button" @click="hasLounge = !hasLounge"
+                                                    :aria-pressed="hasLounge.toString()"
+                                                    class="w-11 h-6 rounded-full relative transition"
+                                                    :class="hasLounge ? 'bg-blue-600' : 'bg-gray-200'">
+                                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                        :class="hasLounge ? 'translate-x-5' : ''"></span>
+                                                </button>
+                                                <template x-if="hasLounge">
+                                                    <input type="hidden" name="has_lounge" value="1">
+                                                </template>
+                                            </div>
+
+                                            <!-- Has Ferry -->
+                                            <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
+                                                <span class="text-sm text-gray-700">Has Ferry</span>
+                                                <button type="button" @click="hasFerry = !hasFerry"
+                                                    :aria-pressed="hasFerry.toString()"
+                                                    class="w-11 h-6 rounded-full relative transition"
+                                                    :class="hasFerry ? 'bg-blue-600' : 'bg-gray-200'">
+                                                    <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                        :class="hasFerry ? 'translate-x-5' : ''"></span>
+                                                </button>
+                                                <template x-if="hasFerry">
+                                                    <input type="hidden" name="has_ferry" value="1">
+                                                </template>
+                                            </div>
+
                                         </div>
 
-                                        <div x-cloak x-show="hasHotel" class="mt-2">
-                                            <label for="hotel_channel" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Supplier Mode
-                                            </label>
-                                            <select
-                                                name="hotel_channel"
-                                                id="hotel_channel"
-                                                x-model="hotelChannel"
-                                                :disabled="!hasHotel"
+                                        <div x-cloak x-show="hasHotel" class="mt-2" @click.stop>
+                                            <label for="hotel_channel" class="block text-sm font-medium text-gray-700 mb-1">Hotel Supplier Mode</label>
+                                            <select name="hotel_channel" id="hotel_channel" x-model="hotelChannel" :disabled="!hasHotel"
                                                 class="block h-10 w-64 md:w-72 min-w-[16rem] border border-gray-300 rounded px-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
                                                 <option value="" disabled>Select mode</option>
                                                 <option value="online">Online</option>
@@ -487,15 +670,16 @@
                                             <input type="hidden" name="is_online" :value="hasHotel ? (hotelChannel === 'online' ? 1 : 0) : ''">
                                         </div>
                                     </div>
+
                                     <div class="mt-5 flex items-center justify-between">
                                         <button type="button"
                                             @click="editSuppliers = false"
-                                            class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                                            class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 shadow-md hover:bg-gray-50">
                                             Cancel
                                         </button>
 
                                         <button type="submit"
-                                            class="py-2 px-6 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700">
+                                            class="py-2 px-6 bg-blue-600 text-white rounded-md shadow-md hover:bg-blue-700">
                                             Update
                                         </button>
                                     </div>

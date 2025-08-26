@@ -434,38 +434,54 @@ public function updateExchangeRates(Request $request, $supplierId)
         ];
     }
 
-    public function getClientCredential(array $scopes) : array
+     public function getClientCredential(array $scopes) : array
     {
-        $key = 'magic_holiday_client_credential_' . implode('_', $scopes);
+        $user = Auth::user();
+        if ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company_id;
+        } elseif($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->company_id;
+        } 
+        
+        $credential = SupplierCredential::query()
+            ->where('company_id', $companyId)
+            ->where('supplier_id', 2)
+            ->first();
 
+        $key = 'magic_holiday_client_credential_' . $credential->client_id . '_' . implode('_', $scopes);
         $ttl = 60 * 60 * 24; // seconds * minutes * hours (1 day)
 
-        return Cache::remember($key, $ttl, function () use ($scopes) {
+        if ($companyId && $credential) {
+            return Cache::remember($key, $ttl, function () use ($scopes, $credential) {
+                
+                $tokenUrl = config('services.magic-holiday.token-url');
 
-            $tokenUrl = config('services.magic-holiday.token-url');
+                $data = [
+                    'client_id'     => $credential->client_id,
+                    'client_secret' => $credential->client_secret,
+                    'grant_type'    => 'client_credentials',
+                    'scope'         => $scopes,
+                ];
 
-            $data = [
-                'client_id' => config('services.magic-holiday.client-id'),
-                'client_secret' => config('services.magic-holiday.client-secret'),
-                'grant_type' => 'client_credentials',
-                'scope' => $scopes,
-            ];
+                $response = Http::withoutVerifying()->post($tokenUrl, $data);
 
-            $response = Http::withoutVerifying()->post($tokenUrl, $data);
+                Log::channel('magic_holidays')->info('Credential Response', [
+                    'status' => $response->status(),
+                    'body'   => $response->body(),
+                ]);
+
+                if (!$response->successful()) {
+                    throw new Exception('Unable to retrieve access token.');
+                }
+
+                return $response->json();
+            });
             
-            Log::channel('magic_holidays')->info('Credential Response', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]); 
-            
-            if (!$response->successful()) {
-                throw new Exception('Unable to retrieve access token.');
-            }
+        }
 
-            return $response->json();
-        });
     }
-
     public function magicReserveWebhook($id)
     {
 

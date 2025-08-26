@@ -133,8 +133,10 @@ class ChargeController extends Controller
             'charge_type' => 'required',
             'paid_by' => 'required',
             'amount' => 'required|numeric',
+            'self_charge' => 'nullable|numeric',
             'is_auto_paid' => 'nullable|boolean',
             'has_url' => 'nullable|boolean',
+            'can_charge_invoice' => 'nullable|boolean',
             // 'auth_type' => 'required|in:basic,oauth',
             // 'base_url' => 'nullable|url',
             'api_key' => 'required|string',
@@ -201,6 +203,7 @@ class ChargeController extends Controller
                 'description' => $request->get('description'),
                 'type' => $request->get('type'),
                 'amount' => $request->get('amount'),
+                'self_charge' => $request->get('self_charge'),
                 'acc_fee_id' => $PaymentGatewayExpenses,
                 'acc_bank_id' => $request->get('acc_bank_id'),
                 'acc_fee_bank_id' => $newAccountBankFee->id,
@@ -210,6 +213,7 @@ class ChargeController extends Controller
                 'paid_by' => $request->get('paid_by'),
                 'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
                 'has_url' => $request->has('has_url') ? 1 : 0,
+                'can_charge_invoice' => $request->has('can_charge_invoice') ? 1 : 0,
                 // 'auth_type' => $request->get('auth_type'),
                 // 'base_url' => $request->get('base_url'),
                 'api_key' => $request->get('api_key'),
@@ -270,13 +274,16 @@ class ChargeController extends Controller
             'paid_by' => 'required',
             'charge_type' => 'required',
             'amount' => 'required|numeric',
+            'extra_charge' => 'required|numeric',
+            'self_charge' => 'nullable|numeric',
             'is_auto_paid' => 'nullable|boolean',
             'has_url' => 'nullable|boolean',
+            'can_change_invoice' => 'nullable|boolean',
             // 'auth_type' => 'required|in:basic,oauth',
             // 'base_url'    => 'nullable|url',
             'api_key'     => 'nullable|string',
         ]);
-
+        Log::info($request->all());
         try {
             DB::beginTransaction();
 
@@ -287,11 +294,14 @@ class ChargeController extends Controller
             $charge->update([
                 'name' => $request->get('name'),
                 'amount' => $request->get('amount'),
+                'extra_charge' => $request->get('extra_charge'),
+                'self_charge' => $request->get('self_charge'),
                 'paid_by' => $request->get('paid_by'),
                 'description' => $request->get('description'),
                 'charge_type' => $request->get('charge_type'),
                 'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
                 'has_url' => $request->has('has_url') ? 1 : 0,
+                'can_change_invoice' => $request->has('can_change_invoice') ? 1 : 0,
                 // 'auth_type' => $request->get('auth_type'),
                 // 'base_url'    => $request->get('base_url'),
                 // 'api_key'    => $request->get('api_key'),

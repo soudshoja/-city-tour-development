@@ -8,5 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 class Sequence extends Model
 {
     use HasFactory;
-    protected $fillable = ['sequence_for','current_sequence'];
+    protected $fillable = ['company_id', 'sequence_for','current_sequence'];
 }

@@ -49,7 +49,7 @@
                     </td>
                     <td>{{ $invoice->created_at }}</td>
                     <td>
-                        <button href="{{route('invoice.show', ['invoiceNumber' =>$invoice=>invoice_number])}}" class="btn btn-primary mt-2">View</button>
+                        <button href="{{route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' =>$invoice->invoice_number])}}" class="btn btn-primary mt-2">View</button>
                     </td>
                 </tr>
                 @endforeach

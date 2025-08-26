@@ -20,6 +20,7 @@ class Charge extends Model
         'api_key',
         'paid_by',
         'amount',
+        'extra_charge',
         'self_charge',
         'is_active',
         'charge_type',

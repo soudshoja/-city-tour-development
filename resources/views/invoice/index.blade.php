@@ -194,7 +194,7 @@
                                         </svg>
                                         </a> -->
                                         <a data-tooltip="View Invoice" target="_blank"
-                                            href="{{ url('/invoice/' . $invoice->invoice_number) }}"
+                                            href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                             class="viewInvoice {{ $invoice->payment_type ? 'text-blue-500 hover:underline' : 'text-gray-400 cursor-not-allowed' }}"
                                             @unless($invoice->payment_type) onclick="return false;" @endunless>
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20"
@@ -209,7 +209,7 @@
                                         </a>
                                         @if ($invoice->status !== 'paid')
                                         <a data-tooltip="View Detail/ Edit"
-                                            href="{{ route('invoice.edit', ['invoiceNumber' => $invoice->invoice_number]) }}"
+                                            href="{{ route('invoice.edit', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                             class="text-sm font-medium text-blue-600 hover:underline">
 
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20"
@@ -429,55 +429,13 @@
         <!-- right -->
     </div>
     <script>
-        function openInvoiceModal(invoiceNumber) {
-            const modal = document.getElementById("viewInvoiceModal");
-            const contentDiv = document.getElementById("invoiceInvoiceContent");
-
-            // Clear previous content
-            contentDiv.innerHTML = "";
-
-            // Open the modal
-            modal.classList.remove("hidden");
-            url =
-                "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
-                    ":invoiceNumber",
-                    invoiceNumber
-                );
-
-            // Fetch the invoice details
-            fetch(url)
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error("Network response was not ok");
-                    }
-                    return response.text();
-                })
-                .then((data) => {
-                    contentDiv.innerHTML = data;
-
-                    // Close the modal when the backdrop is clicked
-                    modal.addEventListener("click", (event) => {
-                        if (event.target === modal) {
-                            closeInvoiceModal();
-                        }
-                    });
-
-
-                })
-                .catch((error) => {
-                    console.error("Error fetching invoice details:", error);
-                    contentDiv.innerHTML =
-                        '<p class="text-center text-red-500">Failed to load invoice details.</p>';
-
-                });
-        }
-
         function closeInvoiceModal() {
             const modal = document.getElementById("viewInvoiceModal");
             modal.classList.add("hidden");
         }
-        
-        const updateUrlTemplate = "{{ route('invoice.updateDate', ['invoiceNumber' => 'INVOICE_NUM']) }}";
+
+        const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
+        const updateUrlTemplate = "{{ route('invoice.updateDate', ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM']) }}";
 
         function openDateModal(btn) {
             const number = btn.dataset.number;
@@ -487,7 +445,7 @@
             const input  = document.getElementById('dateInput');
             const modal  = document.getElementById('dateModal');
 
-            form.action  = updateUrlTemplate.replace('INVOICE_NUM', encodeURIComponent(number));
+            form.action = updateUrlTemplate.replace('COMPANY_ID', encodeURIComponent(companyId)).replace('INVOICE_NUM', encodeURIComponent(number));
             input.value  = date;
 
             modal.classList.remove('hidden');

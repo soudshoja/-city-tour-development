@@ -204,12 +204,11 @@
                                 class="w-full form-input" placeholder="Invoice Number" />
                         </div>
 
-                        <form id="invoice-date-form" method="POST" action="{{ route('invoice.updateDate', $invoice->invoice_number) }}">
+                        <form id="invoice-date-form" method="POST" action="{{ route('invoice.updateDate', ['companyId' => optional($invoice->agent->branch->company)->id, 'invoiceNumber' => $invoiceNumber]) }}">
                             @csrf
                             @method('PUT')
                             <div class="flex items-center">
                                 <label class="w-full text-sm font-semibold">Invoice Date:</label>
-                                <!-- Save icon button -->
                                 <button type="submit" class=" rounded hover:bg-gray-200 dark:hover:bg-gray-700" title="Save">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
                                         class="w-5 h-5 text-blue-600">
@@ -218,8 +217,6 @@
                                 </button>
                                 <input id="invdate" type="date" name="invdate" class="form-input w-full"
                                     value="{{ $invoice->invoice_date }}" />
-
-
                             </div>
                         </form>
 
@@ -403,6 +400,14 @@
                                 <div class="flex items-center mb-1">
                                     <div class="mr-2">Subtotal:</div>
                                     <span id="subTotalDisplay">0.00</span>
+                                </div>
+                                <div id="service_charge_display_row" class="flex items-center mb-1" style="display: none;">
+                                    <div id="service_charge_label" class="mr-2">Service Charge:</div>
+                                    <span id="serviceChargeDisplay">0.00</span>
+                                </div>
+                                <div id="final_amount_display_row" class="flex items-center mb-1 font-medium border-t pt-1" style="display: none;">
+                                    <div class="mr-2">Final Amount:</div>
+                                    <span id="finalAmountDisplay">0.00</span>
                                 </div>
                                 <div id="invoice_charge_display_row" class="flex items-center mb-1" style="display: none;">
                                     <div id="invoice_charge_label" class="mr-2">Invoice Charge:</div>
@@ -798,7 +803,7 @@
                             </div>
 
                             <!-- Payment Gateway Section -->
-                            <section id="payment_gateway_section" class="mb-6">
+                            <section id="payment_gateway_section" class="mb-6" x-data="{ paymentType: '{{ $invoice->payment_type ?? '' }}' }" x-show="paymentType === '' || paymentType === 'full'" x-cloak>
                                 @php
                                 $selectedGateway = optional($invoice->invoicePartials->first())->payment_gateway ?? '';
                                 $selectedMethod = optional($invoice->invoicePartials->first())->payment_method ?? '';
@@ -813,6 +818,7 @@
                                             </div>
                                             <select id="payment_gateway_option" name="payment_gateway_option"
                                                 class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
+                                                <option value="">Choose a Payment Gateway</option>
                                                 @foreach ($paymentGateways as $gateway)
                                                 <option value="{{ $gateway->name }}"
                                                     {{ $selectedGateway === $gateway->name ? 'selected' : '' }}>
@@ -830,16 +836,6 @@
                                                 <option value="{{ $methods->id }}" {{ $selectedMethod == $methods->id ? 'selected' : '' }}>{{ $methods->english_name }}</option>
                                                 @endforeach
                                             </select>
-                                        </div>
-
-                                        <!-- External URL Field -->
-                                        <div class="mt-4" id="external_url_section" style="display: none;">
-                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">External Payment URL (Optional)</h2>
-                                            <input type="url" id="external_url" name="external_url"
-                                                class="border border-gray-300 p-2 rounded w-full"
-                                                placeholder="Enter payment gateway URL (optional)"
-                                                value="{{ $invoice->external_url ?? '' }}">
-                                            <p class="text-sm text-gray-500 mt-1">Optionally provide an external payment gateway URL for this invoice</p>
                                         </div>
 
                                         <!-- Auto Payment Notification -->
@@ -863,48 +859,28 @@
                                         <div id="invoice_charge_section" class="mt-4" style="display: none;">
                                             <h2 id="invoice_charge_title" class="text-lg font-semibold mb-3 text-gray-700">Invoice Charge</h2>
 
-                                            <!-- Calculation Method -->
-                                            <div class="mb-3">
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">Calculation Method:</label>
-                                                <select id="charge_calculation_method" name="charge_calculation_method" class="form-select">
-                                                    <option value="flat">Flat Rate</option>
-                                                    <option value="percentage">Percentage (%)</option>
-                                                </select>
-                                            </div>
-
-                                            <!-- Charge Amount Input -->
+                                            <!-- Simple Charge Amount Input -->
                                             <div class="mb-3">
                                                 <label class="block text-sm font-medium text-gray-700 mb-1">Charge Amount:</label>
-                                                <input type="number" id="invoice_charge_amount" name="invoice_charge_amount"
+                                                <input type="number" id="invoice_charge_amount_input" name="invoice_charge_amount_input"
                                                     class="form-input" step="0.01" min="0"
                                                     value="{{ $invoice->invoice_charge }}"
                                                     placeholder="Enter charge amount">
-                                            </div>
-
-                                            <!-- Calculated Invoice Charge (Read-only display) -->
-                                            <div class="mb-3">
-                                                <label id="calculated_charge_label" class="block text-sm font-medium text-gray-700 mb-1">Calculated Invoice Charge:</label>
-                                                <input type="text" id="calculated_invoice_charge" class="form-input bg-gray-100"
-                                                    value="{{ number_format($invoice->invoice_charge, 2) }}" readonly>
-                                            </div>
-
-                                            <!-- Important Note -->
-                                            <div class="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                                                <div class="flex items-start">
-                                                    <svg class="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                    </svg>
-                                                    <div>
-                                                        <h4 class="text-sm font-medium text-yellow-800">Important Note</h4>
-                                                        <p class="text-sm text-yellow-700 mt-1">
-                                                            When using percentage calculation, only the final calculated amount is saved in our database.
-                                                            The percentage and calculation method are for your convenience only and are not stored.
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                                <input type="hidden" id="invoice_charge_amount" name="invoice_charge_amount" value="{{ $invoice->invoice_charge }}">
                                             </div>
                                         </div>
                                         @endif
+
+                                        <!-- External URL Field -->
+                                        <div class="mt-4" id="external_url_section" style="display: none;">
+                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">External Payment URL (Optional)</h2>
+                                            <input type="url" id="external_url" name="external_url"
+                                                class="border border-gray-300 p-2 rounded w-full"
+                                                placeholder="Enter payment gateway URL (optional)"
+                                                value="{{ $invoice->external_url ?? '' }}">
+                                            <p class="text-sm text-gray-500 mt-1">Optionally provide an external payment gateway URL for this invoice</p>
+                                        </div>
+
                                     </div>
                                     <div id="payment-response-message" class="hidden mt-4 text-sm font-semibold rounded px-4 py-2"></div>
                                 </div>
@@ -929,7 +905,7 @@
                                         <span id="button-text-full">Save Payment</span>
                                     </button>
                                     <div class="mt-4">
-                                        <a target="_blank" href="{{ route('invoice.proforma', $invoice->invoice_number) }}"
+                                        <a target="_blank" href="{{ route('invoice.proforma', ['companyId' => optional($invoice->agent->branch->company)->id, 'invoiceNumber' => $invoiceNumber]) }}"
                                             class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 bg-blue-500 hover:bg-blue-700">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -995,23 +971,8 @@
                                         </svg>
                                         Copy Link
                                     </button>
-
-                                    <!-- View Button -->
-                                    {{-- <button onclick="viewInvoice()"
-                                    class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
-                                        <path opacity="0.5"
-                                            d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z"
-                                            stroke="currentColor" stroke-width="1.5"></path>
-                                        <path
-                                            d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z"
-                                            stroke="currentColor" stroke-width="1.5"></path>
-                                    </svg>
-                                    View
-                                </button> --}}
                                     @if($invoice->payment_type !== 'cash')
-                                    <a target="_blank" href="{{ url('/invoice/' . $invoice->invoice_number) }}"
+                                    <a target="_blank" href="{{ route('invoice.show', ['companyId' => optional($invoice->agent->branch->company)->id, 'invoiceNumber' => $invoiceNumber]) }}"
                                         class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                             xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
@@ -1556,51 +1517,44 @@
 
             // console.log(items);
 
-            // Invoice Charge Functions
-            function calculateInvoiceCharge() {
-                const calculationMethod = document.getElementById('charge_calculation_method').value;
-                const chargeAmountInput = document.getElementById('invoice_charge_amount');
-                const calculatedChargeInput = document.getElementById('calculated_invoice_charge');
-                const invoiceChargeHidden = document.getElementById('invoice_charge');
-
-                const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
-                let chargeAmount = parseFloat(chargeAmountInput.value) || 0;
-
+            // Simple Invoice Charge Function
+            function updateInvoiceChargeFromInput() {
+                const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
+                const invoiceChargeAmount = parseFloat(invoiceChargeAmountInput.value) || 0;
+                
                 // Validate and prevent negative values
-                if (chargeAmount < 0) {
-                    chargeAmount = 0;
-                    chargeAmountInput.value = 0;
-                    showValidationError(chargeAmountInput, 'Charge amount cannot be negative');
+                if (invoiceChargeAmount < 0) {
+                    invoiceChargeAmountInput.value = 0;
+                    showValidationError(invoiceChargeAmountInput, 'Charge amount cannot be negative');
                     return;
                 } else {
-                    hideValidationError(chargeAmountInput);
+                    hideValidationError(invoiceChargeAmountInput);
                 }
-
-                let finalChargeAmount = 0;
-
-                if (chargeAmount > 0) {
-                    if (calculationMethod === 'percentage') {
-                        finalChargeAmount = (subtotal * chargeAmount) / 100;
-                    } else {
-                        finalChargeAmount = chargeAmount;
-                    }
+                
+                // Update hidden fields
+                const invoiceChargeElement = document.getElementById('invoice_charge');
+                const invoiceChargeAmountHidden = document.getElementById('invoice_charge_amount');
+                
+                if (invoiceChargeElement) {
+                    invoiceChargeElement.value = invoiceChargeAmount.toFixed(2);
                 }
-
-                calculatedChargeInput.value = finalChargeAmount.toFixed(2);
-                invoiceChargeHidden.value = finalChargeAmount;
-
+                if (invoiceChargeAmountHidden) {
+                    invoiceChargeAmountHidden.value = invoiceChargeAmount.toFixed(2);
+                }
+                
+                // Update displays
                 calculateSubtotal();
             }
 
             function resetInvoiceCharge() {
-                const chargeAmountInput = document.getElementById('invoice_charge_amount');
-                const calculatedChargeInput = document.getElementById('calculated_invoice_charge');
-                const invoiceChargeHidden = document.getElementById('invoice_charge');
+                const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
+                const invoiceChargeElement = document.getElementById('invoice_charge');
+                const invoiceChargeAmountHidden = document.getElementById('invoice_charge_amount');
                 const invoiceChargeDisplay = document.getElementById('invoiceChargeDisplay');
 
-                if (chargeAmountInput) chargeAmountInput.value = '';
-                if (calculatedChargeInput) calculatedChargeInput.value = '0.00';
-                if (invoiceChargeHidden) invoiceChargeHidden.value = '0';
+                if (invoiceChargeAmountInput) invoiceChargeAmountInput.value = '';
+                if (invoiceChargeElement) invoiceChargeElement.value = '0';
+                if (invoiceChargeAmountHidden) invoiceChargeAmountHidden.value = '0';
                 if (invoiceChargeDisplay) invoiceChargeDisplay.textContent = '0.00';
 
                 calculateSubtotal();
@@ -1800,29 +1754,29 @@
             document.addEventListener('DOMContentLoaded', function() {
                 const gatewaySelect = document.getElementById('payment_gateway_option');
                 if (gatewaySelect) {
-                    gatewaySelect.addEventListener('change', checkExternalUrlVisibility);
+                    gatewaySelect.addEventListener('change', function() {
+                        checkExternalUrlVisibility();
+                        calculateSubtotal(); // Recalculate when gateway changes
+                    });
                     // Check on initial load
                     checkExternalUrlVisibility();
+                    calculateSubtotal(); // Calculate on initial load
                 }
 
                 // Invoice Charge Event Listeners
-                const chargeCalculationMethod = document.getElementById('charge_calculation_method');
-                const invoiceChargeAmount = document.getElementById('invoice_charge_amount');
+                const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
 
-                if (chargeCalculationMethod) {
-                    chargeCalculationMethod.addEventListener('change', calculateInvoiceCharge);
-                }
-
-                if (invoiceChargeAmount) {
-                    invoiceChargeAmount.addEventListener('input', calculateInvoiceCharge);
+                if (invoiceChargeAmountInput) {
+                    invoiceChargeAmountInput.addEventListener('input', updateInvoiceChargeFromInput);
+                    invoiceChargeAmountInput.addEventListener('change', updateInvoiceChargeFromInput);
 
                     // Add real-time validation for negative values
-                    invoiceChargeAmount.addEventListener('input', function() {
+                    invoiceChargeAmountInput.addEventListener('input', function() {
                         validateInvoiceChargeAmount(this);
                     });
 
                     // Prevent negative values on keydown
-                    invoiceChargeAmount.addEventListener('keydown', function(e) {
+                    invoiceChargeAmountInput.addEventListener('keydown', function(e) {
                         // Prevent typing minus sign
                         if (e.key === '-' || e.key === 'Minus') {
                             e.preventDefault();
@@ -1830,7 +1784,7 @@
                     });
 
                     // Validate on blur (when user leaves the field)
-                    invoiceChargeAmount.addEventListener('blur', function() {
+                    invoiceChargeAmountInput.addEventListener('blur', function() {
                         validateInvoiceChargeAmount(this);
                     });
                 }
@@ -2257,12 +2211,51 @@
                 const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
                 const invoiceChargeElement = document.getElementById('invoice_charge');
                 const invoiceCharge = invoiceChargeElement ? parseFloat(invoiceChargeElement.value) || 0 : 0;
-                const finalTotal = subtotal + invoiceCharge;
+                const paymentMethods = @json($paymentMethods);
 
-                // console.log('Calculating subtotal:', { subtotal, invoiceCharge, finalTotal, itemsCount: items.length });
+                // Get service charge from selected payment gateway
+                let serviceCharge = 0;
+                const selectedGateway = document.getElementById('payment_gateway_option')?.value;
+                let selectedPaymentMethod = document.getElementById('payment_method_full')?.value;
+
+                if (selectedGateway) {
+                    if(selectedGateway.toLowerCase() === 'myfatoorah' && selectedPaymentMethod) {
+                        const method = paymentMethods.find(m => m.id === parseInt(selectedPaymentMethod));
+                        // Use the backend-calculated gateway_fee directly
+                        serviceCharge = method ? (method.gateway_fee || 0) : 0;
+                    } else {
+                        const selectedCharge = charges.find(charge => charge.name === selectedGateway);
+                        // Use the backend-calculated gateway_fee directly
+                        serviceCharge = selectedCharge ? (selectedCharge.gateway_fee || 0) : 0;
+                    }
+                }
+                
+                const finalAmount = subtotal + serviceCharge;
+                const finalTotal = finalAmount + invoiceCharge;
 
                 // Update all display elements
                 document.getElementById('subTotalDisplay').textContent = `${subtotal.toFixed(2)}`;
+                
+                // Update service charge display
+                const serviceChargeDisplayElement = document.getElementById('serviceChargeDisplay');
+                const serviceChargeDisplayRow = document.getElementById('service_charge_display_row');
+                if (serviceChargeDisplayElement) {
+                    serviceChargeDisplayElement.textContent = `${serviceCharge.toFixed(2)}`;
+                }
+                if (serviceChargeDisplayRow) {
+                    serviceChargeDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
+                }
+                
+                // Update final amount display (subtotal + service charge)
+                const finalAmountDisplayElement = document.getElementById('finalAmountDisplay');
+                const finalAmountDisplayRow = document.getElementById('final_amount_display_row');
+                if (finalAmountDisplayElement) {
+                    finalAmountDisplayElement.textContent = `${finalAmount.toFixed(2)}`;
+                }
+                if (finalAmountDisplayRow) {
+                    finalAmountDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
+                }
+                
                 document.getElementById('invoiceChargeDisplay').textContent = `${invoiceCharge.toFixed(2)}`;
                 document.getElementById('subT').textContent = `${finalTotal.toFixed(2)}`;
                 
@@ -2275,6 +2268,7 @@
                 if (totalAmountElement) totalAmountElement.value = finalTotal;
             }
 
+            document.getElementById('payment_method_full')?.addEventListener('change', calculateSubtotal);
 
             function renderItems() {
                 const tbody = itemsBody;
@@ -2647,7 +2641,7 @@
 
                 tbody.appendChild(frag);
 
-                console.info('renderItems(): rendered rows =', tbody.rows.length, 'from items len =', items.length);
+                // console.info('renderItems(): rendered rows =', tbody.rows.length, 'from items len =', items.length);
             }
 
             function saveTaskPrice(itemId) {
@@ -3574,17 +3568,14 @@
             function openInvoiceModal(invoiceNumber) {
                 const modal = document.getElementById("viewInvoiceModal");
                 const contentDiv = document.getElementById("invoiceContent");
+                const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
 
                 // Clear previous content
                 contentDiv.innerHTML = "";
 
                 // Open the modal
                 modal.classList.remove("hidden");
-                url =
-                    "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
-                        ":invoiceNumber",
-                        invoiceNumber
-                    );
+                url = "{{ route('invoice.show', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
 
                 // Fetch the invoice details
                 fetch(url)
@@ -3624,11 +3615,8 @@
             function copyLink() {
                 const invoiceNumber = document.getElementById('invoiceNumber').value;
                 const copyFeedback = document.getElementById('copyFeedback');
-                const fetchUrl =
-                    "{{ route('invoice.show', ['invoiceNumber' => ':invoiceNumber']) }}".replace(
-                        ":invoiceNumber",
-                        invoiceNumber
-                    );
+                const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
+                const fetchUrl = "{{ route('invoice.show', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
 
                 navigator.clipboard.writeText(fetchUrl).then(() => {
                     alert('Link copied to clipboard: ' + fetchUrl); // Use invoiceLink here

@@ -141,11 +141,7 @@ class Task extends Model
 
     public function getTaskPriceChangeableAttribute()
     {
-        if(empty($this->original_currency)) {
-            return true;
-        } 
-
-        return $this->original_currency !== 'KWD';
+        return $this->original_currency !== null && $this->original_price !== 'KWD';
     }
 
     public function flightDetails() // temporary fix

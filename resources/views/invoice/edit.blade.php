@@ -745,6 +745,7 @@
                                     </div>
                                 </label>
                             </div>
+                            @if(empty($invoice->payment_type))
                             <!-- Modal -->
                             <div id="importModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50 hidden">
                                 <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl overflow-y-auto" style="max-height: 90vh;">
@@ -801,6 +802,7 @@
                                     </form>
                                 </div>
                             </div>
+                            @endif
 
                             <!-- Payment Gateway Section -->
                             <section id="payment_gateway_section" class="mb-6" x-data="{ paymentType: '{{ $invoice->payment_type ?? '' }}' }" x-show="paymentType === '' || paymentType === 'full'" x-cloak>

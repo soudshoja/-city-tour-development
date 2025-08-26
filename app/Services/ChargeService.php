@@ -89,21 +89,21 @@ class ChargeService
         // Calculate the fee and round up
         $fee = ceil(self::calculateChargeAmount($amount, $chargeValue, $chargeType));
 
+        $totalFee = 0;
         // Calculate final amounts based on who pays
         if ($paidBy === 'Client') {
-            $finalAmount = $amount + $fee;
-            $netReceived = $amount;
-        } else {
-            $finalAmount = $amount;
-            $netReceived = $amount - $fee;
+           $totalFee = $fee;
         }
+
+        $finalAmount = $amount + $totalFee;
+        $netReceived = $amount - $totalFee;
 
         Log::info('Tap Gateway charge calculated', [
             'using_self_charge' => !is_null($charge->self_charge),
             'charge_value' => $chargeValue,
             'charge_type' => $chargeType,
             'paid_by' => $paidBy,
-            'fee' => $fee,
+            'total_fee' => $totalFee,
             'finalAmount' => $finalAmount,
             'netReceived' => $netReceived,
             'company_id' => $companyId,
@@ -112,7 +112,7 @@ class ChargeService
 
         return self::standardReturn(
             finalAmount: $finalAmount,
-            fee: $fee,
+            fee: $totalFee,
             paidBy: $paidBy,
             netReceived: $netReceived,
             chargeType: $charge->charge_type,
@@ -141,15 +141,14 @@ class ChargeService
             $selfChargeAmount = ceil(self::calculateChargeAmount($amount, $selfChargeValue, $selfChargeType));
         }
 
-        $totalFee = $selfChargeAmount;
+        $totalFee = 0;
         // Calculate final amounts based on who pays
         if ($paidBy === 'Client') {
-            $finalAmount = $amount + $totalFee;
-            $netReceived = $amount;
-        } else {
-            $finalAmount = $amount;
-            $netReceived = $amount - $totalFee;
+           $totalFee = $selfChargeAmount;
         }
+
+        $finalAmount = $amount + $totalFee;
+        $netReceived = $amount - $totalFee;
 
         Log::info('MyFatoorah Gateway charge calculated from PaymentMethod table', [
             'amount' => $amount,

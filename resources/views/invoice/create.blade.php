@@ -1429,13 +1429,15 @@
                     <p>${item.total} KWD</p>
                     </td>
                     <td>
-                          <input
-                                id="invprice-table-${item.id}"
-                                type="number"
-                                class="border border-gray-300 p-2 rounded-md w-full invoice-price-${item.id}"
-                                value="${item.invprice}"
-                                onInput="updateField(${item.id}, 'invprice-table')"
-                            />
+                        <input
+                            id="invprice-table-${item.id}"
+                            type="text"
+                            inputmode="decimal"
+                            pattern="\d*\.?\d*"
+                            class="border border-gray-300 rounded-md px-2 py-1 text-center w-28 min-w-[7rem] invoice-price-${item.id}"
+                            value="${item.invprice ?? ''}"
+                            oninput="updateField(${item.id}, 'invprice-table')"
+                        />
                     </td>
                     <td>
                     <p>${item.client_name}</p>

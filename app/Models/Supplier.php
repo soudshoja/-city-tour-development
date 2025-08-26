@@ -12,7 +12,7 @@ class Supplier extends Model
 
     protected $fillable = [
         'name', 
-        'auth_method',
+        'auth_type',
         'has_hotel',
         'has_flight',
         'has_visa',         
@@ -35,8 +35,13 @@ class Supplier extends Model
         'country_id',
         'website',
         'payment_terms',
+        'is_online',
     ];
 
+    protected $casts = [
+        'is_online' => 'bool',
+    ];
+    
     public function country()
     {
         return $this->belongsTo(Country::class);
@@ -80,4 +85,5 @@ class Supplier extends Model
 
         return false;
     }
+    
 }

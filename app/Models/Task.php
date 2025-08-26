@@ -81,6 +81,7 @@ class Task extends Model
     protected $casts = [
         'issued_date' => 'datetime',
         'expiry_date' => 'datetime',
+        'is_complete' => 'bool',
     ];
 
     // protected static function boot()
@@ -210,5 +211,9 @@ class Task extends Model
     public function company()
     {
         return $this->belongsTo(Company::class, 'company_id');
+    }
+     public function supplierOnline()
+    {
+        return $this->belongsTo(Supplier::class);
     }
 }

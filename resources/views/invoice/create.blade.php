@@ -1,43 +1,9 @@
 <x-app-layout>
-
     <style>
         button[disabled] {
             opacity: 0.5;
             cursor: not-allowed;
             pointer-events: none;
-        }
-
-        /* Highlight selected button */
-        .highlight-selected {
-            background-color: #e0f2ff;
-            /* Light blue background for the selected option */
-            border-color: #3b82f6;
-            /* Blue border */
-            opacity: 1;
-            /* Fully visible */
-            transition: all 0.3s ease-in-out;
-            pointer-events: none;
-        }
-
-        /* Fade unchecked buttons */
-        .fade-unchecked {
-            opacity: 0.5;
-            /* Reduce visibility for unselected options */
-            pointer-events: none;
-            /* Prevent interactions */
-            transition: all 0.3s ease-in-out;
-        }
-
-        .table-container {
-            overflow-x: auto;
-            /* Enable horizontal scrolling */
-            overflow-y: auto;
-            /* Enable vertical scrolling if needed */
-            max-height: 500px;
-            /* Adjust height as per your layout */
-            max-width: 1000px;
-            border: 1px solid #e0e6ed;
-            /* Optional: add border around the scroll area */
         }
 
         table {
@@ -132,14 +98,12 @@
             .slider.round:before {
                 border-radius: 50%;
             }
-
         }
     </style>
     <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
 
     <div id="invoiceModalComponent">
-
         <div class="flex flex-col gap-2.5 xl:flex-row">
             <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
                 <div class="flex flex-wrap justify-between px-6 ">
@@ -277,54 +241,36 @@
                             </button>
                             @endcan
                         </div>
-                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing
-                            an Agent</p>
-
-                        <!-- agent name -->
+                        <p class="my-2 text-gray-400 text-center text-xs">details will displaying below after choosing an Agent</p>
                         <div class="mt-4 flex items-center">
                             <input id="agentName" type="text" name="agentName" class="form-input flex-1"
                                 placeholder="Agent Name"
                                 value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->name : '' }}"
                                 disabled />
                         </div>
-
-                        <!-- agent email -->
                         <div class="mt-4 flex items-center">
                             <input id="agentEmail" type="email" name="agentEmail" class="form-input flex-1"
                                 placeholder="Agent Email"
                                 value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->email : '' }}"
                                 disabled />
                         </div>
-
-                        <!-- agent phone -->
                         <div class="mt-4 flex items-center">
                             <input id="agentPhone" type="text" name="agentPhone" class="form-input flex-1"
                                 placeholder="Agent Phone"
                                 value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->phone : '' }}"
                                 disabled />
                         </div>
-
-
-
                     </div>
-                    <!-- ./Agent details -->
                 </div>
-                <!-- users details -->
 
-
-                <!-- choose items -->
                 <div class="mt-8">
-                    <!-- choose items -->
                     <div class="overflow-x-auto border border-gray-200">
-                        {{-- <div class="border border-gray-200"> --}}
                         <table id="itemsTable" class="text-left table-auto border-collapse w-full text-xs">
                             <thead>
                                 <tr>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">No.</th>
                                     <th class="px-4 py-2 min-w-[200px] text-gray-900 dark:text-gray-100">Task Detail
                                     </th>
-                                    {{-- <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Type</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Venue</th> --}}
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Price</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
                                     <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
@@ -340,12 +286,6 @@
                             </tbody>
                         </table>
                     </div>
-
-
-
-
-                    <!-- ./choose items -->
-
                     <div class="mt-6 flex flex-col justify-between px-4 sm:flex-row">
                         <div class="mb-6 sm:mb-0">
                             <button id="openTaskModalButton"
@@ -356,7 +296,6 @@
                                         d="M19 11h-4v4h-2v-4H9V9h4V5h2v4h4m1-7H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2M4 6H2v14a2 2 0 0 0 2 2h14v-2H4z" />
                                 </svg> Add Task
                             </button>
-
                         </div>
                         <div class="sm:w-2/5 flex justify-end">
                             <div class="mt-4 flex items-center font-semibold">
@@ -367,12 +306,8 @@
                         </div>
                     </div>
                 </div>
-
             </div>
             <div class="mt-6 w-full xl:mt-0 xl:w-96">
-                <!-- <div id="payment-link-container" class="mb-2 p-2 bg-white rounded shadow flex flex-col gap-2">
-                    <p>You dont have any payment link Available</p>
-                </div> -->
                 <div id="client-credit" class=" p-2 mb-2 bg-white rounded shadow flex flex-col gap-2 justify-between">
                     <div class="flex items-center justify-center">
                         <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
@@ -388,181 +323,9 @@
                         <option value="EUR">EUR</option>
                         <option value="GBP">GBP</option>
                     </select>
-
-                    <!-- Payment Type Section -->
-                    <div id="paymentMethod" class="mt-4 hidden">
-                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Type</h2>
-                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                            <label class="cursor-pointer rounded-full shadow">
-                                <input type="radio" id="payment_type_full" name="payment_type" value="full"
-                                    onclick="hideModal()" hidden class="peer" checked />
-                                <div
-                                    class="rounded-full flex items-center justify-center 
-                                        peer-checked:ring-2 peer-checked:ring-blue-500 
-                                        peer-checked:bg-green-500
-                                        peer-checked:text-white
-                                        px-4 py-2 border border-gray-300 
-                                        bg-white text-gray-700 transition gap-2 
-                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                    <span class="font-medium">Fully Payment</span>
-                                </div>
-                            </label>
-
-                            <!-- Partial Payment Tab -->
-                            <label class="cursor-pointer rounded-full shadow">
-                                <input type="radio" id="payment_type_partial" name="payment_type" value="partial"
-                                    onclick="showModal('partial')" hidden class="peer" />
-                                <div
-                                    class="rounded-full flex items-center justify-center 
-                                        peer-checked:ring-2 peer-checked:ring-blue-500 
-                                        peer-checked:bg-green-500
-                                        peer-checked:text-white
-                                        px-4 py-2 border border-gray-300 
-                                        bg-white text-gray-700 transition gap-2 
-                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                    <span class="font-medium">Partially Payment</span>
-                                </div>
-                            </label>
-
-                            <!-- Split Payment Tab -->
-                            <label class="cursor-pointer rounded-full shadow">
-                                <input type="radio" id="payment_type_split" name="payment_type" value="split"
-                                    onclick="showModal('split')" hidden class="peer" />
-                                <div
-                                    class="rounded-full flex items-center justify-center 
-                                        peer-checked:ring-2 peer-checked:ring-blue-500 
-                                        peer-checked:bg-green-500
-                                        peer-checked:text-white
-                                        px-4 py-2 border border-gray-300 
-                                        bg-white text-gray-700 transition gap-2 
-                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                    <span class="font-medium">Split Payment</span>
-                                </div>
-                            </label>
-
-                        </div>
-
-                        <!-- Payment Gateway Section -->
-                        <section id="payment_gateway_section" class="mb-6">
-                            <div class="mt-4">
-                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
-                                <select id="payment_gateway" name="payment_gateway"
-                                    class="border border-gray-300 p-2 rounded-lg mt-4 w-full">
-                                    @foreach ($paymentGateways as $gateway)
-                                    <option value="{{ $gateway }}">{{ $gateway }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="mt-4">
-                                <button onclick="savePartial('full')" id="update-invoice-btn" type="button"
-                                    class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                    city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow
-                                    hover:bg-[#f7b14f] hover:shadow-xl hover:text-white transition">
-
-                                    <span id="button-icon-full" class="mr-2 inline-block">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0">
-                                            <path
-                                                d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
-                                                fill="currentColor" />
-                                            <path
-                                                d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
-                                                fill="currentColor" />
-                                        </svg>
-                                    </span>
-
-                                    <span id="button-text-full">Save Full Payment</span>
-                                </button>
-                            </div>
-                        </section>
-
-                        <!-- Added Buttons/Links Section -->
-                        <section id="additional-actions" class="mt-6">
-                            <input type="hidden" name="shared" id="shared" value="false">
-                            <div class="flex flex-wrap gap-4">
-                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Share Invoice</h2>
-
-                                <!-- Share Buttons -->
-                                <div class="flex items-center gap-2 w-full">
-                                    <form id="whatsappForm" action="{{ route('whatsapp.send1') }}" method="POST"
-                                        onsubmit="showSpinner()">
-                                        @csrf
-                                        <input type="hidden" name="clientid" id="clientid">
-                                        <input type="hidden" name="invoiceNumber" value="{{ $invoiceNumber }}">
-
-                                        <button id="submitButton" type="submit"
-                                            class="w-full flex items-center justify-center py-3 px-5 text-xs text-white btn-success rounded-full">
-                                            <span id="buttonText">Share via WhatsApp</span>
-                                            <span id="spinner" class="hidden ml-2">
-                                                <svg class="w-4 h-4 animate-spin text-white"
-                                                    xmlns="http://www.w3.org/2000/svg" fill="none"
-                                                    viewBox="0 0 24 24">
-                                                    <circle class="opacity-25" cx="12" cy="12" r="10"
-                                                        stroke="currentColor" stroke-width="4"></circle>
-                                                    <path class="opacity-75" fill="currentColor"
-                                                        d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
-                                                </svg>
-                                            </span>
-                                        </button>
-                                    </form>
-
-                                    <button onclick="shareViaEmail()"
-                                        class="w-full items-center py-3 px-5 text-sm text-white btn-info rounded-full ">
-                                        Share via Email
-                                    </button>
-
-                                </div>
-
-                                <button onclick="copyLink()"
-                                    class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                        viewBox="0 0 24 24">
-                                        <g fill="none" stroke="#ffff" stroke-linecap="round"
-                                            stroke-linejoin="round" stroke-width="1.5">
-                                            <path
-                                                d="M16.75 5.75a3 3 0 0 0-3-3h-6.5a3 3 0 0 0-3 3v9.5a3 3 0 0 0 3 3h6.5a3 3 0 0 0 3-3z" />
-                                            <path d="M19.75 6.75v8.5a6 6 0 0 1-6 6h-5.5" />
-                                        </g>
-                                    </svg>
-                                    Copy Link
-                                </button>
-                                <a target="_blank" href="{{ url('/invoice/' . $invoiceNumber) }}"
-                                    class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
-                                        <path opacity="0.5"
-                                            d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z"
-                                            stroke="currentColor" stroke-width="1.5"></path>
-                                        <path
-                                            d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z"
-                                            stroke="currentColor" stroke-width="1.5"></path>
-                                    </svg>
-                                    View
-                                </a>
-
-
-                            </div>
-                        </section>
-
-
-                    </div>
-
-                </div>
-                <div id="viewInvoiceModal"
-                    class="fixed z-10 inset-0 flex items-center justify-center backdrop-blur-sm hidden">
-                    <div class="relative">
-                        <!-- Modal Content -->
-                        <div class="w-full">
-
-                        </div>
-                        <div id="invoiceContent" class="">
-                            <!-- Invoice content will be loaded here dynamically -->
-                        </div>
-                    </div>
                 </div>
                 <div class="panel">
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-
                         <button id="generate-invoice-btn" type="button"
                             class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
                         city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
@@ -582,200 +345,14 @@
                             <span id="button-saved" style="display: none;">Saved</span>
                         </button>
                         <input id="invoiceId" type="hidden" name="invoiceId" />
-                        <!-- add form here-->
-
-
                         <div id="errorMessage" class="hidden text-red-500">
                             <!-- Error message -->
                         </div>
 
-                        <!-- Modal -->
-                        <div id="paymentModal"
-                            class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
-                            <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
-                                <h3 class="text-xl font-bold mb-4">Split Payment Details</h3>
-                                <!-- Include your previous page content here -->
-                                <div class="bg-gray-100 p-5">
-                                    <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
-
-                                        <!-- Split Payment Tab Content -->
-                                        <div id="split-payment-container" class="tab-content">
-                                            <form>
-                                                <!-- Top Fields -->
-                                                <div class="grid grid-cols-3 gap-4 mb-5">
-                                                    <div>
-                                                        <label class="block text-sm font-medium mb-1">Amount *</label>
-                                                        <input type="number" id="total-amount"
-                                                            class="w-full border-gray-300 rounded-md shadow-sm opacity-50"
-                                                            placeholder="0" disabled />
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-sm font-medium mb-1"
-                                                            for="split-into">Split into *</label>
-                                                        <select id="split-into"
-                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm"
-                                                            onchange="updateRows()">
-                                                            <option value="" disabled selected>Select a value
-                                                            </option>
-                                                            <option value="1">1</option>
-                                                            <option value="2">2</option>
-                                                            <option value="3">3</option>
-                                                            <option value="4">4</option>
-                                                            <option value="5">5</option>
-                                                            <option value="6">6</option>
-                                                            <option value="7">7</option>
-                                                            <option value="8">8</option>
-                                                            <option value="9">9</option>
-                                                            <option value="10">10</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Expiry and Description -->
-                                                <div class="grid grid-cols-2 gap-4 mb-5">
-                                                    <div>
-                                                        <label class="block text-sm font-medium mb-1">Description
-                                                            *</label>
-                                                        <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm p-2" placeholder="Add Description"></textarea>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Table -->
-                                                <div class="overflow-x-auto">
-                                                    <table
-                                                        class="min-w-full bg-white border border-gray-300 text-center">
-                                                        <thead>
-                                                            <tr>
-                                                                <th class="border-b px-4 py-2">S.No</th>
-                                                                <th class="border-b px-4 py-2">Choose Client</th>
-                                                                <th class="border-b px-4 py-2">Expiry Date</th>
-                                                                <th class="border-b px-4 py-2">Amount</th>
-                                                                <th class="border-b px-4 py-2">Payment Gateway</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody id="split-rows">
-                                                            <!-- Dynamic rows will be generated here -->
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-
-                                                <!-- Buttons -->
-
-                                                <div>
-                                                    <button onclick="savePartial('split')" id="splitbutton"
-                                                        type="button"
-                                                        class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
-
-                                                        <span id="button-icon-split" class="mr-2"></span>
-                                                        <span id="button-text-split">Save Split Payment</span>
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="mt-4 flex justify-end">
-                                    <button onclick="hideModal()"
-                                        class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="paymentModal1"
-                            class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
-                            <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
-                                <h3 class="text-xl font-bold mb-4">Partial Payment Details</h3>
-                                <div class="bg-gray-100 p-5">
-                                    <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
-                                        <!-- Partial Payment Tab Content -->
-                                        <div id="partial-payment-container" class="tab-content">
-                                            <div class="grid grid-cols-3 gap-4 mb-5">
-                                                <div>
-                                                    <label class="block text-sm font-medium mb-1">Client Name</label>
-                                                    <span id="receiverName1">AHMED</span>
-                                                </div>
-                                                <div>
-                                                    <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice
-                                                        Total</label>
-                                                    <span id="subT1">0.00</span>
-                                                </div>
-                                            </div>
-
-                                            <div class="grid grid-cols-3 gap-4 mb-5">
-                                                <div>
-                                                    <label class="block text-sm font-medium mb-1"
-                                                        for="split-into1">Split into *</label>
-                                                    <select id="split-into1"
-                                                        class="w-full p-2 border-gray-300 rounded-md shadow-sm"
-                                                        onchange="updateRows1()">
-                                                        <option value="" disabled selected>Select a value
-                                                        </option>
-                                                        <option value="1">1</option>
-                                                        <option value="2">2</option>
-                                                        <option value="3">3</option>
-                                                        <option value="4">4</option>
-                                                        <option value="5">5</option>
-                                                        <option value="6">6</option>
-                                                    </select>
-                                                </div>
-
-                                                <div>
-                                                    <label class="block text-sm font-medium mb-1">Payment
-                                                        Gateway</label>
-                                                    <select id="payment_gateway1" name="payment_gateway1"
-                                                        class="w-full p-2 border-gray-300 rounded-md shadow-sm">
-                                                        @foreach ($paymentGateways as $gateway)
-                                                        <option value="{{ $gateway }}">{{ $gateway }}
-                                                        </option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment
-                                                Breakdown</h2>
-                                            <table class="min-w-full bg-white border border-gray-300 text-center">
-                                                <thead>
-                                                    <tr>
-                                                        <th class="border-b px-4 py-2">S.No</th>
-                                                        <th class="border-b px-4 py-2">Expiry Date</th>
-                                                        <th class="border-b px-4 py-2">Amount</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="split-rows1">
-                                                    <!-- Dynamic rows will be generated here -->
-                                                </tbody>
-                                            </table>
-
-                                            <p id="error-message" class="text-red-500 mt-3 hidden">The total of
-                                                partial payments must match the invoice total.</p>
-
-                                            <div class="flex space-x-4 mt-15">
-
-                                                <button onclick="savePartial('partial')" id="partialbutton"
-                                                    type="button"
-                                                    class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
-
-                                                    <span id="button-icon-partial" class="mr-2"></span>
-                                                    <span id="button-text-partial">Save Partial Payment</span>
-                                                </button>
-
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="mt-4 flex justify-end">
-                                    <button onclick="hideModal()"
-                                        class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
-                                </div>
-                            </div>
-                        </div>
                         <!-- Agents Modal -->
                         <div id="agentModal"
                             class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
                             <div class="bg-white border rounded-lg shadow-lg w-3/4 md:w-1/2 mb-10">
-                                <!-- Modal Header -->
                                 <div
                                     class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
                                     <h5 class="text-lg font-bold">Agent Management</h5>
@@ -823,12 +400,11 @@
                                 <!-- ./List of Agents -->
                             </div>
                         </div>
-                        <!-- End Agents Modal -->
+
                         <!-- Clients Modal -->
                         <div id="clientModal"
                             class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden ">
                             <div class="bg-white border rounded-lg shadow-lg  w-3/4 md:w-1/2 mb-10">
-                                <!-- Modal Header -->
                                 <div
                                     class="border rounded-t-lg mb-5 flex items-center justify-between bg-[#fbfbfb] px-5 py-3">
                                     <h5 class="text-lg font-bold">Client Management</h5>
@@ -845,45 +421,31 @@
                                         </svg>
                                     </button>
                                 </div>
-                                <!-- ./Modal Header -->
-
-                                <!-- Tabs -->
                                 <div class="border-b flex justify-center">
                                     <button class="tab-button px-4 py-2 text-blue-500 border-b-2 border-blue-500"
                                         id="selectTabButton">Select Client</button>
                                     <button class="tab-button px-4 py-2 text-gray-500 hover:text-blue-500"
                                         id="addTabButton">Add New Client</button>
                                 </div>
-                                <!-- ./Tabs -->
-
-                                <!-- Tab Content -->
                                 <div id="selectTab" class="p-6">
-                                    <!-- Search Box -->
                                     <div class="relative mb-4">
                                         <input type="text" placeholder="Search Client..."
                                             class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
-                                            id="clientSearchInput"
-                                            oninput="filterClients()"> <!-- Add this line -->
+                                            id="clientSearchInput" oninput="filterClients()">
 
                                     </div>
-                                    <!-- ./Search Box -->
-
-                                    <!-- List of Clients -->
                                     <ul id="clientList"
                                         class="shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] border rounded-lg mb-4 max-h-60 overflow-y-auto custom-scrollbar">
                                         <!-- Dynamic list items go here -->
                                     </ul>
-                                    <!-- ./List of Clients -->
                                 </div>
 
                                 <div id="addTab" class="p-6 hidden">
-                                    <!-- Add New Client Form -->
                                     <h6 class="text-lg font-bold mb-3">Add New Client</h6>
                                     <form method="POST" action="{{ route('clients.store') }}">
                                         @csrf
 
                                         <div class="mb-4 flex gap-4">
-                                            <!-- Name Field -->
                                             <div class="w-1/2">
                                                 <label for="first_name"
                                                     class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">First Name</label>
@@ -910,7 +472,6 @@
                                                     placeholder="Last Name" />
                                             </div>
 
-                                            <!-- Email Field -->
                                             <div class="w-1/2">
                                                 <label for="email"
                                                     class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Email</label>
@@ -966,7 +527,6 @@
                                             @endunlessrole
                                         </div>
 
-                                        <!-- Submit Button -->
                                         <div class="flex items-center justify-center">
                                             <button type="submit"
                                                 class="btnCityGrayColor mt-3 w-full bg-black BtColor text-white px-4 py-2 rounded-lg">
@@ -975,7 +535,6 @@
                                         </div>
                                     </form>
                                 </div>
-                                <!-- ./Tab Content -->
                             </div>
                         </div>
 
@@ -1063,8 +622,8 @@
                                         <table id="taskList" class="min-w-full table-auto border-collapse border rounded-lg">
                                             <thead class="sticky top-0 bg-gray-100 z-10">
                                                 <tr class="bg-gray-100">
-                                                    <th class="px-4 py-2 text-left">GDS Reference</th>
-                                                    <th class="px-4 py-2 text-left">Airline Reference</th>
+                                                    <th class="px-4 py-2 text-left">Reference</th>
+                                                    <th class="px-4 py-2 text-left">Task Price</th>
                                                     <th class="px-4 py-2 text-left">Type</th>
                                                     <th class="px-4 py-2 text-left">Client</th>
                                                     <th class="px-4 py-2 text-left">Agent</th>
@@ -1100,6 +659,8 @@
         let agents = @json($agents);
         let items = [];
         let tasks = [];
+        let allTasks = [];
+        let filteredTasks = [];
         const itemsBody = document.getElementById('items-body');
         const appUrl = @json($appUrl);
         let toggle = false;
@@ -1123,7 +684,6 @@
 
         let selectedAgent = @json($selectedAgent);
         let selectedClient = @json($selectedClient);
-        let payments = @json($payments);
 
         const generateInvoiceButton = document.getElementById('generate-invoice-btn');
         const buttonText = document.getElementById('button-text');
@@ -1144,15 +704,10 @@
         }
 
         function checkInvoiceId() {
-            const tabs = document.querySelectorAll('input[name="payment_type"]');
             const clientButton = document.getElementById("openClientModalButton");
             const agentButton = document.getElementById("select-agent");
             const taskButton = document.getElementById("openTaskModalButton");
             const generateInvoice = document.getElementById("generate-invoice-btn");
-            const paymentGatewaySection = document.getElementById('payment_gateway_section');
-            const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
-            const shareSection = document.getElementById('additional-actions');
-            const shared = document.getElementById('shared').value;
 
             const options = document.querySelectorAll('.select-option');
             const selectedBranchInput = document.getElementById('selectedBranch');
@@ -1173,42 +728,19 @@
                 });
             });
 
-
-            if (paymentType === 'full') {
-                paymentGatewaySection.style.display = 'block'; // Show the section
-            } else {
-                paymentGatewaySection.style.display = 'none'; // Hide the section
-            }
-
-            if (shared === 'false') {
-                shareSection.style.display = 'none'; // hide the section
-            } else {
-                shareSection.style.display = 'block'; // show the section
-            }
-
-
-            // console.log(invoiceIdInput.value);
             if (!invoiceIdInput.value) {
-                tabs.forEach(tab => {
-                    tab.disabled = true;
-                });
                 clientButton.disabled = false;
                 agentButton.disabled = false;
                 taskButton.disabled = false;
                 generateInvoiceButton.disabled = false;
                 generateInvoice.classList.remove('hidden');
-                document.getElementById('paymentMethod').classList.add('hidden');
 
             } else {
-                tabs.forEach(tab => {
-                    tab.disabled = false;
-                });
                 clientButton.disabled = true;
                 agentButton.disabled = true;
                 taskButton.disabled = true;
                 generateInvoiceButton.disabled = false;
                 generateInvoice.classList.add('hidden');
-                document.getElementById('paymentMethod').classList.remove('hidden');
             }
         }
 
@@ -1216,127 +748,27 @@
         document.addEventListener('DOMContentLoaded', checkInvoiceId);
         invoiceIdInput.addEventListener('input', checkInvoiceId);
 
-
         // Set initial states
         let isSaving = false;
         let isSaved = false;
 
-        function showModal(type) {
-            if (type == 'split') {
-                document.getElementById('paymentModal').classList.remove('hidden');
-            } else if (type == 'partial') {
-                document.getElementById('paymentModal1').classList.remove('hidden');
-            }
-
-            checkInvoiceId();
-        }
-
-        function hideModal() {
-            document.getElementById('paymentModal').classList.add('hidden');
-            document.getElementById('paymentModal1').classList.add('hidden');
-            checkInvoiceId();
-        }
-
-        function closeClientModal1() {
-            // Remove the modal from the DOM
-            const modal = document.getElementById('clientModal');
-            if (modal) {
-                modal.remove();
-            }
-        }
-
-        function updateRows() {
-            const splitInto = parseInt(document.getElementById('split-into').value) || 0;
-            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-            const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
-
-            const tbody = document.getElementById('split-rows');
-            tbody.innerHTML = ''; // Clear existing rows
-
-            for (let i = 1; i <= splitInto; i++) {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                        <td class="border-b px-4 py-2">${i}</td>
-                        <td class="border-b px-4 py-2">
-                        <select  id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
-                            ${clients.map(client => `<option value="${client.id}">${client.first_name}</option>`).join('')}
-                        </select>
-                        </td>
-                        <td class="border-b px-4 py-2">
-                            <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
-                        </td>
-                        <td class="border-b px-4 py-2">
-                            <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" />
-                        </td>
-                        <td class="border-b px-4 py-2">
-                            <select id="payment_gateway2" name="payment_gateway2" class="border border-gray-300 p-2 rounded w-full">
-                                @foreach ($paymentGateways as $gateway)
-                                <option value="{{ $gateway }}">{{ $gateway }}</option>
-                                @endforeach
-                            </select>
-                        </td>
-                        <td class="px-4 py-2 border"></td>
-                    `;
-                tbody.appendChild(row);
-
-                const selectElement = row.querySelector('.account-select');
-                new TomSelect(selectElement, {
-                    create: false,
-                    sortField: {
-                        field: 'text',
-                        direction: 'asc'
-                    }
-                });
-
-            }
-        }
-
-        function updateRows1() {
-            const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
-            const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
-            const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
-
-            const tbody = document.getElementById('split-rows1');
-            tbody.innerHTML = ''; // Clear existing rows
-
-            for (let i = 1; i <= splitInto1; i++) {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="border-b px-4 py-2">${i}</td>
-                    <td class="border-b px-4 py-2">
-                        <input type="date" id="date_${i}" name="date_${i}" class="border-gray-300 rounded-md shadow-sm" />
-                    </td>
-                    <td class="border-b px-4 py-2">
-                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount1}" />
-                    </td>
-                `;
-                tbody.appendChild(row);
-
-            }
-        }
-
         function updateField(itemId, fieldId) {
-            // console.log('updated', itemId + '-' + fieldId);
             const inputField = document.getElementById(`${fieldId}-${itemId}`);
-            const newValue = inputField.value || NULL;
+            const newValue = inputField ? inputField.value : '';
 
             const item = items.find(item => item.id === itemId);
-
             if (item) {
-                // if (fieldId === 'invprice') {
                 if (fieldId.includes('invprice')) {
-                    // Set fieldId to 'invprice' if it includes 'invprice'
-                    fieldId1 = 'invprice'; // Update fieldId to 'invprice' if modal or table input is updated
-                    item[fieldId1] = newValue;
+                    const numeric = newValue === '' ? '' : Number(newValue);
+                    fieldId1 = 'invprice';
+                    item.invprice = numeric;
 
                     if (fieldId === 'invprice-modal') {
-                        // Update the corresponding table input
                         const tableInput = document.getElementById(`invprice-table-${itemId}`);
                         if (tableInput) {
                             tableInput.value = newValue;
                         }
                     } else if (fieldId === 'invprice-table') {
-                        // Update the corresponding modal input
                         const modalInput = document.getElementById(`invprice-modal-${itemId}`);
                         if (modalInput) {
                             modalInput.value = newValue;
@@ -1351,8 +783,6 @@
                     let existingAlert = document.getElementById("errorNotification");
 
                     if (nettValue <= 0) {
-                        console.log("The Invoice Price must be higher than the Task Price.");
-
                         if (!existingAlert) {
                             let errorNotification = document.createElement('div');
                             errorNotification.id = "errorNotification"; // Prevent duplicate alerts
@@ -1367,7 +797,6 @@
 
                             document.body.appendChild(errorNotification);
 
-                            // Auto-close after 5 seconds
                             setTimeout(() => {
                                 let alertBox = document.getElementById("errorNotification");
                                 if (alertBox) {
@@ -1376,13 +805,10 @@
                             }, 10000);
                         }
                     } else {
-                        // Remove error notification if nettValue is fixed (>= 0)
                         if (existingAlert) {
                             existingAlert.remove();
                         }
                     }
-
-
                 } else {
                     item[fieldId] = newValue; // Update other fields
                 }
@@ -1391,14 +817,17 @@
         }
 
         function calculateSubtotal() {
-            const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.invprice) || 0), 0);
+            const subtotal = items.reduce((sum, item) => {
+            const n = Number(item?.invprice);
+                return sum + (Number.isFinite(n) ? n : 0);
+            }, 0);
 
-            document.getElementById('subT').textContent = `${subtotal.toFixed(2)}`;
-            document.getElementById('subT1').textContent = `${subtotal.toFixed(2)}`;
-            document.getElementById('subTotal').value = subtotal;
-            document.getElementById('total-amount').value = subtotal;
+            const subT = document.getElementById('subT');
+            if (subT) subT.textContent = subtotal.toFixed(2);
+            
+            const subTotal = document.getElementById('subTotal');
+             if (subTotal) subTotal.value = subtotal;
         }
-
 
         function renderItems() {
             itemsBody.innerHTML = ''; // Clear existing rows
@@ -1506,7 +935,7 @@
                                         placeholder="Enter Invoice Price",
                                         class="border border-gray-300 p-2 rounded-md"
                                         onInput="updateField(${item.id}, 'invprice-modal')"
-                                        value="${item.invprice}"
+                                        value="${item.invprice ?? ''}"
                                     >
                                     <input
                                         id="remark-${item.id}"
@@ -1839,24 +1268,26 @@
             items = items.filter(item => item.id !== itemId);
             calculateSubtotal(); //re-calculate the total after remove item
             renderItems(); // Re-render the table after removal
-            renderTaskList(tasks);
+            refreshTaskList();
         }
 
         function chooseTasksAgent(agent) {
-
             agent = JSON.parse(agent);
             const agentId = agent.id;
             const agentName = agent.name;
             const agentEmail = agent.email;
             const agentPhone = agent.phone_number;
 
-            itemsBody.innerHTML = '';
+            items = [];
+            renderItems();
+            calculateSubtotal();
             document.getElementById('agentId').value = agentId;
             document.getElementById('agentName').value = agentName;
             document.getElementById('agentEmail').value = agentEmail;
             document.getElementById('agentPhone').value = agentPhone;
 
             closeAgentModal();
+            refreshTaskList();
         }
 
         selectTabButton.addEventListener('click', () => {
@@ -1882,11 +1313,10 @@
 
         function selectTask(task) {
             items.push({
-                ...task, // Spread the properties of the task object
-                remark: '', // Add default empty remark
-                quantity: 1, // Default quantity is 1
-                //description: `${task.reference} - ${task.additional_info}`, // Custom description format
-                description: `${task.reference}`, // Custom description format
+                ...task,
+                remark: '',
+                quantity: 1,
+                description: `${task.reference}`,
                 client_name: task.client_name
             });
             // console.log('item selected', items);
@@ -1894,9 +1324,9 @@
             selectedTaskName = `${task.reference}-${task.type}${task.additional_info}(${task.venue})`;
 
             updateClientAgent(task.client_id, task.agent_id);
-            renderTaskList(tasks);
             closeTaskModal();
             renderItems();
+            refreshTaskList();
         }
 
         function openClientModal() {
@@ -1915,7 +1345,6 @@
             modal.classList.remove("hidden");
         }
 
-        // Close Agent Modal
         function closeAgentModal() {
             const modal = document.getElementById("agentModal");
             modal.classList.add("hidden");
@@ -1946,12 +1375,9 @@
 
         function selectClient(client) {
             renderClientCredit(client);
-            document.getElementById('clientid').value = client.id;
             document.getElementById('receiverId').value = client.id;
 
-            // Update input fields
             document.getElementById('receiverName').value = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
-            document.getElementById('receiverName1').textContent = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
             document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
             closeClientModal();
@@ -1960,6 +1386,7 @@
 
         function openTaskModal() {
             document.getElementById('taskModal').classList.remove('hidden');
+            refreshTaskList();
         }
 
         function closeTaskModal() {
@@ -1968,26 +1395,27 @@
 
         function filterTasks() {
             const searchValue = document.getElementById('taskSearchInput').value.toLowerCase();
-            const filteredTasks = tasks.filter(task =>
-                task.reference.toLowerCase().includes(searchValue) || task.type.toLowerCase().includes(searchValue)
+            const filtered = getFilteredTasks().filter(task =>
+                task.reference.toLowerCase().includes(searchValue) || task.type.toLowerCase().includes(searchValue) || task.supplier_name.toLowerCase().includes(searchValue) ||
+                task.agent?.name.toLowerCase().includes(searchValue) || task.client_name.toLowerCase().includes(searchValue)
             );
-            renderTaskList(filteredTasks);
+            const withoutSelected = filtered.filter(t => !items.some(sel => sel.id === t.id));
+            renderTaskList(withoutSelected);
         }
 
         function renderTaskList(taskData) {
             const taskList = document.getElementById('taskListBody');
-            console.log('taskData', taskData);
 
             if (!Array.isArray(taskData)) {
                 console.error('taskData is not an array:', taskData);
-                taskData = []; // Fallback to an empty array
+                taskData = [];
             }
 
             taskData = taskData.filter(task =>
                 !items.some(selectedTask => selectedTask.id === task.id)
             );
 
-            taskList.innerHTML = ''; // Clear existing table rows
+            taskList.innerHTML = '';
 
             if (taskData.length === 0) {
                 const row = document.createElement('tr');
@@ -2010,11 +1438,11 @@
                 // Create table data cells
                 const referenceCell = document.createElement('td');
                 referenceCell.className = 'px-4 py-2';
-                referenceCell.innerText = task.gds_reference ?? task.reference;
+                referenceCell.innerText = task.reference;
 
-                const airlineReferenceCell = document.createElement('td');
-                airlineReferenceCell.className = 'px-4 py-2';
-                airlineReferenceCell.innerText = task.airline_reference ?? task.reference;
+                const totalCell = document.createElement('td');
+                totalCell.className = 'px-4 py-2';
+                totalCell.innerText = `${task.total ?? 0} KWD`;
 
                 const typeCell = document.createElement('td');
                 typeCell.className = 'px-4 py-2';
@@ -2032,9 +1460,6 @@
                 branchCell.className = 'px-4 py-2';
                 branchCell.innerText = task.branch_name;
 
-                const routeCell = document.createElement('td');
-                routeCell.className = 'px-4 py-2';
-
                 // Check if country_from and country_to exist before accessing 'name'
 
                 const supplierCell = document.createElement('td');
@@ -2043,7 +1468,7 @@
 
                 // Append cells to the row
                 row.appendChild(referenceCell);
-                row.appendChild(airlineReferenceCell);
+                row.appendChild(totalCell);
                 row.appendChild(typeCell);
                 row.appendChild(clientCell);
                 row.appendChild(agentCell);
@@ -2073,11 +1498,8 @@
             // Check if client and agent exist
             if (client && agent && branch) {
                 // Update hidden fields
-                document.getElementById('receiverId').value = client.id;
-                document.getElementById('clientid').value = client.id;
                 // Update input fields for client
-                document.getElementById('receiverName').value = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
-                document.getElementById('receiverName1').textContent = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
+                document.getElementById('receiverName').value = client.name;
                 document.getElementById('receiverEmail').value = client.email;
                 document.getElementById('receiverPhone').value = client.phone;
 
@@ -2101,10 +1523,8 @@
         function updateFormFields(client, agent) {
             // Update hidden fields
             document.getElementById('receiverId').value = client.id;
-            document.getElementById('clientid').value = client.id;
             // Update input fields
             document.getElementById('receiverName').value = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
-            document.getElementById('receiverName1').textContent = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
             document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
 
@@ -2134,11 +1554,6 @@
 
         // Function to update button state (text, loading spinner, disabled state)
         function updateButtonState(linkToPayment = false) {
-
-            if (linkToPayment) {
-
-            }
-
             if (isSaving) {
                 buttonText.style.display = 'none';
                 buttonLoading.style.display = 'inline-block';
@@ -2157,409 +1572,6 @@
             }
         }
 
-        function savePartial(mode) {
-
-            if (mode === 'full') {
-
-                if (!validateFullPayment()) return;
-
-                const gateway = document.getElementById('payment_gateway').value;
-                const date = document.getElementById('dueDate').value;
-                const amount = document.getElementById('subTotal').value;
-                const fullData = [];
-
-                fullData.push({
-                    date,
-                    amount,
-                    gateway
-                });
-                save('full', fullData);
-
-
-                const button = document.getElementById('update-invoice-btn');
-                const icon = document.getElementById('button-icon-full');
-                const text = document.getElementById('button-text-full');
-
-                button.disabled = true;
-
-                // Replace icon with spinner
-                icon.innerHTML = `
-                    <svg class="w-[500px] h-[80px] animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8v8z"></path>
-                    </svg>
-                `;
-                text.textContent = 'Saving...';
-
-                setTimeout(() => {
-                    icon.innerHTML = ''; // optional: keep icon off after saving
-                    text.textContent = 'Saved ✅';
-                }, 500);
-
-
-            } else
-            if (mode === 'split') {
-
-                if (!validateSplitPayment()) return;
-
-                // Collect Split Payment Data
-                const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-                const splitInto = parseInt(document.getElementById('split-into').value) || 0;
-                const description = document.getElementById('split-desc').value;
-                const rows = document.querySelectorAll('#split-rows tr');
-
-                const splitData = [];
-                rows.forEach(row => {
-                    const selectElement = row.querySelector('select');
-                    const clientId = selectElement.value
-                    const date = row.querySelector('input[type="date"]').value;
-                    const gateway = row.querySelector('#payment_gateway2').value || null;
-                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
-                    const clientName = selectElement.options[selectElement.selectedIndex].text;
-
-                    splitData.push({
-                        clientId,
-                        clientName,
-                        date,
-                        amount,
-                        gateway
-                    });
-                });
-
-                save('split', splitData);
-
-
-                const buttonSplit = document.getElementById('splitbutton');
-                const iconSplit = document.getElementById('button-icon-split');
-                const textSplit = document.getElementById('button-text-split');
-
-                if (buttonSplit && iconSplit && textSplit) {
-                    buttonSplit.disabled = true;
-
-                    // Show spinner
-                    iconSplit.innerHTML = `
-                        <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                        </svg>
-                    `;
-
-                    textSplit.textContent = 'Saving...';
-
-                    setTimeout(() => {
-                        iconSplit.innerHTML = ''; // remove spinner
-                        textSplit.textContent = 'Saved ✅';
-                        location.reload(); // or redirect if needed
-                    }, 500);
-                } else {
-                    console.error('Split button or icon/text elements not found in the DOM.');
-                }
-
-
-
-            } else if (mode === 'partial') {
-                if (!validatePartialPayment()) return;
-
-                // Collect Partial Payment Data
-                const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
-                const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
-                const partialRows = document.querySelectorAll('#split-rows1 tr');
-                const gateway = document.getElementById('payment_gateway1').value;
-
-                const partialData = [];
-
-                partialRows.forEach(row => {
-                    const date = row.querySelector('input[type="date"]').value;
-                    const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
-
-                    partialData.push({
-                        date,
-                        amount,
-                        gateway
-                    });
-                });
-
-                save('partial', partialData);
-
-
-                const buttonPartial = document.getElementById('partialbutton');
-                const iconPartial = document.getElementById('button-icon-partial');
-                const textPartial = document.getElementById('button-text-partial');
-
-                if (buttonPartial && iconPartial && textPartial) {
-                    buttonPartial.disabled = true;
-
-                    // Spinner icon (cleaned up)
-                    iconPartial.innerHTML = `
-                        <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                        </svg>
-                    `;
-
-                    textPartial.textContent = 'Saving...';
-
-                    setTimeout(() => {
-                        iconPartial.innerHTML = ''; // remove icon
-                        textPartial.textContent = 'Saved ✅';
-                        location.reload(); // or redirect if you want
-                    }, 500);
-                } else {
-                    console.error('One or more elements (button, icon, text) not found in the DOM');
-                }
-
-            }
-        }
-
-        async function save(type, data) {
-            const invoiceUrl = "{{ route('invoice.partial') }}";
-            const csrfToken = "{{ csrf_token() }}";
-            const invoiceId = document.getElementById('invoiceId').value;
-            const invoiceNumber = document.getElementById('invoiceNumber').value;
-
-            if (type === 'full') {
-                const clientId = document.getElementById('receiverId').value;
-
-                try {
-                    for (const item of data) {
-                        const {
-                            date,
-                            amount,
-                            gateway
-                        } = item;
-
-                        console.log(date, amount, gateway);
-
-                        // Send POST request for each client
-                        const response = await fetch(invoiceUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                            },
-                            body: JSON.stringify({
-                                invoiceId,
-                                invoiceNumber,
-                                clientId,
-                                type,
-                                date,
-                                amount,
-                                gateway
-                            }),
-                        });
-
-                        if (!response.ok) {
-                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
-                        }
-
-                        const result = await response.json();
-
-                    }
-
-                    // Display links
-
-                } catch (error) {
-                    console.error('Error generating invoices:', error);
-                    displayErrorMessage("Error generating one or more invoices. Please check your data.");
-                } finally {
-                    afterPaymentType();
-                    hideModal();
-                }
-            } else
-            if (type === 'split') {
-
-                let button = document.getElementById("splitbutton");
-                button.disabled = true;
-                button.innerText = "Saving..."; // Change text while saving
-
-                // Handle split payment, generate links for each row
-                try {
-                    const invoiceLinks = []; // Store links for each client
-                    for (const item of data) {
-                        const {
-                            clientId,
-                            clientName,
-                            date,
-                            amount,
-                            gateway
-                        } = item;
-
-                        console.log(invoiceId, clientId, type, date, amount);
-                        // console.log(csrfToken);
-                        // console.log(clientName)
-                        // Send POST request for each client
-                        const response = await fetch(invoiceUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                            },
-                            body: JSON.stringify({
-                                invoiceId,
-                                invoiceNumber,
-                                clientId,
-                                type,
-                                date,
-                                amount,
-                                gateway
-                            }),
-                        });
-
-                        if (!response.ok) {
-                            throw new Error(`Failed to generate invoice for client ID: ${clientId}`);
-                        }
-
-                        const result = await response.json();
-                    }
-
-                    // Set the linkVisible flag to true
-                    //linkVisible = true;
-                    button.innerText = "Saved!";
-                    // Update the visibility of the link
-                    updateLinkVisibility(invoiceNumber);
-
-
-                } catch (error) {
-                    console.error('Error generating invoices:', error);
-                    //displayErrorMessage("Error generating one or more invoices. Please check your data.");
-                } finally {
-                    afterPaymentType();
-                    //hideModal();
-                }
-
-            } else if (type === 'partial') {
-
-                // Handle partial payment as before
-                const clientId = document.getElementById('receiverId').value;
-
-                try {
-
-                    for (const item of data) {
-                        const {
-                            date,
-                            amount,
-                            gateway
-                        } = item;
-
-                        const response = await fetch(invoiceUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                            },
-                            body: JSON.stringify({
-                                invoiceId,
-                                invoiceNumber,
-                                clientId,
-                                type,
-                                date,
-                                amount,
-                                gateway
-                            }),
-                        });
-
-                        if (!response.ok) {
-                            throw new Error("Failed to generate partial invoice.");
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error generating invoice:', error);
-                    displayErrorMessage("Error generating invoice. Please try again.");
-                } finally {
-                    afterPaymentType();
-                    hideModal();
-                }
-            }
-        }
-
-
-        function validateFullPayment() {
-            const gateway = document.getElementById('payment_gateway').value;
-            const date = document.getElementById('dueDate').value;
-            const amount = parseFloat(document.getElementById('subTotal').value) || 0;
-
-            if (!gateway || amount <= 0) {
-                displayErrorMessage("All fields are required and amount must be greater than 0 for full payment.");
-                return false;
-            }
-            return true;
-        }
-
-        function validateSplitPayment() {
-            const rows = document.querySelectorAll('#split-rows tr');
-            const subTotal = parseFloat(document.getElementById('subTotal').value) || 0;
-            let totalAmount = 0;
-
-            for (const row of rows) {
-                const selectElement = row.querySelector('select');
-                const clientId = selectElement.value;
-                const date = row.querySelector('input[type="date"]').value;
-                const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
-
-                if (!clientId || !date || amount <= 0) {
-                    displayErrorMessage(
-                        "Each split payment row must have a client, valid date, and amount greater than 0.");
-                    return false;
-                }
-
-                totalAmount += amount;
-            }
-
-            if (totalAmount > subTotal) {
-                displayErrorMessage(
-                    `The total amount of split payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
-                return false;
-            }
-
-            if (totalAmount < subTotal) {
-                displayErrorMessage(
-                    `The total amount of split payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
-                return false;
-            }
-
-            return true;
-        }
-
-        function validatePartialPayment() {
-            const rows = document.querySelectorAll('#split-rows1 tr');
-            const gateway = document.getElementById('payment_gateway1').value;
-            const subTotal = parseFloat(document.getElementById('subTotal').value) || 0;
-            let totalAmount = 0;
-
-            for (const row of rows) {
-                const date = row.querySelector('input[type="date"]').value;
-                const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
-
-                if (!date || amount <= 0) {
-                    displayErrorMessage("Each partial payment row must have a valid date and amount greater than 0.");
-                    return false;
-                }
-
-                totalAmount += amount;
-            }
-
-            if (!gateway) {
-                displayErrorMessage("Payment gateway is required for partial payment.");
-                return false;
-            }
-
-            if (totalAmount > subTotal) {
-                displayErrorMessage(
-                    `The total amount of partial payments (${totalAmount}) cannot exceed the subtotal (${subTotal}).`);
-                return false;
-            }
-
-            if (totalAmount < subTotal) {
-                displayErrorMessage(
-                    `The total amount of partial payments (${totalAmount}) must equal the subtotal (${subTotal}).`);
-                return false;
-            }
-
-            return true;
-        }
-
-
         function displayErrorMessage(message) {
             const alert = document.createElement('div');
             alert.innerHTML = `
@@ -2571,60 +1583,6 @@
                     </div>
                 `;
             document.body.appendChild(alert);
-        }
-
-        function afterPaymentType() {
-            const partial = document.getElementById('payment_type_partial');
-            const split = document.getElementById('payment_type_split');
-            const full = document.getElementById('payment_type_full');
-            const update = document.getElementById('update-invoice-btn');
-            const updateSplitButton = document.getElementById('splitbutton');
-            const updatePartialButton = document.getElementById('partialbutton');
-
-            const paymentType = document.querySelector('input[name="payment_type"]:checked').value;
-            // Get all payment type inputs
-            const paymentOptions = document.querySelectorAll('input[name="payment_type"]');
-
-            // Get the selected payment type
-            const selectedOption = document.querySelector('input[name="payment_type"]:checked');
-            const shared = document.getElementById('shared');
-            update.disabled = true;
-            shared.value = "true";
-
-            // Disable all options
-            paymentOptions.forEach(option => {
-                option.disabled = true; // Disable the radio button
-                const label = option.closest('label'); // Find the parent label
-                if (option === selectedOption) {
-                    // Highlight the selected label
-                    label.classList.add('highlight-selected');
-                } else {
-                    // Fade the unselected labels
-                    label.classList.add('fade-unchecked');
-                }
-            });
-
-        }
-
-        function updateLinkVisibility(invoiceNumber) {
-            const rows = document.querySelectorAll("#split-rows tr");
-            rows.forEach(row => {
-                // Get the clientId from the select element or hidden input
-                const clientIdSelect = row.querySelector("select[name^='customer_name_']");
-                const clientId = clientIdSelect ? clientIdSelect.value : null;
-
-                // Update the link only if clientId is available
-                if (clientId) {
-                    const linkCell = row.querySelector("td:last-child");
-                    linkCell.innerHTML = `
-                        <a href="/invoice/${invoiceNumber}" 
-                        class="text-blue-500 underline" 
-                        target="_blank">
-                        View Details
-                        </a>
-                    `;
-                }
-            });
         }
 
         // Generate invoice
@@ -2770,111 +1728,10 @@
             }
         };
 
-        function viewInvoice() {
-            openInvoiceModal(document.getElementById('invoiceNumber').value);
-        }
-
-        function openInvoiceModal(invoiceNumber) {
-            const modal = document.getElementById("viewInvoiceModal");
-            const contentDiv = document.getElementById("invoiceContent");
-            const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
-
-            // Clear previous content
-            contentDiv.innerHTML = "";
-
-            // Open the modal
-            modal.classList.remove("hidden");
-            url = "{{ route('invoice.show', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
-
-            // Fetch the invoice details
-            fetch(url)
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error("Network response was not ok");
-                    }
-                    return response.text();
-                })
-                .then((data) => {
-                    contentDiv.innerHTML = data;
-
-                    // Close the modal when the backdrop is clicked
-                    modal.addEventListener("click", (event) => {
-                        if (event.target === modal) {
-                            closeInvoiceModal();
-                        }
-                    });
-
-
-                })
-                .catch((error) => {
-                    console.error("Error fetching invoice details:", error);
-                    contentDiv.innerHTML =
-                        '<p class="text-center text-red-500">Failed to load invoice details.</p>';
-
-                });
-        }
-
-        function closeInvoiceModal() {
-            const modal = document.getElementById("viewInvoiceModal");
-            modal.classList.add("hidden");
-        }
-
         function resetButtonState() {
             isSaving = false;
             isSaved = false;
             updateButtonState();
-        }
-
-
-        function copyLink() {
-            const invoiceNumber = document.getElementById('invoiceNumber').value;
-            const copyFeedback = document.getElementById('copyFeedback');
-            const baseUrl = window.location.origin;
-            const invoiceLink = `${baseUrl}/invoice/${invoiceNumber}/pdf`;
-            const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
-            const fetchUrl = "{{ route('invoice.pdf', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
-
-            navigator.clipboard.writeText(invoiceLink).then(() => {
-                alert('Link copied to clipboard: ' + invoiceLink); // Use invoiceLink here
-                //copyFeedback.classList.remove('hidden');
-                //setTimeout(() => copyFeedback.classList.add('hidden'), 3000);
-
-                fetch(fetchUrl, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/pdf',
-                        },
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.blob();
-                    })
-                    .then(blob => {
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `Invoice_${invoiceNumber}.pdf`; // Filename for the downloaded PDF
-                        document.body.appendChild(a);
-                        a.click();
-                        a.remove();
-                        window.URL.revokeObjectURL(url); // Clean up the URL object
-                    })
-                    .catch(err => {
-                        console.error('Failed to download PDF: ', err);
-                        alert('Failed to download PDF. Please try again.');
-                    });
-
-            }).catch(err => {
-                alert('Failed to copy link: ' + err);
-            });
-        }
-
-        function showSpinner() {
-            document.getElementById("submitButton").disabled = true;
-            document.getElementById("buttonText").textContent = "Sending...";
-            document.getElementById("spinner").classList.remove("hidden");
         }
 
         function renderClientCredit(client) {
@@ -2900,7 +1757,6 @@
                 })
                 .then(data => {
                     const currentCredit = parseFloat(data.credit);
-                    console.log('Total Amount:', totalAmount);
 
                     clientCredit.innerHTML = `
                 <p class="text-gray-700 font-semibold">${client.first_name} Credit: 
@@ -2926,15 +1782,31 @@
                 });
         }
 
-        document.addEventListener("DOMContentLoaded", function() {
+        function currentAgentId() {
+            const val = document.getElementById('agentId')?.value;
+            return val ? String(val) : '';
+        }
 
-            tasks = @json($tasks);
-            tasks = Array.isArray(tasks) ? tasks : Object.values(tasks);
+        function getFilteredTasks() {
+            const agentId = currentAgentId();
+            if (!agentId) return allTasks.slice();
+            return allTasks.filter(t => String(t.agent_id) === agentId);
+        }
+
+        function refreshTaskList() {
+            const base = getFilteredTasks();
+            const withoutSelected = base.filter(t => !items.some(sel => sel.id === t.id));
+            renderTaskList(withoutSelected);
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const _tasks = @json($tasks);
+            allTasks = Array.isArray(_tasks) ? _tasks : Object.values(_tasks);
             let clients = @json($clients);
             renderItems();
 
             renderClientList(clients);
-            renderTaskList(tasks);
+            refreshTaskList();
             renderClientCredit(selectedClient);
         });
 

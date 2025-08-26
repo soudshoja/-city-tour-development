@@ -136,6 +136,8 @@ class ClientController extends Controller
             'dial_code' => 'required|string|max:30',
             'phone' => 'required|string|max:15',
             'agent_id' => 'required|exists:agents,id',
+            'passport_no' => 'nullable|string',
+            'date_of_birth' => 'nullable|date',
         ]);
 
         try {
@@ -204,6 +206,8 @@ class ClientController extends Controller
             'phone' => 'required|string|max:15',
             'agent_id' => 'required|exists:agents,id',
             'civil_no' => 'required|unique:clients,civil_no',
+            'passport_no' => 'nullable|string',
+            'date_of_birth' => 'nullable|date',
         ]);
 
         $response = $this->storeProcess($request);

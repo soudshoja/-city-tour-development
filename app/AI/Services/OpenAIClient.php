@@ -895,7 +895,7 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Rate Hawk):\n";
         $prompt .= "  • Store transfer details (from, to, and date/time) in tasks.additional_info as plain text. Example: 'Transfer from Hilton Abu Dhabi Yas Island Resort to Sharjah International Airport (SHJ) on 2025-09-01 11:30'. Do not use JSON for this; keep it as readable text for display only.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Webbeds):\n";
-        $prompt .= "  • Set tasks.reference from the Booking Reference No by taking everything after the last '-' (e.g., WBD-658484445 → reference = 658484445). Set tasks.ticket_number to the full Booking Reference No (e.g., ticket_number = WBD-658484445).\n";        
+        $prompt .= "  • Set tasks.reference from the Booking Reference No by taking everything after the last '-' (e.g., WBD-658484445 → reference = 658484445). Set tasks.ticket_number to the full Booking Reference No (e.g., ticket_number = WBD-658484445).\n";
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

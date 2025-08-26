@@ -119,7 +119,7 @@ class ResayilController extends Controller
         $client = Client::findOrFail($request->client_id);
         $invoiceNumber = $request->invoiceNumber;
 
-        $invoiceLink = route('invoice.show', ['invoiceNumber' => $invoiceNumber]);
+        $invoiceLink = route('invoice.show', ['companyId' => $client->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber]);
 
         $message = "👋 Hello {$client->first_name},\n\n🧾 Your invoice is ready!\n\nYou can view it here:\n🔗 $invoiceLink\n\nThank you for choosing us! 😊";
 
@@ -192,7 +192,7 @@ class ResayilController extends Controller
         $payment = Payment::findOrFail($request->payment_id);
 
         // Assuming you have a method to generate the payment link
-        $paymentLink = route('payment.link.show', ['voucherNumber' => $payment->voucher_number ]);
+        $paymentLink = route('payment.link.show', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number ]);
        
         $message = "👋 Hello {$client->first_name},\n\n💳 Your payment link is ready!\n\nYou can complete your payment here:\n🔗 $paymentLink\n\nThank you for choosing us! 😊";
 

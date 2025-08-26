@@ -362,6 +362,7 @@
                         @foreach ($payments as $payment)
                             @php
                                 $paymentUrl = route('payment.link.show', [
+                                    'companyId' => $payment->agent->branch->company_id,
                                     'voucherNumber' => $payment->voucher_number,
                                 ]);
                             @endphp

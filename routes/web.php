@@ -373,19 +373,22 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{id}', [InvoiceController::class, 'update'])->name('update');
         Route::delete('/delete/{id}', [InvoiceController::class, 'delete'])->name('delete');
         // Route::patch('/invoice/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('updateStatus');
-        Route::get('/edit/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('edit');
+        Route::get('/edit/{companyId}/{invoiceNumber}', [InvoiceController::class, 'edit'])->name('edit');
         Route::post('/update-gateway', [InvoiceController::class, 'updatePaymentGateway'])->name('update-gateway');
         Route::post('/add-task', [InvoiceController::class, 'addTask'])->name('add-task');
         Route::post('/remove-task', [InvoiceController::class, 'removeTask'])->name('remove-task');
         Route::post('/partial', [InvoiceController::class, 'savePartial'])->name('partial');
         Route::post('/remove/partial', [InvoiceController::class, 'removePartial'])->name('removepartial');
-        Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split');
+        Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split')->withoutMiddleware(['auth']);
         Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
-        Route::get('/{invoiceNumber}', [InvoiceController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
-        Route::get('/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('pdf')->withoutMiddleware(['auth']);
-        Route::get('/{invoiceNumber}/proforma', [InvoiceController::class, 'proforma'])->name('proforma')->withoutMiddleware(['auth']);
-        Route::get('/{invoiceNumber}/proforma-pdf', [InvoiceController::class, 'proformaGeneratePdf'])->name('proforma.pdf')->withoutMiddleware(['auth']);
-        Route::put('/{invoiceNumber}/date', [InvoiceController::class, 'updateDate'])->name('updateDate');
+        Route::get('/{invoiceNumber}' , function(){
+            return redirect()->route('invoice.show', ['companyId' => 1, 'invoiceNumber' => request()->invoiceNumber]);
+        })->withoutMiddleware(['auth']);
+        Route::get('/{companyId}/{invoiceNumber}', [InvoiceController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
+        Route::get('/{companyId}/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('pdf')->withoutMiddleware(['auth']);
+        Route::get('/{companyId}/{invoiceNumber}/proforma', [InvoiceController::class, 'proforma'])->name('proforma')->withoutMiddleware(['auth']);
+        Route::get('/{companyId}/{invoiceNumber}/proforma-pdf', [InvoiceController::class, 'proformaGeneratePdf'])->name('proforma.pdf')->withoutMiddleware(['auth']);
+        Route::put('/{companyId}/{invoiceNumber}/date', [InvoiceController::class, 'updateDate'])->name('updateDate');
         Route::post('/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('updateTaskPrice');
     });
 
@@ -411,11 +414,12 @@ Route::middleware(['auth'])->group(function () {
         'as' => 'payment.',
     ], function () {
         // Route::get('/', [PaymentController::class, 'showPaymentPage'])->name('choose')->withoutMiddleware(['auth']);
-        Route::post('/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
+        Route::post('/create/{companyId}/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         //Route::match(['get', 'post'], '/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
-        Route::get('/clients/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
+        Route::get('/success', [PaymentController::class, 'success'])->name('success')->withoutMiddleware(['auth']);
+        Route::get('/clients/{companyId}/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
         Route::get('/clients-process', [PaymentController::class, 'paymentClientProcess'])->name('clients.process');
 
         Route::group([
@@ -425,7 +429,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', [PaymentController::class, 'paymentLink'])->name('index');
             Route::get('/create', [PaymentController::class, 'paymentCreateLink'])->name('create');
             Route::post('/store', [PaymentController::class, 'paymentStoreLink'])->name('store');
-            Route::get('/show/{voucherNumber}', [PaymentController::class, 'paymentShowLink'])->name('show')->withoutMiddleware(['auth']);
+            Route::get('/show/{companyId}/{voucherNumber}', [PaymentController::class, 'paymentShowLink'])->name('show')->withoutMiddleware(['auth']);
             Route::put('/update/{paymentId}', [PaymentController::class, 'paymentUpdateLink'])->name('update');
             Route::delete('/delete/{paymentId}', [PaymentController::class, 'paymentDeleteLink'])->name('delete');
             Route::get('/share/{paymentId}', [PaymentController::class, 'shareLink'])->name('share');

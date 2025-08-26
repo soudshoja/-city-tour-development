@@ -1057,95 +1057,73 @@
                                 <!-- Error message -->
                             </div>
 
-                            <!-- Modal -->
-                            <div id="paymentModal"
-                                class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
-                                <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
-                                    <h3 class="text-xl font-bold mb-4">Split Payment Details</h3>
-                                    <!-- Include your previous page content here -->
-                                    <div class="bg-gray-100 p-5">
-                                        <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
-
-                                            <!-- Split Payment Tab Content -->
-                                            <div id="split-payment-container" class="tab-content">
-                                                <form>
-                                                    <!-- Top Fields -->
-                                                    <div class="grid grid-cols-3 gap-4 mb-5">
-                                                        <div>
-                                                            <label class="block text-sm font-medium mb-1">Amount *</label>
-                                                            <input type="number" id="total-amount"
-                                                                class="w-full border-gray-300 rounded-md shadow-sm opacity-50"
-                                                                placeholder="0" disabled />
-                                                        </div>
-                                                        <div>
-                                                            <label class="block text-sm font-medium mb-1"
-                                                                for="split-into">Split into *</label>
-                                                            <select id="split-into"
-                                                                class="w-full p-2 border-gray-300 rounded-md shadow-sm"
-                                                                onchange="updateRows()">
-                                                                <option value="" disabled selected>Select a value
-                                                                </option>
-                                                                <option value="1">1</option>
-                                                                <option value="2">2</option>
-                                                                <option value="3">3</option>
-                                                                <option value="4">4</option>
-                                                                <option value="5">5</option>
-                                                                <option value="6">6</option>
-                                                                <option value="7">7</option>
-                                                                <option value="8">8</option>
-                                                                <option value="9">9</option>
-                                                                <option value="10">10</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Expiry and Description -->
-                                                    <div class="grid grid-cols-2 gap-4 mb-5">
-                                                        <div>
-                                                            <label class="block text-sm font-medium mb-1">Description
-                                                                *</label>
-                                                            <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm p-2" placeholder="Add Description"></textarea>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Table -->
-                                                    <div class="overflow-x-auto">
-                                                        <table
-                                                            class="min-w-full bg-white border border-gray-300 text-center">
-                                                            <thead>
-                                                                <tr>
-                                                                    <th class="border-b px-4 py-2">S.No</th>
-                                                                    <th class="border-b px-4 py-2">Choose Client</th>
-                                                                    <th class="border-b px-4 py-2">Expiry Date</th>
-                                                                    <th class="border-b px-4 py-2">Amount</th>
-                                                                    <th class="border-b px-4 py-2">Payment Gateway</th>
-                                                                    <th class="border-b px-4 py-2">Payment Method</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody id="split-rows">
-                                                                <!-- Dynamic rows will be generated here -->
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-
-                                                    <!-- Buttons -->
-
-                                                    <div class="flex space-x-4 mt-5">
-                                                        <button type="button" id="splitbutton"
-                                                            onclick="savePartial('split')"
-                                                            class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10 rounded-full shadow">
-                                                            <span id="button-icon-split" class="mr-2"></span>
-                                                            <span id="button-text-split">Save Split Payment</span>
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
+                            <!-- Split Payment Modal -->
+                            <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain">
+                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1100px] h-[80vh] flex flex-col">
+                                    <div class="px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
+                                        <h3 class="text-xl font-bold">Split Payment Details</h3>
                                     </div>
-                                    <div class="mt-4 flex justify-end">
-                                        <button onclick="hideModal()"
-                                            class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                                    <div class="flex-1 overflow-y-auto px-6 py-4">
+                                        <form id="split-payment-container" class="space-y-5">
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1">Amount *</label>
+                                                    <input type="number" id="total-amount"
+                                                        class="w-full border-gray-300 rounded-md shadow-sm opacity-50" placeholder="0" disabled />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1" for="split-into">Split into *</label>
+                                                    <select id="split-into"
+                                                        class="w-full p-2 border-gray-300 rounded-md shadow-sm"
+                                                        onchange="updateRows()">
+                                                        <option value="" disabled selected>Select a value
+                                                        </option>
+                                                        <option value="1">1</option>
+                                                        <option value="2">2</option>
+                                                        <option value="3">3</option>
+                                                        <option value="4">4</option>
+                                                        <option value="5">5</option>
+                                                        <option value="6">6</option>
+                                                        <option value="7">7</option>
+                                                        <option value="8">8</option>
+                                                        <option value="9">9</option>
+                                                        <option value="10">10</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium mb-1">Description *</label>
+                                                <textarea id="split-desc" class="w-full border-gray-300 rounded-md shadow-sm p-2" placeholder="Add Description"></textarea>
+                                            </div>
+                                            <div class="overflow-x-auto">
+                                                <table class="min-w-full bg-white border border-gray-300 text-center">
+                                                    <thead>
+                                                        <tr>
+                                                            <th class="border-b px-4 py-2">S.No</th>
+                                                            <th class="border-b px-4 py-2">Choose Client</th>
+                                                            <th class="border-b px-4 py-2">Expiry Date</th>
+                                                            <th class="border-b px-4 py-2">Amount</th>
+                                                            <th class="border-b px-4 py-2">Payment Gateway</th>
+                                                            <th class="border-b px-4 py-2">Payment Method</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="split-rows">
+                                                        <!-- Dynamic rows will be generated here -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div class="flex">
+                                                <button type="button" id="splitbutton" onclick="savePartial('split')"
+                                                        class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                                city-light-yellow hover:bg-[#004c9e] hover:text-white py-2 px-10 rounded-full shadow">
+                                                    <span id="button-icon-split" class="mr-2"></span>
+                                                    <span id="button-text-split">Save Split Payment</span>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="px-6 py-4 border-t sticky bottom-0 bg-white rounded-b-lg flex justify-end">
+                                        <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
                                     </div>
                                 </div>
                             </div>
@@ -2033,35 +2011,45 @@
                 for (let i = 1; i <= splitInto; i++) {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                    <td class="border-b px-4 py-2">${i}</td>
-                    <td class="border-b px-4 py-2">
-                    <select  id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
-                        ${clients.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
-                    </select>
-                    </td>
-                    <td class="border-b px-4 py-2">
-                        <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="border-gray-300 rounded-md shadow-sm" />
-                    </td>
-                    <td class="border-b px-4 py-2">
-                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount}" 
-                            onblur="checkInputAmount('split', ${i})" oninput="checkInputAmount('split', ${i})" />
-                    </td>
-                    <td class="border-b px-4 py-2">
-                        <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="border border-gray-300 p-2 rounded w-full">
-                            @foreach ($paymentGateways as $gateway)
-                            <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
-                            @endforeach
-                        </select>
-                    </td>
-                    <td class="border-b px-4 py-2">
-                        <div id="payment_method_container_${i}" class="hidden">
-                            <select id="payment_method_${i}" name="payment_method_${i}" class="border border-gray-300 p-2 rounded w-full">
-                                ${paymentMethods.map(method => `<option value="${method.id}">${method.english_name}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div id="payment_method_text_${i}" class="text-gray-500 p-2">No specific method required</div>
-                    </td>
-                `;
+                        <td class="border-b px-4 py-2">${i}</td>
+                        <td class="border-b px-4 py-2">
+                            <div class="w-[180px]">
+                                <select id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
+                                    ${clients.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
+                                </select>
+                            </div>
+                        </td>
+                        <td class="border-b px-4 py-2">
+                            <div class="w-[140px]">
+                                <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="w-full border-gray-300 rounded-md shadow-sm" />
+                            </div>
+                        </td>
+                        <td class="border-b px-4 py-2">
+                            <div class="w-[110px]">
+                                <input type="number" id="amount_${i}" name="amount_${i}" class="w-full border-gray-300 rounded-md no-spin" value="${perRowAmount}"
+                                    onblur="checkInputAmount('split', ${i})" oninput="checkInputAmount('split', ${i})" />
+                            </div>
+                        </td>
+                        <td class="border-b px-4 py-2">
+                            <div class="w-[140px]">
+                                <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="w-full border border-gray-300 p-2 rounded">
+                                    @foreach ($paymentGateways as $gateway)
+                                        <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </td>
+                        <td class="border-b px-4 py-2">
+                            <div class="w-[220px]">
+                                <div id="payment_method_container_${i}" class="hidden">
+                                    <select id="payment_method_${i}" name="payment_method_${i}" class="w-full border border-gray-300 p-2 rounded">
+                                        ${paymentMethods.map(method => `<option value="${method.id}">${method.english_name}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div id="payment_method_text_${i}" class="text-gray-500 p-2">No specific method required</div>
+                            </div>
+                        </td>
+                    `;
                     tbody.appendChild(row);
 
                     const selectElement = row.querySelector('.account-select');
@@ -2109,7 +2097,7 @@
                         <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="border-gray-300 rounded-md shadow-sm" />
                     </td>
                     <td class="border-b px-4 py-2">
-                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md" value="${perRowAmount1}" 
+                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md no-spin" value="${perRowAmount1}" 
                             onblur="checkInputAmountOnInput('partial', ${i})" oninput="checkInputAmount('partial', ${i})" />
                     </td>
                 `;

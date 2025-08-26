@@ -6,7 +6,7 @@
                     <div class="card-header my-2 flex justify-between align-items-center">
                         <h4 class="font-bold text-lg mb-0">Proforma Invoice</h4>
                         <div class="flex justify-end gap-2">
-                            <a href="{{ route('invoice.proforma.pdf', $invoice->invoice_number) }}"
+                            <a href="{{ route('invoice.proforma.pdf', ['companyId' => optional($invoice->agent->branch->company)->id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                 class="btn btn-primary">
                                 <i class="fas fa-download"></i> Download PDF
                             </a>

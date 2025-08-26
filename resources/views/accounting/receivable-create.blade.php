@@ -37,7 +37,7 @@
                                                         {{ !empty($ledger->type_reference_id) ? $ledger->type_reference_id : $ledger->invoice->invoice_number ?? '' }}
                                                         @if ($ledger->invoice && $ledger->invoice->invoice_number)
                                                             <a target="_blank"
-                                                                href="{{ route('invoice.show', ['invoiceNumber' => $ledger->invoice->invoice_number]) }}"
+                                                                href="{{ route('invoice.show', ['companyId' => $ledger->company_id, 'invoiceNumber' => $ledger->invoice->invoice_number]) }}"
                                                                 class="text-blue-500 ml-0">
                                                                 🔍
                                                             </a>

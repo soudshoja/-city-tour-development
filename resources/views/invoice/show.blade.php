@@ -446,7 +446,7 @@
             </form>
             @endif
             <form id="paymentForm"
-                action="{{ route('payment.create', ['invoiceNumber' => $invoice->invoice_number]) }}"
+                action="{{ route('payment.create', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                 method="POST">
                 @csrf
 
@@ -479,10 +479,10 @@
             (auth()->user()->role === 'admin' || auth()->user()->role === 'company' || auth()->user()->role === 'agent'))
             <div class="flex gap-2 mt-2" id="invoice-link">
                 <p>
-                    {{ route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]) }}
+                    {{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}
                 </p>
                 <button
-                    onclick="copyToClipboard('{{ route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]) }}')">
+                    onclick="copyToClipboard('{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}')">
                     <img src="{{ asset('images/svg/copy.svg') }}" alt="Copy Link" class="w-4 h-4">
                 </button>
 

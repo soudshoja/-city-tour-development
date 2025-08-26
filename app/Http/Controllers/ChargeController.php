@@ -31,15 +31,15 @@ class ChargeController extends Controller
             // $charges = collect();
         }
 
-        $inactiveCharges = [];
+        // $inactiveCharges = [];
 
-        foreach($charges as $charge){
-            if($charge->api_key == null){
-                $charge->is_active = false;
-                $charge->save();
-                $inactiveCharges[] = $charge->name;
-            }
-        }
+        // foreach($charges as $charge){
+        //     if($charge->api_key == null){
+        //         $charge->is_active = false;
+        //         $charge->save();
+        //         $inactiveCharges[] = $charge->name;
+        //     }
+        // }
 
         return view('charges.index', compact('charges', 'totalCharges'));
     }
@@ -250,7 +250,7 @@ class ChargeController extends Controller
             ->where('company_id', Auth::user()->company->id)
             ->whereDoesntHave('children')
             ->get();
-
+        
         return view('charges.edit', compact(
             'charge',
             'accFee',

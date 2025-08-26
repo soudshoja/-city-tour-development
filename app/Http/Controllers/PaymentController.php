@@ -84,7 +84,7 @@ class PaymentController extends Controller
     //     return view('payment.choose', compact('invoice', 'paymentGateways'));
     // }
 
-    public function create($invoiceNumber, Request $request)
+    public function create($companyId, $invoiceNumber, Request $request)
     {
         $request->validate([
             'client_name' => 'required|string|max:255',
@@ -138,7 +138,10 @@ class PaymentController extends Controller
         $response = json_decode($this->initiatePayment($data)->content(), true);
 
         if (isset($response['error'])) {
-            return redirect()->back()->with('error', $response['error']);
+            if(auth()->user()){
+                return redirect()->back()->with('error', $response['error']);
+            }
+            return abort(400);
         }
 
         $this->storeNotification([
@@ -159,14 +162,18 @@ class PaymentController extends Controller
 
     public function initiatePayment($data) : JsonResponse
     {
-        $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
-        if (!$voucherSequence) {
-            $voucherSequence = Sequence::create([
-                'sequence_for' => 'VOUCHER',
-                'current_sequence' => 1
-            ]);
+        $companyId = null;
+        $user = Auth::user();
+
+        if ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company->id;
+        } elseif ($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->branch->company->id;
         }
 
+        $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
         $currentSequence = $voucherSequence->current_sequence;
         $voucherNumber = $this->generateVoucherNumber($currentSequence);
         $voucherSequence->current_sequence++;
@@ -453,7 +460,7 @@ class PaymentController extends Controller
                 'response' => $response,
             ]);
 
-            return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Payment failed');
+            return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Payment failed');
         }
 
         $clientName = $response['customer']['first_name'];
@@ -469,7 +476,12 @@ class PaymentController extends Controller
 
         if (!$paymentGateway) {
             Log::error('Payment gateway not found in response', ['response' => $response]);
-            return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
+
+            $invoice = $invoice ?? Invoice::with('agent.branch')
+            ->where('invoice_number', $invoiceNumber)
+            ->first();
+            $companyId = optional($invoice->agent->branch)->company_id;
+            return redirect()->route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
         }
 
         $totalPaidAmount = $response['amount'];
@@ -518,13 +530,13 @@ class PaymentController extends Controller
             //dd($bankAccountAccRecord->id,$tapAccount->id,$bankPaymentFee->id);
         } else {
             Log::error('Charge record not found for payment gateway', ['payment_gateway' => $paymentGateway, 'company_id' => $invoice->agent->branch->company->id]);
-            return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
+            return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
         }
 
 
         if (!$invoice) {
             Log::error('Invoice not found', ['invoice_number' => $invoiceNumber]);
-            return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
+            return redirect()->route('invoice.index')->with('error', 'Something went wrong, please try again later.');
         }
         //dd($invoiceDetails);
 
@@ -539,7 +551,7 @@ class PaymentController extends Controller
                 // Check if there's at least one invoice detail to process
                 if (!$invoiceDetail) {
                     Log::error('No invoice details found for processing', ['invoice_number' => $invoiceNumber]);
-                    return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
+                    return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
                 }
 
                 $selectedtask = Task::where('id', $invoiceDetail->task_id)->first();
@@ -554,12 +566,12 @@ class PaymentController extends Controller
 
                 if (!$receivableAccount || !$receivableAccountId) {
                     Log::error('Receivable account not found', ['company_id' => $invoice->agent->branch->company->id]);
-                    return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
+                    return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
                 }
 
                 if (!$invoice->agent || !$invoice->agent->branch || !$invoice->agent->branch->company) {
                     Log::error('Agent or branch or company not found for invoice', ['invoice_id' => $invoice->id]);
-                    return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
+                    return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
                 }
 
                 // Create a transaction record first
@@ -690,7 +702,7 @@ class PaymentController extends Controller
                     'trace' => $e->getTraceAsString(),
                 ]);
 
-                return redirect()->route('invoice.show', ['invoiceNumber' => $invoiceNumber])
+                return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])
                     ->with('error', 'Something went wrong while processing the invoice. Please try again later.');
             }
             //}
@@ -757,7 +769,7 @@ class PaymentController extends Controller
         //     // Handle payment failure
         //     return redirect()->back()->with('error', 'Payment failed: ' . $e->getMessage());
         // }
-        return redirect()->route('invoice.show', ['invoiceNumber' => $invoice->invoice_number])
+        return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])
             ->with('status', 'Payment successful! Thank you for your payment.');
     }
 
@@ -901,7 +913,7 @@ class PaymentController extends Controller
             'message' => 'Payment received via MyFatoorah for invoice ' . $invoice->invoice_number,
         ]);
 
-        return redirect()->route('invoice.show', ['invoiceNumber' => $invoice->invoice_number])
+        return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])
             ->with('status', 'Payment successful via MyFatoorah!');
     }
 
@@ -1346,14 +1358,18 @@ class PaymentController extends Controller
             'notes' => 'nullable|string|max:255'
         ]);
 
-        $voucherSequence = Sequence::where('sequence_for', 'VOUCHER')->lockForUpdate()->first();
-        if (!$voucherSequence) {
-            $voucherSequence = Sequence::create([
-                'sequence_for' => 'VOUCHER',
-                'current_sequence' => 1
-            ]);
+        $companyId = null;
+        $user = Auth::user();
+
+        if ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company->id;
+        } elseif ($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->branch->company->id;
         }
 
+        $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
         $client = Client::find($request->client_id);
         $agent = Agent::find($request->agent_id);
 
@@ -1456,9 +1472,12 @@ class PaymentController extends Controller
         return redirect()->route('payment.link.index')->with('success', 'Payment link created successfully!');
     }
 
-    public function paymentShowLink($voucherNumber)
+    public function paymentShowLink($companyId, $voucherNumber)
     {
-        $payment = Payment::with('agent', 'client')->where('voucher_number', $voucherNumber)->first();
+        $payment = Payment::with(['agent.branch.company', 'client'])
+            ->where('voucher_number', $voucherNumber)
+            ->whereHas('agent.branch', fn ($q) => $q->where('company_id', $companyId))
+            ->first();
 
         if (!$payment) {
             return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
@@ -1544,7 +1563,12 @@ class PaymentController extends Controller
         $payment = Payment::with('invoice')->find($request->payment_id);
 
         if (!$payment) {
-            return redirect()->back()->with('error', 'Payment not found.');
+
+            if(auth()->user()){
+                return redirect()->back()->with('error', 'Payment not found.');
+            }
+
+            return abort(404);
         }
 
         $process = 'topup';
@@ -1822,6 +1846,11 @@ class PaymentController extends Controller
     {   
         $source = $request->input('source');
         if ($source === 'import') {
+
+            if(!auth()->user()){
+                return abort(403, 'Unauthorized action.');
+            }
+
             $paymentId = $request->payment_id;
             $payment = Payment::findorFail($paymentId);
 
@@ -1900,17 +1929,25 @@ class PaymentController extends Controller
             DB::commit();
 
             return redirect()->back()->with('success', 'Import payment from myFatoorah portal is success!');
-        }
-        else if ($request->tap_id) {
+        } else if ($request->tap_id) {
             $tapId = $request->tap_id;
             $tap = new Tap();
             $response = $tap->getCharge($tapId);
         } else {
-            return redirect()->back()->with('error', 'Payment not found.');
+            if(auth()->user()){
+                return redirect()->back()->with('error', 'Payment not found.');
+            }
+
+            return abort(404);
         }
 
         if (isset($response['errors'])) {
-            return redirect()->back()->with('error', $response['errors'][0]['description']);
+
+            if (auth()->user()) {
+                return redirect()->back()->with('error', $response['errors'][0]['description']);
+            }
+
+            return abort(500);
         }
 
         if ($response['status'] != 'CAPTURED') {
@@ -1928,7 +1965,12 @@ class PaymentController extends Controller
                 'payment_reference' => $response['id'],
                 'reference_type' => 'Payment',
             ]);
-            return redirect()->back()->with('error', 'Payment error');
+
+            if (auth()->user()) {
+                return redirect()->back()->with('error', 'Payment ' . strtolower($response['status']));
+            }
+
+            return abort(500);
         }
 
         $paymentId = $response['metadata']['payment_id'];
@@ -1941,6 +1983,7 @@ class PaymentController extends Controller
                 'tap_id' => $tapId,
             ]);
             return redirect()->back()->with('error', 'Payment not found.');
+
         }
 
         $finalPaidAmount = $response['amount'];
@@ -1974,7 +2017,12 @@ class PaymentController extends Controller
                     'message' => $addCreditResponse['error'],
                     'payment_id' => $paymentId,
                 ]);
-                return redirect()->back()->with('error', 'Payment cannot be updated');
+
+                if (auth()->user()) {
+                    return redirect()->back()->with('error', 'Payment cannot be updated');
+                } else {
+                    return abort(500);
+                }
             }
 
             $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
@@ -1982,7 +2030,12 @@ class PaymentController extends Controller
                 ->first();
 
             if (!$liabilitiesAccount) {
-                return redirect()->back()->with('error', 'Liabilities account not found.');
+
+                if (auth()->user()) {
+                    return redirect()->back()->with('error', 'Liabilities account not found.');
+                } else {
+                    return abort(500);
+                }
             }
 
             $clientAdvance = Account::where('name', 'Client')
@@ -1991,7 +2044,11 @@ class PaymentController extends Controller
                 ->first();
 
             if (!$clientAdvance) {
-                return redirect()->back()->with('error', 'Client advance account not found.');
+                if (auth()->user()) {
+                    return redirect()->back()->with('error', 'Client advance account not found.');
+                } else {
+                    return abort(500);
+                }
             }
 
             DB::beginTransaction();
@@ -2033,16 +2090,30 @@ class PaymentController extends Controller
                     'message' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
-                return redirect()->back()->with('error', 'Payment cannot be updated');
+                if (auth()->user()) {
+                    return redirect()->back()->with('error', 'Payment cannot be updated');
+                } else {
+                    return abort(500);
+                }
             }
             DB::commit();
         } else if ($process == 'invoice') {
             $invoice = Invoice::where('id', $payment->invoice_id)->first();
             if (!$invoice) {
-                return redirect()->back()->with('error', 'Invoice not found.');
+                if (auth()->user()) {
+                    return redirect()->back()->with('error', 'Invoice not found.');
+                } else {
+                    return abort(500);
+                }
             }
         } else {
-            return redirect()->back()->with('error', 'Invalid process type.');
+
+            if (auth()->user()) {
+                return redirect()->back()->with('error', 'Invalid process type.');
+            } else {
+                return abort(500);
+            }
+            
         }
 
         try {
@@ -2094,16 +2165,29 @@ class PaymentController extends Controller
 
             //dd($process);
 
-            return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+            if(auth()->user()){
+            return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+            } else {
+                return redirect()->route('payment.success');
+            }
         } catch (Exception $e) {
             logger('Failed to update payment status', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('error', 'Payment cannot be updated.');
+
+            if (auth()->user()) {
+                return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('error', 'Payment cannot be updated.');
+            } else {
+                return abort(500);
+            }
         }
 
-        return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+        if (auth()->user()) {
+            return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+        } else {
+            return redirect()->route('payment.success');
+        }
     }
 
     public function handleMyFatoorahCallback(Request $request)
@@ -2435,7 +2519,7 @@ class PaymentController extends Controller
                     Log::error('Payment processing failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
                     return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
                 }
-                return redirect()->route('invoice.show', $payment->invoice->invoice_number)->with('success', 'Payment completed successfully!');
+                return redirect()->route('invoice.show', ['companyId' => $payment->agent->branch->company_id, 'invoiceNumber' => $payment->invoice->invoice_number])->with('status', 'Payment successful! Thank you for your payment.');
             } else {
                 $transaction = $statusData['Data']['InvoiceTransactions'][0] ?? [];
 
@@ -2454,13 +2538,13 @@ class PaymentController extends Controller
                 );
 
                 //return redirect()->route('payment.link.index')->with('success', 'Payment completed successfully using voucher!');   
-                return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+                return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
             }
         } catch (\Exception $e) {
             Log::error('MyFatoorah callback exception', ['message' => $e->getMessage()]);
             return redirect()->to('/invoices')->with('error', 'Something went wrong. Please contact support.');
 
-            return redirect()->route('payment.link.show', ['voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+            return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
         }
     }
 
@@ -2500,7 +2584,7 @@ class PaymentController extends Controller
                 'reference_type' => 'Invoice'
             ]);
 
-            return redirect()->route('invoice.show', ['invoiceNumber' => $invoice->invoice_number])->with('error', 'Payment failed');
+            return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])->with('error', 'Payment failed');
         }
 
         if ($request->has('payment_id')) {

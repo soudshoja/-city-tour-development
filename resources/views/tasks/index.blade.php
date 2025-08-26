@@ -1503,7 +1503,7 @@
                                                 <td data-column="invoice" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     @if ($task->invoiceDetail)
                                                     <a target="_blank"
-                                                        href="{{ route('invoice.show', $task->invoiceDetail->invoice_number) }}">
+                                                        href="{{ route('invoice.show', ['companyId' => $task->company_id, 'invoiceNumber' => $task->invoiceDetail->invoice_number]) }}">
                                                         <span
                                                             data-invoice-number="{{ $task->invoiceDetail->invoice_number }}"
                                                             class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-success">

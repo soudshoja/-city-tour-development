@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use League\OAuth2\Client\Provider\GenericProvider;
+use Illuminate\Validation\Rule;
 
 class SupplierController extends Controller
 {
@@ -172,7 +173,6 @@ public function updateExchangeRates(Request $request, $supplierId)
         return redirect()->back()->with('success', 'Supplier created successfully.');
     }
 
-
     public function update($id)
     {
         if (Auth::user()->role_id != Role::ADMIN) {
@@ -183,7 +183,7 @@ public function updateExchangeRates(Request $request, $supplierId)
 
         $request->validate([
             'name' => 'required',
-            'auth_type' => 'required|in:basic,oauth',
+            'auth_type' => ['required', Rule::in(['basic','oauth'])],
             'has_hotel' => 'nullable',
             'has_flight' => 'nullable',
             'has_visa' => 'nullable',
@@ -197,9 +197,12 @@ public function updateExchangeRates(Request $request, $supplierId)
             'has_lounge' => 'nullable',
             'has_ferry' => 'nullable',
             'country_id' => 'required|exists:countries,id',
+            'is_online'   => 'exclude_unless:has_hotel,on|boolean',
         ]);
 
         $supplier = Supplier::findOrFail($id);
+        $hasHotel = $request->has('has_hotel');
+        $isOnline = $hasHotel ? (int)$request->boolean('is_online') : 0;
 
         $supplier->update([
             'name' => $request->input('name'),
@@ -217,11 +220,11 @@ public function updateExchangeRates(Request $request, $supplierId)
             'has_lounge' => $request->has('has_lounge'),
             'has_ferry' => $request->has('has_ferry'),
             'country_id' => $request->input('country_id'),
+            'is_online'    => $isOnline,
         ]);
 
         return redirect()->back()->with('success', 'Supplier updated successfully.');
     }
-
 
     public function getTotalDebitCredit($supplierId, $endDate)
     {

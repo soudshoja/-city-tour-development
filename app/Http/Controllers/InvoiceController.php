@@ -170,8 +170,6 @@ class InvoiceController extends Controller
         $taskIds = $request->query('task_ids', '');
         $taskIdsArray = [];
 
-        $disableButtons = false;
-
         if (!empty($taskIds)) {
             $taskIdsArray = is_string($taskIds) ? explode(',', $taskIds) : $taskIds;
 
@@ -186,8 +184,6 @@ class InvoiceController extends Controller
                     return Redirect::route('tasks.index')->with('error', 'Task does not have full information!');
                 }
             }
-
-            $disableButtons = true;
         }
 
         $taskIdsArray = array_map('intval', Arr::flatten($taskIdsArray));
@@ -254,7 +250,6 @@ class InvoiceController extends Controller
             $selectedClient = null;
         }
 
-        $payments = Payment::whereIn('agent_id', $agents->pluck('id'))->whereNull('invoice_id')->get();
         $suppliers = Supplier::all();
 
         if ($user->role_id == Role::ADMIN) {
@@ -302,7 +297,6 @@ class InvoiceController extends Controller
             })
             : collect();
 
-        $paymentGateways = ['Tap', 'Hesabe', 'MyFatoorah'];
         $todayDate = Carbon::now()->format('Y-m-d');
         $appUrl = config('app.url');
         $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')->first();
@@ -328,11 +322,8 @@ class InvoiceController extends Controller
             'selectedAgent',
             'selectedClient',
             'selectedCompany',
-            'paymentGateways',
             'todayDate',
             'appUrl',
-            'disableButtons',
-            'payments',
             'companyId',
             'invoiceExpireDefault',
             'countries'

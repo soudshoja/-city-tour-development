@@ -522,6 +522,28 @@
                         :action="route('tasks.index')"
                         searchParam="q"
                         placeholder="Quick search for tasks" />
+                    <!-- Status Filter Checkboxes -->
+                    <form method="GET" action="{{ route('tasks.index') }}" id="status-filter-form" class="flex flex-wrap gap-2 items-center my-2">
+                        @php
+                        $statuses = ['issued', 'refund', 'reissued', 'confirmed', 'void'];
+                        $selectedStatuses = request()->input('status', []);
+                        if (!is_array($selectedStatuses)) $selectedStatuses = [$selectedStatuses];
+                        @endphp
+                        <span class="font-semibold text-gray-700 mr-2">Status:</span>
+                        @foreach($statuses as $status)
+                        <label class="inline-flex items-center px-3 py-1 bg-white border border-gray-300 rounded-full shadow-sm cursor-pointer hover:bg-blue-50 transition
+                            {{ in_array($status, $selectedStatuses) ? 'ring-2 ring-blue-400' : '' }}">
+                            <input type="checkbox" name="status[]" value="{{ $status }}"
+                                class="form-checkbox accent-blue-600 rounded mr-2"
+                                onchange="document.getElementById('status-filter-form').submit();"
+                                {{ in_array($status, $selectedStatuses) ? 'checked' : '' }}>
+                            <span class="capitalize text-sm text-gray-700">{{ $status }}</span>
+                        </label>
+                        @endforeach
+                        @if(request()->has('q'))
+                        <input type="hidden" name="q" value="{{ request('q') }}">
+                        @endif
+                    </form>
                     <button type="button" id="toggleFilters"
                         class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
                         <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
@@ -943,7 +965,7 @@
                                                         @endif
                                                     </a>
                                                 </th>
-                                                 @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
+                                                @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                                 <th data-column="cancellation-deadline">
                                                     <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Cancellation Deadline</span>
                                                 </th>

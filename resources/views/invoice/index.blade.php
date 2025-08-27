@@ -162,8 +162,23 @@
                                 @php
                                 // Retrieve the first invoice detail; adjust as needed if you want a different one.
                                 $invoiceDetail = $invoice->invoiceDetails->first();
+                                $tasksPayload = $invoice->invoiceDetails
+                                    ->map(function ($detail) use ($invoice) {
+                                        return [
+                                            'id'        => $detail->task_id,
+                                            'reference' => 'Task #'. $detail->task->reference,
+                                            'type'      => ucfirst($detail->task->type),
+                                            'client'    => $detail->task->client->name,
+                                            'supplier'  => $detail->task->supplier->name,
+                                            'amount'    => $detail->task_price,
+                                            'currency'  => $invoice->currency,
+                                        ];
+                                    })
+                                    ->values()
+                                    ->toArray();
                                 @endphp
                                 <tr data-price="{{ $invoice->total }}"
+                                    data-tasks='@json($tasksPayload)'
                                     data-supplier-id="{{ $invoiceDetail->task->supplier->id }}"
                                     data-branch-id="{{ $invoice->agent->branch->id }}"
                                     data-agent-id="{{ $invoice->agent_id }}"
@@ -207,7 +222,6 @@
                                                 </g>
                                             </svg>
                                         </a>
-                                        @if ($invoice->status !== 'paid')
                                         <a data-tooltip="View Detail/ Edit"
                                             href="{{ route('invoice.edit', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                             class="text-sm font-medium text-blue-600 hover:underline">
@@ -221,7 +235,7 @@
                                                     opacity=".5" />
                                             </svg>
                                         </a>
-                                        @else
+                                        @if ($invoice->status === 'paid')
                                         <div x-data="{ viewVoucherModal_{{ $invoice->id }}: false }" class="group">
                                             <div data-tooltip="View Voucher">
                                                 <svg @click="viewVoucherModal_{{ $invoice->id }} = true"
@@ -352,7 +366,7 @@
                                         {{ $invoice->agent->name }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        {{ $invoice->client->first_name ? $invoice->client->first_name . ' ' . $invoice->client->middle_name . ' '. $invoice->client->last_name : 'n/a' }}
+                                        {{ $invoice->client->name }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid')
@@ -368,7 +382,14 @@
                                         {{ ucwords($invoice->payment_type) }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        {{ $invoice->currency }} {{ $invoice->amount }}
+                                        @if ($invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'))
+                                        <button type="button" class="underline text-blue-600 hover:text-blue-800"
+                                            data-number="{{ $invoice->invoice_number }}" data-amount="{{ $invoice->amount }}" onclick="openEditModal('amount', this)">
+                                                {{ $invoice->currency }} {{ $invoice->amount }}
+                                            </button>
+                                        @else
+                                            {{ $invoice->currency }} {{ $invoice->amount }}
+                                        @endif
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         {{ $invoice->created_at }}
@@ -376,12 +397,8 @@
 
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid')
-                                            <button
-                                                type="button"
-                                                class="underline text-blue-600 hover:text-blue-800"
-                                                data-number="{{ $invoice->invoice_number }}"
-                                                data-date="{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') }}"
-                                                onclick="openDateModal(this)">
+                                            <button type="button" class="underline text-blue-600 hover:text-blue-800" data-number="{{ $invoice->invoice_number }}"
+                                                data-date="{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') }}" onclick="openEditModal('date', this)">
                                                 {{ $invoice->invoice_date }}
                                             </button>
                                         @else
@@ -394,25 +411,27 @@
                             </tbody>
                         </table>
                     </div>
-                    <div id="dateModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/30">
+                    <div id="editModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/30">
                         <div class="bg-white rounded-md shadow-lg w-full max-w-md">
                             <div class="flex items-center justify-between p-4 border-b">
-                            <h3 class="font-semibold">Update Invoice Date</h3>
-                            <button type="button" class="text-gray-500" onclick="closeDateModal()">&times;</button>
+                                <h3 id="editModalTitle" class="font-semibold">Edit</h3>
+                                <button type="button" class="text-gray-500" onclick="closeEditModal()">&times;</button>
                             </div>
-
-                            <form id="dateForm" method="POST" action="">
-                            @csrf
-                            @method('PUT')
-                            <div class="p-4 space-y-3">
-                                <label class="block text-sm text-gray-700">Invoice Date</label>
-                                <input id="dateInput" type="date" name="invdate"
-                                    class="w-full border rounded px-3 py-2 text-sm" required>
-                            </div>
-                            <div class="p-4 border-t flex justify-end gap-2">
-                                <button type="button" class="px-3 py-2 text-sm rounded border" onclick="closeDateModal()">Cancel</button>
-                                <button type="submit" class="px-3 py-2 text-sm rounded bg-blue-600 text-white">Save</button>
-                            </div>
+                            <form id="editForm" method="POST" action="">
+                                @csrf
+                                @method('PUT')
+                                <div class="p-4 space-y-4">
+                                    <p id="editLabel" class="text-sm text-gray-600">Amount per Task</p>
+                                    <div id="taskAmountsContainer"></div>
+                                    <div class="flex items-center justify-between border-t pt-3">
+                                        <div class="text-xs text-gray-500">New invoice total</div>
+                                        <div class="text-base font-bold"><span id="total-payment-display">0.00</span></div>
+                                    </div>
+                                </div>
+                                <div class="p-4 border-t bg-gray-50 flex justify-end gap-2 sticky bottom-0">
+                                    <button type="button" class="px-3 py-2 text-sm rounded border hover:bg-gray-100" onclick="closeEditModal()">Cancel</button>
+                                    <button type="submit" class="px-4 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Save</button>
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -422,42 +441,90 @@
                     <!-- ./pagination -->
                 </div>
             </div>
-
-            <!-- ./Table  -->
-
         </div>
-        <!-- right -->
     </div>
     <script>
-        function closeInvoiceModal() {
-            const modal = document.getElementById("viewInvoiceModal");
-            modal.classList.add("hidden");
-        }
-
         const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
-        const updateUrlTemplate = "{{ route('invoice.updateDate', ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM']) }}";
+        const updateDateUrl   = "{{ route('invoice.updateDate',   ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM']) }}";
+        const updateAmountUrl = "{{ route('invoice.updateAmount', ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM']) }}";
 
-        function openDateModal(btn) {
-            const number = btn.dataset.number;
-            const date   = btn.dataset.date;
+        function openEditModal(kind, btn) {
+            const modal     = document.getElementById('editModal');
+            const form      = document.getElementById('editForm');
+            const titleEl   = document.getElementById('editModalTitle');
+            const labelEl   = document.getElementById('editLabel');
+            const container = document.getElementById('taskAmountsContainer');
+            const totalRow  = document.getElementById('total-payment-display')?.closest('.flex');
+            const number    = btn.dataset.number;
 
-            const form   = document.getElementById('dateForm');
-            const input  = document.getElementById('dateInput');
-            const modal  = document.getElementById('dateModal');
+            if (kind === 'date') {
+                titleEl.textContent = 'Update Invoice Date';
+                labelEl.textContent = 'Invoice Date';
+                container.innerHTML = `
+                    <input type="date" name="invdate" class="w-full border rounded px-3 py-2 text-sm" value="${btn.dataset.date}" required>`;
 
-            form.action = updateUrlTemplate.replace('COMPANY_ID', encodeURIComponent(companyId)).replace('INVOICE_NUM', encodeURIComponent(number));
-            input.value  = date;
+                if (totalRow) totalRow.classList.add('hidden');
+                form.action = updateDateUrl.replace('COMPANY_ID', encodeURIComponent(companyId)).replace('INVOICE_NUM', encodeURIComponent(number));
+            } else if (kind === 'amount') {
+                titleEl.textContent = 'Update Invoice Amounts';
+                labelEl.textContent = 'Amount per Invoice';
+
+                const invoiceNumber = btn.dataset.number;
+                const tasks = JSON.parse(btn.closest('tr').dataset.tasks);
+                container.innerHTML = '';
+
+                let total = 0;
+                let gridWrapper = `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">`;
+                for (const t of tasks) {
+                    total += parseFloat(t.amount || 0);
+                    gridWrapper += `
+                        <div class="rounded-lg border shadow-sm p-3 bg-white hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div class="text-sm font-semibold">${t.reference}</div>
+                                <span class="inline-flex items-center text-xs px-2 py-0.5 rounded-full bg-gray-100">${t.type}</span>
+                            </div>
+                            <div class="mt-1 text-xs text-gray-600">
+                                <div><span class="font-medium">Client:</span> ${t.client}</div>
+                                <div><span class="font-medium">Supplier:</span> ${t.supplier}</div>
+                            </div>
+                            <div class="mt-3">
+                                <label class="block text-xs text-gray-600 mb-1">Amount (${t.currency})</label>
+                                <input type="number" name="tasks[${t.id}]" value="${t.amount}"
+                                    class="task-input w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                    oninput="calculateTotalPayment()" required>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                gridWrapper += `</div>`;
+                container.insertAdjacentHTML('beforeend', gridWrapper);
+                if (totalRow) totalRow.classList.remove('hidden');
+                const totalEl = document.getElementById('total-payment-display');
+                if (totalEl) totalEl.textContent = total.toFixed(2);
+
+                form.action = updateAmountUrl.replace('COMPANY_ID', encodeURIComponent(companyId)).replace('INVOICE_NUM', encodeURIComponent(invoiceNumber));
+            }
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-
-            modal.onclick = (e) => { if (e.target === modal) closeDateModal(); };
+            modal.onclick = (e) => { if (e.target === modal) closeEditModal(); };
         }
 
-        function closeDateModal() {
-            const modal = document.getElementById('dateModal');
+        function closeEditModal() {
+            const modal = document.getElementById('editModal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+        }
+
+        function calculateTotalPayment() {
+            let total = 0;
+            document.querySelectorAll('.task-input').forEach(input => {
+                const v = parseFloat(input.value);
+                if (!isNaN(v)) total += v;
+            });
+            const totalEl = document.getElementById('total-payment-display');
+            if (totalEl) totalEl.textContent = total.toFixed(2);
         }
     </script>
 </x-app-layout>

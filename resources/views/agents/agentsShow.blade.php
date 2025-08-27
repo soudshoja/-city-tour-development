@@ -270,12 +270,12 @@
                     <div class="flex gap-2">
                         @if($agent->type_id != 1)
                         <div class="bg-green-100 text-green-700 font-bold px-4 py-2 rounded shadow">
-                            Total Commission: {{ number_format($totalCommission, 2) }} KWD
+                            Total Commission: {{ $totalCommission }} KWD
                         </div>
                         @endif
                         @if($agent->type_id != 2)
                         <div class="bg-blue-100 text-blue-800 font-bold px-4 py-2 rounded shadow">
-                            Total Profit: {{ number_format($totalProfit, 2) }} KWD
+                            Total Profit: {{ $totalProfit }} KWD
                         </div>
                         @endif
                     </div>
@@ -314,7 +314,11 @@
                                     @endphp
                                     <tr class="cursor-pointer text-center"
                                         :class="openRow === {{ $invoice }} ? 'bg-blue-50 hover:bg-gray-50 dark:bg-blue-900 hover:dark:bg-blue-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'" @click="openRow === {{ $invoice->id }} ? openRow = null : openRow = {{ $invoice->id }}">
-                                        <td class="py-4 px-6 border-b">{{ $invoice->invoice_number }}</td>
+                                        <td class="py-4 px-6 border-b">
+                                            <a href="{{ route('invoice.edit', ['companyId' => 1, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" @click.stop>
+                                                {{ $invoice->invoice_number }}
+                                            </a>
+                                        </td>
                                         <td class="py-4 px-6 border-b">{{ \Carbon\Carbon::parse($invoice->created_at)->format('d-m-Y H:i') }}</td>
                                         <td class="py-4 px-6 border-b">
                                             @if($invoice->status == 'paid')

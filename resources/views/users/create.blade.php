@@ -680,82 +680,92 @@
                                         </div>
                                         <h2 class="font-bold text-xl pl-4 text-gray-800 dark:text-white">Adding New Client</h2>
                                     </div>
+                                    <div id="client-passport-dropzone" ondrop="clientDropHandler(event)" ondragover="clientDragOverHandler(event)"
+                                        class="my-3 border-2 border-dashed border-gray-400 rounded-md w-full flex flex-col items-center justify-center gap-3 p-4">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg" class="opacity-70">
+                                            <path d="M18 10L13 10" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"/>
+                                            <path d="M10 3H16.5C18 3.2 19.8 5 20 6.5" stroke="#1C274C" stroke-width="1.5"/>
+                                            <path d="M2 7C2 3.7 3.7 2 7 2c.9 0 1.1 0 1.9.3.8.2 1.5.6 2.1 1.1L12 4c1.8 1.8 2.2 2.2 3.8 2.6C17 7 17.6 7 18.8 7 22 7 22 9.4 22 14s0 6-4 6H10c-4 0-6 0-8-2S0 17.8 0 14" stroke="#1C274C" stroke-width="1.5"/>
+                                        </svg>
+                                        <input type="file" id="file-client-passport" class="hidden" accept=".png,.jpg,.jpeg,.pdf,image/png,image/jpeg,application/pdf">
+                                        <p id="client-passport-file-name" class="text-sm text-gray-600">You can drag and drop a file here</p>
+                                        <label for="file-client-passport"
+                                                class="bg-black text-white font-semibold px-4 py-2 rounded-md border-2 border-black hover:border-cyan-500 cursor-pointer">
+                                            Upload File
+                                        </label>
+                                    </div>
+                                    <button id="client-passport-process-btn" class="w-full bg-gray-300 text-gray-500 font-semibold py-2 rounded-full text-sm transition disabled:opacity-60 disabled:cursor-not-allowed mb-6" disabled>Process File</button>
 
                                     <form action="{{ route('clients.store') }}" method="POST"
                                         class="w-full">
                                         @csrf
 
                                         <div class="mb-4 flex items-center relative">
-                                            <input type="text" name="first_name" class="custom-input"
-                                                placeholder="Client First Name *">
+                                            <input type="text" name="first_name" id="first_name" class="custom-input" placeholder="Client First Name *">
                                             <span class="tooltip-container ml-2 cursor-pointer">
                                                 <span class="tooltip-icon">!</span>
                                                 <span class="tooltip">Enter the first name of the client.</span>
                                             </span>
                                         </div>
                                         <div class="mb-4 flex items-center relative">
-                                            <input type="text" name="middle_name" class="custom-input"
-                                                placeholder="Client Middle Name">
+                                            <input type="text" name="middle_name" id="middle_name" class="custom-input" placeholder="Client Middle Name">
                                             <span class="tooltip-container m-3 cursor-pointer">
                                             </span>
                                         </div>
                                         <div class="mb-4 flex items-center relative">
-                                            <input type="text" name="last_name" class="custom-input"
-                                                placeholder="Client Last Name">
+                                            <input type="text" name="last_name" id="last_name" class="custom-input" placeholder="Client Last Name">
                                             <span class="tooltip-container m-3 cursor-pointer">
                                             </span>
                                         </div>
 
                                         <div class="grid grid-cols-2 gap-4">
                                             <div class="mb-4 flex items-center relative">
-                                                <input type="email" name="email" class="custom-input"
-                                                    placeholder="Client Email *">
+                                                <input type="email" name="email" id="clientEmail" class="custom-input" placeholder="Client Email *">
                                                 <span class="tooltip-container ml-2 cursor-pointer">
                                                     <span class="tooltip-icon">!</span>
-                                                    <span class="tooltip">Enter a valid email address for client
-                                                        communication.</span>
+                                                    <span class="tooltip">Enter a valid email address for client communication.</span>
                                                 </span>
                                             </div>
 
                                             <div class="mb-4 flex items-center relative gap-2">
                                                 <div class="relative">
-                                                    <select name="dial_code" id="dial_code"
-                                                        class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
+                                                    <select name="dial_code" id="dial_code" class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
                                                         @foreach ($countries as $country)
                                                         <option value="{{ $country->dialing_code }}">
                                                             {{ $country->name }} ({{ $country->dialing_code }})
                                                         </option>
                                                         @endforeach
-                                                        <!-- Add more country codes as needed -->
                                                     </select>
-                                                    <!-- Custom dropdown arrow -->
                                                     <span
                                                         class="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
                                                         ▼
                                                     </span>
                                                 </div>
 
-                                                <input type="tel" name="phone" class="custom-input"
-                                                    placeholder="Client Phone *" required>
+                                                <input type="tel" name="phone" class="custom-input" placeholder="Client Phone *" required>
                                                 <span class="tooltip-container ml-2 cursor-pointer">
                                                     <span class="tooltip-icon">!</span>
                                                     <span class="tooltip">Enter a valid phone number.</span>
                                                 </span>
-
-
                                             </div>
                                         </div>
 
-                                        <!-- Agent Selection -->
-
-                                        <div class="mb-4 flex items-center relative">
-                                            <input type="text" name="civil_no" class="custom-input" placeholder="Civil ID *">
-                                            <span class="tooltip-container ml-2 cursor-pointer">
-                                                <span class="tooltip-icon">!</span>
-                                                <span class="tooltip">Enter the client's Civil ID.</span>
-                                            </span>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            <div class="mb-4 flex items-center relative">
+                                                <input type="date" name="date_of_birth" id="date_of_birth" class="custom-input" placeholder="Date of Birth">
+                                            </div>
+                                            <div class="mb-4 flex items-center relative">
+                                                <input type="text" name="passport_no" id="passport_no" class="custom-input" placeholder="Passport Number">
+                                            </div>
+                                            <div class="mb-4 flex items-center relative">
+                                                <input type="text" name="civil_no" id="civil_no" class="custom-input" placeholder="Civil ID *">
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    <span class="tooltip-icon">!</span>
+                                                    <span class="tooltip">Enter the client's Civil ID.</span>
+                                                </span>
+                                            </div>
                                         </div>
-
 
                                         <div class="mb-4 flex items-center relative">
                                             @if(auth()->user()->agent)
@@ -864,9 +874,107 @@
                 phoneInput.focus();
             }
         });
-
-
-
-
     });
+
+    (function () {
+        const fileInput = document.getElementById('file-client-passport');
+        const fileName  = document.getElementById('client-passport-file-name');
+        const processBtn= document.getElementById('client-passport-process-btn');
+
+        if (!fileInput || !fileName || !processBtn) return;
+
+        fileInput.addEventListener('change', () => {
+            const f = fileInput.files?.[0];
+            if (!f) return disable(processBtn);
+            fileName.textContent = f.name;
+            enable(processBtn);
+        });
+
+        fileInput.addEventListener('click', (e) => e.stopPropagation());
+        window.clientDragOverHandler = (e) => { e.preventDefault(); };
+        window.clientDropHandler = (e) => {
+            e.preventDefault();
+            const dropped = e.dataTransfer?.files?.[0];
+            if (!dropped) return;
+
+            const dt = new DataTransfer();
+            dt.items.add(dropped);
+            
+            fileInput.files = dt.files;
+            fileName.textContent = dropped.name;
+            enable(processBtn);
+        };
+
+        processBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (!fileInput.files?.length) return;
+
+            working(processBtn, true);
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            fetch("{{ route('tasks.upload.passport') }}", {
+                method: "POST",
+                body: formData,
+                headers: {
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content")
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const client = data.data;
+                    console.log("Extracted client data:", client);
+
+                    const firstNameInput = document.getElementById('first_name');
+                    if (firstNameInput) firstNameInput.value = client.first_name || '';
+
+                    const middleNameInput = document.getElementById('middle_name');
+                    if (middleNameInput) middleNameInput.value = client.middle_name || '';
+
+                    const lastNameInput = document.getElementById('last_name');
+                    if (lastNameInput) lastNameInput.value = client.last_name || '';
+
+                    const passportInput = document.getElementById('passport_no');
+                    if (passportInput) passportInput.value = client.passport_no || '';
+
+                    const civilInput = document.getElementById('civil_no');
+                    if (civilInput) civilInput.value = client.civil_no || '';
+
+                    const dobInput = document.querySelector('input[name="date_of_birth"]');
+                    if (dobInput && client.date_of_birth) {
+                        dobInput.value = client.date_of_birth.replace(/\//g, '-');
+                    }
+                } else {
+                    alert('Error processing file: ' + data.message);
+                    console.error('Error:', data);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while processing the file.');
+            })
+            .finally(() => {
+                working(processBtn, false);
+            });
+        });
+        function enable(btn) {
+            btn.disabled = false;
+            btn.classList.remove('bg-gray-300','text-gray-500','opacity-50','cursor-not-allowed');
+            btn.classList.add('bg-blue-600','hover:bg-blue-700','text-white');
+        }
+
+        function disable(btn) {
+            btn.disabled = true;
+            btn.classList.remove('bg-blue-600','hover:bg-blue-700','text-white');
+            btn.classList.add('bg-gray-300','text-gray-500');
+        }
+
+        function working(btn, isWorking) {
+            btn.disabled = isWorking;
+            btn.textContent = isWorking ? 'Processing...' : 'Process File';
+            btn.classList.toggle('opacity-50', isWorking);
+            btn.classList.toggle('cursor-not-allowed', isWorking);
+        }
+    })();
 </script>

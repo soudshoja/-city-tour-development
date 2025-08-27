@@ -431,11 +431,9 @@
                                 </div>
 
                                 <div class="overflow-y-auto px-8 pb-8 [scrollbar-gutter:stable]">
-                                    <form :action="`{{ route('charges.store', '') }}`.replace(':id', editData.id)" method="POST">
+                                    <form :action="`{{ route('charges.update', ':id') }}`.replace(':id', editData.id)" method="POST">
+                                        @method('PUT') 
                                         @csrf
-                                        <template x-if="editData.type">
-                                            <input type="hidden" name="_method" value="PUT">
-                                        </template>
 
                                         <div class="mb-4">
                                             <label class="block text-sm font-medium">Name</label>
@@ -455,7 +453,7 @@
 
                                         <div class="mb-4">
                                             <label class="block text-sm font-medium">Extra Charge (KWD)</label>
-                                            <input type="number" name="extra-charge" x-model="editData.extra_charge" class="w-full border px-3 py-2 rounded-full" />
+                                            <input type="number" name="extra_charge" x-model="editData.extra_charge" class="w-full border px-3 py-2 rounded-full" />
                                         </div>
 
                                         <div class="mb-4 flex gap-4">

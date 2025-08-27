@@ -4,6 +4,7 @@ namespace App\View\Components;
 
 use App\Models\Currency;
 use App\Models\CurrencyExchange;
+use App\Models\Role;
 use Illuminate\View\Component;
 use Illuminate\View\View;
 

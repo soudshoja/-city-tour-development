@@ -47,30 +47,7 @@ class AppServiceProvider extends ServiceProvider
             CheckConfirmedOrIssuedTask::class,
             ProcessTaskFinancials::class
         );
-        View::composer(['components.application-logo', 'layouts.navigation'], function ($view) {
-        $companyLogo = asset('images/UserPic.svg'); // Default logo
-        $user = auth()->user();
 
-        if ($user) {
-            $company = null;
-            switch ($user->role->id) {
-                case Role::COMPANY:
-                    $company = $user->company;
-                    break;
-                case Role::BRANCH:
-                    $company = $user->branch->company;
-                    break;
-                case Role::AGENT:
-                    $company = $user->agent->branch->company;
-                    break;
-            }
-
-            if ($company && $company->logo) {
-                $companyLogo = asset('storage/' . $company->logo);
-            }
-        }
-        $view->with('companyLogo', $companyLogo);
-    });
     }
     
 }

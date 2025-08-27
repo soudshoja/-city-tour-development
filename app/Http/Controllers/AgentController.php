@@ -123,28 +123,87 @@ class AgentController extends Controller
             $totalProfit = number_format($monthlySummary['profit'], 2);
         }
 
-        $invoices = Invoice::with('invoiceDetails')->where('agent_id', $id)->whereBetween('created_at', [$month, $month->copy()->endOfMonth()])->paginate(4, ['*'], 'invoices');
+        // Get commission account ID dynamically
+        $commissionAccountId = $this->getCommissionAccountId($agent->branch->company_id);
 
-        foreach ($invoices as $invoice) {
-            $commission = 0;
-            $profit = 0;
-
-            foreach ($invoice->invoiceDetails as $detail) {
-                $markup = $detail->markup_price ?? 0;
-                $profit += $markup;
-                if ($agent->type_id == 2) {
-                    $detail->commission = JournalEntry::where('invoice_detail_id', $detail->id)
-                        ->where('account_id', 43)
-                        ->sum('credit');
-                } elseif ($agent->type_id == 3) {
-                    $detail->commission = $markup * ($agent->commission ?? 0.15);
-                } else {
-                    $detail->commission = 0;
+        // Get ALL invoices for the month to calculate totals (without pagination)
+        $allInvoicesQuery = Invoice::with(['invoiceDetails.task', 'invoiceDetails.JournalEntrys' => function($q) use ($commissionAccountId) {
+                $q->where('account_id', $commissionAccountId);
+            }])
+            ->where('agent_id', $id)
+            ->whereBetween('invoice_date', [$month, $month->copy()->endOfMonth()]);
+            
+        // Only filter by commission journal entries for non-salary agents
+        if ($agent->type_id != 1) {
+            $allInvoicesQuery->whereHas('invoiceDetails.JournalEntrys', function($q) use ($commissionAccountId, $month) {
+                $q->where('account_id', $commissionAccountId)
+                  ->whereBetween('transaction_date', [$month, $month->copy()->endOfMonth()]);
+            });
+        }
+        
+        // Get all invoices for total calculations
+        $allInvoices = $allInvoicesQuery->get();
+        
+        // Calculate monthly totals from all invoices
+        $monthlyCommission = 0;
+        $monthlyProfit = 0;
+        
+        foreach ($allInvoices as $invoice) {
+            // Calculate total profit for this invoice: markup_price + invoice_charge
+            $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
+            
+            // Calculate net commission from journal entries linked to invoice details (credits - debits)
+            $invoiceCommission = 0;
+            if (in_array($agent->type_id, [2, 3, 4])) {
+                foreach ($invoice->invoiceDetails as $detail) {
+                    $commissionEntries = $detail->JournalEntrys()
+                        ->where('account_id', $commissionAccountId)
+                        ->get();
+                    $invoiceCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
                 }
-                $commission += $detail->commission;
             }
-            $invoice->profit = number_format($profit, 2);
-            $invoice->commission = number_format($commission, 2);
+            
+            $monthlyProfit += $invoiceProfit;
+            $monthlyCommission += $invoiceCommission;
+        }
+        
+        // Format monthly totals
+        $totalCommission = number_format($monthlyCommission, 2);
+        $totalProfit = number_format($monthlyProfit, 2);
+
+        // Now get paginated invoices for display
+        $invoices = $allInvoicesQuery->orderBy('invoice_date', 'asc')->paginate(5, ['*'], 'invoices');
+
+        // Process each paginated invoice for display
+        foreach ($invoices as $invoice) {
+            // Calculate total profit for this invoice: markup_price + invoice_charge
+            $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
+            
+            // Calculate net commission from journal entries linked to invoice details (credits - debits)
+            $invoiceCommission = 0;
+            if (in_array($agent->type_id, [2, 3, 4])) {
+                foreach ($invoice->invoiceDetails as $detail) {
+                    $commissionEntries = $detail->JournalEntrys()
+                        ->where('account_id', $commissionAccountId)
+                        ->get();
+                    $invoiceCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
+                }
+            }
+
+            // Add calculated totals to the invoice object
+            $invoice->total_profit = number_format($invoiceProfit, 2);
+            $invoice->total_commission = number_format($invoiceCommission, 2);
+            $invoice->task_count = $invoice->invoiceDetails->count();
+            
+            // Process individual tasks for display
+            $invoice->tasks = $invoice->invoiceDetails->map(function($detail) {
+                return [
+                    'task_reference' => $detail->task->reference ?? 'N/A',
+                    'passenger_name' => $detail->task->passenger_name ?? 'N/A',
+                    'task_price' => $detail->task_price,
+                    'markup_price' => $detail->markup_price,
+                ];
+            });
         }
 
         $clients = Client::with('invoices')->whereHas('tasks', function ($query) use ($agent) {
@@ -165,7 +224,7 @@ class AgentController extends Controller
             ->get()
             ->pluck('supplier.name')
             ->toArray();
-        
+       
         // Return the main view with paginated data
         return view('agents.agentsShow', compact(
             'agent',
@@ -190,36 +249,48 @@ class AgentController extends Controller
 
         $from = Carbon::parse($month ?? now()->startOfMonth());
         $to = (clone $from)->endOfMonth();
+        
+        // Get commission account ID dynamically
+        $commissionAccountId = $this->getCommissionAccountId($agent->branch->company_id);
 
         $invoices = Invoice::with('invoiceDetails')
             ->where('agent_id', $agent->id)
-            ->whereBetween('created_at', [$from, $to])
+            ->whereBetween('invoice_date', [$from, $to])
             ->get();
 
         foreach ($invoices as $invoice) {
+            // Add invoice charge to profit calculation
+            $invoiceProfit = 0;
+            
             foreach ($invoice->invoiceDetails as $detail) {
                 $markup = $detail->markup_price ?? 0;
-                $profit += $markup;
+                $invoiceProfit += $markup;
 
                 if ($agent->type_id == 2) {
-                    $detail->commission += JournalEntry::where('invoice_detail_id', $detail->id)
-                        ->where('account_id', 43)
+                    $detail->commission = JournalEntry::where('invoice_detail_id', $detail->id)
+                        ->where('account_id', $commissionAccountId)
                         ->sum('credit');
                     $commission += $detail->commission;
                 } elseif ($agent->type_id == 3) {
                     // Type 3 ((Commission = total profit * %) + salary)
                     $commission += ($markup * ($agent->commission ?? 0.15));
-                }
+                } 
+                // Note: Type 4 is calculated after the loop based on total profit
             }
+            
+            // Add invoice charge to total profit
+            $profit += $invoiceProfit + ($invoice->invoice_charge ?? 0);
         }
 
-        if ($agent->type_id == 4 && $profit > $agent->target) {
-            // Type 4 (only if profit > target, then (profit - salary) * % + salary)
-            $commission = (($profit - $agent->salary) * ($agent->commission ?? 0.15)) + $agent->salary;
+        // Calculate commission based on agent type
+        if ($agent->type_id == 4 && $profit > ($agent->target ?? 0)) {
+            // Type 4: only if total monthly profit > target
+            $commission = $profit * ($agent->commission ?? 0.15);
         } elseif ($agent->type_id == 4) {
             $commission = 0.00;
         } elseif ($agent->type_id == 3 && $profit != 0) {
-            $commission += $agent->salary;
+            // Add salary to type 3 commission
+            $commission += ($agent->salary ?? 0);
         }
 
         return [
@@ -507,5 +578,17 @@ class AgentController extends Controller
 
         fclose($handle);
         exit();
+    }
+
+    /**
+     * Get commission account ID for the company
+     */
+    private function getCommissionAccountId($companyId)
+    {
+        $account = Account::where('name', 'Commissions (Agents)')
+            ->where('company_id', $companyId)
+            ->first();
+        
+        return $account ? $account->id : null;
     }
 }

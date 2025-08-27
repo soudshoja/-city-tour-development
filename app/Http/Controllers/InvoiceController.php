@@ -354,14 +354,15 @@ class InvoiceController extends Controller
         }
 
         // Retrieve the invoice based on the invoice number
-        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
+            ->with('agent.branch.company', 'client', 'invoiceDetails.task')
+            ->first();
         // Check if the invoice exists
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
-        }
-
-        if ($invoice->status == 'paid') {
-            return redirect()->route('invoices.index')->with('error', 'Cannot edit a paid invoice!');
         }
 
         $invoiceDetails = $invoice->invoiceDetails;
@@ -527,7 +528,8 @@ class InvoiceController extends Controller
             'method' => 'nullable|string',
             'credit' => 'nullable|boolean',
             'external_url' => 'nullable|url',
-            'invoice_charge' => 'nullable|numeric|min:0'
+            'invoice_charge' => 'nullable|numeric|min:0',
+            'companyId' => 'required',
         ]);
 
         $invoiceId = $request->input('invoiceId');
@@ -541,14 +543,23 @@ class InvoiceController extends Controller
         $credit = $request->input('credit', false); // Default to false if not provided
         $externalUrl = $request->input('external_url');
         $invoiceCharge = $request->input('invoice_charge', 0);
+        $companyId = $request->input('companyId');
 
-        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
-        $companyId = $invoice->agent->branch->company_id;
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
+            ->with('agent.branch.company', 'client', 'invoiceDetails.task')
+            ->first();
+
+            Log::info('Invoice query result', [
+                'invoiceNumber' => $invoiceNumber,
+                'companyId'     => $companyId,
+                'invoice'       => $invoice ? $invoice->toArray() : null,
+            ]);
 
         // Get the charge settings for the selected gateway
-        $charge = Charge::where('name', $gateway)
-            ->where('company_id', $companyId)
-            ->first();
+        $charge = Charge::where('name', $gateway)->first();
 
         // Update invoice with external URL only if the gateway supports URLs
         if ($externalUrl && $charge && $charge->has_url) {
@@ -698,9 +709,10 @@ class InvoiceController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'credit',
                     'amount' =>  $invoice->amount,
-                    'description' => 'Invoice:' . $invoice->invoice_number . ' Generated',
+                    'description' => 'Invoice: ' . $invoice->invoice_number . ' Generated',
                     'invoice_id' => $invoice->id,
                     'reference_type' => 'Invoice',
+                    'transaction_date' => $invoice->invoice_date,
                 ]);
 
                 foreach ($tasks as $task) {
@@ -1440,6 +1452,9 @@ class InvoiceController extends Controller
     public function show(int $companyId, string $invoiceNumber)
     {
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
             ->with('agent.branch.company', 'client', 'invoiceDetails')
             ->first();
 
@@ -1738,20 +1753,157 @@ class InvoiceController extends Controller
             'invdate' => 'required|date',
         ]);
 
-        $invoice = Invoice::where('invoice_number', $invoiceNumber)->firstOrFail();
+        $invoice = Invoice::whereHas('agent.branch', function ($q) use ($companyId) {
+            $q->where('company_id', $companyId);
+        })->where('invoice_number', $invoiceNumber)->firstOrFail();
         $invoice->invoice_date = $request->input('invdate');
         $invoice->save();
 
-        $transactions = \App\Models\Transaction::where('invoice_id', $invoice->id)->get();
+        $transactions = Transaction::where('invoice_id', $invoice->id)->get();
         foreach ($transactions as $transaction) {
             $transaction->transaction_date = $request->input('invdate');
             $transaction->save();
         }
-        \App\Models\JournalEntry::where('invoice_id', $invoice->id)
-            ->update(['transaction_date' => $request->input('invdate')]);
+        JournalEntry::where('invoice_id', $invoice->id)->update(['transaction_date' => $request->input('invdate')]);
 
         return redirect()->back()->with('success', 'Invoice date, transaction date, and journal entry date updated!');
     }
+
+    public function updateAmount(Request $request, $companyId, $invoiceNumber)
+    {
+        $request->validate([
+            'tasks' => ['required','array','min:1'],
+            'tasks.*' => ['required','numeric','min:0'],
+        ]);        
+
+        return DB::transaction(function () use ($request, $companyId, $invoiceNumber) {
+            $invoice = Invoice::with(['invoiceDetails.task', 'agent', 'agent.branch', 'transactions.journalEntries'])
+                ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
+                ->where('invoice_number', $invoiceNumber)
+                ->firstOrFail();
+
+            $transactionToReverse = $invoice->transactions()
+                ->where('description', 'LIKE', 'Invoice reversal for%')
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if (!$transactionToReverse) {
+                $transactionToReverse = $invoice->transactions()->first();
+            }
+
+            $oldAmount = $invoice->amount;
+            $reversalTransaction = Transaction::create([
+                'description' => 'Invoice reversal for: ' . $invoice->invoice_number . ' (Old Amount: ' . $oldAmount . ')',
+                'invoice_id' => $invoice->id,
+                'entity_id' => $transactionToReverse->entity_id,
+                'entity_type' => $transactionToReverse->entity_type,
+                'transaction_date' => $transactionToReverse->transaction_date,
+                'reference_type' => 'Invoice',
+                'transaction_type' => $transactionToReverse->transaction_type === 'debit' ? 'credit' : 'debit',
+                'amount' => 0.00,
+            ]);
+
+            foreach ($transactionToReverse->journalEntries as $entry) {
+                JournalEntry::create([
+                    'transaction_id' => $reversalTransaction->id,
+                    'account_id' => $entry->account_id,
+                    'description' => $entry->description,
+                    'debit' => $entry->credit,
+                    'credit' => $entry->debit,
+                    'company_id' => $entry->company_id,
+                    'branch_id' => $entry->branch_id,
+                    'invoice_id' => $entry->invoice_id,
+                    'invoice_detail_id' => $entry->invoice_detail_id,
+                    'transaction_date' => $entry->transaction_date,
+                    'type' => $entry->type,
+                    'task_id' => $entry->task_id,
+                    'name' => $entry->name,
+                ]);
+            }
+
+            $taskUpdates = $request->input('tasks', []);
+            $newAmount = 0;
+            $updatedDetails = collect();
+
+            foreach ($invoice->invoiceDetails as $detail) {
+                $newTaskAmount = $taskUpdates[$detail->task_id] ?? $detail->task_price;
+                $newAmount += $newTaskAmount;
+
+                $detail->task_price = $newTaskAmount;
+                $detail->markup_price = $newTaskAmount - $detail->supplier_price;
+                $detail->save();
+                $updatedDetails->push($detail);
+
+                foreach ($invoice->invoicePartials as $partial) {
+                    $partial->amount = $newTaskAmount;
+                    $partial->save();
+                }
+            }
+
+            $invoice->amount = $newAmount;
+            $invoice->sub_amount = $newAmount;
+            $invoice->save();
+
+            $correctedTransaction = Transaction::create([
+                'date' => now(),
+                'description' => 'Invoice: ' . $invoice->invoice_number . ' (New Amount: ' . $newAmount . ')',
+                'invoice_id' => $invoice->id,
+                'entity_id' => $transactionToReverse->entity_id,
+                'entity_type' => $transactionToReverse->entity_type,
+                'transaction_date' => $transactionToReverse->transaction_date,
+                'reference_type' => 'Invoice',
+                'transaction_type' => $transactionToReverse->transaction_type,
+                'amount' => $newAmount,
+            ]);
+
+            foreach ($transactionToReverse->journalEntries as $entry) {
+                $relevantDetail = $updatedDetails->firstWhere('id', $entry->invoice_detail_id);
+                $taskSpecificAmount = $relevantDetail->task_price;
+                $newDebit = 0;
+                $newCredit = 0;
+                $commission = 0;
+                $agent = $invoice->agent;
+                if (in_array($agent->type_id, [2, 3])) {
+                    $rate = (float) ($agent->commission ?? 0.15);
+                    $commission = $rate * ($taskSpecificAmount - $relevantDetail->supplier_price);
+                }
+
+                if (str_contains($entry->description, 'Invoice created for (Assets)')) {
+                    $newDebit = $taskSpecificAmount;
+                } else if (str_contains($entry->description, 'Invoice created for (Income)')) {
+                    $newCredit = $taskSpecificAmount;
+                } else if (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
+                    $newDebit = $commission;
+                } else if (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
+                    $newCredit = $commission;
+                }
+
+                if ($newDebit > 0 || $newCredit > 0) {
+                    JournalEntry::create([
+                        'transaction_id' => $correctedTransaction->id,
+                        'account_id' => $entry->account_id,
+                        'description' => $entry->description,
+                        'debit' => $newDebit,
+                        'credit' => $newCredit,
+                        'entity_id' => $entry->entity_id ?? null,
+                        'entity_type' => $entry->entity_type ?? null,
+                        'amount' => $newAmount,
+                        'company_id' => $entry->company_id,
+                        'branch_id' => $entry->branch_id,
+                        'invoice_id' => $entry->invoice_id,
+                        'invoice_detail_id' => $entry->invoice_detail_id,
+                        'transaction_date' => $entry->transaction_date,
+                        'type' => $entry->type,
+                        'task_id' => $entry->task_id,
+                        'name' => $entry->name,
+                    ]);
+                }
+            }
+
+            return back()->with('success', "Invoice updated from {$oldAmount} to {$newAmount}. Ledgers adjusted.");
+        });
+    }
+
     public function update(Request $request)
     {
         $request->validate([
@@ -1838,7 +1990,7 @@ class InvoiceController extends Controller
                         'entity_type' => 'company',
                         'transaction_type' => 'credit',
                         'amount' =>  $task['invprice'],
-                        'description' => 'Invoice:' . $invoiceNumber . ' Updated',
+                        'description' => 'Invoice: ' . $invoiceNumber . ' Updated',
                         'invoice_id' => $invoice->id,
                         'reference_type' => 'Invoice',
                     ]);
@@ -2133,7 +2285,7 @@ class InvoiceController extends Controller
                         'entity_type' => 'company',
                         'transaction_type' => 'credit',
                         'amount' =>  $invoice->amount,
-                        'description' => 'Invoice:' . $invoice->invoice_number . ' Generated',
+                        'description' => 'Invoice: ' . $invoice->invoice_number . ' Generated',
                         'invoice_id' => $invoice->id,
                         'reference_type' => 'Invoice',
                     ]);
@@ -2262,7 +2414,7 @@ class InvoiceController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'credit',
                     'amount' => $newinvoice->amount,
-                    'description' => 'Invoice:' . $newinvoice->invoice_number . ' Generated',
+                    'description' => 'Invoice: ' . $newinvoice->invoice_number . ' Generated',
                     'invoice_id' => $newinvoice->id,
                     'reference_type' => 'Invoice',
                 ]);
@@ -2346,7 +2498,7 @@ class InvoiceController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'credit',
                     'amount' => $invoice->amount,
-                    'description' => 'Invoice:' . $invoice->invoice_number . ' Generated',
+                    'description' => 'Invoice: ' . $invoice->invoice_number . ' Generated',
                     'invoice_id' => $invoice->id,
                     'reference_type' => 'Invoice',
                 ]);

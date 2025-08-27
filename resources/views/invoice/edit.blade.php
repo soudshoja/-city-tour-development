@@ -160,13 +160,12 @@
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
 
     <div id="invoiceModalComponent">
-
         <div class="flex flex-col gap-2.5 xl:flex-row">
             <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
                 <!-- company details -->
                 <div class="flex flex-wrap justify-between px-4">
                     <div class=" shrink-0 items-center text-black dark:text-white">
-                        <x-application-logo class="custom-logo-size" />
+                        <x-application-logo class="custom-logo-size"  />
 
                         <div class="pl-2">
                             @if ($company)
@@ -200,11 +199,11 @@
 
                         <div class="flex items-center">
                             <label class="w-full text-sm font-semibold">Invoice Number:</label>
-                            <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{ $invoiceNumber }}"
-                                class="w-full form-input" placeholder="Invoice Number" />
+                            <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{ $invoiceNumber }}" class="w-full form-input" placeholder="Invoice Number" />
+                            <input type="hidden" id="companyId" name="companyId" value="{{ $companyId }}">
                         </div>
 
-                        <form id="invoice-date-form" method="POST" action="{{ route('invoice.updateDate', ['companyId' => optional($invoice->agent->branch->company)->id, 'invoiceNumber' => $invoiceNumber]) }}">
+                        <form id="invoice-date-form" method="POST" action="{{ route('invoice.updateDate', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}">
                             @csrf
                             @method('PUT')
                             <div class="flex items-center">
@@ -229,20 +228,11 @@
 
 
                     </div>
-                    <!--./invoice details -->
                 </div>
-                <!-- ./company details -->
-
-
                 <hr class="my-6 border-[#e0e6ed] dark:border-[#1b2e4b]" />
-
-
-
-                <!-- users details -->
                 <div class="flex justify-between px-4 gird gird-cols-2 gap-4">
                     <!-- client details -->
                     <div class="w-full">
-                        <!-- choose client button -->
                         <div class="flex items-center">
                             <button type="button" id="openClientModalButton"
                                 class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
@@ -354,12 +344,13 @@
                     </div>
                     <!-- ./Agent details -->
                 </div>
-                <!-- users details -->
-
 
                 <!-- choose items -->
                 <div class="mt-8">
                     <!-- choose items -->
+                    <form id="updateAmountForm" method="POST" action="{{ route('invoice.updateAmount', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}">
+                        @csrf
+                        @method('PUT')
                     <div class="overflow-x-auto w-full border border-gray-200">
                         <table id="itemsTable" class="text-left table-auto border-collapse w-full text-xs">
                             <thead>
@@ -421,6 +412,17 @@
                             </div>
                         </div>
                     </div>
+                        @if ($invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'))
+                            <div class="px-4 mt-8 border-t pt-6 flex justify-end">
+                                <button type="submit" class="inline-flex items-center justify-center text-base font-semibold bg-blue-600 text-white hover:bg-blue-700 py-3 px-6 rounded-lg shadow-md">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-2">
+                                        <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
+                                    </svg>
+                                    Update Invoice Amounts
+                                </button>
+                            </div>
+                        @endif
+                    </form>
                 </div>
 
 
@@ -804,6 +806,7 @@
                             </div>
                             @endif
 
+                            @if($invoice->status !== 'paid')
                             <!-- Payment Gateway Section -->
                             <section id="payment_gateway_section" class="mb-6" x-data="{ paymentType: '{{ $invoice->payment_type ?? '' }}' }" x-show="paymentType === '' || paymentType === 'full'" x-cloak>
                                 @php
@@ -907,7 +910,7 @@
                                         <span id="button-text-full">Save Payment</span>
                                     </button>
                                     <div class="mt-4">
-                                        <a target="_blank" href="{{ route('invoice.proforma', ['companyId' => optional($invoice->agent->branch->company)->id, 'invoiceNumber' => $invoiceNumber]) }}"
+                                        <a target="_blank" href="{{ route('invoice.proforma', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}"
                                             class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 bg-blue-500 hover:bg-blue-700">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -921,6 +924,7 @@
                                     </div>
                                 </div>
                             </section>
+                            @endif
 
                             <!-- Added Buttons/Links Section -->
                             <section id="additional-actions" class="mt-6">
@@ -974,7 +978,7 @@
                                         Copy Link
                                     </button>
                                     @if($invoice->payment_type !== 'cash')
-                                    <a target="_blank" href="{{ route('invoice.show', ['companyId' => optional($invoice->agent->branch->company)->id, 'invoiceNumber' => $invoiceNumber]) }}"
+                                    <a target="_blank" href="{{ route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}"
                                         class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                             xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
@@ -997,18 +1001,6 @@
 
                         </div>
 
-                    </div>
-                    <div id="viewInvoiceModal"
-                        class="fixed z-10 inset-0 flex items-center justify-center backdrop-blur-sm hidden">
-                        <div class="relative">
-                            <!-- Modal Content -->
-                            <div class="w-full">
-
-                            </div>
-                            <div id="invoiceContent" class="">
-                                <!-- Invoice content will be loaded here dynamically -->
-                            </div>
-                        </div>
                     </div>
                     <div class="panel">
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
@@ -1169,29 +1161,6 @@
                                                             <option value="6">6</option>
                                                         </select>
                                                     </div>
-                                                    <div>
-                                                        <label class="block text-sm font-medium mb-1">Payment
-                                                            Gateway</label>
-                                                        <select id="payment_gateway1" name="payment_gateway1"
-                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm">
-                                                            @foreach ($paymentGateways as $gateway)
-                                                            <option value="{{ $gateway->name }}">{{ $gateway->name }}
-                                                            </option>
-                                                            @endforeach
-                                                        </select>
-                                                    </div>
-                                                    <div x-cloak x-show="paymentGateway === 'MyFatoorah'" x-transition>
-                                                        <label class="block text-sm font-medium mb-1">Payment
-                                                            Method</label>
-                                                        <select name="payment_method1" id="payment_method1"
-                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm">
-                                                            @foreach ($paymentMethods as $methods)
-                                                            <option value="{{ $methods->id }}">
-                                                                {{ $methods->english_name }}
-                                                            </option>
-                                                            @endforeach
-                                                        </select>
-                                                    </div>
                                                 </div>
                                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment
                                                     Breakdown</h2>
@@ -1201,6 +1170,7 @@
                                                             <th class="border-b px-4 py-2">S.No</th>
                                                             <th class="border-b px-4 py-2">Expiry Date</th>
                                                             <th class="border-b px-4 py-2">Amount</th>
+                                                            <th class="border-b px-4 py-2">Payment Gateway</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="split-rows1">
@@ -2054,15 +2024,6 @@
                     `;
                     tbody.appendChild(row);
 
-                    const selectElement = row.querySelector('.account-select');
-                    new TomSelect(selectElement, {
-                        create: false,
-                        sortField: {
-                            field: 'text',
-                            direction: 'asc'
-                        }
-                    });
-
                     const gatewaySelect = row.querySelector(`#payment_gateway_${i}`);
                     const methodContainer = row.querySelector(`#payment_method_container_${i}`);
                     const methodText = row.querySelector(`#payment_method_text_${i}`);
@@ -2083,13 +2044,13 @@
                 }
             }
 
-            function updateRows1() { //partial payment
+            function updateRows1() { // partial payment
                 const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
                 const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
                 const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
-
+                const paymentMethods = @json($paymentMethods);
                 const tbody = document.getElementById('split-rows1');
-                tbody.innerHTML = ''; // Clear existing rows
+                tbody.innerHTML = '';
 
                 for (let i = 1; i <= splitInto1; i++) {
                     const row = document.createElement('tr');
@@ -2099,14 +2060,47 @@
                         <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="border-gray-300 rounded-md shadow-sm" />
                     </td>
                     <td class="border-b px-4 py-2">
-                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md no-spin" value="${perRowAmount1}" 
-                            onblur="checkInputAmountOnInput('partial', ${i})" oninput="checkInputAmount('partial', ${i})" />
+                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md no-spin" value="${perRowAmount1}"
+                        onblur="checkInputAmountOnInput('partial', ${i})" oninput="checkInputAmount('partial', ${i})" />
                     </td>
-                `;
+                    <td class="border-b px-4 py-2 text-left">
+                        <select id="payment_gateway1_${i}" name="payment_gateway1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                        @foreach ($paymentGateways as $gateway)
+                            <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
+                        @endforeach
+                        </select>
+
+                        <div id="method_wrapper_${i}" class="mt-2">
+                        <label class="block text-sm font-medium mb-1">Payment Method</label>
+                        <div id="payment_method_container1_${i}" class="hidden">
+                            <select id="payment_method1_${i}" name="payment_method1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                            ${paymentMethods.map(m => `<option value="${m.id}">${m.english_name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div id="payment_method_text1_${i}" class="text-gray-500 p-2">No specific method required</div>
+                        </div>
+                    </td>
+                    `;
                     tbody.appendChild(row);
 
+                    const gatewaySelect   = row.querySelector(`#payment_gateway1_${i}`);
+                    const methodWrapper   = row.querySelector(`#method_wrapper_${i}`);
+                    const methodContainer = row.querySelector(`#payment_method_container1_${i}`);
+                    const methodText      = row.querySelector(`#payment_method_text1_${i}`);
+
+                    const updateMethodVisibility = () => {
+                    const isMF = (gatewaySelect.value || '').toLowerCase() === 'myfatoorah';
+                    methodContainer.classList.toggle('hidden', !isMF);
+                    methodText.classList.toggle('hidden', isMF);
+                    methodWrapper.style.display = ''; // keep wrapper visible; we toggle inner parts instead
+                    };
+
+                    updateMethodVisibility();
+                    gatewaySelect.addEventListener('change', updateMethodVisibility);
                 }
             }
+
+
 
             function updateField(itemId, fieldId) {
                 // console.log('updated', itemId + '-' + fieldId);
@@ -2275,6 +2269,7 @@
 
                 const frag = document.createDocumentFragment();
                 let count = 0;
+                const isInvoicePaid = @json($invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'));
 
                 for (const item of items) {
                     try {
@@ -2302,48 +2297,51 @@
                         row.className = `border-b border-[#e0e6ed] align-top dark:border-[#1b2e4b] ${!isSaved ? 'bg-sky-100' : ''}`;
 
                         row.innerHTML = `
-                    <td class="flex-grow"><p>${++count}</p></td>
-                    <td class="flex-grow">
-                    <p><b>${task.desc}</b><br>Info: ${task.info}</br></p>
-                    </td>
-                    <td><p>${task.total} KWD</p></td>
-                    <td>
-                    <div class="flex items-center">
-                        <input id="invprice-table-${task.id}" type="number" class="no-spin border border-gray-300 rounded-md w-full" value="${task.taskPrice}" oninput="updateItemPrice(${item.id}); updateField(${JSON.stringify(task.id)}, 'invprice-table')" />
-                        ${isSaved && canSavePrice ? `
-                            <button type="button" class="p-1 rounded hover:bg-gray-200" title="Save" onclick="saveTaskPrice(${JSON.stringify(task.id)})">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-                                    class="w-5 h-5 text-blue-600">
-                                    <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
-                                </svg>
-                            </button>
-                        ` : ''}
-                    </div>
-                    </td>
-                    <td><p>${task.clientName}</p></td>
-                    <td><p>${task.agentName}</p></td>
-                    <td><p>${task.branchName}</p></td>
-                    <td><p>${task.supplierName}</p></td>
-                    <td><p>${task.typeCap}</p></td>
-                    <td class="action-cell text-center">
-                        <div class="inline-flex space-x-2">
-                            ${!isSaved ? `
-                                <button onclick="saveSingleTask(${item.id})" class="text-blue-500 hover:text-blue-700" data-tooltip-left="Save This Task">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                        <polyline points="7 3 7 8 15 8"></polyline>
-                                    </svg>
-                                </button>
-                            ` : ''}
-                            <button onclick="removeTaskFromInvoice(${item.id} )" class="text-red-500 hover:text-red-700" data-tooltip-left="Remove Item">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </td>
-                `;
+                            <td class="flex-grow"><p>${++count}</p></td>
+                            <td class="flex-grow"><p><b>${task.desc}</b><br>Info: ${task.info}</br></p></td>
+                            <td><p>${task.total} KWD</p></td>
+                            <td>
+                                <div class="flex items-center">
+                                    <input id="invprice-table-${task.id}" 
+                                        type="number" 
+                                        name="tasks[${item.id}]" 
+                                        class="no-spin border border-gray-300 rounded-md w-full" 
+                                        value="${item.task_price}" 
+                                        oninput="updateItemPrice(${item.id});" 
+                                    />
+                                    ${!isInvoicePaid && isSaved ? `
+                                        <button type="button" class="p-1 rounded hover:bg-gray-200" title="Save" onclick="saveTaskPrice(${task.id})">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 text-blue-600">
+                                                <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
+                                            </svg>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </td>
+                            <td><p>${task.clientName}</p></td>
+                            <td><p>${task.agentName}</p></td>
+                            <td><p>${task.branchName}</p></td>
+                            <td><p>${task.supplierName}</p></td>
+                            <td><p>${task.typeCap}</p></td>
+                            <td class="action-cell text-center">
+                                <div class="inline-flex space-x-2">
+                                    ${!isSaved ? `
+                                        <button onclick="saveSingleTask(${item.id})" class="text-blue-500 hover:text-blue-700" data-tooltip-left="Save This Task">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                                <polyline points="7 3 7 8 15 8"></polyline>
+                                            </svg>
+                                        </button>
+                                    ` : ''}
+                                    <button onclick="removeTaskFromInvoice(${item.id} )" class="text-red-500 hover:text-red-700" data-tooltip-left="Remove Item">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        `;
 
                         frag.appendChild(row);
 
@@ -3226,112 +3224,78 @@
 
 
                 } else if (mode === 'partial') {
-                    // Collect Partial Payment Data
-                    const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
-                    const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
                     const partialRows = document.querySelectorAll('#split-rows1 tr');
-                    const gateway = document.getElementById('payment_gateway1')?.value || '';
-                    const method = document.getElementById('payment_method1')?.value || '';
-
                     const partialData = [];
 
-                    partialRows.forEach(row => {
-                        const date = row.querySelector('input[type="date"]').value;
-                        const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+                    console.log('--- Collecting PARTIAL rows ---');
 
-                        partialData.push({
-                            date,
-                            amount,
-                            gateway,
-                            method
+                    partialRows.forEach((row, index) => {
+                        const i = index + 1;
+
+                        const date   = row.querySelector(`#date_${i}`)?.value || '';
+                        const amount = parseFloat(row.querySelector(`#amount_${i}`)?.value) || 0;
+                        const gatewayEl = row.querySelector(`#payment_gateway1_${i}`);
+                        const methodBox = row.querySelector(`#payment_method_container1_${i}`);
+                        const methodEl  = row.querySelector(`#payment_method1_${i}`);
+
+                        const gateway = gatewayEl ? gatewayEl.value : null;
+                        const method  = (methodBox && !methodBox.classList.contains('hidden')) ? (methodEl?.value || null) : null;
+
+                        // 🔎 Per-row log
+                        console.log(`row ${i}`, {
+                        date, amount, gatewayId: gatewayEl?.id, gateway,
+                        methodId: methodEl?.id, methodVisible: methodBox && !methodBox.classList.contains('hidden'),
+                        method
                         });
+
+                        partialData.push({ date, amount, gateway, method });
                     });
 
+                    // 🔎 Table of what will be sent
+                    console.table(partialData);
+
                     for (const item of partialData) {
+                        // 🔎 Log payload before each call
+                        console.log('[save][partial] sending', item);
                         save('partial', item);
                     }
 
+                    // UI feedback (unchanged)
                     const buttonPartial = document.getElementById('partialbutton');
-                    const iconPartial = document.getElementById('button-icon-partial');
-                    const textPartial = document.getElementById('button-text-partial');
-
+                    const iconPartial   = document.getElementById('button-icon-partial');
+                    const textPartial   = document.getElementById('button-text-partial');
                     if (buttonPartial && iconPartial && textPartial) {
                         buttonPartial.disabled = true;
-
-                        // Spinner icon (cleaned up)
                         iconPartial.innerHTML = `
                         <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                        </svg>
-                    `;
-
+                        </svg>`;
                         textPartial.textContent = 'Saving...';
-
                         setTimeout(() => {
-                            iconPartial.innerHTML = ''; // remove icon
-                            textPartial.textContent = 'Saved ✅';
-                            location.reload(); // or redirect if you want
+                        iconPartial.innerHTML = '';
+                        textPartial.textContent = 'Saved ✅';
+                        location.reload();
                         }, 500);
                     } else {
                         console.error('One or more elements (button, icon, text) not found in the DOM');
                     }
-
-                } else if (mode === 'credit') {
-                    const gateway = document.getElementById('payment_gateway_option').value;
-                    const date = document.getElementById('duedate').value;
-                    const amount = document.getElementById('subTotal').value;
-                    const fullData = [];
-
-                    fullData.push({
-                        date,
-                        amount,
-                        gateway: 'Credit'
-                    });
-                    for (const item of fullData) {
-                        save('credit', item);
-                    }
-
-                    const button = document.getElementById('update-invoice-btn');
-                    const icon = document.getElementById('button-icon-full');
-                    const text = document.getElementById('button-text-full');
-
-                    button.disabled = true;
-
-                    // Replace icon with spinner
-                    icon.innerHTML = `
-                    <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8v8z"></path>
-                    </svg>
-                `;
-                    text.textContent = 'Saving...';
-
-                    displaySuccessMessage("Invoice saved and paid successfully!");
-
-                    setTimeout(() => {
-                        icon.innerHTML = '';
-                        text.textContent = 'Saved ✅';
-                        window.location.href = "{{ route('invoices.index') }}";
-                    }, 1000);
-
                 }
             }
 
             async function save(type, item) {
-                // console.log("Sending single item:", item);
-
                 const invoiceUrl = "{{ route('invoice.partial') }}";
                 const csrfToken = "{{ csrf_token() }}";
                 const invoiceId = document.getElementById('invoiceId').value;
                 const invoiceNumber = document.getElementById('invoiceNumber').value;
+                const companyId = document.getElementById('companyId').value;
 
                 const invoiceCharge = document.getElementById('invoice_charge') ? document.getElementById('invoice_charge').value : 0;
 
                 let payload = {
                     invoiceId,
                     invoiceNumber,
+                    companyId,
                     type,
                     date: item.date,
                     amount: item.amount,
@@ -3389,7 +3353,6 @@
                     displayErrorMessage(error.message || `Something went wrong with ${type} payment.`);
                 }
             }
-
 
             function displayErrorMessage(message) {
                 const alert = document.createElement('div');
@@ -3549,63 +3512,10 @@
                 }
             };
 
-
-
-            function viewInvoice() {
-                openInvoiceModal(invoice.invoice_number);
-            }
-
-            function openInvoiceModal(invoiceNumber) {
-                const modal = document.getElementById("viewInvoiceModal");
-                const contentDiv = document.getElementById("invoiceContent");
-                const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
-
-                // Clear previous content
-                contentDiv.innerHTML = "";
-
-                // Open the modal
-                modal.classList.remove("hidden");
-                url = "{{ route('invoice.show', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
-
-                // Fetch the invoice details
-                fetch(url)
-                    .then((response) => {
-                        if (!response.ok) {
-                            throw new Error("Network response was not ok");
-                        }
-                        return response.text();
-                    })
-                    .then((data) => {
-                        contentDiv.innerHTML = data;
-
-                        // Close the modal when the backdrop is clicked
-                        modal.addEventListener("click", (event) => {
-                            if (event.target === modal) {
-                                closeInvoiceModal();
-                            }
-                        });
-
-
-                    })
-                    .catch((error) => {
-                        console.error("Error fetching invoice details:", error);
-                        contentDiv.innerHTML =
-                            '<p class="text-center text-red-500">Failed to load invoice details.</p>';
-
-                    });
-            }
-
-            function closeInvoiceModal() {
-                const modal = document.getElementById("viewInvoiceModal");
-                modal.classList.add("hidden");
-            }
-
-
-
             function copyLink() {
                 const invoiceNumber = document.getElementById('invoiceNumber').value;
                 const copyFeedback = document.getElementById('copyFeedback');
-                const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
+                const companyId = document.getElementById('companyId').value;
                 const fetchUrl = "{{ route('invoice.show', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
 
                 navigator.clipboard.writeText(fetchUrl).then(() => {

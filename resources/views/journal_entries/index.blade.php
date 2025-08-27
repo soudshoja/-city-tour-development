@@ -42,7 +42,7 @@
                                         {{ $entry->transaction_id }}
                                     </td>
                                     <td class="py-2 px-4 text-center">
-                                        {{ \Carbon\Carbon::parse($entry->created_at)->format('Y-m-d') }}
+                                        {{ \Carbon\Carbon::parse($entry->transaction->transaction_date ?? $entry->invoice->invoice_date)->format('Y-m-d') }}
                                     </td>
                                     <td class="py-2 px-4 text-left">
                                         {{ $entry->description ?? '-' }}

@@ -78,7 +78,7 @@
                                     <td class="py-2 px-4 text-center">
                                         <a href="{{ route('journal-entries.index', $entry->transaction_id) }}"
                                            class="text-blue-600 hover:underline">
-                                            {{ $entry->transaction->id }}
+                                            {{ $entry->transaction_id }}
                                         </a>
                                     </td>
                                     <td class="py-2 px-4 text-center">

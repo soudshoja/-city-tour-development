@@ -83,10 +83,11 @@
              <p class="text-sm text-gray-600">{{ $invoicePartial->client->email ?? 'N/A' }}</p>
          </div>
 
-         <!-- Invoice Items -->
-         <h3 class="text-lg font-bold text-gray-800 mb-4">Split Payment ({{ $invoice->currency }})</h3>
-         @php
-             $creditBalance = \App\Models\Credit::getTotalCreditsByClient($invoicePartial->client->id);
+        <!-- Invoice Items -->
+        <h3 class="text-lg font-bold text-gray-800 mb-4">{{ ucfirst($invoicePartial->type) }} Payment ({{ $invoice->currency }})</h3>
+       
+        @php
+            $creditBalance = \App\Models\Credit::getTotalCreditsByClient($invoicePartial->client->id);
          @endphp
          <table class="min-w-full mb-8 border border-gray-200">
              <thead>

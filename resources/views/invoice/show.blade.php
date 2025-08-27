@@ -91,7 +91,9 @@
     @if ($invoice->status === 'partial')
     <div class="max-w-4xl mx-auto rounded-lg border border-yellow-300 bg-yellow-100 p-6 flex items-center rounded-lg">
         <div class="flex items-center gap-2 text-yellow-800">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zM9 5h2v5H9V5zm0 6h2v2H9v-2z" clip-rule="evenodd"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zM9 5h2v5H9V5zm0 6h2v2H9v-2z" clip-rule="evenodd" />
+            </svg>
             <div class="font-semibold">Invoice is partially paid.</div>
             <div class="text-sm">Some installments are paid, some are pending. You can continue below.</div>
         </div>
@@ -164,8 +166,8 @@
                     <td class="px-4 py-2 border">
                         @if ($detail->task->type === 'hotel')
                         @php
-                            $roomDetails = json_decode($detail->task->hotelDetails->room_details, true);
-                            $passengerCount = count($roomDetails['passengers'] ?? []);
+                        $roomDetails = json_decode($detail->task->hotelDetails->room_details, true);
+                        $passengerCount = count($roomDetails['passengers'] ?? []);
                         @endphp
                         <p>
                             <br>Client Name: {{ $detail->task->client_name ?? (($invoice->client->first_name ?? '') . ' ' . ($invoice->client->last_name ?? '')) }}
@@ -200,7 +202,18 @@
         </table>
         @endif
 
-        @if ($invoice->payment_type === 'partial')
+       @php
+            $typeIsPartial = strcasecmp(trim($invoice->payment_type ?? ''), 'partial') === 0;
+
+            // true when there are 2+ different gateways among partials
+            $hasMismatch = collect($invoicePartials)
+                ->pluck('payment_gateway')
+                ->filter(fn ($g) => filled($g))
+                ->unique()
+                ->count() > 1;
+        @endphp
+
+        @if ($invoice->payment_type === 'partial' && !$hasMismatch)
         <!-- Partial Payment Table -->
         <h3 class="text-lg font-bold text-gray-800 mb-4">Partial Payment ({{ $invoice->currency }})</h3>
 
@@ -245,6 +258,66 @@
                         @endif
                     </td>
                     <!-- <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td> -->
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+        @endif
+
+        <!-- Partial Payment of Different Gateway -->
+        @if ($invoice->payment_type === 'partial' && $hasMismatch)
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Partial Payment ({{ $invoice->currency }})</h3>        
+
+            <div class="mb-4">
+            <h4 class="text-lg font-bold text-gray-800">Task Descriptions</h4>
+            <ul class="list-disc pl-6">
+                @foreach ($invoiceDetails as $detail)
+                <li class="text-sm text-gray-700">
+                    <strong>{{ $detail->task_description ?? 'N/A' }}</strong>:
+                    {{ $detail->quantity ?? 0 }}
+                </li>
+                @endforeach
+            </ul>
+        </div>
+
+        <table class="min-w-full mb-8 border border-gray-200">
+            <thead>
+                <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
+                    <th class="px-4 py-2 border">Payment Gateway</th>
+                    <th class="px-4 py-2 border">Link</th>
+                    <th class="px-4 py-2 border">Expiry Date</th>
+                    <th class="px-4 py-2 border">Status</th>
+                    <th class="px-4 py-2 border">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @php
+                $count = 1;
+                @endphp
+                @foreach ($invoicePartials as $partial)
+                @php
+                $creditBalance = \App\Models\Credit::getTotalCreditsByClient($partial->client->id);
+                @endphp
+
+                <tr x-data="{ open: false }" class="text-sm text-gray-700 text-center">
+                    <td class="px-4 py-2 border">{{ $partial->payment_gateway ?? 'N/A'}}</td>
+                    <td class="px-4 py-2 border">
+                        <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}"
+                            class="text-blue-500 underline" target="_blank">
+                            View Details
+                        </a>
+                    </td>
+                    <td class="px-4 py-2 border">
+                        {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}
+                    </td>
+                    <td class="px-4 py-2 border"> {{$partial->status}}</td>
+                    <td class="px-4 py-2 border">
+                        @if ($partial->status !== 'paid')
+                        {{ number_format($partial->final_amount ?? $partial->amount, 2) }}
+                        @else
+                        {{ number_format($partial->amount, 2) }}
+                        @endif
+                    </td>
                 </tr>
                 @endforeach
             </tbody>
@@ -424,7 +497,7 @@
 
         <!-- Payment Details -->
         <div class="mb-8 inline-flex gap-2">
-            @if ($invoice->status === 'unpaid' || $invoice->status === 'partial')
+            @if ($invoice->status === 'unpaid' || $invoice->status === 'partial' || ($invoice->payment_type === 'partial' && !$hasMismatch))
             @if (auth()->check())
 
             <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}" method="POST" onsubmit="showSpinner()">
@@ -461,7 +534,7 @@
                 <input type="hidden" name="payment_method" value="{{ $paymentMethod }}">
 
                 <div class="flex items-center gap-2">
-                    @if ($invoice->payment_type !== 'split')
+                    @if ($invoice->payment_type !== 'split' && !($invoice->payment_type === 'partial' && $hasMismatch))
                     <button type="submit" id="payNowBtn"
                         class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                         Pay Now

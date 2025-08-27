@@ -200,9 +200,7 @@ class PaymentController extends Controller
             } elseif (strtolower($data['payment_gateway']) === 'myfatoorah') {
                 $chargeResult = ChargeService::FatoorahCharge($partial->amount, $data['payment_method'], $companyId);
             }
-            if ($chargeResult['paid_by'] !== 'Company') {
-                $totalServiceFee += $chargeResult['fee'];
-            }
+           
         }
         $finalAmount = $baseAmount + $totalServiceFee;
 
@@ -359,7 +357,7 @@ class PaymentController extends Controller
                     ]
                 ],
             ];
-
+            
             $executeResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
                 'Content-Type' => 'application/json',

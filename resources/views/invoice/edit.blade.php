@@ -1169,29 +1169,6 @@
                                                             <option value="6">6</option>
                                                         </select>
                                                     </div>
-                                                    <div>
-                                                        <label class="block text-sm font-medium mb-1">Payment
-                                                            Gateway</label>
-                                                        <select id="payment_gateway1" name="payment_gateway1"
-                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm">
-                                                            @foreach ($paymentGateways as $gateway)
-                                                            <option value="{{ $gateway->name }}">{{ $gateway->name }}
-                                                            </option>
-                                                            @endforeach
-                                                        </select>
-                                                    </div>
-                                                    <div x-cloak x-show="paymentGateway === 'MyFatoorah'" x-transition>
-                                                        <label class="block text-sm font-medium mb-1">Payment
-                                                            Method</label>
-                                                        <select name="payment_method1" id="payment_method1"
-                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm">
-                                                            @foreach ($paymentMethods as $methods)
-                                                            <option value="{{ $methods->id }}">
-                                                                {{ $methods->english_name }}
-                                                            </option>
-                                                            @endforeach
-                                                        </select>
-                                                    </div>
                                                 </div>
                                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment
                                                     Breakdown</h2>
@@ -1201,6 +1178,7 @@
                                                             <th class="border-b px-4 py-2">S.No</th>
                                                             <th class="border-b px-4 py-2">Expiry Date</th>
                                                             <th class="border-b px-4 py-2">Amount</th>
+                                                            <th class="border-b px-4 py-2">Payment Gateway</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="split-rows1">
@@ -2083,13 +2061,13 @@
                 }
             }
 
-            function updateRows1() { //partial payment
+            function updateRows1() { // partial payment
                 const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
                 const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
                 const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
-
+                const paymentMethods = @json($paymentMethods);
                 const tbody = document.getElementById('split-rows1');
-                tbody.innerHTML = ''; // Clear existing rows
+                tbody.innerHTML = '';
 
                 for (let i = 1; i <= splitInto1; i++) {
                     const row = document.createElement('tr');
@@ -2099,14 +2077,47 @@
                         <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="border-gray-300 rounded-md shadow-sm" />
                     </td>
                     <td class="border-b px-4 py-2">
-                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md no-spin" value="${perRowAmount1}" 
-                            onblur="checkInputAmountOnInput('partial', ${i})" oninput="checkInputAmount('partial', ${i})" />
+                        <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md no-spin" value="${perRowAmount1}"
+                        onblur="checkInputAmountOnInput('partial', ${i})" oninput="checkInputAmount('partial', ${i})" />
                     </td>
-                `;
+                    <td class="border-b px-4 py-2 text-left">
+                        <select id="payment_gateway1_${i}" name="payment_gateway1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                        @foreach ($paymentGateways as $gateway)
+                            <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
+                        @endforeach
+                        </select>
+
+                        <div id="method_wrapper_${i}" class="mt-2">
+                        <label class="block text-sm font-medium mb-1">Payment Method</label>
+                        <div id="payment_method_container1_${i}" class="hidden">
+                            <select id="payment_method1_${i}" name="payment_method1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                            ${paymentMethods.map(m => `<option value="${m.id}">${m.english_name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div id="payment_method_text1_${i}" class="text-gray-500 p-2">No specific method required</div>
+                        </div>
+                    </td>
+                    `;
                     tbody.appendChild(row);
 
+                    const gatewaySelect   = row.querySelector(`#payment_gateway1_${i}`);
+                    const methodWrapper   = row.querySelector(`#method_wrapper_${i}`);
+                    const methodContainer = row.querySelector(`#payment_method_container1_${i}`);
+                    const methodText      = row.querySelector(`#payment_method_text1_${i}`);
+
+                    const updateMethodVisibility = () => {
+                    const isMF = (gatewaySelect.value || '').toLowerCase() === 'myfatoorah';
+                    methodContainer.classList.toggle('hidden', !isMF);
+                    methodText.classList.toggle('hidden', isMF);
+                    methodWrapper.style.display = ''; // keep wrapper visible; we toggle inner parts instead
+                    };
+
+                    updateMethodVisibility();
+                    gatewaySelect.addEventListener('change', updateMethodVisibility);
                 }
             }
+
+
 
             function updateField(itemId, fieldId) {
                 // console.log('updated', itemId + '-' + fieldId);
@@ -3226,96 +3237,62 @@
 
 
                 } else if (mode === 'partial') {
-                    // Collect Partial Payment Data
-                    const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
-                    const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
                     const partialRows = document.querySelectorAll('#split-rows1 tr');
-                    const gateway = document.getElementById('payment_gateway1')?.value || '';
-                    const method = document.getElementById('payment_method1')?.value || '';
-
                     const partialData = [];
 
-                    partialRows.forEach(row => {
-                        const date = row.querySelector('input[type="date"]').value;
-                        const amount = parseFloat(row.querySelector('input[type="number"]').value) || 0;
+                    console.log('--- Collecting PARTIAL rows ---');
 
-                        partialData.push({
-                            date,
-                            amount,
-                            gateway,
-                            method
+                    partialRows.forEach((row, index) => {
+                        const i = index + 1;
+
+                        const date   = row.querySelector(`#date_${i}`)?.value || '';
+                        const amount = parseFloat(row.querySelector(`#amount_${i}`)?.value) || 0;
+                        const gatewayEl = row.querySelector(`#payment_gateway1_${i}`);
+                        const methodBox = row.querySelector(`#payment_method_container1_${i}`);
+                        const methodEl  = row.querySelector(`#payment_method1_${i}`);
+
+                        const gateway = gatewayEl ? gatewayEl.value : null;
+                        const method  = (methodBox && !methodBox.classList.contains('hidden')) ? (methodEl?.value || null) : null;
+
+                        // 🔎 Per-row log
+                        console.log(`row ${i}`, {
+                        date, amount, gatewayId: gatewayEl?.id, gateway,
+                        methodId: methodEl?.id, methodVisible: methodBox && !methodBox.classList.contains('hidden'),
+                        method
                         });
+
+                        partialData.push({ date, amount, gateway, method });
                     });
 
+                    // 🔎 Table of what will be sent
+                    console.table(partialData);
+
                     for (const item of partialData) {
+                        // 🔎 Log payload before each call
+                        console.log('[save][partial] sending', item);
                         save('partial', item);
                     }
 
+                    // UI feedback (unchanged)
                     const buttonPartial = document.getElementById('partialbutton');
-                    const iconPartial = document.getElementById('button-icon-partial');
-                    const textPartial = document.getElementById('button-text-partial');
-
+                    const iconPartial   = document.getElementById('button-icon-partial');
+                    const textPartial   = document.getElementById('button-text-partial');
                     if (buttonPartial && iconPartial && textPartial) {
                         buttonPartial.disabled = true;
-
-                        // Spinner icon (cleaned up)
                         iconPartial.innerHTML = `
                         <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                        </svg>
-                    `;
-
+                        </svg>`;
                         textPartial.textContent = 'Saving...';
-
                         setTimeout(() => {
-                            iconPartial.innerHTML = ''; // remove icon
-                            textPartial.textContent = 'Saved ✅';
-                            location.reload(); // or redirect if you want
+                        iconPartial.innerHTML = '';
+                        textPartial.textContent = 'Saved ✅';
+                        location.reload();
                         }, 500);
                     } else {
                         console.error('One or more elements (button, icon, text) not found in the DOM');
                     }
-
-                } else if (mode === 'credit') {
-                    const gateway = document.getElementById('payment_gateway_option').value;
-                    const date = document.getElementById('duedate').value;
-                    const amount = document.getElementById('subTotal').value;
-                    const fullData = [];
-
-                    fullData.push({
-                        date,
-                        amount,
-                        gateway: 'Credit'
-                    });
-                    for (const item of fullData) {
-                        save('credit', item);
-                    }
-
-                    const button = document.getElementById('update-invoice-btn');
-                    const icon = document.getElementById('button-icon-full');
-                    const text = document.getElementById('button-text-full');
-
-                    button.disabled = true;
-
-                    // Replace icon with spinner
-                    icon.innerHTML = `
-                    <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8v8z"></path>
-                    </svg>
-                `;
-                    text.textContent = 'Saving...';
-
-                    displaySuccessMessage("Invoice saved and paid successfully!");
-
-                    setTimeout(() => {
-                        icon.innerHTML = '';
-                        text.textContent = 'Saved ✅';
-                        window.location.href = "{{ route('invoices.index') }}";
-                    }, 1000);
-
                 }
             }
 

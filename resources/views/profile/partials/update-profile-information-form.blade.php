@@ -25,30 +25,25 @@
     @method('patch')
 
     {{-- RIGHT COLUMN (Logo Upload) --}}
-    @if ($user->role->name === 'company')
+    @if ($user->role_id == \App\Models\Role::COMPANY)
     <div class="flex justify-end justify-end pr-6">
-        <div class="flex items-end">
-            <!-- Hidden file input -->
-            <input id="logo" name="logo" type="file" class="hidden" accept="image/*"
-                onchange="previewLogo(event)" />
+        <div class="flex flex-col items-center space-y-4">
+            <!-- Logo Preview -->
+            <div id="logo-preview-container"
+                class="h-24 w-24 border-2 border-gray-300 flex items-center justify-center
+                        rounded-md overflow-hidden bg-gray-50 dark:bg-gray-700">
+                @if ($user->company && $user->company->logo)
+                <img id="logo-preview" src="{{ asset('storage/' . $user->company->logo) }}"
+                    alt="Company Logo"
+                    class="h-full w-full object-cover">
+                @else
+                <span id="logo-placeholder" class="text-gray-400 text-3xl">+</span>
+                @endif
+            </div>
 
+            <!-- File Upload Button -->
             <div>
-                <!-- Clickable preview container -->
-                <div id="logo-preview-container"
-                    onclick="document.getElementById('logo').click()"
-                    class="mt-2 h-24 w-24 border-2 border-dashed border-gray-300 flex items-center justify-center
-                            rounded-md cursor-pointer overflow-hidden bg-gray-50 dark:bg-gray-700
-                            hover:border-blue-500 transition duration-200">
-
-                    @if ($user->company && $user->company->logo)
-                    <img src="{{ asset('storage/' . $user->company->logo) }}"
-                        alt="Company Logo"
-                        class="h-20 w-20 object-cover rounded-md">
-                    @else
-                    <span id="logo-placeholder" class="text-gray-400 text-3xl">+</span>
-                    @endif
-                </div>
-
+                <input id="logo" name="logo" type="file" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*" onchange="previewLogo(event)" />
                 <x-input-error class="mt-2" :messages="$errors->get('logo')" />
             </div>
         </div>
@@ -162,86 +157,40 @@
     <script>
         let processedLogoBase64 = null;
 
-        async function previewLogo(event) {
+        function previewLogo(event) {
             const input = event.target;
             const container = document.getElementById('logo-preview-container');
+            const placeholder = document.getElementById('logo-placeholder');
             const file = input.files[0];
 
             if (file) {
+                // Simple preview without background removal for now
                 const reader = new FileReader();
-                reader.onload = async function(e) {
-                    const img = new Image();
-                    img.onload = async function() {
-                        if (img.width > 700 || img.height > 400) {
-                            alert('Image must be at most 700x400 pixels.');
-                            input.value = '';
-                            return;
-                        }
-                        container.innerHTML = '<span class="text-gray-400 text-sm">Removing background...</span>';
-
-                        const formData = new FormData();
-                        formData.append('image_file', file);
-                        formData.append('size', 'auto');
-
-                        try {
-                            const response = await fetch('https://api.remove.bg/v1.0/removebg', {
-                                method: 'POST',
-                                headers: {
-                                    'X-Api-Key': 'JnBYzxA6Lk9DRmR2xUpubqGn', // Replace with your API key
-                                },
-                                body: formData
-                            });
-
-                            if (!response.ok) throw new Error('Background removal failed');
-
-                            const blob = await response.blob();
-                            const url = URL.createObjectURL(blob);
-
-                            const resultImg = new Image();
-                            resultImg.onload = function() {
-                                container.innerHTML = '';
-                                resultImg.classList.add('h-full', 'w-full', 'object-cover');
-                                container.appendChild(resultImg);
-                            };
-                            resultImg.src = url;
-
-                            // Convert blob → Base64 and store in hidden field
-                            const reader2 = new FileReader();
-                            reader2.onloadend = function() {
-                                processedLogoBase64 = reader2.result;
-                                document.getElementById('logo_processed').value = processedLogoBase64;
-                            };
-                            reader2.readAsDataURL(blob);
-
-                        } catch (error) {
-                            alert('Could not remove background: ' + error.message);
-                            container.innerHTML = '<span class="text-gray-400 text-3xl">+</span>';
-                            input.value = '';
-                            processedLogoBase64 = null;
-                            document.getElementById('logo_processed').value = '';
-                        }
-                    };
-                    img.src = e.target.result;
+                reader.onload = function(e) {
+                    // Hide placeholder if it exists
+                    if (placeholder) {
+                        placeholder.style.display = 'none';
+                    }
+                    
+                    // Show the selected image
+                    container.innerHTML = `<img id="logo-preview" src="${e.target.result}" alt="Company Logo" class="h-full w-full object-cover">`;
                 };
                 reader.readAsDataURL(file);
             }
         }
 
-        // Ensure processed image is submitted instead of original
+        // Form submission handling
         document.addEventListener('DOMContentLoaded', function() {
-            const form = document.querySelector('form[action="{{ route('profile.update') }}"]');
-            form.addEventListener('submit', function(e) {
-                const fileInput = document.getElementById('logo');
-                if (fileInput.value && !processedLogoBase64) {
-                    e.preventDefault();
-                    alert('Please wait for the background to be removed from your logo before saving.');
-                }
-
-                // ⚡ Remove original file from submission if processed exists
-                if (processedLogoBase64) {
-                    fileInput.removeAttribute('name'); // prevent raw file upload
-                }
-            });
+            const form = document.querySelector('form[method="post"]');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const fileInput = document.getElementById('logo');
+                    if (fileInput && fileInput.files.length > 0) {
+                        // File is selected, allow normal form submission
+                        console.log('Form submitted with file');
+                    }
+                });
+            }
         });
     </script>
 

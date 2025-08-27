@@ -147,6 +147,22 @@ class ProfileController extends Controller
 
         $company = $user->company; // related company
 
+        // Get the correct company based on user role
+        switch ($user->role->id) {
+            case Role::COMPANY:
+                $company = $user->company;
+                break;
+            case Role::BRANCH:
+                $company = $user->branch->company;
+                break;
+            case Role::AGENT:
+                $company = $user->agent->branch->company;
+                break;
+            default:
+                $company = null;
+                break;
+        }
+
         // Handle logo upload only if company exists
         if ($company) {
             // ✅ Prefer processed base64 logo if available

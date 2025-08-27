@@ -30,23 +30,7 @@ class AppLayout extends Component
 
         $currencyExchange = $this->currencySidebar();
 
-        switch ($user->role->id) {
-            case Role::COMPANY:
-                $company = $user->company;
-                break;
-            case Role::BRANCH:
-                $company = $user->branch->company;
-                break;
-            case Role::AGENT:
-                $company = $user->agent->branch->company;
-                break;
-        }
-
-        if ($company && $company->logo) {
-            $companyLogo = asset('storage/' . $company->logo);
-        }
         return view('components.layouts.app', [
-            'companyLogo' => $companyLogo,
             'color' => $color,
             'allIso' => $currencyExchange['all_iso'],
             'base' => $currencyExchange['base'],

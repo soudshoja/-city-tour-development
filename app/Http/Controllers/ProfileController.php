@@ -148,7 +148,7 @@ class ProfileController extends Controller
         $company = $user->company; // related company
 
         // Get the correct company based on user role
-        switch ($user->role->id) {
+        switch ($user->role_id) {
             case Role::COMPANY:
                 $company = $user->company;
                 break;

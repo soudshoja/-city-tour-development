@@ -165,7 +165,7 @@
                 <!-- company details -->
                 <div class="flex flex-wrap justify-between px-4">
                     <div class=" shrink-0 items-center text-black dark:text-white">
-                        <x-application-logo class="custom-logo-size" />
+                        <x-application-logo class="custom-logo-size"  />
 
                         <div class="pl-2">
                             @if ($company)

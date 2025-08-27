@@ -193,7 +193,7 @@ class AgentController extends Controller
 
         $invoices = Invoice::with('invoiceDetails')
             ->where('agent_id', $agent->id)
-            ->whereBetween('created_at', [$from, $to])
+            ->whereBetween('invoice_date', [$from, $to])
             ->get();
 
         foreach ($invoices as $invoice) {

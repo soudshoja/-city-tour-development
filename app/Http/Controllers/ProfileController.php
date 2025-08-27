@@ -100,6 +100,7 @@ class ProfileController extends Controller
                 break;
 
             default:
+                $company = null;
                 break;
         }
 
@@ -146,27 +147,30 @@ class ProfileController extends Controller
 
         $company = $user->company; // related company
 
-        // ✅ Prefer processed base64 logo if available
-        if ($request->filled('logo_processed')) {
-            $logoData = $request->input('logo_processed');
+        // Handle logo upload only if company exists
+        if ($company) {
+            // ✅ Prefer processed base64 logo if available
+            if ($request->filled('logo_processed')) {
+                $logoData = $request->input('logo_processed');
 
-            // Strip base64 prefix
-            $logoData = preg_replace('#^data:image/\w+;base64,#i', '', $logoData);
-            $logoData = str_replace(' ', '+', $logoData);
+                // Strip base64 prefix
+                $logoData = preg_replace('#^data:image/\w+;base64,#i', '', $logoData);
+                $logoData = str_replace(' ', '+', $logoData);
 
-            // Save into public/storage/logos/
-            $fileName = 'logos/' . uniqid() . '.png';
-            Storage::disk('public_storage')->put($fileName, base64_decode($logoData));
+                // Save into public/storage/logos/
+                $fileName = 'logos/' . uniqid() . '.png';
+                Storage::disk('public_storage')->put($fileName, base64_decode($logoData));
 
-            // Save relative path e.g. logos/filename.png
-            $company->logo = $fileName;
-        } elseif ($request->hasFile('logo')) {
-            // Fallback: save original file if no processed image
-            $path = $request->file('logo')->store('logos', 'public_storage');
-            $company->logo = $path;
+                // Save relative path e.g. logos/filename.png
+                $company->logo = $fileName;
+            } elseif ($request->hasFile('logo')) {
+                // Fallback: save original file if no processed image
+                $path = $request->file('logo')->store('logos', 'public_storage');
+                $company->logo = $path;
+            }
+
+            $company->save();
         }
-
-        $company->save();
 
         // Update related profile information based on user role
         if ($user->role_id){

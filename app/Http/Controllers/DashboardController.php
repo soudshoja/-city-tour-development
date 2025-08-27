@@ -292,4 +292,6 @@ class DashboardController extends Controller
         return array_slice($colors, 0, $count);
 
     }
+
+    
 };

@@ -1,6 +1,10 @@
 <section>
-    <header class="bg-white dark:bg-gray-800 rounded-lg flex justify-between items-center">
-        <div>
+
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg  grid grid-cols-1 md:grid-cols-2  items-center">
+
+        {{-- LEFT COLUMN (Profile Info) --}}
+        <div class="flex flex-col justify-center">
             <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
                 {{ __('Profile Information') }}
             </h2>
@@ -8,16 +12,49 @@
                 {{ __("Update your account's profile information and email address.") }}
             </p>
         </div>
-    </header>
+
+
+
+    </div>
 
     <form id="send-verification" method="post" action="{{ route('verification.send') }}">
         @csrf
     </form>
+    <form method="post" action="{{ route('profile.update') }}" enctype="multipart/form-data">
+    @csrf
+    @method('patch')
 
-    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6">
-        @csrf
-        @method('patch')
+    {{-- RIGHT COLUMN (Logo Upload) --}}
+    @if ($user->role->name === 'company')
+    <div class="flex justify-end justify-end pr-6">
+        <div class="flex items-end">
+            <!-- Hidden file input -->
+            <input id="logo" name="logo" type="file" class="hidden" accept="image/*"
+                onchange="previewLogo(event)" />
 
+            <div>
+                <!-- Clickable preview container -->
+                <div id="logo-preview-container"
+                    onclick="document.getElementById('logo').click()"
+                    class="mt-2 h-24 w-24 border-2 border-dashed border-gray-300 flex items-center justify-center
+                            rounded-md cursor-pointer overflow-hidden bg-gray-50 dark:bg-gray-700
+                            hover:border-blue-500 transition duration-200">
+
+                    @if ($user->company && $user->company->logo)
+                    <img src="{{ asset('storage/' . $user->company->logo) }}"
+                        alt="Company Logo"
+                        class="h-20 w-20 object-cover rounded-md">
+                    @else
+                    <span id="logo-placeholder" class="text-gray-400 text-3xl">+</span>
+                    @endif
+                </div>
+
+                <x-input-error class="mt-2" :messages="$errors->get('logo')" />
+            </div>
+        </div>
+        <input type="hidden" id="logo_processed" name="logo_processed" />
+    </div>
+    @endif
         <div>
             <x-input-label for="name" :value="__('Name')" />
             <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)"
@@ -26,73 +63,73 @@
         </div>
 
         @if ($userEmail)
-            <div class="mt-4">
-                <x-input-label for="email" :value="__('Email')" />
-                <x-text-input  id="email" name="email" type="email"
-                    class="mt-1 block w-full" :value="old('email', $userEmail)" required autocomplete="username" />
-                <x-input-error class="mt-2" :messages="$errors->get('email')" />
+        <div class="mt-4">
+            <x-input-label for="email" :value="__('Email')" />
+            <x-text-input id="email" name="email" type="email"
+                class="mt-1 block w-full" :value="old('email', $userEmail)" required autocomplete="username" />
+            <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
-                @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !$user->hasVerifiedEmail())
-                    {{-- <div>
-                    <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">
-                        {{ __('Your email address is unverified.') }}
+            @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !$user->hasVerifiedEmail())
+            {{-- <div>
+                        <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">
+                            {{ __('Your email address is unverified.') }}
 
-                        <button form="send-verification"
-                            class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
-                            {{ __('Click here to re-send the verification email.') }}
-                        </button>
-                    </p>
+            <button form="send-verification"
+                class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
+                {{ __('Click here to re-send the verification email.') }}
+            </button>
+            </p>
 
-                    @if (session('status') === 'verification-link-sent')
-                        <p class="mt-2 font-medium text-sm text-green-600 dark:text-green-400">
-                            {{ __('A new verification link has been sent to your email address.') }}
-                        </p>
-                    @endif
-                </div> --}}
-                @endif
-            </div>
+            @if (session('status') === 'verification-link-sent')
+            <p class="mt-2 font-medium text-sm text-green-600 dark:text-green-400">
+                {{ __('A new verification link has been sent to your email address.') }}
+            </p>
+            @endif
+        </div> --}}
+        @endif
+        </div>
         @endif
         @if ($userPhone)
-            <div>
-                <x-input-label for="phone" :value="__('Phone Number')" />
-                <x-text-input id="phone" name="phone" type="text"
-                    class="mt-1 block w-full" :value="old('phone', $userPhone)" required autofocus autocomplete="phone" />
-                <x-input-error class="mt-2" :messages="$errors->get('phone')" />
-            </div>
+        <div>
+            <x-input-label for="phone" :value="__('Phone Number')" />
+            <x-text-input id="phone" name="phone" type="text"
+                class="mt-1 block w-full" :value="old('phone', $userPhone)" required autofocus autocomplete="phone" />
+            <x-input-error class="mt-2" :messages="$errors->get('phone')" />
+        </div>
         @endif
 
         {{-- @php
-            $selectedBank = $bankAccounts->firstWhere('id', (int) old('acc_bank_id', $user->acc_bank_id));
-        @endphp
+                $selectedBank = $bankAccounts->firstWhere('id', (int) old('acc_bank_id', $user->acc_bank_id));
+            @endphp
 
 
-        <div class="mt-4">
-            <x-input-label for="acc_bank_name" :value="__('Default Bank Account')" />
+            <div class="mt-4">
+                <x-input-label for="acc_bank_name" :value="__('Default Bank Account')" />
 
-            <input id="acc_bank_name" name="acc_bank_name" list="bank_accounts"
-                class="mt-1 block w-full h-11 rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-500 focus:ring-opacity-50 px-3"
-                value="{{ old('acc_bank_name', $selectedBank?->name) }}" required autocomplete="off" />
+                <input id="acc_bank_name" name="acc_bank_name" list="bank_accounts"
+                    class="mt-1 block w-full h-11 rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-500 focus:ring-opacity-50 px-3"
+                    value="{{ old('acc_bank_name', $selectedBank?->name) }}" required autocomplete="off" />
 
-            <datalist id="bank_accounts">
-                @foreach ($bankAccounts as $account)
-                    <option data-id="{{ $account->id }}" value="{{ $account->name }}">{{ $account->name }}</option>
-                @endforeach
-            </datalist>
+        <datalist id="bank_accounts">
+            @foreach ($bankAccounts as $account)
+            <option data-id="{{ $account->id }}" value="{{ $account->name }}">{{ $account->name }}</option>
+            @endforeach
+        </datalist>
 
-            <x-text-input id="acc_bank_id_hidden" name="acc_bank_id" type="hidden"
-                class="mt-1 block w-full bg-gray-100" value="{{ old('acc_bank_id', auth()->user()->acc_bank_id) }}" />
+        <x-text-input id="acc_bank_id_hidden" name="acc_bank_id" type="hidden"
+            class="mt-1 block w-full bg-gray-100" value="{{ old('acc_bank_id', auth()->user()->acc_bank_id) }}" />
 
-            <x-input-error class="mt-2" :messages="$errors->get('acc_bank_id')" />
+        <x-input-error class="mt-2" :messages="$errors->get('acc_bank_id')" />
 
-            <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">
-                Please define the bank account via
-                <a href='/coa'>
-                    <span
-                        class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
-                        {{ __('here.') }}
-                    </span>
-                </a>
-            </p>
+        <p class="text-sm mt-2 text-gray-800 dark:text-gray-200">
+            Please define the bank account via
+            <a href='/coa'>
+                <span
+                    class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
+                    {{ __('here.') }}
+                </span>
+            </a>
+        </p>
         </div> --}}
 
         <div class="mt-4">
@@ -111,35 +148,103 @@
 
 
         @if (session('status') === 'profile-updated')
-            <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2000)"
-                class="text-sm text-gray-600 dark:text-gray-400">{{ __('Saved.') }}</p>
+        <p x-data="{ show: true }" x-show="show" x-transition x-init="setTimeout(() => show = false, 2000)"
+            class="text-sm text-gray-600 dark:text-gray-400">{{ __('Saved.') }}</p>
         @endif
 
-        <div class="flex justify-end">
+        <div class="flex justify-end p-6">
             <x-primary-button type="submit">{{ __('Save') }}</x-primary-button>
         </div>
     </form>
 
 
+
     <script>
+        let processedLogoBase64 = null;
+
+        async function previewLogo(event) {
+            const input = event.target;
+            const container = document.getElementById('logo-preview-container');
+            const file = input.files[0];
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const img = new Image();
+                    img.onload = async function() {
+                        if (img.width > 700 || img.height > 400) {
+                            alert('Image must be at most 700x400 pixels.');
+                            input.value = '';
+                            return;
+                        }
+                        container.innerHTML = '<span class="text-gray-400 text-sm">Removing background...</span>';
+
+                        const formData = new FormData();
+                        formData.append('image_file', file);
+                        formData.append('size', 'auto');
+
+                        try {
+                            const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+                                method: 'POST',
+                                headers: {
+                                    'X-Api-Key': 'JnBYzxA6Lk9DRmR2xUpubqGn', // Replace with your API key
+                                },
+                                body: formData
+                            });
+
+                            if (!response.ok) throw new Error('Background removal failed');
+
+                            const blob = await response.blob();
+                            const url = URL.createObjectURL(blob);
+
+                            const resultImg = new Image();
+                            resultImg.onload = function() {
+                                container.innerHTML = '';
+                                resultImg.classList.add('h-full', 'w-full', 'object-cover');
+                                container.appendChild(resultImg);
+                            };
+                            resultImg.src = url;
+
+                            // Convert blob → Base64 and store in hidden field
+                            const reader2 = new FileReader();
+                            reader2.onloadend = function() {
+                                processedLogoBase64 = reader2.result;
+                                document.getElementById('logo_processed').value = processedLogoBase64;
+                            };
+                            reader2.readAsDataURL(blob);
+
+                        } catch (error) {
+                            alert('Could not remove background: ' + error.message);
+                            container.innerHTML = '<span class="text-gray-400 text-3xl">+</span>';
+                            input.value = '';
+                            processedLogoBase64 = null;
+                            document.getElementById('logo_processed').value = '';
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Ensure processed image is submitted instead of original
         document.addEventListener('DOMContentLoaded', function() {
-            const nameInput = document.getElementById('acc_bank_name');
-            const hiddenInput = document.getElementById('acc_bank_id_hidden');
-            const options = document.querySelectorAll('#bank_accounts option');
+            const form = document.querySelector('form[action="{{ route('profile.update') }}"]');
+            form.addEventListener('submit', function(e) {
+                const fileInput = document.getElementById('logo');
+                if (fileInput.value && !processedLogoBase64) {
+                    e.preventDefault();
+                    alert('Please wait for the background to be removed from your logo before saving.');
+                }
 
-            const updateHidden = () => {
-                const match = Array.from(options).find(opt => opt.value === nameInput.value);
-                hiddenInput.value = match ? match.getAttribute('data-id') : ''; // Update hidden field value
-            };
-
-            nameInput.addEventListener('input', updateHidden); // Update on user input
-            nameInput.addEventListener('change', updateHidden); // Update on selection change
-
-            // Update hidden field before form submit
-            const form = nameInput.closest('form');
-            form.addEventListener('submit', updateHidden);
+                // ⚡ Remove original file from submission if processed exists
+                if (processedLogoBase64) {
+                    fileInput.removeAttribute('name'); // prevent raw file upload
+                }
+            });
         });
     </script>
+
 
 
 

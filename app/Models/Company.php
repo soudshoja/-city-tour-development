@@ -20,6 +20,7 @@ class Company extends Model
         'status',
         'code',
         'email',
+        'logo',
         'address',
         'phone',
     ];

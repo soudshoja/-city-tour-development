@@ -104,6 +104,10 @@ class TaskController extends Controller
                     });
             });
         }
+        if ($request->filled('status')) {
+            $statuses = (array) $request->input('status');
+            $tasks = $tasks->whereIn('status', $statuses);
+        }
         $countries = Country::all();
         $suppliers = Supplier::with('companies');
 

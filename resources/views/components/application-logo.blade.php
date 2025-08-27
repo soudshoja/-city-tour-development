@@ -1,1 +1,1 @@
-<img id="logo" src="{{ asset('images/City0logo.svg') }}" alt="City App Logo">
+<img id="logo" src="{{ $companyLogo }}" alt="City App Logo" width="100" height="50">

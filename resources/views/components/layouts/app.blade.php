@@ -27,6 +27,7 @@
     <!-- Top Navigation -->
     <div>
         @include('layouts.navigation')
+        
     </div>
     <!-- ./Top Navigation -->
 

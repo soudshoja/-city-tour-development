@@ -25,6 +25,7 @@ use App\Models\InvoiceDetail;
 use Carbon\Carbon;
 use App\Http\Controllers\AgentController;
 use Intervention\Image\Drivers\Gd\Modifiers\DrawEllipseModifier;
+use Intervention\Image\Facades\Image;
 
 class ProfileController extends Controller
 {
@@ -42,58 +43,61 @@ class ProfileController extends Controller
         $totalCommission = 0;
         $totalProfit = 0;
 
-        // Check if user has a role and role has an id
-        if ($user->role && $user->role->id) {
-            switch ($user->role->id) {
-                case Role::COMPANY:
-                    $profile = Company::where('user_id', $user->id)->first();
-                    $phone = $profile?->phone;
-                    break;
 
-                case Role::BRANCH:
-                    $profile = Branch::where('user_id', $user->id)->first();
-                    $phone = $profile?->phone;
-                    break;
+        switch ($user->role->id) {
+            case Role::COMPANY:
+                $profile = Company::where('user_id', $user->id)->first();
+                $phone = $profile?->phone;
+                $company = $user->company;
+                break;
 
-                case Role::AGENT:
-                    $profile = Agent::where('user_id', $user->id)->first();
-                    $phone = $profile?->phone_number; // different column name
-                    $typeId = $profile?->type_id;
-                    
-                    $stored = AgentMonthlyCommissions::where('agent_id', $profile->id)
+            case Role::BRANCH:
+                $profile = Branch::where('user_id', $user->id)->first();
+                $phone = $profile?->phone;
+                $company = $user->branch->company;
+                break;
+
+            case Role::AGENT:
+                $profile = Agent::where('user_id', $user->id)->first();
+                $phone = $profile?->phone_number; // different column name
+                $typeId = $profile?->type_id;
+                $company = $user->agent->branch->company;
+
+                $stored = AgentMonthlyCommissions::where('agent_id', $profile->id)
                     ->where('month', $month->month)
                     ->where('year', $month->year)
                     ->first();
 
-                    if ($stored) {
-                        if (in_array($typeId, [2, 3, 4])) {
-                            $totalCommission = number_format($stored->total_commission, 2);
-                        }
-                        if (in_array($typeId, [1, 3, 4])) {
-                            $totalProfit = number_format($stored->total_profit, 2);
-                        }
-                    } else {
-                        $summary = app(AgentController::class)->calculateMonthlySummary($profile, $month);
-
-                        if (in_array($typeId, [2, 3, 4])) {
-                            $totalCommission = number_format($summary['commission'], 2);
-                        }
-                        if (in_array($typeId, [1, 3, 4])) {
-                            $totalProfit = number_format($summary['profit'], 2);
-                        }
+                if ($stored) {
+                    if (in_array($typeId, [2, 3, 4])) {
+                        $totalCommission = number_format($stored->total_commission, 2);
                     }
-
-                    $commissionData = $this->getAgentCommissions($profile->id, $month);
-                    $commissions = $commissionData['commissions'];
-                    if ($typeId == 2) {
-                        $totalCommission = number_format($commissionData['totalCommission'], 2);
+                    if (in_array($typeId, [1, 3, 4])) {
+                        $totalProfit = number_format($stored->total_profit, 2);
                     }
-                    break;
+                } else {
+                    $summary = app(AgentController::class)->calculateMonthlySummary($profile, $month);
 
-                default:
-                    break;
-            }
+                    if (in_array($typeId, [2, 3, 4])) {
+                        $totalCommission = number_format($summary['commission'], 2);
+                    }
+                    if (in_array($typeId, [1, 3, 4])) {
+                        $totalProfit = number_format($summary['profit'], 2);
+                    }
+                }
+
+                $commissionData = $this->getAgentCommissions($profile->id, $month);
+                $commissions = $commissionData['commissions'];
+                if ($typeId == 2) {
+                    $totalCommission = number_format($commissionData['totalCommission'], 2);
+                }
+                break;
+
+            default:
+                break;
         }
+
+        $companyLogo = $company?->logo ? asset('storage/' . $company->logo) : asset('images/UserPic.svg');
 
         return view('profile.edit', [
             'user' => $user,
@@ -103,6 +107,7 @@ class ProfileController extends Controller
             'totalCommission' => $totalCommission,
             'totalProfit' => $totalProfit,
             'month' => $month,
+            'companyLogo' => $companyLogo,
         ]);
     }
 
@@ -120,10 +125,42 @@ class ProfileController extends Controller
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
         }
-    
+
         // Save user changes first
         $user->save();
-        
+        $request->validate([
+            'logo' => [
+                'nullable',
+                'image',
+                'dimensions:max_width=700,max_height=400'
+            ],
+            // ... other rules ...
+        ]);
+
+        $company = $user->company; // related company
+
+        // ✅ Prefer processed base64 logo if available
+        if ($request->filled('logo_processed')) {
+            $logoData = $request->input('logo_processed');
+
+            // Strip base64 prefix
+            $logoData = preg_replace('#^data:image/\w+;base64,#i', '', $logoData);
+            $logoData = str_replace(' ', '+', $logoData);
+
+            // Save into public/storage/logos/
+            $fileName = 'logos/' . uniqid() . '.png';
+            \Storage::disk('public_storage')->put($fileName, base64_decode($logoData));
+
+            // Save relative path e.g. logos/filename.png
+            $company->logo = $fileName;
+        } elseif ($request->hasFile('logo')) {
+            // Fallback: save original file if no processed image
+            $path = $request->file('logo')->store('logos', 'public_storage');
+            $company->logo = $path;
+        }
+
+        $company->save();
+
         // Update related profile information based on user role
         if ($user->role_id){
             try {

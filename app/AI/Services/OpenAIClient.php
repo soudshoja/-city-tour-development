@@ -840,6 +840,8 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Set the value of tax with sum up of the list under 'Airfare Charges'. The value of sum between the tax and price should be the same with 'Total Fare' and total.\n";
         $prompt .= "  • Fetch the information of taxes_record with flight from and flight to. Embed them all into additional_info.\n";
         $prompt .= "  • Set created_by and issued_by to the Company Name that is in Personal Information table at the end of the page.\n";
+        $prompt .= "  • Departure terminal number or identifier. Look for terminal information associated with departure details, often labeled as 'T' with digit after it.\n";
+        $prompt .= "  • Arrival terminal number or identifier. Look for terminal information associated with arrival details, often labeled as 'T' with digit after it.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cebu Pacific and Indigo):\n";
         $prompt .= "  • Set status to issued if the task file shows 'Confirmed'. Else if the task file showed 'On Hold', the status should be set to confirmed.\n";
         $prompt .= "  • Set task.original_price to the per-passenger share of 'Amount in Booking Currency' (total ÷ passenger_count). Set task.price and task.total to the same amount after conversion using exchange_rate.\n";

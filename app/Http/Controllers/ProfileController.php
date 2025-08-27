@@ -447,7 +447,7 @@ class ProfileController extends Controller
         $companyId = $agent->branch->company_id;
         
         if ($commissionAccountId === null) {
-            $account = Account::where('name', 'Commission (Agents)')
+            $account = Account::where('name', 'Commissions (Agents)')
                 ->where('company_id', $companyId)
                 ->first();
             $commissionAccountId = $account ? $account->id : 43; // fallback to 43 if not found
@@ -494,7 +494,7 @@ class ProfileController extends Controller
             });
         }
         
-        $query->orderBy('invoice_date', 'desc');
+        $query->orderBy('invoice_date', 'asc');
 
         // Calculate totals from ALL invoices in the month BEFORE pagination
         $allInvoices = $query->get();
@@ -574,7 +574,7 @@ class ProfileController extends Controller
             ->where('invoices.agent_id', $agent->id)
             ->whereBetween('journal_entries.transaction_date', [$start, $end])
             ->select('journal_entries.*')
-            ->orderBy('journal_entries.transaction_date', 'desc');
+            ->orderBy('journal_entries.transaction_date', 'asc');
 
         // Calculate totals from ALL tasks in the month BEFORE pagination
         $allEntries = $query->get();

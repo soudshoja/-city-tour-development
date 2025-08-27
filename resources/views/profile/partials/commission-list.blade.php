@@ -291,7 +291,7 @@ default => 'Commission & Profit'
             </tbody>
         </table>
         <div class="mt-6 px-6">
-            {{ $commissions->appends(['tab' => 'Commission', 'view_type' => $viewType])->links() }}
+            {{ $commissions->appends(['tab' => 'Commission', 'view_type' => $viewType, 'month' => request('month')])->links() }}
         </div>
     </div>
     @else

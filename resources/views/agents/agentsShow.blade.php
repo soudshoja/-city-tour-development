@@ -294,13 +294,12 @@
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Invoice Number</th>
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Invoice Date</th>
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Status</th>
-                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Cost (KWD)</th>
-                                    <th class="py-2 px-6 font-semibold text-gray-600 border-b">Net (KWD)</th>
-                                    @if($agent->type_id == 2 || $agent->type_id == 3)
-                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Commission (KWD)</th>
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Tasks Count</th>
+                                    @if(in_array($agent->type_id, [2, 3, 4]))
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Total Commission (KWD)</th>
                                     @endif
                                     @if($agent->type_id != 2)
-                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Profit (KWD)</th>
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Total Profit (KWD)</th>
                                     @endif
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Client</th>
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Actions</th>
@@ -308,18 +307,15 @@
                             </thead>
                             <tbody>
                                 @foreach($invoices as $invoice)
-                                    @foreach($invoice->invoiceDetails as $detail)
-                                    @php
-                                        $task = \App\Models\Task::with(['flightDetails', 'hotelDetails'])->find($detail->task_id);
-                                    @endphp
                                     <tr class="cursor-pointer text-center"
-                                        :class="openRow === {{ $invoice }} ? 'bg-blue-50 hover:bg-gray-50 dark:bg-blue-900 hover:dark:bg-blue-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'" @click="openRow === {{ $invoice->id }} ? openRow = null : openRow = {{ $invoice->id }}">
+                                        :class="openRow === {{ $invoice->id }} ? 'bg-blue-50 hover:bg-gray-50 dark:bg-blue-900 hover:dark:bg-blue-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'" 
+                                        @click="openRow === {{ $invoice->id }} ? openRow = null : openRow = {{ $invoice->id }}">
                                         <td class="py-4 px-6 border-b">
-                                            <a href="{{ route('invoice.edit', ['companyId' => 1, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" @click.stop>
+                                            <a href="{{ route('invoice.edit', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" @click.stop>
                                                 {{ $invoice->invoice_number }}
                                             </a>
                                         </td>
-                                        <td class="py-4 px-6 border-b">{{ \Carbon\Carbon::parse($invoice->created_at)->format('d-m-Y H:i') }}</td>
+                                        <td class="py-4 px-6 border-b">{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('d-m-Y') }}</td>
                                         <td class="py-4 px-6 border-b">
                                             @if($invoice->status == 'paid')
                                             <x-paid>
@@ -331,16 +327,15 @@
                                             </x-unpaid>
                                             @endif
                                         </td>
-                                        <td class="py-4 px-6 border-b"> {{ $detail->supplier_price }} </td>
-                                        <td class="py-4 px-6 border-b"> {{ $detail->task_price }} </td>
-                                        @if($agent->type_id == 2 || $agent->type_id == 3)
+                                        <td class="py-4 px-6 border-b">{{ $invoice->task_count }}</td>
+                                        @if(in_array($agent->type_id, [2, 3, 4]))
                                         <td class="py-4 px-6 border-b text-green-700 font-semibold">
-                                            {{ $detail->commission ?? '0.00' }}
+                                            {{ $invoice->total_commission }}
                                         </td>
                                         @endif
                                         @if($agent->type_id != 2)
                                         <td class="py-4 px-6 border-b text-blue-700 font-semibold">
-                                            {{ number_format($detail->markup_price, 2) }}
+                                            {{ $invoice->total_profit }}
                                         </td>
                                         @endif
                                         <td class="py-4 px-6 border-b">{{ $invoice->client->first_name }}</td>
@@ -349,59 +344,27 @@
                                         </td>
                                     </tr>
                                     <tr x-show="openRow === {{ $invoice->id }}" x-cloak>
-                                        <td colspan="{{ $agent->type_id == 3 ? 9 : 8 }}" class="bg-gray-50 dark:bg-gray-900 px-6 py-4 border-b dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 rounded-b-lg shadow-inner">
-                                            @if($task)
-                                            <div class="space-y-2">
-                                                <div class="grid grid-cols-2 md:grid-cols-3 gap-1">
-                                                    <div><strong>Branch:</strong> {{ $task->agent ? $task->agent->branch->name : null }}</div>
-                                                    <div><strong>Issued:</strong> {{ \Carbon\Carbon::parse($task->created_at)->format('d-m-Y H:i:s') }}</div>
-                                                    <div>
-                                                        <strong>Payment Type:</strong>
-                                                        @if($invoice->is_client_credit == 1)
-                                                            Client Credit
-                                                        @elseif($invoice->payment_type === 'full')
-                                                            Full Payment
-                                                        @elseif($invoice->payment_type === 'partial')
-                                                            Partial Payment
-                                                        @elseif($invoice->payment_type === 'split')
-                                                            Split Payment
-                                                        @else
-                                                            Unknown
-                                                        @endif
+                                        <td colspan="{{ in_array($agent->type_id, [2, 3, 4]) && $agent->type_id != 2 ? 8 : 7 }}" class="bg-gray-50 dark:bg-gray-900 px-6 py-4 border-b dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 rounded-b-lg shadow-inner">
+                                            <div class="space-y-4">
+                                                <h4 class="font-semibold text-lg mb-3">Tasks in this Invoice:</h4>
+                                                @foreach($invoice->tasks as $task)
+                                                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                                        <div><strong>Reference:</strong> {{ $task['task_reference'] }}</div>
+                                                        <div><strong>Passenger:</strong> {{ $task['passenger_name'] }}</div>
+                                                        <div><strong>Task Price:</strong> {{ number_format($task['task_price'], 2) }} KWD</div>
+                                                        <div><strong>Markup:</strong> {{ number_format($task['markup_price'], 2) }} KWD</div>
                                                     </div>
                                                 </div>
-                                                @if($task->flightDetails)
-                                                <div class="mt-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner">
-                                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-1 text-sm">
-                                                        <div><strong>Flight No:</strong> {{ $task->flightDetails->flight_number }}</div>
-                                                        <div><strong>From:</strong> {{ $task->flightDetails->airport_from ?? '-' }}</div>
-                                                        <div><strong>To:</strong> {{ $task->flightDetails->airport_to ?? '-' }}</div>
-                                                        <div><strong>Created By:</strong> {{ $task->created_by ?? 'Not Set' }}</div>
-                                                        <div><strong>Airline Reference:</strong> {{ $task->airline_reference ?? 'Not Available' }}</div>
-                                                        <div><strong>Ticket Number:</strong> {{ $task->ticket_number ?? '-' }}</div>
-                                                        <div><strong>Departure Time:</strong> {{ \Carbon\Carbon::parse($task->flightDetails->departure_time)->format('d-m-Y H:i:s') }}</div>
-                                                        <div><strong>Arrival Time:</strong> {{ \Carbon\Carbon::parse($task->flightDetails->arrival_time)->format('d-m-Y H:i:s') }}</div>
-                                                        <div><strong>Passenger:</strong> {{ $task->passenger_name ?? '-' }}</div>
-                                                    </div>
-                                                </div>
-                                                @endif
-                                                @if($task->hotelDetails)
-                                                <div class="mt-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-800 shadow-inner">
-                                                    <div class="grid grid-cols-2 gap-1 text-sm">
-                                                        <div><strong>Hotel Name:</strong> {{ $task->hotelDetails->hotel->name ?? '-' }}</div>
-                                                        <div><strong>Passenger:</strong> {{ $task->passenger_name }}</div>
-                                                        <div><strong>Check-in:</strong> {{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->format('d-m-Y') ?? '-' }}</div>
-                                                        <div><strong>Check-out:</strong> {{ \Carbon\Carbon::parse($task->hotelDetails->check_out)->format('d-m-Y') ?? '-' }}</div>
-                                                    </div>
+                                                @endforeach
+                                                @if($invoice->invoice_charge > 0)
+                                                <div class="bg-yellow-50 dark:bg-yellow-900 p-3 rounded-lg border border-yellow-200 dark:border-yellow-700">
+                                                    <div><strong>Invoice Charge:</strong> {{ number_format($invoice->invoice_charge, 2) }} KWD</div>
                                                 </div>
                                                 @endif
                                             </div>
-                                            @else
-                                                <p class="text-gray-500">Task not found.</p>
-                                            @endif
                                         </td>
                                     </tr>
-                                    @endforeach
                                 @endforeach
                             </tbody>
                         </table>
@@ -409,7 +372,7 @@
                     </div>
 
                     <div class="mt-4">
-                        {{ $invoices->appends(['section' => 'invoices'])->links() }}
+                        {{ $invoices->appends(['section' => 'invoices', 'month' => request('month')])->links() }}
                     </div>
                     @endif
                 </div>

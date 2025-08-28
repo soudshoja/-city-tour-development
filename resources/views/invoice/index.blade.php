@@ -222,6 +222,8 @@
                                                 </g>
                                             </svg>
                                         </a>
+                                        @if (in_array($invoice->status, ['unpaid', 'partial'], true) ||
+                                            ($invoice->status === 'paid' && in_array($invoice->payment_type, ['full', 'cash'], true)))
                                         <a data-tooltip="View Detail/ Edit"
                                             href="{{ route('invoice.edit', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                             class="text-sm font-medium text-blue-600 hover:underline">
@@ -235,6 +237,7 @@
                                                     opacity=".5" />
                                             </svg>
                                         </a>
+                                        @endif
                                         @if ($invoice->status === 'paid')
                                         <div x-data="{ viewVoucherModal_{{ $invoice->id }}: false }" class="group">
                                             <div data-tooltip="View Voucher">

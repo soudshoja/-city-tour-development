@@ -165,7 +165,7 @@
                 <!-- company details -->
                 <div class="flex flex-wrap justify-between px-4">
                     <div class=" shrink-0 items-center text-black dark:text-white">
-                        <x-application-logo class="custom-logo-size"  />
+                        <x-application-logo class="custom-logo-size" />
 
                         <div class="pl-2">
                             @if ($company)
@@ -351,76 +351,76 @@
                     <form id="updateAmountForm" method="POST" action="{{ route('invoice.updateAmount', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}">
                         @csrf
                         @method('PUT')
-                    <div class="overflow-x-auto w-full border border-gray-200">
-                        <table id="itemsTable" class="text-left table-auto border-collapse w-full text-xs">
-                            <thead>
-                                <tr>
-                                    <th class="text-gray-900 dark:text-gray-100">No.</th>
-                                    <th class="px-4 py-2 min-w-[100px] text-gray-900 dark:text-gray-100">Task</th>
-                                    <th class="px-6 py-6 text-gray-900 dark:text-gray-100">Task Price</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Branch Name</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Supplier Name</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Type</th>
-                                    <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="items-body" class="divide-y divide-gray-200 dark:divide-gray-700">
-                                <!-- Items will be added dynamically here -->
-                                <!-- "No Item Available" row will show if items.length <= 0 -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- ./choose items -->
+                        <div class="overflow-x-auto w-full border border-gray-200">
+                            <table id="itemsTable" class="text-left table-auto border-collapse w-full text-xs">
+                                <thead>
+                                    <tr>
+                                        <th class="text-gray-900 dark:text-gray-100">No.</th>
+                                        <th class="px-4 py-2 min-w-[100px] text-gray-900 dark:text-gray-100">Task</th>
+                                        <th class="px-6 py-6 text-gray-900 dark:text-gray-100">Task Price</th>
+                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Invoice Price</th>
+                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Client Name</th>
+                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Agent Name</th>
+                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Branch Name</th>
+                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Supplier Name</th>
+                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Task Type</th>
+                                        <th class="px-4 py-2 text-gray-900 dark:text-gray-100">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="items-body" class="divide-y divide-gray-200 dark:divide-gray-700">
+                                    <!-- Items will be added dynamically here -->
+                                    <!-- "No Item Available" row will show if items.length <= 0 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- ./choose items -->
 
-                    <div class="mt-6 flex flex-col justify-between px-4 sm:flex-row">
-                        <div class="mb-6 sm:mb-0">
-                            <button id="openTaskModalButton"
-                                class="inline-flex items-center justify-center text-sm text-black font-semibold
+                        <div class="mt-6 flex flex-col justify-between px-4 sm:flex-row">
+                            <div class="mb-6 sm:mb-0">
+                                <button id="openTaskModalButton"
+                                    class="inline-flex items-center justify-center text-sm text-black font-semibold
                                      city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">
-                                <svg class="w-6 h-6 pr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                                    <path fill="currentColor"
-                                        d="M19 11h-4v4h-2v-4H9V9h4V5h2v4h4m1-7H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2M4 6H2v14a2 2 0 0 0 2 2h14v-2H4z" />
-                                </svg> Add Task
-                            </button>
-                        </div>
-                        <div class="sm:w-2/5 flex justify-end">
-                            <div class="mt-4 font-semibold">
-                                <div class="flex items-center mb-1">
-                                    <div class="mr-2">Subtotal:</div>
-                                    <span id="subTotalDisplay">0.00</span>
-                                </div>
-                                <div id="service_charge_display_row" class="flex items-center mb-1" style="display: none;">
-                                    <div id="service_charge_label" class="mr-2">Service Charge:</div>
-                                    <span id="serviceChargeDisplay">0.00</span>
-                                </div>
-                                <div id="final_amount_display_row" class="flex items-center mb-1 font-medium border-t pt-1" style="display: none;">
-                                    <div class="mr-2">Final Amount:</div>
-                                    <span id="finalAmountDisplay">0.00</span>
-                                </div>
-                                <div id="invoice_charge_display_row" class="flex items-center mb-1" style="display: none;">
-                                    <div id="invoice_charge_label" class="mr-2">Invoice Charge:</div>
-                                    <span id="invoiceChargeDisplay">0.00</span>
-                                </div>
-                                <div class="flex items-center border-t pt-1">
-                                    <div class="mr-2">Total:</div>
-                                    <span id="subT">0.00</span>
-                                    <input id="subTotal" type="hidden" name="subTotal" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                        @if ($invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'))
-                            <div class="px-4 mt-8 border-t pt-6 flex justify-end">
-                                <button type="submit" class="inline-flex items-center justify-center text-base font-semibold bg-blue-600 text-white hover:bg-blue-700 py-3 px-6 rounded-lg shadow-md">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-2">
-                                        <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/>
-                                    </svg>
-                                    Update Invoice Amounts
+                                    <svg class="w-6 h-6 pr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path fill="currentColor"
+                                            d="M19 11h-4v4h-2v-4H9V9h4V5h2v4h4m1-7H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2M4 6H2v14a2 2 0 0 0 2 2h14v-2H4z" />
+                                    </svg> Add Task
                                 </button>
                             </div>
+                            <div class="sm:w-2/5 flex justify-end">
+                                <div class="mt-4 font-semibold">
+                                    <div class="flex items-center mb-1">
+                                        <div class="mr-2">Subtotal:</div>
+                                        <span id="subTotalDisplay">0.00</span>
+                                    </div>
+                                    <div id="service_charge_display_row" class="flex items-center mb-1" style="display: none;">
+                                        <div id="service_charge_label" class="mr-2">Service Charge:</div>
+                                        <span id="serviceChargeDisplay">0.00</span>
+                                    </div>
+                                    <div id="final_amount_display_row" class="flex items-center mb-1 font-medium border-t pt-1" style="display: none;">
+                                        <div class="mr-2">Final Amount:</div>
+                                        <span id="finalAmountDisplay">0.00</span>
+                                    </div>
+                                    <div id="invoice_charge_display_row" class="flex items-center mb-1" style="display: none;">
+                                        <div id="invoice_charge_label" class="mr-2">Invoice Charge:</div>
+                                        <span id="invoiceChargeDisplay">0.00</span>
+                                    </div>
+                                    <div class="flex items-center border-t pt-1">
+                                        <div class="mr-2">Total:</div>
+                                        <span id="subT">0.00</span>
+                                        <input id="subTotal" type="hidden" name="subTotal" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @if ($invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'))
+                        <div class="px-4 mt-8 border-t pt-6 flex justify-end">
+                            <button type="submit" class="inline-flex items-center justify-center text-base font-semibold bg-blue-600 text-white hover:bg-blue-700 py-3 px-6 rounded-lg shadow-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-2">
+                                    <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z" />
+                                </svg>
+                                Update Invoice Amounts
+                            </button>
+                        </div>
                         @endif
                     </form>
                 </div>
@@ -476,8 +476,7 @@
                                         <div x-cloak x-show="clientCreditModal"
                                             class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
                                             <div class="bg-white rounded-lg p-6 shadow-lg">
-                                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Are you sure you want
-                                                    to proceed with this payment?</h2>
+                                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Are you sure you want to proceed with this payment?</h2>
                                                 <p class="text-gray-600">The client has a credit limit of
                                                     {{ $balanceCredit }} KWD.
                                                 </p>
@@ -648,8 +647,6 @@
                                                     </main>
                                                 </div>
                                             </div>
-
-
                                             @endif
                                 </div>
                                 <!-- <div
@@ -1108,7 +1105,7 @@
                                             </div>
                                             <div class="flex">
                                                 <button type="button" id="splitbutton" onclick="savePartial('split')"
-                                                        class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                    class="inline-flex items-center justify-center text-sm text-black font-semibold
                                                                 city-light-yellow hover:bg-[#004c9e] hover:text-white py-2 px-10 rounded-full shadow">
                                                     <span id="button-icon-split" class="mr-2"></span>
                                                     <span id="button-text-split">Save Split Payment</span>
@@ -1471,7 +1468,7 @@
             function updateInvoiceChargeFromInput() {
                 const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
                 const invoiceChargeAmount = parseFloat(invoiceChargeAmountInput.value) || 0;
-                
+
                 // Validate and prevent negative values
                 if (invoiceChargeAmount < 0) {
                     invoiceChargeAmountInput.value = 0;
@@ -1480,18 +1477,18 @@
                 } else {
                     hideValidationError(invoiceChargeAmountInput);
                 }
-                
+
                 // Update hidden fields
                 const invoiceChargeElement = document.getElementById('invoice_charge');
                 const invoiceChargeAmountHidden = document.getElementById('invoice_charge_amount');
-                
+
                 if (invoiceChargeElement) {
                     invoiceChargeElement.value = invoiceChargeAmount.toFixed(2);
                 }
                 if (invoiceChargeAmountHidden) {
                     invoiceChargeAmountHidden.value = invoiceChargeAmount.toFixed(2);
                 }
-                
+
                 // Update displays
                 calculateSubtotal();
             }
@@ -1869,10 +1866,10 @@
                 saveBtn.addEventListener('click', function() {
                     // Check which payment type is selected
                     const selectedPaymentType = document.querySelector('input[name="payment_type"]:checked');
-                    
+
                     if (selectedPaymentType) {
                         const paymentTypeValue = selectedPaymentType.value;
-                        
+
                         if (paymentTypeValue === 'cash') {
                             savePartial('cash');
                         } else if (paymentTypeValue === 'full') {
@@ -2083,16 +2080,16 @@
                     `;
                     tbody.appendChild(row);
 
-                    const gatewaySelect   = row.querySelector(`#payment_gateway1_${i}`);
-                    const methodWrapper   = row.querySelector(`#method_wrapper_${i}`);
+                    const gatewaySelect = row.querySelector(`#payment_gateway1_${i}`);
+                    const methodWrapper = row.querySelector(`#method_wrapper_${i}`);
                     const methodContainer = row.querySelector(`#payment_method_container1_${i}`);
-                    const methodText      = row.querySelector(`#payment_method_text1_${i}`);
+                    const methodText = row.querySelector(`#payment_method_text1_${i}`);
 
                     const updateMethodVisibility = () => {
-                    const isMF = (gatewaySelect.value || '').toLowerCase() === 'myfatoorah';
-                    methodContainer.classList.toggle('hidden', !isMF);
-                    methodText.classList.toggle('hidden', isMF);
-                    methodWrapper.style.display = ''; // keep wrapper visible; we toggle inner parts instead
+                        const isMF = (gatewaySelect.value || '').toLowerCase() === 'myfatoorah';
+                        methodContainer.classList.toggle('hidden', !isMF);
+                        methodText.classList.toggle('hidden', isMF);
+                        methodWrapper.style.display = ''; // keep wrapper visible; we toggle inner parts instead
                     };
 
                     updateMethodVisibility();
@@ -2203,7 +2200,7 @@
                 let selectedPaymentMethod = document.getElementById('payment_method_full')?.value;
 
                 if (selectedGateway) {
-                    if(selectedGateway.toLowerCase() === 'myfatoorah' && selectedPaymentMethod) {
+                    if (selectedGateway.toLowerCase() === 'myfatoorah' && selectedPaymentMethod) {
                         const method = paymentMethods.find(m => m.id === parseInt(selectedPaymentMethod));
                         // Use the backend-calculated gateway_fee directly
                         serviceCharge = method ? (method.gateway_fee || 0) : 0;
@@ -2213,13 +2210,13 @@
                         serviceCharge = selectedCharge ? (selectedCharge.gateway_fee || 0) : 0;
                     }
                 }
-                
+
                 const finalAmount = subtotal + serviceCharge;
                 const finalTotal = finalAmount + invoiceCharge;
 
                 // Update all display elements
                 document.getElementById('subTotalDisplay').textContent = `${subtotal.toFixed(2)}`;
-                
+
                 // Update service charge display
                 const serviceChargeDisplayElement = document.getElementById('serviceChargeDisplay');
                 const serviceChargeDisplayRow = document.getElementById('service_charge_display_row');
@@ -2229,7 +2226,7 @@
                 if (serviceChargeDisplayRow) {
                     serviceChargeDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
                 }
-                
+
                 // Update final amount display (subtotal + service charge)
                 const finalAmountDisplayElement = document.getElementById('finalAmountDisplay');
                 const finalAmountDisplayRow = document.getElementById('final_amount_display_row');
@@ -2239,15 +2236,15 @@
                 if (finalAmountDisplayRow) {
                     finalAmountDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
                 }
-                
+
                 document.getElementById('invoiceChargeDisplay').textContent = `${invoiceCharge.toFixed(2)}`;
                 document.getElementById('subT').textContent = `${finalTotal.toFixed(2)}`;
-                
+
                 const subT1Element = document.getElementById('subT1');
                 if (subT1Element) subT1Element.textContent = `${finalTotal.toFixed(2)}`;
-                
+
                 document.getElementById('subTotal').value = subtotal;
-                
+
                 const totalAmountElement = document.getElementById('total-amount');
                 if (totalAmountElement) totalAmountElement.value = finalTotal;
             }
@@ -3097,17 +3094,34 @@
             }
 
             function savePartial(mode) {
+                const gateway = document.getElementById('payment_gateway_option')?.value;
                 const validation = checkPaymentAmount(mode);
-    
+
                 if (!validation.isValid) {
                     showErrorAlert(validation.errorMessage);
                     return;
                 }
 
+
                 clearErrorAlert();
 
-                if (mode === 'full' || mode === 'cash') {
-                    const gateway = document.getElementById('payment_gateway_option')?.value;
+                // Validation for "full" mode: payment gateway and method selection
+                if (mode === 'full'){
+                    if (!gateway) {
+                        showErrorAlert('Please choose a payment gateway.');
+                        return;
+                    }
+                    // Check if selected gateway requires payment method
+                    if (gateway.toLowerCase() === 'myfatoorah') {
+                        const method = document.getElementById('payment_method_full')?.value;
+                        if (!method) {
+                            showErrorAlert('Please choose a payment method for MyFatoorah.');
+                            return;
+                        }
+                    }
+                }
+
+                if (mode === 'full' || mode === 'cash' || mode === 'credit') {
                     const date = document.getElementById('duedate').value;
                     const amount = document.getElementById('subTotal').value;
                     const externalUrl = document.getElementById('external_url')?.value;
@@ -3117,6 +3131,8 @@
                     let paymentGateway = gateway;
                     if (mode === 'cash') {
                         paymentGateway = 'Cash';
+                    } else if (mode === 'credit') {
+                        paymentGateway = 'Credit';
                     }
 
                     fullData.push({
@@ -3232,23 +3248,32 @@
                     partialRows.forEach((row, index) => {
                         const i = index + 1;
 
-                        const date   = row.querySelector(`#date_${i}`)?.value || '';
+                        const date = row.querySelector(`#date_${i}`)?.value || '';
                         const amount = parseFloat(row.querySelector(`#amount_${i}`)?.value) || 0;
                         const gatewayEl = row.querySelector(`#payment_gateway1_${i}`);
                         const methodBox = row.querySelector(`#payment_method_container1_${i}`);
-                        const methodEl  = row.querySelector(`#payment_method1_${i}`);
+                        const methodEl = row.querySelector(`#payment_method1_${i}`);
 
                         const gateway = gatewayEl ? gatewayEl.value : null;
-                        const method  = (methodBox && !methodBox.classList.contains('hidden')) ? (methodEl?.value || null) : null;
+                        const method = (methodBox && !methodBox.classList.contains('hidden')) ? (methodEl?.value || null) : null;
 
                         // 🔎 Per-row log
                         console.log(`row ${i}`, {
-                        date, amount, gatewayId: gatewayEl?.id, gateway,
-                        methodId: methodEl?.id, methodVisible: methodBox && !methodBox.classList.contains('hidden'),
-                        method
+                            date,
+                            amount,
+                            gatewayId: gatewayEl?.id,
+                            gateway,
+                            methodId: methodEl?.id,
+                            methodVisible: methodBox && !methodBox.classList.contains('hidden'),
+                            method
                         });
 
-                        partialData.push({ date, amount, gateway, method });
+                        partialData.push({
+                            date,
+                            amount,
+                            gateway,
+                            method
+                        });
                     });
 
                     // 🔎 Table of what will be sent
@@ -3262,8 +3287,8 @@
 
                     // UI feedback (unchanged)
                     const buttonPartial = document.getElementById('partialbutton');
-                    const iconPartial   = document.getElementById('button-icon-partial');
-                    const textPartial   = document.getElementById('button-text-partial');
+                    const iconPartial = document.getElementById('button-icon-partial');
+                    const textPartial = document.getElementById('button-text-partial');
                     if (buttonPartial && iconPartial && textPartial) {
                         buttonPartial.disabled = true;
                         iconPartial.innerHTML = `
@@ -3273,9 +3298,9 @@
                         </svg>`;
                         textPartial.textContent = 'Saving...';
                         setTimeout(() => {
-                        iconPartial.innerHTML = '';
-                        textPartial.textContent = 'Saved ✅';
-                        location.reload();
+                            iconPartial.innerHTML = '';
+                            textPartial.textContent = 'Saved ✅';
+                            location.reload();
                         }, 500);
                     } else {
                         console.error('One or more elements (button, icon, text) not found in the DOM');
@@ -3325,6 +3350,7 @@
                 if (type === 'credit') {
                     payload.credit = true;
                 }
+                console.log(payload);
 
                 try {
                     const response = await fetch(invoiceUrl, {
@@ -3650,7 +3676,9 @@
 
                 document.body.appendChild(errorNotification);
 
-                setTimeout(() => { clearErrorAlert(); }, 10000);
+                setTimeout(() => {
+                    clearErrorAlert();
+                }, 10000);
             }
 
             function clearErrorAlert() {
@@ -3668,7 +3696,7 @@
 
                 if (mode === 'split') {
                     const rows = document.querySelectorAll('#split-rows tr');
-                    
+
                     rows.forEach((row, index) => {
                         const amountInput = row.querySelector(`input[type="number"]`);
                         const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
@@ -3682,7 +3710,7 @@
 
                 } else if (mode === 'partial') {
                     const partialRows = document.querySelectorAll('#split-rows1 tr');
-                    
+
                     partialRows.forEach(row => {
                         const amountInput = row.querySelector('input[type="number"]');
                         const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
@@ -3708,7 +3736,7 @@
 
             function checkInputAmount(mode, rowIndex = null) {
                 const validation = checkPaymentAmount(mode);
-                
+
                 const existingError = document.getElementById('payment-validation-error');
                 if (existingError) {
                     existingError.remove();
@@ -3717,18 +3745,18 @@
                 if (!validation.isValid) {
                     showErrorAlert(validation.errorMessage);
 
-                    const modalContent = mode === 'split' ? 
-                        document.querySelector('#paymentModal .bg-white') : 
+                    const modalContent = mode === 'split' ?
+                        document.querySelector('#paymentModal .bg-white') :
                         document.querySelector('#paymentModal1 .bg-white');
-                    
+
                     if (modalContent) {
                         modalContent.insertBefore(errorDiv, modalContent.firstChild);
                     }
 
-                    const saveButton = mode === 'split' ? 
-                        document.getElementById('splitbutton') : 
+                    const saveButton = mode === 'split' ?
+                        document.getElementById('splitbutton') :
                         document.getElementById('partialbutton');
-                    
+
                     if (saveButton) {
                         saveButton.disabled = true;
                         saveButton.style.opacity = '0.5';
@@ -3737,10 +3765,10 @@
                 } else {
                     clearErrorAlert();
 
-                    const saveButton = mode === 'split' ? 
-                        document.getElementById('splitbutton') : 
+                    const saveButton = mode === 'split' ?
+                        document.getElementById('splitbutton') :
                         document.getElementById('partialbutton');
-                    
+
                     if (saveButton) {
                         saveButton.disabled = false;
                         saveButton.style.opacity = '1';

@@ -545,6 +545,18 @@ class InvoiceController extends Controller
         $invoiceCharge = $request->input('invoice_charge', 0);
         $companyId = $request->input('companyId');
 
+        $client = Client::find($clientId);
+        $balanceCredit = Credit::getTotalCreditsByClient($client->id);
+        //dd($credit, $balanceCredit);
+        if ($credit) {
+            if ($amount > $balanceCredit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Client credit is not enough!',
+                ]);
+            }
+        }
+
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
             ->whereHas('agent.branch.company', function ($q) use ($companyId) {
                 $q->where('id', $companyId);
@@ -593,17 +605,6 @@ class InvoiceController extends Controller
             ], $gateway);
         }
 
-        $client = Client::find($clientId);
-        $balanceCredit = Credit::getTotalCreditsByClient($client->id);
-        //dd($credit, $balanceCredit);
-        if ($credit) {
-            if ($amount > $balanceCredit) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Client credit is not enough!',
-                ]);
-            }
-        }
 
         DB::beginTransaction();
 
@@ -612,7 +613,7 @@ class InvoiceController extends Controller
                 'invoice_id' => $invoiceId,
                 'invoice_number' => $invoiceNumber,
                 'client_id' => $clientId,
-                'service_charge' => ($gatewayFee['paid_by'] === 'Company') ? 0 : $gatewayFee['fee'],
+                'service_charge' => $credit ? 0 : ($gatewayFee['fee'] ?? 0),
                 'amount' => $amount,
                 'status' => $credit ? 'paid' : 'unpaid',
                 'expiry_date' => $date,

@@ -272,7 +272,14 @@
         onclick="event.stopPropagation();">
         <div class="flex justify-between items-center p-4 border-b">
             <h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Credit Transaction Details</h2>
-            <button id="closeModal" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+            <div class="flex items-center gap-3">
+                <a id="openLedgerBtn" href="#" target="_blank" rel="noopener"
+                    class="hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-100
+                            hover:bg-blue-100 hover:text-blue-800 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600 dark:hover:bg-slate-600">
+                    View Full Ledger
+                </a>
+                <button id="closeModal" class="text-gray-500 hover:text-red-500 text-2xl leading-none">&times;</button>
+            </div>
         </div>
 
         <div class="p-4">
@@ -709,8 +716,14 @@
             document.getElementById('filterToDate').value = to;
             document.getElementById('modalClientId').value = clientId;
 
-            fetchCredits(clientId, from, to);
+            const ledgerBtn = document.getElementById('openLedgerBtn');
+            const ledgerUrlTemplate = "{{ route('clients.credits', ':clientId') }}";
+            if (ledgerBtn) {
+                ledgerBtn.href = ledgerUrlTemplate.replace(':clientId', clientId);
+                ledgerBtn.classList.remove('hidden');
+            }
 
+            fetchCredits(clientId, from, to);
             document.getElementById('creditDetailsModal').classList.remove('hidden');
         });
     });

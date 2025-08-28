@@ -1094,4 +1094,25 @@ class ClientController extends Controller
         $credit = Credit::getTotalCreditsByClient($id);
         return response()->json(['credit' => $credit]);
     }
+
+    public function showCredit($id)
+    {
+        $client = Client::with('agent')->findOrFail($id);
+        $base = Credit::with(['client','invoice'])->where('client_id', $client->id);
+
+        $totals = (clone $base)
+            ->selectRaw('SUM(GREATEST(amount,0)) total_in, SUM(LEAST(amount,0)) total_out')
+            ->first();
+
+        $totalIn  = $totals->total_in  ?? 0;
+        $totalOut = $totals->total_out ?? 0;
+        $netBalance = $totalIn + $totalOut;
+
+        $credits = (clone $base)
+            ->orderBy('id','asc')
+            ->paginate(25)
+            ->withQueryString();
+        
+        return view('clients.credit', compact('client','credits','totalIn','totalOut','netBalance'));
+    }
 }

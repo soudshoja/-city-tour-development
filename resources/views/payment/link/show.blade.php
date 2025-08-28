@@ -51,7 +51,7 @@
         <div class="flex justify-between items-center mb-10">
             {{-- Left: Company Logo --}}
             <div>
-                <img src="{{ $companyLogoSrc }}" alt="Company Logo" class="h-16 w-auto inline-block">
+                <x-application-logo class="custom-logo-size"  />
             </div>
 
             {{-- Right: Invoice Details --}}

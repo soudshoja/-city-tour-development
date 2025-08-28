@@ -103,9 +103,7 @@
         <!-- Header -->
         <div class="flex justify-between items-center mb-10">
             {{-- Left: Company Logo --}}
-            <div>
-                <img src="{{ $companyLogoSrc }}" alt="Company Logo" class="h-16 w-auto inline-block">
-            </div>
+            <x-application-logo class="custom-logo-size"  />
 
             {{-- Right: Invoice Details --}}
             <div class="text-right">
@@ -120,7 +118,7 @@
         <div class="flex justify-between items-center mb-8">
             <div class="text-left">
                 <h3 class="text-lg font-bold text-gray-800">Billed To</h3>
-                <p class="text-sm text-gray-600">{{ $invoice->client->first_name }} {{ $invoice->client->middle_name ?? '' }} {{ $invoice->client->last_name ?? '' }}</p>
+                <p class="text-sm text-gray-600">{{ $invoice->client->name }}</p>
                 <p class="text-sm text-gray-600">
                     <a href="mailto:{{ $invoice->client->email}}" class="hover:underline hover:text-blue-600">
                         {{ $invoice->client->email ?? 'N/A' }}
@@ -148,9 +146,8 @@
             </div>
         </div>
 
-        @if ($invoice->payment_type === 'full')
-        <!-- Full Payment Table -->
-        <h3 class="text-lg font-bold text-gray-800 mb-4">Full Payment ({{ $invoice->currency }})</h3>
+        @if (in_array($invoice->payment_type, ['full', 'credit', 'cash'], true))
+        <h3 class="text-lg font-bold text-gray-800 mb-4">{{ ucfirst($invoice->payment_type )}} Payment ({{ $invoice->currency }})</h3>
         <table class="min-w-full mb-8 border border-gray-200">
             <thead>
                 <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
@@ -662,35 +659,33 @@
                 <tbody>
                     @foreach ($paidPartials as $partial)
                     <tr class="text-sm text-gray-700">
-                        <td class="px-4 py-2 border">{{ $partial->payment->voucher_number ?? 'N/A' }}</td>
+                        <td class="px-4 py-2 border">
+                            @if(optional($partial->payment)->voucher_number)
+                            <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $partial->payment->voucher_number]) }}"
+                                class="text-blue-500 underline" target="_blank">{{ $partial->payment->voucher_number }}
+                            </a>
+                            @else
+                            <a href="{{ route('clients.credits', $partial->client_id) }}" class="text-blue-500 underline" target="_blank">Credit</a>
+                            @endif
+                        </td>
                         @php
-                        $paymentReferenceCredit = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial(
-                        $partial->client_id,
-                        $partial->id,
-                        );
+                            $paymentReferenceCredit = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial($partial->client_id, $partial->id);
                         @endphp
                         @if ($paymentReferenceCredit)
-                        <td class="px-4 py-2 border">Client Credit by {{ $partial->client->first_name }} {{ $partial->client->last_name }}
-                            ({{ $paymentReferenceCredit }})
-                        </td>
-                        </td>
+                            <td class="px-4 py-2 border">Client Credit by {{ $partial->client->first_name }} {{ $partial->client->last_name }}
+                                ({{ $paymentReferenceCredit }})
+                            </td>
                         @else
-                        <td class="px-4 py-2 border">{{ $partial->payment->payment_reference ?? 'N/A' }}
-                        </td>
+                            <td class="px-4 py-2 border">{{ $partial->payment->payment_reference ?? 'N/A' }}</td>
                         @endif
                         <td class="px-4 py-2 border">
                             {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : \Carbon\Carbon::parse($partial->updated_at)->format('d M, Y H:i') }}
                         </td>
-
-
                         @if ($paymentReferenceCredit)
-                        <td class="px-4 py-2 border">Client Credit
-                        </td>
-                        </td>
+                            <td class="px-4 py-2 border">Client Credit</td>
                         @else
-                        <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
+                            <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
                         @endif
-
                         <td class="px-4 py-2 border">
                             {{ number_format($partial->amount ?? 0, 2) }}
                         </td>

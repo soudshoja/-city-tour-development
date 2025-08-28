@@ -473,6 +473,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}/details', [ClientController::class, 'getDetails'])->name('details');
         Route::get('/{id}/agent', [ClientController::class, 'getAgent'])->name('get-agent');
         Route::get('/{id}/credit-balance', [ClientController::class, 'getCreditBalance']);
+        Route::get('/{id}/credits', [ClientController::class, 'showCredit'])->name('credits')->withoutMiddleware(['auth']);
     });
 
     Route::group([

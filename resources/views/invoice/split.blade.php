@@ -60,28 +60,45 @@
          </div>
      @endif
      <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
-         <!-- Header -->
-         <div class="flex justify-between items-center mb-8">
-             <div>
-                 <h1 class="text-3xl font-bold text-gray-800">INVOICE</h1>
-                 <p class="text-sm text-gray-600">Invoice #{{ $invoice->invoice_number }}</p>
-                 <p class="text-sm text-gray-600">Due Date: {{ $invoicePartial->expiry_date->format('d M, Y') }}</p>
-             </div>
-             <div class="text-right">
-                 <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
-                 <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->address }}</p>
-                 <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->phone }}</p>
-                 <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->email }}</p>
-             </div>
-         </div>
+        <div class="flex justify-between items-center mb-10">
+            <x-application-logo class="custom-logo-size"  />
+            <div class="text-right">
+                <h1 class="text-2xl font-bold text-gray-800">INVOICE</h1>
+                <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
+                <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
+            </div>
+        </div>
 
-         <!-- Client Details -->
-         <div class="mb-8">
-             <h3 class="text-lg font-bold text-gray-800">Bill To:</h3>
-             <p class="text-sm text-gray-600">{{ $invoicePartial->client->first_name ?? 'N/A' }}</p>
-             <p class="text-sm text-gray-600">{{ $invoicePartial->client->address ?? 'N/A' }}</p>
-             <p class="text-sm text-gray-600">{{ $invoicePartial->client->email ?? 'N/A' }}</p>
-         </div>
+        <div class="flex justify-between items-center mb-8">
+            <div class="text-left">
+                <h3 class="text-lg font-bold text-gray-800">Billed To</h3>
+                <p class="text-sm text-gray-600">{{ $invoice->client->name }}</p>
+                <p class="text-sm text-gray-600">
+                    <a href="mailto:{{ $invoice->client->email}}" class="hover:underline hover:text-blue-600">
+                        {{ $invoice->client->email ?? 'N/A' }}
+                    </a>
+                </p>
+                <p class="text-sm text-gray-600">
+                    <a href="tel:{{ $invoice->client->country_code }}{{ $invoice->client->phone }}" class="hover:underline hover:text-blue-600">
+                        {{ $invoice->client->country_code ?? ''}}{{ $invoice->client->phone ?? 'N/A' }}
+                    </a>
+                </p>
+            </div>
+            <div class="text-right max-w-xs">
+                <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
+                <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->address }}</p>
+                <p class="text-sm text-gray-600">
+                    <a href="mailto:{{ $invoice->agent->branch->company->email }}" class="hover:underline hover:text-blue-600">
+                        {{ $invoice->agent->branch->company->email }}
+                    </a>
+                </p>
+                <p class="text-sm text-gray-600">
+                    <a href="tel:{{ $invoice->agent->branch->company->phone }}" class="hover:underline hover:text-blue-600">
+                        {{ $invoice->agent->branch->company->phone }}
+                    </a>
+                </p>
+            </div>
+        </div>
 
         <!-- Invoice Items -->
         <h3 class="text-lg font-bold text-gray-800 mb-4">{{ ucfirst($invoicePartial->type) }} Payment ({{ $invoice->currency }})</h3>

@@ -545,6 +545,18 @@ class InvoiceController extends Controller
         $invoiceCharge = $request->input('invoice_charge', 0);
         $companyId = $request->input('companyId');
 
+        $client = Client::find($clientId);
+        $balanceCredit = Credit::getTotalCreditsByClient($client->id);
+        //dd($credit, $balanceCredit);
+        if ($credit) {
+            if ($amount > $balanceCredit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Client credit is not enough!',
+                ]);
+            }
+        }
+
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
             ->whereHas('agent.branch.company', function ($q) use ($companyId) {
                 $q->where('id', $companyId);
@@ -593,17 +605,6 @@ class InvoiceController extends Controller
             ], $gateway);
         }
 
-        $client = Client::find($clientId);
-        $balanceCredit = Credit::getTotalCreditsByClient($client->id);
-        //dd($credit, $balanceCredit);
-        if ($credit) {
-            if ($amount > $balanceCredit) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Client credit is not enough!',
-                ]);
-            }
-        }
 
         DB::beginTransaction();
 
@@ -612,7 +613,7 @@ class InvoiceController extends Controller
                 'invoice_id' => $invoiceId,
                 'invoice_number' => $invoiceNumber,
                 'client_id' => $clientId,
-                'service_charge' => ($gatewayFee['paid_by'] === 'Company') ? 0 : $gatewayFee['fee'],
+                'service_charge' => $credit ? 0 : ($gatewayFee['fee'] ?? 0),
                 'amount' => $amount,
                 'status' => $credit ? 'paid' : 'unpaid',
                 'expiry_date' => $date,
@@ -1414,16 +1415,10 @@ class InvoiceController extends Controller
         $invoiceDetails = $invoice->invoiceDetails;
         $company = $invoice->agent->branch->company;
 
-        // Company logo for display
-        $companyLogoPath = public_path('images/CityLogo.png');
-        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
-        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
-
         return view('invoice.proforma', compact(
             'invoice',
             'invoiceDetails',
             'company',
-            'companyLogoSrc'
         ));
     }
 
@@ -1442,9 +1437,8 @@ class InvoiceController extends Controller
 
         $invoiceDetails = $invoice->invoiceDetails;
         $company = $invoice->agent->branch->company;
-        $companyLogoSrc = public_path('images/CityLogo.png');
 
-        $pdf = Pdf::loadView('invoice.proforma-pdf', compact('invoice', 'invoiceDetails', 'company', 'companyLogoSrc'));
+        $pdf = Pdf::loadView('invoice.proforma-pdf', compact('invoice', 'invoiceDetails', 'company'));
 
         return $pdf->download("Proforma_Invoice_{$invoiceNumber}.pdf");
     }
@@ -1479,7 +1473,6 @@ class InvoiceController extends Controller
         
         $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'Tap';
         $paymentMethod = $invoicePartials->first()?->payment_method;
-        $companyId = $invoice->agent->branch->company_id;
 
         $totalGatewayFee = ['fee' => 0, 'finalAmount' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
 
@@ -1540,10 +1533,6 @@ class InvoiceController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
-        $companyLogoPath = public_path('images/CityLogo.png');
-        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
-        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
-
         return view('invoice.show', compact(
             'invoice',
             'invoiceDetails',
@@ -1555,7 +1544,7 @@ class InvoiceController extends Controller
             'checkUtilizeCredit',
             'checkUtilizeCreditPartial',
             'totalGatewayFee',
-            'companyLogoSrc'
+            'companyId',
         ));
     }
 

@@ -21,7 +21,7 @@
                             <!-- Header -->
                             <div class="row mb-4">
                                 <div class="col-5">
-                                    <img src="{{ $companyLogoSrc }}" alt="Company Logo" style="max-height: 80px;">
+                                    <x-application-logo class="custom-logo-size"  />
                                     <h3 class="mt-2">{{ $company->name }}</h3>
                                     <p class="mb-0">{{ $company->address }}</p>
                                     <p class="mb-0">{{ $company->phone }}</p>

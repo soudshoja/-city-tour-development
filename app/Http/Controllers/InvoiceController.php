@@ -1414,16 +1414,10 @@ class InvoiceController extends Controller
         $invoiceDetails = $invoice->invoiceDetails;
         $company = $invoice->agent->branch->company;
 
-        // Company logo for display
-        $companyLogoPath = public_path('images/CityLogo.png');
-        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
-        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
-
         return view('invoice.proforma', compact(
             'invoice',
             'invoiceDetails',
             'company',
-            'companyLogoSrc'
         ));
     }
 
@@ -1442,9 +1436,8 @@ class InvoiceController extends Controller
 
         $invoiceDetails = $invoice->invoiceDetails;
         $company = $invoice->agent->branch->company;
-        $companyLogoSrc = public_path('images/CityLogo.png');
 
-        $pdf = Pdf::loadView('invoice.proforma-pdf', compact('invoice', 'invoiceDetails', 'company', 'companyLogoSrc'));
+        $pdf = Pdf::loadView('invoice.proforma-pdf', compact('invoice', 'invoiceDetails', 'company'));
 
         return $pdf->download("Proforma_Invoice_{$invoiceNumber}.pdf");
     }
@@ -1479,7 +1472,6 @@ class InvoiceController extends Controller
         
         $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'Tap';
         $paymentMethod = $invoicePartials->first()?->payment_method;
-        $companyId = $invoice->agent->branch->company_id;
 
         $totalGatewayFee = ['fee' => 0, 'finalAmount' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
 
@@ -1540,10 +1532,6 @@ class InvoiceController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
-        $companyLogoPath = public_path('images/CityLogo.png');
-        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
-        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
-
         return view('invoice.show', compact(
             'invoice',
             'invoiceDetails',
@@ -1555,7 +1543,7 @@ class InvoiceController extends Controller
             'checkUtilizeCredit',
             'checkUtilizeCreditPartial',
             'totalGatewayFee',
-            'companyLogoSrc'
+            'companyId',
         ));
     }
 

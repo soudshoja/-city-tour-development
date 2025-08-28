@@ -1534,11 +1534,7 @@ class PaymentController extends Controller
             $payment->save();
         }
 
-        $companyLogoPath = public_path('images/CityLogo.png');
-        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
-        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
-
-        return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy', 'companyLogoSrc'));
+        return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy'));
     }
 
     public function paymentLinkInitiate(Request $request)

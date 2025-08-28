@@ -29,7 +29,7 @@
     <div class="container max-w-3xl bg-white rounded-lg shadow-lg overflow-hidden page-break-inside-avoid">
         <div class="bg-blue-800 text-white px-8 py-6 flex justify-between items-center border-b-4 border-yellow-500">
             <div class="flex items-center space-x-4">
-                <img src="{{ asset('images/City0logo.svg') }}" alt="Logo" class="h-12 w-12" />
+                <x-application-logo class="custom-logo-size"  />
                 <div>
                     <h1 class="text-xl font-bold">{{ $tasks->first()->company->name }}</h1>
                     <p class="text-sm opacity-75">Your Trusted Travel Partner</p>
@@ -80,7 +80,7 @@
                     <div>
                         <div class="text-xs uppercase text-gray-500">Issued Date</div>
                         <div class="text-sm font-medium text-gray-900">
-                            {{ $tasks->first()->issued_date->format('d M Y') }}
+                            {{ optional($tasks->first()?->supplier_pay_date ?: $tasks->first()?->issued_date)->format('d M Y') ?? 'N/A' }}
                         </div>
                     </div>
                 </div>

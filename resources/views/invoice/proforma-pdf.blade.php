@@ -154,7 +154,7 @@
         <!-- Header -->
         <div class="header">
             <div class="company-info">
-                <img src="{{ $companyLogoSrc }}" alt="Company Logo">
+                <x-application-logo class="custom-logo-size"  />
                 <h3>{{ $company->name }}</h3>
                 <p>{{ $company->address }}</p>
                 <p>{{ $company->phone }}</p>

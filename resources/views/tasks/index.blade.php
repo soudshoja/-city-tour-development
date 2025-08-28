@@ -599,17 +599,17 @@
                                     <label for="col-supplier" class="text-sm text-gray-700">Supplier</label>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-supplier-pay-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <input type="checkbox" id="col-supplier-pay-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
                                     <label for="col-supplier-pay-date" class="text-sm text-gray-700">Issue Date</label>
                                 </div>
                                 @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                 <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-cancellation-deadline" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <input type="checkbox" id="col-cancellation-deadline" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
                                     <label for="col-cancellation-deadline" class="text-sm text-gray-700">Cancellation Deadline</label>
                                 </div>
                                 @endif
                                 <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4" checked>
+                                    <input type="checkbox" id="col-created-at" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
                                     <label for="col-created-at" class="text-sm text-gray-700">Created Date</label>
                                 </div>
                                 <div class="flex items-center gap-2">
@@ -917,7 +917,7 @@
                                                 <th data-column="supplier">
                                                     <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
                                                 </th>
-                                                <th data-column="supplier-pay-date" class="text-center">
+                                                <th data-column="supplier-pay-date" class="text-center" class="column-hidden">
                                                     <a href="{{ request()->fullUrlWithQuery([
                                                                 'sortBy' => 'supplier_pay_date',
                                                                 'sortOrder' => (request('sortBy') === 'supplier_pay_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
@@ -941,7 +941,7 @@
                                                         @endif
                                                     </a>
                                                 </th>
-                                                <th data-column="created-at">
+                                                <th data-column="created-at" class="column-hidden">
                                                     <a href="{{ request()->fullUrlWithQuery([
                                                                     'sortBy' => 'created_at',
                                                                     'sortOrder' => (request('sortBy') === 'created_at' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
@@ -966,7 +966,7 @@
                                                     </a>
                                                 </th>
                                                 @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                <th data-column="cancellation-deadline">
+                                                <th data-column="cancellation-deadline" class="column-hidden">
                                                     <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Cancellation Deadline</span>
                                                 </th>
                                                 @endif
@@ -1431,14 +1431,14 @@
                                                 <td data-column="supplier" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->supplier->name }}
                                                 </td>
-                                                <td data-column="supplier-pay-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                                <td data-column="supplier-pay-date" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->supplier_pay_date ?? $task->issued_date }}
                                                 </td>
-                                                <td data-column="created-at" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                                <td data-column="created-at" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->created_at ?  \Carbon\Carbon::parse($task->created_at)->format('d-m-Y H:i') : 'Not Set' }}
                                                 </td>
                                                 @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
-                                                <td data-column="cancellation-deadline" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                                <td data-column="cancellation-deadline" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->cancellation_deadline ?  \Carbon\Carbon::parse($task->cancellation_deadline)->format('d-m-Y H:i') : 'Not Set' }}
                                                 </td>
                                                 @endif

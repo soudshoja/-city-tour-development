@@ -59,9 +59,7 @@ class TaskController extends Controller
     {
         $user = Auth::user();
 
-        $defaultColumns = [
-            'reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'supplier-pay-date', 'cancellation-deadline', 'created-at', 'info'
-        ];
+        $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'info'];
 
         if ($user->role_id === Role::AGENT) {
             $defaultColumns = array_filter($defaultColumns, fn($col) => $col !== 'agent-name');
@@ -191,7 +189,6 @@ class TaskController extends Controller
             // 'searchTask'
         ));
     }
-    
 
     public function bulkUpdate(Request $request)
     {
@@ -3115,11 +3112,7 @@ class TaskController extends Controller
         $task = Task::with('invoiceDetail', 'invoiceDetail.task', 'invoiceDetail.invoice', 'invoiceDetail.invoice.payment')->findOrFail($taskId);
         $invoiceDetail = $task->invoiceDetail;
 
-        $companyLogoPath = public_path('images/CityLogo.png');
-        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
-        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
-
-        return view('tasks.pdfView.receipt-view', compact('task', 'invoiceDetail', 'companyLogoSrc'));
+        return view('tasks.pdfView.receipt-view', compact('task', 'invoiceDetail'));
     }
 
     public function receiptPdfDownload($taskId)
@@ -3127,11 +3120,7 @@ class TaskController extends Controller
         $task = Task::with('invoiceDetail', 'invoiceDetail.task', 'invoiceDetail.invoice', 'invoiceDetail.invoice.payment')->findOrFail($taskId);
         $invoiceDetail = $task->invoiceDetail;
 
-        $companyLogoPath = public_path('images/CityLogo.png');
-        $companyLogoData = base64_encode(file_get_contents($companyLogoPath));
-        $companyLogoSrc = 'data:image/png;base64,' . $companyLogoData;
-
-        $pdf = Pdf::loadView('tasks.pdf.receipt', compact('task', 'invoiceDetail', 'companyLogoSrc'));
+        $pdf = Pdf::loadView('tasks.pdf.receipt', compact('task', 'invoiceDetail'));
 
         return $pdf->download('receipt.pdf');
     }

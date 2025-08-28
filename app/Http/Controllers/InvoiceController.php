@@ -2243,7 +2243,7 @@ class InvoiceController extends Controller
                     ]);
 
                     // Save the invoice type
-                    $invoice->status = 'unpaid';
+                    $invoice->status = 'partial';
                     $invoice->payment_type = 'split';
                     $invoice->is_client_credit = 1;
                     $invoice->save();

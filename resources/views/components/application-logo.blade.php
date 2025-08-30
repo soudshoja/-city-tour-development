@@ -1,7 +1,7 @@
 @props([
     'companyLogo' => asset('images/UserPic.svg'),
-    'width' => '50',
-    'height' => '50',
+    'width' => '100',
+    'height' => '75',
     'class' => '',
     'alt' => 'City App Logo'
 ])

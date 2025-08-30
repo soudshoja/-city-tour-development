@@ -43,8 +43,9 @@
     <div class="w-full max-w-3xl bg-white rounded-lg shadow-lg overflow-hidden">
         <div class="bg-blue-800 text-white px-8 py-6 flex justify-between items-center border-b-4 border-yellow-500">
             <div class="flex items-center space-x-4">
-                <img src="{{ asset('images/City0logo.svg') }}"
-                    alt="City Travelers" class="h-12 w-12 object-contain" />
+                <x-application-logo
+                        :companyLogo="$selectedCompany?->logo ?? asset('images/UserPic.svg')"
+                        class="custom-logo-size inline-block"/>
                 <div>
                     <h1 class="text-xl font-bold">{{ $tasks->first()->company->name }}</h1>
                     <p class="text-sm opacity-75">Your Trusted Travel Partner</p>

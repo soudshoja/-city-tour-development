@@ -544,6 +544,43 @@
                         <input type="hidden" name="q" value="{{ request('q') }}">
                         @endif
                     </form>
+
+                    <button type="button" id="toggleFilters"
+    class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
+    <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 32 32">
+        <path fill="#333333"
+            d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3-3-3-3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3-3-3-3s-3-1.3-3-3" />
+    </svg>
+    <span class="text-xs md:text-sm dark:text-black">Filters</span>
+</button>
+
+<!-- Modal for Advanced Filters -->
+<div id="filterModal" class="filter-modal">
+    <div class="filter-modal-content">
+        <div class="filter-modal-header">
+            <div class="relative w-full">
+                <h3>Advanced Filters</h3>
+            </div>
+            <div class="flex customCenter justify-end">
+                <button id="closeFilterModal" class="close-modal-btn">&times;</button>
+            </div>
+        </div>
+        <div id="filterContainer">
+            <!-- Filter rows will be dynamically added here -->
+        </div>
+        <div class="filter-modal-footer">
+            <div class="flex gap-3">
+                <button id="addFilterRow" class="add-filter-btn">Add Filter</button>
+            </div>
+            <div class="flex gap-3">
+                <button id="clearAllFilters" class="clear-all-filters-btn">Clear All</button>
+                <button id="applyFilters" class="apply-filters-btn">Apply Filters</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 
                     <button type="button" id="toggleFilters"
                         class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
                         <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
@@ -552,7 +589,7 @@
                                 d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3-3-3-3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3-3-3-3s-3-1.3-3-3" />
                         </svg>
                         <span class="text-xs md:text-sm dark:text-black">Filters</span>
-                    </button>
+                    </button> -->
                     <div class="relative">
                         <button type="button" id="customizeColumnsBtn"
                             class="flex px-3 py-2 w-full h-10 md:w-auto DarkBGcolor dark:!bg-blue-700 dark:!hover:bg-blue-600 rounded-full shadow-sm items-center text-xs text-white font-semibold md:text-sm">
@@ -655,46 +692,16 @@
                             </div>
                         </div>
                     </div>
-                    <div id="filterModal" class="filter-modal">
-                        <div class="filter-modal-content">
-                            <div class="filter-modal-header">
-                                <div class="relative w-full">
-                                    <h3>Advanced Filters</h3>
-                                </div>
-                                <div class="flex customCenter justify-end">
-                                    <button id="closeFilterModal" class="close-modal-btn">&times;</button>
-                                </div>
-                            </div>
-                            <div id="filterContainer">
-                                <!-- Filter rows will be dynamically added here -->
-                            </div>
-                            <div class="filter-modal-footer">
-                                <div class="flex gap-3">
-                                    <button id="addFilterRow" class="add-filter-btn">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                            stroke="currentColor" stroke-width="2">
-                                            <line x1="12" y1="5" x2="12" y2="19">
-                                            </line>
-                                            <line x1="5" y1="12" x2="19" y2="12">
-                                            </line>
-                                        </svg>
-                                        Add Filter
-                                    </button>
-                                </div>
-                                <div class="flex gap-3">
-                                    <button id="clearAllFilters" class="clear-all-filters-btn">Clear All</button>
-                                    <button id="applyFilters" class="apply-filters-btn">Apply Filters</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    
                 </div>
                 <div id="activeFiltersContainer" class="active-filters" style="display: none;">
                     <div class="flex justify-between items-center mb-3">
                         <h4 class="text-sm font-semibold text-gray-700">Active Filters:</h4>
+
                         <button id="clearAllActiveFilters" class="text-xs text-red-600 hover:text-red-800 underline">
                             Clear All
                         </button>
+
                     </div>
                     <div id="activeFiltersList" class="flex flex-wrap">
                         <!-- Active filter tags will be inserted here -->
@@ -1915,6 +1922,7 @@
 @vite('resources/js/tasks.js')
 
 <script>
+    window.companySuppliers = @json($suppliers->pluck('name')->all());
     document.addEventListener('alpine:init', () => {
         Alpine.store('dropdown', {
             openId: null,
@@ -2736,4 +2744,208 @@
             'text-sm', 'transition', 'duration-150');
         button.disabled = false;
     }
+
+</script>
+
+<script>
+const filterConfig = {
+    columns: {
+        reference:         { label: "Reference", type: "text" },
+        "bill-to":         { label: "Bill To", type: "text" },
+        "passenger-name":  { label: "Passenger Name", type: "text" },
+        agent_name:        { label: "Agent Name", type: "text" },
+        status:            { label: "Status", type: "select", options: ["issued", "refund", "reissued", "void", "ticketed", "confirmed"] },
+        supplier:          { label: "Supplier", type: "searchable", options: window.companySuppliers || [] },
+        "created-at":      { label: "Created Date", type: "date" },
+        "cancellation-deadline": { label: "Cancellation Deadline", type: "date" },
+        type:              { label: "Type", type: "select", options: ["hotel", "flight"] },
+        "gds-reference":   { label: "GDS Reference", type: "text" },
+        "amadeus-reference": { label: "Amadeus Reference", type: "text" },
+        "created-by":      { label: "Created By", type: "text" },
+        "issued-by":       { label: "Issued By", type: "text" },
+        "branch-name":     { label: "Branch Name", type: "text" },
+        invoice:           { label: "Invoice", type: "text" },
+    }
+};
+
+let filterRows = [];
+
+function renderFilterRows() {
+    const container = document.getElementById('filterContainer');
+    container.innerHTML = '';
+    filterRows.forEach((row, idx) => {
+        const col = filterConfig.columns[row.column];
+        let inputHtml = '';
+        if (col.type === 'text') {
+            inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter value" data-idx="${idx}">`;
+        } else if (col.type === 'select') {
+            inputHtml = `<select class="value-input" data-idx="${idx}">${col.options.map(opt =>
+                `<option value="${opt}" ${row.value === opt ? 'selected' : ''}>${opt}</option>`
+            ).join('')}</select>`;
+        } else if (col.type === 'searchable') {
+            inputHtml = `<input type="text" class="value-input" list="datalist-${row.column}-${idx}" value="${row.value || ''}" placeholder="Search..." data-idx="${idx}">
+                <datalist id="datalist-${row.column}-${idx}">
+                    ${col.options.map(opt => `<option value="${opt}"></option>`).join('')}
+                </datalist>`;
+        } else if (col.type === 'date') {
+            inputHtml = `<input type="date" class="value-input" value="${row.value || ''}" data-idx="${idx}">`;
+        }
+        container.innerHTML += `
+            <div class="filter-row">
+                <select class="column-select" data-idx="${idx}">
+                    ${Object.entries(filterConfig.columns).map(([key, c]) =>
+                        `<option value="${key}" ${row.column === key ? 'selected' : ''}>${c.label}</option>`
+                    ).join('')}
+                </select>
+                ${inputHtml}
+                <button type="button" class="remove-filter-btn" data-idx="${idx}">&times;</button>
+            </div>
+        `;
+    });
+}
+
+// Open modal
+document.getElementById('toggleFilters').onclick = () => {
+    document.getElementById('filterModal').classList.add('active');
+    if (filterRows.length === 0) {
+        filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
+    }
+    renderFilterRows();
+};
+// Close modal
+document.getElementById('closeFilterModal').onclick = () => {
+    document.getElementById('filterModal').classList.remove('active');
+};
+// Add filter row
+document.getElementById('addFilterRow').onclick = () => {
+    filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
+    renderFilterRows();
+};
+// Clear all
+document.getElementById('clearAllFilters').onclick = () => {
+    filterRows = [];
+    renderFilterRows();
+};
+// Remove row or update value
+document.getElementById('filterContainer').addEventListener('input', function(e) {
+    const idx = +e.target.dataset.idx;
+    if (e.target.classList.contains('value-input')) {
+        filterRows[idx].value = e.target.value;
+    }
+});
+document.getElementById('filterContainer').addEventListener('change', function(e) {
+    const idx = +e.target.dataset.idx;
+    if (e.target.classList.contains('column-select')) {
+        filterRows[idx].column = e.target.value;
+        filterRows[idx].value = '';
+        renderFilterRows();
+    }
+});
+document.getElementById('filterContainer').addEventListener('click', function(e) {
+    if (e.target.classList.contains('remove-filter-btn')) {
+        const idx = +e.target.dataset.idx;
+        filterRows.splice(idx, 1);
+        renderFilterRows();
+    }
+});
+// Apply filters
+document.getElementById('applyFilters').onclick = () => {
+    const params = new URLSearchParams(window.location.search);
+    // Remove old filter params
+    for (const key of Array.from(params.keys())) {
+        // Remove all keys that match any filter column
+        if (Object.keys(filterConfig.columns).includes(key) || key === 'status') params.delete(key);
+    }
+    filterRows.forEach(row => {
+        if (row.value) {
+            // For status, use array format like status[]=issued
+            if (row.column === 'status') {
+                params.append('status[]', row.value);
+            } else {
+                params.append(row.column, row.value);
+            }
+        }
+    });
+    window.location = `{{ route('tasks.index') }}?${params.toString()}`;
+};
+
+
+// ...existing code...
+
+function getActiveFiltersFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    const filters = [];
+    for (const [key, value] of params.entries()) {
+        if (Object.keys(filterConfig.columns).includes(key) || key === 'status[]' || key === 'status') {
+            // Handle status[] as array
+            if (key === 'status[]' || key === 'status') {
+                const statusValues = params.getAll('status[]').length ? params.getAll('status[]') : params.getAll('status');
+                statusValues.forEach(val => {
+                    filters.push({ key: 'status', label: filterConfig.columns['status'].label, value: val });
+                });
+            } else {
+                const col = filterConfig.columns[key];
+                filters.push({ key, label: col ? col.label : key, value });
+            }
+        }
+    }
+    return filters;
+}
+
+function renderActiveFilters() {
+    const filters = getActiveFiltersFromURL();
+    const container = document.getElementById('activeFiltersContainer');
+    const list = document.getElementById('activeFiltersList');
+    list.innerHTML = '';
+    if (filters.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    container.style.display = '';
+    filters.forEach(f => {
+        const tag = document.createElement('div');
+        tag.className = 'active-filter-tag';
+        tag.innerHTML = `
+            <span>${f.label}: <b>${f.value}</b></span>
+            <button class="remove-tag" data-key="${f.key}" data-value="${f.value}" title="Remove filter">&times;</button>
+        `;
+        list.appendChild(tag);
+    });
+}
+
+// Remove individual filter
+document.getElementById('activeFiltersList').addEventListener('click', function(e) {
+    if (e.target.classList.contains('remove-tag')) {
+        const key = e.target.getAttribute('data-key');
+        const value = e.target.getAttribute('data-value');
+        const params = new URLSearchParams(window.location.search);
+
+        // Remove only the specific value for multi-value filters (like status[])
+        if (key === 'status') {
+            // Remove all status[] with this value
+            ['status[]', 'status'].forEach(k => {
+                const values = params.getAll(k);
+                params.delete(k);
+                values.forEach(v => {
+                    if (v !== value) params.append(k, v);
+                });
+            });
+        } else {
+            params.delete(key);
+        }
+        window.location = `{{ route('tasks.index') }}?${params.toString()}`;
+    }
+});
+
+// Remove all filters
+document.getElementById('clearAllActiveFilters').addEventListener('click', function() {
+    const params = new URLSearchParams(window.location.search);
+    Object.keys(filterConfig.columns).forEach(key => params.delete(key));
+    params.delete('status');
+    params.delete('status[]');
+    window.location = `{{ route('tasks.index') }}`;
+});
+
+// Render on page load
+renderActiveFilters();
 </script>

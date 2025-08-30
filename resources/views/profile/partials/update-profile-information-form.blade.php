@@ -152,13 +152,8 @@
         </div>
     </form>
 
-
-
-<<<<<<< HEAD
-   <script>
-=======
   <script>
->>>>>>> dev
+
     let processedLogoBase64 = null;
 
     async function previewLogo(event) {
@@ -227,6 +222,7 @@
     }
 
     // Ensure processed image is submitted instead of original
+
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.querySelector('form[action="{{ route('profile.update') }}"]');
         form.addEventListener('submit', function(e) {
@@ -243,15 +239,5 @@
         });
     });
 </script>
-<<<<<<< HEAD
-=======
-
-
-
-
-
-
-
->>>>>>> dev
 
 </section>

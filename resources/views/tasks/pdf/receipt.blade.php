@@ -111,7 +111,9 @@
 <body>
     <div class="container">
         <header>
-            <img src="{{ asset('images/CityLogo.png')}}" alt="City Travelers">
+            <x-application-logo
+            :companyLogo="$selectedCompany?->logo ?? asset('images/UserPic.svg')"
+            class="custom-logo-size inline-block"/>
             <h1>Payment Receipt: <strong>{{ $invoiceDetail->invoice->payment->voucher_number }}</strong></h1>
         </header>
         <main>

@@ -154,49 +154,90 @@
 
 
 
-    <script>
-        let processedLogoBase64 = null;
+   <script>
+    let processedLogoBase64 = null;
 
-        function previewLogo(event) {
-            const input = event.target;
-            const container = document.getElementById('logo-preview-container');
-            const placeholder = document.getElementById('logo-placeholder');
-            const file = input.files[0];
+    async function previewLogo(event) {
+        const input = event.target;
+        const container = document.getElementById('logo-preview-container');
+        const file = input.files[0];
 
-            if (file) {
-                // Simple preview without background removal for now
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    // Hide placeholder if it exists
-                    if (placeholder) {
-                        placeholder.style.display = 'none';
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const img = new Image();
+                img.onload = async function() {
+                    if (img.width > 700 || img.height > 400) {
+                        alert('Image must be at most 700x400 pixels.');
+                        input.value = '';
+                        return;
                     }
-                    
-                    // Show the selected image
-                    container.innerHTML = `<img id="logo-preview" src="${e.target.result}" alt="Company Logo" class="h-full w-full object-cover">`;
+                    container.innerHTML = '<span class="text-gray-400 text-sm">Removing background...</span>';
+
+                    const formData = new FormData();
+                    formData.append('image_file', file);
+                    formData.append('size', 'auto');
+
+                    try {
+                        const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+                            method: 'POST',
+                            headers: {
+                                'X-Api-Key': 'JnBYzxA6Lk9DRmR2xUpubqGn', // Replace with your API key
+                            },
+                            body: formData
+                        });
+
+                        if (!response.ok) throw new Error('Background removal failed');
+
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+
+                        const resultImg = new Image();
+                        resultImg.onload = function() {
+                            container.innerHTML = '';
+                            resultImg.classList.add('h-full', 'w-full', 'object-cover');
+                            container.appendChild(resultImg);
+                        };
+                        resultImg.src = url;
+
+                        // Convert blob → Base64 and store in hidden field
+                        const reader2 = new FileReader();
+                        reader2.onloadend = function() {
+                            processedLogoBase64 = reader2.result;
+                            document.getElementById('logo_processed').value = processedLogoBase64;
+                        };
+                        reader2.readAsDataURL(blob);
+
+                    } catch (error) {
+                        alert('Could not remove background: ' + error.message);
+                        container.innerHTML = '<span class="text-gray-400 text-3xl">+</span>';
+                        input.value = '';
+                        processedLogoBase64 = null;
+                        document.getElementById('logo_processed').value = '';
+                    }
                 };
-                reader.readAsDataURL(file);
-            }
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
         }
+    }
 
-        // Form submission handling
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.querySelector('form[method="post"]');
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    const fileInput = document.getElementById('logo');
-                    if (fileInput && fileInput.files.length > 0) {
-                        // File is selected, allow normal form submission
-                        console.log('Form submitted with file');
-                    }
-                });
+    // Ensure processed image is submitted instead of original
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form[action="{{ route('profile.update') }}"]');
+        form.addEventListener('submit', function(e) {
+            const fileInput = document.getElementById('logo');
+            if (fileInput.value && !processedLogoBase64) {
+                e.preventDefault();
+                alert('Please wait for the background to be removed from your logo before saving.');
+            }
+
+            // ⚡ Remove original file from submission if processed exists
+            if (processedLogoBase64) {
+                fileInput.removeAttribute('name'); // prevent raw file upload
             }
         });
-    </script>
-
-
-
-
-
+    });
+</script>
 
 </section>

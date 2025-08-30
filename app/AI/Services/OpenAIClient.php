@@ -143,9 +143,9 @@ class OpenAIClient implements AIClientInterface
             - `passport_no`: Passport number or Passport No.
             - `civil_no`: Civil number or Civil No. (if available)
             - `name`: Full name as per the passport
-            - `first_name`: First name
+            - `first_name`: First name based on the first name from the 'Full Name'
             - `middle_name`: Middle name (if available)
-            - `last_name`: Last name (if available)
+            - `last_name`: Last name based on the last name from the 'Full Name'(if available)
             - `nationality`: Nationality
             - `date_of_birth`: Date of birth in YYYY-MM-DD format
             - `date_of_issue`: Date of issue in YYYY-MM-DD format

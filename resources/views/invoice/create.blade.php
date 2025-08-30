@@ -115,13 +115,12 @@
                                 />
 
                                 @if ($selectedCompany)
-                                    <div>
-                                        <h3 class="font-semibold text-lg">{{ $selectedCompany->name }}</h3>
-                                        <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
-                                        <p>{{ $selectedCompany->email }}</p>
-                                        <p>{{ $selectedCompany->phone }}</p>
-                                    </div>
-                                @endif
+                                <div>
+                                    <h3 class="font-semibold text-lg">{{ $selectedCompany->name }}</h3>
+                                    <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
+                                    <p>{{ $selectedCompany->email }}</p>
+                                    <p>{{ $selectedCompany->phone }}</p>
+                                </div>
                             </div>
                          @else
                         <div class="custom-select w-full border rounded-lg mt-4">

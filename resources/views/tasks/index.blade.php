@@ -1184,7 +1184,10 @@
                                                                                         @php
                                                                                         $originalTasks = \App\Models\Task::with('client')
                                                                                         ->where('status', 'issued')
-                                                                                        ->where('reference', $task->reference)
+                                                                                        ->where(function ($query) use ($task) {
+                                                                                            $query->where('reference', $task->reference)
+                                                                                                ->orWhere('passenger_name', $task->passenger_name);
+                                                                                        })
                                                                                         ->get();
                                                                                         $selectedOriginalTask = $originalTasks->firstWhere('id', $task->original_task_id);
                                                                                         $taskPlaceholder = $selectedOriginalTask

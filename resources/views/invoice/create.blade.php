@@ -108,8 +108,10 @@
             <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
                 <div class="flex flex-wrap justify-between px-6 ">
                     <div class=" shrink-0 items-center text-black dark:text-white min-w-96">
-                        <x-application-logo class="custom-logo-size" />
-                        @if ($selectedCompany)
+<x-application-logo 
+    :companyLogo="$selectedCompany?->logo ?? asset('images/UserPic.svg')" 
+    class="custom-logo-size" 
+/>                        @if ($selectedCompany)
                         <div class="pl-2">
                             <h3>{{ $selectedCompany->name }}</h3>
                             <p>{!! nl2br(e($selectedCompany->address)) !!}</p>

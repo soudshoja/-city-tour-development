@@ -154,7 +154,11 @@
 
 
 
+<<<<<<< HEAD
    <script>
+=======
+  <script>
+>>>>>>> dev
     let processedLogoBase64 = null;
 
     async function previewLogo(event) {
@@ -239,5 +243,15 @@
         });
     });
 </script>
+<<<<<<< HEAD
+=======
+
+
+
+
+
+
+
+>>>>>>> dev
 
 </section>

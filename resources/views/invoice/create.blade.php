@@ -108,17 +108,22 @@
             <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
                 <div class="flex flex-wrap justify-between px-6 ">
                     <div class=" shrink-0 items-center text-black dark:text-white min-w-96">
-<x-application-logo 
-    :companyLogo="$selectedCompany?->logo ?? asset('images/UserPic.svg')" 
-    class="custom-logo-size" 
-/>                        @if ($selectedCompany)
-                        <div class="pl-2">
-                            <h3>{{ $selectedCompany->name }}</h3>
-                            <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
-                            <p>{{ $selectedCompany->email }}</p>
-                            <p>{{ $selectedCompany->phone }}</p>
-                        </div>
-                        @else
+                            <div class="flex items-center space-x-4">
+                                <x-application-logo
+                                    :companyLogo="$selectedCompany?->logo ?? asset('images/UserPic.svg')"
+                                    class="custom-logo-size inline-block"
+                                />
+
+                                @if ($selectedCompany)
+                                    <div>
+                                        <h3 class="font-semibold text-lg">{{ $selectedCompany->name }}</h3>
+                                        <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
+                                        <p>{{ $selectedCompany->email }}</p>
+                                        <p>{{ $selectedCompany->phone }}</p>
+                                    </div>
+                                @endif
+                            </div>
+                         @else
                         <div class="custom-select w-full border rounded-lg mt-4">
                             <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Company
                             </div>
@@ -455,7 +460,7 @@
                                                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-gray-300 dark:bg-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                                                     placeholder="First Name *" />
                                             </div>
-                                            
+
                                             <div class="w-1/2">
                                                 <label for="middle_name"
                                                     class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Middle Name</label>
@@ -820,15 +825,15 @@
 
         function calculateSubtotal() {
             const subtotal = items.reduce((sum, item) => {
-            const n = Number(item?.invprice);
+                const n = Number(item?.invprice);
                 return sum + (Number.isFinite(n) ? n : 0);
             }, 0);
 
             const subT = document.getElementById('subT');
             if (subT) subT.textContent = subtotal.toFixed(2);
-            
+
             const subTotal = document.getElementById('subTotal');
-             if (subTotal) subTotal.value = subtotal;
+            if (subTotal) subTotal.value = subtotal;
         }
 
         function renderItems() {

@@ -1145,8 +1145,11 @@
                                                                     </ul>
                                                                 </div>
                                                             </template>
+                                                            @php
+                                                                $isInvoiced = \App\Models\InvoiceDetail::where('task_id', $task->id)->exists();
+                                                            @endphp
                                                             <template x-teleport="body">
-                                                                <div x-show="editOpen" x-cloak class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800 bg-opacity-50">
+                                                                <div x-show="editOpen" x-cloak x-data="{ readOnly: {{ $isInvoiced ? 'true' : 'false' }} }" class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800 bg-opacity-50">
                                                                     <form id="edit-task-form-{{ $task->id }}"
                                                                         action="{{ route('tasks.update', $task->id) }}"
                                                                         method="post"
@@ -1161,10 +1164,10 @@
                                                                                     class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
                                                                                     &times;
                                                                                 </button>
-
                                                                             </div>
                                                                             @csrf
                                                                             @method('PUT')
+                                                                            <fieldset :disabled="readOnly" :class="readOnly ? 'opacity-80' : ''">
                                                                             <div class="flex flex-col gap-6">
                                                                                 <div class="flex flex-col sm:flex-row gap-4">
                                                                                     <div class="flex-1">
@@ -1196,25 +1199,29 @@
                                                                                             <option value="">Set
                                                                                                 Status
                                                                                             </option>
-                                                                                            <option value="Confirmed"
+                                                                                            <option value="confirmed"
                                                                                                 {{ $task->status === 'confirmed' ? 'selected' : '' }}>
                                                                                                 Confirmed
                                                                                             </option>
-                                                                                            <option value="Issued"
+                                                                                            <option value="issued"
                                                                                                 {{ $task->status === 'issued' ? 'selected' : '' }}>
                                                                                                 Issued
                                                                                             </option>
-                                                                                            <option value="Reissued"
+                                                                                            <option value="reissued"
                                                                                                 {{ $task->status === 'reissued' ? 'selected' : '' }}>
                                                                                                 Reissued
                                                                                             </option>
-                                                                                            <option value="Refund"
+                                                                                            <option value="refund"
                                                                                                 {{ $task->status === 'refund' ? 'selected' : '' }}>
                                                                                                 Refund
                                                                                             </option>
-                                                                                            <option value="Void"
+                                                                                            <option value="void"
                                                                                                 {{ $task->status === 'void' ? 'selected' : '' }}>
                                                                                                 Void
+                                                                                            </option>
+                                                                                            <option value="emd"
+                                                                                                {{ $task->status === 'emd' ? 'selected' : '' }}>
+                                                                                                Emd
                                                                                             </option>
                                                                                         </select>
                                                                                         @endif
@@ -1407,12 +1414,15 @@
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
+                                                                            </fieldset>
                                                                             <div class="mt-6 flex flex-col sm:flex-row justify-between gap-4">
                                                                                 <button type="button" @click="editOpen = false"
                                                                                     class="px-6 py-2 text-gray-700 font-semibold rounded-full bg-gray-200 hover:bg-gray-300 transition">
                                                                                     Cancel
                                                                                 </button>
                                                                                 <button type="submit"
+                                                                                    :disabled="readOnly" :class="readOnly ? 'cursor-not-allowed opacity-60' : ''"
+                                                                                    :title="readOnly ? 'This task is invoiced and cannot be edited' : ''"
                                                                                     class="w-full sm:w-auto px-6 py-2 text-white font-semibold rounded-full bg-blue-600 hover:bg-blue-700 transition"
                                                                                     form="edit-task-form-{{ $task->id }}">
                                                                                     Update
@@ -2806,7 +2816,7 @@ const filterConfig = {
         "bill-to":         { label: "Bill To", type: "text" },
         "passenger-name":  { label: "Passenger Name", type: "text" },
         agent_name:        { label: "Agent Name", type: "text" },
-        status:            { label: "Status", type: "select", options: ["-- Select --", "issued", "refund", "reissued", "void", "ticketed", "confirmed"] },
+        status:            { label: "Status", type: "select", options: ["-- Select --", "issued", "refund", "reissued", "void", "ticketed", "confirmed", "emd"] },
         supplier:          { label: "Supplier", type: "searchable", options: window.companySuppliers || [] },
         "created-at":      { label: "Created Date", type: "date-range" },
         "supplier_pay_date": { label: "Issued Date", type: "date-range" },

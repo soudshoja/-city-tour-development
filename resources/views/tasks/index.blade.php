@@ -523,27 +523,38 @@
                         searchParam="q"
                         placeholder="Quick search for tasks" />
                     <!-- Status Filter Checkboxes -->
-                    <form method="GET" action="{{ route('tasks.index') }}" id="status-filter-form" class="flex flex-wrap gap-2 items-center my-2">
-                        @php
-                        $statuses = ['issued', 'refund', 'reissued', 'confirmed', 'void'];
-                        $selectedStatuses = request()->input('status', []);
-                        if (!is_array($selectedStatuses)) $selectedStatuses = [$selectedStatuses];
-                        @endphp
-                        <span class="font-semibold text-gray-700 mr-2">Status:</span>
-                        @foreach($statuses as $status)
-                        <label class="inline-flex items-center px-3 py-1 bg-white border border-gray-300 rounded-full shadow-sm cursor-pointer hover:bg-blue-50 transition
-                            {{ in_array($status, $selectedStatuses) ? 'ring-2 ring-blue-400' : '' }}">
-                            <input type="checkbox" name="status[]" value="{{ $status }}"
-                                class="form-checkbox accent-blue-600 rounded mr-2"
-                                onchange="document.getElementById('status-filter-form').submit();"
-                                {{ in_array($status, $selectedStatuses) ? 'checked' : '' }}>
-                            <span class="capitalize text-sm text-gray-700">{{ $status }}</span>
-                        </label>
-                        @endforeach
-                        @if(request()->has('q'))
-                        <input type="hidden" name="q" value="{{ request('q') }}">
-                        @endif
-                    </form>
+@php
+    $statuses = ['issued', 'refund', 'reissued', 'confirmed', 'void'];
+    $selectedStatuses = request()->input('status', []);
+
+    if (!is_array($selectedStatuses)) {
+        $selectedStatuses = [$selectedStatuses];
+    }
+
+    // If no statuses are selected from request, default to all except 'void'
+    if (empty($selectedStatuses)) {
+        $selectedStatuses = array_filter($statuses, fn($s) => $s !== 'void');
+    }
+@endphp
+
+<form method="GET" action="{{ route('tasks.index') }}" id="status-filter-form" class="flex flex-wrap gap-2 items-center my-2">
+    <span class="font-semibold text-gray-700 mr-2">Status:</span>
+    @foreach($statuses as $status)
+        <label class="inline-flex items-center px-3 py-1 bg-white border border-gray-300 rounded-full shadow-sm cursor-pointer hover:bg-blue-50 transition
+            {{ in_array($status, $selectedStatuses) ? 'ring-2 ring-blue-400' : '' }}">
+            <input type="checkbox" name="status[]" value="{{ $status }}"
+                class="form-checkbox accent-blue-600 rounded mr-2"
+                {{ in_array($status, $selectedStatuses) ? 'checked' : '' }}>
+            <span class="capitalize text-sm text-gray-700">{{ $status }}</span>
+        </label>
+    @endforeach
+
+    @if(request()->has('q'))
+        <input type="hidden" name="q" value="{{ request('q') }}">
+    @endif
+
+    <button type="submit" id="applyFilters" class="apply-filters-btn">Apply</button>
+</form>
 
                         <button type="button" id="toggleFilters"
                             class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
@@ -636,7 +647,7 @@
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <input type="checkbox" id="col-supplier-pay-date" class="column-checkbox accent-blue-600 rounded-md w-4 h-4">
-                                    <label for="col-supplier-pay-date" class="text-sm text-gray-700">Issue Date</label>
+                                    <label for="col-supplier-pay-date" class="text-sm text-gray-700">Issued Date</label>
                                 </div>
                                 @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                 <div class="flex items-center gap-2">
@@ -690,25 +701,74 @@
                                 @endif
                             </div>
                         </div>
-                    </div>
-                    
+                    </div>                    
                 </div>
-                <div id="activeFiltersContainer" class="active-filters" style="display: none;">
-                    <div class="flex justify-between items-center mb-3">
-                        <h4 class="text-sm font-semibold text-gray-700">Active Filters:</h4>
+                
+                <div id="activeFiltersContainer" class="active-filters">
+                    <div class="bg-white shadow-lg rounded-2xl border border-gray-200 p-4 transition-all duration-300">
+                        <!-- Header -->
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18m-9 5h9" />
+                                    </svg>
+                                    Active Filters
+                                </h4>
 
-                        <button id="clearAllActiveFilters" class="text-xs text-red-600 hover:text-red-800 underline">
-                            Clear All
-                        </button>
+                                <div class="flex gap-3">
+                                    <button id="editActiveFilters" 
+                                        class="text-sm font-medium text-green-600 hover:bg-green-100 px-3 py-1 rounded-lg transition-all">
+                                        ✏️ Modify
+                                    </button>
+                                    <button id="clearAllActiveFilters" 
+                                        class="text-sm font-medium text-red-600 hover:bg-red-100 px-3 py-1 rounded-lg transition-all">
+                                        🗑️ Clear All
+                                    </button>
+                                </div>
+                            </div>
 
-                    </div>
-                    <div id="activeFiltersList" class="flex flex-wrap">
-                        <!-- Active filter tags will be inserted here -->
+                            <!-- Active Filter Tags -->
+                            <div id="activeFiltersList" class="flex flex-wrap gap-2">
+                                
+                            </div>
                     </div>
                 </div>
-
+               
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
-                    <div class="dataTable-top"></div>
+                    
+                <div class="dataTable-top"></div>
+                    <div class="w-full flex m-2 ">
+                            @php
+                                $invoiced = request()->has('invoiced') ? request('invoiced') : '0';
+                                // Set viewType to 'invoice' ONLY for Un Invoiced tab, otherwise keep the current value
+                                $viewType = $invoiced == '0'
+                                    ? request()->input('view_type', 'invoice')
+                                    : request()->input('view_type', '');
+                            @endphp
+                            <form method="GET" action="{{ route('tasks.index') }}" class="flex gap-0 w-full">
+                                @foreach(request()->except(['invoiced', 'page', 'view_type']) as $key => $value)
+                                    @if(is_array($value))
+                                        @foreach($value as $v)
+                                            <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+                                        @endforeach
+                                    @else
+                                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                                    @endif
+                                @endforeach
+                                <input type="hidden" name="view_type" value="{{ $viewType }}">
+                                <button type="submit" name="invoiced" value="0"
+                                    class="w-full text-center py-1 rounded-l-lg font-bold text-lg transition
+                                    {{ $invoiced == '0' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-100' }}">
+                                    Un Invoiced
+                                </button>
+                                <button type="submit" name="invoiced" value="1"
+                                    class="w-full text-center py-1 rounded-r-lg font-bold text-lg transition
+                                    {{ $invoiced == '1' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-100' }}">
+                                    Invoiced
+                                </button>
+                            </form>
+                    </div>
+                                               
                     <div x-data="{ shown: 10 }">
                         <div class="dataTable-container h-max">
                             <div class="table-container">
@@ -892,7 +952,9 @@
                                         this.updateFloatingActions();
                                     }
                                 }" x-init="window.selectedTasksGlobal = selectedTasks" x-cloak>
-                                    <table id="myTable" class="whitespace-nowrap dataTable-table">
+                                
+
+                                <table id="myTable" class="whitespace-nowrap dataTable-table">
                                         <thead>
                                             <tr>
                                                 <th data-column="actions">
@@ -1444,11 +1506,11 @@
                                                     {{ $task->supplier_pay_date ?? $task->issued_date }}
                                                 </td>
                                                 <td data-column="created-at" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->created_at ?  \Carbon\Carbon::parse($task->created_at)->format('d-m-Y H:i') : 'Not Set' }}
+                                                    {{ $task->created_at ?  \Carbon\Carbon::parse($task->created_at)->format('d-m-Y') : 'Not Set' }}
                                                 </td>
                                                 @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                                 <td data-column="cancellation-deadline" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->cancellation_deadline ?  \Carbon\Carbon::parse($task->cancellation_deadline)->format('d-m-Y H:i') : 'Not Set' }}
+                                                    {{ $task->cancellation_deadline ?  \Carbon\Carbon::parse($task->cancellation_deadline)->format('d-m-Y') : 'Not Set' }}
                                                 </td>
                                                 @endif
                                                 <td data-column="info" class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300">
@@ -1788,7 +1850,7 @@
                                                 </form>
                                             </div>
                                         </div>
-                                    </table>
+                                </table>
                                     <div x-show="showBulkEditModal" x-transition x-cloak
                                         class="fixed inset-0 z-30 flex items-center justify-center bg-gray-800" style="background-color: rgba(31, 41, 55, 0.7);">
                                         <div class="bg-white rounded-md border p-6 w-full max-w-md relative overflow-y-auto max-h-[90vh]">
@@ -2758,7 +2820,8 @@ const filterConfig = {
         agent_name:        { label: "Agent Name", type: "text" },
         status:            { label: "Status", type: "select", options: ["issued", "refund", "reissued", "void", "ticketed", "confirmed"] },
         supplier:          { label: "Supplier", type: "searchable", options: window.companySuppliers || [] },
-        "created-at":      { label: "Created Date", type: "date" },
+        "created-at":      { label: "Created Date", type: "date-range" },
+        "supplier_pay_date": { label: "Issued Date", type: "date-range" },
         "cancellation-deadline": { label: "Cancellation Deadline", type: "date" },
         type:              { label: "Type", type: "select", options: ["hotel", "flight"] },
         "gds-reference":   { label: "GDS Reference", type: "text" },
@@ -2791,6 +2854,13 @@ function renderFilterRows() {
                 </datalist>`;
         } else if (col.type === 'date') {
             inputHtml = `<input type="date" class="value-input" value="${row.value || ''}" data-idx="${idx}">`;
+        } else if (col.type === 'date-range') {
+            const [start, end] = (row.value || '').split(' to ');
+            inputHtml = `
+                <input type="date" class="value-input" value="${start || ''}" data-idx="${idx}" data-part="start">
+                to
+                <input type="date" class="value-input" value="${end || ''}" data-idx="${idx}" data-part="end">
+            `;
         }
         container.innerHTML += `
             <div class="filter-row">
@@ -2805,7 +2875,27 @@ function renderFilterRows() {
         `;
     });
 }
-
+function renderActiveFilters() {
+    const filters = getActiveFiltersFromURL();
+    const container = document.getElementById('activeFiltersContainer');
+    const list = document.getElementById('activeFiltersList');
+    list.innerHTML = '';
+    // Always show the container
+    container.style.display = '';
+    if (filters.length === 0) {
+        list.innerHTML = `<span class="text-gray-400 text-sm">No active filters</span>`;
+        return;
+    }
+    filters.forEach(f => {
+        const tag = document.createElement('div');
+        tag.className = 'active-filter-tag';
+        tag.innerHTML = `
+            <span>${f.label}: <b>${f.value}</b></span>
+            <button class="remove-tag" data-key="${f.key}" data-value="${f.value}" title="Remove filter">&times;</button>
+        `;
+        list.appendChild(tag);
+    });
+}
 // Open modal
 document.getElementById('toggleFilters').onclick = () => {
     document.getElementById('filterModal').classList.add('active');
@@ -2828,10 +2918,45 @@ document.getElementById('clearAllFilters').onclick = () => {
     filterRows = [];
     renderFilterRows();
 };
+document.getElementById('editActiveFilters').addEventListener('click', function() {
+    const params = new URLSearchParams(window.location.search);
+    filterRows = [];
+    Object.entries(filterConfig.columns).forEach(([key, col]) => {
+        if (col.type === 'date-range') {
+            const from = params.get(`${key}_from`);
+            const to = params.get(`${key}_to`);
+            if (from || to) {
+                filterRows.push({ column: key, value: { from: from || '', to: to || '' } });
+            }
+        }
+    });
+    for (const [key, value] of params.entries()) {
+        if (Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range') {
+            filterRows.push({ column: key, value });
+        }
+        if (key === 'status[]' || key === 'status') {
+            const statusValues = params.getAll('status[]').length ? params.getAll('status[]') : params.getAll('status');
+            statusValues.forEach(val => {
+                filterRows.push({ column: 'status', value: val });
+            });
+        }
+    }
+    if (filterRows.length === 0) {
+        filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
+    }
+    renderFilterRows();
+    document.getElementById('filterModal').classList.add('active');
+});
 // Remove row or update value
 document.getElementById('filterContainer').addEventListener('input', function(e) {
     const idx = +e.target.dataset.idx;
-    if (e.target.classList.contains('value-input')) {
+    const row = filterRows[idx];
+    const col = filterConfig.columns[row.column];
+      if (col && col.type === 'date-range') {
+        if (typeof row.value !== 'object' || !row.value) row.value = {from: '', to: ''};
+        if (e.target.dataset.range === 'from') row.value.from = e.target.value;
+        if (e.target.dataset.range === 'to') row.value.to = e.target.value;
+    } else if (e.target.classList.contains('value-input')) {
         filterRows[idx].value = e.target.value;
     }
 });
@@ -2857,15 +2982,19 @@ document.getElementById('applyFilters').onclick = () => {
     for (const key of Array.from(params.keys())) {
         // Remove all keys that match any filter column
         if (Object.keys(filterConfig.columns).includes(key) || key === 'status') params.delete(key);
+        if (key.endsWith('_from') || key.endsWith('_to')) params.delete(key);
+
     }
     filterRows.forEach(row => {
-        if (row.value) {
-            // For status, use array format like status[]=issued
-            if (row.column === 'status') {
-                params.append('status[]', row.value);
-            } else {
-                params.append(row.column, row.value);
-            }
+        if (!row.value) return;
+        const col = filterConfig.columns[row.column];
+        if (col && col.type === 'date-range') {
+            if (row.value.from) params.append(`${row.column}_from`, row.value.from);
+            if (row.value.to) params.append(`${row.column}_to`, row.value.to);
+        } else if (row.column === 'status') {
+            params.append('status[]', row.value);
+        } else {
+            params.append(row.column, row.value);
         }
     });
     window.location = `{{ route('tasks.index') }}?${params.toString()}`;
@@ -2877,41 +3006,75 @@ document.getElementById('applyFilters').onclick = () => {
 function getActiveFiltersFromURL() {
     const params = new URLSearchParams(window.location.search);
     const filters = [];
-    for (const [key, value] of params.entries()) {
-        if (Object.keys(filterConfig.columns).includes(key) || key === 'status[]' || key === 'status') {
-            // Handle status[] as array
-            if (key === 'status[]' || key === 'status') {
-                const statusValues = params.getAll('status[]').length ? params.getAll('status[]') : params.getAll('status');
-                statusValues.forEach(val => {
-                    filters.push({ key: 'status', label: filterConfig.columns['status'].label, value: val });
-                });
-            } else {
-                const col = filterConfig.columns[key];
-                filters.push({ key, label: col ? col.label : key, value });
+    // Handle date-range fields
+    Object.entries(filterConfig.columns).forEach(([key, col]) => {
+        if (col.type === 'date-range') {
+            const from = params.get(`${key}_from`);
+            const to = params.get(`${key}_to`);
+            if (from || to) {
+                let value = '';
+                if (from && to) value = `${from} to ${to}`;
+                else if (from) value = `from ${from}`;
+                else if (to) value = `to ${to}`;
+                filters.push({ key, label: col.label, value });
             }
+        }
+    });
+    // Handle status[] only ONCE
+    const statusValues = params.getAll('status[]').length ? params.getAll('status[]') : params.getAll('status');
+    if (statusValues.length) {
+        statusValues.forEach(val => {
+            filters.push({ key: 'status', label: filterConfig.columns['status'].label, value: val });
+        });
+    }
+    // Handle other filters
+    for (const [key, value] of params.entries()) {
+        if (key !== 'status' && key !== 'status[]' && Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range') {
+            const col = filterConfig.columns[key];
+            filters.push({ key, label: col ? col.label : key, value });
         }
     }
     return filters;
 }
 
-function renderActiveFilters() {
-    const filters = getActiveFiltersFromURL();
-    const container = document.getElementById('activeFiltersContainer');
-    const list = document.getElementById('activeFiltersList');
-    list.innerHTML = '';
-    if (filters.length === 0) {
-        container.style.display = 'none';
-        return;
-    }
-    container.style.display = '';
-    filters.forEach(f => {
-        const tag = document.createElement('div');
-        tag.className = 'active-filter-tag';
-        tag.innerHTML = `
-            <span>${f.label}: <b>${f.value}</b></span>
-            <button class="remove-tag" data-key="${f.key}" data-value="${f.value}" title="Remove filter">&times;</button>
+function renderFilterRows() {
+    const container = document.getElementById('filterContainer');
+    container.innerHTML = '';
+    filterRows.forEach((row, idx) => {
+        const col = filterConfig.columns[row.column];
+        let inputHtml = '';
+        if (col.type === 'text') {
+            inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter value" data-idx="${idx}">`;
+        } else if (col.type === 'select') {
+            inputHtml = `<select class="value-input" data-idx="${idx}">${col.options.map(opt =>
+                `<option value="${opt}" ${row.value === opt ? 'selected' : ''}>${opt}</option>`
+            ).join('')}</select>`;
+        } else if (col.type === 'searchable') {
+            inputHtml = `<input type="text" class="value-input" list="datalist-${row.column}-${idx}" value="${row.value || ''}" placeholder="Search..." data-idx="${idx}">
+                <datalist id="datalist-${row.column}-${idx}">
+                    ${col.options.map(opt => `<option value="${opt}"></option>`).join('')}
+                </datalist>`;
+        } else if (col.type === 'date') {
+            inputHtml = `<input type="date" class="value-input" value="${row.value || ''}" data-idx="${idx}">`;
+        } else if (col.type === 'date-range') {
+            const val = typeof row.value === 'object' && row.value ? row.value : {from: '', to: ''};
+            inputHtml = `
+                <input type="date" class="value-input" data-range="from" value="${val.from || ''}" data-idx="${idx}" style="width: 45%;" placeholder="From">
+                <span style="margin:0 4px;">-</span>
+                <input type="date" class="value-input" data-range="to" value="${val.to || ''}" data-idx="${idx}" style="width: 45%;" placeholder="To">
+            `;
+        }
+        container.innerHTML += `
+            <div class="filter-row">
+                <select class="column-select" data-idx="${idx}">
+                    ${Object.entries(filterConfig.columns).map(([key, c]) =>
+                        `<option value="${key}" ${row.column === key ? 'selected' : ''}>${c.label}</option>`
+                    ).join('')}
+                </select>
+                ${inputHtml}
+                <button type="button" class="remove-filter-btn" data-idx="${idx}">&times;</button>
+            </div>
         `;
-        list.appendChild(tag);
     });
 }
 
@@ -2922,8 +3085,11 @@ document.getElementById('activeFiltersList').addEventListener('click', function(
         const value = e.target.getAttribute('data-value');
         const params = new URLSearchParams(window.location.search);
 
-        // Remove only the specific value for multi-value filters (like status[])
-        if (key === 'status') {
+        // Handle date-range fields
+        if (filterConfig.columns[key] && filterConfig.columns[key].type === 'date-range') {
+            params.delete(`${key}_from`);
+            params.delete(`${key}_to`);
+        } else if (key === 'status') {
             // Remove all status[] with this value
             ['status[]', 'status'].forEach(k => {
                 const values = params.getAll(k);
@@ -2938,7 +3104,6 @@ document.getElementById('activeFiltersList').addEventListener('click', function(
         window.location = `{{ route('tasks.index') }}?${params.toString()}`;
     }
 });
-
 // Remove all filters
 document.getElementById('clearAllActiveFilters').addEventListener('click', function() {
     const params = new URLSearchParams(window.location.search);

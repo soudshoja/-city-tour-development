@@ -21,21 +21,21 @@ class UPayment
 
     public function makeCharge(Request $request)
     {
-        // $request->validate([
-        //     'final_amount' => 'required|numeric|min:1',
-        //     'client_id' => 'required|string|max:255',
-        //     'client_name' => 'required|string|max:255',
-        //     'client_email' => 'nullable|email|max:255',
-        //     'client_phone' => 'nullable|string|max:20',
-        //     'company_email' => 'required|email|max:255',
-        //     'invoice_id' => 'nullable|integer|exists:invoices,id',
-        //     'invoice_number' => 'nullable|string|max:255',
-        //     'payment_id' => 'required|string|max:255',
-        //     'payment_number' => 'required|string|max:255',
-        //     'payment_gateway' => 'required|string|max:255',
-        //     'invoice_partial_id' => 'nullable|array',
-        //     'currency' => 'required|string|max:10',
-        // ]);
+        $request->validate([
+            'final_amount' => 'required|numeric|min:1',
+            'client_id' => 'required|string|max:255',
+            'client_name' => 'required|string|max:255',
+            'client_email' => 'nullable|email|max:255',
+            'client_phone' => 'nullable|string|max:20',
+            'company_email' => 'required|email|max:255',
+            'invoice_id' => 'nullable|integer|exists:invoices,id',
+            'invoice_number' => 'nullable|string|max:255',
+            'payment_id' => 'required|integer|exists:payments,id',
+            'payment_number' => 'required|string|max:255',
+            'payment_gateway' => 'required|string|max:255',
+            'invoice_partial_id' => 'nullable|array',
+            'currency' => 'required|string|max:10',
+        ]);
 
         $orderId = $request->input('invoice_id') ?? $request->input('payment_id');
         $orderReference = $request->input('invoice_number') ?? $request->input('payment_number');

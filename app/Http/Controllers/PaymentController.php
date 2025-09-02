@@ -302,12 +302,13 @@ class PaymentController extends Controller
 
             Log::info('MyFatoorah: ExecutePayment response', ['response' => $response]);
 
-            $paymentReference = $resData['Data']['InvoiceId'] ?? null;
-            $paymentUrl = $resData['Data']['PaymentURL'] ?? null;
+            $paymentReference = $response['Data']['InvoiceId'] ?? null;
+            $paymentUrl = $response['Data']['PaymentURL'] ?? null;
 
-            if(isset($resData['Data']['ExpiryDate'])) {
-                $expiryDate = $resData['Data']['ExpiryDate'];
+            if(isset($response['Data']['ExpiryDate'])) {
+                $expiryDate = $response['Data']['ExpiryDate'];
             }
+
         } else if (strtolower($data['payment_gateway'] === 'upayment')){
             $uPayment = new UPayment();
 

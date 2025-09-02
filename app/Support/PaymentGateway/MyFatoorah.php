@@ -1,7 +1,5 @@
 <?php
 
-namespace App\Support\PaymentGateway;
-
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
@@ -20,9 +18,9 @@ class MyFatoorah
             'final_amount' => 'required|numeric|min:1',
             'client_name' => 'required|string|max:255',
             'client_email' => 'nullable|email|max:255',
-            'invoice_id' => 'required|integer|exists:invoices,id',
+            'invoice_id' => 'nullable|integer|exists:invoices,id',
             'invoice_number' => 'required|string|max:255',
-            'payment_id' => 'required|string|max:255',
+            'payment_id' => 'required|integer|exists:payments,id',
             'payment_gateway' => 'required|string|max:255',
             'payment_method_id' => 'required|integer|exists:payment_methods,id',
             'invoice_partial_id' => 'nullable|array',
@@ -44,7 +42,7 @@ class MyFatoorah
 
         $apiKey  = $myfatoorahConfig['api_key'];
         $baseUrl = $myfatoorahConfig['base_url'];
-
+        
         $invoiceNumber = $request->input('invoice_number');
 
         $paymentMethodId = $request->input('payment_method_id');
@@ -96,7 +94,7 @@ class MyFatoorah
             'Content-Type' => 'application/json',
         ])->post("$baseUrl/ExecutePayment", $executePayload);
 
-        Log::info('MyFatoorah: ExecutePayment response', ['response' => $executeResponse->body()]);
+        Log::info('MyFatoorah: ExecutePayment response', ['response' => $executeResponse->json()]);
 
         if (!$executeResponse->successful()) {
             return response()->json(['error' => 'ExecutePayment failed.'], 500);

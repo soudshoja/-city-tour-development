@@ -17,9 +17,9 @@ class Tap
             'finalAmount' => 'required|numeric|min:1',
             'client_name' => 'required|string|max:255',
             'client_email' => 'nullable|email|max:255',
-            'invoice_id' => 'required|string|max:255',
+            'invoice_id' => 'nullable|integer|exists:invoices,id',
             'invoice_number' => 'required|string|max:255',
-            'payment_id' => 'required|string|max:255',
+            'payment_id' => 'required|integer|exists:payments,id',
             'payment_gateway' => 'required|string|max:255',
             'invoice_partial_id' => 'nullable|array',
         ]);

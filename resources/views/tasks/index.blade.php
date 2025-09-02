@@ -574,7 +574,6 @@
                                         <button id="addFilterRow" class="add-filter-btn">Add Filter</button>
                                     </div>
                                     <div class="flex gap-3">
-                                        <button id="clearAllFilters" class="clear-all-filters-btn">Clear All</button>
                                         <button id="applyFilters" class="apply-filters-btn">Apply Filters</button>
                                     </div>
                                 </div>
@@ -2807,7 +2806,7 @@ const filterConfig = {
         "bill-to":         { label: "Bill To", type: "text" },
         "passenger-name":  { label: "Passenger Name", type: "text" },
         agent_name:        { label: "Agent Name", type: "text" },
-        status:            { label: "Status", type: "select", options: ["issued", "refund", "reissued", "void", "ticketed", "confirmed"] },
+        status:            { label: "Status", type: "select", options: ["-- Select --", "issued", "refund", "reissued", "void", "ticketed", "confirmed"] },
         supplier:          { label: "Supplier", type: "searchable", options: window.companySuppliers || [] },
         "created-at":      { label: "Created Date", type: "date-range" },
         "supplier_pay_date": { label: "Issued Date", type: "date-range" },
@@ -2902,13 +2901,13 @@ document.getElementById('addFilterRow').onclick = () => {
     renderFilterRows();
 };
 // Clear all
-document.getElementById('clearAllFilters').onclick = () => {
-    filterRows = [];
-    renderFilterRows();
-};
+
+// ...existing code...
 document.getElementById('editActiveFilters').addEventListener('click', function() {
     const params = new URLSearchParams(window.location.search);
     filterRows = [];
+
+    // Handle date-range fields
     Object.entries(filterConfig.columns).forEach(([key, col]) => {
         if (col.type === 'date-range') {
             const from = params.get(`${key}_from`);
@@ -2918,23 +2917,35 @@ document.getElementById('editActiveFilters').addEventListener('click', function(
             }
         }
     });
+
+    // Handle status[] and status (avoid duplicates)
+    const statusValues = [
+        ...params.getAll('status[]'),
+        ...params.getAll('status')
+    ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
+
+    statusValues.forEach(val => {
+        filterRows.push({ column: 'status', value: val });
+    });
+
+    // Handle other filters (skip status/status[])
     for (const [key, value] of params.entries()) {
-        if (Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range') {
+        if (
+            Object.keys(filterConfig.columns).includes(key) &&
+            filterConfig.columns[key].type !== 'date-range' &&
+            key !== 'status' && key !== 'status[]'
+        ) {
             filterRows.push({ column: key, value });
         }
-        if (key === 'status[]' || key === 'status') {
-            const statusValues = params.getAll('status[]').length ? params.getAll('status[]') : params.getAll('status');
-            statusValues.forEach(val => {
-                filterRows.push({ column: 'status', value: val });
-            });
-        }
     }
+
     if (filterRows.length === 0) {
         filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
     }
     renderFilterRows();
     document.getElementById('filterModal').classList.add('active');
 });
+// ...existing code...
 // Remove row or update value
 document.getElementById('filterContainer').addEventListener('input', function(e) {
     const idx = +e.target.dataset.idx;
@@ -2968,19 +2979,18 @@ document.getElementById('applyFilters').onclick = () => {
     const params = new URLSearchParams(window.location.search);
     // Remove old filter params
     for (const key of Array.from(params.keys())) {
-        // Remove all keys that match any filter column
         if (Object.keys(filterConfig.columns).includes(key) || key === 'status') params.delete(key);
         if (key.endsWith('_from') || key.endsWith('_to')) params.delete(key);
-
     }
+    // Collect all status values to append as status[]
+    const statusValues = filterRows.filter(row => row.column === 'status').map(row => row.value);
+    statusValues.forEach(val => params.append('status[]', val));
     filterRows.forEach(row => {
-        if (!row.value) return;
+        if (!row.value || row.column === 'status') return;
         const col = filterConfig.columns[row.column];
         if (col && col.type === 'date-range') {
             if (row.value.from) params.append(`${row.column}_from`, row.value.from);
             if (row.value.to) params.append(`${row.column}_to`, row.value.to);
-        } else if (row.column === 'status') {
-            params.append('status[]', row.value);
         } else {
             params.append(row.column, row.value);
         }
@@ -3008,17 +3018,22 @@ function getActiveFiltersFromURL() {
             }
         }
     });
+
+    // Collect all status values (avoid duplicates)
+    const statusValues = [
+        ...params.getAll('status[]'),
+        ...params.getAll('status')
+    ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
+
+    statusValues.forEach(val => {
+        filters.push({ key: 'status', label: filterConfig.columns['status'].label, value: val });
+    });
+
     // Handle other filters
     for (const [key, value] of params.entries()) {
-        if (Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range') {
+        if (Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range' && key !== 'status' && key !== 'status[]') {
             const col = filterConfig.columns[key];
             filters.push({ key, label: col ? col.label : key, value });
-        }
-        if (key === 'status[]' || key === 'status') {
-            const statusValues = params.getAll('status[]').length ? params.getAll('status[]') : params.getAll('status');
-            statusValues.forEach(val => {
-                filters.push({ key: 'status', label: filterConfig.columns['status'].label, value: val });
-            });
         }
     }
     return filters;

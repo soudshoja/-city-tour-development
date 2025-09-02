@@ -107,6 +107,7 @@ class TaskController extends Controller
             $statuses = (array) $request->input('status');
             $tasks = $tasks->whereIn('status', $statuses);
         }
+        
      
         if (!$request->has('invoiced')) {
         return redirect()->route('tasks.index', array_merge($request->all(), [

@@ -902,6 +902,9 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Create only ONE task per accommodation/voucher (do not split by nights or pax).\n";
         $prompt .= "  • If text says 'All Government Taxes and 10% Accommodation service charge by the resort', treat tax & service charge as included (tax_amount = 0, service_charge_included = true, service_charge_rate = 0.10). 'Bank/Credit Card Charge' is not tax; capture it separately as bank_charge and store it into additional_info.\n";
         $prompt .= "  • Use 'Total in XXX' and 'Net Total in XXX' for original price and original total; currency from these lines.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (AirCairo):\n";
+        $prompt .= "  • reference = the 'Reservation Code' exactly. NEVER use Ticket Number as reference. ticket_number = the full digit 'Ticket Number' exactly as shown.\n";
+        $prompt .= "  • Prices: total = 'Total fare'; tax = SUM of all lines under 'Taxes/fees/carrier-imposed charges'; price = total − tax. If 'Fare' > 0, set price = Fare.\n";
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

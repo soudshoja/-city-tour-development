@@ -1197,25 +1197,29 @@
                                                                                             <option value="">Set
                                                                                                 Status
                                                                                             </option>
-                                                                                            <option value="Confirmed"
+                                                                                            <option value="confirmed"
                                                                                                 {{ $task->status === 'confirmed' ? 'selected' : '' }}>
                                                                                                 Confirmed
                                                                                             </option>
-                                                                                            <option value="Issued"
+                                                                                            <option value="issued"
                                                                                                 {{ $task->status === 'issued' ? 'selected' : '' }}>
                                                                                                 Issued
                                                                                             </option>
-                                                                                            <option value="Reissued"
+                                                                                            <option value="reissued"
                                                                                                 {{ $task->status === 'reissued' ? 'selected' : '' }}>
                                                                                                 Reissued
                                                                                             </option>
-                                                                                            <option value="Refund"
+                                                                                            <option value="refund"
                                                                                                 {{ $task->status === 'refund' ? 'selected' : '' }}>
                                                                                                 Refund
                                                                                             </option>
-                                                                                            <option value="Void"
+                                                                                            <option value="void"
                                                                                                 {{ $task->status === 'void' ? 'selected' : '' }}>
                                                                                                 Void
+                                                                                            </option>
+                                                                                            <option value="emd"
+                                                                                                {{ $task->status === 'emd' ? 'selected' : '' }}>
+                                                                                                Emd
                                                                                             </option>
                                                                                         </select>
                                                                                         @endif
@@ -2807,7 +2811,7 @@ const filterConfig = {
         "bill-to":         { label: "Bill To", type: "text" },
         "passenger-name":  { label: "Passenger Name", type: "text" },
         agent_name:        { label: "Agent Name", type: "text" },
-        status:            { label: "Status", type: "select", options: ["issued", "refund", "reissued", "void", "ticketed", "confirmed"] },
+        status:            { label: "Status", type: "select", options: ["issued", "refund", "reissued", "void", "ticketed", "confirmed", "emd"] },
         supplier:          { label: "Supplier", type: "searchable", options: window.companySuppliers || [] },
         "created-at":      { label: "Created Date", type: "date-range" },
         "supplier_pay_date": { label: "Issued Date", type: "date-range" },

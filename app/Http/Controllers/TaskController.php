@@ -17,6 +17,7 @@ use App\Models\Hotel;
 use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\Company;
+use App\Models\Credit;
 use App\Models\Branch;
 use App\Models\Room;
 use App\Models\TaskHotelDetail;
@@ -933,7 +934,7 @@ foreach ($filterable as $field) {
      */
     public function processTaskFinancial(Task $task)
     {
-        if(!($task->status == 'issued' || $task->status == 'reissued' || $task->status == 'void' || $task->status == 'refund' || $task->status == 'emd')) {
+        if (!in_array($task->status, ['issued','reissued','void','refund','emd'], true)) {
             Log::info('Skipping financial processing for task: ' . $task->reference . ' - status: ' . $task->status);
             return;
         }
@@ -1591,11 +1592,40 @@ foreach ($filterable as $field) {
         ]);
     }
 
+     /**
+     * Delete financial records when task status changes.
+     * Removes this task’s journal entries and linked transactions.
+     */
+    private function revertFinancialsForTask(Task $task): void
+    {
+        Log::info('Reverting financials for task: ' . $task->reference);
+
+        $entries = JournalEntry::where('task_id', $task->id)->get();
+        foreach ($entries as $entry) {
+            $entry->delete();
+        }
+
+        $transactions = Transaction::with('journalEntries')
+            ->where('description', 'like', '%' . $task->reference . '%')
+            ->get();
+
+        foreach ($transactions as $transaction) {
+            $transaction->delete();
+        }
+    }
+
     public function toggleStatus(Request $request, Task $task)
     {
         $task->enabled = $request->is_enabled;
 
         if ($task->enabled) {
+            if ($task->status !== 'issued' && $task->status !== 'confirmed' && !$task->original_task_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Task must be linked to an original task before enabling.'
+                ], 400);
+            }
+
             if (!$task->is_complete) {
                 return response()->json([
                     'success' => false,
@@ -1637,7 +1667,7 @@ foreach ($filterable as $field) {
         return response()->json(['success' => true]);
     }
 
-    public function voidTask(Task $task, Task $issuedTask, Payment $payment)
+    public function voidTask(Task $voidTask, Task $issuedTask, Payment $payment)
     {
         $client = Client::find($payment->client_id);
 
@@ -1646,15 +1676,35 @@ foreach ($filterable as $field) {
             Log::warning("Client not found for payment [{$payment->id}] during void refund.");
         }
 
-        $oldCredit = $client->credit;
+        $oldCredit = Credit::getTotalCreditsByClient($client->id);
 
-        $client->credit += $payment->amount;
-        $client->save();
+        DB::beginTransaction();
+        try {
+            $voidCreditData = [
+                'company_id'  => $client->agent->branch->company->id,
+                'client_id'   => $client->id,
+                'type'        => 'Void',
+                'description' => 'Void for task:' . $voidTask->reference,
+                'amount'      => $payment->amount,
+            ];
 
-        Log::info("Void for task [{$task->reference}]: Client credit before = {$oldCredit}, after = {$client->credit}");
+            Log::info('Creating Credit record:', $voidCreditData);
+            Credit::create($voidCreditData);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to create Credit record', [
+                'data'  => $voidCreditData,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+        DB::commit();
+
+        $afterCredit = Credit::getTotalCreditsByClient($client->id);
+        Log::info("Void for task {$voidTask->reference}: Client credit before = {$oldCredit}, after = {$afterCredit}");
 
         // Use task's issued_date as transaction_date
-        $transactionDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : Carbon::now();
+        $transactionDate = $voidTask->supplier_pay_date ? Carbon::parse($voidTask->supplier_pay_date) : Carbon::now();
 
         $voidTransaction = Transaction::create([
             'branch_id'        => $client->agent->branch_id,
@@ -1663,7 +1713,7 @@ foreach ($filterable as $field) {
             'entity_type'      => 'client',
             'transaction_type' => 'debit',
             'amount'           => $payment->amount,
-            'description'      => 'Void task: ' . $task->reference,
+            'description'      => 'Void task: ' . $issuedTask->reference,
             'reference_type'   => 'Refund',
             'reference_number' => $payment->voucher_number,
             'transaction_date' => $transactionDate,
@@ -1673,8 +1723,8 @@ foreach ($filterable as $field) {
             throw new \Exception("Failed to create refund transaction.");
         }
 
-        $entries = JournalEntry::whereHas('invoiceDetail', function ($query) use ($task) {
-            $query->where('task_description', $task->reference);
+        $entries = JournalEntry::whereHas('invoiceDetail', function ($query) use ($issuedTask) {
+            $query->where('task_description', $issuedTask->reference);
         })->get();
 
         foreach ($entries as $entry) {
@@ -1695,7 +1745,10 @@ foreach ($filterable as $field) {
             ]);
         }
 
-        Log::info('Voided task refunded and reversed: ' . $task->reference);
+        Log::info('Voided task refunded and reversed', [
+            'void_task'     => $voidTask->reference,
+            'original_task' => $issuedTask->reference,
+        ]);        
 
         DB::commit();
         return response()->json([
@@ -1757,22 +1810,19 @@ foreach ($filterable as $field) {
             'total.required' => 'Please enter the total amount',
         ]);
 
-        if (strtolower($request->status) !== 'issued' && strtolower($request->status) !== 'confirmed' && !$request->filled('original_task_id')) {
-            return back()->withErrors(['original_task_id' => 'Task must be linked to an original task'])->withInput();
-        }
-
         DB::beginTransaction();
 
         try {
             $task = Task::findOrFail($id);
             $oldPaymentMethod = $task->payment_method_account_id;
+            $oldStatus = $task->status;
 
-            Log::info('Before task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
+            Log::info('Before task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id. ', status: ' . $task->status);
             Log::info('Incoming Request: agent_id: ' . $request->agent_id . ', client_id: ' . $request->client_id);
 
             $prevClientName = $task->client_name;
             $prevAgentId = $task->agent_id;
-            $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
+            $processedThisRequest = false;
 
             $data = $request->only([
                 'reference',
@@ -1800,7 +1850,7 @@ foreach ($filterable as $field) {
             }
 
             $task->update($data);
-            Log::info('After task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id);
+            Log::info('After task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id . ', status: ' . $task->status);
 
             if ($request->filled('payment_method_account_id') && $request->payment_method_account_id != $oldPaymentMethod) {
                 $response = $this->updateJournalPaymentMethod($task, $request->payment_method_account_id);
@@ -1824,14 +1874,58 @@ foreach ($filterable as $field) {
                 }
             }
 
+            if ($oldStatus !== $task->status) {
+                if ($task->status === 'confirmed') {
+                    Log::info('Confirmed status: reverting and skipping COA creation: ' . $task->reference);
+                    $this->revertFinancialsForTask($task);
+                    $processedThisRequest = true;
+                } else {
+                    if (in_array($task->status, ['issued','reissued','emd','void','refund'], true)) {
+                        if ($task->status === 'void') {
+                            $original = $task->original_task_id ? Task::find($task->original_task_id) : null;
+                        
+                            if ($original) {
+                                $originalPaid = Payment::whereHas('partials.invoice.invoiceDetails', function ($q) use ($original) {
+                                        $q->where('task_id', $original->id);
+                                    })
+                                    ->whereHas('partials', function ($q) {
+                                        $q->where('status', 'paid');
+                                    })
+                                    ->exists();
+                        
+                                Log::info('Void revert target', [
+                                    'void_task_id'     => $task->id,
+                                    'original_task_id' => $original->id,
+                                    'original_paid'    => $originalPaid,
+                                ]);
+                        
+                                $this->revertFinancialsForTask($originalPaid ? $original : $task);
+                            }
+                        } else {
+                            $this->revertFinancialsForTask($task);
+                        }
+                        $this->processTaskFinancial($task);
+                        $processedThisRequest = true;
+                    }
+                }
+            }
+
             $clientChanged = $task->wasChanged('client_id');
             $agentWasAssigned = !$prevAgentId && $task->agent_id;
             $agentWasChanged = $prevAgentId && $task->agent_id && $prevAgentId !== $task->agent_id;
 
             // Update enabled status: task must be complete AND have an agent assigned
             $shouldBeEnabled = $task->is_complete && $task->agent_id;
+            $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
 
-            if ($shouldBeEnabled && !$wasEnabled) {
+            if ($shouldBeEnabled) {
+                if ($task->status !== 'issued' && $task->status !== 'confirmed' && !$task->original_task_id) {
+                    DB::rollBack();
+                    return back()->withErrors(['original_task_id' => 'Task must be linked to an original task'])->withInput();
+                }
+            }
+
+            if (!$processedThisRequest && $shouldBeEnabled && !$wasEnabled) {
                 $task->enabled = true;
                 $task->save();
                 // Process financials if not already processed
@@ -1908,7 +2002,6 @@ foreach ($filterable as $field) {
             return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
         }
     }
-
 
     public function upload(Request $request)
     {
@@ -3321,7 +3414,7 @@ foreach ($filterable as $field) {
             'transaction_type' => 'debit',
             'amount' => $originalTask->total,
             'task_id' => $originalTask->id,
-            'description' => 'Void reversal for: ' . $originalTask->reference,
+            'description' => 'Void reversal: ' . $originalTask->reference,
             'reference_type' => 'Payment',
             'transaction_date' => $transactionDate,
         ]);

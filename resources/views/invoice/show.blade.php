@@ -102,10 +102,7 @@
     <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         <!-- Header -->
         <div class="flex justify-between items-center mb-10">
-            {{-- Left: Company Logo --}}
-            <x-application-logo class="custom-logo-size"  />
-
-            {{-- Right: Invoice Details --}}
+            <img class="w-[120px] h-[95px] object-contain" src="{{ $invoice->agent->branch->company->logo ? Storage::url($invoice->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
             <div class="text-right">
                 <h1 class="text-2xl font-bold text-gray-800">INVOICE</h1>
                 <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>

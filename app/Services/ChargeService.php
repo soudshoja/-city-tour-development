@@ -174,4 +174,72 @@ class ChargeService
             apiServiceCharge: $apiServiceCharge
         );
     }
+
+    /**
+     * Calculate UPayment charges
+     */
+    public static function UPaymentCharge($amount, $methodCode, $companyId)
+    {
+        // Try to find UPayment charge configuration
+        $charge = Charge::where('name', 'UPayment')
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$charge) {
+            // Fallback to payment method if charge not found
+            $method = PaymentMethod::find($methodCode);
+            
+            if (!$method) {
+                Log::warning('No UPayment charge or payment method found', [
+                    'method_code' => $methodCode,
+                    'company_id' => $companyId
+                ]);
+                return self::standardReturn(
+                    finalAmount: $amount,
+                    fee: 0,
+                    paidBy: null,
+                    netReceived: $amount
+                );
+            }
+
+            $paidBy = $method->paid_by;
+            $chargeValue = $method->self_charge ?? $method->service_charge ?? 0;
+            $chargeType = $method->charge_type ?? 'Flat Rate';
+        } else {
+            $paidBy = $charge->paid_by;
+            $chargeValue = !is_null($charge->self_charge) ? $charge->self_charge : $charge->amount;
+            $chargeType = !is_null($charge->self_charge) ? ($charge->self_charge_type ?? 'Flat Rate') : $charge->charge_type;
+        }
+
+        // Calculate the fee and round up
+        $fee = $chargeValue > 0 ? ceil(self::calculateChargeAmount($amount, $chargeValue, $chargeType)) : 0;
+
+        $totalFee = 0;
+        // Calculate final amounts based on who pays
+        if ($paidBy === 'Client') {
+           $totalFee = $fee;
+        }
+
+        $finalAmount = $amount + $totalFee;
+        $netReceived = $amount - $totalFee;
+
+        Log::info('UPayment charge calculated', [
+            'amount' => $amount,
+            'charge_value' => $chargeValue,
+            'charge_type' => $chargeType,
+            'total_fee' => $totalFee,
+            'finalAmount' => $finalAmount,
+            'netReceived' => $netReceived,
+            'paid_by' => $paidBy,
+            'company_id' => $companyId
+        ]);
+
+        return self::standardReturn(
+            finalAmount: $finalAmount,
+            fee: $totalFee,
+            paidBy: $paidBy,
+            netReceived: $netReceived,
+            chargeType: $chargeType
+        );
+    }
 }

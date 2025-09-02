@@ -57,7 +57,7 @@ class TaskController extends Controller
 
     public function index(Request $request)
     {
-        
+    
         $user = Auth::user();
 
         $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'info'];
@@ -67,7 +67,7 @@ class TaskController extends Controller
         }
 
         $visibleColumns = session('visible_task_columns', $defaultColumns);
-
+        $sortBy = $request->query('sortBy', 'supplier_pay_date');
         $sortBy = $request->query('sortBy', 'created_at');
         $sortOrder = $request->query('sortOrder', 'desc');
 
@@ -107,8 +107,26 @@ class TaskController extends Controller
             $statuses = (array) $request->input('status');
             $tasks = $tasks->whereIn('status', $statuses);
         }
+        if (!$request->filled('status')) {
+            return redirect()->route('tasks.index', array_merge($request->all(), [
+                'status' => ['issued', 'refund', 'reissued', 'confirmed'], // default statuses
+            ]));
+        }
+        if (!$request->has('invoiced')) {
+        return redirect()->route('tasks.index', array_merge($request->all(), [
+                'invoiced' => 0,
+                'view_type' => 'invoice',
+            ]));
+        }
+        if ($request->has('invoiced')) {
+            if ($request->input('invoiced') == '1') {
+                $tasks = $tasks->whereHas('invoiceDetail');
+            } elseif ($request->input('invoiced') == '0') {
+                $tasks = $tasks->whereDoesntHave('invoiceDetail');
+            }
+        }
         $filterable = [
-    'reference', 'bill-to', 'passenger-name', 'agent_name', 'supplier', 'created-at',
+    'reference', 'bill-to', 'passenger-name', 'agent_name', 'supplier', 'created-at','supplier_pay_date',
     'cancellation-deadline', 'type', 'gds-reference', 'amadeus-reference', 'created-by',
     'issued-by', 'branch-name', 'invoice'
 ];
@@ -148,8 +166,30 @@ foreach ($filterable as $field) {
             }
             break;
         case 'created-at':
+            $from = $request->input('created-at_from');
+            $to = $request->input('created-at_to');
+            if ($from) {
+                $tasks = $tasks->whereDate('created_at', '>=', $from);
+            }
+            if ($to) {
+                $tasks = $tasks->whereDate('created_at', '<=', $to);
+            }
+            // fallback for single date (old UI)
             if ($request->filled('created-at')) {
                 $tasks = $tasks->whereDate('created_at', $request->input('created-at'));
+            }
+            break;
+        case 'supplier_pay_date':
+            $from = $request->input('supplier_pay_date_from');
+            $to = $request->input('supplier_pay_date_to');
+            if ($from) {
+                $tasks = $tasks->whereDate('supplier_pay_date', '>=', $from);
+            }
+            if ($to) {
+                $tasks = $tasks->whereDate('supplier_pay_date', '<=', $to);
+            }
+            if ($request->filled('supplier_pay_date')) {
+                $tasks = $tasks->whereDate('supplier_pay_date', $request->input('supplier_pay_date'));
             }
             break;
         case 'cancellation-deadline':
@@ -3480,7 +3520,7 @@ foreach ($filterable as $field) {
                 }
                 Log::info("Soft deleted " . $journalEntries->count() . " journal entries and their transactions for task: {$task->reference}");
             }
-
+            
             // 2. Soft delete invoice details related to the task
             $invoiceDetails = InvoiceDetail::where('task_id', $id)->get();
             $invoiceIds = [];

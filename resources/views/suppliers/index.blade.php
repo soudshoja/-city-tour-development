@@ -134,8 +134,9 @@
                                     <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
                                         :class="hasHotel ? 'translate-x-5' : ''"></span>
                                 </button>
-
-                                <input type="hidden" name="has_hotel" :value="hasHotel ? 1 : ''">
+                                <template x-if="hasHotel">
+                                    <input type="hidden" name="has_hotel" value="1">
+                                </template>
                             </div>
 
                             <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
@@ -314,7 +315,9 @@
                                 <option value="online">Online</option>
                                 <option value="offline">Offline</option>
                             </select>
-                            <input type="hidden" name="is_online" :value="hasHotel ? (hotelChannel === 'online' ? 1 : 0) : ''">
+                            <template x-if="hasHotel">
+                                <input type="hidden" name="is_online" :value="hotelChannel === 'online' ? 1 : 0">
+                            </template>
                         </div>
                     </div>
                     <div class="mt-5 flex items-center justify-between">
@@ -487,8 +490,9 @@
                                                     <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
                                                         :class="hasHotel ? 'translate-x-5' : ''"></span>
                                                 </button>
-
-                                                <input type="hidden" name="has_hotel" :value="hasHotel ? 1 : ''">
+                                                <template x-if="hasHotel">
+                                                    <input type="hidden" name="has_hotel" value="1">
+                                                </template>
                                             </div>
 
                                             <div class="flex items-center justify-between p-2 rounded-lg" @click.stop>
@@ -667,7 +671,9 @@
                                                 <option value="online">Online</option>
                                                 <option value="offline">Offline</option>
                                             </select>
-                                            <input type="hidden" name="is_online" :value="hasHotel ? (hotelChannel === 'online' ? 1 : 0) : ''">
+                                            <template x-if="hasHotel">
+                                                <input type="hidden" name="is_online" :value="hotelChannel === 'online' ? 1 : 0">
+                                            </template>
                                         </div>
                                     </div>
 

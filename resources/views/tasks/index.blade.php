@@ -523,38 +523,27 @@
                         searchParam="q"
                         placeholder="Quick search for tasks" />
                     <!-- Status Filter Checkboxes -->
-@php
-    $statuses = ['issued', 'refund', 'reissued', 'confirmed', 'void'];
-    $selectedStatuses = request()->input('status', []);
-
-    if (!is_array($selectedStatuses)) {
-        $selectedStatuses = [$selectedStatuses];
-    }
-
-    // If no statuses are selected from request, default to all except 'void'
-    if (empty($selectedStatuses)) {
-        $selectedStatuses = array_filter($statuses, fn($s) => $s !== 'void');
-    }
-@endphp
-
-<form method="GET" action="{{ route('tasks.index') }}" id="status-filter-form" class="flex flex-wrap gap-2 items-center my-2">
-    <span class="font-semibold text-gray-700 mr-2">Status:</span>
-    @foreach($statuses as $status)
-        <label class="inline-flex items-center px-3 py-1 bg-white border border-gray-300 rounded-full shadow-sm cursor-pointer hover:bg-blue-50 transition
-            {{ in_array($status, $selectedStatuses) ? 'ring-2 ring-blue-400' : '' }}">
-            <input type="checkbox" name="status[]" value="{{ $status }}"
-                class="form-checkbox accent-blue-600 rounded mr-2"
-                {{ in_array($status, $selectedStatuses) ? 'checked' : '' }}>
-            <span class="capitalize text-sm text-gray-700">{{ $status }}</span>
-        </label>
-    @endforeach
-
-    @if(request()->has('q'))
-        <input type="hidden" name="q" value="{{ request('q') }}">
-    @endif
-
-    <button type="submit" id="applyFilters" class="apply-filters-btn">Apply</button>
-</form>
+                    <!-- <form method="GET" action="{{ route('tasks.index') }}" id="status-filter-form" class="flex flex-wrap gap-2 items-center my-2">
+                        @php
+                        $statuses = ['issued', 'refund', 'reissued', 'confirmed', 'void'];
+                        $selectedStatuses = request()->input('status', []);
+                        if (!is_array($selectedStatuses)) $selectedStatuses = [$selectedStatuses];
+                        @endphp
+                        <span class="font-semibold text-gray-700 mr-2">Status:</span>
+                        @foreach($statuses as $status)
+                        <label class="inline-flex items-center px-3 py-1 bg-white border border-gray-300 rounded-full shadow-sm cursor-pointer hover:bg-blue-50 transition
+                            {{ in_array($status, $selectedStatuses) ? 'ring-2 ring-blue-400' : '' }}">
+                            <input type="checkbox" name="status[]" value="{{ $status }}"
+                                class="form-checkbox accent-blue-600 rounded mr-2"
+                                onchange="document.getElementById('status-filter-form').submit();"
+                                {{ in_array($status, $selectedStatuses) ? 'checked' : '' }}>
+                            <span class="capitalize text-sm text-gray-700">{{ $status }}</span>
+                        </label>
+                        @endforeach
+                        @if(request()->has('q'))
+                        <input type="hidden" name="q" value="{{ request('q') }}">
+                        @endif
+                    </form> -->
 
                         <button type="button" id="toggleFilters"
                             class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
@@ -704,7 +693,7 @@
                     </div>                    
                 </div>
                 
-                <div id="activeFiltersContainer" class="active-filters">
+                <div id="activeFiltersContainer" class="active-filters" style="display: none;">
                     <div class="bg-white shadow-lg rounded-2xl border border-gray-200 p-4 transition-all duration-300">
                         <!-- Header -->
                             <div class="flex justify-between items-center mb-4">
@@ -2880,12 +2869,11 @@ function renderActiveFilters() {
     const container = document.getElementById('activeFiltersContainer');
     const list = document.getElementById('activeFiltersList');
     list.innerHTML = '';
-    // Always show the container
-    container.style.display = '';
     if (filters.length === 0) {
-        list.innerHTML = `<span class="text-gray-400 text-sm">No active filters</span>`;
+        container.style.display = 'none';
         return;
     }
+    container.style.display = '';
     filters.forEach(f => {
         const tag = document.createElement('div');
         tag.className = 'active-filter-tag';
@@ -3020,18 +3008,17 @@ function getActiveFiltersFromURL() {
             }
         }
     });
-    // Handle status[] only ONCE
-    const statusValues = params.getAll('status[]').length ? params.getAll('status[]') : params.getAll('status');
-    if (statusValues.length) {
-        statusValues.forEach(val => {
-            filters.push({ key: 'status', label: filterConfig.columns['status'].label, value: val });
-        });
-    }
     // Handle other filters
     for (const [key, value] of params.entries()) {
-        if (key !== 'status' && key !== 'status[]' && Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range') {
+        if (Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range') {
             const col = filterConfig.columns[key];
             filters.push({ key, label: col ? col.label : key, value });
+        }
+        if (key === 'status[]' || key === 'status') {
+            const statusValues = params.getAll('status[]').length ? params.getAll('status[]') : params.getAll('status');
+            statusValues.forEach(val => {
+                filters.push({ key: 'status', label: filterConfig.columns['status'].label, value: val });
+            });
         }
     }
     return filters;

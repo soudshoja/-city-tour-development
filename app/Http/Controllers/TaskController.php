@@ -559,9 +559,9 @@ class TaskController extends Controller
         $queryChkExistTask = Task::query();
         $queryChkExistTask->where('reference', $request->reference)
             ->where('company_id', $request->company_id)
-            ->where('client_id', $request->client_id)
             ->where('client_name', $request->client_name) // same reference name but different client name considered as different task
-            ->where('status', $request->status);
+            ->when($request->filled('client_id'),   fn ($q) => $q->where('client_id',  $request->client_id))
+            ->when($request->filled('supplier_id'), fn ($q) => $q->where('supplier_id',$request->supplier_id));
 
         if ($request->supplier_id) {
             $queryChkExistTask->where('supplier_id', $request->supplier_id);
@@ -602,15 +602,17 @@ class TaskController extends Controller
                 'check_out'        => $checkOut,
             ]);
         } else {
-            $existingTask = (clone $queryChkExistTask)->first();
+           $existingTask = (clone $queryChkExistTask)
+                ->whereIn('status', ['issued'])
+                ->first();
         }
 
         if ($existingTask) {
-            if ($existingTask->total != $request->total && $existingTask->status == 'issued' && $existingTask->supplier->name === 'Jazeera Airways') {
+            if ($existingTask->total != $request->total && $existingTask->status == 'issued' && ($existingTask->supplier->name === 'Jazeera Airways' || $existingTask->supplier->name === 'Fly Dubai')) {
                 Log::warning('This reference has already existed for task: ' . $existingTask->reference . '. Proceeding for Reissued task.');
 
                 $newTaskTotal = (float)$request->total - (float)$existingTask->total;
-
+                Log::info('Deducted total for reissued task: ' . $newTaskTotal . ' from ' . $request->total . ' - ' . $existingTask->total);
                 $request->merge([
                     'total' => $newTaskTotal,
                     'status' => 'reissued',

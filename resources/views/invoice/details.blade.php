@@ -71,7 +71,7 @@
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">#</th>
                                     <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Task Details</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Invoice Price</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Invoice Price (KWD)</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
@@ -189,7 +189,7 @@
                                                         <div>
                                                             <dt class="font-medium text-gray-500 dark:text-slate-400">Meal / Equipment</dt>
                                                             <dd class="text-gray-900 dark:text-slate-200">
-                                                                {{ $flight->flight_meal ?? '—' }} {{ $flight->equipment ? " / {$flight->equipment}" : '' }}
+                                                                {{ trim($flight->flight_meal) ? $flight->flight_meal :  'TBA' }} {{ $flight->equipment ? " / {$flight->equipment}" : '' }}
                                                             </dd>
                                                         </div>
                                                     @endif
@@ -358,7 +358,7 @@
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Date</th>
                                     <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Gateway</th>
-                                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Ref</th>
+                                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Reference</th>
                                     <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Amount</th>
                                     <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Service Charge</th>
                                     <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Total</th>
@@ -378,16 +378,21 @@
                                             $isCredit = (stripos($partial->payment_gateway ?? '', 'credit') !== false);
                                         @endphp
                                         <td class="px-6 py-3 text-gray-700 dark:text-slate-300">
-                                            {{ $voucher !== '' ? $voucher : ($isCredit ? 'Credit' : 'TBA') }}
+                                            @if($voucher)
+                                                <a href="{{ route('payment.link.show', ['companyId' => $company->id, 'voucherNumber' => $voucher]) }}"
+                                                class="text-blue-500 hover:text-blue-700" target="_blank">{{ $voucher }}</a>
+                                            @else
+                                                {{ $isCredit ? 'Client Credit' : 'TBA' }}
+                                            @endif
                                         </td>
                                         <td class="px-6 py-3 text-right font-medium text-gray-900 dark:text-white">
-                                            {{ number_format($partial->amount ?? 0, 2) }} KWD
+                                            {{ number_format($partial->status === 'unpaid' ? $partial->amount : $partial->amount - $partial->service_charge, 2) }} KWD
                                         </td>
                                         <td class="px-6 py-3 text-right text-gray-900 dark:text-white">
                                             {{ number_format($partial->service_charge ?? 0, 2) }} KWD
                                         </td>
                                         <td class="px-6 py-3 text-right text-gray-900 dark:text-white">
-                                            {{ number_format(($partial->status === 'unpaid' ? $partial->amount + $partial->service_charge : $partial->amount), 2) }} KWD
+                                            {{ number_format($partial->status === 'unpaid' ? $partial->amount + $partial->service_charge : $partial->amount, 2) }} KWD
                                         </td>
                                     </tr>
                                 @endforeach

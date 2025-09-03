@@ -2136,7 +2136,7 @@ class InvoiceController extends Controller
         return redirect()->route('invoice.index')->with('status', 'Invoice status updated successfully!');
     }
 
-    public function showInvoice(int $companyId, string $invoiceNumber)
+    public function showDetails(int $companyId, string $invoiceNumber)
     {
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
             ->whereHas('agent.branch.company', function ($q) use ($companyId) {

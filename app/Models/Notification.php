@@ -15,8 +15,14 @@ class Notification extends Model
         'user_id',
         'title',
         'message',
+        'type',
+        'data',
         'status',
         'close',
+    ];
+
+    protected $casts = [
+        'data' => 'array',
     ];
 
     public function getFormattedCreatedAtAttribute()

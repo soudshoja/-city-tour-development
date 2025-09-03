@@ -853,6 +853,29 @@
                                     class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical"
                                     placeholder="Client Address">{{ $client->address }}</textarea>
                             </div>
+
+                            @can('assignOwnerAgent', App\Models\Client::class)
+                            <div>
+                                <x-searchable-dropdown
+                                    name="agent_id"
+                                    :items="isset($agents) ? $agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name]) : []"
+                                    :placeholder="$client->agent ? $client->agent->name : 'Select Owner Agent'"
+                                    :selectedName="$client->agent ? $client->agent->name : null"
+                                    label="Client Owner (Agent)"
+                                />
+                                <p class="text-xs text-gray-500 mt-1">The agent who created/owns this client</p>
+                            </div>
+                            @endcan
+
+                            <div>
+                                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                <select name="status" id="status"
+                                    class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="active" {{ $client->status == 'active' ? 'selected' : '' }}>Active</option>
+                                    <option value="inactive" {{ $client->status == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                    <option value="suspended" {{ $client->status == 'suspended' ? 'selected' : '' }}>Suspended</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 

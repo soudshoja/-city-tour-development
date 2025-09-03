@@ -205,10 +205,17 @@ class ClientController extends Controller
             'dial_code' => 'required|string|max:30',
             'phone' => 'required|string|max:15',
             'agent_id' => 'required|exists:agents,id',
+            'company_id' => 'nullable|exists:companies,id', //this will be compulsory later
             'civil_no' => 'required|unique:clients,civil_no',
             'passport_no' => 'nullable|string',
             'date_of_birth' => 'nullable|date',
         ]);
+
+        if(!$request->company_id){ //this fallback is temporary until company_id is added in the form
+            $companyId = Agent::find($request->agent_id)->branch->company_id;
+
+            $request->merge(['company_id' => $companyId]);
+        }
 
         $response = $this->storeProcess($request);
 
@@ -669,6 +676,7 @@ class ClientController extends Controller
     {
 
         $client = Client::findOrFail($payment->client_id);
+        $agent = Agent::find($payment->agent_id);
 
         if (!$client) {
             return [
@@ -681,7 +689,7 @@ class ClientController extends Controller
         try {
             // Insert credit table
             $topupCreditClientData = [
-                'company_id'  => $client->agent->branch->company->id,
+                'company_id'  => $agent->branch->company->id,
                 'client_id'   => $client->id,
                 'type'        => 'Topup',
                 'description' => 'Topup Credit via ' . $payment->voucher_number,
@@ -710,7 +718,7 @@ class ClientController extends Controller
         try {
 
             $chargeRecord = Charge::where('name', 'LIKE', '%' . $payment->payment_gateway . '%')
-                ->where('company_id', $client->agent->branch->company->id)
+                ->where('company_id', $agent->branch->company->id)
                 ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id')
                 ->first();
 
@@ -721,18 +729,18 @@ class ClientController extends Controller
                 $coaBankFeeIdRec = $chargeRecord->acc_fee_bank_id; //COA (Assets) for Bank Account for the selected Payment Gateway
 
                 $bankCOAFee = Account::where('id', $coaFeeIdRec)
-                    ->where('company_id', $client->agent->branch->company->id)
+                    ->where('company_id', $agent->branch->company->id)
                     ->first();
 
                 $bankPaymentFee = Account::where('id', $coaBankFeeIdRec)
-                    ->where('company_id', $client->agent->branch->company->id)
+                    ->where('company_id', $agent->branch->company->id)
                     ->first();
             }
 
             $transaction = Transaction::create([
-                'branch_id' =>  $client->agent->branch->id,
-                'company_id' =>  $client->agent->branch->company->id,
-                'entity_id' =>  $client->agent->branch->company->id,
+                'branch_id' =>  $agent->branch->id,
+                'company_id' =>  $agent->branch->company->id,
+                'entity_id' =>  $agent->branch->company->id,
                 'entity_type' => 'client',
                 'transaction_type' => 'debit',
                 'amount' => $payment->amount,
@@ -766,8 +774,8 @@ class ClientController extends Controller
                 // Create record to payment_gateway assets coa account (OK)
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
-                    'company_id' => $client->agent->branch->company->id,
-                    'branch_id' => $client->agent->branch->id,
+                    'company_id' => $agent->branch->company->id,
+                    'branch_id' => $agent->branch->id,
                     'account_id' =>  $bankPaymentFee->id,
                     'transaction_date' => Carbon::now(),
                     'description' => 'Client Pays by ' . $client->first_name . ' via (Assets): ' . $bankPaymentFee->name,
@@ -788,8 +796,8 @@ class ClientController extends Controller
             if ($bankCOAFee) {
                 JournalEntry::create([
                     'transaction_id'    => $transaction->id,
-                    'company_id'        => $client->agent->branch->company->id,
-                    'branch_id'         => $client->agent->branch->id,
+                    'company_id'        => $agent->branch->company->id,
+                    'branch_id'         => $agent->branch->id,
                     'account_id'        => $bankCOAFee->id,
                     'voucher_number'    => $payment->voucher_number,
                     'transaction_date'  => Carbon::now(),
@@ -922,6 +930,8 @@ class ClientController extends Controller
             ];
         }
 
+        $agent = Agent::find($request->agent_id);
+
         //dd($balanceCredit);
 
         DB::beginTransaction();
@@ -929,7 +939,7 @@ class ClientController extends Controller
         try {
 
             $liabilities = Account::where('name', 'Liabilities')
-                ->where('company_id', $client->agent->branch->company->id)
+                ->where('company_id', $agent->branch->company->id)
                 ->first();
 
             if (!$liabilities) {
@@ -937,7 +947,7 @@ class ClientController extends Controller
             }
 
             $advances = Account::where('name', 'Advances')
-                ->where('company_id', $client->agent->branch->company->id)
+                ->where('company_id', $agent->branch->company->id)
                 ->where('parent_id', $liabilities->id)
                 ->first();
 
@@ -946,7 +956,7 @@ class ClientController extends Controller
             }
 
             $clientAdvance = Account::where('name', 'Client')
-                ->where('company_id', $client->agent->branch->company->id)
+                ->where('company_id', $agent->branch->company->id)
                 ->where('parent_id', $advances->id)
                 ->where('root_id', $liabilities->id)
                 ->first();
@@ -956,7 +966,7 @@ class ClientController extends Controller
             }
 
             $refundPayable = Account::where('name', 'Refund Payable')
-                ->where('company_id', $client->agent->branch->company->id)
+                ->where('company_id', $agent->branch->company->id)
                 ->where('root_id', $liabilities->id)
                 ->first();
 
@@ -965,7 +975,7 @@ class ClientController extends Controller
             }
 
             $clientRefund = Account::where('name', 'Clients')
-                ->where('company_id', $client->agent->branch->company->id)
+                ->where('company_id', $agent->branch->company->id)
                 ->where('parent_id', $refundPayable->id)
                 ->where('root_id', $liabilities->id)
                 ->first();
@@ -975,9 +985,9 @@ class ClientController extends Controller
             }
 
             $transaction = Transaction::create([
-                'branch_id' =>  $client->agent->branch->id,
-                'company_id' =>  $client->agent->branch->company->id,
-                'entity_id' =>  $client->agent->branch->company->id,
+                'branch_id' =>  $agent->branch->id,
+                'company_id' =>  $agent->branch->company->id,
+                'entity_id' =>  $agent->branch->company->id,
                 'entity_type' => 'client',
                 'transaction_type' => 'credit',
                 'amount' => $request->amount,
@@ -989,8 +999,8 @@ class ClientController extends Controller
 
             JournalEntry::create([
                 'transaction_id' => $transaction->id,
-                'branch_id' => $client->agent->branch->id,
-                'company_id' => $client->agent->branch->company->id,
+                'branch_id' => $agent->branch->id,
+                'company_id' => $agent->branch->company->id,
                 'account_id' =>  $clientAdvance->id,
                 'transaction_date' => Carbon::now(),
                 'description' => 'Deduct Client Advance: ' . $client->first_name . ' of ' . $request->amount,
@@ -1005,8 +1015,8 @@ class ClientController extends Controller
 
             JournalEntry::create([
                 'transaction_id' => $transaction->id,
-                'branch_id' => $client->agent->branch->id,
-                'company_id' => $client->agent->branch->company->id,
+                'branch_id' => $agent->branch->id,
+                'company_id' => $agent->branch->company->id,
                 'account_id' =>  $clientRefund->id,
                 'transaction_date' => Carbon::now(),
                 'description' => 'Debit Client Refund Payable: ' . $client->first_name . ' of ' . $request->amount,
@@ -1035,7 +1045,7 @@ class ClientController extends Controller
 
             try {
                 Credit::create([
-                    'company_id'  => $client->agent->branch->company->id,
+                    'company_id'  => $agent->branch->company->id,
                     'client_id'   => $client->id,
                     'type'        => 'Refund Credit',
                     'description' => 'Refund Credit for ' . $client->first_name,

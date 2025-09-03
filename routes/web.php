@@ -457,7 +457,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', [ClientController::class, 'create'])->name('create');
         Route::post('/', [ClientController::class, 'store'])->name('store');
         Route::get('/{id}', [ClientController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [ClientController::class, 'edit'])->name('edit');
+        // Route::get('/{id}/edit', [ClientController::class, 'edit'])->name('edit');
         Route::put('/{id}', [ClientController::class, 'update'])->name('update');
         Route::post('/upload', [ClientController::class, 'import'])->name('upload');
         Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('change-agent');

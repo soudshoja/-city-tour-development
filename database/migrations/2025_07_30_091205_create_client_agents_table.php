@@ -10,7 +10,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('agent_client', function (Blueprint $table) {
+        Schema::create('client_agents', function (Blueprint $table) {
             $table->id();
             $table->foreignId('agent_id')->constrained('agents')->onDelete('cascade');
             $table->foreignId('client_id')->constrained('clients')->onDelete('cascade');
@@ -21,34 +21,36 @@ return new class extends Migration
 
         try{
             foreach($clients as $client) {
-                dump($client->agent->id);
                 $client->agents()->sync($client->agent->id);
                 $client->save();
             }
         } catch (Exception $e) {
             Log::error('Error syncing agents for clients: ' . $e->getMessage());
         }
-        dd('stop');
 
         Schema::table('clients', function (Blueprint $table) {
             $table->dropForeign(['agent_id']);
-            $table->dropColumn('agent_id');
+            // $table->dropColumn('agent_id');
         });
     }
 
     public function down(): void
     {
-        $clients = Client::all();
+        // $clients = Client::all();
+
+        // Schema::table('clients', function (Blueprint $table) {
+        //     $table->foreignId('agent_id')->nullable()->constrained('agents')->onDelete('set null')->after('name');
+        // });
+
+        // foreach ($clients as $client){
+        //     $client->agent_id = $client->agents->first()->id ?? null;
+        //     $client->save();
+        // }
 
         Schema::table('clients', function (Blueprint $table) {
-            $table->foreignId('agent_id')->nullable()->constrained('agents')->onDelete('set null')->after('name');
+            $table->foreign('agent_id')->references('id')->on('agents');
         });
 
-        foreach ($clients as $client){
-            $client->agent_id = $client->agents->first()->id ?? null;
-            $client->save();
-        }
-
-        Schema::dropIfExists('agent_client');
+        Schema::dropIfExists('client_agents');
     }
 };

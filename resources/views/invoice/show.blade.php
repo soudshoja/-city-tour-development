@@ -434,13 +434,6 @@
                             </div>
                         </div>
                     </td>
-
-                    @php
-                    $checkUtilizeCreditPartial = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial(
-                    $partial->client_id,
-                    $partial->id,
-                    );
-                    @endphp
                     <td class="px-4 py-2 border">
                         {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}
                     </td>
@@ -509,7 +502,7 @@
                 <div class="flex justify-between py-2 font-bold text-gray-800">
                     <span>Total:</span>
                     <span>
-                        {{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}
+                        {{ number_format(isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount, 2) }}
                     </span>
                 </div>
             </div>

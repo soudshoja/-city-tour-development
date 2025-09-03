@@ -1526,13 +1526,6 @@ class InvoiceController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
-        $checkUtilizeCreditPartial = Credit::where('invoice_id', $invoice->id)
-            ->where('invoice_partial_id', $invoicePartials->first()?->id)
-            ->where('client_id', $invoice->client_id)
-            ->where('type', 'Invoice')
-            ->orderBy('id', 'asc')
-            ->get();
-
         return view('invoice.show', compact(
             'invoice',
             'invoiceDetails',
@@ -1540,7 +1533,6 @@ class InvoiceController extends Controller
             'paidPartials',
             'company',
             'checkUtilizeCredit',
-            'checkUtilizeCreditPartial',
             'totalGatewayFee',
             'companyId',
         ));

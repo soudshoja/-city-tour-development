@@ -55,7 +55,7 @@ class Agent extends Model
     }
     public function clients()
     {
-        return $this->hasMany(Client::class);
+        return $this->belongsToMany(Client::class, 'client_agents', 'agent_id', 'client_id');
     }
     public function user()
     {

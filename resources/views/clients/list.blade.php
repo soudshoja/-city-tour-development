@@ -11,14 +11,6 @@
                     <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
                         <thead>
                             <tr>
-                                <!-- <th>
-                                    <label class="custom-checkbox">
-                                        <input type="checkbox" id="selectAll" class="text-gray-300 hidden">
-                                        <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
-                                            <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" rx="4" />
-                                        </svg>
-                                    </label>
-                                </th> -->
                                 <th
                                     class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
                                     Actions
@@ -56,14 +48,6 @@
                             <tr data-name="{{ $client->first_name }}" data-email="{{ $client->email }}"
                                 data-phone="{{ $client->phone }}" data-agent-id="{{ $client->agent_id }}"
                                 data-client-id="{{ $client ? $client->id : null }}" class="taskRow">
-                                <!-- <td>
-                                    <label class="custom-checkbox" data-tooltip="select client">
-                                        <input type="checkbox" class="form-checkbox CheckBoxColor rowCheckbox text-gray-900 dark:text-gray-300" data-id="{{ $client->id }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" class="checkbox-svg">
-                                            <rect width="18" height="18" x="3" y="3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1" rx="4" />
-                                        </svg>
-                                    </label>
-                                </td> -->
                                 <td class="p-3 text-sm text-center">
                                     <a href="javascript:void(0);"
                                         class="viewClient inline-flex items-center justify-center mx-auto text-blue-600 dark:text-blue-300"
@@ -82,8 +66,6 @@
                                     </a>
                                 </td>
 
-                                <!-- <td
-                                            class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 cursor-pointer"> -->
                                 <td
                                     class=" p-3 text-sm font-semibold text-blue-600 dark:text-gray-300 text-center">
                                     <a href="{{ route('clients.show', ['id' => $client->id]) }}"
@@ -98,14 +80,6 @@
                                     {{ date('d M Y', strtotime($client->created_at)) }}
                                 </td>
 
-                                {{-- <td
-                                            class="p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
-                                            <a href="javascript:void(0);"
-                                                class="clientCreditLink text-blue-600 font-bold"
-                                                data-client-id="{{ $client->id }}">
-                                {{ $client->credit ? number_format($client->credit, 2) : 'N/A' }}
-                                </a>
-                                </td> --}}
                                 <td class="p-3 text-sm font-semibold text-center">
                                     @php
                                     $totalCredit = \App\Models\Credit::getTotalCreditsByClient($client->id);
@@ -128,7 +102,61 @@
                                 </td>
                                 <td
                                     class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
+                                    @if($client->agents->isEmpty())
+                                    @else
+                                    @if($client->agents->count() == 1)
                                     {{ $client->agent ? $client->agent->name : 'N/A' }}
+                                    @else
+
+                                    <div class="dropdown inline-block relative" x-data="{ open: false }">
+                                        <button
+                                            @click="open = !open"
+                                            x-ref="button"
+                                            class="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold py-1 px-2 rounded inline-flex items-center">
+                                            <span class="mr-1">Multiple Agents</span>
+                                            <svg class="fill-current h-4 w-4 transform transition-transform duration-200"
+                                                :class="{ 'rotate-180': open }"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 20 20">
+                                                <path
+                                                    d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                                            </svg>
+                                        </button>
+                                        
+                                        <!-- Dropdown positioned relative to viewport to avoid table container clipping -->
+                                        <div x-show="open" 
+                                             x-transition:enter="transition ease-out duration-100"
+                                             x-transition:enter-start="transform opacity-0 scale-95"
+                                             x-transition:enter-end="transform opacity-100 scale-100"
+                                             x-transition:leave="transition ease-in duration-75"
+                                             x-transition:leave-start="transform opacity-100 scale-100"
+                                             x-transition:leave-end="transform opacity-0 scale-95"
+                                             @click.away="open = false"
+                                             x-init="$watch('open', value => {
+                                                 if (value) {
+                                                     $nextTick(() => {
+                                                         const rect = $refs.button.getBoundingClientRect();
+                                                         $el.style.position = 'fixed';
+                                                         $el.style.top = (rect.bottom + 4) + 'px';
+                                                         $el.style.left = rect.left + 'px';
+                                                         $el.style.zIndex = '10';
+                                                     });
+                                                 }
+                                             })"
+                                             class="dropdown-menu bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg min-w-max">
+                                            <ul class="text-gray-700 dark:text-gray-300 pt-1">
+                                                @foreach($client->agents as $agent)
+                                                <li>
+                                                    <a class="rounded-t bg-white dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 py-2 px-4 block whitespace-no-wrap"
+                                                        href="javascript:void(0);">{{ $agent->name }}</a>
+                                                </li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    @endif
+
+                                    @endif
                                 </td>
                             </tr>
                             @endforeach

@@ -105,7 +105,7 @@ class TaskController extends Controller
             });
         }
         if ($request->filled('status')) {
-            $statuses = (array) $request->input('status');
+            $statuses = request()->input('status', []);
             $tasks = $tasks->whereIn('status', $statuses);
         }
         
@@ -124,122 +124,122 @@ class TaskController extends Controller
             }
         }
         $filterable = [
-    'reference', 'bill-to', 'passenger-name', 'agent_name', 'supplier', 'created-at','supplier_pay_date',
-    'cancellation-deadline', 'type', 'gds-reference', 'amadeus-reference', 'created-by',
-    'issued-by', 'branch-name', 'invoice'
-];
+        'reference', 'bill-to', 'passenger-name', 'agent_name', 'supplier', 'created-at','supplier_pay_date',
+        'cancellation-deadline', 'type', 'gds-reference', 'amadeus-reference', 'created-by',
+        'issued-by', 'branch-name', 'invoice'
+        ];
 
-foreach ($filterable as $field) {
-    $param = $field;
-    // Map frontend field names to DB columns/relations
-    switch ($field) {
-        case 'bill-to':
-            $param = 'bill-to';
-            if ($request->filled($param)) {
-                $tasks = $tasks->whereHas('client', function($q) use ($request, $param) {
-                    $q->where('first_name', 'like', '%' . $request->input($param) . '%')
-                      ->orWhere('last_name', 'like', '%' . $request->input($param) . '%')
-                      ->orWhere('phone', 'like', '%' . $request->input($param) . '%');
-                });
+        foreach ($filterable as $field) {
+            $param = $field;
+            // Map frontend field names to DB columns/relations
+            switch ($field) {
+                case 'bill-to':
+                    $param = 'bill-to';
+                    if ($request->filled($param)) {
+                        $tasks = $tasks->whereHas('client', function($q) use ($request, $param) {
+                            $q->where('first_name', 'like', '%' . $request->input($param) . '%')
+                            ->orWhere('last_name', 'like', '%' . $request->input($param) . '%')
+                            ->orWhere('phone', 'like', '%' . $request->input($param) . '%');
+                        });
+                    }
+                    break;
+                case 'passenger-name':
+                    $param = 'passenger-name';
+                    if ($request->filled($param)) {
+                        $tasks = $tasks->where('passenger_name', 'like', '%' . $request->input($param) . '%');
+                    }
+                    break;
+                case 'agent_name':
+                    if ($request->filled('agent_name')) {
+                        $tasks = $tasks->whereHas('agent', function($q) use ($request) {
+                            $q->where('name', 'like', '%' . $request->input('agent_name') . '%');
+                        });
+                    }
+                    break;
+                case 'supplier':
+                    if ($request->filled('supplier')) {
+                        $tasks = $tasks->whereHas('supplier', function($q) use ($request) {
+                            $q->where('name', 'like', '%' . $request->input('supplier') . '%');
+                        });
+                    }
+                    break;
+                case 'created-at':
+                    $from = $request->input('created-at_from');
+                    $to = $request->input('created-at_to');
+                    if ($from) {
+                        $tasks = $tasks->whereDate('created_at', '>=', $from);
+                    }
+                    if ($to) {
+                        $tasks = $tasks->whereDate('created_at', '<=', $to);
+                    }
+                    // fallback for single date (old UI)
+                    if ($request->filled('created-at')) {
+                        $tasks = $tasks->whereDate('created_at', $request->input('created-at'));
+                    }
+                    break;
+                case 'supplier_pay_date':
+                    $from = $request->input('supplier_pay_date_from');
+                    $to = $request->input('supplier_pay_date_to');
+                    if ($from) {
+                        $tasks = $tasks->whereDate('supplier_pay_date', '>=', $from);
+                    }
+                    if ($to) {
+                        $tasks = $tasks->whereDate('supplier_pay_date', '<=', $to);
+                    }
+                    if ($request->filled('supplier_pay_date')) {
+                        $tasks = $tasks->whereDate('supplier_pay_date', $request->input('supplier_pay_date'));
+                    }
+                    break;
+                case 'cancellation-deadline':
+                    if ($request->filled('cancellation-deadline')) {
+                        $tasks = $tasks->whereDate('cancellation_deadline', $request->input('cancellation-deadline'));
+                    }
+                    break;
+                case 'type':
+                    if ($request->filled('type')) {
+                        $tasks = $tasks->where('type', $request->input('type'));
+                    }
+                    break;
+                case 'gds-reference':
+                    if ($request->filled('gds-reference')) {
+                        $tasks = $tasks->where('gds_reference', 'like', '%' . $request->input('gds-reference') . '%');
+                    }
+                    break;
+                case 'amadeus-reference':
+                    if ($request->filled('amadeus-reference')) {
+                        $tasks = $tasks->where('airline_reference', 'like', '%' . $request->input('amadeus-reference') . '%');
+                    }
+                    break;
+                case 'created-by':
+                    if ($request->filled('created-by')) {
+                        $tasks = $tasks->where('created_by', 'like', '%' . $request->input('created-by') . '%');
+                    }
+                    break;
+                case 'issued-by':
+                    if ($request->filled('issued-by')) {
+                        $tasks = $tasks->where('issued_by', 'like', '%' . $request->input('issued-by') . '%');
+                    }
+                    break;
+                case 'branch-name':
+                    if ($request->filled('branch-name')) {
+                        $tasks = $tasks->whereHas('agent.branch', function($q) use ($request) {
+                            $q->where('name', 'like', '%' . $request->input('branch-name') . '%');
+                        });
+                    }
+                    break;
+                case 'invoice':
+                    if ($request->filled('invoice')) {
+                        $tasks = $tasks->whereHas('invoiceDetail', function($q) use ($request) {
+                            $q->where('invoice_number', 'like', '%' . $request->input('invoice') . '%');
+                        });
+                    }
+                    break;
+                default:
+                    if ($request->filled($field)) {
+                        $tasks = $tasks->where($field, 'like', '%' . $request->input($field) . '%');
+                    }
             }
-            break;
-        case 'passenger-name':
-            $param = 'passenger-name';
-            if ($request->filled($param)) {
-                $tasks = $tasks->where('passenger_name', 'like', '%' . $request->input($param) . '%');
-            }
-            break;
-        case 'agent_name':
-            if ($request->filled('agent_name')) {
-                $tasks = $tasks->whereHas('agent', function($q) use ($request) {
-                    $q->where('name', 'like', '%' . $request->input('agent_name') . '%');
-                });
-            }
-            break;
-        case 'supplier':
-            if ($request->filled('supplier')) {
-                $tasks = $tasks->whereHas('supplier', function($q) use ($request) {
-                    $q->where('name', 'like', '%' . $request->input('supplier') . '%');
-                });
-            }
-            break;
-        case 'created-at':
-            $from = $request->input('created-at_from');
-            $to = $request->input('created-at_to');
-            if ($from) {
-                $tasks = $tasks->whereDate('created_at', '>=', $from);
-            }
-            if ($to) {
-                $tasks = $tasks->whereDate('created_at', '<=', $to);
-            }
-            // fallback for single date (old UI)
-            if ($request->filled('created-at')) {
-                $tasks = $tasks->whereDate('created_at', $request->input('created-at'));
-            }
-            break;
-        case 'supplier_pay_date':
-            $from = $request->input('supplier_pay_date_from');
-            $to = $request->input('supplier_pay_date_to');
-            if ($from) {
-                $tasks = $tasks->whereDate('supplier_pay_date', '>=', $from);
-            }
-            if ($to) {
-                $tasks = $tasks->whereDate('supplier_pay_date', '<=', $to);
-            }
-            if ($request->filled('supplier_pay_date')) {
-                $tasks = $tasks->whereDate('supplier_pay_date', $request->input('supplier_pay_date'));
-            }
-            break;
-        case 'cancellation-deadline':
-            if ($request->filled('cancellation-deadline')) {
-                $tasks = $tasks->whereDate('cancellation_deadline', $request->input('cancellation-deadline'));
-            }
-            break;
-        case 'type':
-            if ($request->filled('type')) {
-                $tasks = $tasks->where('type', $request->input('type'));
-            }
-            break;
-        case 'gds-reference':
-            if ($request->filled('gds-reference')) {
-                $tasks = $tasks->where('gds_reference', 'like', '%' . $request->input('gds-reference') . '%');
-            }
-            break;
-        case 'amadeus-reference':
-            if ($request->filled('amadeus-reference')) {
-                $tasks = $tasks->where('airline_reference', 'like', '%' . $request->input('amadeus-reference') . '%');
-            }
-            break;
-        case 'created-by':
-            if ($request->filled('created-by')) {
-                $tasks = $tasks->where('created_by', 'like', '%' . $request->input('created-by') . '%');
-            }
-            break;
-        case 'issued-by':
-            if ($request->filled('issued-by')) {
-                $tasks = $tasks->where('issued_by', 'like', '%' . $request->input('issued-by') . '%');
-            }
-            break;
-        case 'branch-name':
-            if ($request->filled('branch-name')) {
-                $tasks = $tasks->whereHas('agent.branch', function($q) use ($request) {
-                    $q->where('name', 'like', '%' . $request->input('branch-name') . '%');
-                });
-            }
-            break;
-        case 'invoice':
-            if ($request->filled('invoice')) {
-                $tasks = $tasks->whereHas('invoiceDetail', function($q) use ($request) {
-                    $q->where('invoice_number', 'like', '%' . $request->input('invoice') . '%');
-                });
-            }
-            break;
-        default:
-            if ($request->filled($field)) {
-                $tasks = $tasks->where($field, 'like', '%' . $request->input($field) . '%');
-            }
-    }
-}
+        }
 
         $countries = Country::all();
         $suppliers = Supplier::with('companies');

@@ -80,7 +80,7 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                             </svg>
-                            <span class="text-xs font-medium">Current Balance</span>
+                            <span class="text-sm font-medium">Current Balance</span>
                         </div>
                     </div>
                 </div>
@@ -123,6 +123,8 @@
                                                             'M12 6v12m6-6H6'],
                                                 'refund'  => ['bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300',
                                                             'M4 4v5h.6m15.4 2A8 8 0 004.6 9H9m11 11v-5h-.6m0 0a8 8 0 01-15.4-2H15'],
+                                                'void'    => ['bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+                                                            'M12 3a9 9 0 100 18 9 9 0 000-18zM8.464 8.464l7.072 7.072'],
                                             ];
                                             [$typeClass, $typeIcon] = $map[$t] ?? ['bg-gray-100 text-gray-800 dark:bg-slate-800/70 dark:text-slate-200','M9 12h6m-6 4h6'];
                                         @endphp

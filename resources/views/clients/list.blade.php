@@ -46,8 +46,7 @@
                             @else
                             @foreach ($clients as $client)
                             <tr data-name="{{ $client->first_name }}" data-email="{{ $client->email }}"
-                                data-phone="{{ $client->phone }}" data-agent-id="{{ $client->agent_id }}"
-                                data-client-id="{{ $client ? $client->id : null }}" class="taskRow">
+                                data-phone="{{ $client->phone }}" class="taskRow">
                                 <td class="p-3 text-sm text-center">
                                     <a href="javascript:void(0);"
                                         class="viewClient inline-flex items-center justify-center mx-auto text-blue-600 dark:text-blue-300"

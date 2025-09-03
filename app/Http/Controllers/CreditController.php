@@ -16,6 +16,7 @@ use App\Models\Branch;
 use App\Http\Controllers\JournalEntryController;
 use App\Models\JournalEntry;
 use App\Http\Controllers\Controller;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -173,12 +174,12 @@ class CreditController extends Controller
             ]);
 
             $liabilitiesAccount = Account::where('name', 'Liabilities')
-                ->where('company_id', $client->agent->branch->company->id)
+                ->where('company_id', $agent->branch->company->id)
                 ->first();
 
             $clientAdvance = Account::where('name', 'Client')
                 ->where('root_id', $liabilitiesAccount->id ?? null)
-                ->where('company_id', $client->agent->branch->company->id)
+                ->where('company_id', $agent->branch->company->id)
                 ->first();
 
             if ($clientAdvance) {
@@ -203,12 +204,12 @@ class CreditController extends Controller
             }
 
             $receivableRoot = Account::where('name', 'Assets')
-                ->where('company_id', $client->agent->branch->company->id)
+                ->where('company_id', $agent->branch->company->id)
                 ->first();
 
             $clientReceivable = Account::where('name', 'Clients')
                 ->where('root_id', $receivableRoot->id ?? null)
-                ->where('company_id', $client->agent->branch->company->id)
+                ->where('company_id', $agent->branch->company->id)
                 ->first();
 
             if ($clientReceivable) {

@@ -66,4 +66,10 @@ class ClientPolicy
     {
         return $user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY;
     }
+
+
+    public function assignOwnerAgent(User $user)
+    {
+        return $user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY;
+    }
 }

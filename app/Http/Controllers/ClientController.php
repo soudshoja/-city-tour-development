@@ -364,12 +364,12 @@ class ClientController extends Controller
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
-            'email' => 'email|unique:clients,email,' . $id,
+            'email' => 'email',
             'status' => 'nullable',
             'phone' => 'string|max:15',
             'country_code' => 'string|max:30',
             'file' => 'nullable|mimes:jpeg,jpg,png', // Optional passport file field
-            'agent_id' => 'nullable|exists:agents,id',
+            'agent_ids' => 'nullable|array|exists:agents,id',
         ]);
 
         try {
@@ -383,8 +383,17 @@ class ClientController extends Controller
                 'country_code',
                 'phone',
                 'address',
-                'agent_id'
             ]));
+
+            if($request->has('agent_ids')) {
+                $response = Gate::inspect('assignAgents', Client::class);
+
+                if ($response->denied()) {
+                    return redirect()->back()->withInput()->with('error', $response->message() ?: 'You do not have permission to assign agents.');
+                }
+
+                $client->agents()->sync($request->agent_ids);
+            }
 
             // If a file (image) is uploaded, process it
             if ($request->hasFile('file')) {

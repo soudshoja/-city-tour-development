@@ -1483,13 +1483,15 @@ class InvoiceController extends Controller
                     if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
                         $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
                         
-                    } else {
+                    } else if (strtolower($partial->payment_gateway) === 'tap') {
                         $gatewayFee = ChargeService::TapCharge([
                             'amount'    => $partial->amount,
                             'client_id' => $invoice->client_id,
                             'agent_id'  => $invoice->agent_id,
                             'currency'  => $invoice->currency,
                         ], $partial->payment_gateway);
+                    } else if (strtolower($partial->payment_gateway) === 'upayment') {
+                        $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
                     }
                 } catch (\Exception $e) {
                     Log::error('ChargeService exception', [

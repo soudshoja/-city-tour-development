@@ -111,7 +111,7 @@
                             <div class="flex items-center space-x-4">
                                 <x-application-logo
                                     :companyLogo="$selectedCompany?->logo ?? asset('images/UserPic.svg')"
-                                    class="custom-logo-size inline-block"
+                                    class="h-20 w-auto"
                                 />
 
                                 @if ($selectedCompany)

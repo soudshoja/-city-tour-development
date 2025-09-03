@@ -544,14 +544,12 @@
                 @csrf
 
                 <input type="hidden" id="totalAmountInput" name="total_amount"
-                    value="{{ isset($gatewayFee['finalAmount']) 
-    ? number_format($gatewayFee['finalAmount'], 2, '.', '') 
-    : number_format($invoicePartials->sum('amount') - abs($checkUtilizeCredit->sum('amount')), 2, '.', '') }}">
+                    value="{{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}">
                 <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
                 <input type="hidden" name="client_name" value="{{ $invoice->client->first_name }}">
                 <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
-                <input type="hidden" name="payment_gateway" value="{{ $invoice->payment_gateway }}">
-                <input type="hidden" name="payment_method" value="{{ $invoice->payment_method }}">
+                <input type="hidden" name="payment_gateway" value="{{ $invoice->invoicePartials->first()->payment_gateway }}">
+                <input type="hidden" name="payment_method" value="{{ $invoice->invoicePartials->first()->payment_method }}">
 
                 <div class="flex items-center gap-2">
                     @if ($invoice->payment_type !== 'split' && !($invoice->payment_type === 'partial' && $hasMismatch))

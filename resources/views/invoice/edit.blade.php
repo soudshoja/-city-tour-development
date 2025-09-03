@@ -377,7 +377,7 @@
 
                         <div class="mt-6 flex flex-col justify-between px-4 sm:flex-row">
                             <div class="mb-6 sm:mb-0">
-                                <button id="openTaskModalButton"
+                                <button id="openTaskModalButton" type="button"
                                     class="inline-flex items-center justify-center text-sm text-black font-semibold
                                      city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-4  rounded-full shadow">
                                     <svg class="w-6 h-6 pr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -2323,7 +2323,7 @@
                             <td class="action-cell text-center">
                                 <div class="inline-flex space-x-2">
                                     ${!isSaved ? `
-                                        <button onclick="saveSingleTask(${item.id})" class="text-blue-500 hover:text-blue-700" data-tooltip-left="Save This Task">
+                                        <button onclick="saveSingleTask(${item.id})" type="button" class="text-blue-500 hover:text-blue-700" data-tooltip-left="Save This Task">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                                                 <polyline points="17 21 17 13 7 13 7 21"></polyline>
@@ -2331,7 +2331,7 @@
                                             </svg>
                                         </button>
                                     ` : ''}
-                                    <button onclick="removeTaskFromInvoice(${item.id} )" class="text-red-500 hover:text-red-700" data-tooltip-left="Remove Item">
+                                    <button onclick="removeTaskFromInvoice(${item.id} )" type="button" class="text-red-500 hover:text-red-700" data-tooltip-left="Remove Item">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M3 6H21M10 11V17M14 11V17M5 6H19L18 21H6L5 6ZM8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>

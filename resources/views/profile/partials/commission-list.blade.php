@@ -171,7 +171,7 @@ default => 'Commission & Profit'
                             <div class="space-y-2">
                                 <div class="flex justify-between items-center">
                                     <p class="text-base font-semibold text-gray-800">Task: {{ $item['task_reference'] }}</p>
-                                    <a href="{{ route('invoice.edit', [ 'companyId' => $item['invoice']['company_id'], 'invoiceNumber' => $item['invoice']['number']]) }}" class="text-blue-500 hover:underline">
+                                    <a href="{{ route('invoice.details', [ 'companyId' => $item['invoice']['company_id'], 'invoiceNumber' => $item['invoice']['number']]) }}" class="text-blue-500 hover:underline" target="_blank">
                                         View Invoice {{ $item['invoice']['number'] }}
                                     </a>
                                 </div>
@@ -231,7 +231,7 @@ default => 'Commission & Profit'
                         :class="openRow === {{ $index }} ? 'bg-blue-50 hover:bg-gray-50 dark:bg-blue-900 hover:dark:bg-blue-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'" 
                         @click="openRow === {{ $index }} ? openRow = null : openRow = {{ $index }}">
                         <td class="py-3 px-4 border-b">
-                            <a href="{{ route('invoice.edit', ['companyId' => $item['company_id'], 'invoiceNumber' => $item['invoice_number']]) }}" class="text-blue-500 hover:underline">
+                            <a href="{{ route('invoice.details', ['companyId' => $item['company_id'], 'invoiceNumber' => $item['invoice_number']]) }}" class="text-blue-500 hover:underline" target="_blank">
                                 {{ $item['invoice_number'] }}
                             </a>
                         </td>
@@ -255,7 +255,7 @@ default => 'Commission & Profit'
                             <div class="space-y-2">
                                 <div class="flex justify-between items-center">
                                     <p class="text-base font-semibold text-gray-800">Invoice {{ $item['invoice_number'] }}</p>
-                                    <a href="{{ route('invoice.edit', ['companyId' => $item['company_id'], 'invoiceNumber' => $item['invoice_number']]) }}" class="text-blue-500 hover:underline">Edit Invoice</a>
+                                    <a href="{{ route('invoice.edit', ['companyId' => $item['company_id'], 'invoiceNumber' => $item['invoice_number']]) }}" class="text-blue-500 hover:underline" target="_blank">Edit Invoice</a>
                                 </div>
                                 <hr class="my-2">
                                 

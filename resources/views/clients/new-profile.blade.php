@@ -203,16 +203,22 @@
                                 {{ $client->address ? $client->address : 'N/A' }}
                             </h5>
                         </div>
+                        <div class="mt-2 flex gap-2 items-center justify-between text-white">
+                            <p class="text-lg">Agent (Owner)</p>
+                            <h5 class="ml-5 text-base whitespace-nowrap overflow-x-auto scroll-auto">
+                                {{ $client->agent->name }}
+                            </h5>
+                        </div>
                         @if($client->agents->isEmpty())
                         <div class="mt-2 flex items-center justify-between text-white">
-                            <p class="text-lg">Agent</p>
+                            <p class="text-lg">Agent Assigned</p>
                             <div class="px-3 py-1 bg-gray-400 text-white text-sm rounded-full">
                                 No Agent Assigned
                             </div>
                         </div>
                         @else
                         <div class="mt-2 text-white">
-                            <p class="text-lg mb-2">{{ $client->agents->count() > 1 ? 'Agents' : 'Agent' }}</p>
+                            <p class="text-lg mb-2">{{ $client->agents->count() > 1 ? 'Agents Assigned' : 'Agent Assigned' }}</p>
                             <div class="flex flex-wrap gap-2 max-h-20 overflow-y-auto">
                                 @foreach($client->agents as $agent)
                                 <div class="px-3 py-1 bg-gradient-to-b from-gray-700 to-gray-400 text-white text-sm rounded-full shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center gap-2">
@@ -879,7 +885,7 @@
                         </div>
                     </div>
 
-                    @can('assignAgents', App\Models\Client::class)
+                    @can('assignAgents', $client)
                     <!-- Agent Management Section - Full Width -->
                     <div class="mt-6 pt-6 border-t border-gray-200">
                         <div class="w-full" x-data="agentManager({

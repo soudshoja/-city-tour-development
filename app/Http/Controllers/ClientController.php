@@ -47,30 +47,28 @@ class ClientController extends Controller
 
         $clients = Client::with('agent.branch');
         $fullClients = clone $clients;
+        $agentIds = [];
 
         if ($user->role_id == Role::ADMIN) {
             $agentIds = Agent::all()->pluck('id')->toArray();
             $branch = Branch::pluck('id')->toArray();
             $agent = Agent::whereIn('branch_id', $branch)->first();
 
-            $clients = $clients->whereIn('agent_id', $agentIds);
-            $fullClients = $fullClients->whereIn('agent_id', $agentIds);
-
         } elseif ($user->role_id == Role::COMPANY) {
             $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
             $agent = Agent::whereIn('branch_id', $branch)->first();
             $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
 
-            $clients = $clients->whereIn('agent_id', $agentIds);
-            $fullClients = $fullClients->whereIn('agent_id', $agentIds);
-
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
+            $agentIds = [$agent->id];
+        }
 
-            $clients = $clients->where('agent_id', $agent->id);
-            $fullClients = $fullClients->where('agent_id', $agent->id);
-        
-        } 
+        $clients = $clients->whereIn('agent_id', $agentIds)
+            ->orWhereHas('agents', function ($q) use ($agentIds) {
+                $q->whereIn('agent_id', $agentIds);
+            });
+        $fullClients = (clone $clients);
 
         if($request->has('search') && $request->search != '') {
             $search = $request->search;

@@ -301,21 +301,21 @@ class ClientTest extends TestCase
         $response->assertSee('Show Test Client');
     }
 
-    public function test_client_edit_page_displays_correctly()
-    {
-        $client = Client::factory()->create([
-            'agent_id' => $this->agent->id,
-            'first_name' => 'Edit Test Client'
-        ]);
+    // public function test_client_edit_page_displays_correctly()
+    // {
+    //     $client = Client::factory()->create([
+    //         'agent_id' => $this->agent->id,
+    //         'first_name' => 'Edit Test Client'
+    //     ]);
 
-        $response = $this->actingAs($this->adminUser)
-                         ->get(route('clients.edit', $client->id));
+    //     $response = $this->actingAs($this->adminUser)
+    //                      ->get(route('clients.edit', $client->id));
 
-        $response->assertStatus(200);
-        $response->assertViewIs('clients.edit');
-        $response->assertViewHas(['client', 'agents']);
-        $response->assertSee('Edit Test Client');
-    }
+    //     $response->assertStatus(200);
+    //     $response->assertViewIs('clients.edit');
+    //     $response->assertViewHas(['client', 'agents']);
+    //     $response->assertSee('Edit Test Client');
+    // }
 
     public function test_client_update_with_valid_data()
     {

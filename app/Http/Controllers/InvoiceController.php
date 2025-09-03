@@ -1470,9 +1470,6 @@ class InvoiceController extends Controller
 
             return abort(404);
         }
-        
-        $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'Tap';
-        $paymentMethod = $invoicePartials->first()?->payment_method;
 
         $totalGatewayFee = ['fee' => 0, 'finalAmount' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
 
@@ -1483,20 +1480,21 @@ class InvoiceController extends Controller
             if ($partial->status !== 'paid') {
                 $gatewayFee = [];
                 try {
-                    if (strtolower($paymentGateway) === 'myfatoorah' && $paymentMethod) {
-                        $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $paymentMethod, $companyId);
+                    if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
+                        $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
+                        
                     } else {
                         $gatewayFee = ChargeService::TapCharge([
                             'amount'    => $partial->amount,
                             'client_id' => $invoice->client_id,
                             'agent_id'  => $invoice->agent_id,
                             'currency'  => $invoice->currency,
-                        ], $paymentGateway);
+                        ], $partial->payment_gateway);
                     }
                 } catch (\Exception $e) {
                     Log::error('ChargeService exception', [
                         'message' => $e->getMessage(),
-                        'gateway' => $paymentGateway,
+                        'gateway' => $partial->payment_gateway,
                         'company_id' => $companyId,
                     ]);
                 }
@@ -1538,8 +1536,6 @@ class InvoiceController extends Controller
             'invoiceDetails',
             'invoicePartials',
             'paidPartials',
-            'paymentGateway',
-            'paymentMethod',
             'company',
             'checkUtilizeCredit',
             'checkUtilizeCreditPartial',

@@ -39,4 +39,8 @@ class InvoicePartial extends Model
         return $this->belongsTo(Payment::class, 'payment_id');             
     }
 
+    public function paymentMethod()
+    {
+        return $this->belongsTo(PaymentMethod::class, 'payment_method');
+    }
 }

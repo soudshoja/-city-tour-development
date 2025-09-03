@@ -40,7 +40,6 @@ use InvalidArgumentException;
 class InvoiceController extends Controller
 {
     use NotificationTrait;
-    use NotificationTrait;
 
     public function index(Request $request)
     {

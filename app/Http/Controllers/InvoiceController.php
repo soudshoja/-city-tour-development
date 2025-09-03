@@ -2140,6 +2140,26 @@ class InvoiceController extends Controller
         return redirect()->route('invoice.index')->with('status', 'Invoice status updated successfully!');
     }
 
+    public function showInvoice(int $companyId, string $invoiceNumber)
+    {
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
+            ->with('agent', 'client', 'invoiceDetails', 'invoiceDetails.task', 'invoicePartials')
+            ->first();
+        
+        $company = Company::find($companyId);
+
+        $journalEntries = JournalEntry::where('invoice_id', $invoice->id)->get();
+        if (!$journalEntries) {
+            return response()->json(['message' => 'Journal entry not found'], 404);
+        }
+        $journalEntries = app(JournalEntryController::class)->getJournalEntries($journalEntries);
+
+        return view('invoice.details', compact('invoice', 'company', 'journalEntries'));
+    }
+
     public function getTaskInvoiceStatus($taskId)
     {
         $task = Task::find($taskId);

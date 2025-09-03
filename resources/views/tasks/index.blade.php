@@ -2620,9 +2620,11 @@
                 const taskId = this.dataset.taskId;
                 const agentSelect = document.getElementById(`agent_id_select_${taskId}`);
                 const agentHidden = document.getElementById(`agent_id_hidden_${taskId}`);
+                const getAgentUrl = "{{ route('clients.get-agent', ':clientId') }}".replace(':clientId',
+                    clientId);
 
                 if (clientId) {
-                    fetch(`/clients/${clientId}/agent`)
+                    fetch(getAgentUrl)
                         .then(response => response.json())
                         .then(data => {
                             if (data.agent) {

@@ -345,37 +345,37 @@ class ClientTest extends TestCase
         ]);
     }
 
-    public function test_client_change_agent()
-    {
-        $newAgentUser = User::factory()->create([
-            'role_id' => Role::AGENT,
-            'name' => 'New Agent User',
-            'email' => 'new.agent@test.com'
-        ]);
+    // public function test_client_change_agent()
+    // {
+    //     $newAgentUser = User::factory()->create([
+    //         'role_id' => Role::AGENT,
+    //         'name' => 'New Agent User',
+    //         'email' => 'new.agent@test.com'
+    //     ]);
         
-        $newAgent = Agent::factory()->create([
-            'branch_id' => $this->branch->id,
-            'name' => 'New Agent',
-            'user_id' => $newAgentUser->id,
-            'account_id' => 1,
-            'type_id' => 1
-        ]);
+    //     $newAgent = Agent::factory()->create([
+    //         'branch_id' => $this->branch->id,
+    //         'name' => 'New Agent',
+    //         'user_id' => $newAgentUser->id,
+    //         'account_id' => 1,
+    //         'type_id' => 1
+    //     ]);
 
-        $client = Client::factory()->create([
-            'agent_id' => $this->agent->id
-        ]);
+    //     $client = Client::factory()->create([
+    //         'agent_id' => $this->agent->id
+    //     ]);
 
-        $response = $this->actingAs($this->adminUser)
-                         ->put(route('clients.change-agent', $client->id), [
-                             'agent_id' => $newAgent->id
-                         ]);
+    //     $response = $this->actingAs($this->adminUser)
+    //                      ->put(route('clients.change-agent', $client->id), [
+    //                          'agent_id' => $newAgent->id
+    //                      ]);
 
-        $response->assertRedirect();
-        $response->assertSessionHas('success');
+    //     $response->assertRedirect();
+    //     $response->assertSessionHas('success');
 
-        $client->refresh();
-        $this->assertEquals($newAgent->id, $client->agent_id);
-    }
+    //     $client->refresh();
+    //     $this->assertEquals($newAgent->id, $client->agent_id);
+    // }
 
     public function test_pagination_works_correctly()
     {

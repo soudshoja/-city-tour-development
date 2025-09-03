@@ -460,7 +460,7 @@ Route::middleware(['auth'])->group(function () {
         // Route::get('/{id}/edit', [ClientController::class, 'edit'])->name('edit');
         Route::put('/{id}', [ClientController::class, 'update'])->name('update');
         Route::post('/upload', [ClientController::class, 'import'])->name('upload');
-        Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('change-agent');
+        // Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('change-agent');
         Route::post('/refund/{id}', [ClientController::class, 'refund'])->name('refund');
 
         // Routes for Client Group Management

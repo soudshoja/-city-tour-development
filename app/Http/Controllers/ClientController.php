@@ -136,9 +136,17 @@ class ClientController extends Controller
             'dial_code' => 'required|string|max:30',
             'phone' => 'required|string|max:15',
             'agent_id' => 'required|exists:agents,id',
+            'company_id' => 'nullable|exists:companies,id',
             'passport_no' => 'nullable|string',
             'date_of_birth' => 'nullable|date',
         ]);
+
+
+        if(!$request->company_id){ //this fallback is temporary until company_id is added in the form
+            $companyId = Agent::find($request->agent_id)->branch->company_id;
+
+            $request->merge(['company_id' => $companyId]);
+        }
 
         try {
             DB::beginTransaction();
@@ -376,6 +384,7 @@ class ClientController extends Controller
             'phone' => 'string|max:15',
             'country_code' => 'string|max:30',
             'file' => 'nullable|mimes:jpeg,jpg,png', // Optional passport file field
+            'agent_id' => 'nullable|exists:agents,id', // this is the agent that create the client (owner)
             'agent_ids' => 'nullable|array|exists:agents,id',
         ]);
 
@@ -391,6 +400,17 @@ class ClientController extends Controller
                 'phone',
                 'address',
             ]));
+
+            if($request->has('agent_id')) {
+                $response = Gate::inspect('assignOwnerAgent', Client::class);
+
+                if ($response->denied()) {
+                    return redirect()->back()->withInput()->with('error', $response->message() ?: 'You do not have permission to change the ownership');
+                }
+
+                $client->agent_id = $request->agent_id;
+                $client->save();
+            }
 
             if($request->has('agent_ids')) {
                 $response = Gate::inspect('assignAgents', Client::class);

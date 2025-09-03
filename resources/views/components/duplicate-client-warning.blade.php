@@ -1,12 +1,12 @@
 @if(session('duplicate_warning'))
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" 
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-30" 
      x-data="{ showModal: true }" 
      x-show="showModal"
      x-transition:enter="transition ease-out duration-300"
      x-transition:enter-start="opacity-0"
-     x-transition:enter-end="opacity-100"
+     x-transition:enter-end="opacity-30"
      x-transition:leave="transition ease-in duration-200"
-     x-transition:leave-start="opacity-100"
+     x-transition:leave-start="opacity-30"
      x-transition:leave-end="opacity-0">
     
     <div class="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
@@ -19,11 +19,6 @@
         
         <!-- Header -->
         <div class="flex items-center mb-6">
-            <div class="flex-shrink-0">
-                <svg class="w-10 h-10 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                </svg>
-            </div>
             <div class="ml-4 flex-1">
                 <h3 class="text-xl font-semibold text-gray-900">🚫 Client Already Exists</h3>
                 <p class="text-sm text-gray-600 mt-1">This client is already registered in the system</p>
@@ -87,10 +82,8 @@
                     <div class="mt-2 text-sm text-green-700">
                         <p>Instead of creating a duplicate client, you can request to be assigned to this existing client. This will:</p>
                         <ul class="list-disc list-inside mt-2 space-y-1">
-                            <li>Maintain data integrity and prevent duplicates</li>
                             <li>Send a notification to the owner agent requesting assignment</li>
                             <li>Allow you to work with this client once approved</li>
-                            <li>Keep all client history in one place</li>
                         </ul>
                     </div>
                 </div>

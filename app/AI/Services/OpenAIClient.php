@@ -829,7 +829,6 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Set tasks.issued_by and tasks.created_by to the first invoice name from the document. Set agent to null if the agent in the document is not in the agent list.\n";
         $prompt .= "  • Set tasks.price to the 'Base fare' from the document that is found on the left column (e.g. KWD 100.00).\n";
         $prompt .= "  • Set tasks.total to the 'Booking total' from the document that is found on the right column with bold font(e.g. KWD 957.64).\n";
-
         $prompt .= "  • If the document contains multiple passengers, always use the Booking total as the basis and divide it equally among all passengers to compute each passenger’s price. Do NOT assign the full total to each passenger.\n";
         $prompt .= "  • Place all other monetary details (e.g., Optional extras, Transaction fee, Admin fees, Taxes/fees, etc.) into tasks.additional_info.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Cebu Pacific):\n";

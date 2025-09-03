@@ -59,6 +59,11 @@ class ClientPolicy
 
     public function delete(User $user): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY || $user->role_id === Role::AGENT;
+        return $user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY || $user->role_id == Role::AGENT;
+    }
+
+    public function assignAgents(User $user)
+    {
+        return $user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY;
     }
 }

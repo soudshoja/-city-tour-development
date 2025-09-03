@@ -19,6 +19,10 @@
                                     class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
                                     Client's Name
                                 </th>
+                                <th
+                                    class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
+                                    Civil No
+                                </th>
                                 <th class="p-3 text-left text-md font-bold text-gray-900 dark:text-gray-300 text-center">
                                     Created
                                 </th>
@@ -75,7 +79,10 @@
                                         </p>
                                     </a>
                                 </td>
-                                <td>
+                                <td class="p-3 text-sm font-semibold text-center">
+                                    {{ $client->civil_no ?? 'N/A' }}
+                                </td>
+                                <td class="p-3 text-sm font-semibold text-center">
                                     {{ date('d M Y', strtotime($client->created_at)) }}
                                 </td>
 

@@ -1,5 +1,7 @@
 <?php
 
+namespace App\Support\PaymentGateway;
+
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Payment;
 use App\Models\PaymentMethod;

@@ -18,11 +18,16 @@ class Tap
             'client_name' => 'required|string|max:255',
             'client_email' => 'nullable|email|max:255',
             'invoice_id' => 'nullable|integer|exists:invoices,id',
-            'invoice_number' => 'required|string|max:255',
+            'invoice_number' => 'nullable|string|max:255',
             'payment_id' => 'required|integer|exists:payments,id',
             'payment_gateway' => 'required|string|max:255',
             'invoice_partial_id' => 'nullable|array',
+            'description' => 'required|string',
+            'voucher_number' => 'nullable|string',
+            'process' => 'nullable|string',
         ]);
+
+        $isPaymentLink  = trim($request->input('voucher_number', ''));
 
         $data = [
             'amount' => $request->input('finalAmount'),
@@ -35,21 +40,23 @@ class Tap
             'source' => [
                 'id' => 'src_all',
             ],
-            'description' => 'Payment for invoice: ' . $request->input('invoice_id'),
+            'description' => $request->input('description'),
             'metadata' => [
                 'invoice_number' => $request->input('invoice_number'),
+                'voucher_number' => $request->input('voucher_number'),
                 'payment_id' => $request->input('payment_id'),
                 'payment_gateway' => $request->input('payment_gateway'),
                 'invoice_partial_id' => json_encode($request->input('invoice_partial_id') ?? []),
+                'process' => $request->input('process'),
             ],
             'redirect' => [
-                'url' => route('payment.process'),
+                'url' => $isPaymentLink ? route('payment.link.process') : route('payment.process'),
             ],
         ];
 
         if (config('app.env') == 'production') {
             $data['post'] = [
-                'url' => route('payment.webhook'),
+                'url' => $isPaymentLink ? route('payment.link.webhook') : route('payment.webhook'),
             ];
         }
 

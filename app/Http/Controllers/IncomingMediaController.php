@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\IncomingMedia;
 use App\Models\Agent;
 use App\Models\Client;
+use App\Models\ClientAssignmentRequest;
+use App\Models\Notification;
+use App\Http\Traits\NotificationTrait;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -16,6 +19,7 @@ use Exception;
 
 class IncomingMediaController extends Controller
 {
+    use NotificationTrait;
     public function handleResayilWebhook(Request $request)
     {
         $webhookId = uniqid();
@@ -75,6 +79,11 @@ class IncomingMediaController extends Controller
                 $to = $request->input('data.from') ?? $request->input('from');
                 $this->sendWhatsAppMessage($to, "Okay, let's start fresh. Please send your client's media document again.", 'agent_restart');
                 return response()->json(['message' => 'Restart triggered'], 200);
+            }
+
+            // Handle assignment request commands (approve/deny)
+            if ($this->isAssignmentCommand($clientPhoneReply)) {
+                return $this->handleAssignmentCommand($clientPhoneReply, $agent, $request);
             }
 
             // Check if media is received first
@@ -314,7 +323,7 @@ class IncomingMediaController extends Controller
                             $to = $request->input('data.from') ?? $request->input('from');
                             $this->sendWhatsAppMessage(
                                 $to,
-                                "❌ Sorry, Civil ID is required for Kuwait nationals. Please resend with Civil ID.",
+                                "Sorry, Civil ID is required for Kuwait nationals. Please resend with Civil ID.",
                                 'civil_id_required'
                             );
                             return response()->json(['message' => 'Civil ID required for Kuwait nationals'], 422);
@@ -339,55 +348,132 @@ class IncomingMediaController extends Controller
                                 'media_id' => $mediaId
                             ]);
 
-                            // Find or create client
-                            $client = $data['civil_no'] !== null ? Client::where('civil_no', $data['civil_no'])->first() : null;
+                            // Check for duplicate clients using the same logic as ClientController
+                            $currentAgent = Agent::find($agentId);
+                            $companyId = $currentAgent->branch->company_id ?? null;
+                            $existingClient = null;
+                            $duplicateType = null;
 
-                            if (!$client) {
-                                $client = Client::create([
-                                    'first_name' => $data['first_name'],
-                                    'middle_name' => $data['middle_name'] ?? null,
-                                    'last_name' => $data['last_name'] ?? null,
-                                    'email' => $agentEmail,
-                                    'status' => 'active',
-                                    'phone' => $localNumberClient ?? '',
-                                    'country_code' => $matchedCodeClientPhone ?? '+965',
-                                    'date_of_birth' => $data['date_of_birth'] ?? null,
-                                    'address' => $data['place_of_birth'] ?? null,
-                                    'civil_no' => $data['civil_no'],
-                                    'passport_no' => $data['passport_no'] ?? null,
-                                    'old_passport_no' => $data['passport_no'] ?? null,
-                                    'agent_id' => $agentId
-                                ]);
-                                $autoReplyText = "✅ Thank you, {$autoReplyAdd} profile has been created successfully.\n\nClient: {$data['first_name']} {$data['last_name']}\nCivil ID: {$data['civil_no']}";
-                                Log::info("Client created within transaction", [
-                                    'client_id' => $client->id,
-                                    'civil_no' => $data['civil_no']
-                                ]);
-                            } else {
-                                // Update client with latest information
-                                $updateData = [
-                                    'phone' => $localNumberClient ?? $client->phone,
-                                    'country_code' => $matchedCodeClientPhone ?? $client->country_code,
-                                    'date_of_birth' => $data['date_of_birth'] ?? $client->date_of_birth,
-                                    'address' => $data['place_of_birth'] ?? $client->address,
-                                    'updated_at' => Carbon::parse($receivedAt),
-                                ];
+                            // First check: Civil Number duplicate (if provided)
+                            if (!empty($data['civil_no'])) {
+                                $existingClient = Client::where('civil_no', $data['civil_no'])
+                                    ->whereHas('agent.branch', function ($q) use ($companyId) {
+                                        $q->where('company_id', $companyId);
+                                    })
+                                    ->first();
+                                
+                                if ($existingClient) {
+                                    $duplicateType = 'civil_no';
+                                }
+                            }
 
-                                // Check if passport number is different and update
-                                if (!empty($data['passport_no']) && $client->passport_no !== $data['passport_no']) {
-                                    $updateData['passport_no'] = $data['passport_no'];
-                                    $autoReplyText = "✅ Thank you, {$autoReplyAdd} passport details have been updated.\n\nClient: {$client->first_name} {$client->last_name}\nNew Passport: {$data['passport_no']}";
-                                    Log::info("Client passport updated within transaction", [
-                                        'client_id' => $client->id,
-                                        'old_passport' => $client->passport_no,
-                                        'new_passport' => $data['passport_no']
-                                    ]);
-                                } else {
-                                    $autoReplyText = "✅ Thank you. We already have {$autoReplyAdd} information on file.\n\nClient: {$client->first_name} {$client->last_name}\nCivil ID: {$client->civil_no}";
+                            // Second check: Name + Phone duplicate (if civil check didn't find anything)
+                            if (!$existingClient && !empty($data['first_name']) && !empty($localNumberClient)) {
+                                $existingClient = Client::where('first_name', $data['first_name'])
+                                    ->where('phone', $localNumberClient)
+                                    ->whereHas('agent.branch', function ($q) use ($companyId) {
+                                        $q->where('company_id', $companyId);
+                                    })
+                                    ->first();
+                                
+                                if ($existingClient) {
+                                    $duplicateType = 'name_phone';
+                                }
+                            }
+
+                            // Handle duplicate detection
+                            if ($existingClient) {
+                                $ownerAgent = $existingClient->agent;
+                                $assignedAgents = $existingClient->agents;
+
+                                // Check if same agent or already assigned
+                                if ($currentAgent->id === $ownerAgent->id || $assignedAgents->contains($currentAgent->id)) {
+                                    $message = $duplicateType === 'civil_no' 
+                                        ? "You already have a client with Civil ID: {$existingClient->civil_no}" 
+                                        : "You already have a client with this name and phone number: {$existingClient->first_name} {$existingClient->last_name}";
+                                    
+                                    $to = $request->input('data.from') ?? $request->input('from');
+                                    $this->sendWhatsAppMessage($to, $message, 'duplicate_client_same_agent');
+                                    
+                                    // Still process the media record but don't create/update client
+                                    $incomingMedia->client_id = $existingClient->id;
+                                    $incomingMedia->save();
+                                    
+                                    DB::commit();
+                                    Cache::forget('agent_client_phone_' . $phone);
+                                    Cache::forget('agent_waiting_for_client_phone_' . $phone);
+                                    return response()->json(['message' => 'Duplicate client - same agent'], 200);
                                 }
 
-                                $client->update($updateData);
+                                // Check if already assigned
+                                if ($existingClient->agents()->where('agent_id', $currentAgent->id)->exists()) {
+                                    $message = "You are already assigned to this client: {$existingClient->first_name} {$existingClient->last_name}\nYou can find them in your client list.";
+                                    
+                                    $to = $request->input('data.from') ?? $request->input('from');
+                                    $this->sendWhatsAppMessage($to, $message, 'duplicate_client_already_assigned');
+                                    
+                                    // Still process the media record
+                                    $incomingMedia->client_id = $existingClient->id;
+                                    $incomingMedia->save();
+                                    
+                                    DB::commit();
+                                    Cache::forget('agent_client_phone_' . $phone);
+                                    Cache::forget('agent_waiting_for_client_phone_' . $phone);
+                                    return response()->json(['message' => 'Client already assigned'], 200);
+                                }
+
+                                // Send assignment request via WhatsApp
+                                $duplicateMessage = $duplicateType === 'civil_no' 
+                                    ? "A client with Civil ID '{$existingClient->civil_no}' already exists" 
+                                    : "A client with name '{$existingClient->first_name}' and phone '{$existingClient->phone}' already exists";
+
+                                $message = "{$duplicateMessage}\n\n" .
+                                    "Client: {$existingClient->first_name} {$existingClient->last_name}\n" .
+                                    "Current Owner: {$ownerAgent->name}\n\n" .
+                                    "An assignment request has been sent to {$ownerAgent->name} for approval.\n" .
+                                    "They will be notified and can approve or deny your request to work with this client.\n\n" .
+                                    "You will be notified once they respond.";
+
+                                $to = $request->input('data.from') ?? $request->input('from');
+                                $this->sendWhatsAppMessage($to, $message, 'assignment_request_sent');
+
+                                // Create assignment request
+                                $this->handleWhatsAppAssignmentRequest($existingClient, $currentAgent, $ownerAgent, $duplicateType, $data);
+
+                                // Still process the media record
+                                $incomingMedia->client_id = $existingClient->id;
+                                $incomingMedia->save();
+                                
+                                DB::commit();
+                                Cache::forget('agent_client_phone_' . $phone);
+                                Cache::forget('agent_waiting_for_client_phone_' . $phone);
+                                return response()->json(['message' => 'Assignment request sent'], 200);
                             }
+
+                            // No duplicates found - create new client
+                            $client = Client::create([
+                                'first_name' => $data['first_name'],
+                                'middle_name' => $data['middle_name'] ?? null,
+                                'last_name' => $data['last_name'] ?? null,
+                                'email' => $agentEmail,
+                                'status' => 'active',
+                                'phone' => $localNumberClient ?? '',
+                                'country_code' => $matchedCodeClientPhone ?? '+965',
+                                'date_of_birth' => $data['date_of_birth'] ?? null,
+                                'address' => $data['place_of_birth'] ?? null,
+                                'civil_no' => $data['civil_no'],
+                                'passport_no' => $data['passport_no'] ?? null,
+                                'old_passport_no' => $data['passport_no'] ?? null,
+                                'agent_id' => $agentId
+                            ]);
+
+                            $autoReplyText = "Thank you, {$autoReplyAdd} profile has been created successfully.\n\nClient: {$data['first_name']} {$data['last_name']}\nCivil ID: {$data['civil_no']}";
+                            
+                            Log::info("New client created via WhatsApp", [
+                                'client_id' => $client->id,
+                                'civil_no' => $data['civil_no'],
+                                'agent_id' => $agentId
+                            ]);
 
                             // Link IncomingMedia to client
                             if ($incomingMedia) {
@@ -418,7 +504,7 @@ class IncomingMediaController extends Controller
                             ]);
 
                             $to = $request->input('data.from') ?? $request->input('from');
-                            $this->sendWhatsAppMessage($to, "❌ Sorry, there was an error creating the client profile. Please try again or contact support.", 'client_creation_failed');
+                            $this->sendWhatsAppMessage($to, "Sorry, there was an error creating the client profile. Please try again or contact support.", 'client_creation_failed');
                             return response()->json(['message' => 'Client creation failed'], 500);
                         }
                     } else {
@@ -427,7 +513,7 @@ class IncomingMediaController extends Controller
                         ]);
                         
                         $to = $request->input('data.from') ?? $request->input('from');
-                        $this->sendWhatsAppMessage($to, "❌ Sorry, I couldn't read the information from the document. Please ensure the document is clear and try again.", 'ai_extraction_failed');
+                        $this->sendWhatsAppMessage($to, "Sorry, I couldn't read the information from the document. Please ensure the document is clear and try again.", 'ai_extraction_failed');
                         return response()->json(['message' => 'AI extraction failed'], 400);
                     }
                 } else {
@@ -437,7 +523,7 @@ class IncomingMediaController extends Controller
                     ]);
                     
                     $to = $request->input('data.from') ?? $request->input('from');
-                    $this->sendWhatsAppMessage($to, "❌ Sorry, there was an issue processing your document. Please try again.", 'upload_processing_failed');
+                    $this->sendWhatsAppMessage($to, "Sorry, there was an issue processing your document. Please try again.", 'upload_processing_failed');
                     return response()->json(['message' => 'Upload processing failed'], 500);
                 }
             } catch (Exception $e) {
@@ -448,7 +534,7 @@ class IncomingMediaController extends Controller
                 ]);
                 
                 $to = $request->input('data.from') ?? $request->input('from');
-                $this->sendWhatsAppMessage($to, "❌ Sorry, there was an unexpected error processing your request. Please try again.", 'unexpected_error');
+                $this->sendWhatsAppMessage($to, "Sorry, there was an unexpected error processing your request. Please try again.", 'unexpected_error');
             }
         } else {
             Log::warning("File not found for processing", [
@@ -457,7 +543,7 @@ class IncomingMediaController extends Controller
             ]);
             
             $to = $request->input('data.from') ?? $request->input('from');
-            $this->sendWhatsAppMessage($to, "❌ The uploaded file could not be found. Please try uploading again.", 'file_not_found');
+            $this->sendWhatsAppMessage($to, "The uploaded file could not be found. Please try uploading again.", 'file_not_found');
         }
 
         // Auto-reply
@@ -538,5 +624,235 @@ class IncomingMediaController extends Controller
             'dialing_code' => $matchedCode ?? '',
             'local' => $localNumber,
         ];
+    }
+
+    /**
+     * Handle assignment request for WhatsApp duplicate client
+     */
+    private function handleWhatsAppAssignmentRequest($existingClient, $currentAgent, $ownerAgent, $duplicateType, $data)
+    {
+        try {
+            // Create assignment request with WhatsApp context
+            $assignmentRequest = ClientAssignmentRequest::create([
+                'request_token' => ClientAssignmentRequest::generateToken(),
+                'owner_agent_id' => $ownerAgent->id,
+                'requesting_agent_id' => $currentAgent->id,
+                'client_id' => $existingClient->id,
+                'reason' => "WhatsApp client creation request - Agent {$currentAgent->name} attempted to create a client profile via WhatsApp for: {$data['first_name']} {$data['last_name']}",
+                'status' => ClientAssignmentRequest::STATUS_PENDING,
+                'expires_at' => now()->addDays(7),
+            ]);
+
+            // Send notification to owner agent
+            $duplicateMessage = $duplicateType === 'civil_no' 
+                ? "Civil ID: {$existingClient->civil_no}" 
+                : "Name: {$existingClient->first_name} {$existingClient->last_name}, Phone: {$existingClient->phone}";
+
+            $notificationData = [
+                'request_token' => $assignmentRequest->request_token,
+                'client_id' => $existingClient->id,
+                'client_name' => "{$existingClient->first_name} {$existingClient->last_name}",
+                'requesting_agent_name' => $currentAgent->name,
+                'duplicate_type' => $duplicateType,
+                'duplicate_info' => $duplicateMessage,
+                'source' => 'whatsapp'
+            ];
+
+            $this->storeNotification([
+                'user_id' => $ownerAgent->user_id,
+                'title' => "Assignment Request via WhatsApp",
+                'message' => "Agent {$currentAgent->name} is requesting access to your client ({$duplicateMessage}) through WhatsApp. Please review and take action.",
+                'type' => 'client_assignment_request',
+                'data' => $notificationData
+            ]);
+
+            // Send WhatsApp message to owner agent with commands
+            $whatsappMessage = "ASSIGNMENT REQUEST\n\n" .
+                "Agent {$currentAgent->name} is requesting access to your client:\n" .
+                "Client: {$existingClient->first_name} {$existingClient->last_name}\n" .
+                "{$duplicateMessage}\n\n" .
+                "To respond, reply with one of these commands:\n" .
+                "• APPROVE {$assignmentRequest->request_token}\n" .
+                "• DENY {$assignmentRequest->request_token}\n\n" .
+                "Or you can approve/deny from the web dashboard.";
+
+            $this->sendWhatsAppMessage($ownerAgent->phone_number, $whatsappMessage, 'assignment_request_notification');
+
+            Log::info("WhatsApp assignment request created", [
+                'request_token' => $assignmentRequest->request_token,
+                'owner_agent' => $ownerAgent->name,
+                'requesting_agent' => $currentAgent->name,
+                'client_id' => $existingClient->id,
+                'duplicate_type' => $duplicateType
+            ]);
+
+        } catch (Exception $e) {
+            Log::error("Failed to create WhatsApp assignment request", [
+                'error' => $e->getMessage(),
+                'owner_agent_id' => $ownerAgent->id,
+                'requesting_agent_id' => $currentAgent->id,
+                'client_id' => $existingClient->id
+            ]);
+        }
+    }
+
+    /**
+     * Check if the message is an assignment command
+     */
+    private function isAssignmentCommand($message)
+    {
+        $message = strtoupper(trim($message));
+        return preg_match('/^(APPROVE|DENY)\s+[A-Z0-9]{32}$/i', $message);
+    }
+
+    /**
+     * Handle assignment command from WhatsApp
+     */
+    private function handleAssignmentCommand($message, $agent, $request)
+    {
+        try {
+            $message = strtoupper(trim($message));
+            $parts = explode(' ', $message);
+            
+            if (count($parts) !== 2) {
+                $to = $request->input('data.from') ?? $request->input('from');
+                $this->sendWhatsAppMessage($to, "Invalid command format. Use: APPROVE [TOKEN] or DENY [TOKEN]", 'invalid_command_format');
+                return response()->json(['message' => 'Invalid command format'], 200);
+            }
+
+            $command = $parts[0];
+            $token = $parts[1];
+
+            // Find the assignment request
+            $assignmentRequest = ClientAssignmentRequest::where('request_token', $token)
+                ->where('owner_agent_id', $agent->id)
+                ->where('status', ClientAssignmentRequest::STATUS_PENDING)
+                ->first();
+
+            if (!$assignmentRequest) {
+                $to = $request->input('data.from') ?? $request->input('from');
+                $this->sendWhatsAppMessage($to, "Assignment request not found or already processed. Please check the token or use the web dashboard.", 'request_not_found');
+                return response()->json(['message' => 'Request not found'], 200);
+            }
+
+            // Check if request is expired
+            if ($assignmentRequest->isExpired()) {
+                $to = $request->input('data.from') ?? $request->input('from');
+                $this->sendWhatsAppMessage($to, "This assignment request has expired. Please use the web dashboard for further actions.", 'request_expired');
+                return response()->json(['message' => 'Request expired'], 200);
+            }
+
+            $client = $assignmentRequest->client;
+            $requestingAgent = $assignmentRequest->requestingAgent;
+            $to = $request->input('data.from') ?? $request->input('from');
+
+            if ($command === 'APPROVE') {
+                // Process approval
+                DB::beginTransaction();
+                
+                try {
+                    // Add agent to client's assigned agents
+                    $client->agents()->syncWithoutDetaching([$requestingAgent->id]);
+                    
+                    // Mark request as approved
+                    $assignmentRequest->approve($agent->user_id, 'Approved via WhatsApp');
+                    
+                    // Mark related notification as read
+                    $notification = Notification::findByUserAndToken($agent->user_id, 'client_assignment_request', $token);
+                    if ($notification) {
+                        $notification->update(['status' => 'read', 'close' => 1]);
+                    }
+
+                    // Send confirmation to owner agent
+                    $this->sendWhatsAppMessage($to, 
+                        "REQUEST APPROVED\n\n" .
+                        "You have successfully approved the assignment request.\n" .
+                        "Agent {$requestingAgent->name} now has access to client: {$client->first_name} {$client->last_name}", 
+                        'approval_confirmation'
+                    );
+
+                    // Send notification to requesting agent
+                    $this->sendWhatsAppMessage($requestingAgent->phone_number,
+                        "ASSIGNMENT APPROVED\n\n" .
+                        "Your request to access client {$client->first_name} {$client->last_name} has been approved by {$agent->name}.\n" .
+                        "You can now find this client in your client list.",
+                        'assignment_approved'
+                    );
+
+                    DB::commit();
+                    
+                    Log::info("Assignment request approved via WhatsApp", [
+                        'token' => $token,
+                        'owner_agent' => $agent->name,
+                        'requesting_agent' => $requestingAgent->name,
+                        'client_id' => $client->id
+                    ]);
+
+                } catch (Exception $e) {
+                    DB::rollBack();
+                    Log::error("Failed to approve assignment via WhatsApp", ['error' => $e->getMessage(), 'token' => $token]);
+                    $this->sendWhatsAppMessage($to, "Sorry, there was an error processing your approval. Please try again or use the web dashboard.", 'approval_error');
+                }
+
+            } elseif ($command === 'DENY') {
+                // Process denial
+                DB::beginTransaction();
+                
+                try {
+                    // Mark request as denied
+                    $assignmentRequest->deny($agent->user_id, 'Denied via WhatsApp');
+                    
+                    // Mark related notification as read
+                    $notification = Notification::findByUserAndToken($agent->user_id, 'client_assignment_request', $token);
+                    if ($notification) {
+                        $notification->update(['status' => 'read', 'close' => 1]);
+                    }
+
+                    // Send confirmation to owner agent
+                    $this->sendWhatsAppMessage($to, 
+                        "REQUEST DENIED\n\n" .
+                        "You have denied the assignment request.\n" .
+                        "Agent {$requestingAgent->name} will be notified of your decision.", 
+                        'denial_confirmation'
+                    );
+
+                    // Send notification to requesting agent
+                    $this->sendWhatsAppMessage($requestingAgent->phone_number,
+                        "ASSIGNMENT DENIED\n\n" .
+                        "Your request to access client {$client->first_name} {$client->last_name} has been denied by {$agent->name}.\n" .
+                        "Please contact {$agent->name} directly if you need to discuss this decision.",
+                        'assignment_denied'
+                    );
+
+                    DB::commit();
+                    
+                    Log::info("Assignment request denied via WhatsApp", [
+                        'token' => $token,
+                        'owner_agent' => $agent->name,
+                        'requesting_agent' => $requestingAgent->name,
+                        'client_id' => $client->id
+                    ]);
+
+                } catch (Exception $e) {
+                    DB::rollBack();
+                    Log::error("Failed to deny assignment via WhatsApp", ['error' => $e->getMessage(), 'token' => $token]);
+                    $this->sendWhatsAppMessage($to, "Sorry, there was an error processing your denial. Please try again or use the web dashboard.", 'denial_error');
+                }
+            }
+
+            return response()->json(['message' => 'Assignment command processed'], 200);
+
+        } catch (Exception $e) {
+            Log::error("Error handling assignment command", [
+                'error' => $e->getMessage(),
+                'message' => $message,
+                'agent_id' => $agent->id
+            ]);
+            
+            $to = $request->input('data.from') ?? $request->input('from');
+            $this->sendWhatsAppMessage($to, "Sorry, there was an error processing your command. Please try again or use the web dashboard.", 'command_processing_error');
+            
+            return response()->json(['message' => 'Command processing error'], 500);
+        }
     }
 }

@@ -2936,13 +2936,13 @@
         });
 
         // Handle status[] and status (avoid duplicates)
-const statusValues = [
+    const statusValues = [
     ...params.getAll('status[]'),
     ...params.getAll('status'),
     ...Array.from(params.keys())
         .filter(k => k.startsWith('status['))
         .map(k => params.get(k))
-].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
+    ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
 
         statusValues.forEach(val => {
             filterRows.push({ column: 'status', value: val });

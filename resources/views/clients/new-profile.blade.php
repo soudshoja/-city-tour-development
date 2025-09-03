@@ -203,10 +203,31 @@
                                 {{ $client->address ? $client->address : 'N/A' }}
                             </h5>
                         </div>
+                        @if($client->agents->isEmpty())
                         <div class="mt-2 flex items-center justify-between text-white">
                             <p class="text-lg">Agent</p>
-                            <h5 class="text-base ml-auto">{{ $client->agent->name }}</h5>
+                            <div class="px-3 py-1 bg-gray-400 text-white text-sm rounded-full">
+                                No Agent Assigned
+                            </div>
                         </div>
+                        @else
+                        <div class="mt-2 text-white">
+                            <p class="text-lg mb-2">{{ $client->agents->count() > 1 ? 'Agents' : 'Agent' }}</p>
+                            <div class="flex flex-wrap gap-2 max-h-20 overflow-y-auto">
+                                @foreach($client->agents as $agent)
+                                <div class="px-3 py-1 bg-gradient-to-b from-gray-700 to-gray-400 text-white text-sm rounded-full shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center gap-2">
+                                    <div class="w-2 h-2 bg-white rounded-full opacity-80"></div>
+                                    <span class="font-semibold">{{ $agent->name }}</span>
+                                </div>
+                                @endforeach
+                            </div>
+                            @if($client->agents->count() > 3)
+                            <div class="mt-1 text-xs text-gray-300 opacity-75">
+                                {{ $client->agents->count() }} agents assigned
+                            </div>
+                            @endif
+                        </div>
+                        @endif
                     </div>
                     <div class="invoice-status flex gap-2 mt-2">
                         <x-paid>{{ $paid }} KWD</x-paid>
@@ -769,10 +790,10 @@
                 <form action="{{ route('clients.update', $client->id) }}" method="POST">
                     @csrf
                     @method('PUT')
-                    
+
                     <!-- Two-column grid for larger screens, single column for smaller screens -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        
+
                         <!-- Left Column -->
                         <div class="space-y-4">
                             <div>
@@ -781,21 +802,21 @@
                                     class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="First Name" required>
                             </div>
-                            
+
                             <div>
                                 <label for="middle_name" class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
                                 <input type="text" name="middle_name" id="middle_name" value="{{ $client->middle_name }}"
                                     class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="Middle Name">
                             </div>
-                            
+
                             <div>
                                 <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
                                 <input type="text" name="last_name" id="last_name" value="{{ $client->last_name }}"
                                     class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="Last Name">
                             </div>
-                            
+
                             <div>
                                 <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                 <input type="email" name="email" id="email" value="{{ $client->email }}"
@@ -803,7 +824,7 @@
                                     placeholder="Client Email">
                             </div>
                         </div>
-                        
+
                         <!-- Right Column -->
                         <div class="space-y-4">
                             <div>
@@ -818,14 +839,14 @@
                                     @endforeach
                                 </select>
                             </div>
-                            
+
                             <div>
                                 <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                                 <input type="text" name="phone" id="phone" value="{{ $client->phone }}"
                                     class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="Client Phone">
                             </div>
-                            
+
                             <div>
                                 <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
                                 <textarea name="address" id="address" rows="3"
@@ -834,7 +855,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     @can('assignAgents', App\Models\Client::class)
                     <!-- Agent Management Section - Full Width -->
                     <div class="mt-6 pt-6 border-t border-gray-200">
@@ -901,15 +922,15 @@
                                     x-transition:leave-end="transform opacity-0 scale-95"
                                     @click.away="closeDropdown()"
                                     class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
-                                    
+
                                     <!-- Search Input -->
                                     <div class="p-2 border-b border-gray-200">
                                         <div class="relative">
-                                            <input 
-                                                type="text" 
+                                            <input
+                                                type="text"
                                                 x-ref="searchInput"
                                                 x-model="search"
-                                                placeholder="Search agents..." 
+                                                placeholder="Search agents..."
                                                 class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                                 @keydown.escape="closeDropdown()"
                                                 @click.stop>
@@ -931,12 +952,12 @@
                                                 <span x-text="agent.name"></span>
                                             </button>
                                         </template>
-                                        
+
                                         <!-- No results message -->
                                         <div x-show="getFilteredAgents().length === 0 && search !== ''" class="px-4 py-2 text-gray-500 italic text-sm">
                                             No agents found matching "<span x-text="search"></span>"
                                         </div>
-                                        
+
                                         <!-- All assigned message -->
                                         <div x-show="getAvailableAgents().length === 0 && search === ''" class="px-4 py-2 text-gray-500 italic text-sm">
                                             All agents are already assigned
@@ -958,7 +979,7 @@
                         </div>
                     </div>
                     @endcan
-                    
+
                     <!-- Submit Button -->
                     <div class="mt-8 pt-6 border-t border-gray-200 flex justify-end">
                         <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
@@ -1052,22 +1073,22 @@
             return {
                 selectedAgents: data.selectedAgents || [],
                 availableAgents: data.availableAgents || [],
-                
+
                 addAgent(agentId) {
                     if (!this.selectedAgents.includes(agentId)) {
                         this.selectedAgents.push(agentId);
                     }
                 },
-                
+
                 removeAgent(agentId) {
                     this.selectedAgents = this.selectedAgents.filter(id => id !== agentId);
                 },
-                
+
                 getAgentName(agentId) {
                     const agent = this.availableAgents.find(a => a.id === agentId);
                     return agent ? agent.name : 'Unknown Agent';
                 },
-                
+
                 getAvailableAgents() {
                     return this.availableAgents.filter(agent => !this.selectedAgents.includes(agent.id));
                 }

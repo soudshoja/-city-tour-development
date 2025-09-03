@@ -61,7 +61,10 @@
      @endif
      <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         <div class="flex justify-between items-center mb-10">
-            <x-application-logo class="custom-logo-size"  />
+            <div>
+                <img class="w-auto h-[90px] object-contain" src="{{ $invoice->agent->branch->company->logo ? Storage::url($invoice->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
+                <p class="text-base font-semibold">{{ $invoice->agent->branch->company->name }}</p>
+            </div>
             <div class="text-right">
                 <h1 class="text-2xl font-bold text-gray-800">INVOICE</h1>
                 <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
@@ -143,7 +146,7 @@
              <div class="w-1/3 text-sm">
                  <div class="flex justify-between py-2 border-b border-gray-200">
                      <span>Subtotal:</span>
-                     <span>{{ number_format($invoicePartial->amount, 2) }}</span>
+                     <span>{{ number_format($invoicePartial->status === 'paid' ? $invoicePartial->amount - $invoicePartial->service_charge : $invoicePartial->amount, 2) }}</span>
                  </div>
                  @if ($checkUtilizeCredit && $checkUtilizeCredit->count())
                      @foreach ($checkUtilizeCredit as $credit)
@@ -221,8 +224,7 @@
                  @endif
 
 
-                 <div x-data="{ open: false }">
-                     <!-- Trigger Button -->
+                 <!-- <div x-data="{ open: false }">
                      @if ($creditBalance > 0)
                          <div class="flex items-center gap-2">
                              <button @click="open = true" type="button"
@@ -236,7 +238,6 @@
                          </div>
                      @endif
 
-                     <!-- Modal -->
                      <div x-show="open" x-cloak
                          class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
                          <div @click.away="open = false" class="bg-white p-6 rounded shadow max-w-md w-full">
@@ -264,7 +265,7 @@
                              </div>
                          </div>
                      </div>
-                 </div>
+                 </div> -->
 
 
                  <div class="flex items-center gap-2">

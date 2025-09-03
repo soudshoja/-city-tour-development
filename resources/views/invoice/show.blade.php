@@ -102,7 +102,10 @@
     <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         <!-- Header -->
         <div class="flex justify-between items-center mb-10">
-            <img class="w-[120px] h-[95px] object-contain" src="{{ $invoice->agent->branch->company->logo ? Storage::url($invoice->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
+            <div>
+                <img class="w-auto h-[90px] object-contain" src="{{ $invoice->agent->branch->company->logo ? Storage::url($invoice->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
+                <p class="text-base font-semibold">{{ $invoice->agent->branch->company->name }}</p>
+            </div>
             <div class="text-right">
                 <h1 class="text-2xl font-bold text-gray-800">INVOICE</h1>
                 <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
@@ -164,7 +167,7 @@
                         $passengerCount = count($roomDetails['passengers'] ?? []);
                         @endphp
                         <p>
-                            <br>Client Name: {{ $detail->task->client_name ?? (($invoice->client->first_name ?? '') . ' ' . ($invoice->client->last_name ?? '')) }}
+                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
                             <br>Hotel Name: {{ $detail->task->hotelDetails->hotel->name ?? 'N/A' }}
                             <br>Check In: {{ $detail->task->hotelDetails->check_in ?? 'N/A' }}
                             <br>Check Out: {{ $detail->task->hotelDetails->check_out ?? 'N/A' }}
@@ -174,7 +177,7 @@
                         @elseif ($detail->task->type === 'flight')
                         <p>
                             GDS Reference: {{ $detail->task->gds_reference ?? 'N/A' }}
-                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->first_name ?? 'N/A') }}
+                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
                             <br>Route:
                             {{ $detail->task->flightDetails->countryFrom->name ?? '' }}
                             ({{ $detail->task->flightDetails->airport_from ?? '' }})
@@ -182,6 +185,27 @@
                             {{ $detail->task->flightDetails->countryTo->name ?? '' }}
                             ({{ $detail->task->flightDetails->airport_to ?? '' }})
                             <br>Class of Travel: {{ ucfirst($detail->task->flightDetails->class_type ?? 'N/A') }}
+                        </p>
+                        @elseif ($detail->task->type === 'visa')
+                        <p>
+                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                            <br>Visa Type: {{ $detail->task->visaDetails->visa_type ?? 'N/A' }}
+                            <br>Application #: {{ $detail->task->visaDetails->application_number ?? 'N/A' }}
+                            <br>Expiry Date: {{ !empty($visa?->expiry_date) ? \Carbon\Carbon::parse($visa->expiry_date)->format('d M Y') : 'N/A' }}
+                            <br>Entries: {{ $detail->task->visaDetails->number_of_entries ?? 'N/A' }}
+                            <br>Stay Duration: {{ $detail->task->visaDetails->stay_duration ?? 'N/A' }}
+                            <br>Issuing Country: {{ $detail->task->visaDetails->issuing_country ?? 'N/A' }}
+                        </p>
+                        @elseif ($detail->task->type === 'insurance')
+                        <p>
+                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                            <br>Insurance Type: {{ $detail->task->insuranceDetails->insurance_type ?? 'N/A' }}
+                            <br>Destination: {{ $detail->task->insuranceDetails->destination ?? 'N/A' }}
+                            <br>Plan Type: {{ $detail->task->insuranceDetails->plan_type ?? 'N/A' }}
+                            <br>Duration: {{ $detail->task->insuranceDetails->duration ?? 'N/A' }}
+                            <br>Package: {{ $detail->task->insuranceDetails->package ?? 'N/A' }}
+                            <br>Document Reference: {{ $detail->task->insuranceDetails->document_reference ?? 'N/A' }}
+                            <br>Paid Leaves: {{ $detail->task->insuranceDetails->paid_leaves ?? 'N/A' }}
                         </p>
                         @endif
                     </td>
@@ -341,6 +365,7 @@
                     <th class="px-4 py-2 border">Link</th>
                     <th class="px-4 py-2 border">Client</th>
                     <th class="px-4 py-2 border">Expiry Date</th>
+                    <th class="px-4 py-2 border">Payment Gateway</th>
                     <th class="px-4 py-2 border">Status</th>
                     <th class="px-4 py-2 border">Amount</th>
                 </tr>
@@ -409,16 +434,10 @@
                             </div>
                         </div>
                     </td>
-
-                    @php
-                    $checkUtilizeCreditPartial = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial(
-                    $partial->client_id,
-                    $partial->id,
-                    );
-                    @endphp
                     <td class="px-4 py-2 border">
                         {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}
                     </td>
+                    <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
                     <td class="px-4 py-2 border">{{ $partial->status }}</td>
                     <td class="px-4 py-2 border">
                         @if ($partial->status !== 'paid')
@@ -518,14 +537,12 @@
                 @csrf
 
                 <input type="hidden" id="totalAmountInput" name="total_amount"
-                    value="{{ isset($gatewayFee['finalAmount']) 
-    ? number_format($gatewayFee['finalAmount'], 2, '.', '') 
-    : number_format($invoicePartials->sum('amount') - abs($checkUtilizeCredit->sum('amount')), 2, '.', '') }}">
+                    value="{{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}">
                 <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
                 <input type="hidden" name="client_name" value="{{ $invoice->client->first_name }}">
                 <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
-                <input type="hidden" name="payment_gateway" value="{{ $paymentGateway }}">
-                <input type="hidden" name="payment_method" value="{{ $paymentMethod }}">
+                <input type="hidden" name="payment_gateway" value="{{ $invoice->invoicePartials->first()->payment_gateway }}">
+                <input type="hidden" name="payment_method" value="{{ $invoice->invoicePartials->first()->payment_method }}">
 
                 <div class="flex items-center gap-2">
                     @if ($invoice->payment_type !== 'split' && !($invoice->payment_type === 'partial' && $hasMismatch))
@@ -562,60 +579,6 @@
 
             @endif
         </div>
-        <!-- Payment pdf -->
-        <!-- <div class="mb-8 inline-flex gap-2">
-    @if ($invoice->status === 'unpaid' || $invoice->status === 'partial')
-<form action="{{ route('whatsapp.send') }}" method="POST">
-        @csrf
-        <input type="hidden" name="client" value='{{ json_encode($invoice->client) }}'>
-        <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number }}'>
-        <button type="submit"
-            class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-            Send Invoice To Client
-        </button>
-    </form>
-    <form id="paymentForm" action="{{ route('whatsapp.send') }}" method="POST">
-        @csrf
-        <input type="hidden" id="totalAmountInput" name="total_amount" value="{{ $invoicePartials->sum('amount') }}">
-        <input type="hidden" name="client" value='{{ json_encode($invoice->client) }}'>
-        <input type="hidden" name="invoiceNumber" value='{{ $invoice->invoice_number }}'>
-        <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
-        <input type="hidden" name="client_name" value="{{ $invoice->client->first_name }}">
-        <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
-        <input type="hidden" name="payment_method" value="{{ $paymentGateway }}">
-
-        <div class="flex items-center gap-2">
-            <button type="submit" id="payNowBtn"
-                class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                Pay Now
-            </button>
-            <span id="totalAmountDisplay" class="text-lg font-semibold text-gray-800">
-                {{ number_format($invoicePartials->where('status', 'unpaid')->sum('amount'), 2) }}
-            </span>
-        </div>
-        <div id="loadingSpinner" class="hidden mt-2">
-            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-            Processing...
-        </div>
-    </form>
-
-    @if (auth()->user() &&
-            (auth()->user()->role === 'admin' || auth()->user()->role === 'company' || auth()->user()->role === 'agent'))
-<div class="flex gap-2 mt-2" id="invoice-link">
-        <p>
-            {{ route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]) }}
-        </p>
-        <button
-            onclick="copyToClipboard('{{ route('invoice.show', ['invoiceNumber' => $invoice->invoice_number]) }}')">
-            <img src="{{ asset('images/svg/copy.svg') }}" alt="Copy Link" class="w-4 h-4">
-        </button>
-
-    </div>
-@endif
-@else
-<span class="text-green-600 font-bold">PAID</span>
-@endif
-</div> -->
         <!-- Signatdiure Section -->
         <div class="flex justify-between items-center">
             <div class="text-sm">

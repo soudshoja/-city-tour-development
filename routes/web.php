@@ -391,7 +391,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{companyId}/{invoiceNumber}/date', [InvoiceController::class, 'updateDate'])->name('updateDate');
         Route::put('/{companyId}/{invoiceNumber}/amount', [InvoiceController::class, 'updateAmount'])->name('updateAmount');
         Route::post('/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('updateTaskPrice');
-        Route::get('/details/{companyId}/{invoiceNumber}', [InvoiceController::class, 'showInvoice'])->name('show-invoice')->withoutMiddleware(['auth']);
+        Route::get('/details/{companyId}/{invoiceNumber}', [InvoiceController::class, 'showDetails'])->name('details')->withoutMiddleware(['auth']);
     });
 
 
@@ -421,7 +421,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
         Route::get('/success', [PaymentController::class, 'success'])->name('success')->withoutMiddleware(['auth']);
-        Route::get('/clients/{companyId}/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
+        Route::get('/failed', [PaymentController::class, 'failed'])->name('failed')->withoutMiddleware(['auth']);
         Route::get('/clients-process', [PaymentController::class, 'paymentClientProcess'])->name('clients.process');
 
         Route::group([
@@ -447,6 +447,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/initiate-myfatoorah-payment', [PaymentController::class, 'initiateMyFatoorahPayment'])->name('payment.initiateMyFatoorah');
         Route::get('/myfatoorah-callback', [PaymentController::class, 'myFatoorahCallback'])->name('payment.success');
         Route::get('/myfatoorah-error', [PaymentController::class, 'myFatoorahCallback'])->name('payment.failed');
+
+        Route::get('/uPayment-callback' , [PaymentController::class, 'handleUPaymentCallback'])->name('uPayment.callback')->withoutMiddleware(['auth']);
+        Route::get('/uPayment-error' , [PaymentController::class, 'handleUPaymentError'])->name('uPayment.error')->withoutMiddleware(['auth']);
+        Route::get('/uPayment-noti' , [PaymentController::class, 'handleUPaymentNoti'])->name('uPayment.notifications')->withoutMiddleware(['auth']);
     });
 
     Route::group([

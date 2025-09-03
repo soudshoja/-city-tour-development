@@ -2527,22 +2527,25 @@ class InvoiceController extends Controller
                 $clientCredit = Credit::where('client_id', $invoice->client_id)->first();
  
                 if($clientCredit) {
-                    $newBalance = $clientCredit->amount - $invoice->amount;
+                    $currentCredit = $clientCredit->amount;
+                    $creditUsed = min($currentCredit, $invoice->amount);
+                    $creditApplied = -$creditUsed;
+                    $remainingDue = $invoice->amount - $creditUsed;
                     
                     $insuffientCredit = Credit::create([
                         'company_id' => $invoice->client->agent->branch->company_id,
                         'client_id' => $invoice->client->id,
                         'invoice_id' => $invoice->id,
                         'type' => 'Invoice',
-                        'description' => 'Payment for ' . $invoice->invoice_number . '. Insufficient credit of ' . $newBalance,
-                        'amount' => $newBalance,
+                        'description' => 'Payment for ' . $invoice->invoice_number . '. Insufficient credit of ' . $remainingDue,
+                        'amount' => $creditApplied,
                     ]);
 
                     Log::info('Client credit successfully deducted.', [
                         'client_id' => $invoice->client_id,
                         'invoice_amount' => $invoice->amount,
                         'credit_amount' => $clientCredit->amount,
-                        'new_balance' => $newBalance,
+                        'credit_applied' => $creditApplied,
                     ]);
                     
                 } else {

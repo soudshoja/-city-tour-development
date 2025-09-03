@@ -824,6 +824,13 @@
                             </div>
 
                             <div>
+                                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Civil No</label>
+                                <input type="civil_no" name="civil_no" id="civil_no" value="{{ $client->civil_no }}"
+                                    class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Client Civil No">
+                            </div>
+
+                            <div>
                                 <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                                 <input type="email" name="email" id="email" value="{{ $client->email }}"
                                     class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

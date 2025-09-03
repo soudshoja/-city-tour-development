@@ -27,6 +27,7 @@ use App\Models\Credit;
 use App\Enums\ChargeType;
 use App\Http\Traits\NotificationTrait;
 use App\Models\InvoicePartial;
+use App\Models\Notification;
 use App\Models\PaymentMethod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
@@ -80,6 +81,7 @@ class ClientController extends Controller
                     ->orWhere('last_name', 'LIKE', $searchTerm)
                     ->orWhere('email', 'LIKE', $searchTerm)
                     ->orWhere('phone', 'LIKE', $searchTerm)
+                    ->orWhere('civil_no', 'LIKE', $searchTerm)
                     ->orWhereHas('agent', function ($q) use ($searchTerm) {
                         $q->where('name', 'LIKE', $searchTerm);
                     });
@@ -467,6 +469,7 @@ class ClientController extends Controller
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
+            'civil_no' => 'nullable|string|max:100|unique:clients,civil_no,' . $id,
             'email' => 'email',
             'status' => 'nullable',
             'phone' => 'string|max:15',
@@ -482,6 +485,7 @@ class ClientController extends Controller
                 'first_name',
                 'middle_name',
                 'last_name',
+                'civil_no',
                 'email',
                 'status',
                 'country_code',
@@ -1387,12 +1391,12 @@ class ClientController extends Controller
             // Update request status using model method
             $request->approve(Auth::id());
 
-            // Mark the original notification as read
-            DB::table('notifications')
-                ->where('user_id', Auth::id())
-                ->where('type', 'client_assignment_request')
-                ->whereJsonContains('data->request_token', $token)
-                ->update(['status' => 'read']);
+            // Mark the original notification as read - Using Eloquent model method
+            $notification = Notification::findByUserAndToken(Auth::id(), 'client_assignment_request', $token);
+           
+            if ($notification) {
+                $notification->update(['status' => 'read']);
+            }
 
             // Send notification to requesting agent
             $requestingAgent = $request->requestingAgent;
@@ -1457,12 +1461,11 @@ class ClientController extends Controller
             // Update request status using model method
             $request->deny(Auth::id());
 
-            // Mark the original notification as read
-            DB::table('notifications')
-                ->where('user_id', Auth::id())
-                ->where('type', 'client_assignment_request')
-                ->whereJsonContains('data->request_token', $token)
-                ->update(['status' => 'read']);
+            // Mark the original notification as read - Using Eloquent model method
+            $notification = Notification::findByUserAndToken(Auth::id(), 'client_assignment_request', $token);
+            if ($notification) {
+                $notification->update(['status' => 'read']);
+            }
 
             // Send notification to requesting agent
             $requestingAgent = $request->requestingAgent;

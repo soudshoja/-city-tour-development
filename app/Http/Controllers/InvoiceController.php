@@ -2472,14 +2472,12 @@ class InvoiceController extends Controller
 
             DB::beginTransaction();
             try {
-                // Set as paid
                 $invoice->status = 'paid';
                 $invoice->paid_date = Carbon::now();
                 $invoice->is_client_credit = 1;
                 $invoice->payment_type = 'full';
                 $invoice->save();
 
-                // Create InvoicePartial if not exists
                 InvoicePartial::create([
                     'invoice_id' => $invoice->id,
                     'invoice_number' => $invoice->invoice_number,
@@ -2537,14 +2535,18 @@ class InvoiceController extends Controller
                 Log::info('Processing credit deduction for client: ' . $invoice->client_id . ' for invoice ' . $invoice->id);
 
                 $clientCredit = Credit::where('client_id', $invoice->client_id)->first();
-
+ 
                 if($clientCredit) {
                     $newBalance = $clientCredit->amount - $invoice->amount;
-
-                    $clientCredit->amount = $newBalance;
-                    $clientCredit->updated_at = now();
-
-                    $clientCredit->save();
+                    
+                    $insuffientCredit = Credit::create([
+                        'company_id' => $invoice->client->agent->branch->company_id,
+                        'client_id' => $invoice->client->id,
+                        'invoice_id' => $invoice->id,
+                        'type' => 'Invoice',
+                        'description' => 'Payment for ' . $invoice->invoice_number . '. Insufficient credit of ' . $newBalance,
+                        'amount' => $newBalance,
+                    ]);
 
                     Log::info('Client credit successfully deducted.', [
                         'client_id' => $invoice->client_id,
@@ -2553,58 +2555,16 @@ class InvoiceController extends Controller
                         'new_balance' => $newBalance,
                     ]);
                     
-                    $accountLiabilities = Account::where('name', 'Advances')
-                                        ->where('company_id', $invoice->agent->branch->company_id)
-                                        ->first();      
-                    $creditAccount = Account::where('name', 'Credit')
-                                        ->where('company_id', $invoice->agent->branch->company_id)
-                                        ->where('parent_id', optional($accountLiabilities)->id)
-                                        ->first();
-                    $maxChildCode = Account::where('company_id', $invoice->agent->branch->company_id)
-                        ->where('parent_id', $accountLiabilities->id)
-                        ->max('code');
-
-                    $newCode = $maxChildCode ? ((int)$maxChildCode + 1) : ((int)$accountLiabilities->code + 1);
-                    if(!$creditAccount) {
-                        Log::error('Credit Account not found for company Id: ' . $invoice->agent->branch->company_id);
-
-                        $coaController = new CoaController();
-
-                        $data = [
-                            'name' => 'Credit',
-                            'code' => $newCode,
-                            'level' => '3',
-                            'parent_id' => $accountLiabilities->id,
-                        ];
-                        $creditAccount = $coaController->addCategory(new Request($data));
-                    }
-
-                    dd($accountLiabilities, $creditAccount);
-
-                    if ($creditAccount) {
-                        JournalEntry::create([
-                            'transaction_id' => $transaction->id,
-                            'branch_id' => $task->agent->branch_id,
-                            'company_id' => $task->company_id,
-                            'invoice_id' => $invoice->id,
-                            'account_id' => $clientCredit->id,
-                            'transaction_date' => now(),
-                            'description' => 'Client credit deduction for invoice ' . $invoice->id,
-                            'debit' => $newBalance,
-                            'credit' => 0,
-                            'type' => 'receivable',
-                        ]);
-                    } else {
-                        Log::error('Credit Account not found for company Id: ' . $invoice->agent->branch->company_id);
-                    }
-
                 } else {
-                    Log::error('Client credit failed to deduct');
+                    Log::error('Client credit failed to deduct', [
+                        'client_id' => $invoice->client_id,
+                        'invoice_amount' => $invoice->amount,
+                        'credit_amount' => $clientCredit->amount,
+                    ]);
                 }
 
-                Log::info('Starting to commit to DB...');
                 DB::commit();
-                Log::info('Finish committing to DB.');
+
                 return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])->with('success', 'Invoice paid successfully!');
             } catch (Exception $e) {
                 DB::rollBack();

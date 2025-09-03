@@ -6,6 +6,9 @@ use App\Http\Traits\NotificationTrait;
 use App\Models\Agent;
 use App\Models\Notification as ModelsNotification;
 use App\Models\Role;
+use App\Models\ClientAssignmentRequest;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use Livewire\Component;
 
 class Notification extends Component
@@ -20,11 +23,18 @@ class Notification extends Component
 
     public function mount()
     {
+        $this->updateCounts();
+        $this->getNotification();
+    }
+
+    /**
+     * Update notification counts
+     */
+    public function updateCounts()
+    {
         $this->totalCount = ModelsNotification::count();
         $this->readCount = ModelsNotification::where('status', 'read')->count();
         $this->unreadCount = ModelsNotification::where('status', 'unread')->count();
-
-        $this->getNotification();
     }
 
     /**
@@ -56,18 +66,60 @@ class Notification extends Component
         $this->filter = $filter;
         $this->getNotification();
     }
+
     public function markAllAsRead()
     {
         ModelsNotification::where('status', 'unread')->update(['status' => 'read']);
-
+        $this->updateCounts();
         $this->getNotification();
         session()->flash('message', 'All notifications marked as read.');
+    }
+
+    public function markAsRead($id)
+    {
+        $notification = ModelsNotification::find($id);
+        if ($notification) {
+            $notification->status = 'read';
+            $notification->save();
+            $this->updateCounts();
+            $this->getNotification();
+        }
+    }
+
+    /**
+     * Check if assignment request is still pending
+     */
+    public function isAssignmentRequestPending($token)
+    {
+        if (!$token) return false;
+        
+        return ClientAssignmentRequest::byToken($token)->active()->exists();
+    }
+
+    /**
+     * Get assignment request status
+     */
+    public function getAssignmentRequestStatus($token)
+    {
+        if (!$token) return null;
+        
+        return ClientAssignmentRequest::byToken($token)->first();
     }
 
 
     public function render()
     {
+        // Update expired requests before rendering
+        $this->markExpiredRequests();
         $this->getNotification();
         return view('livewire.notification');
+    }
+
+    /**
+     * Mark expired assignment requests
+     */
+    private function markExpiredRequests()
+    {
+        ClientAssignmentRequest::markAllExpired();
     }
 }

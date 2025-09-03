@@ -475,6 +475,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}/agent', [ClientController::class, 'getAgent'])->name('get-agent');
         Route::get('/{id}/credit-balance', [ClientController::class, 'getCreditBalance']);
         Route::get('/{id}/credits', [ClientController::class, 'showCredit'])->name('credits')->withoutMiddleware(['auth']);
+        
+        // Assignment request routes
+        Route::post('/request-assignment', [ClientController::class, 'requestAssignment'])->name('request-assignment');
+        Route::get('/assignment/approve/{token}', [ClientController::class, 'approveAssignment'])->name('assignment.approve');
+        Route::get('/assignment/deny/{token}', [ClientController::class, 'denyAssignment'])->name('assignment.deny');
     });
 
     Route::group([

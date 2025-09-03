@@ -4,6 +4,7 @@ namespace App\Http\Traits;
 use App\Models\Notification;
 use App\Models\Role;
 use App\Models\Agent;
+use Illuminate\Support\Facades\Auth;
 
 trait NotificationTrait
 {
@@ -13,13 +14,15 @@ trait NotificationTrait
         $notification->user_id = $data['user_id'];
         $notification->title = $data['title'];
         $notification->message = $data['message'];
+        $notification->type = $data['type'] ?? null;
+        $notification->data = isset($data['data']) ? (is_string($data['data']) ? $data['data'] : json_encode($data['data'])) : null;
         $notification->save();
         return $notification;
     }
 
     public function getNotifications()
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         switch ($user->role_id) {
             case Role::ADMIN:
@@ -37,7 +40,7 @@ trait NotificationTrait
 
     public function getLimitNotifications($limit)
     {
-        $user = auth()->user();
+        $user = Auth::user();
         
         switch ($user->role_id) {
             case Role::ADMIN:
@@ -55,7 +58,7 @@ trait NotificationTrait
 
     public function getReadNotifications()
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         switch ($user->role_id) {
             case Role::ADMIN:
@@ -73,7 +76,7 @@ trait NotificationTrait
 
     public function getUnreadNotifications()
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         switch ($user->role_id) {
             case Role::ADMIN:

@@ -8,8 +8,10 @@ use App\Models\ClientGroup;
 use App\Models\Invoice;
 use App\Models\Agent;
 use App\Models\Task;
+use App\Models\ClientAssignmentRequest;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ClientsImport;
 use App\Models\Account;
@@ -23,8 +25,10 @@ use App\Models\Role;
 use App\Models\Transaction;
 use App\Models\Credit;
 use App\Enums\ChargeType;
+use App\Http\Traits\NotificationTrait;
 use App\Models\InvoicePartial;
 use App\Models\PaymentMethod;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -34,7 +38,7 @@ use Illuminate\Support\Facades\Redirect;
 
 class ClientController extends Controller
 {
-    use Converter;
+    use Converter, NotificationTrait;
 
     public function index(Request $request)
     {
@@ -134,6 +138,8 @@ class ClientController extends Controller
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255', 
             'dial_code' => 'required|string|max:30',
+            'email' => 'nullable|email',
+            'civil_no' => 'nullable|string|max:100|unique:clients,civil_no',
             'phone' => 'required|string|max:15',
             'agent_id' => 'required|exists:agents,id',
             'company_id' => 'nullable|exists:companies,id',
@@ -147,6 +153,7 @@ class ClientController extends Controller
 
             $request->merge(['company_id' => $companyId]);
         }
+
 
         try {
             DB::beginTransaction();
@@ -209,12 +216,12 @@ class ClientController extends Controller
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'nullable|string|max:255',
-            'email' => 'nullable|email|unique:clients,email',
+            'email' => 'nullable|email',
             'dial_code' => 'required|string|max:30',
             'phone' => 'required|string|max:15',
             'agent_id' => 'required|exists:agents,id',
             'company_id' => 'nullable|exists:companies,id', //this will be compulsory later
-            'civil_no' => 'required|unique:clients,civil_no',
+            'civil_no' => 'required',
             'passport_no' => 'nullable|string',
             'date_of_birth' => 'nullable|date',
         ]);
@@ -223,6 +230,37 @@ class ClientController extends Controller
             $companyId = Agent::find($request->agent_id)->branch->company_id;
 
             $request->merge(['company_id' => $companyId]);
+        }
+
+        $existingClient = null;
+
+        if($request->civil_no){
+            $existingClient = Client::where('company_id', $request->company_id)
+                ->where('civil_no', $request->civil_no)
+                ->with('agent') // Load the owner agent
+                ->first();
+
+            if ($existingClient) {
+                $duplicateResponse = $this->handleDuplicateClient($existingClient, $request, 'civil_no');
+                if ($duplicateResponse !== null) {
+                    return $duplicateResponse; // Return the duplicate handling response
+                }
+                // If null, continue with normal creation
+            }
+        } else {
+            $existingClient = Client::where('company_id', $request->company_id)
+                ->where('first_name', $request->first_name)
+                ->where('phone', preg_replace('/\s+/', '', $request->phone))
+                ->with('agent') // Load the owner agent
+                ->first();
+
+            if ($existingClient) {
+                $duplicateResponse = $this->handleDuplicateClient($existingClient, $request, 'name_phone');
+                if ($duplicateResponse !== null) {
+                    return $duplicateResponse; // Return the duplicate handling response
+                }
+                // If null, continue with normal creation
+            }
         }
 
         $response = $this->storeProcess($request);
@@ -245,6 +283,56 @@ class ClientController extends Controller
         json_decode($string);
         return (json_last_error() === JSON_ERROR_NONE);
     }
+
+    /**
+     * Handle duplicate client detection and assignment request workflow
+     */
+    private function handleDuplicateClient($existingClient, $request, $duplicateType)
+    {
+        $currentAgent = Agent::find($request->agent_id);
+        $ownerAgent = $existingClient->agent;
+        $assignedAgents = $existingClient->agents;
+        
+        // If the same agent is trying to create the client, or the client is already assigned to them, show error/info
+        if ($currentAgent->id === $ownerAgent->id || $assignedAgents->contains($currentAgent->id)) {
+            $message = $duplicateType === 'civil_no' 
+                ? 'You already have a client with this Civil No.' 
+                : 'You already have a client with this name and phone number.';
+            
+            return redirect()->back()->withInput()->with('error', $message);
+        }
+
+        // Check if the current agent is already assigned to this client
+        if ($existingClient->agents()->where('agent_id', $currentAgent->id)->exists()) {
+            return redirect()->back()->withInput()->with('info', 
+                "You are already assigned to this client. You can find them in your client list under the name: {$existingClient->first_name} {$existingClient->last_name}");
+        }
+
+        // Show assignment request form instead of allowing duplicate creation
+        return $this->showAssignmentRequestForm($existingClient, $currentAgent, $ownerAgent, $duplicateType, $request);
+    }
+
+    /**
+     * Show form to request assignment to existing client
+     */
+    private function showAssignmentRequestForm($existingClient, $currentAgent, $ownerAgent, $duplicateType, $request)
+    {
+        $duplicateMessage = $duplicateType === 'civil_no' 
+            ? "A client with Civil No '{$existingClient->civil_no}' already exists"
+            : "A client with name '{$existingClient->first_name}' and phone '{$existingClient->phone}' already exists";
+
+        return redirect()->back()->withInput()->with([
+            'duplicate_warning' => true,
+            'duplicate_data' => [
+                'existing_client' => $existingClient,
+                'owner_agent' => $ownerAgent,
+                'duplicate_message' => $duplicateMessage,
+                'duplicate_type' => $duplicateType
+            ]
+        ]);
+    }
+
+
 
     public function show($id)
     {
@@ -1142,5 +1230,278 @@ class ClientController extends Controller
             ->withQueryString();
         
         return view('clients.credit', compact('client','credits','totalIn','totalOut','netBalance'));
+    }
+
+    public function assignAgents(Request $request, $id) : JsonResponse
+    {
+       $client = Client::findOrFail($id);
+
+        $response = Gate::inspect('assignAgents', Client::class);
+
+        if ($response->denied()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $response->message() ?: 'You do not have permission to assign agents.'
+            ], 403);
+        }
+
+        $request->validate([
+            'agent_ids' => 'required|array|exists:agents,id',
+        ]);
+
+        $client->agents()->sync($request->agent_ids);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Agents assigned successfully.'
+        ]);
+    }
+
+    /**
+     * Handle assignment request to existing client
+     */
+    public function requestAssignment(Request $request)
+    {
+        $request->validate([
+            'existing_client_id' => 'required|exists:clients,id',
+            'owner_agent_id' => 'required|exists:agents,id',
+            'request_reason' => 'required|string|min:5|max:500'
+        ]);
+
+        $existingClient = Client::with('agent')->findOrFail($request->existing_client_id);
+        $ownerAgent = Agent::findOrFail($request->owner_agent_id);
+        $requestingAgent = Agent::where('user_id', Auth::id())->first();
+
+        if (!$requestingAgent) {
+            return redirect()->back()->with('error', 'Agent profile not found.');
+        }
+
+        // Check if already assigned
+        if ($existingClient->agents()->where('agent_id', $requestingAgent->id)->exists()) {
+            return redirect()->back()->with('info', 
+                "You are already assigned to this client: {$existingClient->first_name} {$existingClient->last_name}");
+        }
+
+        // Log the assignment request
+        Log::info('Client assignment request submitted', [
+            'existing_client_id' => $existingClient->id,
+            'existing_client_name' => $existingClient->first_name . ' ' . $existingClient->last_name,
+            'owner_agent_id' => $ownerAgent->id,
+            'owner_agent_name' => $ownerAgent->name,
+            'requesting_agent_id' => $requestingAgent->id,
+            'requesting_agent_name' => $requestingAgent->name,
+            'request_reason' => $request->request_reason,
+            'timestamp' => now()
+        ]);
+
+        // Send notification to owner agent
+        $this->sendAssignmentRequest($ownerAgent, $requestingAgent, $existingClient, $request->request_reason);
+
+        return redirect()->back()->with('success', 
+            "Assignment request sent to {$ownerAgent->name}. You will be notified once they review your request.");
+    }
+
+    /**
+     * Send assignment request notification to owner agent
+     */
+    private function sendAssignmentRequest($ownerAgent, $requestingAgent, $existingClient, $reason)
+    {
+        // Generate unique request token for secure actions
+        $requestToken = ClientAssignmentRequest::generateToken();
+
+        // Log the notification
+        Log::info('Assignment request notification sent', [
+            'owner_agent_id' => $ownerAgent->id,
+            'owner_agent_name' => $ownerAgent->name,
+            'requesting_agent_id' => $requestingAgent->id,
+            'requesting_agent_name' => $requestingAgent->name,
+            'client_id' => $existingClient->id,
+            'client_name' => $existingClient->first_name . ' ' . $existingClient->last_name,
+            'reason' => $reason,
+            'request_token' => $requestToken,
+            'timestamp' => now()
+        ]);
+
+        // Create actionable notification data
+        $data = [
+            'user_id' => $ownerAgent->user_id,
+            'title' => "Client Assignment Request",
+            'message' => "Agent {$requestingAgent->name} requests assignment to your client \"{$existingClient->first_name} {$existingClient->last_name}\". Reason: {$reason}",
+            'type' => 'client_assignment_request',
+            'data' => json_encode([
+                'request_token' => $requestToken,
+                'requesting_agent_id' => $requestingAgent->id,
+                'requesting_agent_name' => $requestingAgent->name,
+                'client_id' => $existingClient->id,
+                'client_name' => $existingClient->first_name . ' ' . $existingClient->last_name,
+                'client_phone' => $existingClient->phone,
+                'reason' => $reason,
+                'status' => 'pending',
+                'expires_at' => now()->addDays(7)->toISOString(),
+                'actions' => [
+                    'approve_url' => route('clients.assignment.approve', ['token' => $requestToken]),
+                    'deny_url' => route('clients.assignment.deny', ['token' => $requestToken]),
+                    'view_client_url' => route('clients.show', $existingClient->id)
+                ]
+            ])
+        ];
+
+        $this->storeNotification($data);
+
+        // Store in client_assignment_requests table using Eloquent model
+        ClientAssignmentRequest::create([
+            'request_token' => $requestToken,
+            'owner_agent_id' => $ownerAgent->id,
+            'requesting_agent_id' => $requestingAgent->id,
+            'client_id' => $existingClient->id,
+            'reason' => $reason,
+            'status' => ClientAssignmentRequest::STATUS_PENDING,
+            'expires_at' => now()->addDays(7),
+        ]);
+    }
+
+    /**
+     * Approve assignment request
+     */
+    public function approveAssignment($token)
+    {
+        $request = ClientAssignmentRequest::byToken($token)->active()->first();
+
+        if (!$request) {
+            return redirect()->route('dashboard')->with('error', 'Assignment request not found or has expired.');
+        }
+
+        // Check if the current user is authorized to approve
+        $ownerAgent = $request->ownerAgent;
+        if (Auth::id() !== $ownerAgent->user_id) {
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to approve this request.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Add the requesting agent to the client
+            $client = $request->client;
+            $client->agents()->attach($request->requesting_agent_id);
+
+            // Update request status using model method
+            $request->approve(Auth::id());
+
+            // Mark the original notification as read
+            DB::table('notifications')
+                ->where('user_id', Auth::id())
+                ->where('type', 'client_assignment_request')
+                ->whereJsonContains('data->request_token', $token)
+                ->update(['status' => 'read']);
+
+            // Send notification to requesting agent
+            $requestingAgent = $request->requestingAgent;
+            $notificationData = [
+                'user_id' => $requestingAgent->user_id,
+                'title' => "Assignment Request Approved",
+                'message' => "Your request to be assigned to client \"{$client->first_name} {$client->last_name}\" has been approved by {$ownerAgent->name}.",
+                'type' => 'assignment_approved',
+                'data' => json_encode([
+                    'client_id' => $client->id,
+                    'client_name' => $client->first_name . ' ' . $client->last_name,
+                    'approved_by' => $ownerAgent->name,
+                    'approved_at' => now()->toISOString(),
+                    'view_client_url' => route('clients.show', $client->id)
+                ])
+            ];
+            $this->storeNotification($notificationData);
+
+            DB::commit();
+
+            Log::info('Assignment request approved', [
+                'token' => $token,
+                'client_id' => $client->id,
+                'owner_agent_id' => $ownerAgent->id,
+                'requesting_agent_id' => $requestingAgent->id,
+                'approved_by' => Auth::id()
+            ]);
+
+            return redirect()->route('clients.show', $client->id)
+                ->with('success', "Successfully assigned {$requestingAgent->name} to client {$client->first_name} {$client->last_name}.");
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to approve assignment request', [
+                'token' => $token,
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->route('dashboard')->with('error', 'Failed to approve assignment request.');
+        }
+    }
+
+    /**
+     * Deny assignment request
+     */
+    public function denyAssignment($token)
+    {
+        $request = ClientAssignmentRequest::byToken($token)->active()->first();
+
+        if (!$request) {
+            return redirect()->route('dashboard')->with('error', 'Assignment request not found or has expired.');
+        }
+
+        // Check if the current user is authorized to deny
+        $ownerAgent = $request->ownerAgent;
+        if (Auth::id() !== $ownerAgent->user_id) {
+            return redirect()->route('dashboard')->with('error', 'You are not authorized to deny this request.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Update request status using model method
+            $request->deny(Auth::id());
+
+            // Mark the original notification as read
+            DB::table('notifications')
+                ->where('user_id', Auth::id())
+                ->where('type', 'client_assignment_request')
+                ->whereJsonContains('data->request_token', $token)
+                ->update(['status' => 'read']);
+
+            // Send notification to requesting agent
+            $requestingAgent = $request->requestingAgent;
+            $client = $request->client;
+            $notificationData = [
+                'user_id' => $requestingAgent->user_id,
+                'title' => "Assignment Request Denied",
+                'message' => "Your request to be assigned to client \"{$client->first_name} {$client->last_name}\" has been denied by {$ownerAgent->name}.",
+                'type' => 'assignment_denied',
+                'data' => json_encode([
+                    'client_id' => $client->id,
+                    'client_name' => $client->first_name . ' ' . $client->last_name,
+                    'denied_by' => $ownerAgent->name,
+                    'denied_at' => now()->toISOString(),
+                    'reason' => $request->reason
+                ])
+            ];
+            $this->storeNotification($notificationData);
+
+            DB::commit();
+
+            Log::info('Assignment request denied', [
+                'token' => $token,
+                'client_id' => $client->id,
+                'owner_agent_id' => $ownerAgent->id,
+                'requesting_agent_id' => $requestingAgent->id,
+                'denied_by' => Auth::id()
+            ]);
+
+            return redirect()->route('dashboard')
+                ->with('success', "Assignment request denied for {$requestingAgent->name}.");
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to deny assignment request', [
+                'token' => $token,
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->route('dashboard')->with('error', 'Failed to deny assignment request.');
+        }
     }
 }

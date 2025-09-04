@@ -559,15 +559,9 @@ class TaskController extends Controller
         $queryChkExistTask = Task::query();
         $queryChkExistTask->where('reference', $request->reference)
             ->where('company_id', $request->company_id)
-            ->where('client_name', $request->client_name) // same reference name but different client name considered as different task
-            ->when($request->filled('client_id'),   fn ($q) => $q->where('client_id',  $request->client_id))
-            ->when($request->filled('supplier_id'), fn ($q) => $q->where('supplier_id',$request->supplier_id));
+            ->when($request->filled('client_name'), fn($q) => $q->where('passenger_name', trim($request->client_name)))
+            ->when($request->filled('supplier_id'), fn ($q) => $q->where('supplier_id', $request->supplier_id));
 
-        if ($request->supplier_id) {
-            $queryChkExistTask->where('supplier_id', $request->supplier_id);
-        }
-
-        $existingTask = null;
         if ($request->type === 'hotel') {
             $hotelName = data_get($request->task_hotel_details, '0.hotel_name');
             $roomType  = data_get($request->task_hotel_details, '0.room_type');
@@ -579,20 +573,10 @@ class TaskController extends Controller
 
             $existingTask = (clone $queryChkExistTask)
                 ->whereHas('hotelDetails', function ($q) use ($checkIn, $checkOut, $hotelName, $roomType) {
-                    if (!empty($hotelName)) {
-                        $q->whereHas('hotel', function ($qh) use ($hotelName) {
-                            $qh->where('name', 'LIKE', $hotelName);
-                        });
-                    }
-                    if (!empty($checkIn)) {
-                        $q->whereDate('check_in', $checkIn);
-                    }
-                    if (!empty($checkOut)) {
-                        $q->whereDate('check_out', $checkOut);
-                    }
-                    if (!empty($roomType)) {
-                        $q->where('room_type', $roomType);
-                    }   
+                    if ($hotelName) $q->whereHas('hotel', fn($qh) => $qh->where('name', 'LIKE', $hotelName));
+                    if ($checkIn) $q->whereDate('check_in', $checkIn);
+                    if ($checkOut) $q->whereDate('check_out', $checkOut);
+                    if ($roomType) $q->where('room_type', $roomType);
                 })->first();
             Log::info('Existing hotel task check', [
                 'existing_task_id' => optional($existingTask)->id,
@@ -602,13 +586,12 @@ class TaskController extends Controller
                 'check_out'        => $checkOut,
             ]);
         } else {
-           $existingTask = (clone $queryChkExistTask)
-                ->whereIn('status', ['issued'])
-                ->first();
+            $existingTask = (clone $queryChkExistTask)->first();
         }
 
         if ($existingTask) {
-            if ($existingTask->total != $request->total && $existingTask->status == 'issued' && ($existingTask->supplier->name === 'Jazeera Airways' || $existingTask->supplier->name === 'Fly Dubai')) {
+            if ($existingTask->status === 'issued' && in_array($existingTask->supplier->name, ['Jazeera Airways','Fly Dubai'])
+            && (float)$existingTask->total !== (float)$request->total) {
                 Log::warning('This reference has already existed for task: ' . $existingTask->reference . '. Proceeding for Reissued task.');
 
                 $newTaskTotal = (float)$request->total - (float)$existingTask->total;
@@ -617,10 +600,35 @@ class TaskController extends Controller
                     'total' => $newTaskTotal,
                     'status' => 'reissued',
                 ]);
-            } elseif ($existingTask->gds_reference == null || $existingTask->airline_reference == null) {
-                $existingTask->gds_reference = $request->gds_reference;
-                $existingTask->airline_reference = $request->airline_reference;
-                $existingTask->save();
+
+                $existsReissue = Task::query()
+                    ->where('company_id', $request->company_id)
+                    ->where('reference',  $request->reference)
+                    ->when($request->filled('supplier_id'), fn($q) => $q->where('supplier_id', $request->supplier_id))
+                    ->when($request->filled('client_name'), fn($q) => $q->where('passenger_name', $request->client_name))
+                    ->where('status', 'reissued')
+                    ->where('original_task_id', $existingTask->id)
+                    ->where('total', $newTaskTotal)
+                    ->first();
+        
+                if ($existsReissue) {    
+                    Log::info('Idempotent reissue hit: returning existing task', [
+                        'action'            => 'reissue_return_existing',
+                        'existing_task_id'  => $existsReissue->id,
+                        'original_task_id'  => $existsReissue->original_task_id,
+                    ]);
+
+                    return response()->json([
+                        'status'  => 'success',
+                        'message' => 'Existing reissued task returned.',
+                        'data'    => $existsReissue,
+                    ], 200);
+                }
+            } elseif (is_null($existingTask->gds_reference) || is_null($existingTask->airline_reference)) {
+                $existingTask->fill([
+                    'gds_reference'     => $request->gds_reference,
+                    'airline_reference' => $request->airline_reference,
+                ])->save();
 
                 return response()->json([
                     'status' => 'success',
@@ -628,9 +636,14 @@ class TaskController extends Controller
                     'data' => $existingTask,
                 ], 200);
             } else {
-
                 $existingTask->issued_date = $request->issued_date;
                 $existingTask->save();
+
+                return response()->json([
+                    'status'  => 'success',
+                    'message' => 'Existing task updated.',
+                    'data'    => $existingTask,
+                ], 200);
             }
 
             /*  return response()->json([

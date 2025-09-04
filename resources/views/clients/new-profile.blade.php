@@ -206,7 +206,6 @@
                         <div class="mt-2 flex gap-2 items-center justify-between text-white">
                             <p class="text-lg">Agent (Owner)</p>
                             <h5 class="ml-5 text-base whitespace-nowrap overflow-x-auto scroll-auto">
-                                {{ $client->agent->name }}
                             </h5>
                         </div>
                         @if($client->agents->isEmpty())
@@ -892,7 +891,7 @@
                         </div>
                     </div>
 
-                    @can('assignAgents', $client)
+                    @can('assignAgents', App\Models\Client::class)
                     <!-- Agent Management Section - Full Width -->
                     <div class="mt-6 pt-6 border-t border-gray-200">
                         <div class="w-full" x-data="agentManager({

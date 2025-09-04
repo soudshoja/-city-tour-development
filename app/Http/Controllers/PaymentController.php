@@ -148,7 +148,7 @@ class PaymentController extends Controller
             }
             return abort(400);
         }
-
+        
         $this->storeNotification([
             'user_id' => $invoice->agent->id,
             'title' => 'Payment Initiated',
@@ -309,7 +309,7 @@ class PaymentController extends Controller
 
             $paymentReference = $response['Data']['InvoiceId'] ?? null;
             $paymentUrl = $response['Data']['PaymentURL'] ?? null;
-
+            
             if(isset($response['Data']['ExpiryDate'])) {
                 $expiryDate = $response['Data']['ExpiryDate'];
             }
@@ -988,6 +988,9 @@ class PaymentController extends Controller
             ], 404);
         }
 
+        $invoiceTransactions = $data['InvoiceTransactions'] ?? '[]';
+        $authCode = data_get($invoiceTransactions, '0.AuthorizationId');
+
         $invoiceStatus = $data['InvoiceStatus'] ?? null;
 
         if( !$invoiceStatus) {
@@ -1046,10 +1049,12 @@ class PaymentController extends Controller
             'amount' => $invoiceValue,
             'invoice_status' => $invoiceStatus,
             'invoice_id' => $data['InvoiceId'] ?? null,
+            'invoice_reference' => $data['InvoiceReference'],
             'customer_name' => $data['CustomerName'] ?? null,
             'created_date' => $data['CreatedDate'] ?? null,
             'payment_gateway' => Arr::get($userDefined, 'payment_gateway', 'MyFatoorah'),
             'payment_method_id' => $paymentMethodId,
+            'auth_code' => $authCode,
             'user_defined' => $userDefined,
         ]);
     }
@@ -1145,6 +1150,8 @@ class PaymentController extends Controller
             'amount' => $response['amount'],
             'notes' => 'Imported from MyFatoorah Portal with Invoice ID: ' . $response['invoice_id'],
             'source' => 'import',
+            'invoice_reference' => $response['invoice_reference'],
+            'auth_code' => $response['auth_code'],
         ]);
     }
 
@@ -1297,6 +1304,8 @@ class PaymentController extends Controller
     {
         $source = $request->input('source');
         $invoiceId = $request->input('invoice_id');
+        $invoiceReference = $request->input('invoice_reference');
+        $authCode = $request->input('auth_code');
 
         $request->validate([
             'payment_gateway' => 'required',
@@ -1305,6 +1314,8 @@ class PaymentController extends Controller
             'client_id' => 'nullable',
             'agent_id' => 'nullable',
             'invoice_id' => 'nullable',
+            'invoice_reference' => 'nullable',
+            'auth_code' => 'nullable',
             'notes' => 'nullable|string|max:255'
         ]);
 
@@ -1349,6 +1360,8 @@ class PaymentController extends Controller
             $data = [
                 'voucher_number' => $voucherNumber,
                 'payment_reference' => $invoiceId,
+                'invoice_reference' => $invoiceReference,
+                'auth_code' => $authCode,
                 'from' => $client->first_name,
                 'pay_to' => $agent->branch->company->name,
                 'currency' => 'KWD',
@@ -1362,7 +1375,7 @@ class PaymentController extends Controller
                 'notes' => $request->notes,
                 'created_by' => Auth::id()
             ];
-
+            
             $payment = Payment::create($data);
             Log::info('Created Payment:', $data);
 

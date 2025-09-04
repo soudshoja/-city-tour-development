@@ -288,6 +288,8 @@
                 <input type="hidden" name="payment_id" value="{{ old('payment_id', $prefill['payment_id'] ?? '') }}">
                 <input type="hidden" name="invoice_id" value="{{ old('invoice_id', $prefill['invoice_id'] ?? '') }}">
                 <input type="hidden" name="source" value="{{ old('source', $prefill['source'] ?? '') }}">
+                <input type="hidden" name="invoice_reference" value="{{ old('invoice_reference', $prefill['invoice_reference'] ?? '') }}">
+                <input type="hidden" name="auth_code" value="{{ old('auth_code', $prefill['auth_code'] ?? '') }}">
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     @php

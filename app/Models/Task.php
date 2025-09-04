@@ -161,7 +161,12 @@ class Task extends Model
 
     public function insuranceDetails()
     {
-        return $this->hasMany(TaskInsuranceDetail::class, 'task_id');
+        return $this->hasOne(TaskInsuranceDetail::class, 'task_id');
+    }
+
+    public function visaDetails()
+    {
+        return $this->hasOne(TaskVisaDetail::class, 'task_id');
     }
 
     public function invoiceDetail()

@@ -56,6 +56,10 @@
     @include('suppliers.credential-modal')
     @endif
     @endif
+    
+    <!-- Global Duplicate Client Warning Modal -->
+    <x-duplicate-client-warning />
+    
     @livewireScripts
 
 

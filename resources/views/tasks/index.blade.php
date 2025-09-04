@@ -576,6 +576,13 @@
                                     <div class="flex gap-3">
                                         <button id="applyFilters" class="apply-filters-btn">Apply Filters</button>
                                     </div>
+                                    <div class="flex gap-3">
+                                    <button id="clearAllActiveFilters2" 
+                                        class="clear-all-filters-btn">
+                                        Clear All
+                                    </button>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
@@ -692,7 +699,7 @@
                     </div>                    
                 </div>
                 
-                <div id="activeFiltersContainer" class="active-filters" style="display: none;">
+                <div id="activeFiltersContainer" class="active-filters">
                     <div class="bg-white shadow-lg rounded-2xl border border-gray-200 p-4 transition-all duration-300">
                         <!-- Header -->
                             <div class="flex justify-between items-center mb-4">
@@ -1948,8 +1955,8 @@
                             <!-- Pagination Links -->
                         </div>
 
-                        <x-pagination :data="$tasks" />
-
+                        <x-pagination :data="$tasks->appends(request()->query())" />
+                        
                         <div id="taskInvoicePlaceholder"
                             class="hidden fixed inset-0 z-30 bg-gray-800 bg-opacity-50 flex justify-center items-center">
                             <div id="invoiceModalContent">
@@ -2620,9 +2627,11 @@
                 const taskId = this.dataset.taskId;
                 const agentSelect = document.getElementById(`agent_id_select_${taskId}`);
                 const agentHidden = document.getElementById(`agent_id_hidden_${taskId}`);
+                const getAgentUrl = "{{ route('clients.get-agent', ':clientId') }}".replace(':clientId',
+                    clientId);
 
                 if (clientId) {
-                    fetch(`/clients/${clientId}/agent`)
+                    fetch(getAgentUrl)
                         .then(response => response.json())
                         .then(data => {
                             if (data.agent) {
@@ -2810,321 +2819,367 @@
 </script>
 
 <script>
-const filterConfig = {
-    columns: {
-        reference:         { label: "Reference", type: "text" },
-        "bill-to":         { label: "Bill To", type: "text" },
-        "passenger-name":  { label: "Passenger Name", type: "text" },
-        agent_name:        { label: "Agent Name", type: "text" },
-        status:            { label: "Status", type: "select", options: ["-- Select --", "issued", "refund", "reissued", "void", "ticketed", "confirmed", "emd"] },
-        supplier:          { label: "Supplier", type: "searchable", options: window.companySuppliers || [] },
-        "created-at":      { label: "Created Date", type: "date-range" },
-        "supplier_pay_date": { label: "Issued Date", type: "date-range" },
-        "cancellation-deadline": { label: "Cancellation Deadline", type: "date" },
-        type:              { label: "Type", type: "select", options: ["hotel", "flight"] },
-        "gds-reference":   { label: "GDS Reference", type: "text" },
-        "amadeus-reference": { label: "Amadeus Reference", type: "text" },
-        "created-by":      { label: "Created By", type: "text" },
-        "issued-by":       { label: "Issued By", type: "text" },
-        "branch-name":     { label: "Branch Name", type: "text" },
-        invoice:           { label: "Invoice", type: "text" },
-    }
-};
-
-let filterRows = [];
-
-function renderFilterRows() {
-    const container = document.getElementById('filterContainer');
-    container.innerHTML = '';
-    filterRows.forEach((row, idx) => {
-        const col = filterConfig.columns[row.column];
-        let inputHtml = '';
-        if (col.type === 'text') {
-            inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter value" data-idx="${idx}">`;
-        } else if (col.type === 'select') {
-            inputHtml = `<select class="value-input" data-idx="${idx}">${col.options.map(opt =>
-                `<option value="${opt}" ${row.value === opt ? 'selected' : ''}>${opt}</option>`
-            ).join('')}</select>`;
-        } else if (col.type === 'searchable') {
-            inputHtml = `<input type="text" class="value-input" list="datalist-${row.column}-${idx}" value="${row.value || ''}" placeholder="Search..." data-idx="${idx}">
-                <datalist id="datalist-${row.column}-${idx}">
-                    ${col.options.map(opt => `<option value="${opt}"></option>`).join('')}
-                </datalist>`;
-        } else if (col.type === 'date') {
-            inputHtml = `<input type="date" class="value-input" value="${row.value || ''}" data-idx="${idx}">`;
-        } else if (col.type === 'date-range') {
-            const [start, end] = (row.value || '').split(' to ');
-            inputHtml = `
-                <input type="date" class="value-input" value="${start || ''}" data-idx="${idx}" data-part="start">
-                to
-                <input type="date" class="value-input" value="${end || ''}" data-idx="${idx}" data-part="end">
-            `;
+    const filterConfig = {
+        columns: {
+            reference:         { label: "Reference", type: "text" },
+            "bill-to":         { label: "Bill To", type: "text" },
+            "passenger-name":  { label: "Passenger Name", type: "text" },
+            agent_name:        { label: "Agent Name", type: "text" },
+            status:            { label: "Status", type: "select", options: ["-- Select --", "issued", "refund", "reissued", "void", "ticketed", "confirmed", "emd"] },
+            supplier:          { label: "Supplier", type: "searchable", options: window.companySuppliers || [] },
+            "created-at":      { label: "Created Date", type: "date-range" },
+            "supplier_pay_date": { label: "Issued Date", type: "date-range" },
+            "cancellation-deadline": { label: "Cancellation Deadline", type: "date" },
+            type:              { label: "Type", type: "select", options: ["hotel", "flight"] },
+            "gds-reference":   { label: "GDS Reference", type: "text" },
+            "amadeus-reference": { label: "Amadeus Reference", type: "text" },
+            "created-by":      { label: "Created By", type: "text" },
+            "issued-by":       { label: "Issued By", type: "text" },
+            "branch-name":     { label: "Branch Name", type: "text" },
+            invoice:           { label: "Invoice", type: "text" },
         }
-        container.innerHTML += `
-            <div class="filter-row">
-                <select class="column-select" data-idx="${idx}">
-                    ${Object.entries(filterConfig.columns).map(([key, c]) =>
-                        `<option value="${key}" ${row.column === key ? 'selected' : ''}>${c.label}</option>`
-                    ).join('')}
-                </select>
-                ${inputHtml}
-                <button type="button" class="remove-filter-btn" data-idx="${idx}">&times;</button>
-            </div>
-        `;
-    });
-}
-function renderActiveFilters() {
-    const filters = getActiveFiltersFromURL();
-    const container = document.getElementById('activeFiltersContainer');
-    const list = document.getElementById('activeFiltersList');
-    list.innerHTML = '';
-    if (filters.length === 0) {
-        container.style.display = 'none';
-        return;
-    }
-    container.style.display = '';
-    filters.forEach(f => {
-        const tag = document.createElement('div');
+    };
+
+    let filterRows = [];
+
+    // function renderFilterRows() {
+    //     const container = document.getElementById('filterContainer');
+    //     container.innerHTML = '';
+    //     filterRows.forEach((row, idx) => {
+    //         const col = filterConfig.columns[row.column];
+    //         let inputHtml = '';
+    //         if (col.type === 'text') {
+    //             inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter value" data-idx="${idx}">`;
+    //         } else if (col.type === 'select') {
+    //             inputHtml = `<select class="value-input" data-idx="${idx}">${col.options.map(opt =>
+    //                 `<option value="${opt}" ${row.value === opt ? 'selected' : ''}>${opt}</option>`
+    //             ).join('')}</select>`;
+    //         } else if (col.type === 'searchable') {
+    //             inputHtml = `<input type="text" class="value-input" list="datalist-${row.column}-${idx}" value="${row.value || ''}" placeholder="Search..." data-idx="${idx}">
+    //                 <datalist id="datalist-${row.column}-${idx}">
+    //                     ${col.options.map(opt => `<option value="${opt}"></option>`).join('')}
+    //                 </datalist>`;
+    //         } else if (col.type === 'date') {
+    //             inputHtml = `<input type="date" class="value-input" value="${row.value || ''}" data-idx="${idx}">`;
+    //         } else if (col.type === 'date-range') {
+    //             const [start, end] = (row.value || '').split(' to ');
+    //             inputHtml = `
+    //                 <input type="date" class="value-input" value="${start || ''}" data-idx="${idx}" data-part="start">
+    //                 to
+    //                 <input type="date" class="value-input" value="${end || ''}" data-idx="${idx}" data-part="end">
+    //             `;
+    //         }
+    //         container.innerHTML += `
+    //             <div class="filter-row">
+    //                 <select class="column-select" data-idx="${idx}">
+    //                     ${Object.entries(filterConfig.columns).map(([key, c]) =>
+    //                         `<option value="${key}" ${row.column === key ? 'selected' : ''}>${c.label}</option>`
+    //                     ).join('')}
+    //                 </select>
+    //                 ${inputHtml}
+    //                 <button type="button" class="remove-filter-btn" data-idx="${idx}">&times;</button>
+    //             </div>
+    //         `;
+    //     });
+    // }
+    function renderActiveFilters() {
+        const filters = getActiveFiltersFromURL();
+        const container = document.getElementById('activeFiltersContainer');
+        const list = document.getElementById('activeFiltersList');
+        list.innerHTML = '';
+        if (filters.length === 0) {
+        list.innerHTML = `<span class="text-gray-400 text-sm">No active filters</span>`;
+            return;
+        }
+        container.style.display = '';
+        filters.forEach(f => {
+            const tag = document.createElement('div');
         tag.className = 'active-filter-tag';
         tag.innerHTML = `
             <span>${f.label}: <b>${f.value}</b></span>
             <button class="remove-tag" data-key="${f.key}" data-value="${f.value}" title="Remove filter">&times;</button>
         `;
-        list.appendChild(tag);
-    });
-}
-// Open modal
-document.getElementById('toggleFilters').onclick = () => {
-    document.getElementById('filterModal').classList.add('active');
-    if (filterRows.length === 0) {
-        filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
+            list.appendChild(tag);
+        });
     }
-    renderFilterRows();
-};
-// Close modal
-document.getElementById('closeFilterModal').onclick = () => {
-    document.getElementById('filterModal').classList.remove('active');
-};
-// Add filter row
-document.getElementById('addFilterRow').onclick = () => {
-    filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
-    renderFilterRows();
-};
-// Clear all
-
-// ...existing code...
-document.getElementById('editActiveFilters').addEventListener('click', function() {
-    const params = new URLSearchParams(window.location.search);
-    filterRows = [];
-
-    // Handle date-range fields
-    Object.entries(filterConfig.columns).forEach(([key, col]) => {
-        if (col.type === 'date-range') {
-            const from = params.get(`${key}_from`);
-            const to = params.get(`${key}_to`);
-            if (from || to) {
-                filterRows.push({ column: key, value: { from: from || '', to: to || '' } });
-            }
+    // Open modal
+    document.getElementById('toggleFilters').onclick = () => {
+        document.getElementById('filterModal').classList.add('active');
+        if (filterRows.length === 0) {
+            filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
         }
-    });
-
-    // Handle status[] and status (avoid duplicates)
-    const statusValues = [
-        ...params.getAll('status[]'),
-        ...params.getAll('status')
-    ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
-
-    statusValues.forEach(val => {
-        filterRows.push({ column: 'status', value: val });
-    });
-
-    // Handle other filters (skip status/status[])
-    for (const [key, value] of params.entries()) {
-        if (
-            Object.keys(filterConfig.columns).includes(key) &&
-            filterConfig.columns[key].type !== 'date-range' &&
-            key !== 'status' && key !== 'status[]'
-        ) {
-            filterRows.push({ column: key, value });
-        }
-    }
-
-    if (filterRows.length === 0) {
-        filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
-    }
-    renderFilterRows();
-    document.getElementById('filterModal').classList.add('active');
-});
-// ...existing code...
-// Remove row or update value
-document.getElementById('filterContainer').addEventListener('input', function(e) {
-    const idx = +e.target.dataset.idx;
-    const row = filterRows[idx];
-    const col = filterConfig.columns[row.column];
-      if (col && col.type === 'date-range') {
-        if (typeof row.value !== 'object' || !row.value) row.value = {from: '', to: ''};
-        if (e.target.dataset.range === 'from') row.value.from = e.target.value;
-        if (e.target.dataset.range === 'to') row.value.to = e.target.value;
-    } else if (e.target.classList.contains('value-input')) {
-        filterRows[idx].value = e.target.value;
-    }
-});
-document.getElementById('filterContainer').addEventListener('change', function(e) {
-    const idx = +e.target.dataset.idx;
-    if (e.target.classList.contains('column-select')) {
-        filterRows[idx].column = e.target.value;
-        filterRows[idx].value = '';
         renderFilterRows();
-    }
-});
-document.getElementById('filterContainer').addEventListener('click', function(e) {
-    if (e.target.classList.contains('remove-filter-btn')) {
-        const idx = +e.target.dataset.idx;
-        filterRows.splice(idx, 1);
+    };
+    // Close modal
+    document.getElementById('closeFilterModal').onclick = () => {
+        document.getElementById('filterModal').classList.remove('active');
+    };
+    // Add filter row
+    document.getElementById('addFilterRow').onclick = () => {
+        filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
         renderFilterRows();
-    }
-});
-// Apply filters
-document.getElementById('applyFilters').onclick = () => {
-    const params = new URLSearchParams(window.location.search);
-    // Remove old filter params
-    for (const key of Array.from(params.keys())) {
-        if (Object.keys(filterConfig.columns).includes(key) || key === 'status') params.delete(key);
-        if (key.endsWith('_from') || key.endsWith('_to')) params.delete(key);
-    }
-    // Collect all status values to append as status[]
-    const statusValues = filterRows.filter(row => row.column === 'status').map(row => row.value);
-    statusValues.forEach(val => params.append('status[]', val));
-    filterRows.forEach(row => {
-        if (!row.value || row.column === 'status') return;
-        const col = filterConfig.columns[row.column];
-        if (col && col.type === 'date-range') {
-            if (row.value.from) params.append(`${row.column}_from`, row.value.from);
-            if (row.value.to) params.append(`${row.column}_to`, row.value.to);
-        } else {
-            params.append(row.column, row.value);
-        }
-    });
-    window.location = `{{ route('tasks.index') }}?${params.toString()}`;
-};
+    };
+    // Clear all
 
-
-// ...existing code...
-
-function getActiveFiltersFromURL() {
-    const params = new URLSearchParams(window.location.search);
-    const filters = [];
-    // Handle date-range fields
-    Object.entries(filterConfig.columns).forEach(([key, col]) => {
-        if (col.type === 'date-range') {
-            const from = params.get(`${key}_from`);
-            const to = params.get(`${key}_to`);
-            if (from || to) {
-                let value = '';
-                if (from && to) value = `${from} to ${to}`;
-                else if (from) value = `from ${from}`;
-                else if (to) value = `to ${to}`;
-                filters.push({ key, label: col.label, value });
-            }
-        }
-    });
-
-    // Collect all status values (avoid duplicates)
-    const statusValues = [
-        ...params.getAll('status[]'),
-        ...params.getAll('status')
-    ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
-
-    statusValues.forEach(val => {
-        filters.push({ key: 'status', label: filterConfig.columns['status'].label, value: val });
-    });
-
-    // Handle other filters
-    for (const [key, value] of params.entries()) {
-        if (Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range' && key !== 'status' && key !== 'status[]') {
-            const col = filterConfig.columns[key];
-            filters.push({ key, label: col ? col.label : key, value });
-        }
-    }
-    return filters;
-}
-
-function renderFilterRows() {
-    const container = document.getElementById('filterContainer');
-    container.innerHTML = '';
-    filterRows.forEach((row, idx) => {
-        const col = filterConfig.columns[row.column];
-        let inputHtml = '';
-        if (col.type === 'text') {
-            inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter value" data-idx="${idx}">`;
-        } else if (col.type === 'select') {
-            inputHtml = `<select class="value-input" data-idx="${idx}">${col.options.map(opt =>
-                `<option value="${opt}" ${row.value === opt ? 'selected' : ''}>${opt}</option>`
-            ).join('')}</select>`;
-        } else if (col.type === 'searchable') {
-            inputHtml = `<input type="text" class="value-input" list="datalist-${row.column}-${idx}" value="${row.value || ''}" placeholder="Search..." data-idx="${idx}">
-                <datalist id="datalist-${row.column}-${idx}">
-                    ${col.options.map(opt => `<option value="${opt}"></option>`).join('')}
-                </datalist>`;
-        } else if (col.type === 'date') {
-            inputHtml = `<input type="date" class="value-input" value="${row.value || ''}" data-idx="${idx}">`;
-        } else if (col.type === 'date-range') {
-            const val = typeof row.value === 'object' && row.value ? row.value : {from: '', to: ''};
-            inputHtml = `
-                <input type="date" class="value-input" data-range="from" value="${val.from || ''}" data-idx="${idx}" style="width: 45%;" placeholder="From">
-                <span style="margin:0 4px;">-</span>
-                <input type="date" class="value-input" data-range="to" value="${val.to || ''}" data-idx="${idx}" style="width: 45%;" placeholder="To">
-            `;
-        }
-        container.innerHTML += `
-            <div class="filter-row">
-                <select class="column-select" data-idx="${idx}">
-                    ${Object.entries(filterConfig.columns).map(([key, c]) =>
-                        `<option value="${key}" ${row.column === key ? 'selected' : ''}>${c.label}</option>`
-                    ).join('')}
-                </select>
-                ${inputHtml}
-                <button type="button" class="remove-filter-btn" data-idx="${idx}">&times;</button>
-            </div>
-        `;
-    });
-}
-
-// Remove individual filter
-document.getElementById('activeFiltersList').addEventListener('click', function(e) {
-    if (e.target.classList.contains('remove-tag')) {
-        const key = e.target.getAttribute('data-key');
-        const value = e.target.getAttribute('data-value');
+    // ...existing code...
+    document.getElementById('editActiveFilters').addEventListener('click', function() {
         const params = new URLSearchParams(window.location.search);
+        filterRows = [];
 
         // Handle date-range fields
-        if (filterConfig.columns[key] && filterConfig.columns[key].type === 'date-range') {
-            params.delete(`${key}_from`);
-            params.delete(`${key}_to`);
-        } else if (key === 'status') {
-            // Remove all status[] with this value
-            ['status[]', 'status'].forEach(k => {
-                const values = params.getAll(k);
-                params.delete(k);
-                values.forEach(v => {
-                    if (v !== value) params.append(k, v);
-                });
-            });
-        } else {
-            params.delete(key);
-        }
-        window.location = `{{ route('tasks.index') }}?${params.toString()}`;
-    }
-});
-// Remove all filters
-document.getElementById('clearAllActiveFilters').addEventListener('click', function() {
-    const params = new URLSearchParams(window.location.search);
-    Object.keys(filterConfig.columns).forEach(key => params.delete(key));
-    params.delete('status');
-    params.delete('status[]');
-    window.location = `{{ route('tasks.index') }}`;
-});
+        Object.entries(filterConfig.columns).forEach(([key, col]) => {
+            if (col.type === 'date-range') {
+                const from = params.get(`${key}_from`);
+                const to = params.get(`${key}_to`);
+                if (from || to) {
+                    filterRows.push({ column: key, value: { from: from || '', to: to || '' } });
+                }
+            }
+        });
 
-// Render on page load
-renderActiveFilters();
+        // Handle status[] and status (avoid duplicates)
+    const statusValues = [
+    ...params.getAll('status[]'),
+    ...params.getAll('status'),
+    ...Array.from(params.keys())
+        .filter(k => k.startsWith('status['))
+        .map(k => params.get(k))
+    ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
+
+        statusValues.forEach(val => {
+            filterRows.push({ column: 'status', value: val });
+        });
+
+        // Handle other filters (skip status/status[])
+        for (const [key, value] of params.entries()) {
+            if (
+                Object.keys(filterConfig.columns).includes(key) &&
+                filterConfig.columns[key].type !== 'date-range' &&
+                key !== 'status' && key !== 'status[]'
+            ) {
+                filterRows.push({ column: key, value });
+            }
+        }
+
+        if (filterRows.length === 0) {
+            filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
+        }
+        renderFilterRows();
+        document.getElementById('filterModal').classList.add('active');
+    });
+    // ...existing code...
+    // Remove row or update value
+    document.getElementById('filterContainer').addEventListener('input', function(e) {
+        const idx = +e.target.dataset.idx;
+        const row = filterRows[idx];
+        const col = filterConfig.columns[row.column];
+        if (col && col.type === 'date-range') {
+            if (typeof row.value !== 'object' || !row.value) row.value = {from: '', to: ''};
+            if (e.target.dataset.range === 'from') row.value.from = e.target.value;
+            if (e.target.dataset.range === 'to') row.value.to = e.target.value;
+        } else if (e.target.classList.contains('value-input')) {
+            filterRows[idx].value = e.target.value;
+        }
+    });
+    document.getElementById('filterContainer').addEventListener('change', function(e) {
+        const idx = +e.target.dataset.idx;
+        if (e.target.classList.contains('column-select')) {
+            filterRows[idx].column = e.target.value;
+            filterRows[idx].value = '';
+            renderFilterRows();
+        }
+    });
+    document.getElementById('filterContainer').addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-filter-btn')) {
+            const idx = +e.target.dataset.idx;
+            filterRows.splice(idx, 1);
+            renderFilterRows();
+
+            // Auto-apply filters after removing a row
+            const params = new URLSearchParams(window.location.search);
+            // Remove old filter params
+            for (const key of Array.from(params.keys())) {
+                if (
+                    Object.keys(filterConfig.columns).includes(key) ||
+                    key === 'status' ||
+                    key === 'status[]' ||
+                    key.startsWith('status[') // <-- Add this line!
+                ) params.delete(key);
+                if (key.endsWith('_from') || key.endsWith('_to')) params.delete(key);
+            }
+            // Always append as status[]
+            const statusValues = filterRows.filter(row => row.column === 'status').map(row => row.value);
+            statusValues.forEach(val => params.append('status[]', val));
+            filterRows.forEach(row => {
+                if (!row.value || row.column === 'status') return;
+                const col = filterConfig.columns[row.column];
+                if (col && col.type === 'date-range') {
+                    if (row.value.from) params.append(`${row.column}_from`, row.value.from);
+                    if (row.value.to) params.append(`${row.column}_to`, row.value.to);
+                } else {
+                    params.append(row.column, row.value);
+                }
+            });
+            window.location = `{{ route('tasks.index') }}?${params.toString()}`;
+        }
+    });
+        // Apply filters
+    document.getElementById('applyFilters').onclick = () => {
+        const params = new URLSearchParams(window.location.search);
+        // Remove old filter params
+        for (const key of Array.from(params.keys())) {
+            if (Object.keys(filterConfig.columns).includes(key) || key === 'status' || key === 'status[]') params.delete(key);
+            if (key.endsWith('_from') || key.endsWith('_to')) params.delete(key);
+        }
+        // Always append as status[]
+        const statusValues = filterRows.filter(row => row.column === 'status').map(row => row.value);
+        statusValues.forEach(val => params.append('status[]', val));
+        filterRows.forEach(row => {
+            if (!row.value || row.column === 'status') return;
+            const col = filterConfig.columns[row.column];
+            if (col && col.type === 'date-range') {
+                if (row.value.from) params.append(`${row.column}_from`, row.value.from);
+                if (row.value.to) params.append(`${row.column}_to`, row.value.to);
+            } else {
+                params.append(row.column, row.value);
+            }
+        });
+        window.location = `{{ route('tasks.index') }}?${params.toString()}`;
+    };
+
+
+
+        function getActiveFiltersFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const filters = [];
+            // Handle date-range fields
+            Object.entries(filterConfig.columns).forEach(([key, col]) => {
+                if (col.type === 'date-range') {
+                    const from = params.get(`${key}_from`);
+                    const to = params.get(`${key}_to`);
+                    if (from || to) {
+                        let value = '';
+                        if (from && to) value = `${from} to ${to}`;
+                        else if (from) value = `from ${from}`;
+                        else if (to) value = `to ${to}`;
+                        filters.push({ key, label: col.label, value });
+                    }
+                }
+            });
+
+            // Collect all status values (avoid duplicates)
+            const statusValues = [
+                ...params.getAll('status[]'),
+                ...params.getAll('status'),
+                ...Array.from(params.keys())
+                    .filter(k => k.startsWith('status['))
+                    .map(k => params.get(k))
+            ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
+
+            statusValues.forEach(val => {
+                filters.push({ key: 'status', label: filterConfig.columns['status'].label, value: val });
+            });
+
+            // Handle other filters
+            for (const [key, value] of params.entries()) {
+                if (Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range' && key !== 'status' && key !== 'status[]') {
+                    const col = filterConfig.columns[key];
+                    filters.push({ key, label: col ? col.label : key, value });
+                }
+            }
+            return filters;
+        }
+
+        function renderFilterRows() {
+            const container = document.getElementById('filterContainer');
+            container.innerHTML = '';
+            filterRows.forEach((row, idx) => {
+                const col = filterConfig.columns[row.column];
+                let inputHtml = '';
+                if (col.type === 'text') {
+                    inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter value" data-idx="${idx}">`;
+                } else if (col.type === 'select') {
+                    inputHtml = `<select class="value-input" data-idx="${idx}">${col.options.map(opt =>
+                        `<option value="${opt}" ${row.value === opt ? 'selected' : ''}>${opt}</option>`
+                    ).join('')}</select>`;
+                } else if (col.type === 'searchable') {
+                    inputHtml = `<input type="text" class="value-input" list="datalist-${row.column}-${idx}" value="${row.value || ''}" placeholder="Search..." data-idx="${idx}">
+                        <datalist id="datalist-${row.column}-${idx}">
+                            ${col.options.map(opt => `<option value="${opt}"></option>`).join('')}
+                        </datalist>`;
+                } else if (col.type === 'date') {
+                    inputHtml = `<input type="date" class="value-input" value="${row.value || ''}" data-idx="${idx}">`;
+                } else if (col.type === 'date-range') {
+                    const val = typeof row.value === 'object' && row.value ? row.value : {from: '', to: ''};
+                    inputHtml = `
+                        <input type="date" class="value-input" data-range="from" value="${val.from || ''}" data-idx="${idx}" style="width: 45%;" placeholder="From">
+                        <span style="margin:0 4px;">-</span>
+                        <input type="date" class="value-input" data-range="to" value="${val.to || ''}" data-idx="${idx}" style="width: 45%;" placeholder="To">
+                    `;
+                }
+                container.innerHTML += `
+                    <div class="filter-row">
+                        <select class="column-select" data-idx="${idx}">
+                            ${Object.entries(filterConfig.columns).map(([key, c]) =>
+                                `<option value="${key}" ${row.column === key ? 'selected' : ''}>${c.label}</option>`
+                            ).join('')}
+                        </select>
+                        ${inputHtml}
+                        <button type="button" class="remove-filter-btn" data-idx="${idx}">&times;</button>
+                    </div>
+                `;
+            });
+        }
+
+        // Remove individual filter
+        document.getElementById('activeFiltersList').addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-tag')) {
+                const key = e.target.getAttribute('data-key');
+                const value = e.target.getAttribute('data-value');
+                const params = new URLSearchParams(window.location.search);
+
+                // Handle date-range fields
+                if (filterConfig.columns[key] && filterConfig.columns[key].type === 'date-range') {
+                    params.delete(`${key}_from`);
+                    params.delete(`${key}_to`);
+                } else if (key === 'status') {
+                // Remove all status[] and status[n] with this value
+                ['status[]', 'status'].forEach(k => {
+                    const values = params.getAll(k);
+                    params.delete(k);
+                    values.forEach(v => {
+                        if (v !== value) params.append(k, v);
+                    });
+                });
+                // Also handle status[0], status[1], etc.
+                Array.from(params.keys())
+                    .filter(k => k.startsWith('status['))
+                    .forEach(k => {
+                        if (params.get(k) === value) {
+                            params.delete(k);
+                        }
+                    });
+                } else {
+                    params.delete(key);
+                }
+                window.location = `{{ route('tasks.index') }}?${params.toString()}`;
+            }
+        });
+        // Remove all filters
+        document.getElementById('clearAllActiveFilters').addEventListener('click', function() {
+            const params = new URLSearchParams(window.location.search);
+            Object.keys(filterConfig.columns).forEach(key => params.delete(key));
+            params.delete('status');
+            params.delete('status[]');
+            window.location = `{{ route('tasks.index') }}`;
+        });
+        document.getElementById('clearAllActiveFilters2').addEventListener('click', function() {
+            const params = new URLSearchParams(window.location.search);
+            Object.keys(filterConfig.columns).forEach(key => params.delete(key));
+            params.delete('status');
+            params.delete('status[]');
+            window.location = `{{ route('tasks.index') }}`;
+        });
+    // Render on page load
+    renderActiveFilters();
 </script>

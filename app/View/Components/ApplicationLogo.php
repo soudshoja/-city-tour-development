@@ -15,9 +15,17 @@ class ApplicationLogo extends Component
     /**
      * Create a new component instance.
      */
-    public function __construct()
+    public function __construct(string $companyLogo = '')
     {
-        $this->companyLogo = $this->determineCompanyLogo();
+        if ($companyLogo) {
+            if (file_exists(public_path($companyLogo))) {
+                $this->companyLogo = asset($companyLogo);
+            } else {
+                $this->companyLogo = asset('images/UserPic.svg');
+            }
+        } else {
+            $this->companyLogo = $this->determineCompanyLogo();
+        }
     }
 
     /**
@@ -34,8 +42,9 @@ class ApplicationLogo extends Component
 
         $company = $this->getCompanyFromUserRole($user);
 
-        return $company && $company->logo 
-            ? asset('storage/' . $company->logo) 
+        return $company && $company->logo
+            && file_exists(public_path('storage/' . $company->logo))
+            ? asset('storage/' . $company->logo)
             : $defaultLogo;
     }
 

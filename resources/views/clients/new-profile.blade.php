@@ -51,7 +51,7 @@
                                     </td>
                                     @if (is_array($task->cancellation_policy) && !empty($task->cancellation_policy))
                                     <td class="grid">
-                                        @foreach ($task->cancellation_policy as  $policy)
+                                        @foreach ($task->cancellation_policy as $policy)
                                         <div class="p-1 m-1 border rounded">
                                             @foreach ($policy as $key => $value)
                                             <p>{{ $key }}: {{ $value }}</p>
@@ -203,10 +203,36 @@
                                 {{ $client->address ? $client->address : 'N/A' }}
                             </h5>
                         </div>
-                        <div class="mt-2 flex items-center justify-between text-white">
-                            <p class="text-lg">Agent</p>
-                            <h5 class="text-base ml-auto">{{ $client->agent->name }}</h5>
+                        <div class="mt-2 flex gap-2 items-center justify-between text-white">
+                            <p class="text-lg">Agent (Owner)</p>
+                            <h5 class="ml-5 text-base whitespace-nowrap overflow-x-auto scroll-auto">
+                            </h5>
                         </div>
+                        @if($client->agents->isEmpty())
+                        <div class="mt-2 flex items-center justify-between text-white">
+                            <p class="text-lg">Agent Assigned</p>
+                            <div class="px-3 py-1 bg-gray-400 text-white text-sm rounded-full">
+                                No Agent Assigned
+                            </div>
+                        </div>
+                        @else
+                        <div class="mt-2 text-white">
+                            <p class="text-lg mb-2">{{ $client->agents->count() > 1 ? 'Agents Assigned' : 'Agent Assigned' }}</p>
+                            <div class="flex flex-wrap gap-2 max-h-20 overflow-y-auto">
+                                @foreach($client->agents as $agent)
+                                <div class="px-3 py-1 bg-gradient-to-b from-gray-700 to-gray-400 text-white text-sm rounded-full shadow-sm hover:shadow-md transition-shadow duration-200 flex items-center gap-2">
+                                    <div class="w-2 h-2 bg-white rounded-full opacity-80"></div>
+                                    <span class="font-semibold">{{ $agent->name }}</span>
+                                </div>
+                                @endforeach
+                            </div>
+                            @if($client->agents->count() > 3)
+                            <div class="mt-1 text-xs text-gray-300 opacity-75">
+                                {{ $client->agents->count() }} agents assigned
+                            </div>
+                            @endif
+                        </div>
+                        @endif
                     </div>
                     <div class="invoice-status flex gap-2 mt-2">
                         <x-paid>{{ $paid }} KWD</x-paid>
@@ -243,7 +269,7 @@
                             @if ($invoices->count() > 0)
                             @foreach ($invoices as $invoice)
                             <tr>
-                                <td> 
+                                <td>
                                     <a href="{{ url('/invoice/' . $invoice->invoice_number) }}" class="text-blue-500 hover:underline" target="_blank">{{ $invoice->invoice_number }}</a>
                                 </td>
                                 <td> {{ $invoice->amount }} </td>
@@ -360,93 +386,93 @@
                     <tbody>
                         @if ($payments->count() > 0)
                         @foreach ($payments as $payment)
-                            @php
-                                $paymentUrl = route('payment.link.show', [
-                                    'companyId' => $payment->agent->branch->company_id,
-                                    'voucherNumber' => $payment->voucher_number,
-                                ]);
-                            @endphp
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="px-3 py-2 whitespace-nowrap">
-                                    <a href="{{ $paymentUrl }}" target="_blank"
-                                        class="text-blue-500 hover:underline text-sm font-semibold">{{ $payment->voucher_number }}</a>
-                                </td>
-                                <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
-                                    {{ $payment->agent ? $payment->agent->name : 'N/A' }}
-                                </td>
-                                <td class="px-3 py-2 break-words text-sm">
-                                    @php
-                                        $gateway = $payment->payment_gateway ?? 'N/A';
-                                        $method = $payment->paymentMethod->english_name ?? null;
-                                    @endphp
-                                    {{ $gateway === 'MyFatoorah' && $method ? "$gateway - $method" : $gateway }}
-                                </td>
-                                <td class="px-3 py-2 text-sm break-words max-w-[350px]">
-                                    {{ $payment->notes ?? 'No Notes' }}
-                                </td>
-                                <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
-                                    {{ $payment->amount }}
-                                </td>
-                                @if (auth()->user()->role->name === 'admin' || auth()->user()->role->name === 'company')
-                                    <td class="px-3 py-2 whitespace-nowrap text-sm">
-                                        {{ $payment->created_at->format('d-m-Y H:i:s') }}
-                                    </td>
-                                @else
-                                    <td class="px-3 py-2 text-sm break-words max-w-[200px]">
-                                        {{ $payment->created_at->format('D d M Y') }}
-                                    </td>
-                                @endif
-                                <td class="px-3 py-2 whitespace-nowrap text-sm">
-                                    {{ $payment->createdBy ? $payment->createdBy->name : 'N/A' }}
-                                </td>
-                                <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
-                                    @php
-                                        $payment_reference = $payment->payment_reference
-                                            ? ($payment->invoice_ref
-                                                ? $payment->payment_reference . '/' . $payment->invoice_ref
-                                                : $payment->payment_reference)
-                                            : 'N/A';
-                                        $isTrimmed = strlen($payment_reference) > 15;
-                                        $trimmedValue = \Illuminate\Support\Str::limit($payment_reference, 15);
-                                    @endphp
+                        @php
+                        $paymentUrl = route('payment.link.show', [
+                        'companyId' => $payment->agent->branch->company_id,
+                        'voucherNumber' => $payment->voucher_number,
+                        ]);
+                        @endphp
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="px-3 py-2 whitespace-nowrap">
+                                <a href="{{ $paymentUrl }}" target="_blank"
+                                    class="text-blue-500 hover:underline text-sm font-semibold">{{ $payment->voucher_number }}</a>
+                            </td>
+                            <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
+                                {{ $payment->agent ? $payment->agent->name : 'N/A' }}
+                            </td>
+                            <td class="px-3 py-2 break-words text-sm">
+                                @php
+                                $gateway = $payment->payment_gateway ?? 'N/A';
+                                $method = $payment->paymentMethod->english_name ?? null;
+                                @endphp
+                                {{ $gateway === 'MyFatoorah' && $method ? "$gateway - $method" : $gateway }}
+                            </td>
+                            <td class="px-3 py-2 text-sm break-words max-w-[350px]">
+                                {{ $payment->notes ?? 'No Notes' }}
+                            </td>
+                            <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
+                                {{ $payment->amount }}
+                            </td>
+                            @if (auth()->user()->role->name === 'admin' || auth()->user()->role->name === 'company')
+                            <td class="px-3 py-2 whitespace-nowrap text-sm">
+                                {{ $payment->created_at->format('d-m-Y H:i:s') }}
+                            </td>
+                            @else
+                            <td class="px-3 py-2 text-sm break-words max-w-[200px]">
+                                {{ $payment->created_at->format('D d M Y') }}
+                            </td>
+                            @endif
+                            <td class="px-3 py-2 whitespace-nowrap text-sm">
+                                {{ $payment->createdBy ? $payment->createdBy->name : 'N/A' }}
+                            </td>
+                            <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
+                                @php
+                                $payment_reference = $payment->payment_reference
+                                ? ($payment->invoice_ref
+                                ? $payment->payment_reference . '/' . $payment->invoice_ref
+                                : $payment->payment_reference)
+                                : 'N/A';
+                                $isTrimmed = strlen($payment_reference) > 15;
+                                $trimmedValue = \Illuminate\Support\Str::limit($payment_reference, 15);
+                                @endphp
 
-                                    @if ($isTrimmed)
-                                        <span x-data="{ showFullData: false }">
-                                            <span x-show="!showFullData" @click="showFullData = !showFullData"
-                                                class="cursor-pointer hover:text-purple-700"
-                                                data-tooltip-left="Click to expand">
-                                                {{ $trimmedValue }}
-                                            </span>
-
-                                            <span x-show="showFullData" @click="showFullData = !showFullData"
-                                                class="cursor-pointer hover:text-purple-500">
-                                                {{ $payment_reference }}
-                                            </span>
-                                        </span>
-                                    @else
-                                        <span>{{ $payment_reference }}</span>
-                                    @endif
-                                </td>
-                                <td class="px-3 py-2 whitespace-nowrap text-sm">
-                                    @php
-                                        $statusColors = [
-                                            'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-600',
-                                            'completed' => 'bg-green-100 text-green-800 border-green-600',
-                                            'failed' => 'bg-red-100 text-red-800 border-red-600',
-                                            'cancelled' => 'bg-gray-100 text-gray-600 border-gray-600',
-                                        ];
-                                        $status = strtolower($payment->status);
-                                        $colorClass =
-                                            $statusColors[$status] ??
-                                            'bg-gray-100 text-gray-800 border-gray-600';
-                                    @endphp
-                                    <span
-                                        class="inline-block px-3 py-1.5 rounded-full font-semibold text-center {{ $colorClass }} border-2 transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-lg">
-                                        {{ ucfirst($payment->status) }}
+                                @if ($isTrimmed)
+                                <span x-data="{ showFullData: false }">
+                                    <span x-show="!showFullData" @click="showFullData = !showFullData"
+                                        class="cursor-pointer hover:text-purple-700"
+                                        data-tooltip-left="Click to expand">
+                                        {{ $trimmedValue }}
                                     </span>
-                                </td>
-                                <td class="px-3 py-2 whitespace-nowrap relative text-sm">
-                                    <div x-data="{ 
+
+                                    <span x-show="showFullData" @click="showFullData = !showFullData"
+                                        class="cursor-pointer hover:text-purple-500">
+                                        {{ $payment_reference }}
+                                    </span>
+                                </span>
+                                @else
+                                <span>{{ $payment_reference }}</span>
+                                @endif
+                            </td>
+                            <td class="px-3 py-2 whitespace-nowrap text-sm">
+                                @php
+                                $statusColors = [
+                                'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-600',
+                                'completed' => 'bg-green-100 text-green-800 border-green-600',
+                                'failed' => 'bg-red-100 text-red-800 border-red-600',
+                                'cancelled' => 'bg-gray-100 text-gray-600 border-gray-600',
+                                ];
+                                $status = strtolower($payment->status);
+                                $colorClass =
+                                $statusColors[$status] ??
+                                'bg-gray-100 text-gray-800 border-gray-600';
+                                @endphp
+                                <span
+                                    class="inline-block px-3 py-1.5 rounded-full font-semibold text-center {{ $colorClass }} border-2 transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-lg">
+                                    {{ ucfirst($payment->status) }}
+                                </span>
+                            </td>
+                            <td class="px-3 py-2 whitespace-nowrap relative text-sm">
+                                <div x-data="{ 
                                         open: false, 
                                         editPaymentLink: false,
                                         dropdownPosition: 'bottom',
@@ -476,31 +502,31 @@
                                             }
                                         }
                                     }" class="relative inline-block text-left">
-                                        <button 
-                                            x-ref="dropdownButton"
-                                            @click="toggleDropdown()" 
-                                            @click.outside="open = false" 
-                                            class="p-1 rounded hover:bg-gray-100">
-                                            <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M10 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM10 13a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM10 20a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
-                                            </svg>
-                                        </button>
-                                        <div 
-                                            x-ref="dropdownMenu"
-                                            x-cloak 
-                                            x-show="open" 
-                                            x-transition 
-                                            :class="{
+                                    <button
+                                        x-ref="dropdownButton"
+                                        @click="toggleDropdown()"
+                                        @click.outside="open = false"
+                                        class="p-1 rounded hover:bg-gray-100">
+                                        <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM10 13a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM10 20a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
+                                        </svg>
+                                    </button>
+                                    <div
+                                        x-ref="dropdownMenu"
+                                        x-cloak
+                                        x-show="open"
+                                        x-transition
+                                        :class="{
                                                 'absolute right-[-20px] mt-2': dropdownPosition === 'bottom',
                                                 'absolute right-[-20px] bottom-full mb-2': dropdownPosition === 'top'
                                             }"
-                                            class="w-46 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                                            <form action="{{ route('resayil.share-payment-link') }}" method="POST" class="block">
-                                                @csrf
-                                                <input type="hidden" name="client_id" value="{{ $payment->client_id }}">
-                                                <input type="hidden" name="payment_id" value="{{ $payment->id }}">
-                                                <input type="hidden" name="voucher_number" value="{{ $payment->voucher_number }}">
-                                                <button type="submit" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        class="w-46 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                                        <form action="{{ route('resayil.share-payment-link') }}" method="POST" class="block">
+                                            @csrf
+                                            <input type="hidden" name="client_id" value="{{ $payment->client_id }}">
+                                            <input type="hidden" name="payment_id" value="{{ $payment->id }}">
+                                            <input type="hidden" name="voucher_number" value="{{ $payment->voucher_number }}">
+                                            <button type="submit" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                                 <svg class="h-5 w-5 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24"
                                                     stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
@@ -508,137 +534,137 @@
                                                         d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                                 </svg>
                                                 Send Link
-                                                </button>
-                                            </form>
-                                            <button onclick="copyToClipboard('{{ $paymentUrl }}')" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                                <svg class="h-5 w-5 mr-2 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M8 16h8M8 12h8m-6 8h6a2 2 0 002-2V7a2 2 0 00-2-2H9m-2 0H7a2 2 0 00-2 2v12a2 2 0 002 2h2V5z" />
-                                                </svg>
-                                                Copy Link
                                             </button>
-                                            <a href="{{ $paymentUrl }}" target="_blank" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                                <svg class="h-4 w-4 mr-1 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2" d="M12 4v16m8-8H4" />
-                                                </svg>
-                                                View Invoice
-                                            </a>
+                                        </form>
+                                        <button onclick="copyToClipboard('{{ $paymentUrl }}')" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                            <svg class="h-5 w-5 mr-2 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M8 16h8M8 12h8m-6 8h6a2 2 0 002-2V7a2 2 0 00-2-2H9m-2 0H7a2 2 0 00-2 2v12a2 2 0 002 2h2V5z" />
+                                            </svg>
+                                            Copy Link
+                                        </button>
+                                        <a href="{{ $paymentUrl }}" target="_blank" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                            <svg class="h-4 w-4 mr-1 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="2" d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            View Invoice
+                                        </a>
 
-                                            @if ($payment->status === 'pending')
-                                            <div class="border-t border-gray-200 my-1"></div>
-                                            <button @click="editPaymentLink = true; open = false" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50">
+                                        @if ($payment->status === 'pending')
+                                        <div class="border-t border-gray-200 my-1"></div>
+                                        <button @click="editPaymentLink = true; open = false" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                <path d="M12 20h9M15 3l6 6-9 9H6v-6l9-9z" />
+                                            </svg>
+                                            Edit
+                                        </button>
+                                        <form action="{{ route('payment.link.delete', $payment->id) }}" method="POST" class="block">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                class="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                <path d="M12 20h9M15 3l6 6-9 9H6v-6l9-9z"/>
-                                                </svg>
-                                                Edit    
-                                            </button>
-                                            <form action="{{ route('payment.link.delete', $payment->id) }}" method="POST" class="block">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" 
-                                                        class="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                    <path d="M6 18L18 6M6 6l12 12"/>
+                                                    <path d="M6 18L18 6M6 6l12 12" />
                                                 </svg>
                                                 Delete
-                                                </button>
-                                            </form>
-                                            @endif
-                                        </div>
-                                        <div x-cloak x-transition x-show="editPaymentLink" class="fixed inset-0 z-10 bg-gray-500 bg-opacity-50 flex items-center justify-center">
-                                            <div
-                                                class="bg-white p-6 rounded shadow-lg w-full max-w-md relative">
-                                                <div class="flex items-center justify-between mb-6">
-                                                    <div>
-                                                        <h2 class="text-xl font-bold text-gray-800">Edit
-                                                            Payment
-                                                            Link Details</h2>
-                                                        <p class="text-gray-600 italic text-xs mt-1">Please
-                                                            update
-                                                            the payment link details to ensure accurate
-                                                            information
-                                                        </p>
-                                                    </div>
-                                                    <button @click="editPaymentLink = false"
-                                                        class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
-                                                        &times;
-                                                    </button>
+                                            </button>
+                                        </form>
+                                        @endif
+                                    </div>
+                                    <div x-cloak x-transition x-show="editPaymentLink" class="fixed inset-0 z-10 bg-gray-500 bg-opacity-50 flex items-center justify-center">
+                                        <div
+                                            class="bg-white p-6 rounded shadow-lg w-full max-w-md relative">
+                                            <div class="flex items-center justify-between mb-6">
+                                                <div>
+                                                    <h2 class="text-xl font-bold text-gray-800">Edit
+                                                        Payment
+                                                        Link Details</h2>
+                                                    <p class="text-gray-600 italic text-xs mt-1">Please
+                                                        update
+                                                        the payment link details to ensure accurate
+                                                        information
+                                                    </p>
                                                 </div>
-                                                <form
-                                                    action="{{ route('payment.link.update', $payment->id) }}"
-                                                    method="POST">
-                                                    @csrf
-                                                    @method('PUT')
-                                                    @unlessrole('agent')
-                                                        @php
-                                                            $selectedAgent = \App\Models\Agent::find(
-                                                                $payment->agent_id,
-                                                            );
-                                                            $agentPlaceholder = $selectedAgent
-                                                                ? $selectedAgent->name
-                                                                : 'Select an Agent';
-                                                        @endphp
+                                                <button @click="editPaymentLink = false"
+                                                    class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">
+                                                    &times;
+                                                </button>
+                                            </div>
+                                            <form
+                                                action="{{ route('payment.link.update', $payment->id) }}"
+                                                method="POST">
+                                                @csrf
+                                                @method('PUT')
+                                                @unlessrole('agent')
+                                                @php
+                                                $selectedAgent = \App\Models\Agent::find(
+                                                $payment->agent_id,
+                                                );
+                                                $agentPlaceholder = $selectedAgent
+                                                ? $selectedAgent->name
+                                                : 'Select an Agent';
+                                                @endphp
 
-                                                        <div class="mb-4">
-                                                            <x-searchable-dropdown name="agent_id"
-                                                                :items="$agents->map(
+                                                <div class="mb-4">
+                                                    <x-searchable-dropdown name="agent_id"
+                                                        :items="$agents->map(
                                                                     fn($a) => [
                                                                         'id' => $a->id,
                                                                         'name' => $a->name,
                                                                     ],
                                                                 )" :placeholder="$agentPlaceholder"
-                                                                :selectedName="$selectedAgent
+                                                        :selectedName="$selectedAgent
                                                                     ? $selectedAgent->name
                                                                     : null" label="Agent" />
-                                                        </div>
-                                                    @else
-                                                        <div class="mb-4">
-                                                            <input type="hidden" name="agent_id"
-                                                                value="{{ auth()->user()->agent->id }}">
-                                                        </div>
-                                                    @endunlessrole
+                                                </div>
+                                                @else
+                                                <div class="mb-4">
+                                                    <input type="hidden" name="agent_id"
+                                                        value="{{ auth()->user()->agent->id }}">
+                                                </div>
+                                                @endunlessrole
 
-                                                    @php
-                                                        $selectedClient = \App\Models\Client::find(
-                                                            $payment->client_id,
-                                                        );
-                                                        $clientPlaceholder = $selectedClient
-                                                            ? $selectedClient->first_name
-                                                            : 'Select a Client';
-                                                    @endphp
-                                                    <div class="mb-4">
-                                                        <x-searchable-dropdown name="client_id"
-                                                            :items="$clients->map(
+                                                @php
+                                                $selectedClient = \App\Models\Client::find(
+                                                $payment->client_id,
+                                                );
+                                                $clientPlaceholder = $selectedClient
+                                                ? $selectedClient->first_name
+                                                : 'Select a Client';
+                                                @endphp
+                                                <div class="mb-4">
+                                                    <x-searchable-dropdown name="client_id"
+                                                        :items="$clients->map(
                                                                 fn($c) => [
                                                                     'id' => $c->id,
                                                                     'name' => $c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name . ' - ' . $c->phone
                                                                 ],
                                                             )" :placeholder="$clientPlaceholder"
-                                                            :selectedName="$selectedClient
+                                                        :selectedName="$selectedClient
                                                                 ? $selectedClient->first_name
                                                                 : null" label="Client" />
 
-                                                        <input type="hidden" name="client_id_fallback"
-                                                            value="{{ $selectedClient ? $selectedClient->id : '' }}">
-                                                    </div>
+                                                    <input type="hidden" name="client_id_fallback"
+                                                        value="{{ $selectedClient ? $selectedClient->id : '' }}">
+                                                </div>
 
-                                                    <label for="phone_{{ $payment->client_id }}"
-                                                        class="block text-sm font-medium text-gray-700">Phone
-                                                        Number</label>
-                                                    @php
-                                                        $client = \App\Models\Client::find(
-                                                            $payment->client_id,
-                                                        );
-                                                        $placeholder = $client
-                                                            ? $client->country_code
-                                                            : 'Select Dial Code';
-                                                    @endphp
-                                                    <div class="flex gap-4 mb-4">
-                                                        <div class="w-2/5">
-                                                            <x-searchable-dropdown name="dial_code"
-                                                                :items="\App\Models\Country::all()->map(
+                                                <label for="phone_{{ $payment->client_id }}"
+                                                    class="block text-sm font-medium text-gray-700">Phone
+                                                    Number</label>
+                                                @php
+                                                $client = \App\Models\Client::find(
+                                                $payment->client_id,
+                                                );
+                                                $placeholder = $client
+                                                ? $client->country_code
+                                                : 'Select Dial Code';
+                                                @endphp
+                                                <div class="flex gap-4 mb-4">
+                                                    <div class="w-2/5">
+                                                        <x-searchable-dropdown name="dial_code"
+                                                            :items="\App\Models\Country::all()->map(
                                                                     fn($country) => [
                                                                         'id' => $country->dialing_code,
                                                                         'name' =>
@@ -647,96 +673,96 @@
                                                                             $country->name,
                                                                     ],
                                                                 )" :placeholder="$placeholder"
-                                                                :selectedName="$client
+                                                            :selectedName="$client
                                                                     ? $client->country_code
                                                                     : null" :showAllOnOpen="true" />
 
-                                                            <input type="hidden"
-                                                                name="dial_code_fallback"
-                                                                value="{{ $client ? $client->country_code : '' }}">
-                                                        </div>
-
-                                                        <div class="w-3/5">
-                                                            <input type="text" name="phone"
-                                                                id="phone_{{ $payment->client_id }}"
-                                                                value="{{ $client ? $client->phone : '' }}"
-                                                                placeholder="Phone Number"
-                                                                class="form-input w-full border rounded px-3 py-2"
-                                                                required />
-                                                        </div>
+                                                        <input type="hidden"
+                                                            name="dial_code_fallback"
+                                                            value="{{ $client ? $client->country_code : '' }}">
                                                     </div>
 
-                                                    <div class="mb-4" x-data="{ selectedGateway: '{{ $payment->payment_gateway ?? '' }}', selectedMethod: '{{ $payment->paymentMethod ? $payment->paymentMethod->id : '' }}' }">
-                                                        <div
-                                                            :class="selectedGateway === 'MyFatoorah' ?
+                                                    <div class="w-3/5">
+                                                        <input type="text" name="phone"
+                                                            id="phone_{{ $payment->client_id }}"
+                                                            value="{{ $client ? $client->phone : '' }}"
+                                                            placeholder="Phone Number"
+                                                            class="form-input w-full border rounded px-3 py-2"
+                                                            required />
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-4" x-data="{ selectedGateway: '{{ $payment->payment_gateway ?? '' }}', selectedMethod: '{{ $payment->paymentMethod ? $payment->paymentMethod->id : '' }}' }">
+                                                    <div
+                                                        :class="selectedGateway === 'MyFatoorah' ?
                                                                 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' :
                                                                 'block'">
+                                                        <div>
+                                                            <label for="payment-gateway"
+                                                                class="block text-sm font-medium text-gray-700">Payment
+                                                                Gateway</label>
+                                                            <select name="payment_gateway"
+                                                                id="payment_gateway"
+                                                                class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                                x-model="selectedGateway">
+                                                                <option value="" disabled>Select
+                                                                    Payment
+                                                                    Gateway</option>
+                                                                @foreach ($paymentGateways as $gateway)
+                                                                <option
+                                                                    value="{{ $gateway->name }}"
+                                                                    @if ($payment->payment_gateway === $gateway->name) selected @endif>
+                                                                    {{ $gateway->name }}
+                                                                </option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+
+                                                        <template
+                                                            x-if="selectedGateway === 'MyFatoorah'">
                                                             <div>
-                                                                <label for="payment-gateway"
+                                                                <label for="payment-method"
                                                                     class="block text-sm font-medium text-gray-700">Payment
-                                                                    Gateway</label>
-                                                                <select name="payment_gateway"
-                                                                    id="payment_gateway"
+                                                                    Method</label>
+                                                                <select name="payment_method_id"
+                                                                    id="payment_method_id"
                                                                     class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                                                    x-model="selectedGateway">
-                                                                    <option value="" disabled>Select
-                                                                        Payment
-                                                                        Gateway</option>
-                                                                    @foreach ($paymentGateways as $gateway)
-                                                                        <option
-                                                                            value="{{ $gateway->name }}"
-                                                                            @if ($payment->payment_gateway === $gateway->name) selected @endif>
-                                                                            {{ $gateway->name }}
-                                                                        </option>
+                                                                    x-model="selectedMethod">
+                                                                    <option value="" disabled>
+                                                                        Select
+                                                                        Method</option>
+                                                                    @foreach ($paymentMethods as $method)
+                                                                    <option
+                                                                        value="{{ $method->id }}"
+                                                                        @if ($payment->payment_method_id === $method->id) selected @endif>
+                                                                        {{ $method->english_name }}
+                                                                    </option>
                                                                     @endforeach
                                                                 </select>
                                                             </div>
-
-                                                            <template
-                                                                x-if="selectedGateway === 'MyFatoorah'">
-                                                                <div>
-                                                                    <label for="payment-method"
-                                                                        class="block text-sm font-medium text-gray-700">Payment
-                                                                        Method</label>
-                                                                    <select name="payment_method_id"
-                                                                        id="payment_method_id"
-                                                                        class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                                                        x-model="selectedMethod">
-                                                                        <option value="" disabled>
-                                                                            Select
-                                                                            Method</option>
-                                                                        @foreach ($paymentMethods as $method)
-                                                                            <option
-                                                                                value="{{ $method->id }}"
-                                                                                @if ($payment->payment_method_id === $method->id) selected @endif>
-                                                                                {{ $method->english_name }}
-                                                                            </option>
-                                                                        @endforeach
-                                                                    </select>
-                                                                </div>
-                                                            </template>
-                                                        </div>
+                                                        </template>
                                                     </div>
-                                                    <div class="mb-4">
-                                                        <label for="amount"
-                                                            class="block text-sm font-medium text-gray-700">Amount</label>
-                                                        <input type="text" name="amount"
-                                                            id="amount" value="{{ $payment->amount }}"
-                                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                                    </div>
-                                                    <div class="flex justify-between space-x-4">
-                                                        <button type="button"
-                                                            @click="editPaymentLink = false"
-                                                            class="rounded-full shadow-md border border-gray-200 hover:bg-gray-400 px-4 py-2">Cancel</button>
-                                                        <button type="submit"
-                                                            class="rounded-full shadow-md border border-blue-200 bg-blue-600 text-white hover:bg-blue-700 px-4 py-2">Update</button>
-                                                    </div>
-                                                </form>
-                                            </div>
+                                                </div>
+                                                <div class="mb-4">
+                                                    <label for="amount"
+                                                        class="block text-sm font-medium text-gray-700">Amount</label>
+                                                    <input type="text" name="amount"
+                                                        id="amount" value="{{ $payment->amount }}"
+                                                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                                </div>
+                                                <div class="flex justify-between space-x-4">
+                                                    <button type="button"
+                                                        @click="editPaymentLink = false"
+                                                        class="rounded-full shadow-md border border-gray-200 hover:bg-gray-400 px-4 py-2">Cancel</button>
+                                                    <button type="submit"
+                                                        class="rounded-full shadow-md border border-blue-200 bg-blue-600 text-white hover:bg-blue-700 px-4 py-2">Update</button>
+                                                </div>
+                                            </form>
                                         </div>
                                     </div>
-                                </td>
-                            </tr>
+                                </div>
+                            </td>
+                        </tr>
                         @endforeach
                         @else
                         <tr class="border-t">
@@ -751,7 +777,7 @@
     <!-- edit Agent details modal -->
     <div id="editClientModal"
         class="fixed z-10 inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm hidden">
-        <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-lg max-w-4xl w-full mx-4 p-6 relative max-h-[90vh] overflow-y-auto">
 
             <!-- Close Button (Top Right) -->
             <button onclick="closeClientModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
@@ -762,74 +788,238 @@
             </button>
 
             <!-- Modal Title -->
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4 text-center">Edit Client Details
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-6 text-center">Edit Client Details
             </h2>
 
             <div class="body p-4">
                 <form action="{{ route('clients.update', $client->id) }}" method="POST">
                     @csrf
                     @method('PUT')
-                    <div class="grid gap-4">
-                        <div>
-                            <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                            <input type="text" name="first_name" id="first_name" value="{{ $client->first_name }}"
-                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full"
-                                placeholder="First Name" required>
+
+                    <!-- Two-column grid for larger screens, single column for smaller screens -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                        <!-- Left Column -->
+                        <div class="space-y-4">
+                            <div>
+                                <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                                <input type="text" name="first_name" id="first_name" value="{{ $client->first_name }}"
+                                    class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="First Name" required>
+                            </div>
+
+                            <div>
+                                <label for="middle_name" class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+                                <input type="text" name="middle_name" id="middle_name" value="{{ $client->middle_name }}"
+                                    class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Middle Name">
+                            </div>
+
+                            <div>
+                                <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                                <input type="text" name="last_name" id="last_name" value="{{ $client->last_name }}"
+                                    class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Last Name">
+                            </div>
+
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Civil No</label>
+                                <input type="civil_no" name="civil_no" id="civil_no" value="{{ $client->civil_no }}"
+                                    class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Client Civil No">
+                            </div>
+
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" name="email" id="email" value="{{ $client->email }}"
+                                    class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Client Email">
+                            </div>
                         </div>
-                        <div>
-                            <label for="middle_name" class="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
-                            <input type="text" name="middle_name" id="middle_name" value="{{ $client->middle_name }}"
-                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full"
-                                placeholder="Middle Name">
+
+                        <!-- Right Column -->
+                        <div class="space-y-4">
+                            <div>
+                                <label for="country_code" class="block text-sm font-medium text-gray-700 mb-1">Country Code</label>
+                                <select name="country_code" id="country_code"
+                                    class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    @foreach ($countries as $country)
+                                    <option value="{{ $country->dialing_code }}"
+                                        {{ $client->country_code == $country->dialing_code ? 'selected' : '' }}>
+                                        {{ $country->name }} ({{ $country->dialing_code }})
+                                    </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                <input type="text" name="phone" id="phone" value="{{ $client->phone }}"
+                                    class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Client Phone">
+                            </div>
+
+                            <div>
+                                <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                <textarea name="address" id="address" rows="3"
+                                    class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical"
+                                    placeholder="Client Address">{{ $client->address }}</textarea>
+                            </div>
+
+                            @can('assignOwnerAgent', App\Models\Client::class)
+                            <div>
+                                <x-searchable-dropdown
+                                    name="agent_id"
+                                    :items="isset($agents) ? $agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name]) : []"
+                                    :placeholder="$client->agent ? $client->agent->name : 'Select Owner Agent'"
+                                    :selectedName="$client->agent ? $client->agent->name : null"
+                                    label="Client Owner (Agent)"
+                                />
+                                <p class="text-xs text-gray-500 mt-1">The agent who created/owns this client</p>
+                            </div>
+                            @endcan
+
+                            <div>
+                                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                <select name="status" id="status"
+                                    class="border border-gray-200 dark:border-gray-600 p-3 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="active" {{ $client->status == 'active' ? 'selected' : '' }}>Active</option>
+                                    <option value="inactive" {{ $client->status == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                    <option value="suspended" {{ $client->status == 'suspended' ? 'selected' : '' }}>Suspended</option>
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                            <input type="text" name="last_name" id="last_name" value="{{ $client->last_name }}"
-                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full"
-                                placeholder="Last Name">
+                    </div>
+
+                    @can('assignAgents', App\Models\Client::class)
+                    <!-- Agent Management Section - Full Width -->
+                    <div class="mt-6 pt-6 border-t border-gray-200">
+                        <div class="w-full" x-data="agentManager({
+                            selectedAgents: {{ $client->agents->pluck('id')->toJson() }},
+                            availableAgents: {{ isset($agents) ? $agents->map(function($agent) { return ['id' => $agent->id, 'name' => $agent->name]; })->toJson() : $client->agents->map(function($agent) { return ['id' => $agent->id, 'name' => $agent->name]; })->toJson() }} })">
+                            <label class="block text-sm font-medium text-gray-700 mb-3">Assigned Agents</label>
+
+                            <!-- Selected Agents Display -->
+                            <div class="mb-4">
+                                <div class="flex flex-wrap gap-2 min-h-[50px] p-3 border border-gray-300 rounded-lg bg-gray-50">
+                                    <template x-for="agentId in selectedAgents" :key="agentId">
+                                        <div class="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-2 rounded-full text-sm font-medium">
+                                            <span x-text="getAgentName(agentId)"></span>
+                                            <button type="button" @click="removeAgent(agentId)" class="ml-2 text-blue-600 hover:text-blue-800 transition-colors">
+                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <div x-show="selectedAgents.length === 0" class="text-gray-500 italic flex items-center">
+                                        No agents assigned
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if(isset($agents))
+                            <!-- Add Agent Dropdown -->
+                            <div class="relative" x-data="{ 
+                                open: false, 
+                                search: '',
+                                openDropdown() {
+                                    this.open = true;
+                                    this.$nextTick(() => {
+                                        this.$refs.searchInput.focus();
+                                    });
+                                },
+                                closeDropdown() {
+                                    this.open = false;
+                                    this.search = '';
+                                },
+                                getFilteredAgents() {
+                                    const available = getAvailableAgents();
+                                    if (!this.search) return available;
+                                    return available.filter(agent => 
+                                        agent.name.toLowerCase().includes(this.search.toLowerCase())
+                                    );
+                                }
+                            }">
+                                <button type="button" @click="openDropdown()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300 bg-white text-left flex justify-between items-center">
+                                    <span class="text-gray-700">Add Agent</span>
+                                    <svg class="w-5 h-5 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </button>
+
+                                <div x-show="open"
+                                    x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="transform opacity-0 scale-95"
+                                    x-transition:enter-end="transform opacity-100 scale-100"
+                                    x-transition:leave="transition ease-in duration-75"
+                                    x-transition:leave-start="transform opacity-100 scale-100"
+                                    x-transition:leave-end="transform opacity-0 scale-95"
+                                    @click.away="closeDropdown()"
+                                    class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
+
+                                    <!-- Search Input -->
+                                    <div class="p-2 border-b border-gray-200">
+                                        <div class="relative">
+                                            <input
+                                                type="text"
+                                                x-ref="searchInput"
+                                                x-model="search"
+                                                placeholder="Search agents..."
+                                                class="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                                @keydown.escape="closeDropdown()"
+                                                @click.stop>
+                                            <!-- Search Icon -->
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Agent List -->
+                                    <div class="max-h-48 overflow-y-auto">
+                                        <template x-for="agent in getFilteredAgents()" :key="agent.id">
+                                            <button type="button"
+                                                @click="addAgent(agent.id); closeDropdown()"
+                                                class="w-full px-4 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none text-sm">
+                                                <span x-text="agent.name"></span>
+                                            </button>
+                                        </template>
+
+                                        <!-- No results message -->
+                                        <div x-show="getFilteredAgents().length === 0 && search !== ''" class="px-4 py-2 text-gray-500 italic text-sm">
+                                            No agents found matching "<span x-text="search"></span>"
+                                        </div>
+
+                                        <!-- All assigned message -->
+                                        <div x-show="getAvailableAgents().length === 0 && search === ''" class="px-4 py-2 text-gray-500 italic text-sm">
+                                            All agents are already assigned
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Hidden inputs for form submission -->
+                            <template x-for="(agentId, index) in selectedAgents" :key="`agent-${agentId}-${index}`">
+                                <input type="hidden" :name="`agent_ids[${index}]`" :value="agentId">
+                            </template>
+                            @else
+                            <!-- Display only mode when $agents is not available -->
+                            <div class="text-sm text-gray-600 mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <em>💡 Note: Agent management not available on this page. Please use the client edit page to modify agents.</em>
+                            </div>
+                            @endif
                         </div>
-                        <div>
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                            <input type="email" name="email" id="email" value="{{ $client->email }}"
-                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full"
-                                placeholder="Client Email">
-                        </div>
-                        <div>
-                            <label for="country_code" class="block text-sm font-medium text-gray-700 mb-1">Country Code</label>
-                            <select name="country_code" id="country_code"
-                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
-                                @foreach ($countries as $country)
-                                <option value="{{ $country->dialing_code }}"
-                                    {{ $client->country_code == $country->dialing_code ? 'selected' : '' }}>
-                                    {{ $country->name }} ({{ $country->dialing_code }})
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                            <input type="text" name="phone" id="phone" value="{{ $client->phone }}"
-                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full"
-                                placeholder="Client Phone">
-                        </div>
-                        <div>
-                            <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                            <input type="text" name="address" id="address" value="{{ $client->address }}"
-                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full"
-                                placeholder="Client Address">
-                        </div>
-                        <div>
-                            <label for="agent_id" class="block text-sm font-medium text-gray-700 mb-1">Agent</label>
-                            <select name="agent_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
-                                @foreach ($agents as $agent)
-                                <option value="{{ $agent->id }}"
-                                    {{ $client->agent_id == $agent->id ? 'selected' : '' }}>
-                                    {{ $agent->name }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <button type="submit" class="p-2 rounded-md bg-black text-white mt-2">Update</button>
+                    </div>
+                    @endcan
+
+                    <!-- Submit Button -->
+                    <div class="mt-8 pt-6 border-t border-gray-200 flex justify-end">
+                        <button type="submit" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                            Update Client
+                        </button>
                     </div>
                 </form>
             </div>
@@ -911,6 +1101,33 @@
                 console.error('Copy failed:', err);
                 alert('Could not copy. Please try again.');
             });
+        }
+
+        // Agent Manager Alpine.js Component
+        function agentManager(data) {
+            return {
+                selectedAgents: data.selectedAgents || [],
+                availableAgents: data.availableAgents || [],
+
+                addAgent(agentId) {
+                    if (!this.selectedAgents.includes(agentId)) {
+                        this.selectedAgents.push(agentId);
+                    }
+                },
+
+                removeAgent(agentId) {
+                    this.selectedAgents = this.selectedAgents.filter(id => id !== agentId);
+                },
+
+                getAgentName(agentId) {
+                    const agent = this.availableAgents.find(a => a.id === agentId);
+                    return agent ? agent.name : 'Unknown Agent';
+                },
+
+                getAvailableAgents() {
+                    return this.availableAgents.filter(agent => !this.selectedAgents.includes(agent.id));
+                }
+            }
         }
     </script>
 

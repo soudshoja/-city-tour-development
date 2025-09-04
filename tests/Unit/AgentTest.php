@@ -147,13 +147,87 @@ class AgentTest extends TestCase
 
     public function test_agent_has_many_clients()
     {
-        // Create clients for the agent
-        $clients = Client::factory()->count(3)->create([
-            'agent_id' => $this->agent->id
-        ]);
+        // Create clients
+        $clients = Client::factory()->count(3)->create();
+
+        // Attach clients to the agent using the pivot table
+        $this->agent->clients()->attach($clients->pluck('id'));
+
+        // Refresh the agent to get the updated relationships
+        $this->agent->refresh();
 
         $this->assertCount(3, $this->agent->clients);
         $this->assertInstanceOf(Client::class, $this->agent->clients->first());
+        
+        // Test that the relationship works both ways
+        $firstClient = $clients->first();
+        $firstClient->refresh();
+        $this->assertTrue($firstClient->agents->contains($this->agent));
+    }
+
+    public function test_agent_clients_many_to_many_relationship()
+    {
+        // Create multiple clients
+        $client1 = Client::factory()->create();
+        $client2 = Client::factory()->create();
+        $client3 = Client::factory()->create();
+
+        // Create another agent
+        $anotherAgent = Agent::factory()->create([
+            'user_id' => User::factory()->create(['role_id' => Role::AGENT])->id,
+            'branch_id' => $this->branch->id,
+            'type_id' => $this->agentType->id,
+        ]);
+
+        // Attach clients to agents (many-to-many)
+        $this->agent->clients()->attach([$client1->id, $client2->id]);
+        $anotherAgent->clients()->attach([$client2->id, $client3->id]); // client2 belongs to both agents
+
+        // Refresh models
+        $this->agent->refresh();
+        $anotherAgent->refresh();
+        $client1->refresh();
+        $client2->refresh();
+        $client3->refresh();
+
+        // Test agent relationships
+        $this->assertCount(2, $this->agent->clients);
+        $this->assertCount(2, $anotherAgent->clients);
+
+        // Test client relationships
+        $this->assertCount(1, $client1->agents); // belongs to 1 agent
+        $this->assertCount(2, $client2->agents); // belongs to 2 agents
+        $this->assertCount(1, $client3->agents); // belongs to 1 agent
+
+        // Test specific relationships
+        $this->assertTrue($this->agent->clients->contains($client1));
+        $this->assertTrue($this->agent->clients->contains($client2));
+        $this->assertFalse($this->agent->clients->contains($client3));
+
+        $this->assertTrue($client2->agents->contains($this->agent));
+        $this->assertTrue($client2->agents->contains($anotherAgent));
+    }
+
+    public function test_agent_can_detach_clients()
+    {
+        // Create and attach clients
+        $clients = Client::factory()->count(3)->create();
+        $this->agent->clients()->attach($clients->pluck('id'));
+
+        $this->assertCount(3, $this->agent->clients);
+
+        // Detach one client
+        $this->agent->clients()->detach($clients->first()->id);
+        $this->agent->refresh();
+
+        $this->assertCount(2, $this->agent->clients);
+        $this->assertFalse($this->agent->clients->contains($clients->first()));
+
+        // Detach all clients
+        $this->agent->clients()->detach();
+        $this->agent->refresh();
+
+        $this->assertCount(0, $this->agent->clients);
     }
 
     public function test_agent_has_one_account()

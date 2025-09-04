@@ -43,7 +43,24 @@
                     <p class="mb-2"><strong>Email:</strong> {{ $refund->agent->email ?? 'N/A' }}</p>
                 </div>
             </div>
-
+            <div class="mb-6 rounded-lg p-4 {{ $invoicePaid ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200' }}">
+                <div>
+                    <div class="font-semibold {{ $invoicePaid ? 'text-green-700' : 'text-red-800' }}">Invoice Status: {{ $invoicePaid ? 'Paid' : 'Unpaid' }}</div>
+                    @if(!$invoicePaid)
+                        <div class="text-sm mt-1 text-red-900">
+                            <span class="inline-block mt-1 rounded bg-white px-2 py-1 border border-red-300">
+                                <span class="font-semibold">Total Refund to Client</span>
+                                =
+                                <span class="underline">Original Task Profit</span>
+                                +
+                                <span class="underline">Refund Task Supplier Charges</span>
+                                +
+                                <span class="underline">New Profit</span>
+                            </span>
+                        </div>
+                    @endif
+                </div>
+            </div>
 
             <hr class="my-6">
 

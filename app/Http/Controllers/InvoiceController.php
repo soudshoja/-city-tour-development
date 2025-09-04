@@ -1469,9 +1469,6 @@ class InvoiceController extends Controller
 
             return abort(404);
         }
-        
-        $paymentGateway = $invoicePartials->first()?->payment_gateway ?? 'Tap';
-        $paymentMethod = $invoicePartials->first()?->payment_method;
 
         $totalGatewayFee = ['fee' => 0, 'finalAmount' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
 
@@ -1482,20 +1479,23 @@ class InvoiceController extends Controller
             if ($partial->status !== 'paid') {
                 $gatewayFee = [];
                 try {
-                    if (strtolower($paymentGateway) === 'myfatoorah' && $paymentMethod) {
-                        $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $paymentMethod, $companyId);
-                    } else {
+                    if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
+                        $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
+                        
+                    } else if (strtolower($partial->payment_gateway) === 'tap') {
                         $gatewayFee = ChargeService::TapCharge([
                             'amount'    => $partial->amount,
                             'client_id' => $invoice->client_id,
                             'agent_id'  => $invoice->agent_id,
                             'currency'  => $invoice->currency,
-                        ], $paymentGateway);
+                        ], $partial->payment_gateway);
+                    } else if (strtolower($partial->payment_gateway) === 'upayment') {
+                        $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
                     }
                 } catch (\Exception $e) {
                     Log::error('ChargeService exception', [
                         'message' => $e->getMessage(),
-                        'gateway' => $paymentGateway,
+                        'gateway' => $partial->payment_gateway,
                         'company_id' => $companyId,
                     ]);
                 }
@@ -1525,23 +1525,13 @@ class InvoiceController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
-        $checkUtilizeCreditPartial = Credit::where('invoice_id', $invoice->id)
-            ->where('invoice_partial_id', $invoicePartials->first()?->id)
-            ->where('client_id', $invoice->client_id)
-            ->where('type', 'Invoice')
-            ->orderBy('id', 'asc')
-            ->get();
-
         return view('invoice.show', compact(
             'invoice',
             'invoiceDetails',
             'invoicePartials',
             'paidPartials',
-            'paymentGateway',
-            'paymentMethod',
             'company',
             'checkUtilizeCredit',
-            'checkUtilizeCreditPartial',
             'totalGatewayFee',
             'companyId',
         ));
@@ -2139,7 +2129,7 @@ class InvoiceController extends Controller
         return redirect()->route('invoice.index')->with('status', 'Invoice status updated successfully!');
     }
 
-    public function showInvoice(int $companyId, string $invoiceNumber)
+    public function showDetails(int $companyId, string $invoiceNumber)
     {
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
             ->whereHas('agent.branch.company', function ($q) use ($companyId) {
@@ -2464,7 +2454,6 @@ class InvoiceController extends Controller
             }
         }
 
-
         if ($option === 'generate_no') {
             if (!$gateway) {
                 return redirect()->back()->with('error', 'Payment gateway is required.');
@@ -2472,14 +2461,12 @@ class InvoiceController extends Controller
 
             DB::beginTransaction();
             try {
-                // Set as paid
                 $invoice->status = 'paid';
                 $invoice->paid_date = Carbon::now();
                 $invoice->is_client_credit = 1;
                 $invoice->payment_type = 'full';
                 $invoice->save();
 
-                // Create InvoicePartial if not exists
                 InvoicePartial::create([
                     'invoice_id' => $invoice->id,
                     'invoice_number' => $invoice->invoice_number,
@@ -2488,17 +2475,15 @@ class InvoiceController extends Controller
                     'amount' => $balance,
                     'status' => 'paid',
                     'type' => 'full',
-                    'payment_gateway' => $gateway,
+                    'payment_gateway' => 'Credit',
                     'service_charge' => 0,
                 ]);
 
-                // Record the transaction and journal entries
                 $invoiceDetails = InvoiceDetail::where('invoice_id', $invoice->id)->get();
                 $tasksId = $invoiceDetails->pluck('task_id')->toArray();
                 $invoiceDetail = $invoiceDetails->first(); // For use later
                 $tasks = Task::with('invoiceDetail', 'agent')->whereIn('id', $tasksId)->get();
 
-                // Create transaction
                 $transaction = Transaction::create([
                     'company_id' => $tasks[0]->company_id ?? null,
                     'branch_id' => $tasks[0]->agent->branch_id ?? null,
@@ -2511,9 +2496,8 @@ class InvoiceController extends Controller
                     'reference_type' => 'Invoice',
                 ]);
 
-                // Add journal entries
                 foreach ($tasks as $task) {
-                    Log::info('Preparing to add journal entry', [
+                    Log::info('Preparing to add journal entry for insufficient funds', [
                         'task_id' => $task->id,
                         'invoice_id' => $invoice->id,
                         'invoice_detail_id' => $invoiceDetail->id ?? null,
@@ -2537,6 +2521,40 @@ class InvoiceController extends Controller
                     }
                 }
 
+                Log::info('Processing credit deduction for client: ' . $invoice->client_id . ' for invoice ' . $invoice->id);
+
+                $clientCredit = Credit::where('client_id', $invoice->client_id)->first();
+ 
+                if($clientCredit) {
+                    $currentCredit = $clientCredit->amount;
+                    $creditUsed = min($currentCredit, $invoice->amount);
+                    $creditApplied = -$creditUsed;
+                    $remainingDue = $invoice->amount - $creditUsed;
+                    
+                    $insuffientCredit = Credit::create([
+                        'company_id' => $invoice->client->agent->branch->company_id,
+                        'client_id' => $invoice->client->id,
+                        'invoice_id' => $invoice->id,
+                        'type' => 'Invoice',
+                        'description' => 'Payment for ' . $invoice->invoice_number . '. Insufficient credit of ' . $remainingDue,
+                        'amount' => $creditApplied,
+                    ]);
+
+                    Log::info('Client credit successfully deducted.', [
+                        'client_id' => $invoice->client_id,
+                        'invoice_amount' => $invoice->amount,
+                        'credit_amount' => $clientCredit->amount,
+                        'credit_applied' => $creditApplied,
+                    ]);
+                    
+                } else {
+                    Log::error('Client credit failed to deduct', [
+                        'client_id' => $invoice->client_id,
+                        'invoice_amount' => $invoice->amount,
+                        'credit_amount' => $clientCredit->amount,
+                    ]);
+                }
+
                 DB::commit();
 
                 return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])->with('success', 'Invoice paid successfully!');
@@ -2546,8 +2564,6 @@ class InvoiceController extends Controller
                 return redirect()->back()->with('error', 'Something went wrong!');
             }
         }
-
-
 
         return redirect()->back()->with('error', 'Invalid option selected.');
     }

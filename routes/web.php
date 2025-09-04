@@ -391,6 +391,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{companyId}/{invoiceNumber}/date', [InvoiceController::class, 'updateDate'])->name('updateDate');
         Route::put('/{companyId}/{invoiceNumber}/amount', [InvoiceController::class, 'updateAmount'])->name('updateAmount');
         Route::post('/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('updateTaskPrice');
+        Route::get('/details/{companyId}/{invoiceNumber}', [InvoiceController::class, 'showDetails'])->name('details')->withoutMiddleware(['auth']);
     });
 
 
@@ -420,7 +421,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');
         Route::get('/check', [PaymentController::class, 'check'])->name('check');
         Route::get('/success', [PaymentController::class, 'success'])->name('success')->withoutMiddleware(['auth']);
-        Route::get('/clients/{companyId}/{invoiceNumber}', [PaymentController::class, 'paymentClientRedirect'])->name('clients');
+        Route::get('/failed', [PaymentController::class, 'failed'])->name('failed')->withoutMiddleware(['auth']);
         Route::get('/clients-process', [PaymentController::class, 'paymentClientProcess'])->name('clients.process');
 
         Route::group([
@@ -446,6 +447,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/initiate-myfatoorah-payment', [PaymentController::class, 'initiateMyFatoorahPayment'])->name('payment.initiateMyFatoorah');
         Route::get('/myfatoorah-callback', [PaymentController::class, 'myFatoorahCallback'])->name('payment.success');
         Route::get('/myfatoorah-error', [PaymentController::class, 'myFatoorahCallback'])->name('payment.failed');
+
+        Route::get('/uPayment-callback' , [PaymentController::class, 'handleUPaymentCallback'])->name('uPayment.callback')->withoutMiddleware(['auth']);
+        Route::get('/uPayment-error' , [PaymentController::class, 'handleUPaymentError'])->name('uPayment.error')->withoutMiddleware(['auth']);
+        Route::get('/uPayment-noti' , [PaymentController::class, 'handleUPaymentNoti'])->name('uPayment.notifications')->withoutMiddleware(['auth']);
     });
 
     Route::group([
@@ -456,10 +461,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/create', [ClientController::class, 'create'])->name('create');
         Route::post('/', [ClientController::class, 'store'])->name('store');
         Route::get('/{id}', [ClientController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [ClientController::class, 'edit'])->name('edit');
+        // Route::get('/{id}/edit', [ClientController::class, 'edit'])->name('edit');
         Route::put('/{id}', [ClientController::class, 'update'])->name('update');
         Route::post('/upload', [ClientController::class, 'import'])->name('upload');
-        Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('change-agent');
+        // Route::put('/{id}/change-agent', [ClientController::class, 'changeAgent'])->name('change-agent');
         Route::post('/refund/{id}', [ClientController::class, 'refund'])->name('refund');
 
         // Routes for Client Group Management
@@ -474,6 +479,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}/agent', [ClientController::class, 'getAgent'])->name('get-agent');
         Route::get('/{id}/credit-balance', [ClientController::class, 'getCreditBalance']);
         Route::get('/{id}/credits', [ClientController::class, 'showCredit'])->name('credits')->withoutMiddleware(['auth']);
+        
+        // Assignment request routes
+        Route::post('/request-assignment', [ClientController::class, 'requestAssignment'])->name('request-assignment');
+        Route::get('/assignment/approve/{token}', [ClientController::class, 'approveAssignment'])->name('assignment.approve');
+        Route::get('/assignment/deny/{token}', [ClientController::class, 'denyAssignment'])->name('assignment.deny');
     });
 
     Route::group([

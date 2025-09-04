@@ -7,7 +7,7 @@
     <div class="container mx-auto flex flex-wrap justify-center items-center gap-4 px-6 py-4">
         <div class="flex items-center w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
             <a href="{{ route('dashboard') }}" class="flex items-center">
-                <x-application-logo class="custom-logo-size" />
+                <x-application-logo class="h-20 w-auto" />
             </a>
 
             <div class="hidden md:block" id="responsiveMenu">
@@ -86,9 +86,9 @@
 
                         <!-- Close button -->
                         <button type="button" @click.stop="toggle = false" aria-label="Close">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" class="cursor-pointer">
-                                <path fill="none" stroke="#e11d48" stroke-linecap="round" stroke-width="1.5"
-                                    d="m14.5 9.5l-5 5m0-5l5 5M7 3.338A9.95 9.95 0 0 1 12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10S2 17.523 2 12c0-1.821.487-3.53 1.338-5" />
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="cursor-pointer stroke-red-500 dark:stroke-red-300 hover:stroke-red-700 dark:hover:stroke-red-100">
+                                <path d="M14.5 9.50002L9.5 14.5M9.49998 9.5L14.5 14.5" stroke="" stroke-width="1.5" stroke-linecap="round" />
+                                <path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7" stroke="" stroke-width="1.5" stroke-linecap="round" />
                             </svg>
                         </button>
                     </div>

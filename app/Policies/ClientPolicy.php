@@ -50,15 +50,24 @@ class ClientPolicy
         return $user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY || $user->role_id == Role::BRANCH || $user->role_id == Role::AGENT;
     }
     
-    public function update(User $user, Client $client): bool
+    public function update(User $user): bool
     {
-        return ($user->role_id == Role::ADMIN ||
-            ($user->role_id == Role::COMPANY && $user->company->id === $client->agent->branch->company_id) ||
-            ($user->role_id == Role::AGENT && $user->id === $client->agent->user_id));
+        return true;
     }
 
     public function delete(User $user): bool
     {
-        return $user->role_id === Role::ADMIN || $user->role_id === Role::COMPANY || $user->role_id === Role::AGENT;
+        return $user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY || $user->role_id == Role::AGENT;
+    }
+
+    public function assignAgents(User $user): bool
+    {
+        return true;
+    }
+
+
+    public function assignOwnerAgent(User $user)
+    {
+        return $user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY;
     }
 }

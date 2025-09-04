@@ -17,6 +17,8 @@ class Payment extends Model
         'voucher_number',
         'payment_reference',
         'invoice_id',
+        'invoice_reference',
+        'auth_code',
         'from',
         'pay_to',
         'created_by',

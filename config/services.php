@@ -91,5 +91,10 @@ return [
         'client-secret' => env('MAGIC_HOLIDAY_CLIENT_SECRET'),
         'authorization_url' => env('MAGIC_HOLIDAY_AUTHORIZATION_URL'),
         'token-url' => env('MAGIC_HOLIDAY_TOKEN_URL'),
+    ],
+
+    'uPayment' => [
+        'api_key' => env('APP_ENV') == 'production' ? env('UPAYMENT_LIVE_KEY') : env('UPAYMENT_SANDBOX_KEY'),
+        'base_url' => rtrim(env('APP_ENV') == 'production' ? env('UPAYMENT_LIVE_URL') : env('UPAYMENT_SANDBOX_URL'), '/') . '/v1',
     ]
 ];

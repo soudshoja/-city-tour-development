@@ -7,7 +7,7 @@
     <div class="container mx-auto flex flex-wrap justify-center items-center gap-4 px-6 py-4">
         <div class="flex items-center w-full md:w-auto mb-4 md:mb-0 justify-center md:justify-start">
             <a href="{{ route('dashboard') }}" class="flex items-center">
-                <x-application-logo class="custom-logo-size" />
+                <x-application-logo class="h-20 w-auto" />
             </a>
 
             <div class="hidden md:block" id="responsiveMenu">

@@ -362,7 +362,7 @@
                                     </td>
 
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        <a href="{{ route('invoice.show-invoice', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                        <a href="{{ route('invoice.details', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                                 class="text-sm font-medium text-blue-600 hover:underline" target="_blank"> {{ $invoice->invoice_number }}
                                         </a>
                                     </td>

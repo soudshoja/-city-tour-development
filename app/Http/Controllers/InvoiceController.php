@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redirect;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -814,7 +815,7 @@ class InvoiceController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request) : JsonResponse
     {
         $request->validate([
             'tasks' => 'required|array',
@@ -825,6 +826,7 @@ class InvoiceController extends Controller
             'tasks.*.client_id' => 'required|integer',
             'tasks.*.agent_id' => 'required|integer',
             'tasks.*.total' => 'required|numeric',
+            'label' => 'nullable|string',
             'invdate' => 'required|date',
             'duedate' => 'nullable|date',
             'subTotal' => 'required|numeric',
@@ -859,7 +861,10 @@ class InvoiceController extends Controller
                 'branchId' => $branchId,
             ]);
 
-            return response()->json('Agent or company not found!', 404);
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+            ]);
         }
 
         try {
@@ -876,7 +881,10 @@ class InvoiceController extends Controller
             ]);
         } catch (Exception $e) {
             Log::error('Failed to create invoice: ' . $e->getMessage());
-            return response()->json('Invoice creation failed!', 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Something Went Wrong',
+            ]);
         }
 
 

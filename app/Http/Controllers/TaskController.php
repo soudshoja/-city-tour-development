@@ -2893,8 +2893,14 @@ class TaskController extends Controller
                 ->where('agent_id', $taskData['agent_id'])
                 ->where('supplier_id', $taskData['supplier_id'])
                 ->first();
-
             if ($existingTask) {
+
+                if($existingTask->cancellation_deadline == null){
+                    $existingTask->cancellation_deadline = $cancellationDate;
+                    $existingTask->save();
+                }
+           
+
                 if ($existingTask->supplier_status !== $taskData['supplier_status']) {
                     $existingTask->supplier_status = $taskData['supplier_status'];
                     $existingTask->status = $taskData['status'];

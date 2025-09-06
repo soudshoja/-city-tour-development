@@ -64,10 +64,14 @@ class ClientController extends Controller
             $agentIds = [$agent->id];
         }
 
-        $clients = $clients->whereIn('agent_id', $agentIds)
-            ->orWhereHas('agents', function ($q) use ($agentIds) {
-                $q->whereIn('agent_id', $agentIds);
-            });
+        $clients = $clients->where(function ($query) use ($agentIds) {
+            $query->whereIn('agent_id', $agentIds)
+                ->orWhereHas('agents', function ($q) use ($agentIds) {
+                    $q->whereIn('agent_id', $agentIds);
+                });
+        });
+
+            
         $fullClients = (clone $clients);
 
         if($request->has('search') && $request->search != '') {

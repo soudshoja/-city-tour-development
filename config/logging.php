@@ -67,7 +67,6 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
         ],
 
@@ -129,7 +128,6 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/magic_holidays/magic_holidays.log'),
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14), 
             'replace_placeholders' => true,
         ],
 
@@ -165,7 +163,6 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/files/file_processing.log'),
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
         ],
 
@@ -173,7 +170,6 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/ai/ai.log'),
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_AI_DAYS', 30),
             'replace_placeholders' => true,
         ],
 

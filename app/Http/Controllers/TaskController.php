@@ -344,7 +344,7 @@ class TaskController extends Controller
                         $task->client_id = $clientId;
                         $client = Client::find($clientId);
                         if ($client) {
-                            $task->client_name = trim($client->first_name . ' ' . ($client->middle_name ?? '') . ' ' . ($client->last_name ?? ''));
+                            $task->client_name = $client->full_name;
                         }
                     }
                     if ($agentId) $task->agent_id = $agentId;
@@ -1856,7 +1856,7 @@ class TaskController extends Controller
             if ($request->filled('client_id')) {
                 $client = Client::findOrFail($request->client_id);
                 $data['client_id'] = $client->id;
-                $data['client_name'] = trim(implode(' ', array_filter([$client->first_name ?? '', $client->middle_name ?? '', $client->last_name ?? ''])));
+                $data['client_name'] = $client->full_name;
             }
 
             if ($request->filled('agent_id')) {
@@ -1990,7 +1990,7 @@ class TaskController extends Controller
             if (isset($client) && $transaction) {
                 $transaction->journalEntries->each(function ($journalEntry) use ($client, $prevClientName) {
                     if ($journalEntry->name === $prevClientName) {
-                        $journalEntry->name = $client->first_name;
+                        $journalEntry->name = $client->full_name;
                         $journalEntry->save();
                     }
                 });

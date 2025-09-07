@@ -1455,7 +1455,23 @@ class PaymentController extends Controller
         }
 
         $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
-        $companyId = optional($payment->agent->branch)->company_id;
+
+        $fatoorahPayment = $payment->findMyFatoorahPayment();
+
+        $invoiceRef = null;
+        $authorizationId = null;
+
+        if ($fatoorahPayment) {
+            $payloadData = $fatoorahPayment->payload;
+            
+            if (is_array($payloadData) && isset($payloadData['Data'])) {
+                $invoiceRef = $payloadData['Data']['InvoiceReference'] ?? 'N/A';
+                $transactions = $payloadData['Data']['InvoiceTransactions'] ?? [];
+                if (!empty($transactions)) {
+                    $authorizationId = $transactions[0]['AuthorizationId'] ?? 'N/A';
+                }
+            }
+        }
 
         $companyId = optional($payment->agent->branch)->company_id;
         $chargeResult = [];
@@ -1510,7 +1526,7 @@ class PaymentController extends Controller
             $payment->save();
         }
 
-        return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy'));
+        return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy', 'invoiceRef', 'authorizationId'));
     }
 
     public function paymentLinkInitiate(Request $request)

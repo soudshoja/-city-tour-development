@@ -507,7 +507,7 @@ class ClientController extends Controller
             }
 
             if($request->has('agent_ids')) {
-                $response = Gate::inspect('assignAgents', Client::class);
+                $response = Gate::inspect('assignAgents', $client);
 
                 if ($response->denied()) {
                     return redirect()->back()->withInput()->with('error', $response->message() ?: 'You do not have permission to assign agents.');
@@ -1242,7 +1242,7 @@ class ClientController extends Controller
     {
        $client = Client::findOrFail($id);
 
-        $response = Gate::inspect('assignAgents', Client::class);
+        $response = Gate::inspect('assignAgents', $client);
 
         if ($response->denied()) {
             return response()->json([

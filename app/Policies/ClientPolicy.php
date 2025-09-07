@@ -60,9 +60,13 @@ class ClientPolicy
         return $user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY || $user->role_id == Role::AGENT;
     }
 
-    public function assignAgents(User $user): bool
+    public function assignAgents(User $user, Client $client): bool
     {
-        return true;
+        if($user->role_id == Role::AGENT) {
+            return $user->agent->id === $client->agent_id;
+        }
+
+        return $user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY;
     }
 
 

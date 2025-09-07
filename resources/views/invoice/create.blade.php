@@ -109,11 +109,7 @@
                 <div class="flex flex-wrap justify-between px-6 ">
                     <div class=" shrink-0 items-center text-black dark:text-white min-w-96">
                             <div class="flex items-center space-x-4">
-                                <x-application-logo
-                                    :companyLogo="$selectedCompany?->logo ?? asset('images/UserPic.svg')"
-                                    class="h-20 w-auto"
-                                />
-
+                                <x-application-logo class="h-20 w-auto" />
                                 @if ($selectedCompany)
                                 <div>
                                     <h3 class="font-semibold text-lg">{{ $selectedCompany->name }}</h3>
@@ -304,10 +300,17 @@
                             </button>
                         </div>
                         <div class="sm:w-2/5 flex justify-end">
-                            <div class="mt-4 flex items-center font-semibold">
-                                <div class="mr-2">Total:</div>
-                                <span id="subT">0.00</span>
-                                <input id="subTotal" type="hidden" name="subTotal" />
+                            <div class="mt-4 flex flex-col items-end font-semibold space-y-1">
+                                <div class="flex items-center border-b pb-1 font-medium">
+                                    <div class="mr-2">Total Net:</div>
+                                    <span id="netT">0.00</span>
+                                    <input id="netTotal" type="hidden" name="netTotal" />
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="mr-2">Invoice Total:</div>
+                                    <span id="subT">0.00</span>
+                                    <input id="subTotal" type="hidden" name="subTotal" />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -827,12 +830,19 @@
                 const n = Number(item?.invprice);
                 return sum + (Number.isFinite(n) ? n : 0);
             }, 0);
+            const netTotals = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
 
             const subT = document.getElementById('subT');
             if (subT) subT.textContent = subtotal.toFixed(2);
 
             const subTotal = document.getElementById('subTotal');
             if (subTotal) subTotal.value = subtotal;
+
+            const netT = document.getElementById('netT');
+            if (netT) netT.textContent = netTotals.toFixed(2);
+
+            const netTotal = document.getElementById('netTotal');
+            if (netTotal) netTotal.value = netTotals.toFixed(2);
         }
 
         function renderItems() {
@@ -1333,6 +1343,7 @@
             closeTaskModal();
             renderItems();
             refreshTaskList();
+            calculateSubtotal();
         }
 
         function openClientModal() {
@@ -1810,6 +1821,7 @@
             allTasks = Array.isArray(_tasks) ? _tasks : Object.values(_tasks);
             let clients = @json($clients);
             renderItems();
+            calculateSubtotal();
 
             renderClientList(clients);
             refreshTaskList();

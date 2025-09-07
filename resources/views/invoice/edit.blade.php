@@ -387,7 +387,12 @@
                                 </button>
                             </div>
                             <div class="sm:w-2/5 flex justify-end">
-                                <div class="mt-4 font-semibold">
+                                <div class="mt-4 flex flex-col items-end font-semibold space-y-1">
+                                    <div class="flex items-center pb-1 font-medium">
+                                        <div class="mr-2">Total Net:</div>
+                                        <span id="netT">0.00</span>
+                                        <input id="netTotal" type="hidden" name="netTotal" />
+                                    </div>
                                     <div class="flex items-center mb-1">
                                         <div class="mr-2">Subtotal:</div>
                                         <span id="subTotalDisplay">0.00</span>
@@ -405,7 +410,7 @@
                                         <span id="invoiceChargeDisplay">0.00</span>
                                     </div>
                                     <div class="flex items-center border-t pt-1">
-                                        <div class="mr-2">Total:</div>
+                                        <div class="mr-2">Invoice Total:</div>
                                         <span id="subT">0.00</span>
                                         <input id="subTotal" type="hidden" name="subTotal" />
                                     </div>
@@ -2247,6 +2252,12 @@
 
                 const totalAmountElement = document.getElementById('total-amount');
                 if (totalAmountElement) totalAmountElement.value = finalTotal;
+
+                const netTotals = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+                const netT = document.getElementById('netT');
+                if (netT) netT.textContent = netTotals.toFixed(2);
+                const netTotal = document.getElementById('netTotal');
+                if (netTotal) netTotal.value = netTotals.toFixed(2);
             }
 
             document.getElementById('payment_method_full')?.addEventListener('change', calculateSubtotal);

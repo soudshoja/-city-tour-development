@@ -1550,7 +1550,7 @@ class PaymentController extends Controller
 
             $requestTap = new Request([
                 'finalAmount' => $finalAmount,
-                'client_name' => $payment->client->name,
+                'client_name' => $payment->client->full_name,
                 'client_email' => $payment->client->email,
                 'voucher_number' => $payment->voucher_number,
                 'payment_id' => $payment->id,

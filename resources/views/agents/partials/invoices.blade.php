@@ -18,7 +18,7 @@
                     <td class="py-4 px-6 border-b">{{ $invoice->invoice_number }}</td>
                     <td class="py-4 px-6 border-b">{{ $invoice->created_at->format('Y-m-d') }}</td>
                     <td class="py-4 px-6 border-b">{{ $invoice->status }}</td>
-                    <td class="py-4 px-6 border-b">{{ $invoice->client->first_name }}</td>
+                    <td class="py-4 px-6 border-b">{{ $invoice->client->full_name }}</td>
                     <td class="py-4 px-6 border-b">
                         <a href="#" class="text-indigo-500">View</a>
                     </td>

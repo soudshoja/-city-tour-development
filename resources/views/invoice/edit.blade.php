@@ -3043,8 +3043,8 @@
                 document.getElementById('receiverId').value = client.id;
                 document.getElementById('clientid').value = client.id;
                 // Update input fields
-                document.getElementById('receiverName').value = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
-                document.getElementById('receiverName1').textContent = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
+                document.getElementById('receiverName').value = client.full_name;
+                document.getElementById('receiverName1').textContent = client.full_name;
                 document.getElementById('receiverEmail').value = client.email;
                 document.getElementById('receiverPhone').value = client.phone;
 

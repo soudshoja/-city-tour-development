@@ -1256,7 +1256,7 @@
                                                                                         ->get();
                                                                                         $selectedOriginalTask = $originalTasks->firstWhere('id', $task->original_task_id);
                                                                                         $taskPlaceholder = $selectedOriginalTask
-                                                                                        ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->first_name ?? $selectedOriginalTask->client_name)
+                                                                                        ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
                                                                                         : 'Select Original Task';
                                                                                         @endphp
 
@@ -1265,11 +1265,11 @@
                                                                                             name="original_task_id"
                                                                                             :items="$originalTasks->map(fn($t) => [
                                                                                                 'id' => $t->id,
-                                                                                                'name' => $t->reference . ' - ' . ($t->client->first_name ?? $t->client_name)
+                                                                                                'name' => $t->reference . ' - ' . ($t->client->full_name ?? $t->client_name)
                                                                                             ])->values()"
                                                                                             :selectedId="$task->original_task_id"
                                                                                             :selectedName="$selectedOriginalTask
-                                                                                                ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->first_name ?? $selectedOriginalTask->client_name)
+                                                                                                ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
                                                                                                 : null"
                                                                                             :placeholder="$taskPlaceholder" />
                                                                                     </div>
@@ -1308,7 +1308,7 @@
                                                                                     @php
                                                                                     $selectedClient = \App\Models\Client::find($task->client_id);
                                                                                     $clientPlaceholder = $selectedClient
-                                                                                    ? $selectedClient->first_name . ' - ' . $selectedClient->phone
+                                                                                    ? $selectedClient->full_name . ' - ' . $selectedClient->phone
                                                                                     : 'Select a Client';
                                                                                     @endphp
                                                                                     <div class="flex-1">
@@ -1319,10 +1319,10 @@
                                                                                                 name="client_id"
                                                                                                 :items="$clients->map(fn($c) => [
                                                                                                     'id' => $c->id, 
-                                                                                                    'name' => $c->first_name . ' ' . $c->last_name . ' - ' . $c->phone
+                                                                                                    'name' => $c->full_name . ' - ' . $c->phone
                                                                                                 ])"
                                                                                                 :selectedId="$task->client_id"
-                                                                                                :selectedName="$selectedClient ? $selectedClient->first_name . ' ' . $selectedClient->last_name . ' - ' . $selectedClient->phone : null"
+                                                                                                :selectedName="$selectedClient ? $selectedClient->full_name . $selectedClient->phone : null"
                                                                                                 placeholder="Select Client" />
 
 
@@ -1464,14 +1464,14 @@
                                                 </td>
                                                 <td data-column="bill-to" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300 ">
                                                     @if ($task->client)
-                                                    <p>{{ $task->client->first_name }}{{ $task->client->middle_name ?? '' }} {{ $task->client->last_name ?? '' }}</p>
+                                                    <p>{{ $task->client->full_name }}</p>
                                                     <p>{{ $task->client->phone ?? 'No phone' }}</p>
                                                     @else
                                                     <p class="{{ $task->client ?? 'no-client relative' }}">
                                                         <button
                                                             @click.stop="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}' ,'{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
                                                             {{ $task->client !== null ? 'disabled' : '' }}>
-                                                            {{ $task->client->first_name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
+                                                            {{ $task->client->full_name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
                                                         </button>
                                                     </p>
                                                     @endif
@@ -1874,7 +1874,7 @@
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
                                                     <x-searchable-dropdown name="bulk_client_id"
-                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name . ' - ' . $c->phone])"
+                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
                                                         placeholder="Select Client" />
                                                 </div>
                                                 <div>

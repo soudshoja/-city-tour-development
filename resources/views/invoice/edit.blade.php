@@ -500,8 +500,7 @@
                                         </div>
                                         @else
                                         @if ($creditUsed && $creditUsed->amount < 0)
-                                            <a target="_blank"
-                                            href="{{ url('/invoice/' . $invoice->invoice_number) }}"><button
+                                            <a target="_blank" href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}"><button
                                                 type="button"
                                                 class="rounded-full flex flex-col items-center justify-center w-full
                                             px-4 py-2 border border-gray-300 

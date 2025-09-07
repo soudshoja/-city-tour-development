@@ -270,7 +270,9 @@
                             @foreach ($invoices as $invoice)
                             <tr>
                                 <td>
-                                    <a href="{{ url('/invoice/' . $invoice->invoice_number) }}" class="text-blue-500 hover:underline" target="_blank">{{ $invoice->invoice_number }}</a>
+                                    <a href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" target="_blank">
+                                        {{ $invoice->invoice_number }}
+                                    </a>
                                 </td>
                                 <td> {{ $invoice->amount }} </td>
                                 <td>

@@ -273,11 +273,9 @@
                             Total Commission: {{ $totalCommission }} KWD
                         </div>
                         @endif
-                        @if($agent->type_id != 2)
                         <div class="bg-blue-100 text-blue-800 font-bold px-4 py-2 rounded shadow">
                             Total Profit: {{ $totalProfit }} KWD
                         </div>
-                        @endif
                     </div>
                 </div>
                 <div>
@@ -296,11 +294,9 @@
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Status</th>
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Tasks Count</th>
                                     @if(in_array($agent->type_id, [2, 3, 4]))
-                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Total Commission (KWD)</th>
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Commission (KWD)</th>
                                     @endif
-                                    @if($agent->type_id != 2)
-                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Total Profit (KWD)</th>
-                                    @endif
+                                    <th class="py-3 px-6 font-semibold text-gray-600 border-b">Profit (KWD)</th>
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Client</th>
                                     <th class="py-3 px-6 font-semibold text-gray-600 border-b">Actions</th>
                                 </tr>
@@ -311,8 +307,8 @@
                                         :class="openRow === {{ $invoice->id }} ? 'bg-blue-50 hover:bg-gray-50 dark:bg-blue-900 hover:dark:bg-blue-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'" 
                                         @click="openRow === {{ $invoice->id }} ? openRow = null : openRow = {{ $invoice->id }}">
                                         <td class="py-4 px-6 border-b">
-                                            <a href="{{ route('invoice.edit', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" @click.stop>
-                                                {{ $invoice->invoice_number }}
+                                            <a href="{{ route('invoice.details', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                                class="text-blue-500 hover:underline" @click.stop target="_blank"> {{ $invoice->invoice_number }}
                                             </a>
                                         </td>
                                         <td class="py-4 px-6 border-b">{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('d-m-Y') }}</td>
@@ -333,18 +329,16 @@
                                             {{ $invoice->total_commission }}
                                         </td>
                                         @endif
-                                        @if($agent->type_id != 2)
                                         <td class="py-4 px-6 border-b text-blue-700 font-semibold">
                                             {{ $invoice->total_profit }}
                                         </td>
-                                        @endif
-                                        <td class="py-4 px-6 border-b">{{ $invoice->client->first_name }}</td>
+                                        <td class="py-4 px-6 border-b">{{ $invoice->client->full_name }}</td>
                                         <td class="py-4 px-6 border-b">
-                                            <a href="{{ url('/invoice/' . $invoice->invoice_number) }}" class="text-blue-500 hover:underline" @click.stop>View</a>
+                                            <a href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" @click.stop target="_blank">View</a>
                                         </td>
                                     </tr>
                                     <tr x-show="openRow === {{ $invoice->id }}" x-cloak>
-                                        <td colspan="{{ in_array($agent->type_id, [2, 3, 4]) && $agent->type_id != 2 ? 8 : 7 }}" class="bg-gray-50 dark:bg-gray-900 px-6 py-4 border-b dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 rounded-b-lg shadow-inner">
+                                        <td colspan="{{ in_array($agent->type_id, [2, 3, 4]) ? 8 : 7 }}" class="bg-gray-50 dark:bg-gray-900 px-6 py-4 border-b dark:border-gray-700 text-sm text-gray-700 dark:text-gray-200 rounded-b-lg shadow-inner">
                                             <div class="space-y-4">
                                                 <h4 class="font-semibold text-lg mb-3">Tasks in this Invoice:</h4>
                                                 @foreach($invoice->tasks as $task)

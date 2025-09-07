@@ -454,6 +454,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/uPayment-callback' , [PaymentController::class, 'handleUPaymentCallback'])->name('uPayment.callback')->withoutMiddleware(['auth']);
         Route::get('/uPayment-error' , [PaymentController::class, 'handleUPaymentError'])->name('uPayment.error')->withoutMiddleware(['auth']);
         Route::get('/uPayment-noti' , [PaymentController::class, 'handleUPaymentNoti'])->name('uPayment.notifications')->withoutMiddleware(['auth']);
+
+        Route::get('/hesabe-callback', [PaymentController::class, 'handleHesabeCallback'])->name('hesabe.response');
+        Route::get('/hesabe-error', [PaymentController::class, 'handleHesabeError'])->name('hesabe.failure');
     });
 
     Route::group([

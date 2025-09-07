@@ -3021,6 +3021,16 @@ class PaymentController extends Controller
         return response()->json(['message' => 'Notification received'], 200);
     }
 
+    public function handleHesabeResponse(Request $request) 
+    {
+
+    }
+
+    public function handleHesabeFailure(Request $request)
+    {
+
+    }
+
     public function success()
     {
         return view('payments.success');

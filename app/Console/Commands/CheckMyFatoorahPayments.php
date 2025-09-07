@@ -127,6 +127,7 @@ class CheckMyFatoorahPayments extends Command
                         'invoice_id'        => $payment->invoice_id,
                         'payment_reference' => $invoiceRef,
                         'reference_type'    => 'Payment',
+                        'transaction_date' => now(),
                     ]);
 
                     JournalEntry::create([

@@ -15,7 +15,7 @@
         <tbody>
             @foreach($clients as $client)
                 <tr>
-                    <td class="py-4 px-6 border-b">{{ $client->first_name }}</td>
+                    <td class="py-4 px-6 border-b">{{ $client->full_name }}</td>
                     <td class="py-4 px-6 border-b">{{ $client->email }}</td>
                     <td class="py-4 px-6 border-b">{{ $client->phone }}</td>
                     <td class="py-4 px-6 border-b">{{ $client->address }}</td>

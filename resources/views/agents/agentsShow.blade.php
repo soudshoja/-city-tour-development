@@ -51,7 +51,7 @@
                             <tbody>
                                 @foreach($clients as $client)
                                 <tr>
-                                    <td class="py-4 px-6 border-b">{{ $client->first_name }}</td>
+                                    <td class="py-4 px-6 border-b">{{ $client->full_name }}</td>
                                     <td class="py-4 px-6 border-b">
                                         <x-paid>
                                             {{ $client->paid }}
@@ -420,7 +420,7 @@
                                         <td class="py-4 px-6 border-b border-gray-300"> {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}</td>
                                         <td class="py-4 px-6 border-b border-gray-300">{{ $task->created_at }}</td>
                                         <td class="py-4 px-6 border-b border-gray-300">{{ $task->status }}</td>
-                                        <td class="py-4 px-6 border-b border-gray-300">{{ $task->client !== null ? $task->client->first_name : $task->client_name ?? 'Not Set' }}</td>
+                                        <td class="py-4 px-6 border-b border-gray-300">{{ $task->client !== null ? $task->client->full_name : $task->client_name ?? 'Not Set' }}</td>
                                         <td class="py-4 px-6 border-b border-gray-300">
                                             <a href="{{ url('/tasks?q=' . $task->reference) }}" class="text-blue-500">View</a>
                                         </td>

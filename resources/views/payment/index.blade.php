@@ -40,7 +40,7 @@
                 @foreach ($invoices as $invoice)
                 <tr>
                     <td>{{ $invoice->invoice_number }}</td>
-                    <td>{{ $invoice->client->first_name }}</td>
+                    <td>{{ $invoice->client->full_name }}</td>
                     <td>{{ $invoice->amount }}</td>
                     <td>
                         <span class="badge {{ $invoice->status == 'unpaid' ? 'badge-danger' : ($invoice->status == 'paid' ? 'badge-success' : 'badge-warning') }}">

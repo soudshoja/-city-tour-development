@@ -51,7 +51,7 @@
                                     name="filter[client_id]"
                                     :items="$clients->map(fn($c) => [
                                         'id' => $c->id, 
-                                        'name' => $c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name . ' - ' . $c->phone
+                                        'name' => $c->full_name . ' - ' . $c->phone
                                     ])"
                                     :placeholder="'Select clients'"
                                     :selectedName="optional($clients->firstWhere('id', data_get($filters,'client_id')))->name"

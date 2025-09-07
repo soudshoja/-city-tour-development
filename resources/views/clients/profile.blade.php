@@ -15,7 +15,7 @@
 
             </li>
             <li class="before:content-['/'] before:mr-1 ">
-                <span>{{ $client->first_name }} </span>
+                <span>{{ $client->full_name }} </span>
             </li>
         </ul>
         <!-- ./Breadcrumbs -->
@@ -126,7 +126,7 @@
                         <div class="flex items-center rounded-full bg-black/50 p-1 font-semibold text-white pr-3 ">
                             <x-application-logo
                                 class="block h-8 w-8 rounded-full border-2 border-white/50 object-cover ltr:mr-1 rtl:ml-1" />
-                            <h3 class="px-2">{{ $client->first_name }}</h3>
+                            <h3 class="px-2">{{ $client->full_name }}</h3>
                         </div>
                         <button type="button" onclick="EditClientDetails()"
                             class="flex h-9 w-9 items-center justify-between rounded-md bg-black text-white hover:opacity-80 ltr:ml-auto rtl:mr-auto">
@@ -430,7 +430,7 @@
                     @csrf
                     @method('PUT')
                     <div class="grid gap-4">
-                        <input type="text" name="name" value="{{ $client->first_name }}"
+                        <input type="text" name="name" value="{{ $client->full_name }}"
                             class="border border-gray-200 dark:border-gray-600 p-2 rounded-md"
                             placeholder="Client Name">
                         <input type="email" name="email" value="{{ $client->email }}"

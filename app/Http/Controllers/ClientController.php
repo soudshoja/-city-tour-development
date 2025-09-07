@@ -858,10 +858,11 @@ class ClientController extends Controller
                 'entity_type' => 'client',
                 'transaction_type' => 'debit',
                 'amount' => $payment->amount,
-                'description' => 'Client Credit of ' . $client->first_name,
+                'description' => 'Client Credit of ' . $client->full_name,
                 'invoice_id' => null,
                 'reference_type' => 'Payment',
                 'reference_number' => $payment->voucher_number,
+                'transaction_date' => now(),
             ]);
 
             $receivableAccount = Account::where('name', 'Clients')->first();
@@ -1109,6 +1110,7 @@ class ClientController extends Controller
                 'invoice_id' => null,
                 'reference_type' => 'Refund',
                 'reference_number' => null,
+                'transaction_date' => now(),
             ]);
 
             JournalEntry::create([

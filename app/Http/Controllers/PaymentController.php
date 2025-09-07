@@ -384,7 +384,7 @@ class PaymentController extends Controller
 
     public function process(Request $request)
     {
-        Log::info('process:', ['process' => $request]);
+        Log::info('Tap process:', ['process' => $request]);
         $tap = new Tap();
 
         $tap_id = $request->tap_id;
@@ -405,6 +405,7 @@ class PaymentController extends Controller
         }
 
         $invoiceNumber = $response['metadata']['invoice_number'];
+        $paymentId = $response['metadata']['payment_id'];
 
         if ($response['status'] != 'CAPTURED') {
             $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
@@ -415,8 +416,9 @@ class PaymentController extends Controller
                 'entity_id' => $invoice->agent->branch->company->id,
                 'entity_type' => 'company',
                 'transaction_type' => 'credit',
+                'transaction_date' => $invoice->invoice_date,
                 'amount' => $response['amount'],
-                'description' => 'Payment failed: ' . $invoiceNumber,
+                'description' => 'Tap payment failed: ' . $invoiceNumber,
                 'invoice_id' => $invoice->id,
                 'payment_id' => $paymentId,
                 'payment_reference' => $response['id'],
@@ -437,31 +439,24 @@ class PaymentController extends Controller
             return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Payment failed');
         }
 
-        $clientName = $response['customer']['first_name'];
-        $clientEmail = $response['customer']['email'];
-        if (isset($response['customer']['phone'])) {
-            $clientPhone = $response['customer']['phone'];
-        }
-        $totalAmount = $response['amount'];
         $paymentId = $response['metadata']['payment_id'];
         $paymentGateway = $response['metadata']['payment_gateway'];
-        // $invoicePartialIds = $response['metadata']['invoice_partial_id'];
         $invoicePartialIds = json_decode($response['metadata']['invoice_partial_id'], true);
-
-        if (!$paymentGateway) {
-            Log::error('Payment gateway not found in response', ['response' => $response]);
-
-            $invoice = $invoice ?? Invoice::with('agent.branch')
-            ->where('invoice_number', $invoiceNumber)
-            ->first();
-            $companyId = optional($invoice->agent->branch)->company_id;
-            return redirect()->route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
-        }
-
         $totalPaidAmount = $response['amount'];
 
-        // Fetch the invoice to get payment details
-        $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
+        if ($paymentId) {
+            $payment = Payment::with(['invoice.agent.branch.company'])->find($paymentId);
+        
+            if ($payment && $payment->invoice) {
+                $invoice = $payment->invoice;
+            } elseif ($payment && $payment->agent) {
+                $companyId = optional($payment->agent->branch)->company_id;
+                $invoice = Invoice::with(['agent.branch.company', 'client', 'invoiceDetails.task'])
+                    ->where('invoice_number', $invoiceNumber)
+                    ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
+                    ->first();
+            }
+        }
 
         $invoiceDetails = InvoiceDetail::with('task')
             ->where('invoice_number', $invoiceNumber)
@@ -472,7 +467,6 @@ class PaymentController extends Controller
         //     ->first();
 
         Log::info('company_id:', ['company_id' => $invoice->agent->branch->company->id]);
-
 
         $bankAccount = Account::where('name', 'Payment Gateway') // or bank account
             ->where('company_id', $invoice->agent->branch->company->id)
@@ -512,12 +506,8 @@ class PaymentController extends Controller
             Log::error('Invoice not found', ['invoice_number' => $invoiceNumber]);
             return redirect()->route('invoice.index')->with('error', 'Something went wrong, please try again later.');
         }
-        //dd($invoiceDetails);
 
         if (!empty($invoiceDetails)) {
-
-            // dd($invoiceDetails);
-            //foreach ($invoiceDetails as $invoiceDetail) {
             try {
 
                 $invoiceDetail = $invoiceDetails->first();
@@ -556,11 +546,12 @@ class PaymentController extends Controller
                     'entity_type' => 'company',
                     'transaction_type' => 'debit',
                     'amount' => $totalPaidAmount,
-                    'description' => 'Invoice ' . $invoiceNumber . ' paid successfully',
+                    'description' => 'Tap payment success: ' . $invoiceNumber,
                     'invoice_id' => $invoice->id,
                     'payment_id' => $paymentId,
                     'payment_reference' => $response['id'],
                     'reference_type' => 'Invoice',
+                    'transaction_date' => $invoice->invoice_date,
                 ]);
 
                 $payment = Payment::find($paymentId);
@@ -599,8 +590,8 @@ class PaymentController extends Controller
                     'invoice_id' =>  $invoice->id,
                     'account_id' =>  $receivableAccountId,
                     'invoice_detail_id' =>  $invoiceDetail->id,
-                    'transaction_date' => Carbon::now(),
-                    'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->first_name,
+                    'transaction_date' => $invoice->invoice_date,
+                    'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->full_name,
                     'debit' => 0,
                     'credit' => $totalPaidAmount,
                     'balance' => $invoiceDetail['task_price'] - $totalPaidAmount,
@@ -609,7 +600,6 @@ class PaymentController extends Controller
                     'voucher_number' => $payment->voucher_number,
                     'type_reference_id' => $receivableAccountId
                 ]);
-
 
                 // Create record to payment_gateway assets coa account (OK)
                 if ($bankPaymentFee) {
@@ -620,9 +610,9 @@ class PaymentController extends Controller
                         'account_id' =>  $bankPaymentFee->id,
                         'invoice_id' =>  $invoice->id,
                         'invoice_detail_id' =>  $invoiceDetail->id,
-                        'transaction_date' => Carbon::now(),
-                        'description' => 'Client Pays by ' . $client->first_name . ' via (Assets): ' . $bankPaymentFee->name,
-                        'debit' => $totalPaidAmount, //$totalPaidAmount-$defaultPaymentGatewayFee
+                        'transaction_date' => $invoice->invoice_date,
+                        'description' => 'Client Pays by ' . $client->full_name . ' via (Assets): ' . $bankPaymentFee->name,
+                        'debit' => $totalPaidAmount,
                         'credit' => 0,
                         'balance' => $invoiceDetail['task_price'] - $totalPaidAmount,
                         'name' =>  $bankPaymentFee->name,
@@ -634,7 +624,6 @@ class PaymentController extends Controller
                     $bankPaymentFee->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
                     $bankPaymentFee->save();
                 }
-                //dd($transaction->id,$bankAccountAccRecord);
 
                 // Create record to payment_gateway expense coa account (OK)
                 $tapAccount->actual_balance += $defaultPaymentGatewayFee;
@@ -648,7 +637,7 @@ class PaymentController extends Controller
                         'invoice_id' =>  $invoice->id,
                         'invoice_detail_id' =>  $invoiceDetail->id,
                         'voucher_number' => $payment->voucher_number,
-                        'transaction_date' => Carbon::now(),
+                        'transaction_date' => $invoice->invoice_date,
                         'description' => 'Record Payment Gateway Charge (Expenses): ' . $tapAccount->name,
                         'debit' => $defaultPaymentGatewayFee,
                         'credit' => 0,
@@ -660,16 +649,7 @@ class PaymentController extends Controller
 
                     $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
                     $tapAccount->save();
-
-                    //$selectedtask->status = 'Completed';
-                    // $selectedtask->status = 'ticketed';
-                    // $selectedtask->save();
-
                 }
-
-
-                //dd($e->getMessage());
-
             } catch (\Exception $e) {
                 Log::error('Failed in invoice processing', [
                     'message' => $e->getMessage(),
@@ -679,7 +659,6 @@ class PaymentController extends Controller
                 return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])
                     ->with('error', 'Something went wrong while processing the invoice. Please try again later.');
             }
-            //}
         }
 
         $selectedPartials = InvoicePartial::whereIn('id', $invoicePartialIds)->get();
@@ -696,8 +675,6 @@ class PaymentController extends Controller
                     'currency'  => $payment->currency,
                 ];
                 $chargeResult = ChargeService::TapCharge($chargeData, $payment->payment_gateway);
-            } elseif (strtolower($payment->payment_gateway) === 'myfatoorah') {
-                $chargeResult = ChargeService::FatoorahCharge($invoicePartial->amount, $payment->payment_method_id, $companyId);
             }
 
             $invoicePartial->service_charge = $chargeResult['fee'];
@@ -1455,7 +1432,23 @@ class PaymentController extends Controller
         }
 
         $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
-        $companyId = optional($payment->agent->branch)->company_id;
+
+        $fatoorahPayment = $payment->findMyFatoorahPayment();
+
+        $invoiceRef = null;
+        $authorizationId = null;
+
+        if ($fatoorahPayment) {
+            $payloadData = $fatoorahPayment->payload;
+            
+            if (is_array($payloadData) && isset($payloadData['Data'])) {
+                $invoiceRef = $payloadData['Data']['InvoiceReference'] ?? 'N/A';
+                $transactions = $payloadData['Data']['InvoiceTransactions'] ?? [];
+                if (!empty($transactions)) {
+                    $authorizationId = $transactions[0]['AuthorizationId'] ?? 'N/A';
+                }
+            }
+        }
 
         $companyId = optional($payment->agent->branch)->company_id;
         $chargeResult = [];
@@ -1510,7 +1503,7 @@ class PaymentController extends Controller
             $payment->save();
         }
 
-        return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy'));
+        return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy', 'invoiceRef', 'authorizationId'));
     }
 
     public function paymentLinkInitiate(Request $request)
@@ -1841,6 +1834,7 @@ class PaymentController extends Controller
                     'invoice_id' => $payment->invoice_id,
                     'payment_reference' => $payment->payment_reference,
                     'reference_type' => 'Payment',
+                    'transaction_date' => now(),
                 ]);
 
                 JournalEntry::create([
@@ -1907,6 +1901,7 @@ class PaymentController extends Controller
                 'invoice_id' => $payment->invoice_id,
                 'payment_reference' => $response['id'],
                 'reference_type' => 'Payment',
+                'transaction_date' => now(),
             ]);
 
             if (auth()->user()) {
@@ -1942,9 +1937,6 @@ class PaymentController extends Controller
                 'currency'  => $payment->currency,
             ];
             $chargeResult = ChargeService::TapCharge($chargeData, $payment->payment_gateway);
-            $serviceFeePaid = $chargeResult['fee'] ?? 0;
-        } elseif (strtolower($payment->payment_gateway) === 'myfatoorah') {
-            $chargeResult = ChargeService::FatoorahCharge($baseAmount, $payment->payment_method_id, $companyId);
             $serviceFeePaid = $chargeResult['fee'] ?? 0;
         }
 
@@ -2009,6 +2001,7 @@ class PaymentController extends Controller
                     'invoice_id' => $payment->invoice_id,
                     'payment_reference' => $response['id'],
                     'reference_type' => 'Payment',
+                    'transaction_date' => now(),
                 ]);
 
                 JournalEntry::create([
@@ -2057,6 +2050,29 @@ class PaymentController extends Controller
                 return abort(500);
             }
             
+        }
+        
+        if (strtolower($payment->payment_gateway) === 'tap') {
+            $dateCreated = Carbon::createFromTimestampMs($response['transaction']['date']['created'])->format('Y-m-d H:i:s');
+            $dateCompleted = Carbon::createFromTimestampMs($response['transaction']['date']['completed'])->format('Y-m-d H:i:s');
+            $dateTransaction = Carbon::createFromTimestampMs($response['transaction']['date']['transaction'])->format('Y-m-d H:i:s');
+
+            TapPayment::create([
+                'payment_id' =>  $payment->id,
+                'tap_id' =>  $response['id'],
+                'authorization_id' =>  $response['transaction']['authorization_id'],
+                'timezone' => $response['transaction']['timezone'],
+                'expiry_period' => $response['transaction']['expiry']['period'],
+                'expiry_type' => $response['transaction']['expiry']['type'],
+                'amount' => $finalPaidAmount,
+                'currency' => 'KWD',
+                'date_created' => $dateCreated,
+                'date_completed' => $dateCompleted,
+                'date_transaction' => $dateTransaction,
+                'receipt_id' => $response['receipt']['id'],
+                'receipt_email' => $response['receipt']['email'],
+                'receipt_sms' => $response['receipt']['sms'],
+            ]);
         }
 
         try {
@@ -2252,6 +2268,7 @@ class PaymentController extends Controller
                             'invoice_id' => $payment->invoice_id,
                             'payment_reference' => $statusData['Data']['InvoiceReference'],
                             'reference_type' => 'Payment',
+                            'transaction_date' => now(),
                         ]);
 
                         JournalEntry::create([
@@ -2359,6 +2376,7 @@ class PaymentController extends Controller
                                 'payment_id' => $payment->id,
                                 'payment_reference' => $statusData['Data']['InvoiceReference'],
                                 'reference_type' => 'Invoice',
+                                'transaction_date' => now(),
                             ]);
                         } catch (\Exception $e) {
                             throw new \Exception('Failed to create transaction: ' . $e->getMessage());
@@ -2529,7 +2547,8 @@ class PaymentController extends Controller
                 'invoice_id' => $invoice->id,
                 'payment_id' => $invoice->payment->id,
                 'payment_reference' => $invoice->payment->payment_reference,
-                'reference_type' => 'Invoice'
+                'reference_type' => 'Invoice',
+                'transaction_date' => now(),
             ]);
 
             return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])->with('error', 'Payment failed');
@@ -2549,6 +2568,7 @@ class PaymentController extends Controller
                 'invoice_id' => $payment->invoice_id,
                 'payment_reference' => $payment->payment_reference,
                 'reference_type' => 'Payment',
+                'transaction_date' => now(),
             ]);
         }
 
@@ -2779,6 +2799,7 @@ class PaymentController extends Controller
                         'invoice_id' => $payment->invoice_id,
                         'payment_reference' => $trackId,
                         'reference_type' => 'Payment',
+                        'transaction_date' => now(),
                     ]);
 
                     JournalEntry::create([
@@ -2910,6 +2931,7 @@ class PaymentController extends Controller
                     'description' => 'Payment via UPayment for Invoice: ' . $invoice->invoice_number,
                     'invoice_id' => $invoice->id,
                     'reference_type' => 'Invoice',
+                    'transaction_date' => now(),
                 ]);
 
                 // Receivable Journal Entry (Credit)

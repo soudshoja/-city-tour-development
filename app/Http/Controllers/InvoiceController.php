@@ -608,19 +608,27 @@ class InvoiceController extends Controller
         DB::beginTransaction();
 
         try {
+            
+            $isTabby = ($gateway === 'Tabby');
+            if ($isTabby || $credit) {
+                $status = 'paid';
+            } else {
+                $status = 'unpaid';
+            }
+
             $invoicePartial = InvoicePartial::create([
                 'invoice_id' => $invoiceId,
                 'invoice_number' => $invoiceNumber,
                 'client_id' => $clientId,
                 'service_charge' => $credit ? 0 : ($gatewayFee['fee'] ?? 0),
                 'amount' => $amount,
-                'status' => $credit ? 'paid' : 'unpaid',
+                'status' => $status, /* $credit ? 'paid' : 'unpaid' */
                 'expiry_date' => $date,
                 'type' => $type,
                 'payment_gateway' => $gateway,
                 'payment_method' => $method,
             ]);
-
+            
             //if ($credit && $type == 'full') {
             if ($type == 'credit') {
                 //insert credit record to reduce client's existing credit balance

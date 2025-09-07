@@ -1,25 +1,36 @@
-<form action="{{ route('refunds.store-unpaid', $task) }}" method="POST">
-    <style>
+<style>
+    .calculation-section {
+        display: none;
+    }
+
+    @media (min-width: 768px) {
         .calculation-section {
-            display: none;
-        }
-
-        @media (min-width: 768px) {
-            .calculation-section {
-                display: block !important;
-            }
-        }
-
-        .calculation-section.mobile-show {
             display: block !important;
         }
-    </style>
-    @csrf
+    }
 
+    .calculation-section.mobile-show {
+        display: block !important;
+    }
+</style>
+@php
+$isEditing = isset($refund) && $refund;
+$formAction = $isEditing
+? route('refunds.update', ['task' => $task, 'refund' => $refund])
+: route('refunds.store-unpaid');
+$formMethod = $isEditing ? 'PUT' : 'POST';
+@endphp
+
+<form action="{{ $formAction }}" method="POST">
+    @if($isEditing)
+    @method('PUT')
+    @endif
+    @csrf
+    <input type="hidden" name="task_id" value="{{ $task->id }}">
     <div class="mb-6">
         <label for="date" class="block text-gray-700 font-semibold mb-2">Date</label>
         <input type="date" name="date" id="date"
-            value="{{ old('date', now()->toDateString()) }}" required
+            value="{{ old('date', $isEditing ? $refund->date : now()->toDateString()) }}" required
             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
         @error('date')
         <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -29,7 +40,7 @@
     <div class="mb-6">
         <label for="reference" class="block text-gray-700 font-semibold mb-2">Reference</label>
         <input type="text" name="reference" id="reference"
-            value="{{ old('reference', $refund->reference ?? '') }}"
+            value="{{ old('reference', $isEditing ? $refund->reference : '') }}"
             class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
     </div>
 
@@ -37,15 +48,11 @@
         <div class="lg:col-span-2 text-left bg-slate-50 rounded-2xl p-4 lg:p-8 calculation-section">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">Original Task Calculation</h3>
             <div class="flex flex-col xl:flex-row xl:justify-between xl:items-center mb-6 space-y-4 xl:space-y-0 xl:space-x-4">
-                <input hidden type="number" step="0.01" name="air_refund_amount" id="air_refund_amount"
-                    value="{{ number_format($task->total, 2) ?? 0 }}"
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
-
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
-                    <label for="airline_nett_fare" class="block font-semibold text-gray-700 mb-2">Original Invoice Price</label>
-                    <input readonly type="number" step="0.01" name="airline_nett_fare"
-                        id="airline_nett_fare"
-                        value="{{ old('airline_nett_fare', number_format($invoiceDetails->task_price, 2) ?? '') }}"
+                    <label for="original_invoice_price" class="block font-semibold text-gray-700 mb-2">Original Invoice Price</label>
+                    <input readonly type="number" step="0.01" name="original_invoice_price"
+                        id="original_invoice_price"
+                        value="{{ old('original_invoice_price', $isEditing && $refund ? number_format($refund->airline_nett_fare, 2) : number_format($invoiceDetail->task_price, 2)) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-medium text-gray-800" readonly>
                 </div>
 
@@ -60,7 +67,7 @@
                     <label for="original_task_price" class="block font-semibold text-gray-700 mb-2">Original Task (Cost Price)</label>
                     <input readonly type="number" step="0.01" name="original_task_price"
                         id="original_task_price"
-                        value="{{ old('original_task_price', number_format($invoiceDetails->task_price - $invoiceDetails->markup_price, 2) ?? '') }}"
+                        value="{{ old('original_task_price', number_format($invoiceDetail->supplier_price, 2) ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-medium text-gray-800" readonly>
                 </div>
 
@@ -74,7 +81,7 @@
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
                     <label class="block font-semibold text-gray-700 mb-2">Original Task Profit</label>
                     <div class="px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-green-700 font-semibold">
-                        {{ number_format($invoiceDetails->markup_price, 2) }}
+                        {{ number_format($refund->original_task_profit ?? $invoiceDetail->markup_price, 2) }}
                     </div>
                 </div>
             </div>
@@ -120,28 +127,36 @@
         <!-- PROFIT SECTION -->
         <div class="text-right bg-gray-50 rounded-2xl p-4 lg:p-8 min-w-0">
             <div class="font-bold text-gray-700 mb-2">Original Task Profit</div>
-            <div class="text-2xl text-blue-600 font-bold mb-4" id="originalProfit">{{ number_format($invoiceDetails->markup_price, 2) }}</div>
+            <div class="text-2xl text-blue-600 font-bold mb-4" id="originalProfit">
+                {{ number_format($invoiceDetail->markup_price, 2) }}
+            </div>
             <hr class="my-4">
             <div class="font-bold text-gray-700 mb-2">Supplier Charge</div>
-            <div class="text-2xl text-red-500 font-bold mb-4" id="supplierCharge">{{ number_format($task->refund_charge, 2) }}</div>
+            <div class="text-2xl text-red-500 font-bold mb-4" id="supplierCharge">
+                {{ number_format($task->refund_charge, 2) }}
+            </div>
             <hr class="my-4">
             <div class="font-bold text-gray-700 mb-2">New Agent Markup</div>
             <div class="text-2xl text-green-600 font-bold mb-4" id="newAgentMarkup">
-                {{ number_format($task->total - $invoiceDetails->markup_price - $task->refund_charge, 2) }}
+                {{ number_format($isEditing && $refund ? $refund->new_task_profit : ($task->total - $invoiceDetail->markup_price - $task->refund_charge), 2) }}
             </div>
             <hr class="my-4">
             <div class="font-bold text-gray-700 mb-2">Total Profit (Invoice Price)</div>
             <input type="number" step="0.01" name="invoice_price" id="invoicePriceInput"
-                value="{{ old('invoice_price', number_format($invoiceDetails->markup_price + $task->refund_charge, 2)) }}"
+                value="{{ old('invoice_price', $isEditing && $refund ? 
+                    ($refund->airline_nett_fare - $refund->total_nett_refund) : 
+                    (isset($refundInvoiceDetail) ? $refundInvoiceDetail->amount : number_format($invoiceDetail->markup_price + $task->refund_charge, 2))) }}"
                 class="w-full px-4 py-2 border border-indigo-300 rounded-lg bg-white text-right font-bold text-lg" />
 
             <!-- Hidden inputs to send calculated values to backend -->
+            <input type="hidden" name="original_invoice_price" id="originalInvoicePriceInput"
+                value="{{ old('original_invoice_price', $isEditing && $refund ? $refund->airline_nett_fare : number_format($invoiceDetail->task_price, 2)) }}">
             <input type="hidden" name="original_task_profit" id="originalTaskProfitInput"
-                value="{{ number_format($invoiceDetails->markup_price, 2) }}">
+                value="{{ old('original_task_profit', $isEditing && $refund ? $refund->original_task_profit : number_format($invoiceDetail->markup_price, 2)) }}">
             <input type="hidden" name="supplier_charge" id="supplierChargeInput"
-                value="{{ number_format($task->refund_charge, 2) }}">
+                value="{{ old('supplier_charge', $isEditing && $refund ? $refund->service_charge : number_format($task->refund_charge, 2)) }}">
             <input type="hidden" name="new_agent_markup" id="newAgentMarkupInput"
-                value="{{ number_format($task->total - $invoiceDetails->markup_price - $task->refund_charge, 2) }}">
+                value="{{ old('new_agent_markup', $isEditing && $refund ? $refund->new_task_profit : number_format($task->total - $invoiceDetail->markup_price - $task->refund_charge, 2)) }}">
         </div>
         <!-- Mobile toggle button -->
         <button type="button" class="md:hidden mt-4 px-4 py-2 bg-indigo-500 text-white rounded-lg" onclick="toggleCalculation()">Show Details</button>
@@ -162,7 +177,7 @@
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
         </div>
     </div>
-    
+
     <div class="mt-6">
         <label for="reason" class="block text-gray-700 font-semibold mb-2">Reason</label>
         <textarea name="reason" id="reason" rows="3"
@@ -172,8 +187,10 @@
         @enderror
     </div>
 
+    @include('refunds.partial.payment-gateway-selection')
+
     <button type="submit" class="mt-6 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition duration-300">
-        Submit Refund
+        {{ $isEditing ? 'Update Refund' : 'Submit Refund' }}
     </button>
 </form>
 <script>

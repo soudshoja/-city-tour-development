@@ -86,7 +86,7 @@
                     @endif
                 </div>
             </div>
-            @if($task->originalTask->invoiceDetail->invoice->status === 'paid')
+            @if($invoicePaid)
 
             @include('refunds.partial.paid-invoice')
 

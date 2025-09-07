@@ -464,7 +464,7 @@ class InvoiceController extends Controller
         ));
     }
 
-    public function updatePaymentGateway(Request $request)
+    public function updatePaymentGateway(Request $request) : JsonResponse
     {
         $validated = $request->validate([
             'invoiceId' => 'required',
@@ -515,7 +515,7 @@ class InvoiceController extends Controller
         return response()->json(['message' => 'Payment method updated successfully!', 'invoice' => $invoicePartial]);
     }
 
-    public function savePartial(Request $request)
+    public function savePartial(Request $request) : JsonResponse
     {
         $request->validate([
             'invoiceId' => 'required',

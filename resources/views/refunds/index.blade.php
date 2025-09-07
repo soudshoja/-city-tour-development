@@ -110,11 +110,16 @@
                                                     {{ $refund->status === null ? 'Not Set' : ucwords($refund->status) }}
 
                                                 </span>
-                                                @if ($refund->status !== 'completed')
+                                                @if ($refund->status !== 'completed' && $refund->invoice == null)
                                                     <span
                                                         class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-primary"
                                                         onclick="confirmProcessCompleted({{ $refund->task->id }}, {{ $refund->id }})">
                                                         Mark as Completed
+                                                    </span>
+                                                @elseif($refund->invoice)
+                                                    <span
+                                                        class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-primary">
+                                                        <a href="{{ route('invoice.show', ['companyId' => $refund->company_id, 'invoiceNumber' => $refund->invoice->invoice_number])}}">View Invoice</a>
                                                     </span>
                                                 @endif
                                             </td>

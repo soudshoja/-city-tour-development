@@ -56,4 +56,9 @@ class Refund extends Model
         return $this->belongsTo(Agent::class, 'agent_id'); // or Agent model if separate
     }
 
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
+
 }

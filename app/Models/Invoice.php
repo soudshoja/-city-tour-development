@@ -80,4 +80,9 @@ class Invoice extends Model
         $this->sub_amount = $this->invoiceDetails()->sum('task_price');
         $this->save();
     }
+
+    public function refund()
+    {
+        return $this->hasOne(Refund::class);
+    }
 }

@@ -35,7 +35,7 @@
                 <div class="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
                     <div>
                         <p class="font-semibold text-gray-600 dark:text-slate-300">Billed To:</p>
-                        <p class="text-gray-800 dark:text-white font-bold">{{ $invoice->client->name }}</p>
+                        <p class="text-gray-800 dark:text-white font-bold">{{ $invoice->client->full_name }}</p>
                         <p class="text-gray-600 dark:text-slate-400">{{ $invoice->client->email }}</p>
                         <p class="text-gray-600 dark:text-slate-400">{{ $invoice->client->phone }}</p>
                     </div>

@@ -29,7 +29,7 @@ class Client extends Model
         'country_code',
     ];
 
-    public function getNameAttribute()
+    public function getFullNameAttribute()
     {
         return trim(collect([$this->first_name, $this->middle_name, $this->last_name])->filter()->join(' '));
     }

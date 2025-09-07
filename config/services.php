@@ -96,5 +96,13 @@ return [
     'uPayment' => [
         'api_key' => env('APP_ENV') == 'production' ? env('UPAYMENT_LIVE_KEY') : env('UPAYMENT_SANDBOX_KEY'),
         'base_url' => rtrim(env('APP_ENV') == 'production' ? env('UPAYMENT_LIVE_URL') : env('UPAYMENT_SANDBOX_URL'), '/') . '/v1',
+    ],
+    
+    'hesabe' => [
+        'api_key' => env('APP_ENV') == 'production' ? env('HESABE_SECRET_KEY') : env('HESABE_SANDBOX_SECRET_KEY'),
+        'base_url' => env('APP_ENV') == 'production' ? env('HESABE_PRODUCTION') : env('HESABE_SANDBOX'),
+        'merchant_code' => env('APP_ENV') == 'production' ? env('HESABE_MERCHANT_CODE') : env('HESABE_SANDBOX_MERCHANT_CODE'),
+        'access_code' => env('APP_ENV') == 'production' ? env('HESABE_ACCESS_CODE') : env('HESABE_SANDBOX_ACCESS_CODE'),
+        'iv_key' => env('APP_ENV') == 'production' ? env('HESABE_IV_KEY') : env('HESABE_SANDBOX_IV_KEY'),
     ]
 ];

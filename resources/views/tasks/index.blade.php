@@ -730,8 +730,7 @@
                 </div>
                
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
-                    
-                <div class="dataTable-top"></div>
+                    <div class="dataTable-top"></div>
                     <div class="w-full flex m-2 ">
                             @php
                                 $invoiced = request()->has('invoiced') ? request('invoiced') : '0';
@@ -763,7 +762,6 @@
                                 </button>
                             </form>
                     </div>
-                                               
                     <div x-data="{ shown: 10 }">
                         <div class="dataTable-container h-max">
                             <div class="table-container">
@@ -1508,7 +1506,7 @@
                                                     {{ $task->supplier->name }}
                                                 </td>
                                                 <td data-column="supplier-pay-date" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->supplier_pay_date ?? $task->issued_date }}
+                                                    {{ $task->supplier_pay_date ?? 'Not Set' }}
                                                 </td>
                                                 <td data-column="created-at" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->created_at ?  \Carbon\Carbon::parse($task->created_at)->format('d-m-Y') : 'Not Set' }}

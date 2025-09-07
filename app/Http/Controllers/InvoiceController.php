@@ -59,7 +59,7 @@ class InvoiceController extends Controller
             }])->get();
             $companiesId[] = $user->company->id;
         } else if ($user->role_id == Role::BRANCH) {
-            $agents = Agent::where('branch_id', $user->branch->id);
+            $agents = Agent::where('branch_id', $user->branch->id)->get();
             $companiesId[] = $user->branch->company_id;
         } else if ($user->role_id == Role::AGENT) {
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
@@ -69,22 +69,15 @@ class InvoiceController extends Controller
         }
 
         $agentIds = $agents->pluck('id');
-        $sortBy = request('sortBy', 'created_at');
-        $sortOrder = request('sortOrder', 'desc');
-        $allowedSorts = ['created_at', 'invoice_date', 'amount', 'status']; // add more as needed
-        if (!in_array($sortBy, $allowedSorts)) {
-            $sortBy = 'created_at';
-        }
-        if (!in_array($sortOrder, ['asc', 'desc'])) {
-            $sortOrder = 'desc';
-        }
+        $sortBy = in_array(request('sortBy'), ['created_at', 'invoice_date']) ? request('sortBy') : 'created_at';
+        $sortOrder = in_array(request('sortOrder'), ['asc', 'desc']) ? request('sortOrder') : 'desc';
 
         $invoices = Invoice::with([
             'agent.branch',
             'invoiceDetails.task.supplier',
-            // 'invoiceDetails.task.hotelDetails.room', 
             'client'
-        ]);
+        ])->whereIn('agent_id', $agentIds)
+          ->whereHas('agent.branch', fn($q) => $q->whereIn('company_id', $companiesId));
 
         if($request->has('search')){
             $search = $request->input('search');
@@ -111,12 +104,20 @@ class InvoiceController extends Controller
             });
         }
 
-        $invoices = $invoices->whereIn('agent_id', $agentIds)
-            ->whereHas('agent.branch', function ($query) use ($companiesId) {
-                $query->whereIn('company_id', $companiesId);
-            });
-
-        $totalInvoices = $invoices->count();
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $from = Carbon::parse($request->input('from_date'))->startOfDay();
+            $to = Carbon::parse($request->input('to_date'))->endOfDay();
+            $dateField = $request->input('date_field', 'created_at');
+    
+            if (in_array($dateField, ['created_at', 'invoice_date'])) {
+                $invoices->whereBetween($dateField, [$from, $to]);
+            }
+        }
+    
+        $filteredInvoices = $invoices->get();
+        $totalNet = $filteredInvoices->flatMap->invoiceDetails->sum('supplier_price');
+        $totalSales = $filteredInvoices->sum('amount');
+        $totalInvoices = $filteredInvoices->count();
 
         $invoices = $invoices->orderBy($sortBy, $sortOrder) // 👈 Use dynamic sorting
             ->paginate(20)
@@ -124,12 +125,11 @@ class InvoiceController extends Controller
         
         $clients = Client::whereIn('agent_id', $agentIds)->get();
         $tasks = Task::whereIn('agent_id', $agentIds)->get();
-
         $suppliers = Supplier::all();
         $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $companiesId)->get();
         $types = Task::distinct()->pluck('type');
            
-        return view('invoice.index', compact('invoices', 'types', 'suppliers', 'branches', 'agents', 'clients', 'tasks', 'totalInvoices'));
+        return view('invoice.index', compact('invoices', 'types', 'suppliers', 'branches', 'agents', 'clients', 'tasks', 'totalInvoices', 'totalNet', 'totalSales'));
     }
 
     public function salelist()

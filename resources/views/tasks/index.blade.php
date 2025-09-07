@@ -1,6 +1,9 @@
 <x-app-layout>
 
     <head>
+<!-- filepath: c:\laravel\city-tour\resources\views\tasks\index.blade.php -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
         <meta name="csrf-token" content="{{ csrf_token() }}">
     </head>
     <style>
@@ -730,8 +733,7 @@
                 </div>
                
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
-                    
-                <div class="dataTable-top"></div>
+                    <div class="dataTable-top"></div>
                     <div class="w-full flex m-2 ">
                             @php
                                 $invoiced = request()->has('invoiced') ? request('invoiced') : '0';
@@ -763,7 +765,6 @@
                                 </button>
                             </form>
                     </div>
-                                               
                     <div x-data="{ shown: 10 }">
                         <div class="dataTable-container h-max">
                             <div class="table-container">
@@ -1255,7 +1256,7 @@
                                                                                         ->get();
                                                                                         $selectedOriginalTask = $originalTasks->firstWhere('id', $task->original_task_id);
                                                                                         $taskPlaceholder = $selectedOriginalTask
-                                                                                        ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->first_name ?? $selectedOriginalTask->client_name)
+                                                                                        ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
                                                                                         : 'Select Original Task';
                                                                                         @endphp
 
@@ -1264,11 +1265,11 @@
                                                                                             name="original_task_id"
                                                                                             :items="$originalTasks->map(fn($t) => [
                                                                                                 'id' => $t->id,
-                                                                                                'name' => $t->reference . ' - ' . ($t->client->first_name ?? $t->client_name)
+                                                                                                'name' => $t->reference . ' - ' . ($t->client->full_name ?? $t->client_name)
                                                                                             ])->values()"
                                                                                             :selectedId="$task->original_task_id"
                                                                                             :selectedName="$selectedOriginalTask
-                                                                                                ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->first_name ?? $selectedOriginalTask->client_name)
+                                                                                                ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
                                                                                                 : null"
                                                                                             :placeholder="$taskPlaceholder" />
                                                                                     </div>
@@ -1307,7 +1308,7 @@
                                                                                     @php
                                                                                     $selectedClient = \App\Models\Client::find($task->client_id);
                                                                                     $clientPlaceholder = $selectedClient
-                                                                                    ? $selectedClient->first_name . ' - ' . $selectedClient->phone
+                                                                                    ? $selectedClient->full_name . ' - ' . $selectedClient->phone
                                                                                     : 'Select a Client';
                                                                                     @endphp
                                                                                     <div class="flex-1">
@@ -1318,10 +1319,10 @@
                                                                                                 name="client_id"
                                                                                                 :items="$clients->map(fn($c) => [
                                                                                                     'id' => $c->id, 
-                                                                                                    'name' => $c->first_name . ' ' . $c->last_name . ' - ' . $c->phone
+                                                                                                    'name' => $c->full_name . ' - ' . $c->phone
                                                                                                 ])"
                                                                                                 :selectedId="$task->client_id"
-                                                                                                :selectedName="$selectedClient ? $selectedClient->first_name . ' ' . $selectedClient->last_name . ' - ' . $selectedClient->phone : null"
+                                                                                                :selectedName="$selectedClient ? $selectedClient->full_name . $selectedClient->phone : null"
                                                                                                 placeholder="Select Client" />
 
 
@@ -1463,14 +1464,14 @@
                                                 </td>
                                                 <td data-column="bill-to" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300 ">
                                                     @if ($task->client)
-                                                    <p>{{ $task->client->first_name }}{{ $task->client->middle_name ?? '' }} {{ $task->client->last_name ?? '' }}</p>
+                                                    <p>{{ $task->client->full_name }}</p>
                                                     <p>{{ $task->client->phone ?? 'No phone' }}</p>
                                                     @else
                                                     <p class="{{ $task->client ?? 'no-client relative' }}">
                                                         <button
                                                             @click.stop="openManualForm({{ $task->id }}, '{{ $task->client_name ?? '' }}', '{{ $task->passenger_name ?? '' }}' ,'{{ $task->agent->name ?? 'Not Set' }}', '{{ $task->agent->id ?? 'Null' }}', '{{ $task->agent->branch->name ?? 'Not Set' }}')"
                                                             {{ $task->client !== null ? 'disabled' : '' }}>
-                                                            {{ $task->client->first_name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
+                                                            {{ $task->client->full_name ?? $task->client_name !== '' ? $task->client_name : 'Not Set' }}
                                                         </button>
                                                     </p>
                                                     @endif
@@ -1508,7 +1509,7 @@
                                                     {{ $task->supplier->name }}
                                                 </td>
                                                 <td data-column="supplier-pay-date" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->supplier_pay_date ?? $task->issued_date }}
+                                                    {{ $task->supplier_pay_date ?? 'Not Set' }}
                                                 </td>
                                                 <td data-column="created-at" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->created_at ?  \Carbon\Carbon::parse($task->created_at)->format('d-m-Y') : 'Not Set' }}
@@ -1873,7 +1874,7 @@
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-1">Client</label>
                                                     <x-searchable-dropdown name="bulk_client_id"
-                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name . ' - ' . $c->phone])"
+                                                        :items="$clients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name . ' - ' . $c->phone])"
                                                         placeholder="Select Client" />
                                                 </div>
                                                 <div>
@@ -3090,47 +3091,70 @@
             return filters;
         }
 
-        function renderFilterRows() {
-            const container = document.getElementById('filterContainer');
-            container.innerHTML = '';
-            filterRows.forEach((row, idx) => {
-                const col = filterConfig.columns[row.column];
-                let inputHtml = '';
-                if (col.type === 'text') {
-                    inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter value" data-idx="${idx}">`;
-                } else if (col.type === 'select') {
-                    inputHtml = `<select class="value-input" data-idx="${idx}">${col.options.map(opt =>
-                        `<option value="${opt}" ${row.value === opt ? 'selected' : ''}>${opt}</option>`
-                    ).join('')}</select>`;
-                } else if (col.type === 'searchable') {
-                    inputHtml = `<input type="text" class="value-input" list="datalist-${row.column}-${idx}" value="${row.value || ''}" placeholder="Search..." data-idx="${idx}">
-                        <datalist id="datalist-${row.column}-${idx}">
-                            ${col.options.map(opt => `<option value="${opt}"></option>`).join('')}
-                        </datalist>`;
-                } else if (col.type === 'date') {
-                    inputHtml = `<input type="date" class="value-input" value="${row.value || ''}" data-idx="${idx}">`;
-                } else if (col.type === 'date-range') {
-                    const val = typeof row.value === 'object' && row.value ? row.value : {from: '', to: ''};
-                    inputHtml = `
-                        <input type="date" class="value-input" data-range="from" value="${val.from || ''}" data-idx="${idx}" style="width: 45%;" placeholder="From">
-                        <span style="margin:0 4px;">-</span>
-                        <input type="date" class="value-input" data-range="to" value="${val.to || ''}" data-idx="${idx}" style="width: 45%;" placeholder="To">
-                    `;
-                }
-                container.innerHTML += `
-                    <div class="filter-row">
-                        <select class="column-select" data-idx="${idx}">
-                            ${Object.entries(filterConfig.columns).map(([key, c]) =>
-                                `<option value="${key}" ${row.column === key ? 'selected' : ''}>${c.label}</option>`
-                            ).join('')}
-                        </select>
-                        ${inputHtml}
-                        <button type="button" class="remove-filter-btn" data-idx="${idx}">&times;</button>
-                    </div>
-                `;
-            });
+function renderFilterRows() {
+    const container = document.getElementById('filterContainer');
+    container.innerHTML = '';
+    filterRows.forEach((row, idx) => {
+        const col = filterConfig.columns[row.column];
+        let inputHtml = '';
+        if (col.type === 'text') {
+            inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter value" data-idx="${idx}">`;
+        } else if (col.type === 'select') {
+            inputHtml = `<select class="value-input" data-idx="${idx}">${col.options.map(opt =>
+                `<option value="${opt}" ${row.value === opt ? 'selected' : ''}>${opt}</option>`
+            ).join('')}</select>`;
+        } else if (col.type === 'searchable') {
+            inputHtml = `<input type="text" class="value-input" list="datalist-${row.column}-${idx}" value="${row.value || ''}" placeholder="Search..." data-idx="${idx}">
+                <datalist id="datalist-${row.column}-${idx}">
+                    ${col.options.map(opt => `<option value="${opt}"></option>`).join('')}
+                </datalist>`;
+        } else if (col.type === 'date') {
+            inputHtml = `<input type="date" class="value-input" value="${row.value || ''}" data-idx="${idx}">`;
+        } else if (col.type === 'date-range') {
+            inputHtml = `
+                <input type="text" id="tasks-date-range-${idx}" class="value-input" placeholder="Select date range" style="width: 90%;" data-idx="${idx}" />
+            `;
         }
+        container.innerHTML += `
+            <div class="filter-row">
+                <select class="column-select" data-idx="${idx}">
+                    ${Object.entries(filterConfig.columns).map(([key, c]) =>
+                        `<option value="${key}" ${row.column === key ? 'selected' : ''}>${c.label}</option>`
+                    ).join('')}
+                </select>
+                ${inputHtml}
+                <button type="button" class="remove-filter-btn" data-idx="${idx}">&times;</button>
+            </div>
+        `;
+    });
 
+    // Initialize Flatpickr for all date-range inputs
+    filterRows.forEach((row, idx) => {
+        const col = filterConfig.columns[row.column];
+        if (col.type === 'date-range') {
+            const input = document.getElementById(`tasks-date-range-${idx}`);
+            if (input) {
+                flatpickr(input, {
+                    mode: "range",
+                    dateFormat: "Y-m-d",
+                    defaultDate: row.value && row.value.from ? [row.value.from, row.value.to] : undefined,
+                    onChange: function(selectedDates, dateStr) {
+                        // Save value as {from, to}
+                        const dates = dateStr.split(' to ');
+                        filterRows[idx].value = { from: dates[0] || '', to: dates[1] || '' };
+                    }
+                });
+            }
+        }
+    });
+}
+        document.addEventListener("DOMContentLoaded", function() {
+            flatpickr("#tasks-date-range", {
+                mode: "range",
+                dateFormat: "Y-m-d",
+                // Optionally set default dates or other options
+            });
+        });
         // Remove individual filter
         document.getElementById('activeFiltersList').addEventListener('click', function(e) {
             if (e.target.classList.contains('remove-tag')) {

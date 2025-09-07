@@ -274,7 +274,7 @@ class ChargeController extends Controller
             'paid_by' => 'required',
             'charge_type' => 'required',
             'amount' => 'required|numeric',
-            'extra_charge' => 'required|numeric',
+            'extra_charge' => 'nullable|numeric',
             'self_charge' => 'nullable|numeric',
             'is_auto_paid' => 'nullable|boolean',
             'has_url' => 'nullable|boolean',
@@ -283,18 +283,18 @@ class ChargeController extends Controller
             // 'base_url'    => 'nullable|url',
             'api_key'     => 'nullable|string',
         ]);
+
         Log::info($request->all());
+
         try {
             DB::beginTransaction();
 
-            // Fetch the charge to update
             $charge = Charge::findOrFail($id);
 
-            // Update charge fields
             $charge->update([
                 'name' => $request->get('name'),
                 'amount' => $request->get('amount'),
-                'extra_charge' => $request->get('extra_charge'),
+                'extra_charge' => $request->get('extra_charge') ?? 0,
                 'self_charge' => $request->get('self_charge'),
                 'paid_by' => $request->get('paid_by'),
                 'description' => $request->get('description'),

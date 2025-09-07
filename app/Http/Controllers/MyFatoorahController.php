@@ -276,7 +276,7 @@ return [
         return [
             'total'    => $invoice->amount,
             'currency' => $invoice->currency ?? 'KWD',
-            'client_name' => $invoice->client->first_name ?? 'Guest',
+            'client_name' => $invoice->client->full_name ?? 'Guest',
             'client_email' => $invoice->client->email ?? 'guest@example.com',
             'client_phone' => $invoice->client->phone ?? '00000000',
         ];

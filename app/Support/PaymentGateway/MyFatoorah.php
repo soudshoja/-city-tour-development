@@ -51,7 +51,7 @@ class MyFatoorah
 
         $paymentMethod = PaymentMethod::findOrFail($paymentMethodId);
 
-        $customerName = $invoice->client->first_name ?? 'Customer';
+        $customerName = $invoice->client->full_name ?? 'Customer';
 
         if (strpos($customerName, '/') !== false) {
             $customerName = trim(explode('/', $customerName)[0]);

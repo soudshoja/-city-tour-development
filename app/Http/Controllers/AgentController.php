@@ -342,6 +342,7 @@ class AgentController extends Controller
                         'amount' => $request->salary,
                         'description' => 'Monthly salary adjustment for agent: ' . $agent->name,
                         'reference_type' => 'Payment',
+                        'transaction_date' => now(),
                     ]);
 
                     JournalEntry::create([
@@ -349,7 +350,7 @@ class AgentController extends Controller
                         'branch_id' => $agent->branch_id,
                         'company_id' => $agent->branch->company_id,
                         'account_id' => $salaryExpenseAccount->id,
-                        'transaction_date' => $transaction->created_at,
+                        'transaction_date' => now(),
                         'description' => 'Recorded updated salary expense for agent: ' . $agent->name,
                         'debit' => $request->salary,
                         'credit' => 0,

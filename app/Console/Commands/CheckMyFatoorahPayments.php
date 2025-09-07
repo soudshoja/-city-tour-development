@@ -122,11 +122,12 @@ class CheckMyFatoorahPayments extends Command
                         'entity_type'       => 'company',
                         'transaction_type'  => 'debit',
                         'amount'            => $payment->amount,
-                        'description'       => 'Topup success by ' . $payment->client->first_name,
+                        'description'       => 'Topup success by ' . $payment->client->full_name,
                         'payment_id'        => $payment->id,
                         'invoice_id'        => $payment->invoice_id,
                         'payment_reference' => $invoiceRef,
                         'reference_type'    => 'Payment',
+                        'transaction_date' => now(),
                     ]);
 
                     JournalEntry::create([
@@ -140,7 +141,7 @@ class CheckMyFatoorahPayments extends Command
                         'debit'              => 0,
                         'credit'             => $payment->amount,
                         'balance'            => ($clientAdvance->actual_balance ?? 0) - $payment->amount,
-                        'name'               => $payment->client->first_name,
+                        'name'               => $payment->client->full_name,
                         'type'               => 'receivable',
                         'voucher_number'     => $payment->voucher_number,
                         'type_reference_id'  => $clientAdvance->id,

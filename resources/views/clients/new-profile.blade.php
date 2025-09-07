@@ -891,7 +891,7 @@
                         </div>
                     </div>
 
-                    @can('assignAgents', App\Models\Client::class)
+                    @can('assignAgents', $client)
                     <!-- Agent Management Section - Full Width -->
                     <div class="mt-6 pt-6 border-t border-gray-200">
                         <div class="w-full" x-data="agentManager({

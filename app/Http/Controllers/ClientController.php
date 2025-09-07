@@ -184,7 +184,7 @@ class ClientController extends Controller
 
                 // Link client
                 $task->client_id = $client->id;
-                $task->client_name = $client->first_name;
+                $task->client_name = $client->full_name;
 
                 // Attempt to auto-enable
                 if (!$task->enabled && $task->is_complete) {
@@ -616,7 +616,7 @@ class ClientController extends Controller
         // Add company data to CSV
         foreach ($clients as $client) {
             fputcsv($handle, [
-                $client->first_name,
+                $client->full_name,
                 $client->email,
                 $client->phone,
                 $client->agent->name,
@@ -875,11 +875,11 @@ class ClientController extends Controller
                 //     'company_id' => $client->agent->branch->company->id,
                 //     'account_id' =>  $receivableAccountId,
                 //     'transaction_date' => Carbon::now(),
-                //     'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->first_name,
+                //     'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->full_name,
                 //     'debit' => 0,
                 //     'credit' => $payment->amount,
                 //     'balance' => null,
-                //     'name' =>  $client->first_name,
+                //     'name' =>  $client->full_name,
                 //     'type' => 'receivable',
                 //     'voucher_number' => $payment->voucher_number,
                 //     'type_reference_id' => $receivableAccountId
@@ -893,7 +893,7 @@ class ClientController extends Controller
                     'branch_id' => $agent->branch->id,
                     'account_id' =>  $bankPaymentFee->id,
                     'transaction_date' => Carbon::now(),
-                    'description' => 'Client Pays by ' . $client->first_name . ' via (Assets): ' . $bankPaymentFee->name,
+                    'description' => 'Client Pays by ' . $client->full_name . ' via (Assets): ' . $bankPaymentFee->name,
                     'debit' => $payment->amount,
                     'credit' => 0,
                     'name' =>  $bankPaymentFee->name,
@@ -979,7 +979,7 @@ class ClientController extends Controller
 
             Log::info('Credit Update', [
                 'client_id'       => $client->id,
-                'client_name'     => $client->first_name,
+                'client_name'     => $client->full_name,
                 'current_balance' => $balanceCredit,
                 'new_amount'      => $amount,
                 'difference'      => $difference,
@@ -991,7 +991,7 @@ class ClientController extends Controller
                     'company_id'  => $client->agent->branch->company->id,
                     'client_id'   => $client->id,
                     'type'        => 'Update Credit',
-                    'description' => 'Update Credit for ' . $client->first_name,
+                    'description' => 'Update Credit for ' . $client->full_name,
                     'amount'      => $difference,
                 ]);
             }
@@ -1106,7 +1106,7 @@ class ClientController extends Controller
                 'entity_type' => 'client',
                 'transaction_type' => 'credit',
                 'amount' => $request->amount,
-                'description' => 'Client Refund of ' . $client->first_name . ' of ' . $request->amount,
+                'description' => 'Client Refund of ' . $client->full_name . ' of ' . $request->amount,
                 'invoice_id' => null,
                 'reference_type' => 'Refund',
                 'reference_number' => null,
@@ -1119,11 +1119,11 @@ class ClientController extends Controller
                 'company_id' => $agent->branch->company->id,
                 'account_id' =>  $clientAdvance->id,
                 'transaction_date' => Carbon::now(),
-                'description' => 'Deduct Client Advance: ' . $client->first_name . ' of ' . $request->amount,
+                'description' => 'Deduct Client Advance: ' . $client->full_name . ' of ' . $request->amount,
                 'debit' => $request->amount,
                 'credit' => 0,
                 'balance' => null,
-                'name' =>  $client->first_name,
+                'name' =>  $client->full_name,
                 'type' => 'receivable',
                 'voucher_number' => null,
                 'type_reference_id' => $advances->id
@@ -1135,11 +1135,11 @@ class ClientController extends Controller
                 'company_id' => $agent->branch->company->id,
                 'account_id' =>  $clientRefund->id,
                 'transaction_date' => Carbon::now(),
-                'description' => 'Debit Client Refund Payable: ' . $client->first_name . ' of ' . $request->amount,
+                'description' => 'Debit Client Refund Payable: ' . $client->full_name . ' of ' . $request->amount,
                 'debit' => 0,
                 'credit' => $request->amount,
                 'balance' => null,
-                'name' =>  $client->first_name,
+                'name' =>  $client->full_name,
                 'type' => 'payable',
                 'voucher_number' => null,
                 'type_reference_id' => $refundPayable->id
@@ -1164,7 +1164,7 @@ class ClientController extends Controller
                     'company_id'  => $agent->branch->company->id,
                     'client_id'   => $client->id,
                     'type'        => 'Refund Credit',
-                    'description' => 'Refund Credit for ' . $client->first_name,
+                    'description' => 'Refund Credit for ' . $client->full_name,
                     'amount'      => - ($request->amount),
                 ]);
             } catch (Exception $e) {
@@ -1293,7 +1293,7 @@ class ClientController extends Controller
         // Log the assignment request
         Log::info('Client assignment request submitted', [
             'existing_client_id' => $existingClient->id,
-            'existing_client_name' => $existingClient->first_name . ' ' . $existingClient->last_name,
+            'existing_client_name' => $existingClient->full_name,
             'owner_agent_id' => $ownerAgent->id,
             'owner_agent_name' => $ownerAgent->name,
             'requesting_agent_id' => $requestingAgent->id,
@@ -1341,7 +1341,7 @@ class ClientController extends Controller
                 'requesting_agent_id' => $requestingAgent->id,
                 'requesting_agent_name' => $requestingAgent->name,
                 'client_id' => $existingClient->id,
-                'client_name' => $existingClient->first_name . ' ' . $existingClient->last_name,
+                'client_name' => $existingClient->full_name,
                 'client_phone' => $existingClient->phone,
                 'reason' => $reason,
                 'status' => 'pending',
@@ -1411,7 +1411,7 @@ class ClientController extends Controller
                 'type' => 'assignment_approved',
                 'data' => json_encode([
                     'client_id' => $client->id,
-                    'client_name' => $client->first_name . ' ' . $client->last_name,
+                    'client_name' => $client->full_name,
                     'approved_by' => $ownerAgent->name,
                     'approved_at' => now()->toISOString(),
                     'view_client_url' => route('clients.show', $client->id)
@@ -1481,7 +1481,7 @@ class ClientController extends Controller
                 'type' => 'assignment_denied',
                 'data' => json_encode([
                     'client_id' => $client->id,
-                    'client_name' => $client->first_name . ' ' . $client->last_name,
+                    'client_name' => $client->full_name,
                     'denied_by' => $ownerAgent->name,
                     'denied_at' => now()->toISOString(),
                     'reason' => $request->reason

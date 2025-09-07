@@ -730,7 +730,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'invoice_detail_id' => $invoiceDetail->id ?? null,
                         'transaction_id' => $transaction->id ?? null,
-                        'client_name' => $invoice->client->first_name ?? null,
+                        'client_name' => $invoice->client->full_name ?? null,
                         'task' => $task,
                     ]);
 
@@ -739,7 +739,7 @@ class InvoiceController extends Controller
                         $invoice->id,
                         $invoiceDetail->id,
                         $transaction->id,
-                        $invoice->client->first_name,
+                        $invoice->client->full_name,
                     );
                     Log::info('Journal entry response', ['response' => $response]);
                     if ($response['status'] == 'error') {
@@ -1197,7 +1197,7 @@ class InvoiceController extends Controller
         try {
             $companyId = $invoice->agent->branch->company_id;
             $branchId = $invoice->agent->branch_id;
-            $clientName = $invoice->client->first_name;
+            $clientName = $invoice->client->full_name;
             
             // Create transaction for the payment
             $transaction = Transaction::create([
@@ -2006,11 +2006,11 @@ class InvoiceController extends Controller
                         'account_id' =>  $client->id, // Example: assign client account
                         'invoiceDetail_id' =>  $invoiceDetail->id,
                         'transaction_date' => Carbon::now(),
-                        'description' => 'Updated Payment received from: ' . $client->first_name,
+                        'description' => 'Updated Payment received from: ' . $client->full_name,
                         'debit' => 0,
                         'credit' => $task['invprice'],
                         'balance' => $task['invprice'],
-                        'name' =>  $client->first_name,
+                        'name' =>  $client->full_name,
                         'type' => 'receivable',
                     ]);
 
@@ -2314,7 +2314,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'invoice_detail_id' => $invoiceDetail->id ?? null,
                         'transaction_id' => $transaction->id ?? null,
-                        'client_name' => $invoice->client->first_name ?? null,
+                        'client_name' => $invoice->client->full_name ?? null,
                         'task' => $task,
                     ]);
 
@@ -2323,7 +2323,7 @@ class InvoiceController extends Controller
                         $invoice->id,
                         $invoiceDetail->id,
                         $transaction->id,
-                        $invoice->client->first_name,
+                        $invoice->client->full_name,
                     );
 
                     if ($response['status'] == 'error') {
@@ -2434,7 +2434,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $newinvoice->id,
                         'invoice_detail_id' => $newInvoiceDetail->id ?? null,
                         'transaction_id' => $transaction->id ?? null,
-                        'client_name' => $newinvoice->client->first_name ?? null,
+                        'client_name' => $newinvoice->client->full_name ?? null,
                     ]);
 
                     $journalResponse = $this->addJournalEntry(
@@ -2442,7 +2442,7 @@ class InvoiceController extends Controller
                         $newinvoice->id,
                         $newInvoiceDetail->id,
                         $transaction->id,
-                        $newinvoice->client->first_name
+                        $newinvoice->client->full_name
                     );
 
                     if ($journalResponse['status'] === 'error') {
@@ -2513,7 +2513,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'invoice_detail_id' => $invoiceDetail->id ?? null,
                         'transaction_id' => $transaction->id,
-                        'client_name' => $invoice->client->first_name ?? null,
+                        'client_name' => $invoice->client->full_name ?? null,
                         'task' => $task,
                     ]);
 
@@ -2522,7 +2522,7 @@ class InvoiceController extends Controller
                         $invoice->id,
                         $invoiceDetail->id,
                         $transaction->id,
-                        $invoice->client->first_name ?? null
+                        $invoice->client->full_name ?? null
                     );
 
                     if ($response['status'] === 'error') {

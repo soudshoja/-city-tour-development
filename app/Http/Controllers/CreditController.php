@@ -160,6 +160,7 @@ class CreditController extends Controller
                 'amount'            => $request->amount,
                 'description'       => 'Company Advance to Client: ' . $client->first_name,
                 'reference_type'    => 'Payment',
+                'transaction_date' => now(),
             ]);
 
             $transaction = Transaction::create([
@@ -169,8 +170,9 @@ class CreditController extends Controller
                 'entity_type'       => 'Client',
                 'transaction_type'  => 'debit',
                 'amount'            => $request->amount,
-                'description'       => 'Client Credit of ' . $client->first_name,
+                'description'       => 'Client Credit of ' . $client->full_name,
                 'reference_type'    => 'Payment',
+                'transaction_date' => now(),
             ]);
 
             $liabilitiesAccount = Account::where('name', 'Liabilities')

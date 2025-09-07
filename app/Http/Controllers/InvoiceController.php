@@ -2294,6 +2294,7 @@ class InvoiceController extends Controller
                         'description' => 'Invoice: ' . $invoice->invoice_number . ' Generated',
                         'invoice_id' => $invoice->id,
                         'reference_type' => 'Invoice',
+                        'transaction_date' => $invoice->invoice_date,
                     ]);
                 } catch (Exception $e) {
 
@@ -2423,6 +2424,7 @@ class InvoiceController extends Controller
                     'description' => 'Invoice: ' . $newinvoice->invoice_number . ' Generated',
                     'invoice_id' => $newinvoice->id,
                     'reference_type' => 'Invoice',
+                    'transaction_date' => $invoice->invoice_date,
                 ]);
 
                 // Add journal entries
@@ -2502,6 +2504,7 @@ class InvoiceController extends Controller
                     'description' => 'Invoice: ' . $invoice->invoice_number . ' Generated',
                     'invoice_id' => $invoice->id,
                     'reference_type' => 'Invoice',
+                    'transaction_date' => $invoice->invoice_date,
                 ]);
 
                 foreach ($tasks as $task) {

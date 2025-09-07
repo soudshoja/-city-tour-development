@@ -106,18 +106,18 @@
     <div id="invoiceModalComponent">
         <div class="flex flex-col gap-2.5 xl:flex-row">
             <div class="panel flex-1 px-0 py-6 lg:mr-6 ">
-                <div class="flex flex-wrap justify-between px-6 ">
-                    <div class=" shrink-0 items-center text-black dark:text-white min-w-96">
-                            <div class="flex items-center space-x-4">
-                                <x-application-logo class="h-20 w-auto" />
-                                @if ($selectedCompany)
-                                <div>
-                                    <h3 class="font-semibold text-lg">{{ $selectedCompany->name }}</h3>
-                                    <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
-                                    <p>{{ $selectedCompany->email }}</p>
-                                    <p>{{ $selectedCompany->phone }}</p>
-                                </div>
+                <div class="flex flex-wrap justify-between px-6">
+                    <div class="shrink-0 items-center text-black dark:text-white min-w-72 max-w-sm">
+                        <div class="flex items-center space-x-4">
+                            <x-application-logo class="h-20 w-auto" />
+                            @if ($selectedCompany)
+                            <div>
+                                <h3 class="font-semibold text-lg">{{ $selectedCompany->name }}</h3>
+                                <p>{!! nl2br(e($selectedCompany->address)) !!}</p>
+                                <p>{{ $selectedCompany->email }}</p>
+                                <p>{{ $selectedCompany->phone }}</p>
                             </div>
+                        </div>
                          @else
                         <div class="custom-select w-full border rounded-lg mt-4">
                             <div class="select-trigger px-4 py-2 cursor-pointer dark:text-white">Select Company

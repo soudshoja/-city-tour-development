@@ -118,7 +118,7 @@
         <div class="flex justify-between items-center mb-8">
             <div class="text-left">
                 <h3 class="text-lg font-bold text-gray-800">Billed To</h3>
-                <p class="text-sm text-gray-600">{{ $invoice->client->name }}</p>
+                <p class="text-sm text-gray-600">{{ $invoice->client->full_name }}</p>
                 <p class="text-sm text-gray-600">
                     <a href="mailto:{{ $invoice->client->email}}" class="hover:underline hover:text-blue-600">
                         {{ $invoice->client->email ?? 'N/A' }}
@@ -167,7 +167,7 @@
                         $passengerCount = count($roomDetails['passengers'] ?? []);
                         @endphp
                         <p>
-                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}
                             <br>Hotel Name: {{ $detail->task->hotelDetails->hotel->name ?? 'N/A' }}
                             <br>Check In: {{ $detail->task->hotelDetails->check_in ?? 'N/A' }}
                             <br>Check Out: {{ $detail->task->hotelDetails->check_out ?? 'N/A' }}
@@ -177,7 +177,7 @@
                         @elseif ($detail->task->type === 'flight')
                         <p>
                             GDS Reference: {{ $detail->task->gds_reference ?? 'N/A' }}
-                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}
                             <br>Route:
                             {{ $detail->task->flightDetails->countryFrom->name ?? '' }}
                             ({{ $detail->task->flightDetails->airport_from ?? '' }})
@@ -188,7 +188,7 @@
                         </p>
                         @elseif ($detail->task->type === 'visa')
                         <p>
-                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}
                             <br>Visa Type: {{ $detail->task->visaDetails->visa_type ?? 'N/A' }}
                             <br>Application #: {{ $detail->task->visaDetails->application_number ?? 'N/A' }}
                             <br>Expiry Date: {{ !empty($visa?->expiry_date) ? \Carbon\Carbon::parse($visa->expiry_date)->format('d M Y') : 'N/A' }}
@@ -198,7 +198,7 @@
                         </p>
                         @elseif ($detail->task->type === 'insurance')
                         <p>
-                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->name ?? 'N/A') }}
+                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}
                             <br>Insurance Type: {{ $detail->task->insuranceDetails->insurance_type ?? 'N/A' }}
                             <br>Destination: {{ $detail->task->insuranceDetails->destination ?? 'N/A' }}
                             <br>Plan Type: {{ $detail->task->insuranceDetails->plan_type ?? 'N/A' }}

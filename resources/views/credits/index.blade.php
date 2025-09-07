@@ -153,7 +153,7 @@
                                         {{ $recCredits->created_at }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
-                                        {{ $recCredits->client->name ?? '' }}
+                                        {{ $recCredits->client->full_name ?? '' }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         {{ $recCredits->client->agent->name ?? '' }}

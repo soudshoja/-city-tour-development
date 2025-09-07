@@ -21,11 +21,11 @@ default => 'Commission & Profit'
                 
                 <!-- View Type Toggle -->
                 <div class="flex bg-gray-100 rounded-lg p-1">
-                    <a href="{{ route('profile.edit', array_merge(request()->only(['tab', 'month']), ['view_type' => 'task'])) }}"
+                    <a href="{{ route('profile.edit', array_merge(request()->only(['month']), ['tab' => 'Commission', 'view_type' => 'task'])) }}"
                         class="px-3 py-1 rounded text-sm transition-colors {{ $viewType === 'task' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600' }}">
                         By Task
                     </a>
-                    <a href="{{ route('profile.edit', array_merge(request()->only(['tab', 'month']), ['view_type' => 'invoice'])) }}"
+                    <a href="{{ route('profile.edit', array_merge(request()->only(['month']), ['tab' => 'Commission', 'view_type' => 'invoice'])) }}"
                         class="px-3 py-1 rounded text-sm transition-colors {{ $viewType === 'invoice' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:text-blue-600' }}">
                         By Invoice
                     </a>

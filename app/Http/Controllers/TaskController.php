@@ -72,7 +72,7 @@ class TaskController extends Controller
         $sortBy = $request->query('sortBy', 'created_at');
         $sortOrder = $request->query('sortOrder', 'desc');
 
-        $sortableColumns = ['issued_date', 'created_at'];
+        $sortableColumns = ['supplier_pay_date', 'created_at'];
         if (!in_array($sortBy, $sortableColumns)) {
             $sortBy = 'created_at';
         }

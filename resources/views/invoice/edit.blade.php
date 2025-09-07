@@ -387,7 +387,12 @@
                                 </button>
                             </div>
                             <div class="sm:w-2/5 flex justify-end">
-                                <div class="mt-4 font-semibold">
+                                <div class="mt-4 flex flex-col items-end font-semibold space-y-1">
+                                    <div class="flex items-center pb-1 font-medium">
+                                        <div class="mr-2">Total Net:</div>
+                                        <span id="netT">0.00</span>
+                                        <input id="netTotal" type="hidden" name="netTotal" />
+                                    </div>
                                     <div class="flex items-center mb-1">
                                         <div class="mr-2">Subtotal:</div>
                                         <span id="subTotalDisplay">0.00</span>
@@ -405,7 +410,7 @@
                                         <span id="invoiceChargeDisplay">0.00</span>
                                     </div>
                                     <div class="flex items-center border-t pt-1">
-                                        <div class="mr-2">Total:</div>
+                                        <div class="mr-2">Invoice Total:</div>
                                         <span id="subT">0.00</span>
                                         <input id="subTotal" type="hidden" name="subTotal" />
                                     </div>
@@ -495,8 +500,7 @@
                                         </div>
                                         @else
                                         @if ($creditUsed && $creditUsed->amount < 0)
-                                            <a target="_blank"
-                                            href="{{ url('/invoice/' . $invoice->invoice_number) }}"><button
+                                            <a target="_blank" href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}"><button
                                                 type="button"
                                                 class="rounded-full flex flex-col items-center justify-center w-full
                                             px-4 py-2 border border-gray-300 
@@ -2247,6 +2251,12 @@
 
                 const totalAmountElement = document.getElementById('total-amount');
                 if (totalAmountElement) totalAmountElement.value = finalTotal;
+
+                const netTotals = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+                const netT = document.getElementById('netT');
+                if (netT) netT.textContent = netTotals.toFixed(2);
+                const netTotal = document.getElementById('netTotal');
+                if (netTotal) netTotal.value = netTotals.toFixed(2);
             }
 
             document.getElementById('payment_method_full')?.addEventListener('change', calculateSubtotal);
@@ -3033,8 +3043,8 @@
                 document.getElementById('receiverId').value = client.id;
                 document.getElementById('clientid').value = client.id;
                 // Update input fields
-                document.getElementById('receiverName').value = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
-                document.getElementById('receiverName1').textContent = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
+                document.getElementById('receiverName').value = client.full_name;
+                document.getElementById('receiverName1').textContent = client.full_name;
                 document.getElementById('receiverEmail').value = client.email;
                 document.getElementById('receiverPhone').value = client.phone;
 

@@ -1,22 +1,22 @@
 <x-app-layout>
+    <!-- Add this in your <head> or before the closing </body> tag -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <style>
         .supplier-details {
             text-transform: uppercase;
             display: flex;
             justify-content: space-between;
         }
-
-        .supplier-details>div>div {
+        .supplier-details > div > div {
             width: 100%;
             margin: 0.5rem 0;
             padding: 0.5rem;
             border-radius: 5px;
         }
-
         .loading {
             position: relative;
         }
-
         .loading::after {
             content: '';
             position: absolute;
@@ -26,6 +26,8 @@
             background-color: rgba(0, 0, 0, 0.5);
         }
     </style>
+
+    <!-- Breadcrumb -->
     <div>
         <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
             <li class="hover:underline">
@@ -36,13 +38,14 @@
             </li>
         </ul>
     </div>
-        
+
     <div class="flex flex-col gap-2">
+        <!-- Supplier Header -->
         <div class="grid bg-gradient-to-r from-blue-600 to-gray-800 p-4 rounded-md shadow-md w-full">
-            <div class="flex justify-between items-center gap-4">
+            <div class="flex justify-between items-center gap-4 mb-4">
                 <div class="flex items-center justify-center rounded-full bg-black/50 font-semibold text-white p-2">
-                    <x-application-logo class="" />
-                    <h3 class="">{{ $supplier->name }}</h3>
+                    <x-application-logo style="width:32px;height:32px;" />
+                    <h3 class="ml-2">{{ $supplier->name }}</h3>
                 </div>
                 <button type="button" class="flex h-9 w-9 items-center justify-between rounded-md bg-black text-white hover:opacity-80 ltr:ml-auto rtl:mr-auto">
                     <svg class="m-auto h-6 w-6" viewBox="0 0 24 24" fill="none"
@@ -56,42 +59,67 @@
                     </svg>
                 </button>
             </div>
-            <div id="debit-credit" class="bg-white mt-2 rounded-t-md shadow-md w-full max-h-96 overflow-y-auto">
-                @foreach($JournalEntry as $item)
-                <div id="{{ $item->id }}" class="general-ledger-rows grid grid-cols-2 gap-2 p-2 text-center">
-                    <div>{{ $item->debit }}</div>
-                    <div>{{ $item->credit }}</div>
-                    <input type="hidden" name="created_at" value="{{ $item->created_at }}">
-                </div>
-                @endforeach
-            </div>
-            <div class="p-2 flex justify-evenly gap-4 bg-white" id="debit-credit-container">
-                <div class="text-center bg-gradient-to-r from-green-400 to-green-800 p-2 rounded-md text-white font-semibold w-full">
-                    Debit
-                </div>
-                <div class="text-center bg-gradient-to-r from-red-400 to-red-800 p-2 rounded-md text-white font-semibold w-full">
-                    Credit
-                </div>
-            </div>
-            <!-- <div class="text-center bg-white p-2 rounded-b-md">
-                <div colspan="2">
-                    <div class="flex">
-                        <div class="rounded-l-md bg-gray-200 p-2 flex justify-center items-center">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M22 14V12C22 8.22876 22 6.34315 20.8284 5.17157C19.6569 4 17.7712 4 14 4M14 22H10C6.22876 22 4.34315 22 3.17157 20.8284C2 19.6569 2 17.7712 2 14V12C2 8.22876 2 6.34315 3.17157 5.17157C4.34315 4 6.22876 4 10 4" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                <path d="M7 4V2.5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                <path d="M17 4V2.5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                <circle cx="18" cy="18" r="3" stroke="#1C274C" stroke-width="1.5" />
-                                <path d="M20.5 20.5L22 22" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                                <path d="M21.5 9H16.625H10.75M2 9H5.875" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" />
-                            </svg>
-                        </div>
-                        <input type="date" name="" id="" class="w-full rounded-r-md p-2" disabled>
-                    </div>
-                </div>
-            </div> -->
 
+            <!-- Debit/Credit Filter & Summary -->
+            <div class="flex flex-col md:flex-row gap-2 mb-4 justify-end">
+                <div class="flex gap-2 items-center">
+                    <label for="date-range" class="text-white font-semibold flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7V3M16 7V3M4 11H20M5 19H19M4 5H20" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Date Range:
+                    </label>
+            <input type="text" id="date-range" class="rounded p-1" style="width: 300px;" placeholder="Select date range" />        <button id="filter-btn" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 6h18v10a1 1 0 01-1 1H4a1 1 0 01-1-1V10z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Filter
+                    </button>
+                    <button id="clear-btn" class="bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Clear
+                    </button>
+                    <span id="loading-spinner" class="ml-2 hidden">
+                        <svg class="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        </svg>
+                    </span>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 mb-4">
+                <div class="text-center bg-gradient-to-r from-green-400 to-green-800 p-2 rounded-md text-white font-semibold">
+                    <div>Debit:</div>
+                    <div id="total-debit" class="text-2xl font-bold">0.00</div>
+                </div>
+                <div class="text-center bg-gradient-to-r from-red-400 to-red-800 p-2 rounded-md text-white font-semibold">
+                    <div>Credit:</div>
+                    <div id="total-credit" class="text-2xl font-bold">0.00</div>
+                </div>
+            </div>
+
+            <!-- Ledger Table -->
+            <div id="debit-credit" class="bg-white rounded-md shadow-md w-full max-h-96 overflow-y-auto">
+        <div class="grid grid-cols-7 font-bold bg-gray-100 p-2 text-center rounded-t border-b border-gray-300 sticky top-0 z-10">
+            <div>Date</div>
+            <div>Task Ref</div>
+            <div>Task Type</div>
+            <div>Agent</div>
+            <div>Account</div>
+            <div>Debit</div>
+            <div>Credit</div>
         </div>
+        @foreach($JournalEntry as $item)
+        <div id="{{ $item->id }}" class="general-ledger-rows grid grid-cols-7 gap-2 p-2 text-center">
+            <div>{{ \Carbon\Carbon::parse($item->created_at)->format('Y-m-d') }}</div>
+            <div>{{ $item->task ? $item->task->reference : '-' }}</div>
+            <div>{{ $item->task ? $item->task->type : '-' }}</div>
+            <div>{{ $item->task && $item->task->agent ? $item->task->agent->name : '-' }}</div>
+            <div>{{ $item->account ? $item->account->name : '-' }}</div>
+            <div>{{ $item->debit }}</div>
+            <div>{{ $item->credit }}</div>
+        </div>
+        @endforeach
+            </div>
+        </div>
+
+        <!-- Supplier Tasks -->
         <div class="flex flex-col rounded-md bg-white p-4 shadow-md">
             <strong class="my-2">Task of this supplier</strong>
             <div>
@@ -103,7 +131,7 @@
                             <th>Type</th>
                         </tr>
                     </thead>
-                    <tbody class="">
+                    <tbody>
                         @foreach($supplier->tasks as $task)
                         <tr>
                             <td>{{ $task->reference }}</td>
@@ -116,122 +144,122 @@
             </div>
         </div>
     </div>
+
+    <!-- Supplier Details -->
     <div class="body p-6 bg-white border-b border-gray-200 rounded-md shadow-md my-2">
         <div class="font-semibold text-lg">
             Supplier Details
         </div>
         <div class="supplier-details">
             <div class="overflow-hidden">
-                <div>
-                    {{ $supplier->name }}
-                </div>
-                <div>
-                    {{ $supplier->contact_person }}
-                </div>
-                <div>
-                    {{ $supplier->email }}
-                </div>
-                <div>
-                    {{ $supplier->phone }}
-                </div>
-                <div>
-                    {{ $supplier->address }}
-                </div>
-                <div>
-                    {{ $supplier->city }}
-                </div>
+                <div>{{ $supplier->name }}</div>
+                <div>{{ $supplier->contact_person }}</div>
+                <div>{{ $supplier->email }}</div>
+                <div>{{ $supplier->phone }}</div>
+                <div>{{ $supplier->address }}</div>
+                <div>{{ $supplier->city }}</div>
             </div>
             <div class="overflow-hidden">
-                <div>
-                    {{ $supplier->state }}
-                </div>
-                <div>
-                    {{ $supplier->state }}
-                </div>
-                <div>
-                    {{ $supplier->postal_code }}
-                </div>
-                <div>
-                    {{ $supplier->country->name }}
-                </div>
-                <div>
-                    {{ $supplier->payment_terms }}
-                </div>
+                <div>{{ $supplier->state }}</div>
+                <div>{{ $supplier->postal_code }}</div>
+                <div>{{ $supplier->country->name }}</div>
+                <div>{{ $supplier->payment_terms }}</div>
             </div>
         </div>
     </div>
-    <script>
-        let supplierId = @json($supplier -> id);
-
-        const debitCredit = document.getElementById('debit-credit');
-        debitCredit.scrollTop = debitCredit.scrollHeight;
-        let lastUpdatedDate = null;
-
-        const date = new Date();
 
 
-        updateDate(date);
-        updateTotal(date);
+  <script>
+    let supplierId = @json($supplier->id);
 
-        let allRows = document.querySelectorAll('#debit-credit>div');
+    const filterBtn = document.getElementById('filter-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    const dateRangeInput = document.getElementById('date-range');
 
-        let debitCreditView = debitCredit.getBoundingClientRect();
+    // Initialize flatpickr for range selection
+    flatpickr(dateRangeInput, {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        defaultDate: [new Date().toISOString().split('T')[0], new Date().toISOString().split('T')[0]]
+    });
 
-        $(function() {
-            var timer;
-            $(debitCredit).scroll(function() {
-                if (timer) {
-                    window.clearTimeout(timer);
+    filterBtn.addEventListener('click', function() {
+        updateTotal();
+    });
+
+    clearBtn.addEventListener('click', function() {
+        dateRangeInput.value = '';
+        // Clear ledger rows except header
+        let ledgerBody = document.getElementById('debit-credit');
+        let rows = ledgerBody.querySelectorAll('.general-ledger-rows');
+        rows.forEach(row => row.remove());
+        // Reset totals
+        document.getElementById('total-debit').textContent = '0.00';
+        document.getElementById('total-credit').textContent = '0.00';
+    });
+
+    function updateTotal() {
+        let dates = dateRangeInput.value.split(' to ');
+        let fromDate = dates[0] ? dates[0].trim() : '';
+        let toDate = dates[1] ? dates[1].trim() : dates[0];
+
+        if (!fromDate || !toDate) return;
+
+        let url = `{{ route('suppliers.suppliers.ledger-by-date', 
+        ['supplierId' => '__supplierId__']) }}?fromDate=${fromDate} 00:00:00&toDate=${toDate} 23:59:59`;    
+        url = url.replace('__supplierId__', supplierId);
+
+        let debitSpan = document.getElementById('total-debit');
+        let creditSpan = document.getElementById('total-credit');
+        let ledgerBody = document.getElementById('debit-credit');
+
+        debitSpan.textContent = '...';
+        creditSpan.textContent = '...';
+        filterBtn.disabled = true;
+        clearBtn.disabled = true;
+        loadingSpinner.classList.remove('hidden');
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                debitSpan.textContent = parseFloat(data.totalDebit).toFixed(2);
+                creditSpan.textContent = parseFloat(data.totalCredit).toFixed(2);
+
+                // Remove old rows except header
+                let rows = ledgerBody.querySelectorAll('.general-ledger-rows');
+                rows.forEach(row => row.remove());
+
+                if (data.entries.length === 0) {
+                    let emptyRow = document.createElement('div');
+                    emptyRow.className = 'general-ledger-rows grid grid-cols-5 gap-2 p-2 text-center text-gray-500';
+                    emptyRow.innerHTML = `<div colspan="5">No entries found for selected dates.</div>`;
+                    ledgerBody.appendChild(emptyRow);
+                } else {
+                    data.entries.forEach(item => {
+                        let row = document.createElement('div');
+                        row.className = 'general-ledger-rows grid grid-cols-7 gap-2 p-2 text-center';
+                        row.innerHTML = `
+                            <div>${item.created_at.substring(0, 10)}</div>
+                            <div>${item.task ? item.task.reference : '-'}</div>
+                            <div>${item.task ? item.task.type : '-'}</div>
+                            <div>${item.task && item.task.agent ? item.task.agent.name : '-'}</div>
+                            <div>${item.account ? item.account.name : '-'}</div>
+                            <div>${parseFloat(item.debit).toFixed(2)}</div>
+                            <div>${parseFloat(item.credit).toFixed(2)}</div>
+                        `;
+                        ledgerBody.appendChild(row);
+                    });
                 }
-                timer = window.setTimeout(function() {
-                    let lastVisibleRow = null;
-                    for (let row of allRows) {
-                        console.log('row : ' + row);
-                        let item = row.getBoundingClientRect();
-                        if (item.bottom <= debitCreditView.bottom) {
-                            lastVisibleRow = row;
-                        }
-                    }
-                    date = lastVisibleRow.querySelector('input[name="created_at"]').value;
-                    date.getHours();
-                    updateDate(date);
-                    updateTotal(date);
-                }, 100);
+            })
+            .finally(() => {
+                filterBtn.disabled = false;
+                clearBtn.disabled = false;
+                loadingSpinner.classList.add('hidden');
             });
-        })
+    }
 
-        function updateDate(date) {
-            const month = date.getMonth() + 1;
-            const day = date.getDate();
-            const year = date.getFullYear();
-            const today = `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}`;
-            document.querySelector('input[type="date"]').value = today;
-        }
-
-        function updateTotal(date) {
-            //format date to yyyy-mm-dd hh:mm:ss
-            date = date.toISOString().split('T')[0] + ' 23:59:59';
-            console.log('date in updateTotal: ' + date);
-            let totalDebit = 0;
-            let totalCredit = 0;
-
-            // Route::get('/suppliers/total-ledger/{supplierId}/date/{$endDate}',[SupplierController::class, 'getTotalDebitCredit'])->name('suppliers.total-ledger');
-            let url = `{{ route('suppliers.total-ledger', ['supplierId' => '__supplierId__', 'endDate' => '__endDate__']) }}`;
-            url = url.replace('__endDate__', date);
-            url = url.replace('__supplierId__', supplierId);
-
-            let debitCreditContainer = document.getElementById('debit-credit-container');
-            debitCreditContainer.classList.add('loading');
-
-            $response = fetch(url).then(response => response.json()).then(data => {
-                totalDebit = data.totalDebit;
-                totalCredit = data.totalCredit;
-
-                debitCreditContainer.querySelector('div:nth-child(1)').textContent = totalDebit;
-                debitCreditContainer.querySelector('div:nth-child(2)').textContent = totalCredit;
-
-                debitCreditContainer.classList.remove('loading');
-            });
-        }
-    </script>
+    // Initial load
+    updateTotal();
+</script>
 </x-app-layout>

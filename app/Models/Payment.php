@@ -78,6 +78,17 @@ class Payment extends Model
         return $this->hasOne(MyFatoorahPayment::class, 'payment_int_id', 'id');
     }
 
+    public function findMyFatoorahPayment()
+    {
+        if (empty($this->payment_reference)) {
+            return null;
+        }
+        
+        return MyFatoorahPayment::where('invoice_id', $this->payment_reference)
+            ->orWhere('payment_id', $this->payment_reference)
+            ->first();
+    }
+
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class, 'payment_method_id');

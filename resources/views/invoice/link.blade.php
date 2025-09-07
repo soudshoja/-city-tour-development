@@ -117,11 +117,9 @@
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         <!-- Main Invoice Link -->
-                                        <a href="{{ url('/invoice/' . $invoice->invoice_number) }}"
-                                            class="text-blue-500 hover:underline" target="_blank">
-                                            {{ url('/invoice/' . $invoice->invoice_number) }}
+                                        <a href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" target="_blank">
+                                            {{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}
                                         </a>
-
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         {{ ucwords($invoice->payment_type) }}
@@ -130,7 +128,7 @@
                                         x-data="{ editClientPhone: false}">
                                         <p
                                             class="cursor-pointer text-blue-500 hover:underline" @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
-                                            {{ $invoice->client->first_name . ' ' . $invoice->client->middle_name . ' ' . $invoice->client->last_name }}
+                                            {{ $invoice->client->full_name }}
                                         </p>
                                         <div x-cloak x-show="editClientPhone" class="fixed bg-gray-800 inset-0 bg-opacity-75 flex items-center justify-center z-50">
                                             <div
@@ -238,9 +236,8 @@
                                         {{ $invoice->invoice_number }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
-                                        <a href="{{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id. '/' . $partial->id) }}"
-                                            class="text-green-500 hover:underline" target="_blank">
-                                            {{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}
+                                        <a href="{{ route('invoice.split', ['invoiceNumber' => $invoice->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id])}}" class="text-green-500 hover:underline" target="_blank">
+                                            {{ route('invoice.split', ['invoiceNumber' => $invoice->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id])}}
                                         </a>
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
@@ -250,7 +247,7 @@
                                         <p
                                             class="cursor-pointer text-blue-500 hover:underline"
                                             @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
-                                            {{ $partial->client->first_name . ' ' . $partial->client->middle_name . ' ' . $partial->client->last_name }}
+                                            {{ $partial->client->full_name }}
                                         </p>
                                         <div
                                             x-cloak

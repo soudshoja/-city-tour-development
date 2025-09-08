@@ -1153,8 +1153,12 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'You are not authorized to view payment links.');
         }
 
-        $clients = Client::whereIn('agent_id', $agentsId)->get();
-        $payments = Payment::with('invoice')
+    $clients = Client::where(function ($query) use ($agentsId) {
+        $query->whereIn('agent_id', $agentsId)
+              ->orWhereHas('agents', function ($q) use ($agentsId) {
+                  $q->whereIn('agent_id', $agentsId);
+              });
+    })->get();        $payments = Payment::with('invoice')
             ->where(function ($query) use ($agentsId) {
                 $query->whereHas('invoice', function ($payment) use ($agentsId) {
                     $payment->whereIn('agent_id', $agentsId);
@@ -1172,6 +1176,7 @@ class PaymentController extends Controller
             $payments = $payments->where(function ($query) use ($search) {
                 $query->where('payment_reference', 'like', '%' . $search . '%')
                     ->orWhere('payment_gateway', 'like', '%' . $search . '%')
+                    ->orWhere('voucher_number', 'like', '%' . $search . '%')
                     ->orWhereHas('paymentMethod', function ($q) use ($search) {
                         $q->where('english_name', 'like', '%' . $search . '%');
                     })
@@ -1258,8 +1263,12 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'You are not authorized to create payment links.');
         }
 
-        $clients = Client::whereIn('agent_id', $agentsId)->get();
-        $invoices = Invoice::all();
+    $clients = Client::where(function ($query) use ($agentsId) {
+        $query->whereIn('agent_id', $agentsId)
+              ->orWhereHas('agents', function ($q) use ($agentsId) {
+                  $q->whereIn('agent_id', $agentsId);
+              });
+    })->get();        $invoices = Invoice::all();
         $payments = Payment::all();
         $currencies = Currency::all();
         $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)

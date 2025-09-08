@@ -109,11 +109,11 @@
                                 <td
                                     class=" p-3 text-sm font-semibold text-gray-900 dark:text-gray-300 text-center">
                                     @if($client->agents->isEmpty())
+                                    {{ $client->agent->name }}
                                     @else
                                     @if($client->agents->count() == 1)
-                                    {{ $client->agent ? $client->agent->name : 'N/A' }}
+                                    {{ $client->agents->first()->name }}
                                     @else
-
                                     <div class="dropdown inline-block relative" x-data="{ open: false }">
                                         <button
                                             @click="open = !open"

@@ -26,6 +26,7 @@ use App\Services\ChargeService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Throwable;
 
@@ -87,7 +88,7 @@ class RefundController extends Controller
 
         $invoicePaymentStatus = $task->originalTask->invoiceDetail->invoice->status;
 
-        if($invoicePaymentStatus === 'paid' || $invoicePaymentStatus === 'unpaid'){
+        if(!($invoicePaymentStatus === 'paid' || $invoicePaymentStatus === 'unpaid')){
            Log::error('Invoice status of task ID ' . $task->id . ' is ' . $invoicePaymentStatus . ' which is not valid for refund processing.');
            return redirect()->back()->withErrors(['error' => 'Invoice with payment status of ' . $invoicePaymentStatus . ' cannot be processed for refund yet. Sorry for the inconvenience.']);
         }
@@ -404,7 +405,7 @@ class RefundController extends Controller
         return redirect()->route('refunds.index')->with('success', 'Refund processed successfully.');
     }
 
-    public function storeForUnpaidInvoice(Request $request)
+    public function storeForUnpaidInvoice(Request $request) : RedirectResponse
     {
         $request->validate([
             'task_id' => ['required', 'exists:tasks,id'],
@@ -417,7 +418,8 @@ class RefundController extends Controller
             'reference' => ['nullable', 'string'],
             'reason' => ['nullable', 'string'],
             'payment_gateway_option' => ['nullable', 'string'],
-            'payment_method' => ['nullable', 'numeric']
+            'payment_method' => ['nullable', 'numeric'],
+            'service_charge' => ['required', 'numeric', 'min:0']
         ]);
 
         $task = Task::findOrFail($request->input('task_id'));
@@ -432,6 +434,8 @@ class RefundController extends Controller
 
         //total net refund = original invoice price - new invoice price
         $calculatedTotalNetRefund = $request->input('original_invoice_price') - $request->input('invoice_price');
+
+        $refundInvoicePrice = $request->input('invoice_price');
 
         DB::beginTransaction();
         try {
@@ -449,7 +453,7 @@ class RefundController extends Controller
                 'original_task_profit' => $request->input('original_task_profit'),
                 'new_task_profit' => $request->input('new_agent_markup'),
                 'total_nett_refund' => $calculatedTotalNetRefund,
-                'service_charge' => $request->input('supplier_charge'),
+                'service_charge' => $request->input('service_charge'),
                 'method' => $request->input('method', 'Bank'),
                 'payment_gateway' => $request->input('payment_gateway_option'),
                 'payment_method' => $request->input('payment_method'),
@@ -466,7 +470,7 @@ class RefundController extends Controller
                 'branch_id' => $task->agent->branch_id,
                 'transaction_type' => 'debit',
                 'transaction_date' => $request->date,
-                'amount' => $request->input('invoice_price'),
+                'amount' => $refundInvoicePrice,
                 'description' => 'Refund - Record Agent Commission',
                 'reference_type' => 'Refund',
                 'reference_number' => $request->reference,
@@ -590,7 +594,41 @@ class RefundController extends Controller
             return back()->withErrors(['error' => 'An unexpected error occurred while processing the refund.']);
         }
 
-        $createInvoiceResponse = $this->createInvoiceFromRefund($task, $refund, $request->input('payment_gateway_option'), $request->input('payment_method'));
+        $supplierCharge = $request->input('original_task_profit') + $request->input('supplier_charge');
+
+        $createInvoiceResponse = $this->createInvoiceFromRefund(
+            $task,
+            $refund,
+            $refundInvoicePrice,
+            $supplierCharge,
+            $request->input('payment_gateway_option'),
+            $request->input('payment_method')
+        );
+
+        if($createInvoiceResponse instanceof JsonResponse && $createInvoiceResponse->getStatusCode() !== 200) {
+            // Rollback the refund and related transactions if invoice creation failed
+            DB::beginTransaction();
+            try {
+                // Delete the refund
+                $refund->delete();
+                // Revert the invoice status if it was changed
+                if (isset($invoice) && $invoice->status === 'paid by refund') {
+                    $invoice->status = 'unpaid';
+                    $invoice->save();
+                }
+                // Delete the transaction related to the refund
+                if (isset($txnRefund)) {
+                    Transaction::where('id', $txnRefund->id)->delete();
+                }
+                DB::commit();
+            } catch (Throwable $rollbackException) {
+                DB::rollBack();
+                Log::error('Failed to rollback refund process for refund ID ' . $refund->id . ': ' . $rollbackException->getMessage());
+            }
+
+            return redirect()->back()->withErrors(['error' => $createInvoiceResponse->getData(true)['error'] ?? 'Something went wrong'])->withInput();
+        }
+
 
         $invoiceId = $createInvoiceResponse->getData(true)['invoiceId'];
 
@@ -617,7 +655,8 @@ class RefundController extends Controller
                 Log::error('Failed to rollback refund process for refund ID ' . $refund->id . ': ' . $rollbackException->getMessage());
             }
 
-            throw new Exception('Failed to create new invoice from refund.');
+            Log::error('Failed to create invoice from refund for refund ID ' . $refund->id . ' and task ID ' . $task->id);
+            return redirect()->back()->withErrors(['error' => 'An unexpected error occurred while processing the refund. Please try again.']);
         }
 
         $refund->update(['invoice_id' => $invoiceId]);
@@ -991,7 +1030,14 @@ class RefundController extends Controller
         return redirect()->route('refunds.index')->with('success', 'Refund Client deleted successfully.');
     }
 
-    public function createInvoiceFromRefund(Task $task, Refund $refund, string $paymentGateway, string $paymentMethod = ''): JsonResponse
+    public function createInvoiceFromRefund(
+        Task $task,
+        Refund $refund,
+        float $invoicePrice,
+        float $supplierCharge,
+        string $paymentGateway,
+        string $paymentMethod = ''
+    ): JsonResponse
     {
         $user = Auth::user();
 
@@ -1008,63 +1054,56 @@ class RefundController extends Controller
             $currentSequence = $invoiceSequence->current_sequence;
             $invoiceNumber = app(InvoiceController::class)->generateInvoiceNumber($currentSequence);
 
-            // Calculate pricing based on unpaid-invoice.blade.php logic
-            // Invoice price = old markup + supplier_charge (this is what client pays)
-            $invoicePrice = $refund->original_task_profit + $refund->service_charge;
-            
-            // task_price = new refund invoice price (what client will pay)
-            $taskPrice = $invoicePrice;
-            
-            // supplier_price = old markup + supplier_charge
-            $supplierPrice = $refund->original_task_profit + $refund->service_charge;
-            
-            // markup_price = new markup price
-            $markupPrice = $refund->new_task_profit;
 
             // Create Invoice
-            $invoice = Invoice::create([
-                'invoice_number' => $invoiceNumber,
-                'invoice_date' => $refund->date,
-                'due_date' => Carbon::parse($refund->date)->addDays(5)->toDateString(),
-                'client_id' => $refund->task->client_id,
-                'agent_id' => $refund->task->agent_id,
-                'company_id' => $companyId,
-                'branch_id' => $task->agent->branch_id,
-                'amount' => $invoicePrice,
-                'currency' => $task->exchange_currency ?? 'KWD',
-                'status' => 'unpaid',
-                'label' => 'refund',
-                'created_by' => Auth::user()->id,
-            ]);
+            try {
+                $invoice = Invoice::create([
+                    'invoice_number' => $invoiceNumber,
+                    'client_id' => $refund->task->client_id,
+                    'agent_id' => $refund->task->agent_id,
+                    'currency' => $task->exchange_currency ?? 'KWD',
+                    'sub_amount' => $invoicePrice,
+                    'invoice_charge' => 0,
+                    'amount' => $invoicePrice,
+                    'status' => 'unpaid',
+                    'invoice_date' => $refund->date,
+                    'paid_date' => null,
+                    'due_date' => Carbon::parse($refund->date)->addDays(5)->toDateString(),
+                    'label' => 'refund',
+                    'payment_type' => 'full'
+                ]);
 
-            // Create Invoice Detail
-            $invoiceDetail = InvoiceDetail::create([
-                'invoice_id' => $invoice->id,
-                'task_id' => $task->id,
-                'task_price' => $taskPrice,
-                'supplier_price' => $supplierPrice,
-                'markup_price' => $markupPrice,
-                'description' => 'Refund for Task ID: ' . $task->id . ' - ' . ($task->description ?? ''),
-                'created_by' => Auth::user()->id,
-            ]);
+                // Create Invoice Detail
+                $invoiceDetail = InvoiceDetail::create([
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoiceNumber,
+                    'task_id' => $task->id,
+                    'task_description' => 'refund for task' . $task->reference,
+                    'task_price' => $invoicePrice,
+                    'supplier_price' => $supplierCharge,
+                    'markup_price' => $refund->new_task_profit,
+                    'description' => 'Refund for Task ID: ' . $task->id . ' - ' . ($task->description ?? ''),
+                    'created_by' => Auth::user()->id,
+                ]);
 
-            // Create Invoice Partial
-            $invoicePartial = InvoicePartial::create([
-                'invoice_id' => $invoice->id,
-                'date' => $refund->date,
-                'client_id' => $refund->task->client_id,
-                'amount' => $invoicePrice,
-                'type' => 'full',
-                'invoice_number' => $invoiceNumber,
-                'gateway' => $paymentGateway,
-                'method' => $paymentMethod,
-                'credit' => false,
-                'external_url' => null,
-                'invoice_charge' => 0,
-                'company_id' => $companyId,
-                'created_by' => Auth::user()->id,
-            ]);
+                // Create Invoice Partial
+                $invoicePartial = InvoicePartial::create([
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoiceNumber,
+                    'client_id' => $refund->task->client_id,
+                    'service_charge' => $refund->service_charge,
+                    'amount' => $invoicePrice,
+                    'status' => 'unpaid',
+                    'expiry_date' => Carbon::parse($refund->date)->addDays(5)->toDateString(),
+                    'type' => 'full',
+                    'payment_gateway' => $paymentGateway,
+                    'payment_method' => $paymentMethod,
+                ]);
 
+            } catch (Exception $e) {
+                Log::error('Failed to create invoice or related records: ' . $e->getMessage());
+                return response()->json(['error' => 'Failed to create invoice or related records.'], 500);
+            }
             // Update invoice sequence
             $invoiceSequence->increment('current_sequence');
 

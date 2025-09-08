@@ -18,7 +18,7 @@
 
             <option value="{{ $gateway->name }}"
                 data-gateway-id="{{ $gateway->id }}"
-                {{ $selectedPaymentGateway == strtolower($gateway->name) ? 'selected' : '' }}>
+                {{ $selectedPaymentGateway == strtolower(old('payment_gateway_option', $gateway->name)) ? 'selected' : '' }}>
                 {{ $gateway->name }}
                 @if(isset($gateway->gateway_fee) && $gateway->gateway_fee > 0)
                 (Fee: {{ number_format($gateway->gateway_fee, 2) }})
@@ -65,15 +65,28 @@
             </div>
         </div>
     </div>
+
+    <!-- Hidden service charge input to send to backend -->
+    <input type="hidden" name="service_charge" id="service_charge" value="{{ old('service_charge', isset($refund) ? ($refund->service_charge ?? 0) : 0) }}">
 </div>
 
 <script>
     // Payment gateway data from backend
     const paymentGateways = @json($paymentGateways ?? []);
     const paymentMethods = @json($paymentMethods ?? []);
+    let old_payment_gateway = "{{ old('payment_gateway_option', isset($refund) ? strtolower($refund->invoice->invoicePartials->first()->payment_gateway) : '') }}";
+    let old_payment_method = "{{ old('payment_method', isset($refund) ? (int)($refund->invoice->invoicePartials->first()->payment_method ?? 0) : '') }}";
     
     // Selected values for editing mode
     const selectedPaymentMethod = {{ isset($refund) ? (int)($refund->invoice->invoicePartials->first()->payment_method ?? 0) : 0 }};
+
+    // Function to update the service charge input
+    function updateServiceCharge(amount) {
+        const serviceChargeInput = document.getElementById('service_charge');
+        if (serviceChargeInput) {
+            serviceChargeInput.value = parseFloat(amount).toFixed(2);
+        }
+    }
 
     function updatePaymentMethods() {
         const gatewaySelect = document.getElementById('payment_gateway_option');
@@ -93,11 +106,18 @@
         gatewayFeeDisplay.style.display = 'none';
         autoPaymentNotification.style.display = 'none';
 
+        // Reset service charge
+        updateServiceCharge(0);
+
         if (selectedGateway) {
             // Find the selected gateway data
             const gateway = paymentGateways.find(g => g.name === selectedGateway);
 
             if (gateway) {
+                // Update service charge with gateway fee
+                let serviceCharge = gateway.gateway_fee ? parseFloat(gateway.gateway_fee) : 0;
+                updateServiceCharge(serviceCharge);
+
                 // Show gateway fee if available
                 if (gateway.gateway_fee && gateway.gateway_fee > 0) {
                     gatewayFeeAmount.textContent = `Gateway fee: ${parseFloat(gateway.gateway_fee).toFixed(2)}`;
@@ -142,11 +162,24 @@
     document.getElementById('payment_method_full').addEventListener('change', function() {
         const selectedMethodId = this.value;
         const gatewayFeeAmount = document.getElementById('gateway_fee_amount');
+        const gatewaySelect = document.getElementById('payment_gateway_option');
+        const selectedGateway = gatewaySelect.value;
 
         if (selectedMethodId) {
             const method = paymentMethods.find(m => m.id == selectedMethodId);
             if (method && method.gateway_fee && method.gateway_fee > 0) {
                 gatewayFeeAmount.textContent = `Payment method fee: ${parseFloat(method.gateway_fee).toFixed(2)}`;
+                // Update service charge with payment method fee
+                updateServiceCharge(method.gateway_fee);
+            }
+        } else {
+            // If no payment method selected, revert to gateway fee
+            const gateway = paymentGateways.find(g => g.name === selectedGateway);
+            if (gateway && gateway.gateway_fee) {
+                gatewayFeeAmount.textContent = `Gateway fee: ${parseFloat(gateway.gateway_fee).toFixed(2)}`;
+                updateServiceCharge(gateway.gateway_fee);
+            } else {
+                updateServiceCharge(0);
             }
         }
     });
@@ -154,5 +187,14 @@
     // Initialize the payment gateway selection when page loads (for editing mode)
     document.addEventListener('DOMContentLoaded', function() {
         updatePaymentMethods(); // This will set up the initial state based on selected gateway
+        
+        // If we're in editing mode and there's a selected payment method, update the service charge accordingly
+        const gatewaySelect = document.getElementById('payment_gateway_option');
+        const paymentMethodSelect = document.getElementById('payment_method_full');
+        
+        if (gatewaySelect.value && paymentMethodSelect.value) {
+            // Trigger the payment method change event to set the correct service charge
+            paymentMethodSelect.dispatchEvent(new Event('change'));
+        }
     });
 </script>

@@ -460,7 +460,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
         ];
     }
 
-     public function getClientCredential(array $scopes) : array
+    public function getClientCredential(array $scopes) : array
     {
         $user = Auth::user();
         if ($user->role_id == Role::COMPANY) {
@@ -468,7 +468,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
         } elseif ($user->role_id == Role::BRANCH) {
             $companyId = $user->branch->company_id;
         } elseif($user->role_id == Role::AGENT) {
-            $companyId = $user->agent->company_id;
+            $companyId = $user->agent->branch->company_id;
         } 
         
         $credential = SupplierCredential::query()
@@ -508,6 +508,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
         }
 
     }
+    
     public function magicReserveWebhook($id)
     {
 

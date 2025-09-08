@@ -5,7 +5,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Client Credit Ledger</h1>
-                        <p class="text-lg text-gray-600 dark:text-slate-300">Client: {{ $client->name }}</p>
+                        <p class="text-lg text-gray-600 dark:text-slate-300">Client: {{ $client->full_name }}</p>
                     </div>
                 </div>
             </div>

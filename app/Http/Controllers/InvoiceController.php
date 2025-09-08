@@ -60,7 +60,7 @@ class InvoiceController extends Controller
             }])->get();
             $companiesId[] = $user->company->id;
         } else if ($user->role_id == Role::BRANCH) {
-            $agents = Agent::where('branch_id', $user->branch->id);
+            $agents = Agent::where('branch_id', $user->branch->id)->get();
             $companiesId[] = $user->branch->company_id;
         } else if ($user->role_id == Role::AGENT) {
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
@@ -70,22 +70,15 @@ class InvoiceController extends Controller
         }
 
         $agentIds = $agents->pluck('id');
-        $sortBy = request('sortBy', 'created_at');
-        $sortOrder = request('sortOrder', 'desc');
-        $allowedSorts = ['created_at', 'invoice_date', 'amount', 'status']; // add more as needed
-        if (!in_array($sortBy, $allowedSorts)) {
-            $sortBy = 'created_at';
-        }
-        if (!in_array($sortOrder, ['asc', 'desc'])) {
-            $sortOrder = 'desc';
-        }
+        $sortBy = in_array(request('sortBy'), ['created_at', 'invoice_date']) ? request('sortBy') : 'created_at';
+        $sortOrder = in_array(request('sortOrder'), ['asc', 'desc']) ? request('sortOrder') : 'desc';
 
         $invoices = Invoice::with([
             'agent.branch',
             'invoiceDetails.task.supplier',
-            // 'invoiceDetails.task.hotelDetails.room', 
             'client'
-        ]);
+        ])->whereIn('agent_id', $agentIds)
+          ->whereHas('agent.branch', fn($q) => $q->whereIn('company_id', $companiesId));
 
         if($request->has('search')){
             $search = $request->input('search');
@@ -112,12 +105,20 @@ class InvoiceController extends Controller
             });
         }
 
-        $invoices = $invoices->whereIn('agent_id', $agentIds)
-            ->whereHas('agent.branch', function ($query) use ($companiesId) {
-                $query->whereIn('company_id', $companiesId);
-            });
-
-        $totalInvoices = $invoices->count();
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $from = Carbon::parse($request->input('from_date'))->startOfDay();
+            $to = Carbon::parse($request->input('to_date'))->endOfDay();
+            $dateField = $request->input('date_field', 'created_at');
+    
+            if (in_array($dateField, ['created_at', 'invoice_date'])) {
+                $invoices->whereBetween($dateField, [$from, $to]);
+            }
+        }
+    
+        $filteredInvoices = $invoices->get();
+        $totalNet = $filteredInvoices->flatMap->invoiceDetails->sum('supplier_price');
+        $totalSales = $filteredInvoices->sum('amount');
+        $totalInvoices = $filteredInvoices->count();
 
         $invoices = $invoices->orderBy($sortBy, $sortOrder) // 👈 Use dynamic sorting
             ->paginate(20)
@@ -125,12 +126,11 @@ class InvoiceController extends Controller
         
         $clients = Client::whereIn('agent_id', $agentIds)->get();
         $tasks = Task::whereIn('agent_id', $agentIds)->get();
-
         $suppliers = Supplier::all();
         $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $companiesId)->get();
         $types = Task::distinct()->pluck('type');
            
-        return view('invoice.index', compact('invoices', 'types', 'suppliers', 'branches', 'agents', 'clients', 'tasks', 'totalInvoices'));
+        return view('invoice.index', compact('invoices', 'types', 'suppliers', 'branches', 'agents', 'clients', 'tasks', 'totalInvoices', 'totalNet', 'totalSales'));
     }
 
     public function salelist()
@@ -609,19 +609,27 @@ class InvoiceController extends Controller
         DB::beginTransaction();
 
         try {
+            
+            $isTabby = ($gateway === 'Tabby');
+            if ($isTabby || $credit) {
+                $status = 'paid';
+            } else {
+                $status = 'unpaid';
+            }
+
             $invoicePartial = InvoicePartial::create([
                 'invoice_id' => $invoiceId,
                 'invoice_number' => $invoiceNumber,
                 'client_id' => $clientId,
                 'service_charge' => $credit ? 0 : ($gatewayFee['fee'] ?? 0),
                 'amount' => $amount,
-                'status' => $credit ? 'paid' : 'unpaid',
+                'status' => $status, /* $credit ? 'paid' : 'unpaid' */
                 'expiry_date' => $date,
                 'type' => $type,
                 'payment_gateway' => $gateway,
                 'payment_method' => $method,
             ]);
-
+            
             //if ($credit && $type == 'full') {
             if ($type == 'credit') {
                 //insert credit record to reduce client's existing credit balance
@@ -723,7 +731,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'invoice_detail_id' => $invoiceDetail->id ?? null,
                         'transaction_id' => $transaction->id ?? null,
-                        'client_name' => $invoice->client->first_name ?? null,
+                        'client_name' => $invoice->client->full_name ?? null,
                         'task' => $task,
                     ]);
 
@@ -732,7 +740,7 @@ class InvoiceController extends Controller
                         $invoice->id,
                         $invoiceDetail->id,
                         $transaction->id,
-                        $invoice->client->first_name,
+                        $invoice->client->full_name,
                     );
                     Log::info('Journal entry response', ['response' => $response]);
                     if ($response['status'] == 'error') {
@@ -1197,7 +1205,7 @@ class InvoiceController extends Controller
         try {
             $companyId = $invoice->agent->branch->company_id;
             $branchId = $invoice->agent->branch_id;
-            $clientName = $invoice->client->first_name;
+            $clientName = $invoice->client->full_name;
             
             // Create transaction for the payment
             $transaction = Transaction::create([
@@ -2006,11 +2014,11 @@ class InvoiceController extends Controller
                         'account_id' =>  $client->id, // Example: assign client account
                         'invoiceDetail_id' =>  $invoiceDetail->id,
                         'transaction_date' => Carbon::now(),
-                        'description' => 'Updated Payment received from: ' . $client->first_name,
+                        'description' => 'Updated Payment received from: ' . $client->full_name,
                         'debit' => 0,
                         'credit' => $task['invprice'],
                         'balance' => $task['invprice'],
-                        'name' =>  $client->first_name,
+                        'name' =>  $client->full_name,
                         'type' => 'receivable',
                     ]);
 
@@ -2294,6 +2302,7 @@ class InvoiceController extends Controller
                         'description' => 'Invoice: ' . $invoice->invoice_number . ' Generated',
                         'invoice_id' => $invoice->id,
                         'reference_type' => 'Invoice',
+                        'transaction_date' => $invoice->invoice_date,
                     ]);
                 } catch (Exception $e) {
 
@@ -2313,7 +2322,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'invoice_detail_id' => $invoiceDetail->id ?? null,
                         'transaction_id' => $transaction->id ?? null,
-                        'client_name' => $invoice->client->first_name ?? null,
+                        'client_name' => $invoice->client->full_name ?? null,
                         'task' => $task,
                     ]);
 
@@ -2322,7 +2331,7 @@ class InvoiceController extends Controller
                         $invoice->id,
                         $invoiceDetail->id,
                         $transaction->id,
-                        $invoice->client->first_name,
+                        $invoice->client->full_name,
                     );
 
                     if ($response['status'] == 'error') {
@@ -2423,6 +2432,7 @@ class InvoiceController extends Controller
                     'description' => 'Invoice: ' . $newinvoice->invoice_number . ' Generated',
                     'invoice_id' => $newinvoice->id,
                     'reference_type' => 'Invoice',
+                    'transaction_date' => $invoice->invoice_date,
                 ]);
 
                 // Add journal entries
@@ -2432,7 +2442,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $newinvoice->id,
                         'invoice_detail_id' => $newInvoiceDetail->id ?? null,
                         'transaction_id' => $transaction->id ?? null,
-                        'client_name' => $newinvoice->client->first_name ?? null,
+                        'client_name' => $newinvoice->client->full_name ?? null,
                     ]);
 
                     $journalResponse = $this->addJournalEntry(
@@ -2440,7 +2450,7 @@ class InvoiceController extends Controller
                         $newinvoice->id,
                         $newInvoiceDetail->id,
                         $transaction->id,
-                        $newinvoice->client->first_name
+                        $newinvoice->client->full_name
                     );
 
                     if ($journalResponse['status'] === 'error') {
@@ -2502,6 +2512,7 @@ class InvoiceController extends Controller
                     'description' => 'Invoice: ' . $invoice->invoice_number . ' Generated',
                     'invoice_id' => $invoice->id,
                     'reference_type' => 'Invoice',
+                    'transaction_date' => $invoice->invoice_date,
                 ]);
 
                 foreach ($tasks as $task) {
@@ -2510,7 +2521,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'invoice_detail_id' => $invoiceDetail->id ?? null,
                         'transaction_id' => $transaction->id,
-                        'client_name' => $invoice->client->first_name ?? null,
+                        'client_name' => $invoice->client->full_name ?? null,
                         'task' => $task,
                     ]);
 
@@ -2519,7 +2530,7 @@ class InvoiceController extends Controller
                         $invoice->id,
                         $invoiceDetail->id,
                         $transaction->id,
-                        $invoice->client->first_name ?? null
+                        $invoice->client->full_name ?? null
                     );
 
                     if ($response['status'] === 'error') {

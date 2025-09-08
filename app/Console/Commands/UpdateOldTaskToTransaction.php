@@ -29,7 +29,7 @@ class UpdateOldTaskToTransaction extends Command
      *
      * @var string
      */
-    protected $description = 'Find old tasks without transaction/journal entries and create them. Only processes tasks with status != confirmed and issued_date as transaction_date.';
+    protected $description = 'Find old tasks without transaction/journal entries and create them. Only processes tasks with status != confirmed and supplier_pay_date as transaction_date.';
 
     public function handle()
     {
@@ -54,14 +54,14 @@ class UpdateOldTaskToTransaction extends Command
             
             // Display summary
             $this->table(
-                ['ID', 'Reference', 'Status', 'Total', 'Issued Date', 'Supplier'],
+                ['ID', 'Reference', 'Status', 'Total', 'Supplier Pay Date', 'Supplier'],
                 $tasksToProcess->map(function ($task) {
                     return [
                         $task->id,
                         $task->reference,
                         $task->status,
                         $task->total ?? 'N/A',
-                        $task->issued_date ? $task->issued_date->format('Y-m-d') : 'N/A',
+                        $task->supplier_pay_date ? $task->supplier_pay_date->format('Y-m-d') : 'N/A',
                         $task->supplier->name ?? 'N/A'
                     ];
                 })->toArray()
@@ -117,12 +117,12 @@ class UpdateOldTaskToTransaction extends Command
             ->whereDoesntHave('journalEntries') // Tasks without journal entries
             ->where('status', '!=', 'confirmed') // Status is not confirmed
             ->whereIn('status', ['issued', 'reissued', 'emd', 'refund']) // Only valid statuses for financial processing
-            ->whereNotNull('issued_date') // Must have issued date
+            ->whereNotNull('supplier_pay_date') // Must have supplier_pay_date
             ->whereNotNull('total') // Must have total amount
             ->whereNotNull('supplier_id') // Must have supplier
             ->whereNotNull('company_id') // Must have company
             ->where('total', '>', 0) // Total must be greater than 0
-            ->orderBy('issued_date', 'asc')
+            ->orderBy('supplier_pay_date', 'asc')
             ->get();
     }
     
@@ -159,8 +159,8 @@ class UpdateOldTaskToTransaction extends Command
                 throw new Exception('Flight task must have a valid issued by account to avoid using parent account.');
             }
             
-            // Use issued_date as transaction_date
-            $transactionDate = $task->issued_date ? Carbon::parse($task->issued_date) : Carbon::now();
+            // Use supplier_pay_date as transaction_date
+            $transactionDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : Carbon::now();
             
             // Create transaction
             $transaction = $this->createTransaction($task, $branchId, $transactionDate);
@@ -359,7 +359,7 @@ class UpdateOldTaskToTransaction extends Command
      */
     private function createIssuedTaskJournalEntries($task, $transaction, $accounts, $supplier, $branchId, $payableAccountToUse)
     {
-        // Use the transaction's transaction_date (which is the task's issued_date)
+        // Use the transaction's transaction_date (which is the task's supplier_pay_date)
         $transactionDate = $transaction->transaction_date;
         
         // Debit: Supplier Cost (Expense)
@@ -400,7 +400,7 @@ class UpdateOldTaskToTransaction extends Command
      */
     private function createRefundTaskJournalEntries($task, $transaction, $accounts, $supplier, $branchId, $payableAccountToUse)
     {
-        // Use the transaction's transaction_date (which is the task's issued_date)
+        // Use the transaction's transaction_date (which is the task's supplier_pay_date)
         $transactionDate = $transaction->transaction_date;
         
         // Debit: Supplier Payable (reduces liability)

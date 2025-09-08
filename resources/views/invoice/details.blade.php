@@ -35,7 +35,7 @@
                 <div class="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
                     <div>
                         <p class="font-semibold text-gray-600 dark:text-slate-300">Billed To:</p>
-                        <p class="text-gray-800 dark:text-white font-bold">{{ $invoice->client->name }}</p>
+                        <p class="text-gray-800 dark:text-white font-bold">{{ $invoice->client->full_name }}</p>
                         <p class="text-gray-600 dark:text-slate-400">{{ $invoice->client->email }}</p>
                         <p class="text-gray-600 dark:text-slate-400">{{ $invoice->client->phone }}</p>
                     </div>
@@ -54,6 +54,7 @@
                                 'paid'    => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 shadow-sm',
                                 'unpaid'  => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 shadow-sm',
                                 'partial' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 shadow-sm',
+                                'paid by refund' => 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
                             ][$status] ?? 'bg-gray-100 text-gray-800 dark:bg-slate-800/70 dark:text-slate-200 shadow-sm';
                         @endphp
                         <span class="mt-2 inline-block px-3.5 py-1 rounded-full text-base font-semibold {{ $classes }}">
@@ -71,29 +72,44 @@
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">#</th>
                                     <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 dark:text-slate-200 uppercase tracking-wider">Task Details</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Net Price (KWD)</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Profit (KWD)</th>
                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">Invoice Price (KWD)</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
-                                @foreach($invoice->invoiceDetails as $index => $item )
-                                    <tr x-data="{ open: false }">
-                                        <td colspan="3" class="p-0">
-                                            <div class="cursor-pointer" @click="open = !open">
-                                                <div class="flex items-center px-6 py-4 hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                                                    <div class="w-8 text-sm text-gray-500 dark:text-slate-400">{{ $index + 1 }}</div>
-                                                    <div class="flex-1">
-                                                        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $item->task->reference }}</p>
-                                                        <p class="text-xs text-gray-600 dark:text-slate-300">{{ $item->task->ticket_number ?? $item->task_description }}</p>
-                                                    </div>
-                                                    <div class="w-32 text-right text-sm font-semibold text-gray-900 dark:text-white">{{ number_format($item->task_price, 2) }}</div>
-                                                    <div class="w-8 text-right pl-2">
-                                                        <svg class="w-5 h-5 text-gray-400 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                                                    </div>
-                                                </div>
+                            @foreach($invoice->invoiceDetails as $index => $item )
+                                <tbody x-data="{ open:false }" class="divide-y divide-gray-200 dark:divide-slate-700">
+                                    <tr class="cursor-pointer select-none focus:outline-none" @click="open = !open">
+                                        <td class="px-6 py-4 text-sm text-gray-500 dark:text-slate-400">{{ $index + 1 }}</td>
+                                        <td class="px-6 py-4">
+                                            <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ $item->task->reference }}</div>
+                                            <div class="text-xs text-gray-600 dark:text-slate-300">
+                                                {{ $item->task->ticket_number ?? $item->task_description }}
                                             </div>
-                                            <div x-show="open" x-transition class="bg-slate-50 dark:bg-slate-800/50 p-6 border-t border-gray-200 dark:border-slate-700">
-                                                <h4 class="font-bold text-md mb-3 text-gray-800 dark:text-white">Task Breakdown</h4>
-                                                @if($item->task)
+                                        </td>
+                                        <td class="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white">
+                                            {{ number_format($item->supplier_price, 2) }}
+                                        </td>
+                                        <td class="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white">
+                                            {{ number_format($item->markup_price, 2) }}
+                                        </td>
+                                        <td class="px-6 py-4 text-right">
+                                            <div class="inline-flex items-center gap-2">
+                                                <span class="text-sm font-semibold text-gray-900 dark:text-white">
+                                                    {{ number_format($item->task_price, 2) }}
+                                                </span>
+                                                <button type="button" @click.stop="open = !open" class="text-gray-400 hover:text-gray-600">
+                                                    <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr x-show="open" x-cloak x-transition>
+                                        <td colspan="5" class="px-6 py-4 bg-gray-50 dark:bg-slate-800">
+                                            <h4 class="font-bold text-md mb-3 text-gray-800 dark:text-white">Task Breakdown</h4>
+                                            @if($item->task)
                                                 <dl class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 text-sm">
                                                     <div class="sm:col-span-2">
                                                         <dt class="font-medium text-gray-500 dark:text-slate-400">Passenger Name</dt>
@@ -121,14 +137,6 @@
                                                         <dd class="text-gray-900 dark:text-slate-200">
                                                             {{ optional($item->task->issued_date)->format('d M Y') ?? 'N/A' }}
                                                         </dd>
-                                                    </div>
-                                                    <div>
-                                                        <dt class="font-medium text-gray-500 dark:text-slate-400">Supplier Price</dt>
-                                                        <dd class="text-gray-900 dark:text-slate-200">{{ number_format($item->supplier_price, 2) }} KWD</dd>
-                                                    </div>
-                                                    <div>
-                                                        <dt class="font-medium text-gray-500 dark:text-slate-400">Markup</dt>
-                                                        <dd class="text-gray-900 dark:text-slate-200">{{ number_format($item->markup_price, 2) }} KWD</dd>
                                                     </div>
                                                     <div class="sm:col-span-2 md:col-span-2">
                                                         <dt class="font-medium text-gray-500 dark:text-slate-400">Additional Info</dt>
@@ -301,14 +309,20 @@
                                                         </div>
                                                     @endif
                                                 </dl>
-                                                @else
-                                                    <p class="text-gray-500 dark:text-slate-400">No associated task found for this item.</p>
-                                                @endif
-                                            </div>
+                                            @else
+                                                <p class="text-gray-500 dark:text-slate-400">No associated task found for this item.</p>
+                                            @endif
                                         </td>
                                     </tr>
-                                @endforeach
-                            </tbody>
+                                    @if (! $loop->last)
+                                    <tr aria-hidden="true">
+                                        <td colspan="5" class="p-0">
+                                            <div class="my-1 border-t border-gray-200 dark:border-slate-700"></div>
+                                        </td>
+                                    </tr>
+                                    @endif
+                                </tbody>
+                            @endforeach
                         </table>
                     </div>
                 </div>
@@ -317,6 +331,10 @@
                 <div class="flex justify-end">
                     <div class="w-full max-w-sm">
                         <dl class="space-y-3 text-sm">
+                            <div class="flex justify-between">
+                                <dt class="text-gray-600 dark:text-slate-400">Total Net:</dt>
+                                <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->invoiceDetails->sum('supplier_price'), 2) }} KWD</dd>
+                            </div>
                             <div class="flex justify-between">
                                 <dt class="text-gray-600 dark:text-slate-400">Subtotal:</dt>
                                 <dd class="font-medium text-gray-800 dark:text-slate-200">{{ number_format($invoice->sub_amount, 2) }} KWD</dd>
@@ -347,7 +365,9 @@
             <section class="px-8 py-6">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Payment Summary</h2>
+                    @if($partials->isNotEmpty())
                     <span class="inline-block px-3.5 py-1 rounded-full text-sm font-semibold shadow-sm {{ $typeBadgeClasses }}">{{ ucfirst($invoice->payment_type) }}</span>
+                    @endif
                 </div>
                 @if($partials->isEmpty())
                     <p class="text-sm text-gray-600 dark:text-slate-400">No payments recorded.</p>

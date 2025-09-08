@@ -133,7 +133,7 @@ class CompanyController extends Controller
                 ->count();
 
             return [
-                'name' => $client->first_name,
+                'name' => $client->full_name,
                 'taskCount' => $taskCount,
                 'totalInvoices' => $totalInvoices,
                 'unpaidInvoices' => $unpaidInvoices,

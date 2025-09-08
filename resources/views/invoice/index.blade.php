@@ -48,30 +48,142 @@
             <a href="{{ route('invoices.create') }}">
                 <div data-tooltip="Create new Invoice"
                     class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
-
-
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                         <path fill="#fff"
                             d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7" />
                     </svg>
-
                 </div>
             </a>
-
         </div>
-
-
     </div>
 
     <div class="tableCon">
         <div class="content-70">
             <!-- Table  -->
             <div class="panel BoxShadow rounded-lg">
-                <x-search
-                    :action="route('invoices.index')"
-                    searchParam="search"
-                    placeholder="Quick search for invoices"
-                />
+                <div>
+                    <div class="flex items-center p-4 gap-3 md:flex-nowrap">
+                        <x-search
+                            :action="route('invoices.index')"
+                            searchParam="search"
+                            placeholder="Quick search for invoices"
+                        />
+                        <!-- <button @click="openFilters = !openFilters" class="shrink-0 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-sm text-amber-800 ring-1 ring-amber-200 hover:bg-amber-200 transition dark:bg-amber-900/40 dark:text-amber-200 dark:ring-amber-800 dark:hover:bg-amber-900/60">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M4 6h16M7 12h10M10 18h4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            Filters
+                        </button> -->
+                    </div>
+                    <!-- <div x-show="openFilters" x-cloak x-transition
+                        class="mt-3 rounded-xl border border-gray-200 bg-gray-50/70 shadow-sm dark:border-slate-700 dark:bg-slate-900/60">
+                        <form action="{{ route('invoices.index') }}" method="GET" class="px-4 pt-4">
+                            <input type="hidden" name="sortBy" value="{{ request('sortBy', 'created_at') }}">
+                            <input type="hidden" name="sortOrder" value="{{ request('sortOrder', 'desc') }}">
+                            <input type="hidden" name="search" value="{{ request('search') }}">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 sm:gap-10 items-end">
+                                <div>
+                                    <label for="date_field" class="block text-xs font-medium text-gray-600 dark:text-slate-300">Filter by</label>
+                                    <div class="relative mt-1">
+                                        <select name="date_field" id="date_field"
+                                            class="h-10 w-full appearance-none rounded-lg border border-gray-300 bg-white pr-9 pl-3 text-sm shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100 dark:placeholder-slate-400 dark:focus:border-blue-400 dark:focus:ring-blue-900/40"
+                                        >
+                                            <option value="created_at" {{ request('date_field') == 'created_at' ? 'selected' : '' }}>Created At</option>
+                                            <option value="invoice_date" {{ request('date_field') == 'invoice_date' ? 'selected' : '' }}>Invoice Date</option>
+                                        </select>
+                                        <svg class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="from_date" class="block text-xs font-medium text-gray-600 dark:text-slate-300">From date</label>
+                                    <div class="relative mt-1">
+                                        <input type="date" name="from_date" id="from_date" value="{{ request('from_date') }}"
+                                            class="h-10 w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 text-sm shadow-sm outline-none ring-0 transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100 dark:placeholder-slate-400 dark:focus:border-blue-400 dark:focus:ring-blue-900/40"
+                                        />
+                                        <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="to_date" class="block text-xs font-medium text-gray-600 dark:text-slate-300">To date</label>
+                                    <div class="relative mt-1">
+                                        <input type="date" name="to_date" id="to_date" value="{{ request('to_date') }}"
+                                            class="h-10 w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 text-sm shadow-sm outline-none ring-0 transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100 dark:placeholder-slate-400 dark:focus:border-blue-400 dark:focus:ring-blue-900/40"
+                                        />
+                                        <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="sticky bottom-0 -mx-4 mt-4 flex items-center justify-end gap-2 border-t border-gray-200 bg-white/80 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/60">
+                                <a href="{{ route('invoices.index') }}" class="rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">
+                                    Clear
+                                </a>
+                                <button type="submit" class="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500">
+                                    Apply Filters
+                                </button>
+                            </div>
+                        </form>
+                    </div> -->
+                </div>
+
+  <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="flex items-center gap-3 rounded-lg p-4 shadow-sm bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.25 18.75V5.25a2.25 2.25 0 0 1 2.25-2.25h15a2.25 2.25 0 0 1 2.25 2.25v13.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25zM18 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-xs font-medium text-blue-600 dark:text-blue-300">Total Net</div>
+                            <div class="text-lg font-semibold text-blue-700 dark:text-blue-200">{{ number_format($totalNet, 3) }} KWD</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 rounded-lg p-4 shadow-sm bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 7h6M9 11h6m-8 4h10M5 21l1.5-1.5L8 21l1.5-1.5L11 21l1.5-1.5L14 21l1.5-1.5L17 21l1.5-1.5L20 21V3a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-xs font-medium text-emerald-600 dark:text-emerald-300">Total Sales</div>
+                            <div class="text-lg font-semibold text-emerald-700 dark:text-emerald-200">{{ number_format($totalSales, 3) }} KWD</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-end">
+                        <div class="p-4 w-full max-w-xs">
+                            <form method="GET" action="{{ route('invoices.index') }}" class="flex flex-row items-end gap-2" id="invoice-filter-form">
+                                <!-- Dropdown -->
+                                <div class="flex flex-col justify-end">
+                                    <label class="text-xs font-semibold text-gray-600 mb-1">Filter By</label>
+                                    <select name="date_field" class="border rounded px-2 py-1 text-sm min-w-[150px]">
+                                        <option value="created_at" {{ request('date_field') == 'created_at' ? 'selected' : '' }}>Created Date</option>
+                                        <option value="invoice_date" {{ request('date_field') == 'invoice_date' ? 'selected' : '' }}>Invoice Date</option>
+                                    </select>
+                                </div>
+                                <!-- Date Range -->
+                                <div class="flex flex-col justify-end">
+                                    <label class="text-xs font-semibold text-gray-600 mb-1">Date Range</label>
+                                    <input type="text" id="date-range" class="border rounded px-2 py-1 text-sm min-w-[240px]" placeholder="Select date range" autocomplete="off" />
+                                    <input type="hidden" name="from_date" id="from_date" value="{{ request('from_date') }}">
+                                    <input type="hidden" name="to_date" id="to_date" value="{{ request('to_date') }}">
+                                </div>
+                                <!-- Buttons -->
+                                <div class="flex flex-row items-end gap-1 pt-5">
+                                    <a href="{{ route('invoices.index') }}" class="px-2 py-1 rounded bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-300 flex items-center">Clear</a>
+                                    <button type="submit" class="px-2 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 border border-blue-700 flex items-center">Apply</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>              
 
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
@@ -80,21 +192,15 @@
                         <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
                             <thead>
                                 <tr>
-                                    <!-- <th>
-                                        <label class="custom-checkbox">
-                                            <input type="checkbox" id="selectAll" class="form-checkbox hidden">
-                                            <svg id="selectAllSVG" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" class="checkbox-svg">
-                                                <rect width="18" height="18" x="3" y="3" fill="none" stroke="#333333" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" rx="4" />
-                                            </svg>
-                                        </label>
-                                    </th> -->
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Actions</th>
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Invoice Number</th>
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Agent name</th>
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Client name</th>
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Status</th>
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Payment Type</th>
-                                    <th class="p-3 text-center text-md font-bold text-gray-500">Amount</th>
+                                    <th class="p-3 text-center text-md font-bold text-gray-500">Net Amount</th>
+                                    <th class="p-3 text-center text-md font-bold text-gray-500">Profit</th>
+                                    <th class="p-3 text-center text-md font-bold text-gray-500">Invoice Amount</th>
                                     <th>
                                         <a href="{{ request()->fullUrlWithQuery([
                                             'sortBy' => 'created_at',
@@ -102,15 +208,12 @@
                                         ]) }}"
                                             class="flex items-center gap-2 p-3  text-md font-bold text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
                                             Created Date
-
-                                            {{-- Neutral icon when not sorted --}}
                                             @if(request('sortBy') !== 'created_at')
                                             <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
                                                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                                 <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
                                             </svg>
                                             @else
-                                            {{-- Sorting direction icon --}}
                                             <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
                                                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                                                 @if(request('sortOrder', 'desc') === 'asc')
@@ -129,15 +232,12 @@
                                         ]) }}"
                                             class="flex items-center gap-2 p-3 text-left text-md font-bold text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 cursor-pointer transition-all duration-200">
                                             Invoice Date
-
-                                            {{-- Neutral icon when not sorted --}}
                                             @if(request('sortBy') !== 'invoice_date')
                                             <svg class="w-4 h-4 opacity-70 hover:opacity-100 transform hover:scale-110 transition-all duration-200"
                                                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                                 <path stroke-width="2" d="M6 9l6-6 6 6M6 15l6 6 6-6" />
                                             </svg>
                                             @else
-                                            {{-- Sorting direction icon --}}
                                             <svg class="w-3 h-3 transform hover:scale-110 transition-all duration-200"
                                                 fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
                                                 @if(request('sortOrder', 'desc') === 'asc')
@@ -154,7 +254,7 @@
                             <tbody>
                                 @if ($invoices->isEmpty())
                                 <tr>
-                                    <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">
+                                    <td colspan="11" class="text-center p-3 text-sm font-semibold text-gray-500 ">
                                         No data for now.... Create new!</td>
                                 </tr>
                                 @else
@@ -168,7 +268,7 @@
                                             'id'        => $detail->task_id,
                                             'reference' => 'Task #'. $detail->task->reference,
                                             'type'      => ucfirst($detail->task->type),
-                                            'client'    => $detail->task->client->name,
+                                            'client'    => $detail->task->client->full_name,
                                             'supplier'  => $detail->task->supplier->name,
                                             'amount'    => $detail->task_price,
                                             'currency'  => $invoice->currency,
@@ -302,7 +402,7 @@
                                                                     </div>
                                                                     <div class="border-t-2 border-dashed border-gray-400"></div>
                                                                     <div class="grid grid-cols-1 sm:grid-cols-2 text-sm gap-y-2 gap-x-10 text-gray-800">
-                                                                        <div><strong>Name:</strong> {{ $invoiceDetail->task->client->first_name . ' ' . $invoiceDetail->task->client->last_name }}</div>
+                                                                        <div><strong>Name:</strong> {{ $invoiceDetail->task->client->full_name }}</div>
                                                                         <div><strong>Flight:</strong> {{ $invoiceDetail->task->flightDetails->flight_number }}</div>
                                                                         <div><strong>Date:</strong> {{ $invoiceDetail->task->flightDetails->readable_departure_time }}</div>
                                                                         <div><strong>Reference:</strong> {{ $invoiceDetail->task->reference }}</div>
@@ -328,7 +428,7 @@
                                                                     <div class="relative flex-1 rounded-md bg-[#fffaf2] border border-koromiko-200 p-4 shadow-inner overflow-hidden">
                                                                         <div class="absolute left-0 top-0 bottom-0 w-1 bg-koromiko-400 rounded-l-md"></div>
                                                                         <div class="relative z-10 text-sm text-gray-800 space-y-1">
-                                                                            <p><span class="font-semibold">Client:</span> {{ $invoiceDetail->task->client->first_name ? $invoiceDetail->task->client->first_name . ' ' . $invoiceDetail->task->client->last_name : 'n/a' }}</p>
+                                                                            <p><span class="font-semibold">Client:</span> {{ $invoiceDetail->task->client->full_name }}</p>
                                                                             <p><span class="font-semibold">Reference:</span> {{ $invoiceDetail->task->hotelDetails->room->reference ?? 'n/a' }}</p>
                                                                             <p><span class="font-semibold">Room:</span> {{ $invoiceDetail->task->hotelDetails->room->name ?? 'n/a' }}</p>
                                                                         </div>
@@ -371,7 +471,7 @@
                                         {{ $invoice->agent->name }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        {{ $invoice->client->name }}
+                                        {{ $invoice->client->full_name }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid')
@@ -387,13 +487,19 @@
                                         {{ ucwords($invoice->payment_type) }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                        {{ number_format($invoice->invoicedetails->sum('supplier_price'), 2) }} {{ $invoice->currency }} 
+                                    </td>
+                                    <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                        {{ number_format($invoice->invoicedetails->sum('markup_price'), 2) }} {{ $invoice->currency }} 
+                                    </td>
+                                    <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'))
                                         <button type="button" class="underline text-blue-600 hover:text-blue-800"
                                             data-number="{{ $invoice->invoice_number }}" data-amount="{{ $invoice->amount }}" onclick="openEditModal('amount', this)">
-                                                {{ $invoice->currency }} {{ $invoice->amount }}
+                                                {{ $invoice->amount }} {{ $invoice->currency }} 
                                             </button>
                                         @else
-                                            {{ $invoice->currency }} {{ $invoice->amount }}
+                                            {{ $invoice->amount }} {{ $invoice->currency }} 
                                         @endif
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
@@ -448,6 +554,24 @@
             </div>
         </div>
     </div>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script>
+    flatpickr("#date-range", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        defaultDate: [
+            "{{ request('from_date') }}",
+            "{{ request('to_date') }}"
+        ].filter(Boolean)
+    });
+
+    document.getElementById('invoice-filter-form').addEventListener('submit', function(e) {
+        const range = document.getElementById('date-range').value.split(' to ');
+        document.getElementById('from_date').value = range[0] ? range[0].trim() : '';
+        document.getElementById('to_date').value = range[1] ? range[1].trim() : range[0];
+    });
+</script>
     <script>
         const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
         const updateDateUrl   = "{{ route('invoice.updateDate',   ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM']) }}";

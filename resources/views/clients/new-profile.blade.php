@@ -15,7 +15,7 @@
 
             </li>
             <li class="before:content-['/'] before:mr-1 ">
-                <span>{{ $client->first_name }} </span>
+                <span>{{ $client->full_name }} </span>
             </li>
         </ul>
         <!-- ./Breadcrumbs -->
@@ -128,7 +128,7 @@
                         <div class="flex items-center rounded-full bg-black/50 p-1 font-semibold text-white  ">
                             <x-application-logo
                                 class="block h-8 w-8 rounded-full border-2 border-white/50 object-cover ltr:mr-1 rtl:ml-1" />
-                            <h3 class="px-2">{{ $client->first_name }}</h3>
+                            <h3 class="px-2">{{ $client->full_name }}</h3>
                             @if ($balanceCredit > 0)
                             <div x-data="{ clientCreditRefund: false }" class="flex items-center">
                                 <button @click="clientCreditRefund = true"
@@ -270,7 +270,9 @@
                             @foreach ($invoices as $invoice)
                             <tr>
                                 <td>
-                                    <a href="{{ url('/invoice/' . $invoice->invoice_number) }}" class="text-blue-500 hover:underline" target="_blank">{{ $invoice->invoice_number }}</a>
+                                    <a href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" target="_blank">
+                                        {{ $invoice->invoice_number }}
+                                    </a>
                                 </td>
                                 <td> {{ $invoice->amount }} </td>
                                 <td>
@@ -631,7 +633,7 @@
                                                 $payment->client_id,
                                                 );
                                                 $clientPlaceholder = $selectedClient
-                                                ? $selectedClient->first_name
+                                                ? $selectedClient->full_name
                                                 : 'Select a Client';
                                                 @endphp
                                                 <div class="mb-4">
@@ -639,11 +641,11 @@
                                                         :items="$clients->map(
                                                                 fn($c) => [
                                                                     'id' => $c->id,
-                                                                    'name' => $c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name . ' - ' . $c->phone
+                                                                    'name' => $c->full_name . ' - ' . $c->phone
                                                                 ],
                                                             )" :placeholder="$clientPlaceholder"
                                                         :selectedName="$selectedClient
-                                                                ? $selectedClient->first_name
+                                                                ? $selectedClient->full_name
                                                                 : null" label="Client" />
 
                                                     <input type="hidden" name="client_id_fallback"
@@ -891,7 +893,7 @@
                         </div>
                     </div>
 
-                    @can('assignAgents', App\Models\Client::class)
+                    @can('assignAgents', $client)
                     <!-- Agent Management Section - Full Width -->
                     <div class="mt-6 pt-6 border-t border-gray-200">
                         <div class="w-full" x-data="agentManager({

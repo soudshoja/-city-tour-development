@@ -51,7 +51,7 @@
                                     name="filter[client_id]"
                                     :items="$clients->map(fn($c) => [
                                         'id' => $c->id, 
-                                        'name' => $c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name . ' - ' . $c->phone
+                                        'name' => $c->full_name . ' - ' . $c->phone
                                     ])"
                                     :placeholder="'Select clients'"
                                     :selectedName="optional($clients->firstWhere('id', data_get($filters,'client_id')))->name"
@@ -142,7 +142,7 @@
                                         class="text-blue-500 hover:underline text-sm font-semibold">{{ $payment->voucher_number }}</a>
                                 </td>
                                 <td class="px-3 py-2 text-sm break-words max-w-[350px] font-semibold">
-                                    {{ $payment->client ? $payment->client->name : 'N/A' }}
+                                    {{ $payment->client ? $payment->client->full_name : 'N/A' }}
                                 </td>
                                 <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
                                     {{ $payment->client ? $payment->client->country_code . $payment->client->phone : 'N/A' }}
@@ -318,7 +318,7 @@
 
                                                         @php
                                                             $selectedClient = \App\Models\Client::find($payment->client_id);
-                                                            $clientPlaceholder = $selectedClient ? $selectedClient->name : 'Select a Client';
+                                                            $clientPlaceholder = $selectedClient ? $selectedClient->full_name : 'Select a Client';
                                                         @endphp
                                                         <div class="mb-4">
                                                             <x-searchable-dropdown name="client_id"
@@ -328,7 +328,7 @@
                                                                             'name' => $c->name . ' - ' . $c->phone
                                                                         ],
                                                                     )" :placeholder="$clientPlaceholder"
-                                                                :selectedName="$selectedClient ? $selectedClient->name : null" label="Client" />
+                                                                :selectedName="$selectedClient ? $selectedClient->full_name : null" label="Client" />
                                                             <input type="hidden" name="client_id_fallback" value="{{ $selectedClient ? $selectedClient->id : '' }}">
                                                         </div>
 

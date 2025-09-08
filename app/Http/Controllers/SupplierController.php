@@ -109,16 +109,42 @@ public function updateExchangeRates(Request $request, $supplierId)
 {
     Gate::authorize('view', Supplier::class);
 
-    $supplier = SupplierCompany::with('supplier.tasks.invoiceDetail.invoice')->findOrFail($suppliersId)->supplier;
+    $supplier = SupplierCompany::with('supplier.tasks.agent')->findOrFail($suppliersId)->supplier;
     $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
     $invoicesId = array_values(array_filter($invoicesId));
-    $JournalEntry = JournalEntry::select('id', 'debit', 'credit', 'created_at')
-        ->whereIn('invoice_id', $invoicesId)
+    $taskIds = $supplier->tasks->pluck('id')->toArray();
+    $JournalEntry = JournalEntry::select('id', 'debit', 'credit', 'created_at', 'task_id', 'account_id')
+        ->with(['task.agent', 'account'])
+        ->whereIn('task_id', $taskIds)
         ->get();
+    $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR']; 
+    return view('suppliers.show', compact('supplier', 'JournalEntry', 'currencies'));
+}
+    
+public function ledgerByDateRange(Request $request, $supplierId)
+{
+    $fromDate = $request->query('fromDate');
+    $toDate = $request->query('toDate');
 
-    $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR']; // <-- Add this line
+    $supplier = Supplier::with('tasks.agent')->findOrFail($supplierId);
+    $taskIds = $supplier->tasks->pluck('id')->toArray();
 
-    return view('suppliers.show', compact('supplier', 'JournalEntry', 'currencies')); // <-- Add currencies here
+    $query = JournalEntry::with(['task.agent', 'account'])->whereIn('task_id', $taskIds);
+
+    if ($fromDate && $toDate) {
+        $query->whereBetween('created_at', [$fromDate, $toDate]);
+    }
+
+    $entries = $query->orderBy('created_at', 'desc')->get();
+
+    $totalDebit = $entries->sum('debit');
+    $totalCredit = $entries->sum('credit');
+
+    return response()->json([
+        'entries' => $entries,
+        'totalDebit' => $totalDebit,
+        'totalCredit' => $totalCredit,
+    ]);
 }
 
     public function create()

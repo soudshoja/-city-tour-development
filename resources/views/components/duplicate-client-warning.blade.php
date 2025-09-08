@@ -37,7 +37,7 @@
                 <div class="text-sm text-blue-800 space-y-1">
                     <p><strong>{{ session('duplicate_data.duplicate_message') }}</strong></p>
                     @if(session('duplicate_data.existing_client'))
-                    <p><strong>Name:</strong> {{ session('duplicate_data.existing_client.first_name') }} {{ session('duplicate_data.existing_client.middle_name') }} {{ session('duplicate_data.existing_client.last_name') }}</p>
+                    <p><strong>Name:</strong> {{ session('duplicate_data.existing_client.full_name') }}</p>
                     <p><strong>Phone:</strong> {{ session('duplicate_data.existing_client.phone') }}</p>
                     <p><strong>Email:</strong> {{ session('duplicate_data.existing_client.email') ?? 'Not provided' }}</p>
                     @if(session('duplicate_data.existing_client.civil_no'))

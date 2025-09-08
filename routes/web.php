@@ -350,6 +350,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/settlements/entries/by-date', [ReportController::class, 'journalEntriesByDate'])
             ->name('settlements.entries.by_date');
         Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
+        Route::get('/creditors', [ReportController::class, 'creditors'])->name('creditors');
+        Route::get('/creditors/pdf', [ReportController::class, 'creditorsPdf'])->name('creditors.pdf');
     });
 
     // INVOICE

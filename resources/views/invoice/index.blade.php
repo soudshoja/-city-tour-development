@@ -133,7 +133,7 @@
                     </div> -->
                 </div>
 
-  <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="flex items-center gap-3 rounded-lg p-4 shadow-sm bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
                         <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

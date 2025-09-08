@@ -123,27 +123,20 @@ public function updateExchangeRates(Request $request, $supplierId)
     
 public function ledgerByDateRange(Request $request, $supplierId)
 {
-    $fromDate = $request->query('fromDate');
-    $toDate = $request->query('toDate');
+    $fromDate = $request->input('fromDate');
+    $toDate = $request->input('toDate');
 
-    $supplier = Supplier::with('tasks.agent')->findOrFail($supplierId);
-    $taskIds = $supplier->tasks->pluck('id')->toArray();
 
-    $query = JournalEntry::with(['task.agent', 'account'])->whereIn('task_id', $taskIds);
+    $tasks = Task::with(['agent', 'flightDetails', 'hotelDetails.hotel'])
+        ->where('supplier_id', $supplierId)
+        ->whereBetween('supplier_pay_date', [$fromDate, $toDate])
+        ->get();
 
-    if ($fromDate && $toDate) {
-        $query->whereBetween('created_at', [$fromDate, $toDate]);
-    }
 
-    $entries = $query->orderBy('created_at', 'desc')->get();
-
-    $totalDebit = $entries->sum('debit');
-    $totalCredit = $entries->sum('credit');
-
-    return response()->json([
-        'entries' => $entries,
-        'totalDebit' => $totalDebit,
-        'totalCredit' => $totalCredit,
+      return response()->json([
+        'totalDebit' => 0,
+        'totalCredit' => 0,
+        'entries' => $tasks
     ]);
 }
 

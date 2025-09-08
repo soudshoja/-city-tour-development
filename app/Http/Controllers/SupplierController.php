@@ -126,16 +126,12 @@ public function ledgerByDateRange(Request $request, $supplierId)
     $fromDate = $request->input('fromDate');
     $toDate = $request->input('toDate');
 
-
     $tasks = Task::with(['agent', 'flightDetails', 'hotelDetails.hotel'])
         ->where('supplier_id', $supplierId)
         ->whereBetween('supplier_pay_date', [$fromDate, $toDate])
         ->get();
 
-
-      return response()->json([
-        'totalDebit' => 0,
-        'totalCredit' => 0,
+    return response()->json([
         'entries' => $tasks
     ]);
 }

@@ -78,10 +78,10 @@
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Link</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Payment Type</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Client</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Action</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Amount</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Expiry Date</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
-                                    <th class="p-3 text-left text-md font-bold text-gray-500">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -112,34 +112,34 @@
                                             </svg>
                                         </label>
                                     </td> -->
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                    <td class="p-3 text-sm font-semibold text-gray-500 dark:text-gray-300">
                                         {{ $invoice->invoice_number }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
-                                        <!-- Main Invoice Link -->
-                                        <a href="{{ url('/invoice/' . $invoice->invoice_number) }}"
-                                            class="text-blue-500 hover:underline" target="_blank">
-                                            {{ url('/invoice/' . $invoice->invoice_number) }}
-                                        </a>
-
+                                        @if ($invoice->payment_type)
+                                            <a href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" target="_blank">
+                                                {{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}
+                                            </a>
+                                        @else
+                                            <span class="text-gray-500 italic dark:text-gray-400">Invoice link available after setting payment type</span>
+                                        @endif
                                     </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                    <td class="p-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
                                         {{ ucwords($invoice->payment_type) }}
                                     </td>
-                                    <td
-                                        x-data="{ editClientPhone: false}">
-                                        <p
-                                            class="cursor-pointer text-blue-500 hover:underline" @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
-                                            {{ $invoice->client->first_name . ' ' . $invoice->client->middle_name . ' ' . $invoice->client->last_name }}
+                                    <td x-data="{ editClientPhone: false}">
+                                        <p class="cursor-pointer text-blue-500 dark:text-blue-400 hover:underline"
+                                            @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
+                                            {{ $invoice->client->full_name }}
                                         </p>
                                         <div x-cloak x-show="editClientPhone" class="fixed bg-gray-800 inset-0 bg-opacity-75 flex items-center justify-center z-50">
-                                            <div
-                                                @click.away="editClientPhone = false"
-                                                class="p-4 bg-white w-full max-w-md rounded relative">
+                                            <div @click.away="editClientPhone = false"
+                                                class="p-4 bg-white w-full max-w-md rounded relative dark:bg-gray-900">
                                                 <div class="flex items-center justify-between mb-6">
                                                     <div>
-                                                        <h2 class="text-xl font-bold text-gray-800">Update Phone Number</h2>
-                                                        <p class="text-gray-600 italic text-xs mt-1">Please update the client's phone number to ensure accurate communication</p>
+                                                        <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100">Update Phone Number</h2>
+                                                        <p class="text-gray-600 dark:text-gray-400 italic text-xs mt-1">
+                                                            Please update the client's phone number to ensure accurate communication</p>
                                                     </div>
                                                     <button @click="editClientPhone = false" class="absolute top-0 right-0 p-2 text-gray-400 hover:text-red-500 text-2xl">
                                                         &times;
@@ -148,12 +148,13 @@
                                                 <form method="POST" action="{{ route('clients.update', $invoice->client->id) }}">
                                                     @csrf
                                                     @method('PUT')
+                                                    <input type="hidden" name="first_name" id="client" value="{{ $invoice->client->first_name }}">
                                                     <div class="mb-4 flex flex-col">
                                                         <label class="block text-gray-700 mb-2" for="phone_{{ $invoice->client->id }}">Phone Number</label>
                                                         <div class="flex gap-4 mb-4">
                                                             <div class="w-2/5">
                                                                 <x-searchable-dropdown
-                                                                    name="dial_code"
+                                                                    name="country_code"
                                                                     :items="\App\Models\Country::all()->map(fn($country) => [
                                                                             'id' => $country->dialing_code,
                                                                             'name' => $country->dialing_code . ' ' . $country->name
@@ -168,26 +169,45 @@
                                                                     name="phone"
                                                                     id="phone_{{ $invoice->client->id }}"
                                                                     value="{{ $invoice->client->phone }}"
-                                                                    class="form-input w-full border rounded px-3 py-2"
+                                                                    class="w-full border border-gray-300 rounded px-3"
                                                                     required>
                                                             </div>
                                                         </div>
-
                                                     </div>
-
                                                     <div class="flex justify-between mt-3 gap-2">
-                                                        <button type="button" @click="editClientPhone = false" class="rounded-full shadow-md border border-gray-200 hover:bg-red-200 px-4 py-2">Cancel</button>
+                                                        <button type="button" @click="editClientPhone = false" class="rounded-full shadow-md border border-gray-200 hover:bg-gray-300 px-4 py-2">Cancel</button>
                                                         <button type="submit" class="rounded-full shadow-md border border-blue-200 bg-blue-600 text-white hover:bg-blue-700 px-4 py-2">Update</button>
                                                     </div>
                                                 </form>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                    <td>
+                                        @if ($invoice->payment_type)
+                                            <form action="{{ route('resayil.share-invoice-link') }}" method="POST">
+                                                @csrf
+                                                <input type="hidden" name="client_id" id="client"
+                                                    value="{{ $invoice->client->id }}">
+                                                <input type="hidden" name="invoiceNumber"
+                                                    value="{{ $invoice->invoice_number }}">
+                                                <button type="submit" class="badge badge-outline-success">
+                                                    Share via WhatsApp
+                                                </button>
+                                            </form>
+                                        @else
+                                            <a href="{{ route('invoice.edit', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                            target="_blank">
+                                                <button type="button" class="badge badge-outline-warning">
+                                                    Set payment type first
+                                                </button>
+                                            </a>
+                                        @endif
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
                                         {{ $invoice->currency }}
                                         {{ $invoice->amount }}
                                     </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                    <td class="p-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
                                         {{ $invoice->due_date }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
@@ -199,20 +219,6 @@
                                             class="badge badge-outline-danger">{{ $invoice->status }}</span>
                                         @endif
                                     </td>
-                                    <td>
-                                        <form action="{{ route('resayil.share-invoice-link') }}" method="POST">
-                                            @csrf
-                                            <input type="hidden" name="client_id" id="client"
-                                                value="{{ $invoice->client->id }}">
-                                            <input type="hidden" name="invoiceNumber"
-                                                value="{{ $invoice->invoice_number }}">
-                                            <button type="submit" class="badge badge-outline-success">
-                                                Share via WhatsApp
-                                            </button>
-                                        </form>
-                                    </td>
-
-
                                 </tr>
 
                                 <!-- Separate row for each partial invoice -->
@@ -234,66 +240,81 @@
                                                     </svg>
                                                 </label>
                                             </td> -->
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                    <td class="p-3 text-sm font-semibold text-gray-500 dark:text-gray-300">
                                         {{ $invoice->invoice_number }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
-                                        <a href="{{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id. '/' . $partial->id) }}"
-                                            class="text-green-500 hover:underline" target="_blank">
-                                            {{ url('/invoice/partial/' . $invoice->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}
+                                        <a href="{{ route('invoice.split', ['invoiceNumber' => $invoice->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id])}}" class="text-green-500 hover:underline" target="_blank">
+                                            {{ route('invoice.split', ['invoiceNumber' => $invoice->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id])}}
                                         </a>
                                     </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                    <td class="p-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
                                         {{ ucwords($partial->type) }}
                                     </td>
                                     <td x-data="{ editClientPhone: false }">
                                         <p
-                                            class="cursor-pointer text-blue-500 hover:underline"
+                                            class="cursor-pointer text-blue-500 hover:underline dark:text-blue-400"
                                             @click="editClientPhone = !editClientPhone" data-tooltip-left="Edit Client Phone">
-                                            {{ $partial->client->first_name . ' ' . $partial->client->middle_name . ' ' . $partial->client->last_name }}
+                                            {{ $partial->client->full_name }}
                                         </p>
-                                        <div
-                                            x-cloak
-                                            x-show="editClientPhone"
-                                            class="fixed bg-gray-800 inset-0 bg-opacity-75 flex items-center justify-center z-50">
-                                            <div
-                                                @click.away="editClientPhone = false"
-                                                class="p-4 bg-white w-full max-w-md rounded">
-                                                <h2 class="text-xl font-bold mb-4">Update Phone Number</h2>
+                                        <div x-cloak x-show="editClientPhone" class="fixed bg-gray-800 inset-0 bg-opacity-75 flex items-center justify-center z-50">
+                                            <div @click.away="editClientPhone = false" class="p-4 bg-white w-full max-w-md rounded relative">
+                                                <div class="flex items-center justify-between mb-6">
+                                                    <div>
+                                                        <h2 class="text-xl font-bold text-gray-800">Update Phone Number</h2>
+                                                        <p class="text-gray-600 italic text-xs mt-1">Please update the client's phone number to ensure accurate communication</p>
+                                                    </div>
+                                                    <button @click="editClientPhone = false" class="absolute top-0 right-0 p-2 text-gray-400 hover:text-red-500 text-2xl">
+                                                        &times;
+                                                    </button>
+                                                </div>
                                                 <form method="POST" action="{{ route('clients.update', $partial->client->id) }}">
                                                     @csrf
                                                     @method('PUT')
+                                                    <input type="hidden" name="first_name" id="client" value="{{ $partial->client->first_name }}">
                                                     <div class="mb-4 flex flex-col">
                                                         <label class="block text-gray-700 mb-2" for="phone_{{ $partial->client->id }}">Phone Number</label>
-                                                        <select class="form-select w-full border rounded px-3 py-2 mb-2" name="country_code" id="dialing_code_{{ $partial->client->id }}" required>
-                                                            <option value="" selected disabled>Select Dialing Code</option>
-                                                            @foreach($countries as $country)
-                                                            <option value="{{ $country->dialing_code }}"
-                                                                @if($partial->client->country_code === $country->dialing_code) selected @endif>
-                                                                {{ $country->name }} ({{ $country->dialing_code }})
-                                                            </option>
-                                                            @endforeach
-                                                        </select>
-                                                        <input
-                                                            type="text"
-                                                            name="phone"
-                                                            id="phone_{{ $partial->client->id }}"
-                                                            value="{{ $partial->client->phone }}"
-                                                            class="form-input w-full border rounded px-3 py-2"
-                                                            required>
+                                                        <div class="flex gap-4 mb-4">
+                                                            <div class="w-2/5">
+                                                                <x-searchable-dropdown
+                                                                    name="country_code"
+                                                                    :items="\App\Models\Country::all()->map(fn($country) => [
+                                                                            'id' => $country->dialing_code,
+                                                                            'name' => $country->dialing_code . ' ' . $country->name
+                                                                        ])"
+                                                                    :selectedName="optional($partial->client)->country_code"
+                                                                    placeholder="Dial Code"
+                                                                    :showAllOnOpen="true" />
+                                                            </div>
+                                                            <div class="w-3/5">
+                                                                <input type="text" name="phone"
+                                                                    id="phone_{{ $partial->client->id }}" value="{{ $partial->client->phone }}"
+                                                                    class="w-full border border-gray-300 rounded px-3" required>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div class="flex justify-end gap-2">
-                                                        <button type="button" @click="editClientPhone = false" class="btn btn-secondary px-4 py-2">Cancel</button>
-                                                        <button type="submit" class="btn btn-success px-4 py-2">Update</button>
+                                                    <div class="flex justify-between mt-3 gap-2">
+                                                        <button type="button" @click="editClientPhone = false" class="rounded-full shadow-md border border-gray-200 hover:bg-gray-300 px-4 py-2">Cancel</button>
+                                                        <button type="submit" class="rounded-full shadow-md border border-blue-200 bg-blue-600 text-white hover:bg-blue-700 px-4 py-2">Update</button>
                                                     </div>
                                                 </form>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                    <td>
+                                        <form action="{{ route('resayil.share-invoice-link') }}" method="POST">
+                                            @csrf
+                                            <input type="hidden" name="client_id" id="client" value="{{ $partial->invoice->client_id }}">
+                                            <input type="hidden" name="invoiceNumber" value="{{ $partial->invoice->invoice_number }}">
+                                            <button type="submit" class="badge badge-outline-success">
+                                                Share via WhatsApp
+                                            </button>
+                                        </form>
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
                                         {{ $invoice->currency }} {{ $partial->amount }}
                                     </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                    <td class="p-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
                                         {{ $partial->expiry_date }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
@@ -304,19 +325,6 @@
                                         <span
                                             class="badge badge-outline-danger">{{ $partial->status }}</span>
                                         @endif
-                                    </td>
-                                    <td>
-                                        <form action="{{ route('resayil.share-invoice-link') }}" method="POST">
-                                            @csrf
-                                            <input type="hidden" name="client_id" id="client"
-                                                value="{{ $partial->invoice->client->id }}">
-                                            <input type="hidden" name="invoiceNumber"
-                                                value="{{ $partial->invoice->invoice_number }}">
-                                            <button type="submit"
-                                                class="badge badge-outline-success">
-                                                Share via WhatsApp
-                                            </button>
-                                        </form>
                                     </td>
                                 </tr>
                                 @endif

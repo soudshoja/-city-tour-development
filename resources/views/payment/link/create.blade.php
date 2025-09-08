@@ -288,13 +288,15 @@
                 <input type="hidden" name="payment_id" value="{{ old('payment_id', $prefill['payment_id'] ?? '') }}">
                 <input type="hidden" name="invoice_id" value="{{ old('invoice_id', $prefill['invoice_id'] ?? '') }}">
                 <input type="hidden" name="source" value="{{ old('source', $prefill['source'] ?? '') }}">
+                <input type="hidden" name="invoice_reference" value="{{ old('invoice_reference', $prefill['invoice_reference'] ?? '') }}">
+                <input type="hidden" name="auth_code" value="{{ old('auth_code', $prefill['auth_code'] ?? '') }}">
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     @php
                     $selectedClient = null;
-                    $clientPlaceholder = $selectedClient ? $selectedClient->first_name : 'Select a Client';
+                    $clientPlaceholder = $selectedClient ? $selectedClient->full_name : 'Select a Client';
                     $selectedId   = old('client_id', $selectedClient->id ?? null);
-                    $selectedName = old('client_name', $selectedClient->first_name ?? null);
+                    $selectedName = old('client_name', $selectedClient->full_name ?? null);
                     @endphp
                     <div>
                         <label for="client_id" class="block text-sm font-medium text-gray-700">Client</label>
@@ -303,7 +305,7 @@
                             id="client_id"
                             :items="$clients->map(fn($c) => [
                                 'id' => $c->id,
-                                'name' => $c->first_name . ' ' . $c->middle_name . ' ' . $c->last_name . ' - ' . $c->phone
+                                'name' => $c->full_name . ' - ' . $c->phone
                             ])"
                             :selectedId="$selectedId"
                             :selectedName="$selectedName"

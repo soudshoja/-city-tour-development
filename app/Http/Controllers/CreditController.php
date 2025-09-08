@@ -146,7 +146,7 @@ class CreditController extends Controller
                 'client_id'         => $client->id,
                 'branch_id'         => $agent->branch->id,
                 'type'              => 'Topup',
-                'description'       => 'Manual Topup for ' . $client->first_name,
+                'description'       => 'Manual Topup for ' . $client->full_name,
                 'amount'            => $request->amount,
                 'topup_by'          => ucfirst($topupBy),
             ]);
@@ -158,8 +158,9 @@ class CreditController extends Controller
                 'entity_type'       => 'Company',
                 'transaction_type'  => 'credit',
                 'amount'            => $request->amount,
-                'description'       => 'Company Advance to Client: ' . $client->first_name,
+                'description'       => 'Company Advance to Client: ' . $client->full_name,
                 'reference_type'    => 'Payment',
+                'transaction_date' => now(),
             ]);
 
             $transaction = Transaction::create([
@@ -169,8 +170,9 @@ class CreditController extends Controller
                 'entity_type'       => 'Client',
                 'transaction_type'  => 'debit',
                 'amount'            => $request->amount,
-                'description'       => 'Client Credit of ' . $client->first_name,
+                'description'       => 'Client Credit of ' . $client->full_name,
                 'reference_type'    => 'Payment',
+                'transaction_date' => now(),
             ]);
 
             $liabilitiesAccount = Account::where('name', 'Liabilities')
@@ -189,11 +191,11 @@ class CreditController extends Controller
                     'company_id'          => $agent->branch->company->id,
                     'account_id'          => $clientAdvance->id,
                     'transaction_date'    => now(),
-                    'description'         => 'Advance Payment for: ' . $client->first_name,
+                    'description'         => 'Advance Payment for: ' . $client->full_name,
                     'debit'               => 0,
                     'credit'              => $request->amount,
                     'balance'             => $clientAdvance->actual_balance - $request->amount,
-                    'name'                => $client->first_name,
+                    'name'                => $client->full_name,
                     'type'                => 'receivable',
                     'voucher_number'      => 'MTU-' . now()->timestamp,
                     'type_reference_id'   => $clientAdvance->id,
@@ -219,11 +221,11 @@ class CreditController extends Controller
                     'company_id'          => $agent->branch->company->id,
                     'account_id'          => $clientReceivable->id,
                     'transaction_date'    => now(),
-                    'description'         => 'Manual Topup Receivable: ' . $client->first_name,
+                    'description'         => 'Manual Topup Receivable: ' . $client->full_name,
                     'debit'               => $request->amount,
                     'credit'              => 0,
                     'balance'             => $clientReceivable->actual_balance + $request->amount,
-                    'name'                => $client->first_name,
+                    'name'                => $client->full_name,
                     'type'                => 'receivable',
                     'voucher_number'      => 'MTU-' . now()->timestamp,
                     'type_reference_id'   => $clientReceivable->id,

@@ -66,7 +66,7 @@
         <div class="flex justify-between items-start mb-8">
             <div class="text-left">
                 <h3 class="text-lg font-bold text-gray-800 mb-1">Billed To</h3>
-                <p class="text-sm text-gray-600">{{ $payment->client->first_name }} {{ $payment->client->middle_name ?? '' }} {{ $payment->client->last_name ?? '' }}</p>
+                <p class="text-sm text-gray-600">{{ $payment->client->full_name }}</p>
                 <p class="text-sm text-gray-600">
                     <a href="mailto:{{ $payment->client->email }}" class="hover:underline hover:text-blue-600">
                         {{ $payment->client->email }}
@@ -105,7 +105,7 @@
             <tbody>
                 <tr>
                     <td class="py-3 px-4">Client Name</td>
-                    <td class="py-3 px-4 text-right">{{ $payment->client->first_name }} {{ $payment->client->middle_name ?? '' }} {{ $payment->client->last_name ?? '' }}</td>
+                    <td class="py-3 px-4 text-right">{{ $payment->client->full_name }}</td>
                 </tr>
                 <tr>
                     <td class="py-3 px-4">Payment Gateway</td>
@@ -116,6 +116,27 @@
                     <td class="py-3 px-4">Payment Method</td>
                     <td class="py-3 px-4 text-right">{{ $payment->paymentMethod->english_name ?? '-' }}</td>
                 </tr>
+                @endif
+                @if($payment->payment_gateway !== 'Tabby' && $payment->payment_reference != '')
+                        <tr>
+                            @if ($payment->payment_gateway !== 'MyFatoorah')
+                                <td class="py-3 px-4">Payment Reference</td>
+                            @elseif ($payment->invoice_reference == '' && $payment->auth_code == '')
+                                <td class="py-3 px-4">Invoice ID</td>
+                            
+                            <td class="py-3 px-4 text-right">{{ $payment->payment_reference }}</td>
+                            @endif
+                        </tr>
+                    @if($payment->payment_gateway === 'MyFatoorah' && $payment->status === 'completed')
+                        <tr>
+                            <td class="py-3 px-4">Invoice Reference</td>
+                            <td class="py-3 px-4 text-right">{{ $invoiceRef }}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4">Auth Code</td>
+                            <td class="py-3 px-4 text-right">{{ $authorizationId }}</td>
+                        </tr>
+                    @endif
                 @endif
             </tbody>
         </table>

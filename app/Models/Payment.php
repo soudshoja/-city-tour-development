@@ -17,6 +17,8 @@ class Payment extends Model
         'voucher_number',
         'payment_reference',
         'invoice_id',
+        'invoice_reference',
+        'auth_code',
         'from',
         'pay_to',
         'created_by',
@@ -74,6 +76,17 @@ class Payment extends Model
     public function myFatoorahPayment()
     {
         return $this->hasOne(MyFatoorahPayment::class, 'payment_int_id', 'id');
+    }
+
+    public function findMyFatoorahPayment()
+    {
+        if (empty($this->payment_reference)) {
+            return null;
+        }
+        
+        return MyFatoorahPayment::where('invoice_id', $this->payment_reference)
+            ->orWhere('payment_id', $this->payment_reference)
+            ->first();
     }
 
     public function paymentMethod()

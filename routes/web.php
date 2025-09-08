@@ -178,7 +178,6 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'suppliers',
         'as' => 'suppliers.',
     ], function () {
-        Route::get('/', [SupplierController::class, 'index'])->name('index');
         Route::post('/store', [SupplierController::class, 'store'])->name('store');
         Route::put('/update/{id}', [SupplierController::class, 'update'])->name('update');
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
@@ -189,6 +188,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/magic/callback', [SupplierController::class, 'handleAuthorizationCallback'])->name('magic-callback');
         Route::get('/magic/provider', [SupplierController::class, 'redirectToAuthorization'])->name('magic-provider');
         Route::get('/magic/webhook-initiate/{id}', [SupplierController::class, 'magicReserveWebhook'])->name('magic-webhook');
+        Route::get('/ledger-by-date/{supplierId}', [SupplierController::class, 'ledgerByDateRange'])->name('suppliers.ledger-by-date');        Route::get('/', [SupplierController::class, 'index'])->name('index');
 
 
         Route::group([
@@ -433,6 +433,9 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/create', [PaymentController::class, 'paymentCreateLink'])->name('create');
             Route::post('/store', [PaymentController::class, 'paymentStoreLink'])->name('store');
             Route::get('/show/{companyId}/{voucherNumber}', [PaymentController::class, 'paymentShowLink'])->name('show')->withoutMiddleware(['auth']);
+            Route::get('/show/{voucherNumber}', function () {
+                return redirect()->route('payment.link.show', ['companyId' => 1, 'voucherNumber' => request()->voucherNumber]);
+            })->withoutMiddleware(['auth']);
             Route::put('/update/{paymentId}', [PaymentController::class, 'paymentUpdateLink'])->name('update');
             Route::delete('/delete/{paymentId}', [PaymentController::class, 'paymentDeleteLink'])->name('delete');
             Route::get('/share/{paymentId}', [PaymentController::class, 'shareLink'])->name('share');

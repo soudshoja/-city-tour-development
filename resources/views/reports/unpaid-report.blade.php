@@ -122,6 +122,7 @@
                 <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
                     <thead>
                         <tr>
+                            <th style="width:60px; padding: 8px; border: 1px solid #ddd;">No.</th>
                             <th style="width:220px; style=" padding: 8px; border: 1px solid #ddd;">Transaction Date</th>
                             <th style="padding: 8px; border: 1px solid #ddd;">Description</th>
                             <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Debit</th>
@@ -137,6 +138,7 @@
                                 $totalAllPayable = $totalDebitPayable - $totalCreditPayable;
                             @endphp
                             <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{{ $loop->iteration }}</td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ $transaction->transaction_date ? \Carbon\Carbon::parse($transaction->transaction_date)->format('d-M-Y') : '' }}
                                 </td>
@@ -210,6 +212,7 @@
                 <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
                     <thead>
                         <tr>
+                            <th style="width:60px; padding: 8px; border: 1px solid #ddd;">No.</th>
                             <th style="width:220px; style=" padding: 8px; border: 1px solid #ddd;">Transaction Date</th>
                             <th style="padding: 8px; border: 1px solid #ddd;">Description</th>
                             <th style="width:160px; padding: 8px; border: 1px solid #ddd;">Debit</th>
@@ -226,6 +229,7 @@
                             @endphp
 
                             <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;">{{ $loop->iteration }}</td>
                                 <td style="padding: 8px; border: 1px solid #ddd;">
                                     {{ $transaction->transaction_date ? Carbon\Carbon::parse($transaction->transaction_date)->format('d-M-Y') : '' }}
                                 </td>

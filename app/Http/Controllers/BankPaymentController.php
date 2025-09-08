@@ -200,6 +200,7 @@ class BankPaymentController extends Controller
                 'name' => $request->pay_to,
                 'remarks_internal' => $request->internal_remarks,
                 'remarks_fl' => $request->remarks_fl,
+                'transaction_date' => now(),
 
             ]);
 

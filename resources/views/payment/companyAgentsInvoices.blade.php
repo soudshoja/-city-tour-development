@@ -207,7 +207,7 @@
                         <tr>
                             <td class="px-4 py-2">{{ $invoice->invoice_number }}</td>
                             <td class="px-4 py-2">{{ $invoice->agent->name }}</td>
-                            <td class="px-4 py-2">{{ $invoice->client->first_name }}</td>
+                            <td class="px-4 py-2">{{ $invoice->client->full_name }}</td>
                             <td class="px-4 py-2">{{ $invoice->amount }}</td>
                             <td class="px-4 py-2">{{ $invoice->status }}</td>
                             <td class="px-4 py-2">

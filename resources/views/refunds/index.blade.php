@@ -89,10 +89,14 @@
                                             <!-- <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->method }}
                                             </td> -->
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $refund->task->client->name ?? '' }}
+                                                {{ $refund->task->client->full_name ?? '' }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                KWD {{ number_format($refund->total_nett_refund, 2) }}
+                                            @if ($refund->task->originalTask->invoiceDetail->invoice->status === 'paid by refund')
+                                                {{ number_format($refund->airline_nett_fare - $refund->total_nett_refund, 2) }} KWD
+                                            @else
+                                                {{ number_format($refund->total_nett_refund, 2) }} KWD
+                                            @endif
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $refund->remarks }}</td>

@@ -8,7 +8,6 @@
         @php
         $selectedPaymentGateway = isset($refund) ? strtolower($refund->invoice->invoicePartials->first()->payment_gateway) : '';
         @endphp
-        {{ $selectedPaymentGateway}}
         <select id="payment_gateway_option" name="payment_gateway_option"
             class="border border-gray-300 p-2 rounded w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             onchange="updatePaymentMethods()">
@@ -150,6 +149,13 @@
                         }
                         paymentMethodSelect.appendChild(option);
                     });
+
+                    if (!paymentMethodSelect.value && filteredMethods.length) {
+                        paymentMethodSelect.value = String(filteredMethods[0].id);
+                    }
+                    if (paymentMethodSelect.value) {
+                        paymentMethodSelect.dispatchEvent(new Event('change'));
+                    }
                 } else {
                     // For other gateways (like Tap), show auto payment notification
                     autoPaymentNotification.style.display = 'block';
@@ -161,27 +167,23 @@
     // Update gateway fee when payment method changes (for MyFatoorah)
     document.getElementById('payment_method_full').addEventListener('change', function() {
         const selectedMethodId = this.value;
+        const gatewayFeeDisplay = document.getElementById('gateway_fee_display');
         const gatewayFeeAmount = document.getElementById('gateway_fee_amount');
-        const gatewaySelect = document.getElementById('payment_gateway_option');
-        const selectedGateway = gatewaySelect.value;
+        const selectedGateway    = document.getElementById('payment_gateway_option').value;
+        let feeValue = 0;
 
         if (selectedMethodId) {
             const method = paymentMethods.find(m => m.id == selectedMethodId);
-            if (method && method.gateway_fee && method.gateway_fee > 0) {
-                gatewayFeeAmount.textContent = `Payment method fee: ${parseFloat(method.gateway_fee).toFixed(2)}`;
-                // Update service charge with payment method fee
-                updateServiceCharge(method.gateway_fee);
-            }
+            feeValue = method && method.gateway_fee ? parseFloat(method.gateway_fee) : 0;
+            gatewayFeeAmount.textContent = feeValue > 0 ? `Payment method fee: ${feeValue.toFixed(2)}` : `No additional fee`;
         } else {
-            // If no payment method selected, revert to gateway fee
             const gateway = paymentGateways.find(g => g.name === selectedGateway);
-            if (gateway && gateway.gateway_fee) {
-                gatewayFeeAmount.textContent = `Gateway fee: ${parseFloat(gateway.gateway_fee).toFixed(2)}`;
-                updateServiceCharge(gateway.gateway_fee);
-            } else {
-                updateServiceCharge(0);
-            }
+            feeValue = gateway && gateway.gateway_fee ? parseFloat(gateway.gateway_fee) : 0;
+            gatewayFeeAmount.textContent = feeValue > 0 ? `Gateway fee: ${feeValue.toFixed(2)}` : `No additional fee`;
         }
+
+        gatewayFeeDisplay.style.display = feeValue > 0 ? 'block' : 'none';
+        updateServiceCharge(feeValue);
     });
 
     // Initialize the payment gateway selection when page loads (for editing mode)

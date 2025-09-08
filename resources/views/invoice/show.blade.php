@@ -79,7 +79,7 @@
         {{ session('error') }}
     </div>
     @endif
-    @if ($invoice->status === 'paid')
+    @if (in_array($invoice->status, ['paid', 'paid by refund']))
     <div
         class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 flex items-center text-white rounded-lg">
         <div class="flex items-center justify-between text-white">

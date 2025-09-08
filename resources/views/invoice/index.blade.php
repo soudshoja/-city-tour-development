@@ -322,9 +322,21 @@
                                                 </g>
                                             </svg>
                                         </a>
-                                        @if (in_array($invoice->status, ['unpaid', 'partial'], true) ||
+                                        @if ($invoice->refund)
+                                        <a data-tooltip="View/Edit Refund"
+                                            href="{{ route('refunds.edit', [$invoice->refund->task_id, $invoice->refund->id]) }}" class="text-sm font-medium text-blue-600 hover:underline">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20"
+                                                height="20" viewBox="0 0 24 24">
+                                                <path fill="none" stroke="#00ab55"
+                                                    stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42"
+                                                    opacity=".5" />
+                                            </svg>
+                                        </a>
+                                        @elseif (in_array($invoice->status, ['unpaid', 'partial'], true) ||
                                             ($invoice->status === 'paid' && in_array($invoice->payment_type, ['full', 'cash'], true)))
-                                        <a data-tooltip="View Detail/ Edit"
+                                        <a data-tooltip="View/Edit Invoice"
                                             href="{{ route('invoice.edit', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                             class="text-sm font-medium text-blue-600 hover:underline">
 
@@ -403,8 +415,8 @@
                                                                     <div class="border-t-2 border-dashed border-gray-400"></div>
                                                                     <div class="grid grid-cols-1 sm:grid-cols-2 text-sm gap-y-2 gap-x-10 text-gray-800">
                                                                         <div><strong>Name:</strong> {{ $invoiceDetail->task->client->full_name }}</div>
-                                                                        <div><strong>Flight:</strong> {{ $invoiceDetail->task->flightDetails->flight_number }}</div>
-                                                                        <div><strong>Date:</strong> {{ $invoiceDetail->task->flightDetails->readable_departure_time }}</div>
+                                                                        <div><strong>Flight:</strong> {{ $invoiceDetail->task->flightDetails->flight_number ?? 'N/A' }}</div>
+                                                                        <div><strong>Date:</strong> {{ $invoiceDetail->task->flightDetails->readable_departure_time ?? 'N/A' }}</div>
                                                                         <div><strong>Reference:</strong> {{ $invoiceDetail->task->reference }}</div>
                                                                     </div>
                                                                 </div>
@@ -474,7 +486,7 @@
                                         {{ $invoice->client->full_name }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        @if ($invoice->status === 'paid')
+                                        @if (in_array($invoice->status, ['paid', 'paid by refund']))
                                         <a href="{{ route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank">
                                             <span class="badge badge-outline-success cursor-pointer">{{ $invoice->status }}</span>
                                         </a>

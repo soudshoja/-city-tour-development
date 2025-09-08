@@ -58,7 +58,7 @@
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Client Info
                     </h3>
                     <p class="mb-2"><strong>Name:</strong> {{ $task->client_name ?? 'N/A' }}</p>
-                    <p class="mb-2"><strong>Email:</strong> {{ $task->client_name ?? 'N/A' }}</p>
+                    <p class="mb-2"><strong>Email:</strong> {{ $task->client->email ?? 'N/A' }}</p>
                     <br>
                     <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-purple-200 pb-2">Agent Info</h3>
                     <p class="mb-2"><strong>Name:</strong> {{ $task->agent->name ?? 'N/A' }}</p>

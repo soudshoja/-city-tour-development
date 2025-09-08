@@ -145,7 +145,7 @@ class RefundController extends Controller
         $request->validate([
             'task_id' => ['required', 'exists:tasks,id'],
             'total_nett_refund' => ['required', 'numeric', 'min:-999999.99'],
-            // 'reason' => ['required', 'string'],
+            'reason' => ['nullable', 'string'],
             'method' => ['required', 'in:Bank,Cash,Online,Credit'],
             'date' => ['required', 'date'],
         ]);
@@ -168,7 +168,7 @@ class RefundController extends Controller
                 'new_task_profit' => $request->input('new_task_profit'),
                 'total_nett_refund' => $request->input('total_nett_refund'),
                 'service_charge' => $request->input('service_charge'),
-                // 'reason' => $request->reason,
+                'reason' => $request->reason,
                 'method' => $request->method,
                 'date' => $request->date,
                 'reference' => $request->reference,
@@ -186,7 +186,7 @@ class RefundController extends Controller
                     'transaction_type' => 'debit',
                     'transaction_date' => $request->date,
                     'amount' => $request->input('total_nett_refund'),
-                    'description' => 'Refund - Record Agent Commission',
+                    'description' => 'Refund Recorded: ' . $refund->refund_number,
                     'reference_type' => 'Refund',
                     'reference_number' => $request->bankpaymentref,
                     'name' => $task->client_name,
@@ -195,8 +195,7 @@ class RefundController extends Controller
 
                 $agent = $task->agent;
 
-                if (strtolower($agent->agentType) == 'commission') {
-
+                if (in_array(strtolower($agent->agentType?->name), ['commission', 'type-a'], true)) {
                     $agentCommission = $agent->commission;
 
                     $assetsDirectIncome = Account::where('name', 'LIKE', '%Direct Expenses%')
@@ -459,23 +458,9 @@ class RefundController extends Controller
                 'payment_method' => $request->input('payment_method'),
                 'date' => $request->date,
                 'reference' => $request->reference,
+                'reason' => $request->reason,
                 'status' => 'processed',
                 'created_by' => Auth::user()->id,
-            ]);
-
-            $txnRefund = Transaction::create([
-                'entity_id' => $task->company_id,
-                'entity_type' => 'company',
-                'company_id' => $task->company_id,
-                'branch_id' => $task->agent->branch_id,
-                'transaction_type' => 'debit',
-                'transaction_date' => $request->date,
-                'amount' => $refundInvoicePrice,
-                'description' => 'Refund - Record Agent Commission',
-                'reference_type' => 'Refund',
-                'reference_number' => $request->reference,
-                'name' => $task->client_name,
-                'remarks_internal' => $request->input('remarks_internal'),
             ]);
 
             if (!$invoicePaid) {
@@ -502,7 +487,7 @@ class RefundController extends Controller
                         $invoice->id,
                         $origTask->invoiceDetail->id,
                         $transaction->id,
-                        $invoice->client->first_name
+                        $invoice->client->full_name
                     );
                 }
             }
@@ -511,6 +496,21 @@ class RefundController extends Controller
 
             if (in_array(strtolower($agent->agentType?->name), ['commission', 'type-a'], true)) {
                 $agentCommission = $agent->commission;
+
+                $txnRefund = Transaction::create([
+                    'entity_id' => $task->company_id,
+                    'entity_type' => 'company',
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'transaction_type' => 'debit',
+                    'transaction_date' => $request->date,
+                    'amount' => $refundInvoicePrice,
+                    'description' => 'Refund - Record Agent Commission',
+                    'reference_type' => 'Refund',
+                    'reference_number' => $request->reference,
+                    'name' => $task->client_name,
+                    'remarks_internal' => $request->input('remarks_internal'),
+                ]);
 
                 $assetsDirectIncome = Account::where('name', 'LIKE', '%Direct Expenses%')
                     ->where('company_id', $task->company_id)
@@ -711,7 +711,7 @@ class RefundController extends Controller
                 foreach($paymentMethods as $method){
                     if($method->company_id == $task->agent->branch->company_id && $method->type == 'myfatoorah'){
                         try {
-                            $method->gateway_fee = ChargeService::FatoorahCharge($invoiceAmount, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
+                            $method->gateway_fee = ChargeService::FatoorahCharge($refund->airline_nett_fare - $refund->total_nett_refund, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
                         } catch (Exception $e) {
                             Log::error('FatoorahCharge exception in refund edit', [
                                 'message' => $e->getMessage(),
@@ -724,7 +724,7 @@ class RefundController extends Controller
                 }
             } else {
                 $gateway->gateway_fee = ChargeService::TapCharge([
-                    'amount' => $invoiceAmount,
+                    'amount' => $refund->airline_nett_fare - $refund->total_nett_refund,
                     'client_id' => $task->client_id,
                     'agent_id' => $task->agent_id,
                     'currency' => $invoice->currency ?? 'USD'
@@ -872,7 +872,7 @@ class RefundController extends Controller
                 'reference_number' => $refundRec->refund_number,
                 'name' => $taskRec->client_name,
                 'remarks_internal' => $refundRec->remarks_internal,
-                
+                'transaction_date' => $refundRec->date,
             ]);
 
             $incomeIndirectIncome = Account::where('name', 'LIKE', '%Expenses%')->first();
@@ -1036,7 +1036,7 @@ class RefundController extends Controller
         float $invoicePrice,
         float $supplierCharge,
         string $paymentGateway,
-        string $paymentMethod = ''
+        ?string $paymentMethod = null
     ): JsonResponse
     {
         $user = Auth::user();
@@ -1078,11 +1078,10 @@ class RefundController extends Controller
                     'invoice_id' => $invoice->id,
                     'invoice_number' => $invoiceNumber,
                     'task_id' => $task->id,
-                    'task_description' => 'refund for task' . $task->reference,
+                    'task_description' => 'Refund for Task ID: ' . $task->id . ' - ' . ($task->reference ?? ''),
                     'task_price' => $invoicePrice,
                     'supplier_price' => $supplierCharge,
                     'markup_price' => $refund->new_task_profit,
-                    'description' => 'Refund for Task ID: ' . $task->id . ' - ' . ($task->description ?? ''),
                     'created_by' => Auth::user()->id,
                 ]);
 
@@ -1099,7 +1098,30 @@ class RefundController extends Controller
                     'payment_gateway' => $paymentGateway,
                     'payment_method' => $paymentMethod,
                 ]);
+    
+                $transaction = Transaction::where('invoice_id', $invoice->id)->first();
+                if (!$transaction) {
+                    $transaction = Transaction::create([
+                        'company_id' => $task->company_id,
+                        'branch_id' => $task->agent->branch_id,
+                        'entity_id' => $task->company_id,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'credit',
+                        'amount' =>  $invoice->amount,
+                        'description' => 'Invoice: ' . $invoice->invoice_number . ' Generated',
+                        'invoice_id' => $invoice->id,
+                        'reference_type' => 'Invoice',
+                        'transaction_date' => $invoice->invoice_date,
+                    ]);
 
+                    app(InvoiceController::class)->addJournalEntry(
+                        $task,
+                        $invoice->id,
+                        $invoiceDetail->id,
+                        $transaction->id,
+                        $invoice->client->full_name
+                    );
+                }
             } catch (Exception $e) {
                 Log::error('Failed to create invoice or related records: ' . $e->getMessage());
                 return response()->json(['error' => 'Failed to create invoice or related records.'], 500);

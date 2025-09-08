@@ -79,31 +79,54 @@ class TaskController extends Controller
 
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
         $paymentMethod = Account::where('parent_id', 39)->get();
-
-        if ($search = $request->query('q')) {
-
-            $tasks = $tasks->where(function ($query) use ($search) {
-                $query->where('reference', 'like', '%' . $search . '%')
-                    ->orWhere('client_name', 'like', '%' . $search . '%')
-                    ->orWhere('ticket_number', 'like', '%' . $search . '%')
-                    ->orWhere('status', 'like', '%' . $search . '%')
-                    ->orWhere('gds_reference', 'like', '%' . $search . '%')
-                    ->orWhere('airline_reference', 'like', '%' . $search . '%')
-                    ->orWhereHas('client', function ($q) use ($search) {
-                        $q->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('phone', 'like', '%' . $search . '%');
-                    })
-                    ->orWhereHas('agent', function ($q) use ($search) {
-                        $q->where('name', 'like', '%' . $search . '%')
-                            ->orWhere('amadeus_id', 'like', '%' . $search . '%')
-                            ->orWhere('email', 'like', '%' . $search . '%')
-                            ->orWhere('phone_number', 'like', '%' . $search . '%');
-                    })
-                    ->orWhereHas('supplier', function ($q) use ($search) {
-                        $q->where('name', 'like', '%' . $search . '%');
-                    });
+if ($search = $request->query('q')) {
+    $searchTerm = '%' . strtolower($search) . '%';
+    $tasks = $tasks->where(function ($query) use ($search, $searchTerm) {
+        $query->where('reference', 'LIKE', $searchTerm)
+            ->orWhere('passenger_name', 'LIKE', $searchTerm)
+            ->orWhereHas('client', function ($q) use ($searchTerm) {
+                $q->where('first_name', 'LIKE', $searchTerm)
+                  ->orWhere('middle_name', 'LIKE', $searchTerm)
+                  ->orWhere('last_name', 'LIKE', $searchTerm)
+                  ->orWhere('email', 'LIKE', $searchTerm)
+                  ->orWhere('phone', 'LIKE', $searchTerm)
+                  ->orWhere('civil_no', 'LIKE', $searchTerm);
+            })
+            ->orWhereHas('agent', function ($q) use ($searchTerm) {
+                $q->where('name', 'LIKE', $searchTerm);
             });
+
+        // Multi-word search for passenger/client names
+        if (str_word_count($search) > 1) {
+            $searchWords = explode(' ', trim($search));
+            $firstWord = $searchWords[0];
+            $lastWord = end($searchWords);
+            $middleWords = array_slice($searchWords, 1, -1);
+
+            // For 2 words: first_name + last_name
+            if (count($searchWords) == 2) {
+                $query->orWhere(function ($q) use ($firstWord, $lastWord) {
+                    $q->whereHas('client', function ($qq) use ($firstWord, $lastWord) {
+                        $qq->where('first_name', 'LIKE', '%' . $firstWord . '%')
+                           ->where('last_name', 'LIKE', '%' . $lastWord . '%');
+                    });
+                });
+            }
+            // For 3+ words: first_name + middle_name(s) + last_name
+            else if (count($searchWords) >= 3) {
+                $query->orWhere(function ($q) use ($firstWord, $middleWords, $lastWord) {
+                    $q->whereHas('client', function ($qq) use ($firstWord, $middleWords, $lastWord) {
+                        $qq->where('first_name', 'LIKE', '%' . $firstWord . '%')
+                           ->where('last_name', 'LIKE', '%' . $lastWord . '%');
+                        foreach ($middleWords as $middleWord) {
+                            $qq->where('middle_name', 'LIKE', '%' . $middleWord . '%');
+                        }
+                    });
+                });
+            }
         }
+    });
+}
         if ($request->filled('status')) {
             $statuses = request()->input('status', []);
             $tasks = $tasks->whereIn('status', $statuses);
@@ -248,12 +271,20 @@ class TaskController extends Controller
             $tasks = $tasks;
             $clients = Client::all();
             $agents = Agent::all();
+            $fullClients = Client::all();
+
         } elseif ($user->role_id == Role::COMPANY) {
 
             $branches = Branch::where('company_id', $user->company->id)->get();
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
+    $fullClients = Client::where(function ($query) use ($agentsId) {
+        $query->whereIn('agent_id', $agentsId)
+              ->orWhereHas('agents', function ($q) use ($agentsId) {
+                  $q->whereIn('agent_id', $agentsId);
+              });
+    })->get();
             $tasks = $tasks->where('company_id', $user->company->id);
 
             // $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
@@ -268,6 +299,12 @@ class TaskController extends Controller
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
+    $fullClients = Client::where(function ($query) use ($agentsId) {
+        $query->whereIn('agent_id', $agentsId)
+              ->orWhereHas('agents', function ($q) use ($agentsId) {
+                  $q->whereIn('agent_id', $agentsId);
+              });
+    })->get();
             $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
 
             $suppliers = $suppliers->whereHas('companies', function ($query) use ($user) {
@@ -278,7 +315,12 @@ class TaskController extends Controller
 
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $clients = Client::where('agent_id', $user->agent->id)->get();
-
+    $fullClients = Client::where(function ($query) use ($user) {
+        $query->where('agent_id', $user->agent->id)
+              ->orWhereHas('agents', function ($q) use ($user) {
+                  $q->where('agent_id', $user->agent->id);
+              });
+    })->get();
             // Get tasks assigned to this agent OR unassigned tasks in the same company
             $tasks = $tasks->where(function ($query) use ($user) {
                 $query->where('agent_id', $user->agent->id)
@@ -316,6 +358,7 @@ class TaskController extends Controller
             'taskCount',
             'agents',
             'clients',
+            'fullClients',
             'suppliers',
             'types',
             'countries',

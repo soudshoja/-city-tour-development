@@ -350,6 +350,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/settlements/entries/by-date', [ReportController::class, 'journalEntriesByDate'])
             ->name('settlements.entries.by_date');
         Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
+        Route::get('/creditors', [ReportController::class, 'creditors'])->name('creditors');
+        Route::get('/creditors/pdf', [ReportController::class, 'creditorsPdf'])->name('creditors.pdf');
     });
 
     // INVOICE
@@ -402,7 +404,8 @@ Route::middleware(['auth'])->group(function () {
     ], function () {
         Route::get('/', [RefundController::class, 'index'])->name('index');
         Route::get('/{task}/create', [RefundController::class, 'create'])->name('create');
-        Route::post('/{task}', [RefundController::class, 'store'])->name('store');
+        Route::post('/', [RefundController::class, 'store'])->name('store');
+        Route::post('/unpaid-invoice', [RefundController::class, 'storeForUnpaidInvoice'])->name('store-unpaid');
         Route::get('/{task}/{refund}/edit', [RefundController::class, 'edit'])->name('edit');
         Route::put('/{task}/{refund}', [RefundController::class, 'update'])->name('update');
         Route::post('/{task}/{refund}/complete-process', [RefundController::class, 'complete_process'])->name('complete_process');

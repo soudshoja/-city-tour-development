@@ -27,21 +27,22 @@ $formMethod = $isEditing ? 'PUT' : 'POST';
     @endif
     @csrf
     <input type="hidden" name="task_id" value="{{ $task->id }}">
-    <div class="mb-6">
-        <label for="date" class="block text-gray-700 font-semibold mb-2">Date</label>
-        <input type="date" name="date" id="date"
-            value="{{ old('date', $isEditing ? $refund->date : now()->toDateString()) }}" required
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
-        @error('date')
-        <span class="text-red-500 text-sm">{{ $message }}</span>
-        @enderror
-    </div>
-
-    <div class="mb-6">
-        <label for="reference" class="block text-gray-700 font-semibold mb-2">Reference</label>
-        <input type="text" name="reference" id="reference"
-            value="{{ old('reference', $isEditing ? $refund->reference : '') }}"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+        <div>
+            <label for="date" class="block text-gray-700 font-semibold mb-2">Date</label>
+            <input type="date" name="date" id="date"
+                value="{{ old('date', $isEditing ? $refund->date : now()->toDateString()) }}" required
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+            @error('date')
+            <span class="text-red-500 text-sm">{{ $message }}</span>
+            @enderror
+        </div>
+        <div class="mb-6">
+            <label for="reference" class="block text-gray-700 font-semibold mb-2">Reference</label>
+            <input type="text" name="reference" id="reference"
+                value="{{ old('reference', $isEditing ? $refund->reference : '') }}"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
+        </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 border border-gray-300 rounded-lg px-6 lg:px-10 py-10 lg:py-20 bg-gray-50">
@@ -51,8 +52,8 @@ $formMethod = $isEditing ? 'PUT' : 'POST';
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
                     <label for="original_invoice_price" class="block font-semibold text-gray-700 mb-2">Original Invoice Price</label>
                     <input readonly type="number" step="0.01" name="original_invoice_price"
-                        id="original_invoice_price"
-                        value="{{ old('original_invoice_price', $isEditing && $refund ? number_format($refund->airline_nett_fare, 2) : number_format($invoiceDetail->task_price, 2)) }}"
+                        id="original_invoice_price" value="{{ old('original_invoice_price', $isEditing && $refund ?
+                            number_format($refund->airline_nett_fare, 2, '.', '') : number_format($invoiceDetail->task_price, 2, '.', '')) }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-medium text-gray-800" readonly>
                 </div>
 
@@ -67,7 +68,7 @@ $formMethod = $isEditing ? 'PUT' : 'POST';
                     <label for="original_task_price" class="block font-semibold text-gray-700 mb-2">Original Task (Cost Price)</label>
                     <input readonly type="number" step="0.01" name="original_task_price"
                         id="original_task_price"
-                        value="{{ old('original_task_price', number_format($invoiceDetail->supplier_price, 2) ?? '') }}"
+                        value="{{ old('original_task_price', number_format($invoiceDetail->supplier_price, 2, '.', '') ?? '') }}"
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-medium text-gray-800" readonly>
                 </div>
 
@@ -143,14 +144,11 @@ $formMethod = $isEditing ? 'PUT' : 'POST';
             <hr class="my-4">
             <div class="font-bold text-gray-700 mb-2">Total Profit (Invoice Price)</div>
             <input type="number" step="0.01" name="invoice_price" id="invoicePriceInput"
-                value="{{ old('invoice_price', $isEditing && $refund ? 
-                    ($refund->airline_nett_fare - $refund->total_nett_refund) : 
-                    (isset($refundInvoiceDetail) ? $refundInvoiceDetail->amount : number_format($invoiceDetail->markup_price + $task->refund_charge, 2))) }}"
+                value="{{ old('invoice_price', $isEditing && $refund ?
+                    number_format($refund->airline_nett_fare - $refund->total_nett_refund, 2, '.', '') : (isset($refundInvoiceDetail) ? number_format($refundInvoiceDetail->amount, 2, '.', '') : number_format($invoiceDetail->markup_price + $task->refund_charge, 2, '.', ''))) }}"
                 class="w-full px-4 py-2 border border-indigo-300 rounded-lg bg-white text-right font-bold text-lg" />
 
             <!-- Hidden inputs to send calculated values to backend -->
-            <input type="hidden" name="original_invoice_price" id="originalInvoicePriceInput"
-                value="{{ old('original_invoice_price', $isEditing && $refund ? $refund->airline_nett_fare : number_format($invoiceDetail->task_price, 2)) }}">
             <input type="hidden" name="original_task_profit" id="originalTaskProfitInput"
                 value="{{ old('original_task_profit', $isEditing && $refund ? $refund->original_task_profit : number_format($invoiceDetail->markup_price, 2)) }}">
             <input type="hidden" name="supplier_charge" id="supplierChargeInput"

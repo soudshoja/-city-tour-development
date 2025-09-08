@@ -22,7 +22,7 @@
                 <option value="Cash" {{ old('method') == 'Cash' ? 'selected' : '' }}>Cash</option>
                 <option value="Bank" {{ old('method') == 'Bank' ? 'selected' : '' }}>Bank</option>
                 <option value="Online" {{ old('method') == 'Online' ? 'selected' : '' }}>Online</option>
-                <option value="Credit" {{ old('method') == 'Credit' ? 'selected' : '' }}>{{ $task->client->first_name . ' Credit' }}</option>
+                <option value="Credit" {{ old('method') == 'Credit' ? 'selected' : '' }}>{{ trim($task->client->first_name . ' ' . ($task->client->last_name ?? '')) }}'s Credit</option>
             </select>
             @error('method')
             <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -41,7 +41,7 @@
     <div class="border border-gray-300 rounded-lg px-10 py-20 bg-gray-50">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <input hidden type="number" step="0.01" name="air_refund_amount" id="air_refund_amount"
-                value="{{ number_format($task->total, 2) ?? 0 }}"
+                value="{{ number_format($task->total, 2, '.', '') ?? 0 }}"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
 
 
@@ -51,7 +51,7 @@
                     Task (Cost Price)</label>
                 <input readonly type="number" step="0.01" name="original_task_price"
                     id="original_task_price"
-                    value="{{ old('original_task_price', number_format($invoiceDetail->task_price - $invoiceDetail->markup_price, 2) ?? '') }}"
+                    value="{{ old('original_task_price', number_format($invoiceDetail->task_price - $invoiceDetail->markup_price, 2, '.', '') ?? '') }}"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
             </div>
 
@@ -69,7 +69,7 @@
 
                     <input readonly type="number" step="0.01" name="original_task_profit"
                         id="original_task_profit"
-                        value="{{ old('original_task_profit', number_format($invoiceDetail->markup_price, 2) ?? '') }}"
+                        value="{{ old('original_task_profit', number_format($invoiceDetail->markup_price, 2, '.', '') ?? '') }}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
                 </div>
             </div>
@@ -87,7 +87,7 @@
 
                     <input readonly type="number" step="0.01" name="airline_nett_fare"
                         id="airline_nett_fare"
-                        value="{{ old('airline_nett_fare', number_format($invoiceDetail->task_price, 2) ?? '') }}"
+                        value="{{ old('airline_nett_fare', number_format($invoiceDetail->task_price, 2, '.', '') ?? '') }}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                 </div>
             </div>
@@ -103,7 +103,7 @@
                     Client</label>
                 <input type="number" step="0.01" min="-999999.99" name="service_charge"
                     id="service_charge"
-                    value="{{ old('service_charge', number_format($task->refund_charge, 2) ?? '') }}"
+                    value="{{ old('service_charge', number_format($task->refund_charge, 2, '.', '') ?? '') }}"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                 @error('service_charge')
                 <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -121,7 +121,7 @@
                     </svg>
                     <input readonly type="number" step="0.01" name="refund_airline_charge"
                         id="refund_airline_charge"
-                        value="{{ old('refund_airline_charge', number_format($invoiceDetail->task_price - $invoiceDetail->markup_price - $task->total, 2) ?? '') }}"
+                        value="{{ old('refund_airline_charge', number_format($invoiceDetail->task_price - $invoiceDetail->markup_price - $task->total, 2, '.', '') ?? '') }}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                 </div>
             </div>
@@ -144,7 +144,7 @@
                     Refund Task (Cost Price)</label>
                 <input readonly type="number" step="0.01" name="original_refund_amount"
                     id="original_refund_amount"
-                    value="{{ old('original_refund_amount', number_format($task->total, 2) ?? '') }}"
+                    value="{{ old('original_refund_amount', number_format($task->total, 2, '.', '') ?? '') }}"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
             </div>
 
@@ -160,7 +160,7 @@
 
                     <input type="number" step="0.01" min="-999999.99" name="new_task_profit"
                         id="new_task_profit"
-                        value="{{ old('new_task_profit', number_format($task->tax - $task->refund_charge, 2) ?? '') }}"
+                        value="{{ old('new_task_profit', number_format($task->tax - $task->refund_charge, 2, '.', '') ?? '') }}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                 </div>
                 @error('new_task_profit')
@@ -179,7 +179,7 @@
 
                     <input step="0.01" min="-999999.99" type="number" name="total_nett_refund"
                         id="total_nett_refund"
-                        value="{{ old('total_nett_refund', number_format($invoiceDetail->task_price, 2) ?? '') }}"
+                        value="{{ old('total_nett_refund', number_format($invoiceDetail->task_price, 2, '.', '') ?? '') }}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
                 </div>
                 @error('total_nett_refund')

@@ -1317,15 +1317,13 @@
                                                                                         <div class="w-full">
                                                                                             <x-searchable-dropdown
                                                                                                 name="client_id"
-                                                                                                :items="$clients->map(fn($c) => [
+                                                                                                :items="$fullClients->map(fn($c) => [
                                                                                                     'id' => $c->id, 
                                                                                                     'name' => $c->full_name . ' - ' . $c->phone
                                                                                                 ])"
                                                                                                 :selectedId="$task->client_id"
                                                                                                 :selectedName="$selectedClient ? $selectedClient->full_name . $selectedClient->phone : null"
                                                                                                 placeholder="Select Client" />
-
-
                                                                                         </div>
                                                                                     </div>
 

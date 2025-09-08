@@ -33,8 +33,8 @@ class MFMethodSyncService
                 ]);
 
             Log::info('MyFatoorah payment methods sync request sent.', [
-                'url' => $myfatoorahConfig['base_url'] . 'InitiatePayment',
-                'response' => $response->body(),
+                'url' => $myfatoorahConfig['base_url'] . '/InitiatePayment',
+                'response' => $response->json(),
             ]);
 
             $result = $response->json();

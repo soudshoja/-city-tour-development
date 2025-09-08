@@ -61,21 +61,21 @@
         <div class="content-70">
             <!-- Table  -->
             <div class="panel BoxShadow rounded-lg">
-                <div x-data="{ openFilters: false }" class="mb-4 p-2">
-                    <div class="flex items-center gap-3 md:flex-nowrap">
+                <div>
+                    <div class="flex items-center p-4 gap-3 md:flex-nowrap">
                         <x-search
                             :action="route('invoices.index')"
                             searchParam="search"
                             placeholder="Quick search for invoices"
                         />
-                        <button @click="openFilters = !openFilters" class="shrink-0 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-sm text-amber-800 ring-1 ring-amber-200 hover:bg-amber-200 transition dark:bg-amber-900/40 dark:text-amber-200 dark:ring-amber-800 dark:hover:bg-amber-900/60">
+                        <!-- <button @click="openFilters = !openFilters" class="shrink-0 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-sm text-amber-800 ring-1 ring-amber-200 hover:bg-amber-200 transition dark:bg-amber-900/40 dark:text-amber-200 dark:ring-amber-800 dark:hover:bg-amber-900/60">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path d="M4 6h16M7 12h10M10 18h4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
                             Filters
-                        </button>
+                        </button> -->
                     </div>
-                    <div x-show="openFilters" x-cloak x-transition
+                    <!-- <div x-show="openFilters" x-cloak x-transition
                         class="mt-3 rounded-xl border border-gray-200 bg-gray-50/70 shadow-sm dark:border-slate-700 dark:bg-slate-900/60">
                         <form action="{{ route('invoices.index') }}" method="GET" class="px-4 pt-4">
                             <input type="hidden" name="sortBy" value="{{ request('sortBy', 'created_at') }}">
@@ -130,8 +130,9 @@
                                 </button>
                             </div>
                         </form>
-                    </div>
+                    </div> -->
                 </div>
+
                 <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="flex items-center gap-3 rounded-lg p-4 shadow-sm bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
                         <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
@@ -156,7 +157,33 @@
                             <div class="text-lg font-semibold text-emerald-700 dark:text-emerald-200">{{ number_format($totalSales, 3) }} KWD</div>
                         </div>
                     </div>
-                </div>
+                    <div class="flex items-center justify-end">
+                        <div class="p-4 w-full max-w-xs">
+                            <form method="GET" action="{{ route('invoices.index') }}" class="flex flex-row items-end gap-2" id="invoice-filter-form">
+                                <!-- Dropdown -->
+                                <div class="flex flex-col justify-end">
+                                    <label class="text-xs font-semibold text-gray-600 mb-1">Filter By</label>
+                                    <select name="date_field" class="border rounded px-2 py-1 text-sm min-w-[150px]">
+                                        <option value="created_at" {{ request('date_field') == 'created_at' ? 'selected' : '' }}>Created Date</option>
+                                        <option value="invoice_date" {{ request('date_field') == 'invoice_date' ? 'selected' : '' }}>Invoice Date</option>
+                                    </select>
+                                </div>
+                                <!-- Date Range -->
+                                <div class="flex flex-col justify-end">
+                                    <label class="text-xs font-semibold text-gray-600 mb-1">Date Range</label>
+                                    <input type="text" id="date-range" class="border rounded px-2 py-1 text-sm min-w-[240px]" placeholder="Select date range" autocomplete="off" />
+                                    <input type="hidden" name="from_date" id="from_date" value="{{ request('from_date') }}">
+                                    <input type="hidden" name="to_date" id="to_date" value="{{ request('to_date') }}">
+                                </div>
+                                <!-- Buttons -->
+                                <div class="flex flex-row items-end gap-1 pt-5">
+                                    <a href="{{ route('invoices.index') }}" class="px-2 py-1 rounded bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-300 flex items-center">Clear</a>
+                                    <button type="submit" class="px-2 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 border border-blue-700 flex items-center">Apply</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>              
 
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
@@ -295,9 +322,21 @@
                                                 </g>
                                             </svg>
                                         </a>
-                                        @if (in_array($invoice->status, ['unpaid', 'partial'], true) ||
+                                        @if ($invoice->refund)
+                                        <a data-tooltip="View/Edit Refund"
+                                            href="{{ route('refunds.edit', [$invoice->refund->task_id, $invoice->refund->id]) }}" class="text-sm font-medium text-blue-600 hover:underline">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20"
+                                                height="20" viewBox="0 0 24 24">
+                                                <path fill="none" stroke="#00ab55"
+                                                    stroke-linecap="round" stroke-linejoin="round"
+                                                    stroke-width="1.5"
+                                                    d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42"
+                                                    opacity=".5" />
+                                            </svg>
+                                        </a>
+                                        @elseif (in_array($invoice->status, ['unpaid', 'partial'], true) ||
                                             ($invoice->status === 'paid' && in_array($invoice->payment_type, ['full', 'cash'], true)))
-                                        <a data-tooltip="View Detail/ Edit"
+                                        <a data-tooltip="View/Edit Invoice"
                                             href="{{ route('invoice.edit', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                             class="text-sm font-medium text-blue-600 hover:underline">
 
@@ -376,8 +415,8 @@
                                                                     <div class="border-t-2 border-dashed border-gray-400"></div>
                                                                     <div class="grid grid-cols-1 sm:grid-cols-2 text-sm gap-y-2 gap-x-10 text-gray-800">
                                                                         <div><strong>Name:</strong> {{ $invoiceDetail->task->client->full_name }}</div>
-                                                                        <div><strong>Flight:</strong> {{ $invoiceDetail->task->flightDetails->flight_number }}</div>
-                                                                        <div><strong>Date:</strong> {{ $invoiceDetail->task->flightDetails->readable_departure_time }}</div>
+                                                                        <div><strong>Flight:</strong> {{ $invoiceDetail->task->flightDetails->flight_number ?? 'N/A' }}</div>
+                                                                        <div><strong>Date:</strong> {{ $invoiceDetail->task->flightDetails->readable_departure_time ?? 'N/A' }}</div>
                                                                         <div><strong>Reference:</strong> {{ $invoiceDetail->task->reference }}</div>
                                                                     </div>
                                                                 </div>
@@ -447,7 +486,7 @@
                                         {{ $invoice->client->full_name }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        @if ($invoice->status === 'paid')
+                                        @if (in_array($invoice->status, ['paid', 'paid by refund']))
                                         <a href="{{ route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank">
                                             <span class="badge badge-outline-success cursor-pointer">{{ $invoice->status }}</span>
                                         </a>
@@ -527,6 +566,24 @@
             </div>
         </div>
     </div>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script>
+    flatpickr("#date-range", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        defaultDate: [
+            "{{ request('from_date') }}",
+            "{{ request('to_date') }}"
+        ].filter(Boolean)
+    });
+
+    document.getElementById('invoice-filter-form').addEventListener('submit', function(e) {
+        const range = document.getElementById('date-range').value.split(' to ');
+        document.getElementById('from_date').value = range[0] ? range[0].trim() : '';
+        document.getElementById('to_date').value = range[1] ? range[1].trim() : range[0];
+    });
+</script>
     <script>
         const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
         const updateDateUrl   = "{{ route('invoice.updateDate',   ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM']) }}";

@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redirect;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -218,27 +219,38 @@ class InvoiceController extends Controller
         $selectedCompany = null;
         $agents = collect();
         $clients = collect();
-
-        if ($user->role_id == Role::ADMIN) {
-            $agents = Agent::all();
-            $clients = Client::all();
-            $branches = Branch::all();
-            $companies = Company::all();
-        } elseif ($user->role_id == Role::COMPANY) {
-            $company = Company::with('branches.agents')->find($user->company->id);
-            $agents = $company->branches->flatMap->agents;
-            $clients = $agents->flatMap->clients;
-            $branches = $company->branches;
-            $selectedCompany = $company;
-        } elseif ($user->role_id == Role::AGENT) {
-            $agent = $user->agent;
-            $company = $agent->branch->company;
-            $agents = $company->branches->flatMap->agents;
-            $clients = $agents->flatMap->clients;
-            $branches = $company->branches;
-            $selectedCompany = $company;
-        }
-
+        $agentsId = [];
+            if ($user->role_id == Role::ADMIN) {
+                $agents = Agent::all();
+                $clients = Client::all();
+                $branches = Branch::all();
+                $companies = Company::all();
+            } else {
+                // Get all agent IDs for the current user context
+                if ($user->role_id == Role::COMPANY) {
+                    $company = Company::with('branches.agents')->find($user->company->id);
+                    $agents = $company->branches->flatMap->agents;
+                    $branches = $company->branches;
+                    $selectedCompany = $company;
+                } elseif ($user->role_id == Role::BRANCH) {
+                    $agents = Agent::where('branch_id', $user->branch->id)->get();
+                    $agentsId = $agents->pluck('id')->toArray();
+                    $branches = Branch::where('company_id', $user->branch->company_id)->get();
+                    $selectedCompany = $user->branch->company;
+                } elseif ($user->role_id == Role::AGENT) {
+                    $agent = $user->agent;
+                    $agents = Agent::where('id', $agent->id)->get();
+                    $agentsId = [$agent->id];
+                    $branches = Branch::where('company_id', $agent->branch->company_id)->get();
+                    $selectedCompany = $agent->branch->company;
+                }
+            }
+             $clients = Client::where(function ($query) use ($agentsId) {
+                        $query->whereIn('agent_id', $agentsId)
+                            ->orWhereHas('agents', function ($q) use ($agentsId) {
+                                $q->whereIn('agent_id', $agentsId);
+                            });
+                    })->get();
         if ($selectedTasks->count() > 0) {
             $clientIds = $selectedTasks->pluck('client_id')->unique();
             $agentIds =  $selectedTasks->pluck('agent_id')->unique();
@@ -260,6 +272,7 @@ class InvoiceController extends Controller
             $agentId = $user->company->branches->flatMap->agents->pluck('id');
             $companyId = $user->company->id;
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
+            $agentsId = $agents->pluck('id')->toArray();
             $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
                 $query->where('company_id', $user->company->id)->where('is_active', true);
             })->with('companies')->get();
@@ -280,6 +293,13 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
 
+        $clients = Client::where(function ($query) use ($agentsId) {
+            $query->whereIn('agent_id', $agentsId)
+                ->orWhereHas('agents', function ($q) use ($agentsId) {
+                    $q->whereIn('agent_id', $agentsId);
+                });
+        })->get();
+        
         $agentId = $selectedAgent ? $selectedAgent->id : $agentId;
         $agentId = Arr::flatten((array) $agentId);
         $clientId = $selectedClient ? $selectedClient->id : null;
@@ -463,7 +483,7 @@ class InvoiceController extends Controller
         ));
     }
 
-    public function updatePaymentGateway(Request $request)
+    public function updatePaymentGateway(Request $request) : JsonResponse
     {
         $validated = $request->validate([
             'invoiceId' => 'required',
@@ -514,7 +534,7 @@ class InvoiceController extends Controller
         return response()->json(['message' => 'Payment method updated successfully!', 'invoice' => $invoicePartial]);
     }
 
-    public function savePartial(Request $request)
+    public function savePartial(Request $request) : JsonResponse
     {
         $request->validate([
             'invoiceId' => 'required',
@@ -822,7 +842,7 @@ class InvoiceController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request) : JsonResponse
     {
         $request->validate([
             'tasks' => 'required|array',
@@ -833,6 +853,7 @@ class InvoiceController extends Controller
             'tasks.*.client_id' => 'required|integer',
             'tasks.*.agent_id' => 'required|integer',
             'tasks.*.total' => 'required|numeric',
+            'label' => 'nullable|string',
             'invdate' => 'required|date',
             'duedate' => 'nullable|date',
             'subTotal' => 'required|numeric',
@@ -867,7 +888,10 @@ class InvoiceController extends Controller
                 'branchId' => $branchId,
             ]);
 
-            return response()->json('Agent or company not found!', 404);
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong',
+            ]);
         }
 
         try {
@@ -884,7 +908,10 @@ class InvoiceController extends Controller
             ]);
         } catch (Exception $e) {
             Log::error('Failed to create invoice: ' . $e->getMessage());
-            return response()->json('Invoice creation failed!', 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Something Went Wrong',
+            ]);
         }
 
 

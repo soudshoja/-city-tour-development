@@ -89,10 +89,14 @@
                                             <!-- <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->method }}
                                             </td> -->
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $refund->task->client->first_name ?? '' }}
+                                                {{ $refund->task->client->full_name ?? '' }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                KWD {{ number_format($refund->total_nett_refund, 2) }}
+                                            @if ($refund->task->originalTask->invoiceDetail->invoice->status === 'paid by refund')
+                                                {{ number_format($refund->airline_nett_fare - $refund->total_nett_refund, 2) }} KWD
+                                            @else
+                                                {{ number_format($refund->total_nett_refund, 2) }} KWD
+                                            @endif
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $refund->remarks }}</td>
@@ -110,11 +114,16 @@
                                                     {{ $refund->status === null ? 'Not Set' : ucwords($refund->status) }}
 
                                                 </span>
-                                                @if ($refund->status !== 'completed')
+                                                @if ($refund->status !== 'completed' && $refund->invoice == null)
                                                     <span
                                                         class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-primary"
                                                         onclick="confirmProcessCompleted({{ $refund->task->id }}, {{ $refund->id }})">
                                                         Mark as Completed
+                                                    </span>
+                                                @elseif($refund->invoice)
+                                                    <span
+                                                        class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-primary">
+                                                        <a href="{{ route('invoice.show', ['companyId' => $refund->company_id, 'invoiceNumber' => $refund->invoice->invoice_number])}}">View Invoice</a>
                                                     </span>
                                                 @endif
                                             </td>

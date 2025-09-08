@@ -67,7 +67,7 @@ class AccountingController extends Controller
                         foreach ($agent->clients as $client) {
                             $accountsArray[] = [
                                 'id' => 'account-' . $account->id . ':client-' . $client->id,
-                                'name' => 'Client: ' . $client->first_name,
+                                'name' => 'Client: ' . $client->full_name,
                             ];
                         }
                     }
@@ -114,7 +114,7 @@ class AccountingController extends Controller
                                 $groupedJournalEntrys[$taskName][]  = [
                                     'JournalEntry_id' => $JournalEntry->id,
                                     'JournalEntry_name' => $JournalEntry->name,
-                                    'client_name' => $client->first_name,
+                                    'client_name' => $client->full_name,
                                     'supplier_name' => $task->supplier->name,
                                     'credit' => $JournalEntry->credit,
                                     'debit' => $JournalEntry->debit,

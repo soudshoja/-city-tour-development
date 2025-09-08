@@ -19,7 +19,7 @@
                     <td class="py-4 px-6 border-b">{{ $task->description }}</td>
                     <td class="py-4 px-6 border-b">{{ $task->created_at->format('Y-m-d') }}</td>
                     <td class="py-4 px-6 border-b">{{ $task->status }}</td>
-                    <td class="py-4 px-6 border-b">{{ $task->client->first_name }}</td>
+                    <td class="py-4 px-6 border-b">{{ $task->client->full_name }}</td>
                     <td class="py-4 px-6 border-b">
                         <a href="#" class="text-indigo-500">View</a>
                     </td>

@@ -36,7 +36,7 @@
                 <select name="client_id" id="" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-30">
                     @foreach($clients as $client)
                     <option value="{{ $client->id }}" id="client_{{ $client->id }}">
-                        {{ $client->first_name }}
+                        {{ $client->full_name }}
                     </option>
                     @endforeach
                 </select>

@@ -89,7 +89,7 @@
 
         <div>
             <strong>Bill To:</strong>
-            <p>{{ $invoice->client->first_name ?? 'N/A' }}<br>
+            <p>{{ $invoice->client->full_name ?? 'N/A' }}<br>
                 {{ $invoice->client->address ?? 'N/A' }}<br>
                 {{ $invoice->client->email ?? 'N/A' }}</p>
         </div>

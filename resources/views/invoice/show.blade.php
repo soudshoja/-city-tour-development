@@ -108,6 +108,9 @@
             </div>
             <div class="text-right">
                 <h1 class="text-2xl font-bold text-gray-800">INVOICE</h1>
+                @if ($invoice->refund)
+                    <p class="text-sm text-gray-600">Generated from Refund {{ $invoice->refund->refund_number }}</p>
+                @endif
                 <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
                 <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
             </div>
@@ -461,6 +464,17 @@
         <!-- Totals Section -->
         <div class="flex justify-end mb-8">
             <div class="w-1/3 text-sm">
+                @if ($invoice->refund?->original_invoice)
+                    <div class="flex justify-between py-2 border-b border-gray-200">
+                        <span>
+                            Original Invoice
+                            <span class="text-xs text-gray-500">
+                                ({{ $invoice->refund->original_invoice->invoice_number }})
+                            </span>
+                        </span>
+                        <span>{{ number_format($invoice->refund->original_invoice->amount, 2) }}</span>
+                    </div>
+                @endif
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Subtotal:</span>
                     <span>{{ number_format($invoice->sub_amount, 2) }}</span>

@@ -193,7 +193,7 @@
                      @csrf
                      <input type="hidden" name="total_amount" value="{{ $invoicePartial->final_amount - abs($checkUtilizeCredit->sum('amount')) }}">
                      <input type="hidden" name="client_email" value="{{ $invoicePartial->client->email }}">
-                     <input type="hidden" name="client_name" value="{{ $invoicePartial->client->first_name }}">
+                     <input type="hidden" name="client_name" value="{{ $invoicePartial->client->full_name }}">
                      <input type="hidden" name="client_phone" value="{{ $invoicePartial->client->phone }}">
                      <input type="hidden" name="payment_gateway" value="{{ $invoicePartial->payment_gateway }}">
                      <input type="hidden" name="payment_method" value="{{ $invoicePartial->payment_method }}">

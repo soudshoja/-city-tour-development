@@ -49,12 +49,12 @@
                             </tr>
                             @else
                             @foreach ($clients as $client)
-                            <tr data-name="{{ $client->first_name }}" data-email="{{ $client->email }}"
+                            <tr data-name="{{ $client->full_name }}" data-email="{{ $client->email }}"
                                 data-phone="{{ $client->phone }}" class="taskRow">
                                 <td class="p-3 text-sm text-center">
                                     <a href="javascript:void(0);"
                                         class="viewClient inline-flex items-center justify-center mx-auto text-blue-600 dark:text-blue-300"
-                                        data-id="{{ $client->id }}" data-name="{{ $client->first_name }}"
+                                        data-id="{{ $client->id }}" data-name="{{ $client->full_name }}"
                                         data-email="{{ $client->email }}" data-phone="{{ $client->phone }}"
                                         data-tooltip="see Client">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"

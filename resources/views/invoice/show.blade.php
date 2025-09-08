@@ -391,7 +391,7 @@
                     </td>
 
                     <td class="px-4 py-2 border">
-                        {{ $partial->client->first_name }}
+                        {{ $partial->client->full_name }}
 
                         @if ($creditBalance > 0 && $partial->status === 'unpaid')
                         <br>Credit Balance: {{ number_format($creditBalance, 2) }} |
@@ -539,7 +539,7 @@
                 <input type="hidden" id="totalAmountInput" name="total_amount"
                     value="{{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}">
                 <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
-                <input type="hidden" name="client_name" value="{{ $invoice->client->first_name }}">
+                <input type="hidden" name="client_name" value="{{ $invoice->client->full_name }}">
                 <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">
                 <input type="hidden" name="payment_gateway" value="{{ $invoice->invoicePartials->first()->payment_gateway }}">
                 <input type="hidden" name="payment_method" value="{{ $invoice->invoicePartials->first()->payment_method }}">
@@ -632,7 +632,7 @@
                             $paymentReferenceCredit = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial($partial->client_id, $partial->id);
                         @endphp
                         @if ($paymentReferenceCredit)
-                            <td class="px-4 py-2 border">Client Credit by {{ $partial->client->first_name }} {{ $partial->client->last_name }}
+                            <td class="px-4 py-2 border">Client Credit by {{ $partial->client->full_name }}
                                 ({{ $paymentReferenceCredit }})
                             </td>
                         @else

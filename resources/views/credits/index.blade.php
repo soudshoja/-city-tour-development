@@ -58,7 +58,7 @@
                                 class="p-2 mt-1 block w-full border-gray-300 rounded-full shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 <option value="">Select Client</option>
                                 @foreach ($clients as $client)
-                                <option value="{{ $client->id }}">{{ $client->first_name }}</option>
+                                <option value="{{ $client->id }}">{{ $client->full_name }}</option>
                                 @endforeach
                             </select>
                         </div>

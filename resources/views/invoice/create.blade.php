@@ -1384,7 +1384,7 @@
             clientData.forEach(client => {
                 const li = document.createElement('li');
                 li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
-                li.innerText = `${client.first_name} ${client.middle_name ? client.middle_name + ' ' : ''} ${client.last_name ? client.last_name : ''} (${client.email})`;
+                li.innerText = `${client.full_name} (${client.email})`;
                 li.onclick = () => selectClient(client);
                 clientList.appendChild(li);
             });
@@ -1394,7 +1394,7 @@
             renderClientCredit(client);
             document.getElementById('receiverId').value = client.id;
 
-            document.getElementById('receiverName').value = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
+            document.getElementById('receiverName').value = client.full_name;
             document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
             closeClientModal();
@@ -1541,7 +1541,7 @@
             // Update hidden fields
             document.getElementById('receiverId').value = client.id;
             // Update input fields
-            document.getElementById('receiverName').value = client.first_name + (client.middle_name ? ' ' + client.middle_name : '') + (client.last_name ? ' ' + client.last_name : '');
+            document.getElementById('receiverName').value = client.full_name;
             document.getElementById('receiverEmail').value = client.email;
             document.getElementById('receiverPhone').value = client.phone;
 

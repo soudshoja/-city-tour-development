@@ -123,27 +123,16 @@ public function updateExchangeRates(Request $request, $supplierId)
     
 public function ledgerByDateRange(Request $request, $supplierId)
 {
-    $fromDate = $request->query('fromDate');
-    $toDate = $request->query('toDate');
+    $fromDate = $request->input('fromDate');
+    $toDate = $request->input('toDate');
 
-    $supplier = Supplier::with('tasks.agent')->findOrFail($supplierId);
-    $taskIds = $supplier->tasks->pluck('id')->toArray();
-
-    $query = JournalEntry::with(['task.agent', 'account'])->whereIn('task_id', $taskIds);
-
-    if ($fromDate && $toDate) {
-        $query->whereBetween('created_at', [$fromDate, $toDate]);
-    }
-
-    $entries = $query->orderBy('created_at', 'desc')->get();
-
-    $totalDebit = $entries->sum('debit');
-    $totalCredit = $entries->sum('credit');
+    $tasks = Task::with(['agent', 'flightDetails', 'hotelDetails.hotel'])
+        ->where('supplier_id', $supplierId)
+        ->whereBetween('supplier_pay_date', [$fromDate, $toDate])
+        ->get();
 
     return response()->json([
-        'entries' => $entries,
-        'totalDebit' => $totalDebit,
-        'totalCredit' => $totalCredit,
+        'entries' => $tasks
     ]);
 }
 
@@ -460,7 +449,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
         ];
     }
 
-     public function getClientCredential(array $scopes) : array
+    public function getClientCredential(array $scopes) : array
     {
         $user = Auth::user();
         if ($user->role_id == Role::COMPANY) {
@@ -468,7 +457,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
         } elseif ($user->role_id == Role::BRANCH) {
             $companyId = $user->branch->company_id;
         } elseif($user->role_id == Role::AGENT) {
-            $companyId = $user->agent->company_id;
+            $companyId = $user->agent->branch->company_id;
         } 
         
         $credential = SupplierCredential::query()
@@ -508,6 +497,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
         }
 
     }
+    
     public function magicReserveWebhook($id)
     {
 

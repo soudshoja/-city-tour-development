@@ -61,4 +61,8 @@ class Refund extends Model
         return $this->belongsTo(Invoice::class, 'invoice_id');
     }
 
+    public function getOriginalInvoiceAttribute()
+    {
+        return $this->task?->originalTask?->invoiceDetail?->invoice;
+    }
 }

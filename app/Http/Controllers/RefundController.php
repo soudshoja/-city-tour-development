@@ -49,6 +49,12 @@ class RefundController extends Controller
                 ->where('branch_id', Auth::user()->branch->id)
                 ->orderBy('id', 'desc')
                 ->get();
+        } elseif (Auth::user()->role->id == Role::AGENT) {
+            $refundClients = $user->agent->refundClients;
+            $refunds = Refund::with('task.client', 'task.agent')
+                ->where('agent_id', $user->agent->id)
+                ->orderBy('id', 'desc')
+                ->get();
         } else {
             $refundClients = $user->agent->refundClients;
             $refunds = collect();
@@ -215,7 +221,7 @@ class RefundController extends Controller
                         $incomeRefundAccountEntry = Account::create([
                             'name' => $accountIncomeName,
                             'parent_id' => $assetsDirectIncome->id,
-                            'company_id' => Auth::user()->company->id,
+                            'company_id' => $task->company_id,
                             'branch_id' => Auth::user()->branch_id,
                             'root_id' => $assetsDirectIncome->root_id,
                             'code' => $assetsDirectIncome->code + 1,
@@ -252,7 +258,7 @@ class RefundController extends Controller
                         $incomeRefundIncomeAccEntry = Account::create([
                             'name' => $accountincomeRefundIncomeRec,
                             'parent_id' => $incomeIndirectIncomeRec->id,
-                            'company_id' => Auth::user()->company->id,
+                            'company_id' => $task->company_id,
                             'branch_id' => Auth::user()->branch_id,
                             'root_id' => $incomeIndirectIncomeRec->root_id,
                             'code' => $incomeIndirectIncomeRec->code + 1 + 1,
@@ -333,7 +339,7 @@ class RefundController extends Controller
                     $accountClientRefundLiability = Account::create([
                         'name' => $clientRefundAccountName,
                         'parent_id' => $refundPayable->id,
-                        'company_id' => Auth::user()->company->id,
+                        'company_id' => $task->company_id,
                         'branch_id' => Auth::user()->branch_id,
                         'root_id' => $liabilities->id,
                         'code' => $refundPayable->code + 10,
@@ -537,7 +543,7 @@ class RefundController extends Controller
                     $incomeRefundIncomeAccEntry = Account::create([
                         'name' => $accountincomeRefundIncomeRec,
                         'parent_id' => $incomeIndirectIncomeRec->id,
-                        'company_id' => Auth::user()->company->id,
+                        'company_id' => $task->company_id,
                         'branch_id' => Auth::user()->branch_id,
                         'root_id' => $incomeIndirectIncomeRec->root_id,
                         'code' => $incomeIndirectIncomeRec->code + 1 + 1,
@@ -761,6 +767,8 @@ class RefundController extends Controller
                 'new_agent_markup' => ['required', 'numeric'],
                 'date' => ['required', 'date'],
                 'reference' => ['nullable', 'string'],
+                'remarks' => ['nullable', 'string'],
+                'remarks_internal' => ['nullable', 'string'],
                 'reason' => ['nullable', 'string'],
                 'payment_gateway_option' => ['nullable', 'string'],
                 'payment_method' => ['nullable', 'numeric']
@@ -780,7 +788,9 @@ class RefundController extends Controller
                 'payment_method' => $request->input('payment_method'),
                 'date' => $request->date,
                 'reference' => $request->reference,
-                'remarks' => $request->input('reason'),
+                'remarks' => $request->input('remarks'),
+                'remarks_internal' => $request->input('remarks_internal'),
+                'reason' => $request->input('reason'),
             ]);
 
             $invoice = $refund->invoice;
@@ -828,12 +838,13 @@ class RefundController extends Controller
             $request->validate([
                 'date' => 'required|date',
                 'method' => 'required|string',
-                'account_id' => 'required|exists:accounts,id',
                 'total_nett_refund' => 'required|numeric|min:0',
                 'refund_airline_charge' => 'nullable|numeric|min:0',
                 'original_task_profit' => 'nullable|numeric|min:0',
                 'new_task_profit' => 'nullable|numeric|min:0',
                 'reason' => 'nullable|string|max:1000',
+                'remarks' => 'nullable|string',
+                'remarks_internal' => 'nullable|string',
             ]);
 
             // Update the refund with validated data
@@ -887,7 +898,7 @@ class RefundController extends Controller
                 $supplierRefundIncomeId = Account::create([
                     'name' => $accountSupplierRefundIncome,
                     'parent_id' => $incomeIndirectIncome->id,
-                    'company_id' => Auth::user()->company->id,
+                    'company_id' => $taskRec->company_id,
                     'branch_id' => Auth::user()->branch_id,
                     'root_id' => $incomeIndirectIncome->root_id,
                     'code' => $incomeIndirectIncome->code + 1,
@@ -925,7 +936,7 @@ class RefundController extends Controller
                 $supplierRefundLiabilityId = Account::create([
                     'name' => $accountSupplierRefundLiability,
                     'parent_id' => $incomeIndirectLiability->id,
-                    'company_id' => Auth::user()->company->id,
+                    'company_id' => $taskRec->company_id,
                     'branch_id' => Auth::user()->branch_id,
                     'root_id' => $incomeIndirectLiability->root_id,
                     'code' => $incomeIndirectLiability->code + 1,

@@ -39,7 +39,9 @@ class CoaController extends Controller
         // Get the authenticated user
         $user = Auth::user();
 
-        // Retrieve the company associated with the user
+        if ($user->role_id != Role::ADMIN && $user->role_id != Role::COMPANY) {
+            return abort(403, 'Unauthorized action.');
+        }
         $company = Company::where('user_id', $user->id)->first();
 
         // Ensure the company exists before proceeding

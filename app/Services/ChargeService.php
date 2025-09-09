@@ -20,7 +20,8 @@ class ChargeService
         ?string $chargeType = null,
         ?string $selfChargeType = null,
         ?float $selfCharge = null,
-        ?float $apiServiceCharge = null
+        ?float $apiServiceCharge = null,
+        ?float $gatewayFee = null,
     ): array {
         return [
             'finalAmount' => $finalAmount,
@@ -32,6 +33,7 @@ class ChargeService
             'self_charge' => $selfCharge,
             'api_service_charge' => $apiServiceCharge,
             'amount' => $fee,
+            'gatewayFee' => $gatewayFee,
         ];
     }
 
@@ -107,7 +109,8 @@ class ChargeService
             'finalAmount' => $finalAmount,
             'netReceived' => $netReceived,
             'company_id' => $companyId,
-            'gateway' => $gatewayName
+            'gateway' => $gatewayName,
+            'gatewayFee' => $fee,
         ]);
 
         return self::standardReturn(
@@ -117,7 +120,8 @@ class ChargeService
             netReceived: $netReceived,
             chargeType: $charge->charge_type,
             selfChargeType: $charge->self_charge_type,
-            selfCharge: $charge->self_charge
+            selfCharge: $charge->self_charge,
+            gatewayFee: $fee,
         );
     }
 
@@ -161,6 +165,7 @@ class ChargeService
             'finalAmount' => $finalAmount,
             'netReceived' => $netReceived,
             'paid_by' => $paidBy,
+            'gatewayFee' => $selfChargeAmount,
         ]);
 
         return self::standardReturn(
@@ -171,7 +176,8 @@ class ChargeService
             chargeType: $method->charge_type,
             selfChargeType: $method->self_charge_type,
             selfCharge: $method->self_charge,
-            apiServiceCharge: $apiServiceCharge
+            apiServiceCharge: $apiServiceCharge,
+            gatewayFee: $selfChargeAmount,
         );
     }
 

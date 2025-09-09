@@ -418,6 +418,8 @@ if ($search = $request->query('q')) {
      */
     public function saveColumnPrefs(Request $request)
     {
+        dump($request->has('task_flight_details'));
+            dd($data);
         $validated = $request->validate([
             'columns' => 'required|array'
         ]);
@@ -429,6 +431,7 @@ if ($search = $request->query('q')) {
 
     public function store(Request $request) : JsonResponse
     {
+        Log::info('Store task request', ['request' => $request->all()]);
         $request->validate([
             'reference' => 'required|string',
             'status' => 'required',
@@ -724,7 +727,7 @@ if ($search = $request->query('q')) {
                 'issued_by'  => null,
             ]);
         }
-
+            
         $companyName = Company::where('id', $request->company_id)->value('name');
         if (strtolower($companyName) === 'test ojeen' && strtolower($request->status) === 'confirmed') {
             $request->merge(['status' => 'issued']);
@@ -832,9 +835,12 @@ if ($search = $request->query('q')) {
 
             $task = Task::create($data);
 
+;
+
             if ($task->type === 'hotel' && $request->has('task_hotel_details') && !empty($request->task_hotel_details)) {
                 $this->saveHotelDetails($request->task_hotel_details, $task->id);
             } elseif ($task->type === 'flight' && $request->has('task_flight_details') && !empty($request->task_flight_details)) {
+                dd($request->task_flight_details);
                 $this->saveFlightDetails($request->task_flight_details, $task->id);
             } elseif ($task->type === 'insurance' && $request->has('task_insurance_details') && !empty($request->task_insurance_details)) {
                 $this->saveInsuranceDetails($request->task_insurance_details, $task->id);
@@ -2491,6 +2497,7 @@ if ($search = $request->query('q')) {
      */
     private function createSingleFlightDetail(array $data, int $taskId)
     {
+        Log::info('Creating flight detail', ['data' => $data, 'task_id' => $taskId]);
         try {
             $airline = isset($data['airline_name']) ? Airline::where('name', 'like', '%' . $data['airline_name'] . '%')->first() : null;
 
@@ -2546,7 +2553,9 @@ if ($search = $request->query('q')) {
                 'equipment' => $data['equipment'] ?? null,
                 'flight_meal' => $data['flight_meal'] ?? null,
                 'seat_no' => $data['seat_no'] ?? null,
-                'task_id' => $taskId
+                'task_id' => $taskId,
+                'is_ancillary' => !empty($data['is_ancillary']) ? 1 : 0, // <-- Add this line
+
             ];
 
             TaskFlightDetail::create($flightDetails);

@@ -474,11 +474,16 @@ class PaymentController extends Controller
 
         $chargeRecord = Charge::where('name', $paymentGateway)
             ->where('company_id', $invoice->agent->branch->company->id)
-            ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id')
+            ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id', 'paid_by')
             ->first();
 
         if ($chargeRecord) {
-            $defaultPaymentGatewayFee = $chargeRecord->amount;
+            $gatewayFee = ChargeService::TapCharge([
+                'amount' => $payment->amount,
+                'client_id' => $invoice->client_id,
+                'agent_id' => $invoice->agent_id,
+                'currency' => $invoice->currency
+            ], $paymentGateway)['gatewayFee'] ?? 0;
             $coaBankIdRec = $chargeRecord->acc_bank_id; //COA (Assets) for Debited Bank Account
             $coaFeeIdRec = $chargeRecord->acc_fee_id; //COA (Expenses) for Payment Gateway Fee
             $coaBankFeeIdRec = $chargeRecord->acc_fee_bank_id; //COA (Assets) for Bank Account for the selected Payment Gateway
@@ -494,13 +499,10 @@ class PaymentController extends Controller
             $bankPaymentFee = Account::where('id', $coaBankFeeIdRec)
                 ->where('company_id', $invoice->agent->branch->company->id)
                 ->first();
-
-            //dd($bankAccountAccRecord->id,$tapAccount->id,$bankPaymentFee->id);
         } else {
             Log::error('Charge record not found for payment gateway', ['payment_gateway' => $paymentGateway, 'company_id' => $invoice->agent->branch->company->id]);
             return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
         }
-
 
         if (!$invoice) {
             Log::error('Invoice not found', ['invoice_number' => $invoiceNumber]);
@@ -519,14 +521,10 @@ class PaymentController extends Controller
                 }
 
                 $selectedtask = Task::where('id', $invoiceDetail->task_id)->first();
-                //$selectedtask = Task::where('id', $invoiceDetail['task_id'])->first();
-                $supplier = Supplier::where('id', operator: $selectedtask->supplier_id)->first();
                 $client = Client::where('id', operator: $selectedtask->client_id)->first();
-                $agent = Agent::where('id', operator: $selectedtask->agent_id)->first();
 
                 $receivableAccount = Account::where('name', 'Clients')->first();
                 $receivableAccountId = $receivableAccount->id;
-                //dd($receivableAccount, $client->first_name);
 
                 if (!$receivableAccount || !$receivableAccountId) {
                     Log::error('Receivable account not found', ['company_id' => $invoice->agent->branch->company->id]);
@@ -551,11 +549,10 @@ class PaymentController extends Controller
                     'payment_id' => $paymentId,
                     'payment_reference' => $response['id'],
                     'reference_type' => 'Invoice',
-                    'transaction_date' => $invoice->invoice_date,
+                    'transaction_date' => now(),
                 ]);
 
                 $payment = Payment::find($paymentId);
-
                 $payment->status = 'completed';
                 $payment->completed = '0';
                 $payment->account_id = $receivableAccountId;
@@ -625,10 +622,11 @@ class PaymentController extends Controller
                     $bankPaymentFee->save();
                 }
 
-                // Create record to payment_gateway expense coa account (OK)
-                $tapAccount->actual_balance += $defaultPaymentGatewayFee;
-
+                $paidBy = $chargeRecord->paid_by ?? null;
                 if ($tapAccount) {
+                    $tapAccount->actual_balance += $gatewayFee; // Add to expenses account
+                    $tapAccount->save();
+
                     JournalEntry::create([
                         'transaction_id' => $transaction->id,
                         'company_id' => $invoice->agent->branch->company->id,
@@ -638,17 +636,14 @@ class PaymentController extends Controller
                         'invoice_detail_id' =>  $invoiceDetail->id,
                         'voucher_number' => $payment->voucher_number,
                         'transaction_date' => $invoice->invoice_date,
-                        'description' => 'Record Payment Gateway Charge (Expenses): ' . $tapAccount->name,
-                        'debit' => $defaultPaymentGatewayFee,
+                        'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $tapAccount->name,
+                        'debit' => $gatewayFee,
                         'credit' => 0,
                         'balance' => $tapAccount->actual_balance,
                         'name' =>  $tapAccount->name,
                         'type' => 'charges',
                         'type_reference_id' => $tapAccount->id
                     ]);
-
-                    $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
-                    $tapAccount->save();
                 }
             } catch (\Exception $e) {
                 Log::error('Failed in invoice processing', [
@@ -2166,7 +2161,7 @@ class PaymentController extends Controller
             $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
 
             if (!$paymentId) {
-                return redirect()->to('/invoices')->with('error', 'Invalid payment callback data.');
+                return redirect()->route('invoices.index')->with('error', 'Invalid payment callback data.');
             }
 
             $eventKey = 'mf:callback:' . $paymentId;
@@ -2197,8 +2192,9 @@ class PaymentController extends Controller
                 ]);
 
                 if (!$statusResponse->successful()) {
-                    Log::error('Failed to verify payment status', ['response' => $statusResponse->body()]);
-                    return redirect()->to('/invoices')->with('error', 'Failed to verify payment status.');
+                    Log::error('Failed to verify payment status', ['response' => $statusResponse->json()]);
+
+                    return redirect()->route('invoices.index')->with('error', 'Failed to verify payment status.');
                 }
 
                 $statusData = $statusResponse->json();
@@ -2338,6 +2334,10 @@ class PaymentController extends Controller
                             $invoice->status = 'partial';
                         }
                         $invoice->save();
+
+                        if ($invoice->status === 'paid' && $invoice->refund && $invoice->refund->status === 'processed') {
+                            $invoice->refund->update(['status' => 'completed']);
+                        }
                     });
 
                     $transaction = $statusData['Data']['InvoiceTransactions'][0] ?? [];
@@ -2421,8 +2421,18 @@ class PaymentController extends Controller
                             throw new \Exception('Failed to create receivable journal entry: ' . $e->getMessage());
                         }
 
-                        // Bank Journal (net payment)
-                        $netAmount = $statusData['Data']['InvoiceValue'] - $chargeRecord->amount;
+                        try {
+                            $gatewayFee = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $payment->agent->branch->company_id)['gatewayFee'] ?? 0;
+                        } catch (Exception $e) {
+                            Log::error('FatoorahCharge exception', [
+                                'message' => $e->getMessage(),
+                                'paymentMethod' => $payment->payment_method_id,
+                                'company_id' => $payment->agent->branch->company_id,
+                            ]);
+                            $gatewayFee = 0;
+                        }
+
+                        $netAmount = $statusData['Data']['InvoiceValue']; // Bank Journal (net payment)
 
                         try {
                             JournalEntry::create([
@@ -2453,8 +2463,11 @@ class PaymentController extends Controller
                             throw new \Exception('Failed to update bank account balance: ' . $e->getMessage());
                         }
 
+                        $paidBy = $payment->paymentMethod?->paid_by ?? null;
                         // Fee Journal (expense)
                         try {
+                            $mFAccount->actual_balance += $gatewayFee;
+                            $mFAccount->save();
                             JournalEntry::create([
                                 'transaction_id' => $transaction->id,
                                 'branch_id' => $payment->invoice->agent->branch->id,
@@ -2463,32 +2476,37 @@ class PaymentController extends Controller
                                 'invoice_detail_id' => $invoiceDetail->id,
                                 'account_id' => $mFAccount->id,
                                 'transaction_date' => now(),
-                                'description' => 'MyFatoorah service fee',
-                                'debit' => $chargeRecord->amount,
+                                'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $mFAccount->name,
+                                'debit' => $gatewayFee,
                                 'credit' => 0,
-                                'balance' => $mFAccount->actual_balance + $chargeRecord->amount,
+                                'balance' => $mFAccount->actual_balance,
                                 'name' => $mFAccount->name,
                                 'type' => 'charges',
                                 'voucher_number' => $payment->voucher_number,
                                 'type_reference_id' => $mFAccount->id,
                             ]);
-                        } catch (\Exception $e) {
-                            throw new \Exception('Failed to create fee journal entry: ' . $e->getMessage());
-                        }
-
-                        try {
-                            $mFAccount->actual_balance += $chargeRecord->amount;
-                            $mFAccount->save();
-                        } catch (\Exception $e) {
-                            throw new \Exception('Failed to update fee account balance: ' . $e->getMessage());
+                        } catch (Exception $e) {
+                            throw new Exception('Failed to create fee journal entry: ' . $e->getMessage());
                         }
 
                         DB::commit();
-                    } catch (\Exception $e) {
+                    } catch (Exception $e) {
                         DB::rollBack();
                         Log::error('Payment processing failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
                         return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
                     }
+
+                    $agent = $payment->invoice->agent;
+                    $client = $payment->invoice->client;
+                    $message = 'Your client ' . $client->full_name . ' has paid invoice ' . $payment->invoice->invoice_number . '.\n\nCheck the link : ' . route('invoice.show', ['companyId' => $payment->agent->branch->company_id, 'invoiceNumber' => $payment->invoice->invoice_number]);
+
+                    $resayilController = new ResayilController();
+
+                    $resayilController->message(
+                        $agent->phone_number,
+                        $agent->country_code,
+                        $message,
+                    );
 
                     return redirect()->route('invoice.show', ['companyId' => $payment->agent->branch->company_id, 'invoiceNumber' => $payment->invoice->invoice_number])
                         ->with('status', 'Payment successful! Thank you for your payment.');
@@ -2509,17 +2527,33 @@ class PaymentController extends Controller
                         ]
                     );
 
+                    $agent = $payment->agent;
+                    $client = $payment->client;
+                    $message = 'Your client ' . $client->full_name . ' has successfully topped up their account for amount ' . number_format($payment->amount, 3) . ' ' . $payment->currency . ' using voucher number ' . $payment->voucher_number . '.\n\nCheck the link: ' . route('payment.link.show', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number]);
+
+                    $this->storeNotification([
+                        'user_id' => $agent->user_id,
+                        'title' => 'Client '. $client->full_name . ' Topup Successful',
+                        'message' => $message,
+                    ]);
+
+                    $resayilController = new ResayilController();
+
+                    $resayilController->message(
+                        $agent->phone_number,
+                        $agent->country_code,
+                        $message,
+                    );
+
                     return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number])
                         ->with('success', 'Payment successful!');
                 }
             } finally {
                 optional($lock)->release();
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('MyFatoorah callback exception', ['message' => $e->getMessage()]);
-            return redirect()->to('/invoices')->with('error', 'Something went wrong. Please contact support.');
-
-            return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+            return redirect()->route('invoices.index')->with('error', 'Something went wrong. Please contact support.');
         }
     }
 
@@ -2559,6 +2593,24 @@ class PaymentController extends Controller
                 'reference_type' => 'Invoice',
                 'transaction_date' => now(),
             ]);
+
+            $agent = $invoice->agent;
+            $client = $invoice->client;
+            $message = 'Your client ' . $client->full_name . ' attempted to pay invoice ' . $invoice->invoice_number . ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.';
+
+            $this->storeNotification([
+                'user_id' => $agent->user_id,
+                'title' => 'Client '. $client->full_name . "'s Payment Failed",
+                'message' => $message,
+            ]);
+
+            $resayilController = new ResayilController();
+
+            $resayilController->message(
+                $agent->phone_number,
+                $agent->country_code,
+                $message,
+            );
 
             return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])->with('error', 'Payment failed');
         }

@@ -496,7 +496,7 @@
                                         @endif
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        {{ ucwords($invoice->payment_type) }}
+                                        {{ $invoice->payment_type ? ucwords($invoice->payment_type) : 'N/A' }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         {{ number_format($invoice->invoicedetails->sum('supplier_price'), 2) }} {{ $invoice->currency }} 

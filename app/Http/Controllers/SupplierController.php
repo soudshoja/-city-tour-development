@@ -54,8 +54,7 @@ class SupplierController extends Controller
             })->with('companies')->get();
 
         } else {
-            
-            return redirect()->back()->with('error', 'Unauthorized action.');
+            return abort(403, 'Unauthorized action.');
 
         }
 

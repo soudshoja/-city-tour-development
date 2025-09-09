@@ -1559,7 +1559,7 @@ class InvoiceController extends Controller
             ->where('type', 'Invoice')
             ->orderBy('id', 'asc')
             ->get();
-
+        
         return view('invoice.show', compact(
             'invoice',
             'invoiceDetails',

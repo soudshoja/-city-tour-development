@@ -2161,7 +2161,7 @@ class PaymentController extends Controller
             $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
 
             if (!$paymentId) {
-                return redirect()->to('/invoices')->with('error', 'Invalid payment callback data.');
+                return redirect()->route('invoices.index')->with('error', 'Invalid payment callback data.');
             }
 
             $eventKey = 'mf:callback:' . $paymentId;
@@ -2192,8 +2192,9 @@ class PaymentController extends Controller
                 ]);
 
                 if (!$statusResponse->successful()) {
-                    Log::error('Failed to verify payment status', ['response' => $statusResponse->body()]);
-                    return redirect()->to('/invoices')->with('error', 'Failed to verify payment status.');
+                    Log::error('Failed to verify payment status', ['response' => $statusResponse->json()]);
+
+                    return redirect()->route('invoices.index')->with('error', 'Failed to verify payment status.');
                 }
 
                 $statusData = $statusResponse->json();
@@ -2484,16 +2485,28 @@ class PaymentController extends Controller
                                 'voucher_number' => $payment->voucher_number,
                                 'type_reference_id' => $mFAccount->id,
                             ]);
-                        } catch (\Exception $e) {
-                            throw new \Exception('Failed to create fee journal entry: ' . $e->getMessage());
+                        } catch (Exception $e) {
+                            throw new Exception('Failed to create fee journal entry: ' . $e->getMessage());
                         }
 
                         DB::commit();
-                    } catch (\Exception $e) {
+                    } catch (Exception $e) {
                         DB::rollBack();
                         Log::error('Payment processing failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
                         return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
                     }
+
+                    $agent = $payment->invoice->agent;
+                    $client = $payment->invoice->client;
+                    $message = 'Your client ' . $client->full_name . ' has paid invoice ' . $payment->invoice->invoice_number . '.\n\nCheck the link : ' . route('invoice.show', ['companyId' => $payment->agent->branch->company_id, 'invoiceNumber' => $payment->invoice->invoice_number]);
+
+                    $resayilController = new ResayilController();
+
+                    $resayilController->message(
+                        $agent->phone_number,
+                        $agent->country_code,
+                        $message,
+                    );
 
                     return redirect()->route('invoice.show', ['companyId' => $payment->agent->branch->company_id, 'invoiceNumber' => $payment->invoice->invoice_number])
                         ->with('status', 'Payment successful! Thank you for your payment.');
@@ -2514,17 +2527,33 @@ class PaymentController extends Controller
                         ]
                     );
 
+                    $agent = $payment->agent;
+                    $client = $payment->client;
+                    $message = 'Your client ' . $client->full_name . ' has successfully topped up their account for amount ' . number_format($payment->amount, 3) . ' ' . $payment->currency . ' using voucher number ' . $payment->voucher_number . '.\n\nCheck the link: ' . route('payment.link.show', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number]);
+
+                    $this->storeNotification([
+                        'user_id' => $agent->user_id,
+                        'title' => 'Client '. $client->full_name . ' Topup Successful',
+                        'message' => $message,
+                    ]);
+
+                    $resayilController = new ResayilController();
+
+                    $resayilController->message(
+                        $agent->phone_number,
+                        $agent->country_code,
+                        $message,
+                    );
+
                     return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number])
                         ->with('success', 'Payment successful!');
                 }
             } finally {
                 optional($lock)->release();
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('MyFatoorah callback exception', ['message' => $e->getMessage()]);
-            return redirect()->to('/invoices')->with('error', 'Something went wrong. Please contact support.');
-
-            return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
+            return redirect()->route('invoices.index')->with('error', 'Something went wrong. Please contact support.');
         }
     }
 
@@ -2564,6 +2593,24 @@ class PaymentController extends Controller
                 'reference_type' => 'Invoice',
                 'transaction_date' => now(),
             ]);
+
+            $agent = $invoice->agent;
+            $client = $invoice->client;
+            $message = 'Your client ' . $client->full_name . ' attempted to pay invoice ' . $invoice->invoice_number . ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.';
+
+            $this->storeNotification([
+                'user_id' => $agent->user_id,
+                'title' => 'Client '. $client->full_name . "'s Payment Failed",
+                'message' => $message,
+            ]);
+
+            $resayilController = new ResayilController();
+
+            $resayilController->message(
+                $agent->phone_number,
+                $agent->country_code,
+                $message,
+            );
 
             return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])->with('error', 'Payment failed');
         }

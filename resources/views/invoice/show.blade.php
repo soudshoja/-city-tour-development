@@ -103,7 +103,7 @@
         <!-- Header -->
         <div class="flex justify-between items-center mb-10">
             <div>
-                <img class="w-auto h-[90px] object-contain" src="{{ $invoice->agent->branch->company->logo ? Storage::url($invoice->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
+                <x-application-logo class="w-auto h-[90px] object-contain" companyLogo="{{ $company->logo }}"/>
                 <p class="text-base font-semibold">{{ $invoice->agent->branch->company->name }}</p>
             </div>
             <div class="text-right">

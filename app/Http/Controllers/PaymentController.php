@@ -51,6 +51,8 @@ use Illuminate\Http\RedirectResponse;
 use App\Services\GatewayConfigService;
 use App\Support\PaymentGateway\UPayment;
 use Illuminate\Support\Facades\Cache;
+use App\Services\HesabeCrypt;
+use App\Support\PaymentGateway\Hesabe;
 
 class PaymentController extends Controller
 {
@@ -1341,7 +1343,7 @@ class PaymentController extends Controller
             ]);
             return ['status' => 'error', 'message' => $e->getMessage()];
         }
-
+        
         try {
             $data = [
                 'voucher_number' => $voucherNumber,
@@ -1601,8 +1603,7 @@ class PaymentController extends Controller
                 }
                 Log::info('Old payment URL expired, reinitiating new payment');
                 return $this->paymentLinkReinitiate($payment->payment_reference);
-            }
-
+            } 
 
             //filter record
             $firstName = $payment->client->first_name;
@@ -1683,6 +1684,119 @@ class PaymentController extends Controller
             }
 
             return redirect()->back()->with('error', 'MyFatoorah response missing PaymentURL or InvoiceId.');
+        } elseif (strtolower($paymentGateway) === 'hesabe') {
+            Log::info('Masuk Hesabe');
+
+            $configService = new GatewayConfigService();
+            $hesabeConfig = $configService->getHesabeConfig();
+
+            if (!$hesabeConfig['status'] || !$hesabeConfig['data']) {
+                return redirect()->back()->with('error', $hesabeConfig['message'] ?? 'Hesabe configuration is missing or inactive');
+            }
+
+            $hesabe  = $hesabeConfig['data'];
+
+            $apiKey = $hesabe['api_key'];
+            $baseUrl = $hesabe['base_url'];
+            $accessCode = $hesabe['access_code'];
+            $merchantCode = $hesabe['merchant_code'];
+            $ivKey = $hesabe['iv_key'];
+            
+            $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
+            $companyId = optional($payment->agent->branch)->company_id;
+
+            /* Data */
+            $finalAmount = $payment->amount;
+
+            $firstName = $payment->client->first_name;
+            $middleName = $payment->client->middle_name;
+            $lastName = $payment->client->last_name;
+
+            $customerName = trim("$firstName $middleName $lastName");
+            
+            /* Hit Hesabe */
+            $checkoutPayload = [
+                "amount" => $finalAmount,
+                "currency" => 'KWD',
+                "paymentType" => 7,
+                "orderReferenceNumber" => $payment->voucher_number,
+                "name" => $customerName,
+                "version" => '2.0',
+                "merchantCode" => $merchantCode,
+                "responseUrl" => route('payment.hesabe.response'),
+                "failureUrl" => route('payment.hesabe.failure'),
+            ];
+
+            $requestDataJson = json_encode($checkoutPayload);
+            Log::info('RequestData: ', ['json' => $requestDataJson]);
+
+            $encryptedData = HesabeCrypt::encrypt($requestDataJson, $apiKey, $ivKey);
+            Log::info('EncryptedData: ', ['encrypted_data' => $encryptedData]);
+
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_URL => "$baseUrl/checkout",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_ENCODING => "",
+                CURLOPT_MAXREDIRS => 10,
+                CURLOPT_TIMEOUT => 0,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_SSL_VERIFYPEER => 0,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_CUSTOMREQUEST => "POST",
+                CURLOPT_POSTFIELDS => array('data' => $encryptedData),
+                CURLOPT_HTTPHEADER => array(
+                    "accessCode: $accessCode",
+                    "Accept: application/json"
+                ),
+            ));
+            $response = curl_exec($curl);
+            curl_close($curl);
+            Log::info('Checkout response: ', ['response', $response]);
+
+            if (!$response) {
+                Log::error('Hesabe: cURL error ', ['response' => $response]);
+                return redirect()->back()->with('error', 'Hesabe checkout failed due to cURL error');
+            }
+
+            /* Decrypt response from baseUrl/checkout */
+            $decryptedData = HesabeCrypt::decrypt($response, $apiKey, $ivKey);
+            Log::info('Hesabe decryption: ' . $decryptedData);
+
+            if (!$decryptedData) {
+                Log::error('Hesabe: Decryption failed ', ['response' => $decryptedData]);
+                return redirect()->back()->with('error', 'Hesabe decryption failed');
+            }
+
+            /* Decode decrypted response into json */
+            $responseData = json_decode($decryptedData, true);
+            Log::info('Response data: ', ['response', $responseData]);
+
+            if (!$responseData) {
+                Log::error('Hesabe: Checkout failed', ['response' => $responseData]);
+                return redirect()->back()->with('error', 'Hesabe checkout failed, no response data');
+            }
+
+            /* Fetch the token to hit baseUrl/payment api */
+            $responseToken = $responseData['response']['data'];
+            $paymentUrl = $baseUrl . '/payment' . '?data=' . $responseToken;
+
+            if ($paymentUrl) {
+                $payment->payment_url = $paymentUrl;
+                $payment->status = 'initiate';
+                $payment->save();
+
+                Log::info('Hesabe payment initiated', [
+                    'payment_id' => $payment->id,
+                    'payment_url' => $paymentUrl,
+                    'payment_status' => $payment->status,
+                ]);
+
+                return redirect($paymentUrl);
+            }
+
+            return redirect()->back()->with('error', 'Hesabe response missing token for PaymentURL');
         }
 
         return redirect()->route('payment.link.index')->with('success', 'Payment initiated successfully!');
@@ -3054,12 +3168,65 @@ class PaymentController extends Controller
 
     public function handleHesabeResponse(Request $request) 
     {
+        Log::info('Hesabe success response received', [ $request->all() ]);
 
+        $configService = new GatewayConfigService();
+        $hesabeConfig = $configService->getHesabeConfig();
+
+        if (!$hesabeConfig['status'] || !$hesabeConfig['data']) {
+            return redirect()->back()->with('error', $hesabeConfig['message'] ?? 'Hesabe configuration is missing or inactive');
+        }
+
+        $hesabe = $hesabeConfig['data'];
+
+        $apiKey = $hesabe['api_key'];
+        $ivKey = $hesabe['iv_key'];
+        
+        $response = $request->input('data');
+        
+        $decryptedResponse = HesabeCrypt::decrypt($response, $apiKey, $ivKey);
+
+        if ($decryptedResponse === false) {
+            Log::error('Hesabe: Response decryption failed ', ['response' => $decryptedResponse]);
+            return redirect()->back()->with('error', 'Hesabe response decryption failed');
+        }
+        
+        $responseData = json_decode($decryptedResponse, true);
+        Log::info('Callback response data: ', ['response', $responseData]);
+
+        if ($responseData['status'] == true) {
+            $data = $responseData['response'];
+            $voucherNumber = $data['orderReferenceNumber'];
+
+            $payment = Payment::where('voucher_number', $voucherNumber)->first();
+            if ($payment) {
+                $payment->payment_reference = $data['Id'];
+                $payment->auth_code = $data['auth'];
+                $payment->invoice_reference = $data['transactionId'];
+                $payment->payment_date = $data['paidOn'];
+                $payment->updated_at = now();
+                $payment->status = 'completed';
+                $payment->save();
+            }
+
+        }
+        return redirect()->route('invoice.show');
     }
 
     public function handleHesabeFailure(Request $request)
     {
+        Log::error('Hesabe failure response received', ['request' => $request->all()]);
 
+        $voucherNumber = $request->input('data.order_reference_number');
+        if ($voucherNumber) {
+            $payment = Payment::where('voucher_number', $voucherNumber)->first();
+            if ($payment) {
+                $payment->status = 'failed';
+                $payment->save();
+            }
+        }
+
+        return redirect()->route('payment.link.show')->with('success', 'Payment failed!');
     }
 
     public function success()

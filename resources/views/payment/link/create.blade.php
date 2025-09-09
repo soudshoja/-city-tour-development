@@ -372,6 +372,10 @@
                                 </select>
                             </div>
                         </template>
+
+                        <template x-if="selectedGateway === 'Hesabe'">
+                            <input type="hidden" name="payment_method" value="1">
+                        </template>
                     </div>
                 </div>
 

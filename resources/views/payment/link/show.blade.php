@@ -51,7 +51,7 @@
         <div class="flex justify-between items-center mb-10">
             {{-- Left: Company Logo --}}
             <div>
-                <x-application-logo class="custom-logo-size"  />
+                <img class="w-auto h-[95px] object-contain" src="{{ $payment->agent->branch->company->logo ? Storage::url($payment->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
             </div>
 
             {{-- Right: Invoice Details --}}
@@ -123,9 +123,8 @@
                                 <td class="py-3 px-4">Payment Reference</td>
                             @elseif ($payment->invoice_reference == '' && $payment->auth_code == '')
                                 <td class="py-3 px-4">Invoice ID</td>
-                            
-                            <td class="py-3 px-4 text-right">{{ $payment->payment_reference }}</td>
                             @endif
+                            <td class="py-3 px-4 text-right">{{ $payment->payment_reference }}</td>
                         </tr>
                     @if($payment->payment_gateway === 'MyFatoorah' && $payment->status === 'completed')
                         <tr>

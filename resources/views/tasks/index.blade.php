@@ -1322,7 +1322,7 @@
                                                                                                     'name' => $c->full_name . ' - ' . $c->phone
                                                                                                 ])"
                                                                                                 :selectedId="$task->client_id"
-                                                                                                :selectedName="$selectedClient ? $selectedClient->full_name . $selectedClient->phone : null"
+                                                                                                :selectedName="$selectedClient ? $selectedClient->full_name . ' - ' . $selectedClient->phone : null"
                                                                                                 placeholder="Select Client" />
                                                                                         </div>
                                                                                     </div>

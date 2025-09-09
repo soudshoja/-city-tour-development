@@ -360,16 +360,16 @@ class InvoiceController extends Controller
             return view('invoice.maintenance'); // Show the maintenance page
         } elseif ($user->role_id == Role::COMPANY) {
             $company = $user->company;
-            $company = Company::with('branches.agents')->find($company->id);
-            $agents = $company->branches->flatMap->agents;
             $branches = $company->branches;
-            $clients = $agents->flatMap->clients;
+            $agents = $branches->pluck('agents')->flatten();
+            $clientIds = $agents->pluck('id');
+            $clients = Client::whereIn('agent_id', $clientIds)->get()->unique('id')->values();
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
-            $agents = $company->branches->flatMap->agents;
             $branches = $company->branches;
-            $clients = $agents->flatMap->clients;
+            $agents   = $branches->pluck('agents')->flatten();
+            $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get()->unique('id')->values();
         }
 
         // Retrieve the invoice based on the invoice number

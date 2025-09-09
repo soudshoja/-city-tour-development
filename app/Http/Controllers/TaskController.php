@@ -603,6 +603,7 @@ if ($search = $request->query('q')) {
         $queryChkExistTask = Task::query();
         $queryChkExistTask->where('reference', $request->reference)
             ->where('company_id', $request->company_id)
+            ->where('status', $request->status)
             ->when($request->filled('client_name'), fn($q) => $q->where('passenger_name', trim($request->client_name)))
             ->when($request->filled('supplier_id'), fn ($q) => $q->where('supplier_id', $request->supplier_id));
 
@@ -695,6 +696,7 @@ if ($search = $request->query('q')) {
                 'message' => 'Task with this reference already exists.',
             ], 422); */
         }
+
         $amadeusId = Supplier::where('name', 'Amadeus')->value('id');
 
         if ($request->supplier_id !== $amadeusId) {

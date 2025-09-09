@@ -2333,6 +2333,10 @@ class PaymentController extends Controller
                             $invoice->status = 'partial';
                         }
                         $invoice->save();
+
+                        if ($invoice->status === 'paid' && $invoice->refund && $invoice->refund->status === 'processed') {
+                            $invoice->refund->update(['status' => 'completed']);
+                        }
                     });
 
                     $transaction = $statusData['Data']['InvoiceTransactions'][0] ?? [];

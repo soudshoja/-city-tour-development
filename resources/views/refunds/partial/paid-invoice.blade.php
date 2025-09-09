@@ -1,12 +1,27 @@
-<form action="{{ route('refunds.store') }}" method="POST" class="bg-white p-6 rounded-lg shadow">
+@php
+    $isEditing = isset($refund) && $refund;
+    $formAction = $isEditing ? route('refunds.update', ['task' => $task, 'refund' => $refund]) : route('refunds.store');
+    $formMethod = $isEditing ? 'PUT' : 'POST';
+    $isLocked = $isEditing && in_array(strtolower(optional($refund->invoice)->status), ['paid']);
+    $isLocked = $isEditing && in_array($refund->status, ['completed']);
+@endphp
+<form action="{{ $formAction }}" method="POST" class="bg-white p-6 rounded-lg shadow">
     @csrf
+    @if($isEditing) @method('PUT') @endif
+    @if($isLocked)
+        <div class="mb-4 p-3 rounded bg-green-50 border border-green-200 text-green-800">
+            This refund is locked because the refund has been marked as <strong>Completed</strong>.
+            You can no longer edit it.
+        </div>
+    @endif
+    <fieldset @if($isLocked) disabled @endif>
     <input type="hidden" name="task_id" value="{{ $task->id }}">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Date -->
         <div>
             <label for="date" class="block text-gray-700 font-semibold mb-2">Date</label>
             <input type="date" name="date" id="date"
-                value="{{ old('date', now()->toDateString()) }}" required
+                value="{{ old('date', $isEditing ? $refund->date : now()->toDateString()) }}" required
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
             @error('date')
             <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -19,10 +34,10 @@
             <select name="method" id="method"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300" required>
                 <option value="">Select</option>
-                <option value="Cash" {{ old('method') == 'Cash' ? 'selected' : '' }}>Cash</option>
-                <option value="Bank" {{ old('method') == 'Bank' ? 'selected' : '' }}>Bank</option>
-                <option value="Online" {{ old('method') == 'Online' ? 'selected' : '' }}>Online</option>
-                <option value="Credit" {{ old('method') == 'Credit' ? 'selected' : '' }}>{{ trim($task->client->first_name . ' ' . ($task->client->last_name ?? '')) }}'s Credit</option>
+                <option value="Cash" {{ old('method', $isEditing ? $refund->method : '') == 'Cash' ? 'selected' : '' }}>Cash</option>
+                <option value="Bank" {{ old('method', $isEditing ? $refund->method : '') == 'Bank' ? 'selected' : '' }}>Bank</option>
+                <option value="Online" {{ old('method', $isEditing ? $refund->method : '') == 'Online' ? 'selected' : '' }}>Online</option>
+                <option value="Credit" {{ old('method', $isEditing ? $refund->method : '') == 'Credit' ? 'selected' : '' }}>{{ trim($task->client->first_name . ' ' . ($task->client->last_name ?? '')) }}'s Credit</option>
             </select>
             @error('method')
             <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -32,7 +47,7 @@
         <div class="mb-6">
             <label for="reference" class="block text-gray-700 font-semibold mb-2">Reference</label>
             <input type="text" name="reference" id="reference"
-                value="{{ old('reference', $refund->reference ?? '') }}"
+                value="{{ old('reference', $isEditing ? $refund->reference : '') }}"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
         </div>
     </div>
@@ -47,11 +62,10 @@
 
             <!-- Original Task Price -->
             <div>
-                <label for="original_task_price" class="block text-gray-700 font-semibold mb-2">Original
-                    Task (Cost Price)</label>
+                <label for="original_task_price" class="block text-gray-700 font-semibold mb-2">Original Task (Cost Price)</label>
                 <input readonly type="number" step="0.01" name="original_task_price"
                     id="original_task_price"
-                    value="{{ old('original_task_price', number_format($invoiceDetail->task_price - $invoiceDetail->markup_price, 2, '.', '') ?? '') }}"
+                    value="{{ old('original_task_price', number_format($invoiceDetail->task_price - $invoiceDetail->markup_price, 2, '.', '') ?? 0.0) }}"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
             </div>
 
@@ -69,7 +83,7 @@
 
                     <input readonly type="number" step="0.01" name="original_task_profit"
                         id="original_task_profit"
-                        value="{{ old('original_task_profit', number_format($invoiceDetail->markup_price, 2, '.', '') ?? '') }}"
+                        value="{{ old('original_task_profit', $isEditing && $refund ? number_format($refund->original_task_profit, 2, '.', '') : number_format($invoiceDetail->markup_price, 2, '.', '')) }}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
                 </div>
             </div>
@@ -87,7 +101,7 @@
 
                     <input readonly type="number" step="0.01" name="airline_nett_fare"
                         id="airline_nett_fare"
-                        value="{{ old('airline_nett_fare', number_format($invoiceDetail->task_price, 2, '.', '') ?? '') }}"
+                        value="{{ old('airline_nett_fare', $isEditing && $refund ? number_format($refund->airline_nett_fare, 2, '.', '') : number_format($invoiceDetail->task_price, 2, '.', '')) }}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                 </div>
             </div>
@@ -103,7 +117,7 @@
                     Client</label>
                 <input type="number" step="0.01" min="-999999.99" name="service_charge"
                     id="service_charge"
-                    value="{{ old('service_charge', number_format($task->refund_charge, 2, '.', '') ?? '') }}"
+                    value="{{ old('service_charge', $isEditing && $refund ? number_format($refund->service_charge, 2, '.', '') : number_format($task->refund_charge, 2, '.', ''))}}"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                 @error('service_charge')
                 <span class="text-red-500 text-sm">{{ $message }}</span>
@@ -121,7 +135,7 @@
                     </svg>
                     <input readonly type="number" step="0.01" name="refund_airline_charge"
                         id="refund_airline_charge"
-                        value="{{ old('refund_airline_charge', number_format($invoiceDetail->task_price - $invoiceDetail->markup_price - $task->total, 2, '.', '') ?? '') }}"
+                        value="{{ old('refund_airline_charge', $isEditing && $refund ? number_format($refund->refund_airline_charge, 2, '.', '') : number_format($invoiceDetail->task_price - $invoiceDetail->markup_price - $task->total, 2, '.', '')) }}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
                 </div>
             </div>
@@ -144,7 +158,7 @@
                     Refund Task (Cost Price)</label>
                 <input readonly type="number" step="0.01" name="original_refund_amount"
                     id="original_refund_amount"
-                    value="{{ old('original_refund_amount', number_format($task->total, 2, '.', '') ?? '') }}"
+                    value="{{ old('original_refund_amount', number_format($task->total, 2, '.', '') ?? 0.0) }}"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" readonly>
             </div>
 
@@ -160,7 +174,7 @@
 
                     <input type="number" step="0.01" min="-999999.99" name="new_task_profit"
                         id="new_task_profit"
-                        value="{{ old('new_task_profit', number_format($task->tax - $task->refund_charge, 2, '.', '') ?? '') }}"
+                        value="{{ old('new_task_profit', $isEditing && $refund ? number_format($refund->new_task_profit, 2, '.', '') : number_format($task->tax - $task->refund_charge, 2, '.', '')) }}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
                 </div>
                 @error('new_task_profit')
@@ -179,7 +193,7 @@
 
                     <input step="0.01" min="-999999.99" type="number" name="total_nett_refund"
                         id="total_nett_refund"
-                        value="{{ old('total_nett_refund', number_format($invoiceDetail->task_price, 2, '.', '') ?? '') }}"
+                        value="{{ old('total_nett_refund', $isEditing && $refund ? number_format($refund->total_nett_refund, 2, '.', '') : number_format($invoiceDetail->task_price, 2, '.', '')) }}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
                 </div>
                 @error('total_nett_refund')
@@ -193,7 +207,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
         <div>
             <label for="remarks" class="block text-gray-700 font-semibold mb-2">Remarks</label>
-            <input type="text" name="remarks" id="remarks" value="{{ old('remarks') }}"
+            <input type="text" name="remarks" id="remarks" value="{{ old('remarks', $isEditing && $refund ? $refund->remarks : '') }}"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
         </div>
 
@@ -201,7 +215,7 @@
             <label for="remarks_internal" class="block text-gray-700 font-semibold mb-2">Internal
                 Remarks</label>
             <input type="text" name="remarks_internal" id="remarks_internal"
-                value="{{ old('remarks_internal') }}"
+                value="{{ old('remarks_internal', $isEditing && $refund ? $refund->remarks_internal : '') }}"
                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">
         </div>
     </div>
@@ -209,15 +223,26 @@
     <div class="mt-6">
         <label for="reason" class="block text-gray-700 font-semibold mb-2">Reason</label>
         <textarea name="reason" id="reason" rows="3"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">{{ old('reason') }}</textarea>
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-indigo-100 focus:border-indigo-300">{{ old('reason', $isEditing && $refund ? $refund->reason : '') }}</textarea>
         @error('reason')
         <span class="text-red-500 text-sm">{{ $message }}</span>
         @enderror
     </div>
+    </fieldset>
 
+    @if($isLocked)
+        <div class="mt-6 flex justify-between px-4">
+            <a href="{{ route('refunds.index') }}" class="btn btn-secondary px-6 py-2 w-40 rounded-lg text-center bg-gray-200 hover:bg-gray-300 text-gray-700">
+                Back
+            </a>
+            <button type="button" disabled title="Locked because the invoice is paid" class="px-6 py-2 w-40 rounded-lg bg-gray-300 text-gray-600 cursor-not-allowed">
+                Update
+            </button>
+        </div>
+    @else
     <div class="mt-6 flex justify-between px-4">
         <!-- Left side: Cancel button -->
-        <a href="{{ url('/refunds/') }}"
+        <a href="{{ route('refunds.index') }}"
             class="btn btn-secondary px-6 py-2 w-40 rounded-lg text-center bg-gray-200 hover:bg-gray-300 text-gray-700">
             Cancel
         </a>
@@ -234,9 +259,10 @@
                             d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
                     </svg>
                 </span>
-                <span id="textSavePaymentVoucher">Save</span>
+                <span id="textSavePaymentVoucher">{{ $isEditing ? 'Update' : 'Save' }}</span>
             </button>
 
         </div>
     </div>
+    @endif
 </form>

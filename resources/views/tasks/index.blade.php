@@ -1507,10 +1507,10 @@
                                                     {{ $task->supplier->name }}
                                                 </td>
                                                 <td data-column="supplier-pay-date" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->supplier_pay_date ?? 'Not Set' }}
+                                                    {{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : 'Not Set' }}
                                                 </td>
                                                 <td data-column="created-at" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
-                                                    {{ $task->created_at ?  \Carbon\Carbon::parse($task->created_at)->format('d-m-Y') : 'Not Set' }}
+                                                    {{ $task->created_at }}
                                                 </td>
                                                 @if(Auth()->user()->role_id == \App\Models\Role::COMPANY)
                                                 <td data-column="cancellation-deadline" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">

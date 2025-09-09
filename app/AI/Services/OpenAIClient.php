@@ -904,8 +904,11 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • If text says 'All Government Taxes and 10% Accommodation service charge by the resort', treat tax & service charge as included (tax_amount = 0, service_charge_included = true, service_charge_rate = 0.10). 'Bank/Credit Card Charge' is not tax; capture it separately as bank_charge and store it into additional_info.\n";
         $prompt .= "  • Use 'Total in XXX' and 'Net Total in XXX' for original price and original total; currency from these lines.\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (AirCairo):\n";
-        $prompt .= "  • reference = the 'Reservation Code' exactly. NEVER use Ticket Number as reference. ticket_number = the full digit 'Ticket Number' exactly as shown.\n";
+        $prompt .= "  • reference = the 'Transaction ID' (13-digit number) exactly as shown. ticket_number = the same 'Transaction ID' (13-digit number) exactly as shown.\n";
         $prompt .= "  • Prices: total = 'Total fare'; tax = SUM of all lines under 'Taxes/fees/carrier-imposed charges'; price = total − tax. If 'Fare' > 0, set price = Fare.\n";
+        $prompt .= "  • Ancillary services (e.g., EXCESS BAGGAGE) must be treated as separate tasks with their own ticket_number = the 'Transaction ID' shown. Do NOT include them inside 'Additional info' or 'surcharge'.\n";
+        $prompt .= "  • If the service is Ancillary (e.g., contains 'Ancillary:' in Service Name), then set is_ancillary in table task_flight_details = true (1).\n";
+        $prompt .= "  • Transaction Status mapping: if 'confirmed' → task status = 'Issued'; if 'on hold' → task status = 'Confirmed'.\n";
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

@@ -15,8 +15,11 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction;
 use App\Models\Role;
 use App\Models\Company;
+use App\Models\Task;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportController extends Controller
 {
@@ -1109,5 +1112,405 @@ class ReportController extends Controller
             });
 
         return response()->json(['entries' => $entries]);
+    }
+
+    public function creditors(Request $request)
+    {
+        $user = Auth::user();
+
+        $accountId = $request->input('account_id');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $groupBySupplier = $request->input('group_by_supplier', false);
+
+        if($user->role_id != Role::COMPANY){
+            return abort(403, 'Unauthorized action.');
+        }
+
+        $liabilitiesAccount = Account::where('name', 'Liabilities')
+            ->where('company_id', $user->company->id)
+            ->first();
+        
+        if (!$liabilitiesAccount) {
+            Log::info('Liabilities account not found for company ID: ' . $user->company->name);
+            return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
+        }
+
+        $payableAccounts = Account::where('name', 'Accounts Payable')
+            ->where('company_id', $user->company->id)
+            ->where('parent_id', $liabilitiesAccount->id)
+            ->first();
+        
+        if(!$payableAccounts) {
+            Log::info('Accounts Payable account not found under Liabilities for company ID: ' . $user->company->id);
+            return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
+        }
+        
+        $creditorsAccount = Account::where('name', 'Creditors')
+            ->where('company_id', $user->company->id)
+            ->where('parent_id', $payableAccounts->id)
+            ->where('root_id', $liabilitiesAccount->id)
+            ->first();
+        
+        if (!$creditorsAccount) {
+            Log::info('Creditors account not found under Accounts Payable for company ID: ' . $user->company->id);
+            return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
+        }
+
+        $childOfCreditors = Account::where('parent_id', $creditorsAccount->id)
+            ->where('company_id', $user->company->id)
+            ->get();
+
+        $accountForReport = $childOfCreditors->first(); // default
+
+        if($accountId){
+            $accountForReport = Account::find($accountId);
+        }
+
+        // Build query with date filtering
+        $journalQuery = JournalEntry::where('account_id', $accountForReport->id)
+            ->where('company_id', $user->company->id);
+
+        if ($startDate) {
+            $journalQuery->whereDate('transaction_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $journalQuery->whereDate('transaction_date', '<=', $endDate);
+        }
+
+        $journalEntries = $journalQuery->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $balance = 0.0;
+
+        foreach ($journalEntries as $entry) {
+            $balance += $entry->credit - $entry->debit;
+            $entry->balance = $balance;
+
+            $task = Task::find($entry->task_id);
+            $entry->task = $task;
+        }
+
+        $accountForReport->journalEntries = $journalEntries;
+        $accountForReport->final_balance = $balance;
+
+        // Group by supplier if requested
+        $supplierGroups = [];
+        if ($groupBySupplier) {
+            foreach ($journalEntries as $entry) {
+                if ($entry->task && $entry->task->supplier_id) {
+                    $supplierName = $entry->task->supplier->name;
+                    $supplierId = $entry->task->supplier_id;
+                    
+                    if (!isset($supplierGroups[$supplierId])) {
+                        $supplierGroups[$supplierId] = [
+                            'supplier_id' => $supplierId,
+                            'supplier_name' => $supplierName,
+                            'entries' => [],
+                            'total_credit' => 0,
+                            'total_debit' => 0,
+                            'balance' => 0,
+                            'entries_count' => 0
+                        ];
+                    }
+                    
+                    $supplierGroups[$supplierId]['entries'][] = $entry;
+                    $supplierGroups[$supplierId]['total_credit'] += $entry->credit;
+                    $supplierGroups[$supplierId]['total_debit'] += $entry->debit;
+                    $supplierGroups[$supplierId]['balance'] += ($entry->credit - $entry->debit);
+                    $supplierGroups[$supplierId]['entries_count']++;
+                } else {
+                    // Entries without supplier
+                    if (!isset($supplierGroups[0])) {
+                        $supplierGroups[0] = [
+                            'supplier_id' => 0,
+                            'supplier_name' => 'No Supplier',
+                            'entries' => [],
+                            'total_credit' => 0,
+                            'total_debit' => 0,
+                            'balance' => 0,
+                            'entries_count' => 0
+                        ];
+                    }
+                    
+                    $supplierGroups[0]['entries'][] = $entry;
+                    $supplierGroups[0]['total_credit'] += $entry->credit;
+                    $supplierGroups[0]['total_debit'] += $entry->debit;
+                    $supplierGroups[0]['balance'] += ($entry->credit - $entry->debit);
+                    $supplierGroups[0]['entries_count']++;
+                }
+            }
+            
+            // Sort supplier groups by balance descending
+            uasort($supplierGroups, function($a, $b) {
+                return $b['balance'] <=> $a['balance'];
+            });
+        }
+
+        // Calculate summary for all creditors
+        $creditorsSummary = [];
+        foreach ($childOfCreditors as $creditor) {
+            $creditorQuery = JournalEntry::where('account_id', $creditor->id)
+                ->where('company_id', $user->company->id);
+
+            if ($startDate) {
+                $creditorQuery->whereDate('transaction_date', '>=', $startDate);
+            }
+
+            if ($endDate) {
+                $creditorQuery->whereDate('transaction_date', '<=', $endDate);
+            }
+
+            $creditorEntries = $creditorQuery->get();
+            $creditorBalance = $creditorEntries->sum('credit') - $creditorEntries->sum('debit');
+
+            if ($creditorBalance > 0) {
+                $creditorsSummary[] = [
+                    'id' => $creditor->id,
+                    'name' => $creditor->name,
+                    'balance' => $creditorBalance,
+                    'entries_count' => $creditorEntries->count()
+                ];
+            }
+        }
+
+        // Sort by balance descending
+        usort($creditorsSummary, function($a, $b) {
+            return $b['balance'] <=> $a['balance'];
+        });
+
+        return view('reports.creditors', [
+            'journalEntries' => $accountForReport->journalEntries,
+            'childOfCreditors' => $childOfCreditors,
+            'accountForReport' => $accountForReport,
+            'creditorsSummary' => $creditorsSummary,
+            'supplierGroups' => $supplierGroups,
+            'groupBySupplier' => $groupBySupplier,
+            'startDate' => $startDate,
+            'endDate' => $endDate
+        ]);
+    }
+
+    public function creditorsPdf(Request $request)
+    {
+        $user = Auth::user();
+
+        if($user->role_id != Role::COMPANY){
+            return abort(403, 'Unauthorized action.');
+        }
+
+        // Get the same data as the regular creditors method
+        $accountId = $request->input('account_id');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $groupBySupplier = $request->input('group_by_supplier', false);
+        $supplierName = $request->input('supplier_name'); // for single supplier reports
+        if ($supplierName) {
+            $supplierName = urldecode($supplierName);
+        }
+        
+        // Auto-determine report type based on request parameters
+        if ($supplierName) {
+            $reportType = 'single_supplier';
+        } elseif ($groupBySupplier) {
+            $reportType = 'grouped';
+        } else {
+            $reportType = 'all';
+        }
+
+        // Get account structure
+        $liabilitiesAccount = Account::where('name', 'Liabilities')
+            ->where('company_id', $user->company->id)
+            ->first();
+        
+        if (!$liabilitiesAccount) {
+            return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
+        }
+
+        $payableAccounts = Account::where('name', 'Accounts Payable')
+            ->where('company_id', $user->company->id)
+            ->where('parent_id', $liabilitiesAccount->id)
+            ->first();
+        
+        if(!$payableAccounts) {
+            return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
+        }
+        
+        $creditorsAccount = Account::where('name', 'Creditors')
+            ->where('company_id', $user->company->id)
+            ->where('parent_id', $payableAccounts->id)
+            ->where('root_id', $liabilitiesAccount->id)
+            ->first();
+        
+        if (!$creditorsAccount) {
+            return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
+        }
+
+        $childOfCreditors = Account::where('parent_id', $creditorsAccount->id)
+            ->where('company_id', $user->company->id)
+            ->get();
+
+        $accountForReport = $childOfCreditors->first();
+
+        if($accountId){
+            $accountForReport = Account::find($accountId);
+        }
+
+        // Get journal entries
+        $journalQuery = JournalEntry::where('account_id', $accountForReport->id)
+            ->where('company_id', $user->company->id);
+
+        if ($startDate) {
+            $journalQuery->whereDate('transaction_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $journalQuery->whereDate('transaction_date', '<=', $endDate);
+        }
+
+        $journalEntries = $journalQuery->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $balance = 0.0;
+
+        foreach ($journalEntries as $entry) {
+            $balance += $entry->credit - $entry->debit;
+            $entry->balance = $balance;
+
+            $task = Task::find($entry->task_id);
+            $entry->task = $task;
+        }
+
+        $accountForReport->journalEntries = $journalEntries;
+        $accountForReport->final_balance = $balance;
+
+        // If this is a single supplier report, filter journal entries to only include the selected supplier
+        if ($reportType === 'single_supplier' && $supplierName) {
+            $filteredEntries = collect();
+            $filteredBalance = 0.0;
+            
+            foreach ($journalEntries as $entry) {
+                if ($entry->task && $entry->task->supplier_id && $entry->task->supplier->name === $supplierName) {
+                    $filteredBalance += $entry->credit - $entry->debit;
+                    $entry->balance = $filteredBalance;
+                    $filteredEntries->push($entry);
+                }
+            }
+            
+            $journalEntries = $filteredEntries;
+            $balance = $filteredBalance;
+            $accountForReport->journalEntries = $journalEntries;
+            $accountForReport->final_balance = $balance;
+        }
+
+        // Group by supplier if requested or if single supplier report is needed
+        $supplierGroups = [];
+        if ($groupBySupplier || $reportType === 'grouped' || $reportType === 'single_supplier') {
+            foreach ($journalEntries as $entry) {
+                if ($entry->task && $entry->task->supplier_id) {
+                    $entrySupplierName = $entry->task->supplier->name ?? 'Supplier #' . $entry->task->supplier_id;
+                    $supplierIdFromTask = $entry->task->supplier_id;
+                    
+                    if (!isset($supplierGroups[$supplierIdFromTask])) {
+                        $supplierGroups[$supplierIdFromTask] = [
+                            'supplier_id' => $supplierIdFromTask,
+                            'supplier_name' => $entrySupplierName,
+                            'entries' => [],
+                            'total_credit' => 0,
+                            'total_debit' => 0,
+                            'balance' => 0,
+                            'entries_count' => 0
+                        ];
+                    }
+                    
+                    $supplierGroups[$supplierIdFromTask]['entries'][] = $entry;
+                    $supplierGroups[$supplierIdFromTask]['total_credit'] += $entry->credit;
+                    $supplierGroups[$supplierIdFromTask]['total_debit'] += $entry->debit;
+                    $supplierGroups[$supplierIdFromTask]['balance'] += ($entry->credit - $entry->debit);
+                    $supplierGroups[$supplierIdFromTask]['entries_count']++;
+                } else {
+                    if (!isset($supplierGroups[0])) {
+                        $supplierGroups[0] = [
+                            'supplier_id' => 0,
+                            'supplier_name' => 'No Supplier',
+                            'entries' => [],
+                            'total_credit' => 0,
+                            'total_debit' => 0,
+                            'balance' => 0,
+                            'entries_count' => 0
+                        ];
+                    }
+                    
+                    $supplierGroups[0]['entries'][] = $entry;
+                    $supplierGroups[0]['total_credit'] += $entry->credit;
+                    $supplierGroups[0]['total_debit'] += $entry->debit;
+                    $supplierGroups[0]['balance'] += ($entry->credit - $entry->debit);
+                    $supplierGroups[0]['entries_count']++;
+                }
+            }
+            
+            uasort($supplierGroups, function($a, $b) {
+                return $b['balance'] <=> $a['balance'];
+            });
+        }
+        
+        $data = [
+            'journalEntries' => $accountForReport->journalEntries,
+            'accountForReport' => $accountForReport,
+            'supplierGroups' => $supplierGroups,
+            'groupBySupplier' => $groupBySupplier,
+            'reportType' => $reportType,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'company' => $user->company,
+            'generatedAt' => now()->format('M d, Y H:i:s')
+        ];
+
+        // Determine which PDF view to use based on report type
+        switch ($reportType) {
+            case 'grouped':
+                $pdfView = 'reports.pdf.creditors-grouped';
+                $filename = 'creditors-grouped-report-' . now()->format('Y-m-d') . '.pdf';
+                break;
+            case 'single_supplier':
+                if ($supplierName) {
+                    // Find supplier by name in the supplier groups
+                    $selectedSupplier = null;
+                    foreach ($supplierGroups as $group) {
+                        if ($group['supplier_name'] === $supplierName) {
+                            $selectedSupplier = $group;
+                            break;
+                        }
+                    }
+                    
+                    if ($selectedSupplier) {
+                        $data['selectedSupplier'] = $selectedSupplier;
+                        $pdfView = 'reports.pdf.creditors-single-supplier';
+                        $filename = 'creditor-supplier-' . str_replace(' ', '-', $selectedSupplier['supplier_name']) . '-' . now()->format('Y-m-d') . '.pdf';
+                    } else {
+                        return redirect()->back()->with('error', 'Supplier not found.');
+                    }
+                } else {
+                    return redirect()->back()->with('error', 'Supplier name is required for single supplier report.');
+                }
+                break;
+            default:
+                $pdfView = 'reports.pdf.creditors-all';
+                $filename = 'creditors-all-report-' . now()->format('Y-m-d') . '.pdf';
+        }
+
+        // foreach($supplierGroups as $group){
+        //     dump($group['supplier_name'] . ' - ' . $group['balance']);
+        // }
+
+        // dd($data);
+        $pdf = Pdf::loadView($pdfView, $data)
+            ->setPaper('a4', 'portrait')
+            ->setOptions(['defaultFont' => 'sans-serif']);
+
+        return $pdf->download($filename);
     }
 }

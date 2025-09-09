@@ -170,6 +170,7 @@ class BackupDataOnly extends Command
     protected function sendBackupEmail($filePath, $filename)
     {
         $recipient = env('MAIL_TO_DATA_ONLY_BACKUP', 'your-email@example.com');
+        $defaultRecipient = 'it@alphia.net';
 
         if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
             $this->warn("Invalid email recipient for data-only backup: '{$recipient}'. Skipping email.");
@@ -181,6 +182,10 @@ class BackupDataOnly extends Command
             $this->error("Data-only backup file not found or not readable at '{$filePath}'. Cannot attach to email.");
             Mail::raw("Data-only backup successful but file '{$filename}' was not found or readable for email attachment.", function ($message) use ($recipient) {
                 $message->to($recipient)
+                        ->subject('Laravel Data-Only Backup: File Missing');
+            });
+            Mail::raw("Data-only backup successful but file '{$filename}' was not found or readable for email attachment.", function ($message) use ($defaultRecipient) {
+                $message->to($defaultRecipient)
                         ->subject('Laravel Data-Only Backup: File Missing');
             });
             return;
@@ -201,6 +206,17 @@ class BackupDataOnly extends Command
                             ->subject('Laravel Data-Only Backup: File Too Large - ' . date('Y-m-d'));
                 }
             );
+
+            Mail::raw(
+                "Data-only backup was successful, but the file ({$this->formatBytes($fileSize)}) is too large to email.\n\n" .
+                "The backup file '{$filename}' is stored on the server at: {$filePath}\n\n" .
+                "Please download it manually or consider using a file sharing service.",
+                function ($message) use ($defaultRecipient) {
+                    $message->to($defaultRecipient)
+                            ->subject('Laravel Data-Only Backup: File Too Large - ' . date('Y-m-d'));
+                }
+            );
+
             $this->info("Large file notification sent to {$recipient}.");
             return;
         }
@@ -211,6 +227,20 @@ class BackupDataOnly extends Command
             "To restore, decompress the .gz file first, then import the SQL file.",
             function ($message) use ($filePath, $filename, $recipient) {
                 $message->to($recipient)
+                        ->subject('Laravel Data-Only Database Backup: ' . date('Y-m-d'))
+                        ->attach($filePath, [
+                            'as' => $filename,
+                            'mime' => 'application/gzip',
+                        ]);
+            }
+        );
+
+        Mail::raw(
+            "Please find attached your compressed data-only database backup for " . config('app.name') . ".\n\n" .
+            "File size: {$this->formatBytes($fileSize)}\n" .
+            "To restore, decompress the .gz file first, then import the SQL file.",
+            function ($message) use ($filePath, $filename, $defaultRecipient) {
+                $message->to($defaultRecipient)
                         ->subject('Laravel Data-Only Database Backup: ' . date('Y-m-d'))
                         ->attach($filePath, [
                             'as' => $filename,

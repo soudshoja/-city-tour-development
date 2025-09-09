@@ -120,7 +120,9 @@ class GatewayConfigService
     }
 
     public function getHesabeConfig(): array 
-    {
+    {                
+        Log::info('Masuk HesabeConfig');
+
         $configFromService = Config::get('services.hesabe');
 
         if($configFromService === null) {
@@ -154,6 +156,9 @@ class GatewayConfigService
                 'data' => [
                     'api_key' => $hesabeCharge->api_key,
                     'base_url' => $configFromService['base_url'],
+                    'access_code' => $configFromService['access_code'],
+                    'merchant_code' => $configFromService['merchant_code'],
+                    'iv_key' => $configFromService['iv_key'],
                 ]
             ];
 

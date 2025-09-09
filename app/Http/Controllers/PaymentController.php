@@ -474,11 +474,16 @@ class PaymentController extends Controller
 
         $chargeRecord = Charge::where('name', $paymentGateway)
             ->where('company_id', $invoice->agent->branch->company->id)
-            ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id')
+            ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id', 'paid_by')
             ->first();
 
         if ($chargeRecord) {
-            $defaultPaymentGatewayFee = $chargeRecord->amount;
+            $gatewayFee = ChargeService::TapCharge([
+                'amount' => $invoice->amount,
+                'client_id' => $invoice->client_id,
+                'agent_id' => $invoice->agent_id,
+                'currency' => $invoice->currency
+            ], $paymentGateway)['gatewayFee'] ?? 0;
             $coaBankIdRec = $chargeRecord->acc_bank_id; //COA (Assets) for Debited Bank Account
             $coaFeeIdRec = $chargeRecord->acc_fee_id; //COA (Expenses) for Payment Gateway Fee
             $coaBankFeeIdRec = $chargeRecord->acc_fee_bank_id; //COA (Assets) for Bank Account for the selected Payment Gateway
@@ -494,13 +499,10 @@ class PaymentController extends Controller
             $bankPaymentFee = Account::where('id', $coaBankFeeIdRec)
                 ->where('company_id', $invoice->agent->branch->company->id)
                 ->first();
-
-            //dd($bankAccountAccRecord->id,$tapAccount->id,$bankPaymentFee->id);
         } else {
             Log::error('Charge record not found for payment gateway', ['payment_gateway' => $paymentGateway, 'company_id' => $invoice->agent->branch->company->id]);
             return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
         }
-
 
         if (!$invoice) {
             Log::error('Invoice not found', ['invoice_number' => $invoiceNumber]);
@@ -519,14 +521,10 @@ class PaymentController extends Controller
                 }
 
                 $selectedtask = Task::where('id', $invoiceDetail->task_id)->first();
-                //$selectedtask = Task::where('id', $invoiceDetail['task_id'])->first();
-                $supplier = Supplier::where('id', operator: $selectedtask->supplier_id)->first();
                 $client = Client::where('id', operator: $selectedtask->client_id)->first();
-                $agent = Agent::where('id', operator: $selectedtask->agent_id)->first();
 
                 $receivableAccount = Account::where('name', 'Clients')->first();
                 $receivableAccountId = $receivableAccount->id;
-                //dd($receivableAccount, $client->first_name);
 
                 if (!$receivableAccount || !$receivableAccountId) {
                     Log::error('Receivable account not found', ['company_id' => $invoice->agent->branch->company->id]);
@@ -551,11 +549,10 @@ class PaymentController extends Controller
                     'payment_id' => $paymentId,
                     'payment_reference' => $response['id'],
                     'reference_type' => 'Invoice',
-                    'transaction_date' => $invoice->invoice_date,
+                    'transaction_date' => now(),
                 ]);
 
                 $payment = Payment::find($paymentId);
-
                 $payment->status = 'completed';
                 $payment->completed = '0';
                 $payment->account_id = $receivableAccountId;
@@ -625,10 +622,11 @@ class PaymentController extends Controller
                     $bankPaymentFee->save();
                 }
 
-                // Create record to payment_gateway expense coa account (OK)
-                $tapAccount->actual_balance += $defaultPaymentGatewayFee;
-
+                $paidBy = $chargeRecord->paid_by ?? null;
                 if ($tapAccount) {
+                    $tapAccount->actual_balance += $gatewayFee; // Add to expenses account
+                    $tapAccount->save();
+
                     JournalEntry::create([
                         'transaction_id' => $transaction->id,
                         'company_id' => $invoice->agent->branch->company->id,
@@ -638,17 +636,14 @@ class PaymentController extends Controller
                         'invoice_detail_id' =>  $invoiceDetail->id,
                         'voucher_number' => $payment->voucher_number,
                         'transaction_date' => $invoice->invoice_date,
-                        'description' => 'Record Payment Gateway Charge (Expenses): ' . $tapAccount->name,
-                        'debit' => $defaultPaymentGatewayFee,
+                        'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $tapAccount->name,
+                        'debit' => $gatewayFee,
                         'credit' => 0,
                         'balance' => $tapAccount->actual_balance,
                         'name' =>  $tapAccount->name,
                         'type' => 'charges',
                         'type_reference_id' => $tapAccount->id
                     ]);
-
-                    $tapAccount->actual_balance += $defaultPaymentGatewayFee; // Add to expenses account
-                    $tapAccount->save();
                 }
             } catch (\Exception $e) {
                 Log::error('Failed in invoice processing', [
@@ -2421,8 +2416,18 @@ class PaymentController extends Controller
                             throw new \Exception('Failed to create receivable journal entry: ' . $e->getMessage());
                         }
 
-                        // Bank Journal (net payment)
-                        $netAmount = $statusData['Data']['InvoiceValue'] - $chargeRecord->amount;
+                        try {
+                            $gatewayFee = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $payment->agent->branch->company_id)['gatewayFee'] ?? 0;
+                        } catch (Exception $e) {
+                            Log::error('FatoorahCharge exception', [
+                                'message' => $e->getMessage(),
+                                'paymentMethod' => $payment->payment_method_id,
+                                'company_id' => $payment->agent->branch->company_id,
+                            ]);
+                            $gatewayFee = 0;
+                        }
+                        
+                        $netAmount = $statusData['Data']['InvoiceValue']; // Bank Journal (net payment)
 
                         try {
                             JournalEntry::create([
@@ -2453,8 +2458,11 @@ class PaymentController extends Controller
                             throw new \Exception('Failed to update bank account balance: ' . $e->getMessage());
                         }
 
+                        $paidBy = $payment->paymentMethod?->paid_by ?? null;
                         // Fee Journal (expense)
                         try {
+                            $mFAccount->actual_balance += $gatewayFee;
+                            $mFAccount->save();
                             JournalEntry::create([
                                 'transaction_id' => $transaction->id,
                                 'branch_id' => $payment->invoice->agent->branch->id,
@@ -2463,10 +2471,10 @@ class PaymentController extends Controller
                                 'invoice_detail_id' => $invoiceDetail->id,
                                 'account_id' => $mFAccount->id,
                                 'transaction_date' => now(),
-                                'description' => 'MyFatoorah service fee',
-                                'debit' => $chargeRecord->amount,
+                                'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $mFAccount->name,
+                                'debit' => $gatewayFee,
                                 'credit' => 0,
-                                'balance' => $mFAccount->actual_balance + $chargeRecord->amount,
+                                'balance' => $mFAccount->actual_balance,
                                 'name' => $mFAccount->name,
                                 'type' => 'charges',
                                 'voucher_number' => $payment->voucher_number,
@@ -2474,13 +2482,6 @@ class PaymentController extends Controller
                             ]);
                         } catch (\Exception $e) {
                             throw new \Exception('Failed to create fee journal entry: ' . $e->getMessage());
-                        }
-
-                        try {
-                            $mFAccount->actual_balance += $chargeRecord->amount;
-                            $mFAccount->save();
-                        } catch (\Exception $e) {
-                            throw new \Exception('Failed to update fee account balance: ' . $e->getMessage());
                         }
 
                         DB::commit();

@@ -479,7 +479,7 @@ class PaymentController extends Controller
 
         if ($chargeRecord) {
             $gatewayFee = ChargeService::TapCharge([
-                'amount' => $invoice->amount,
+                'amount' => $payment->amount,
                 'client_id' => $invoice->client_id,
                 'agent_id' => $invoice->agent_id,
                 'currency' => $invoice->currency
@@ -2426,7 +2426,7 @@ class PaymentController extends Controller
                             ]);
                             $gatewayFee = 0;
                         }
-                        
+
                         $netAmount = $statusData['Data']['InvoiceValue']; // Bank Journal (net payment)
 
                         try {

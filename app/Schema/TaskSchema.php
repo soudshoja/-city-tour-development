@@ -251,6 +251,12 @@ class TaskSchema
                 'example' => true,
                 'default' => false,
             ],
+            'is_ancillary' => [
+                'type' => 'boolean',
+                'desc' => "True if the service is ancillary (e.g., contains 'Ancillary:' in Service Name).",
+                'example' => false,
+                'default' => false,
+            ],
             'task_flight_details' => [
                 'type' => 'object',
                 'desc' => "Flight details associated with the task. For flight details that have multiple segments, you can use the same schema for each segment. For example, if the flight come from Kuwait to Singapore with a stopover in Dubai, you can use flight details schema for each segment like Kuwait to Dubai, and Dubai to Singapore. This means one task can have multiple flight details. and also notes that if the flight has multiple passenger, the same segment/flight details should be used for each passenger. If the flight details are not available, you can set it to null.",

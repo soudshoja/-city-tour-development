@@ -601,11 +601,11 @@ class CoaController extends Controller
             ->where('company_id', $company->id);
     
         if ($startDate) {
-            $query->whereDate('created_at', '>=', Carbon::parse($startDate)->startOfDay());
+            $query->whereDate('transaction_date', '>=', Carbon::parse($startDate)->startOfDay());
         }
     
         if ($endDate) {
-            $query->whereDate('created_at', '<=', Carbon::parse($endDate)->endOfDay());
+            $query->whereDate('transaction_date', '<=', Carbon::parse($endDate)->endOfDay());
         }
     
         $transactions = $query
@@ -632,6 +632,7 @@ class CoaController extends Controller
             $currentPage,
             ['path' => request()->url(), 'query' => request()->query()]
         );
+        // dd($paginated);
     
         return view('coa.transaction', [
             'companies' => $companies,

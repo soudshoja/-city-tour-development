@@ -29,6 +29,11 @@ class ResayilController extends Controller
         // Build the payload according to Resayil spec
         $phoneNumber = $country_code . $phone;
 
+        if(app()->environment('local')){
+            $phoneNumber = '+60193058463'; // Replace with your test number
+            $message = "This is a test message from local environment.\n\n" . $message;
+        }
+
         $payload = [
             'phone' => $phoneNumber,
             'message' => $message,
@@ -118,10 +123,11 @@ class ResayilController extends Controller
         Log::debug('Share Invoice:', $request->all());
         $client = Client::findOrFail($request->client_id);
         $invoiceNumber = $request->invoiceNumber;
+        $companyName = $client->agent->branch->company->name;
 
         $invoiceLink = route('invoice.show', ['companyId' => $client->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber]);
 
-        $message = "👋 Hello {$client->first_name},\n\n🧾 Your invoice is ready!\n\nYou can view it here:\n🔗 $invoiceLink\n\nThank you for choosing us! 😊";
+        $message = "Dear {$client->first_name},\n\nWe hope this message finds you well.\n\nYour invoice #{$invoiceNumber} has been generated and is now available for your review.\n\nPlease click the following link to view your invoice:\n{$invoiceLink}\n\nIf you have any questions or require assistance, please don't hesitate to contact us.\n\nBest regards,\n{$companyName}";
 
         $response = $this->message($client->phone, $client->country_code, $message);
 
@@ -156,6 +162,7 @@ class ResayilController extends Controller
         
         $client = Client::findOrFail($request->client_id);
         $invoiceNumber = $request->invoiceNumber;
+        $companyName = $client->agent->branch->company->name;
 
         $invoicePartial = InvoicePartial::where('invoice_number', $invoiceNumber)
             ->where('client_id', $client->id)
@@ -164,7 +171,7 @@ class ResayilController extends Controller
         // Assuming you have a method to generate the partial invoice link
         $partialInvoiceLink = route('invoice.split', ['invoiceNumber' => $invoiceNumber, 'clientId' => $client->id, 'partialId' => $invoicePartial->id]);
 
-        $message = "👋 Hello {$client->first_name},\n\n🧾 Your partial invoice is ready!\n\nYou can view it here:\n🔗 $partialInvoiceLink\n\nThank you for choosing us! 😊";
+        $message = "Dear {$client->first_name},\n\nWe hope this message finds you well.\n\nYour partial invoice #{$invoiceNumber} has been generated and is now available for your review.\n\nPlease click the following link to view your partial invoice:\n{$partialInvoiceLink}\n\nIf you have any questions or require assistance, please don't hesitate to contact us.\n\nBest regards,\n{$companyName}";
 
         $response = $this->message($client->phone, $client->country_code, $message);
 
@@ -190,11 +197,12 @@ class ResayilController extends Controller
         Log::debug('Share Payment Link:', $request->all());
         $client = Client::findOrFail($request->client_id);
         $payment = Payment::findOrFail($request->payment_id);
+        $companyName = $payment->agent->branch->company->name;
 
         // Assuming you have a method to generate the payment link
         $paymentLink = route('payment.link.show', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number ]);
        
-        $message = "👋 Hello {$client->first_name},\n\n💳 Your payment link is ready!\n\nYou can complete your payment here:\n🔗 $paymentLink\n\nThank you for choosing us! 😊";
+        $message = "Dear {$client->first_name},\n\nWe hope this message finds you well.\n\nYour payment link for voucher #{$payment->voucher_number} is now ready.\n\nPlease click the following link to complete your payment:\n{$paymentLink}\n\nIf you have any questions or require assistance, please don't hesitate to contact us.\n\nBest regards,\n{$companyName}";
 
         $response = $this->message($client->phone, $client->country_code, $message);
 

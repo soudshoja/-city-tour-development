@@ -181,7 +181,7 @@
                         const response = await fetch('https://api.remove.bg/v1.0/removebg', {
                             method: 'POST',
                             headers: {
-                                'X-Api-Key': 'JnBYzxA6Lk9DRmR2xUpubqGn', // Replace with your API key
+                                'X-Api-Key': '68dfSupshPjb6BcYmZqy5A61', // Replace with your API key
                             },
                             body: formData
                         });

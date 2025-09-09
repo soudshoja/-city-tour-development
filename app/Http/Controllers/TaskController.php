@@ -418,8 +418,6 @@ if ($search = $request->query('q')) {
      */
     public function saveColumnPrefs(Request $request)
     {
-        dump($request->has('task_flight_details'));
-            dd($data);
         $validated = $request->validate([
             'columns' => 'required|array'
         ]);
@@ -840,7 +838,6 @@ if ($search = $request->query('q')) {
             if ($task->type === 'hotel' && $request->has('task_hotel_details') && !empty($request->task_hotel_details)) {
                 $this->saveHotelDetails($request->task_hotel_details, $task->id);
             } elseif ($task->type === 'flight' && $request->has('task_flight_details') && !empty($request->task_flight_details)) {
-                dd($request->task_flight_details);
                 $this->saveFlightDetails($request->task_flight_details, $task->id);
             } elseif ($task->type === 'insurance' && $request->has('task_insurance_details') && !empty($request->task_insurance_details)) {
                 $this->saveInsuranceDetails($request->task_insurance_details, $task->id);

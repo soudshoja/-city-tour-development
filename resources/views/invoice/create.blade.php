@@ -1516,7 +1516,7 @@
             if (client && agent && branch) {
                 // Update hidden fields
                 // Update input fields for client
-                document.getElementById('receiverName').value = client.name;
+                document.getElementById('receiverName').value = client.full_name;
                 document.getElementById('receiverEmail').value = client.email;
                 document.getElementById('receiverPhone').value = client.phone;
 

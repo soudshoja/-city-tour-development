@@ -330,7 +330,6 @@ class ProfileTest extends TestCase
         $agent = Agent::factory()->create([
             'user_id' => $user->id,
             'branch_id' => $branch->id,
-            'company_id' => $company->id,
             'type_id' => $agentType->id,
             'name' => 'Original Agent Name',
             'email' => 'original.agent@example.com',

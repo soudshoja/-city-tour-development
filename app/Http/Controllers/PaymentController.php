@@ -2,22 +2,45 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\ChargeType;
-use App\Http\Traits\NotificationTrait;
-use App\Services\WhatsAppNotificationService;
+use MyFatoorah\Library\API\Payment\MyFatoorahPaymentEmbedded;
+use MyFatoorah\Library\API\Payment\MyFatoorahPaymentStatus;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Arr;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
+use App\Services\HesabeCrypt;
+use App\Services\GatewayConfigService;
+use App\Services\WhatsAppNotificationService;
+use App\Services\ChargeService;
+use App\Support\PaymentGateway\Tap;
+use App\Support\PaymentGateway\MyFatoorah;
+use App\Support\PaymentGateway\Hesabe;
+use App\Support\PaymentGateway\UPayment;
+use App\Mail\PaymentLinkEmail;
+use Google\Rpc\Context\AttributeContext\Response;
+use App\Http\Traits\NotificationTrait;
+use App\Http\Controllers\ClientController;
+use App\Enums\ChargeType;
+use App\Models\HesabePayment;
 use App\Models\InvoiceDetail;
 use App\Models\InvoicePartial;
 use App\Models\JournalEntry;
 use App\Models\TapPayment;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Sequence;
 use App\Models\Supplier;
 use App\Models\Client;
 use App\Models\Agent;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Http\Request;
 use App\Models\Invoice;
 use App\Models\Account;
 use App\Models\Branch;
@@ -29,30 +52,8 @@ use App\Models\Currency;
 use App\Models\Role;
 use App\Models\Credit;
 use App\Models\MyFatoorahPayment;
-use App\Services\ChargeService;
 use Carbon\Carbon;
 use Exception;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Http;
-use App\Support\PaymentGateway\Tap;
-use App\Support\PaymentGateway\MyFatoorah;
-use App\Mail\PaymentLinkEmail;
-use MyFatoorah\Library\API\Payment\MyFatoorahPaymentEmbedded;
-use MyFatoorah\Library\API\Payment\MyFatoorahPaymentStatus;
-use Google\Rpc\Context\AttributeContext\Response;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Arr;
-use App\Http\Controllers\ClientController;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
-use App\Services\GatewayConfigService;
-use App\Support\PaymentGateway\UPayment;
-use Illuminate\Support\Facades\Cache;
-use App\Services\HesabeCrypt;
-use App\Support\PaymentGateway\Hesabe;
 
 class PaymentController extends Controller
 {
@@ -1260,27 +1261,36 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'You are not authorized to create payment links.');
         }
 
-    $clients = Client::where(function ($query) use ($agentsId) {
-        $query->whereIn('agent_id', $agentsId)
-              ->orWhereHas('agents', function ($q) use ($agentsId) {
-                  $q->whereIn('agent_id', $agentsId);
-              });
-    })->get();        $invoices = Invoice::all();
-        $payments = Payment::all();
-        $currencies = Currency::all();
-        $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
-            ->where('is_active', true)->get();
-        $paymentMethods = PaymentMethod::where('is_active', true)->get();
+        $clients = Client::where(function ($query) use ($agentsId) {
+            $query->whereIn('agent_id', $agentsId)
+                ->orWhereHas('agents', function ($q) use ($agentsId) {
+                    $q->whereIn('agent_id', $agentsId);
+                });
+        })->get();        $invoices = Invoice::all();
+            $payments = Payment::all();
+            $currencies = Currency::all();
+            $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
+                ->where('is_active', true)->get();
 
-        return view('payment.link.create', compact(
-            'payments',
-            'clients',
-            'agents',
-            'invoices',
-            'currencies',
-            'paymentGateways',
-            'paymentMethods'
-        ));
+            $myFatoorahMethods = PaymentMethod::where('is_active', true)
+                ->where('type', 'myfatoorah')
+                ->get();
+
+            $hesabeMethods = PaymentMethod::where('is_active', true)
+                ->where('type', 'hesabe')
+                ->get();
+            /* $paymentMethods = PaymentMethod::where('is_active', true)->get(); */
+
+            return view('payment.link.create', compact(
+                'payments',
+                'clients',
+                'agents',
+                'invoices',
+                'currencies',
+                'paymentGateways',
+                'myFatoorahMethods',
+                'hesabeMethods'
+            ));
     }
 
     public function paymentStoreLinkProcess(Request $request)
@@ -1718,6 +1728,7 @@ class PaymentController extends Controller
                 "name" => $customerName,
                 "version" => '2.0',
                 "merchantCode" => $merchantCode,
+                "variable1" => 'topup',
                 "responseUrl" => route('payment.hesabe.response'),
                 "failureUrl" => route('payment.hesabe.failure'),
             ];
@@ -3249,36 +3260,438 @@ class PaymentController extends Controller
         if ($responseData['status'] == true) {
             $data = $responseData['response'];
             $voucherNumber = $data['orderReferenceNumber'];
+            $process = $data['variable1'];
 
             $payment = Payment::where('voucher_number', $voucherNumber)->first();
-            if ($payment) {
-                $payment->payment_reference = $data['Id'];
-                $payment->auth_code = $data['auth'];
-                $payment->invoice_reference = $data['transactionId'];
-                $payment->payment_date = $data['paidOn'];
-                $payment->updated_at = now();
-                $payment->status = 'completed';
-                $payment->save();
+            if (!$payment) {
+                Log::info('Payment record not found', ['voucher_number' => $voucherNumber]);
+                return redirect()->back()->with('error', 'Payment record not found');
+            } 
+
+            $payment->payment_reference = $data['transactionId'];
+            $payment->payment_date = $data['paidOn'];
+            $payment->updated_at = now();
+            $payment->status = 'completed';
+            
+            $payment->save();
+        } else {
+            Log::error('Response from Hesabe failed');
+            return redirect()->back()->with('error', 'Something went wrong. Please contact support');
+        }
+
+        try {
+            if ($process === 'topup') {
+
+                $clientController = new ClientController();
+                $addCreditResponse = $clientController->addCredit($payment);
+
+                if (isset($addCreditResponse['error'])) {
+                    logger('Failed to add credit to client', [
+                        'message' => $addCreditResponse['error'],
+                        'payment_reference' => $data['transactionId'],
+                    ]);
+                    return redirect()->back()->with('error', $addCreditResponse['error']);
+                }
+
+                $creditCoa = $this->creditCOA($payment);
+                if (!$creditCoa) {
+                    Log::error('Failed to create journal entry for credit payment', [
+                        'data' => $creditCoa,
+                    ]);
+                    return redirect()->back()->with('error', 'Failed to create journal entry for credit payment');
+                }
+            } else {
+                $invoiceCoa = $this->invoiceCOA($payment);
+                if (!$invoiceCoa) {
+                    Log::error('Failed to create journal entry for invoice payment', [
+                        'data' => $invoiceCoa,
+                    ]);
+                    return redirect()->back()->with('error', 'Failed to create journal entry for invoice payment');
+                }
             }
 
+            $agent = $payment->agent;
+            $client = $payment->client;
+            $message = 'Your client ' . $client->full_name . ' has successfully topped up their account for amount ' . number_format($payment->amount, 3) . ' ' . $payment->currency . ' using voucher number ' . $payment->voucher_number . '.\n\nCheck the link: ' . route('payment.link.show', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number]);
+
+            $this->storeNotification([
+                'user_id' => $agent->user_id,
+                'title' => 'Client '. $client->full_name . ' Topup Successful',
+                'message' => $message,
+            ]);
+
+            $resayilController = new ResayilController();
+
+            $resayilController->message(
+                $agent->phone_number,
+                $agent->country_code,
+                $message,
+            );
+
+            DB::beginTransaction();
+
+            HesabePayment::updateOrCreate([
+                'payment_int_id' => $payment->id,
+                'status' => $data['resultCode'],
+                'payment_token' => $data['paymentToken'],
+                'payment_id' => $data['paymentId'],
+                'order_reference_number' => $data['orderReferenceNumber'],
+                'auth_code' => $data['auth'],
+                'track_id' => $data['trackID'],
+                'transaction_id' => $data['transactionId'],
+                'invoice_id' => $data['Id'],
+            ]);
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            logger('Failed to process the payment to Hesabe gateway', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()->with('error', 'Payment to Hesabe failed');
         }
-        return redirect()->route('invoice.show');
+        
+
+        return redirect()->back()->with('success', 'Payment succeed!');
     }
 
     public function handleHesabeFailure(Request $request)
     {
         Log::error('Hesabe failure response received', ['request' => $request->all()]);
 
-        $voucherNumber = $request->input('data.order_reference_number');
-        if ($voucherNumber) {
-            $payment = Payment::where('voucher_number', $voucherNumber)->first();
-            if ($payment) {
-                $payment->status = 'failed';
-                $payment->save();
+        $configService = new GatewayConfigService();
+        $hesabeConfig = $configService->getHesabeConfig();
+
+        if (!$hesabeConfig['status'] || !$hesabeConfig['data']) {
+            return redirect()->back()->with('error', $hesaebCofnig['message'] ?? 'Hesabe configuration is missing or inactive');
+        }
+
+        /* nanti cuba adjust the syntax into using $apikey=$hesabeConfig['data']['api_key'] */
+        $hesabe = $hesabeConfig['data'];
+
+        $apiKey = $hesabe['api_key'];
+        $encryptionKey = $hesabe['iv_key'];
+
+        $response = $request->input('data');
+
+        $decryptedResponse = HesabeCrypt::decrypt($response, $apiKey, $encryptionKey);
+        if ($decryptedResponse === false) {
+            Log::error('Hesabe: Response decryption failed ', [
+                'response' => $decryptedResponse
+            ]);
+            return redirect()->back()->with('error', 'Hesabe response decryption failed');
+        }
+
+        $responseData = json_decode($decryptedResponse, true);
+        Log::info('Failure callback response data: ', [
+            'response', $responseData
+        ]);
+
+        if ($responseData['status'] == false) {
+             DB::beginTransaction();
+            try {
+                $data = $responseData['response'];
+                $voucherNumber = $data['orderReferenceNumber'];
+
+                $payment = Payment::where('voucher_number', $voucherNumber)->first();
+                if ($payment) {
+                    $payment->payment_reference = $data['transactionId'];
+                    $payment->payment_date = $data['paidOn'];
+                    $payment->updated_at = now();
+                    $payment->status = 'failed';
+                    $payment->save();
+                }
+
+                HesabePayment::create([
+                    'payment_int_id' => $payment->id,
+                    'status' => $data['resultCode'],
+                    'payment_token' => $data['paymentToken'],
+                    'payment_id' => $data['paymentId'],
+                    'order_reference_number' => $data['orderReferenceNumber'],
+                    'auth_code' => $data['auth'],
+                    'track_id' => $data['trackID'],
+                    'transaction_id' => $data['transactionId'],
+                    'invoice_id' => $data['Id'],
+                ]);
+
+                DB::commit();
+            } catch (Exception $e) {
+                DB::rollback();
             }
         }
 
-        return redirect()->route('payment.link.show')->with('success', 'Payment failed!');
+        return redirect()->back()->with('error', 'Payment failed!');
+    }
+
+    public function creditCOA($payment) 
+    {
+        Log::info('Starting to create the COA for payment link');
+
+        $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
+        ->where('company_id', $payment->agent->branch->company->id)
+        ->first();
+        if (!$liabilitiesAccount) {
+            return redirect()->route('invoices.index')->with('error', 'Liabilities account not found.');
+        }
+
+        $clientAdvance = Account::where('name', 'Client')
+            ->where('company_id', $payment->agent->branch->company->id)
+            ->where('root_id', $liabilitiesAccount->id)
+            ->first();
+        if (!$clientAdvance) {
+            return redirect()->route('invoices.index')->with('error', 'Client advance account not found.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $transaction = Transaction::create([
+                'branch_id' => $payment->agent->branch->id,
+                'company_id' => $payment->agent->branch->company->id,
+                'entity_id' => $payment->agent->branch->company->id,
+                'entity_type' => 'company',
+                'transaction_type' => 'debit',
+                'amount' => $payment->amount,
+                'description' => 'Topup success by ' . $payment->client->full_name,
+                'payment_id' => $payment->id,
+                'invoice_id' => $payment->invoice_id,
+                'payment_reference' => $payment->payment_reference,
+                'reference_type' => 'Payment',
+                'transaction_date' => now(),
+            ]);
+
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'branch_id' => $payment->agent->branch->id,
+                'company_id' => $payment->agent->branch->company->id,
+                'invoice_id' => $payment->invoice_id,
+                'account_id' => $clientAdvance->id,
+                'transaction_date' => now(),
+                'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
+                'debit' => 0,
+                'credit' => $payment->amount,
+                'balance' => $clientAdvance->actual_balance - $payment->amount,
+                'name' => $payment->client->full_name,
+                'type' => 'receivable',
+                'voucher_number' => $payment->voucher_number,
+                'type_reference_id' => $clientAdvance->id
+            ]);
+
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollback();
+            logger('Failed to create journal entry for payment link', [
+                'message' => $e->getMessage(),
+                'trace' =>$e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()->with('error', 'Payment cannot be updated');
+        }
+    }
+
+    public function invoiceCOA ($payment) 
+    {
+        DB::transaction(function () use ($payment, $selectedPartialIds, $finalPaidAmount) {
+            if (!empty($selectedPartialIds)) {
+                $partials = InvoicePartial::where('invoice_id', $payment->invoice_id)
+                    ->whereIn('id', $selectedPartialIds)
+                    ->get();
+        
+                foreach ($partials as $partial) {
+                    $partial->status = 'paid';
+                    $partial->payment_id = $payment->id;
+                    $partial->amount = $finalPaidAmount;
+                    $partial->save();
+                }
+            }
+        
+            $invoice = $payment->invoice()->with('invoicePartials:id,invoice_id,status')->first();
+            $hasUnpaid = $invoice->invoicePartials()->where('status', '!=', 'paid')->exists();
+            $hasPaid   = $invoice->invoicePartials()->where('status', 'paid')->exists();
+        
+            if (!$hasUnpaid && $hasPaid) {
+                $invoice->status = 'paid';
+            } elseif ($hasUnpaid && $hasPaid) {
+                $invoice->status = 'partial';
+            }
+            $invoice->save();
+
+            if ($invoice->status === 'paid' && $invoice->refund && $invoice->refund->status === 'processed') {
+                $invoice->refund->update(['status' => 'completed']);
+            }
+        });
+
+        $transaction = $statusData['Data']['InvoiceTransactions'][0] ?? [];
+
+        MyFatoorahPayment::create([
+            'payment_int_id' => $payment->id,
+            'payment_id' => $transaction['PaymentId'] ?? null,
+            'invoice_id' => $statusData['Data']['InvoiceId'],
+            'invoice_ref' => $statusData['Data']['InvoiceReference'],
+            'invoice_status' => $statusData['Data']['InvoiceStatus'],
+            'customer_reference' => $payment->invoice->invoice_number,
+            'payload' => $statusData,
+        ]);
+
+
+        try {
+            // Get financial accounts
+            $chargeRecord = Charge::where('name', 'LIKE', '%MyFatoorah%')
+                ->where('company_id', $payment->invoice->agent->branch->company->id)
+                ->first();
+
+            if (!$chargeRecord) {
+                return redirect()->back()->with('error', 'Charge account not configured.');
+            }
+
+            $bankPaymentFee = Account::find($chargeRecord->acc_fee_bank_id);
+            $mFAccount = Account::find($chargeRecord->acc_fee_id);
+            $receivableAccount = Account::where('name', 'Clients')->first();
+
+            if (!$bankPaymentFee || !$mFAccount || !$receivableAccount) {
+                throw new \Exception('One or more financial accounts not found.');
+            }
+
+            // Create transaction
+            try {
+                $transaction = Transaction::create([
+                    'branch_id' => $payment->invoice->agent->branch->id,
+                    'company_id' => $payment->invoice->agent->branch->company->id,
+                    'entity_id' => $payment->invoice->agent->branch->company->id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'debit',
+                    'amount' => $statusData['Data']['InvoiceValue'],
+                    'description' => 'MyFatoorah payment success: ' . $payment->invoice->invoice_number,
+                    'invoice_id' => $payment->invoice->id,
+                    'payment_id' => $payment->id,
+                    'payment_reference' => $statusData['Data']['InvoiceReference'],
+                    'reference_type' => 'Invoice',
+                    'transaction_date' => now(),
+                ]);
+            } catch (\Exception $e) {
+                throw new \Exception('Failed to create transaction: ' . $e->getMessage());
+            }
+
+            $invoiceDetail = InvoiceDetail::where('invoice_number', $payment->invoice->invoice_number)->first();
+            $client = $payment->invoice->client;
+
+            if (!$invoiceDetail || !$client) {
+                throw new \Exception('Invoice detail or client not found.');
+            }
+
+            // Receivable Journal
+            try {
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'branch_id' => $payment->invoice->agent->branch->id,
+                    'company_id' => $payment->invoice->agent->branch->company->id,
+                    'invoice_id' => $payment->invoice->id,
+                    'account_id' => $receivableAccount->id,
+                    'invoice_detail_id' => $invoiceDetail->id,
+                    'transaction_date' => now(),
+                    'description' => 'Client payment received via MyFatoorah',
+                    'debit' => 0,
+                    'credit' => $statusData['Data']['InvoiceValue'],
+                    'balance' => $invoiceDetail->task_price - $statusData['Data']['InvoiceValue'],
+                    'name' => $client->full_name,
+                    'type' => 'receivable',
+                    'voucher_number' => $payment->voucher_number,
+                    'type_reference_id' => $receivableAccount->id,
+                ]);
+            } catch (\Exception $e) {
+                throw new \Exception('Failed to create receivable journal entry: ' . $e->getMessage());
+            }
+
+            try {
+                $gatewayFee = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $payment->agent->branch->company_id)['gatewayFee'] ?? 0;
+            } catch (Exception $e) {
+                Log::error('FatoorahCharge exception', [
+                    'message' => $e->getMessage(),
+                    'paymentMethod' => $payment->payment_method_id,
+                    'company_id' => $payment->agent->branch->company_id,
+                ]);
+                $gatewayFee = 0;
+            }
+
+            $netAmount = $statusData['Data']['InvoiceValue']; // Bank Journal (net payment)
+
+            try {
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'branch_id' => $payment->invoice->agent->branch->id,
+                    'company_id' => $payment->invoice->agent->branch->company->id,
+                    'invoice_id' => $payment->invoice->id,
+                    'invoice_detail_id' => $invoiceDetail->id,
+                    'account_id' => $bankPaymentFee->id,
+                    'transaction_date' => now(),
+                    'description' => 'Net payment received',
+                    'debit' => $netAmount,
+                    'credit' => 0,
+                    'balance' => $invoiceDetail->task_price - $statusData['Data']['InvoiceValue'],
+                    'name' => $bankPaymentFee->name,
+                    'type' => 'bank',
+                    'voucher_number' => $payment->voucher_number,
+                    'type_reference_id' => $bankPaymentFee->id,
+                ]);
+            } catch (\Exception $e) {
+                throw new \Exception('Failed to create bank journal entry: ' . $e->getMessage());
+            }
+
+            try {
+                $bankPaymentFee->actual_balance += $netAmount;
+                $bankPaymentFee->save();
+            } catch (\Exception $e) {
+                throw new \Exception('Failed to update bank account balance: ' . $e->getMessage());
+            }
+
+            $paidBy = $payment->paymentMethod?->paid_by ?? null;
+            // Fee Journal (expense)
+            try {
+                $mFAccount->actual_balance += $gatewayFee;
+                $mFAccount->save();
+                JournalEntry::create([
+                    'transaction_id' => $transaction->id,
+                    'branch_id' => $payment->invoice->agent->branch->id,
+                    'company_id' => $payment->invoice->agent->branch->company->id,
+                    'invoice_id' => $payment->invoice->id,
+                    'invoice_detail_id' => $invoiceDetail->id,
+                    'account_id' => $mFAccount->id,
+                    'transaction_date' => now(),
+                    'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $mFAccount->name,
+                    'debit' => $gatewayFee,
+                    'credit' => 0,
+                    'balance' => $mFAccount->actual_balance,
+                    'name' => $mFAccount->name,
+                    'type' => 'charges',
+                    'voucher_number' => $payment->voucher_number,
+                    'type_reference_id' => $mFAccount->id,
+                ]);
+            } catch (Exception $e) {
+                throw new Exception('Failed to create fee journal entry: ' . $e->getMessage());
+            }
+
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Payment processing failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        }
+
+        $agent = $payment->invoice->agent;
+        $client = $payment->invoice->client;
+        $message = 'Your client ' . $client->full_name . ' has paid invoice ' . $payment->invoice->invoice_number . '.\n\nCheck the link : ' . route('invoice.show', ['companyId' => $payment->agent->branch->company_id, 'invoiceNumber' => $payment->invoice->invoice_number]);
+
+        $resayilController = new ResayilController();
+
+        $resayilController->message(
+            $agent->phone_number,
+            $agent->country_code,
+            $message,
+        );
+
+        return redirect()->route('invoice.show', ['companyId' => $payment->agent->branch->company_id, 'invoiceNumber' => $payment->invoice->invoice_number])
+            ->with('status', 'Payment successful! Thank you for your payment.');
     }
 
     public function success()

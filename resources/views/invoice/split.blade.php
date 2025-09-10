@@ -75,15 +75,15 @@
         <div class="flex justify-between items-center mb-8">
             <div class="text-left">
                 <h3 class="text-lg font-bold text-gray-800">Billed To</h3>
-                <p class="text-sm text-gray-600">{{ $invoice->client->full_name }}</p>
+                <p class="text-sm text-gray-600">{{ $invoicePartial->client->full_name }}</p>
                 <p class="text-sm text-gray-600">
-                    <a href="mailto:{{ $invoice->client->email}}" class="hover:underline hover:text-blue-600">
-                        {{ $invoice->client->email ?? 'N/A' }}
+                    <a href="mailto:{{ $invoicePartial->client->email}}" class="hover:underline hover:text-blue-600">
+                        {{ $invoicePartial->client->email ?? 'N/A' }}
                     </a>
                 </p>
                 <p class="text-sm text-gray-600">
-                    <a href="tel:{{ $invoice->client->country_code }}{{ $invoice->client->phone }}" class="hover:underline hover:text-blue-600">
-                        {{ $invoice->client->country_code ?? ''}}{{ $invoice->client->phone ?? 'N/A' }}
+                    <a href="tel:{{ $invoicePartial->client->country_code }}{{ $invoicePartial->client->phone }}" class="hover:underline hover:text-blue-600">
+                        {{ $invoicePartial->client->country_code ?? ''}}{{ $invoicePartial->client->phone ?? 'N/A' }}
                     </a>
                 </p>
             </div>

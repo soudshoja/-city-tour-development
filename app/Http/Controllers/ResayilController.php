@@ -129,7 +129,7 @@ class ResayilController extends Controller
 
         $invoiceLink = route('invoice.show', ['companyId' => $client->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber]);
 
-        $message = "Dear {$client->first_name},\n\nWe hope this message finds you well.\n\nYour invoice #{$invoiceNumber} has been generated and is now available for your review.\n\nPlease click the following link to view your invoice:\n{$invoiceLink}\n\nIf you have any questions or require assistance, please don't hesitate to contact us.\n\nBest regards,\n{$companyName}";
+        $message = "Dear {$client->full_name},\n\nYour invoice #{$invoiceNumber} has been generated and is now available for your review.\n\nPlease click the following link to view your invoice:\n{$invoiceLink}\n\nIf you have any questions or require assistance, please don't hesitate to contact us.\n\nBest regards,\n{$companyName}";
 
         $response = $this->message($client->phone, $client->country_code, $message);
 
@@ -173,7 +173,7 @@ class ResayilController extends Controller
         // Assuming you have a method to generate the partial invoice link
         $partialInvoiceLink = route('invoice.split', ['invoiceNumber' => $invoiceNumber, 'clientId' => $client->id, 'partialId' => $invoicePartial->id]);
 
-        $message = "Dear {$client->first_name},\n\nWe hope this message finds you well.\n\nYour partial invoice #{$invoiceNumber} has been generated and is now available for your review.\n\nPlease click the following link to view your partial invoice:\n{$partialInvoiceLink}\n\nIf you have any questions or require assistance, please don't hesitate to contact us.\n\nBest regards,\n{$companyName}";
+        $message = "Dear {$client->full_name},\n\nYour partial invoice #{$invoiceNumber} has been generated and is now available for your review.\n\nPlease click the following link to view your partial invoice:\n{$partialInvoiceLink}\n\nIf you have any questions or require assistance, please don't hesitate to contact us.\n\nBest regards,\n{$companyName}";
 
         $response = $this->message($client->phone, $client->country_code, $message);
 
@@ -204,7 +204,7 @@ class ResayilController extends Controller
         // Assuming you have a method to generate the payment link
         $paymentLink = route('payment.link.show', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number ]);
        
-        $message = "Dear {$client->first_name},\n\nWe hope this message finds you well.\n\nYour payment link for voucher #{$payment->voucher_number} is now ready.\n\nPlease click the following link to complete your payment:\n{$paymentLink}\n\nIf you have any questions or require assistance, please don't hesitate to contact us.\n\nBest regards,\n{$companyName}";
+        $message = "Dear {$client->full_name},\n\nYour payment link for voucher #{$payment->voucher_number} is now ready.\n\nPlease click the following link to complete your payment:\n{$paymentLink}\n\nIf you have any questions or require assistance, please don't hesitate to contact us.\n\nBest regards,\n{$companyName}";
 
         $response = $this->message($client->phone, $client->country_code, $message);
 

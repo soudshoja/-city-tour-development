@@ -25,17 +25,11 @@ class Agent extends Model
         'type_id',
         'phone_number',
         'country_code',
-        'company_id',
         'branch_id',
         'commission',
         'salary',
         'target',
     ];
-
-    public function company()
-    {
-        return $this->belongsTo(Company::class);
-    }
 
     public function branch()
     {

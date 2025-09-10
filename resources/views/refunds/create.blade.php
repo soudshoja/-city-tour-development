@@ -70,7 +70,7 @@
 
             <div class="mb-6 rounded-lg p-4 {{ $invoicePaid ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200' }}">
                 <div>
-                    <div class="font-semibold {{ $invoicePaid ? 'text-green-700' : 'text-red-800' }}">Invoice Status: {{ $invoicePaid ? 'Paid' : 'Unpaid' }}</div>
+                    <div class="font-semibold {{ $invoicePaid ? 'text-green-700' : 'text-red-800' }}">Original Invoice Status: {{ $invoicePaid ? 'Paid' : 'Unpaid' }}</div>
                     @if(!$invoicePaid)
                     <div class="text-sm mt-1 text-red-900">
                         <span class="inline-block mt-1 rounded bg-white px-2 py-1 border border-red-300">

@@ -58,7 +58,7 @@ class TaskController extends Controller
 
     public function index(Request $request)
     {
-    
+
         $user = Auth::user();
 
         $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'info'];
@@ -79,62 +79,62 @@ class TaskController extends Controller
 
         $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
         $paymentMethod = Account::where('parent_id', 39)->get();
-if ($search = $request->query('q')) {
-    $searchTerm = '%' . strtolower($search) . '%';
-    $tasks = $tasks->where(function ($query) use ($search, $searchTerm) {
-        $query->where('reference', 'LIKE', $searchTerm)
-            ->orWhere('passenger_name', 'LIKE', $searchTerm)
-            ->orWhereHas('client', function ($q) use ($searchTerm) {
-                $q->where('first_name', 'LIKE', $searchTerm)
-                  ->orWhere('middle_name', 'LIKE', $searchTerm)
-                  ->orWhere('last_name', 'LIKE', $searchTerm)
-                  ->orWhere('email', 'LIKE', $searchTerm)
-                  ->orWhere('phone', 'LIKE', $searchTerm)
-                  ->orWhere('civil_no', 'LIKE', $searchTerm);
-            })
-            ->orWhereHas('agent', function ($q) use ($searchTerm) {
-                $q->where('name', 'LIKE', $searchTerm);
+        if ($search = $request->query('q')) {
+            $searchTerm = '%' . strtolower($search) . '%';
+            $tasks = $tasks->where(function ($query) use ($search, $searchTerm) {
+                $query->where('reference', 'LIKE', $searchTerm)
+                    ->orWhere('passenger_name', 'LIKE', $searchTerm)
+                    ->orWhereHas('client', function ($q) use ($searchTerm) {
+                        $q->where('first_name', 'LIKE', $searchTerm)
+                            ->orWhere('middle_name', 'LIKE', $searchTerm)
+                            ->orWhere('last_name', 'LIKE', $searchTerm)
+                            ->orWhere('email', 'LIKE', $searchTerm)
+                            ->orWhere('phone', 'LIKE', $searchTerm)
+                            ->orWhere('civil_no', 'LIKE', $searchTerm);
+                    })
+                    ->orWhereHas('agent', function ($q) use ($searchTerm) {
+                        $q->where('name', 'LIKE', $searchTerm);
+                    });
+
+                // Multi-word search for passenger/client names
+                if (str_word_count($search) > 1) {
+                    $searchWords = explode(' ', trim($search));
+                    $firstWord = $searchWords[0];
+                    $lastWord = end($searchWords);
+                    $middleWords = array_slice($searchWords, 1, -1);
+
+                    // For 2 words: first_name + last_name
+                    if (count($searchWords) == 2) {
+                        $query->orWhere(function ($q) use ($firstWord, $lastWord) {
+                            $q->whereHas('client', function ($qq) use ($firstWord, $lastWord) {
+                                $qq->where('first_name', 'LIKE', '%' . $firstWord . '%')
+                                    ->where('last_name', 'LIKE', '%' . $lastWord . '%');
+                            });
+                        });
+                    }
+                    // For 3+ words: first_name + middle_name(s) + last_name
+                    else if (count($searchWords) >= 3) {
+                        $query->orWhere(function ($q) use ($firstWord, $middleWords, $lastWord) {
+                            $q->whereHas('client', function ($qq) use ($firstWord, $middleWords, $lastWord) {
+                                $qq->where('first_name', 'LIKE', '%' . $firstWord . '%')
+                                    ->where('last_name', 'LIKE', '%' . $lastWord . '%');
+                                foreach ($middleWords as $middleWord) {
+                                    $qq->where('middle_name', 'LIKE', '%' . $middleWord . '%');
+                                }
+                            });
+                        });
+                    }
+                }
             });
-
-        // Multi-word search for passenger/client names
-        if (str_word_count($search) > 1) {
-            $searchWords = explode(' ', trim($search));
-            $firstWord = $searchWords[0];
-            $lastWord = end($searchWords);
-            $middleWords = array_slice($searchWords, 1, -1);
-
-            // For 2 words: first_name + last_name
-            if (count($searchWords) == 2) {
-                $query->orWhere(function ($q) use ($firstWord, $lastWord) {
-                    $q->whereHas('client', function ($qq) use ($firstWord, $lastWord) {
-                        $qq->where('first_name', 'LIKE', '%' . $firstWord . '%')
-                           ->where('last_name', 'LIKE', '%' . $lastWord . '%');
-                    });
-                });
-            }
-            // For 3+ words: first_name + middle_name(s) + last_name
-            else if (count($searchWords) >= 3) {
-                $query->orWhere(function ($q) use ($firstWord, $middleWords, $lastWord) {
-                    $q->whereHas('client', function ($qq) use ($firstWord, $middleWords, $lastWord) {
-                        $qq->where('first_name', 'LIKE', '%' . $firstWord . '%')
-                           ->where('last_name', 'LIKE', '%' . $lastWord . '%');
-                        foreach ($middleWords as $middleWord) {
-                            $qq->where('middle_name', 'LIKE', '%' . $middleWord . '%');
-                        }
-                    });
-                });
-            }
         }
-    });
-}
         if ($request->filled('status')) {
             $statuses = request()->input('status', []);
             $tasks = $tasks->whereIn('status', $statuses);
         }
-        
-     
+
+
         if (!$request->has('invoiced')) {
-        return redirect()->route('tasks.index', array_merge($request->all(), [
+            return redirect()->route('tasks.index', array_merge($request->all(), [
                 'invoiced' => 0,
                 'view_type' => 'invoice',
             ]));
@@ -147,9 +147,21 @@ if ($search = $request->query('q')) {
             }
         }
         $filterable = [
-        'reference', 'bill-to', 'passenger-name', 'agent_name', 'supplier', 'created-at','supplier_pay_date',
-        'cancellation-deadline', 'type', 'gds-reference', 'amadeus-reference', 'created-by',
-        'issued-by', 'branch-name', 'invoice'
+            'reference',
+            'bill-to',
+            'passenger-name',
+            'agent_name',
+            'supplier',
+            'created-at',
+            'supplier_pay_date',
+            'cancellation-deadline',
+            'type',
+            'gds-reference',
+            'amadeus-reference',
+            'created-by',
+            'issued-by',
+            'branch-name',
+            'invoice'
         ];
 
         foreach ($filterable as $field) {
@@ -159,10 +171,10 @@ if ($search = $request->query('q')) {
                 case 'bill-to':
                     $param = 'bill-to';
                     if ($request->filled($param)) {
-                        $tasks = $tasks->whereHas('client', function($q) use ($request, $param) {
+                        $tasks = $tasks->whereHas('client', function ($q) use ($request, $param) {
                             $q->where('first_name', 'like', '%' . $request->input($param) . '%')
-                            ->orWhere('last_name', 'like', '%' . $request->input($param) . '%')
-                            ->orWhere('phone', 'like', '%' . $request->input($param) . '%');
+                                ->orWhere('last_name', 'like', '%' . $request->input($param) . '%')
+                                ->orWhere('phone', 'like', '%' . $request->input($param) . '%');
                         });
                     }
                     break;
@@ -174,14 +186,14 @@ if ($search = $request->query('q')) {
                     break;
                 case 'agent_name':
                     if ($request->filled('agent_name')) {
-                        $tasks = $tasks->whereHas('agent', function($q) use ($request) {
+                        $tasks = $tasks->whereHas('agent', function ($q) use ($request) {
                             $q->where('name', 'like', '%' . $request->input('agent_name') . '%');
                         });
                     }
                     break;
                 case 'supplier':
                     if ($request->filled('supplier')) {
-                        $tasks = $tasks->whereHas('supplier', function($q) use ($request) {
+                        $tasks = $tasks->whereHas('supplier', function ($q) use ($request) {
                             $q->where('name', 'like', '%' . $request->input('supplier') . '%');
                         });
                     }
@@ -245,14 +257,14 @@ if ($search = $request->query('q')) {
                     break;
                 case 'branch-name':
                     if ($request->filled('branch-name')) {
-                        $tasks = $tasks->whereHas('agent.branch', function($q) use ($request) {
+                        $tasks = $tasks->whereHas('agent.branch', function ($q) use ($request) {
                             $q->where('name', 'like', '%' . $request->input('branch-name') . '%');
                         });
                     }
                     break;
                 case 'invoice':
                     if ($request->filled('invoice')) {
-                        $tasks = $tasks->whereHas('invoiceDetail', function($q) use ($request) {
+                        $tasks = $tasks->whereHas('invoiceDetail', function ($q) use ($request) {
                             $q->where('invoice_number', 'like', '%' . $request->input('invoice') . '%');
                         });
                     }
@@ -272,19 +284,18 @@ if ($search = $request->query('q')) {
             $clients = Client::all();
             $agents = Agent::all();
             $fullClients = Client::all();
-
         } elseif ($user->role_id == Role::COMPANY) {
 
             $branches = Branch::where('company_id', $user->company->id)->get();
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-    $fullClients = Client::where(function ($query) use ($agentsId) {
-        $query->whereIn('agent_id', $agentsId)
-              ->orWhereHas('agents', function ($q) use ($agentsId) {
-                  $q->whereIn('agent_id', $agentsId);
-              });
-    })->get();
+            $fullClients = Client::where(function ($query) use ($agentsId) {
+                $query->whereIn('agent_id', $agentsId)
+                    ->orWhereHas('agents', function ($q) use ($agentsId) {
+                        $q->whereIn('agent_id', $agentsId);
+                    });
+            })->get();
             $tasks = $tasks->where('company_id', $user->company->id);
 
             // $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
@@ -292,35 +303,33 @@ if ($search = $request->query('q')) {
             // })->get();
 
             $suppliers = $suppliers->whereHas('companies', function ($query) use ($user) {
-                $query->where('company_id', $user->company->id); 
+                $query->where('company_id', $user->company->id);
             });
-
         } elseif ($user->role_id == Role::BRANCH) {
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
             $clients = Client::whereIn('agent_id', $agentsId)->get();
-    $fullClients = Client::where(function ($query) use ($agentsId) {
-        $query->whereIn('agent_id', $agentsId)
-              ->orWhereHas('agents', function ($q) use ($agentsId) {
-                  $q->whereIn('agent_id', $agentsId);
-              });
-    })->get();
+            $fullClients = Client::where(function ($query) use ($agentsId) {
+                $query->whereIn('agent_id', $agentsId)
+                    ->orWhereHas('agents', function ($q) use ($agentsId) {
+                        $q->whereIn('agent_id', $agentsId);
+                    });
+            })->get();
             $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
 
             $suppliers = $suppliers->whereHas('companies', function ($query) use ($user) {
                 $query->where('company_id', $user->company_id);
             });
-
         } elseif ($user->role_id == Role::AGENT) {
 
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $clients = Client::where('agent_id', $user->agent->id)->get();
-    $fullClients = Client::where(function ($query) use ($user) {
-        $query->where('agent_id', $user->agent->id)
-              ->orWhereHas('agents', function ($q) use ($user) {
-                  $q->where('agent_id', $user->agent->id);
-              });
-    })->get();
+            $fullClients = Client::where(function ($query) use ($user) {
+                $query->where('agent_id', $user->agent->id)
+                    ->orWhereHas('agents', function ($q) use ($user) {
+                        $q->where('agent_id', $user->agent->id);
+                    });
+            })->get();
             // Get tasks assigned to this agent OR unassigned tasks in the same company
             $tasks = $tasks->where(function ($query) use ($user) {
                 $query->where('agent_id', $user->agent->id)
@@ -334,12 +343,11 @@ if ($search = $request->query('q')) {
             $suppliers = $suppliers->whereHas('companies', function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);
             });
-        
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
 
-        $suppliers = $suppliers->whereHas('companies', function ($query){  
+        $suppliers = $suppliers->whereHas('companies', function ($query) {
             $query->where('is_active', true);
         })->get();
 
@@ -392,7 +400,7 @@ if ($search = $request->query('q')) {
                     }
                     if ($agentId) $task->agent_id = $agentId;
                     if ($paymentMethodId) $task->payment_method_account_id = $paymentMethodId;
-                    
+
                     if ($task->is_complete && $task->agent && $task->client) {
                         $journalEntries = JournalEntry::where('task_id', $task->id)->exists();
                         if (!$journalEntries) {
@@ -403,7 +411,7 @@ if ($search = $request->query('q')) {
                                 Log::error('Failed to process task financial: ' . $e->getMessage());
                             }
                         }
-                        if($task->status === 'issued') $task->enabled = true;
+                        if ($task->status === 'issued') $task->enabled = true;
                     }
                     $task->save();
                 }
@@ -427,8 +435,9 @@ if ($search = $request->query('q')) {
         return response()->json(['success', 'message' => 'Column preferences saved.']);
     }
 
-    public function store(Request $request) : JsonResponse
+    public function store(Request $request): JsonResponse
     {
+        Log::info('Store task request', ['request' => $request->all()]);
         $request->validate([
             'reference' => 'required|string',
             'status' => 'required',
@@ -475,7 +484,7 @@ if ($search = $request->query('q')) {
             'supplier_pay_date' => 'nullable|date',
         ]);
 
-        if($request->exchange_currency !== 'KWD'){
+        if ($request->exchange_currency !== 'KWD') {
             $request->merge([
                 'exchange_currency' => 'KWD',
                 'original_currency' => $request->exchange_currency,
@@ -487,9 +496,9 @@ if ($search = $request->query('q')) {
 
         $exceptionConvert = [];
 
-        if($amadeus) $exceptionConvert[] = $amadeus->id;
+        if ($amadeus) $exceptionConvert[] = $amadeus->id;
 
-        if ( !in_array($request->supplier_id, $exceptionConvert) && $request->original_currency && $request->original_price && !$request->is_exchanged) {
+        if (!in_array($request->supplier_id, $exceptionConvert) && $request->original_currency && $request->original_price && !$request->is_exchanged) {
 
             $companyId = $request->company_id;
             $originalCurrency = $request->original_currency;
@@ -504,7 +513,7 @@ if ($search = $request->query('q')) {
                     $originalPrice
                 );
 
-                if($convertResponse['status'] === 'error' || $convertResponse['exchange_rate'] === null) {
+                if ($convertResponse['status'] === 'error' || $convertResponse['exchange_rate'] === null) {
                     $currencyExchangeController = new CurrencyExchangeController();
 
 
@@ -515,7 +524,7 @@ if ($search = $request->query('q')) {
                         'is_manual' => false,
                     ]));
 
-                    if(!$currencyExchangeResponse instanceof JsonResponse){
+                    if (!$currencyExchangeResponse instanceof JsonResponse) {
                         Log::error('Response from updateJournalPaymentMethod is not a JsonResponse', [
                             'expected_type' => JsonResponse::class,
                             'actual_type' => is_object($currencyExchangeResponse) ? get_class($currencyExchangeResponse) : gettype($currencyExchangeResponse)
@@ -526,7 +535,7 @@ if ($search = $request->query('q')) {
 
                     $currencyExchangeResponse = $currencyExchangeResponse->getData(true);
 
-                    if($currencyExchangeResponse['status'] === 'error') {
+                    if ($currencyExchangeResponse['status'] === 'error') {
                         Log::error('Failed to create currency exchange', [
                             'error' => $currencyExchangeResponse['message'],
                             'company_id' => $companyId,
@@ -547,7 +556,7 @@ if ($search = $request->query('q')) {
                         $originalPrice
                     );
 
-                    if($convertResponse['status'] === 'error') {
+                    if ($convertResponse['status'] === 'error') {
                         Log::error('Failed to convert currency after creating exchange rate', [
                             'error' => $convertResponse['message'],
                             'company_id' => $companyId,
@@ -578,9 +587,9 @@ if ($search = $request->query('q')) {
                     if ($base === null || $base === '') {
                         continue;
                     }
-            
+
                     $resp = $this->convert($companyId, $originalCurrency, $exchangeCurrency, $base);
-            
+
                     if (($resp['status'] ?? 'success') !== 'error' && isset($resp['converted_amount'])) {
                         $request->merge([$dst => round($resp['converted_amount'], 3)]);
                     }
@@ -602,8 +611,9 @@ if ($search = $request->query('q')) {
         $queryChkExistTask = Task::query();
         $queryChkExistTask->where('reference', $request->reference)
             ->where('company_id', $request->company_id)
+            ->where('status', $request->status)
             ->when($request->filled('client_name'), fn($q) => $q->where('passenger_name', trim($request->client_name)))
-            ->when($request->filled('supplier_id'), fn ($q) => $q->where('supplier_id', $request->supplier_id));
+            ->when($request->filled('supplier_id'), fn($q) => $q->where('supplier_id', $request->supplier_id));
 
         if ($request->type === 'hotel') {
             $hotelName = data_get($request->task_hotel_details, '0.hotel_name');
@@ -633,8 +643,10 @@ if ($search = $request->query('q')) {
         }
 
         if ($existingTask) {
-            if ($existingTask->status === 'issued' && in_array($existingTask->supplier->name, ['Jazeera Airways','Fly Dubai'])
-            && (float)$existingTask->total !== (float)$request->total) {
+            if (
+                $existingTask->status === 'issued' && in_array($existingTask->supplier->name, ['Jazeera Airways', 'Fly Dubai'])
+                && (float)$existingTask->total !== (float)$request->total
+            ) {
                 Log::warning('This reference has already existed for task: ' . $existingTask->reference . '. Proceeding for Reissued task.');
 
                 $newTaskTotal = (float)$request->total - (float)$existingTask->total;
@@ -653,8 +665,8 @@ if ($search = $request->query('q')) {
                     ->where('original_task_id', $existingTask->id)
                     ->where('total', $newTaskTotal)
                     ->first();
-        
-                if ($existsReissue) {    
+
+                if ($existsReissue) {
                     Log::info('Idempotent reissue hit: returning existing task', [
                         'action'            => 'reissue_return_existing',
                         'existing_task_id'  => $existsReissue->id,
@@ -694,6 +706,7 @@ if ($search = $request->query('q')) {
                 'message' => 'Task with this reference already exists.',
             ], 422); */
         }
+
         $amadeusId = Supplier::where('name', 'Amadeus')->value('id');
 
         if ($request->supplier_id !== $amadeusId) {
@@ -730,7 +743,7 @@ if ($search = $request->query('q')) {
             $request->merge(['status' => 'issued']);
         }
 
-        if(strtolower($supplierName) == 'jazeera airways' || strtolower($supplierName) == 'fly dubai' || strtolower($supplierName) == 'vfs') {
+        if (strtolower($supplierName) == 'jazeera airways' || strtolower($supplierName) == 'fly dubai' || strtolower($supplierName) == 'vfs') {
             if ($request->status == 'confirmed') {
                 $status = 'issued';
             } elseif ($request->status == 'on hold') {
@@ -745,7 +758,7 @@ if ($search = $request->query('q')) {
         if ($request->status === 'confirmed' && !$request->expiry_date) {
             // Set default expiry to 48 hours from now for confirmed tasks
             $request->merge(['expiry_date' => Carbon::now()->addHours(48)]);
-            
+
             Log::info("Auto-set expiry date for confirmed task", [
                 'reference' => $request->reference,
                 'expiry_date' => $request->expiry_date,
@@ -813,11 +826,11 @@ if ($search = $request->query('q')) {
         try {
             Log::debug('Task Data:', $request->all());
 
-            $issuedDate            = $request->input('issued_date');               
-            $cancellationDeadline  = $request->input('cancellation_deadline');     
+            $issuedDate            = $request->input('issued_date');
+            $cancellationDeadline  = $request->input('cancellation_deadline');
             $task_type             = $request->input('service.type') ?? $request->input('type');
 
-            $supplier_pay_date = $issuedDate; 
+            $supplier_pay_date = $issuedDate;
 
             if ($task_type === 'hotel' && $cancellationDeadline) {
                 if ($cancellationDeadline <= $issuedDate) {
@@ -825,12 +838,12 @@ if ($search = $request->query('q')) {
                 } elseif ($cancellationDeadline > $issuedDate) {
                     $supplier_pay_date = $cancellationDeadline;
                 }
-            } 
+            }
 
             $data = $request->all();
             $data['supplier_pay_date'] = $supplier_pay_date;
 
-            $task = Task::create($data);
+            $task = Task::create($data);;
 
             if ($task->type === 'hotel' && $request->has('task_hotel_details') && !empty($request->task_hotel_details)) {
                 $this->saveHotelDetails($request->task_hotel_details, $task->id);
@@ -841,11 +854,11 @@ if ($search = $request->query('q')) {
             } elseif ($task->type === 'visa' && $request->has('task_visa_details') && !empty($request->task_visa_details)) {
                 $this->saveVisaDetails($request->task_visa_details, $task->id);
             }
-           
+
             // Set enabled status: task must be complete AND have an agent assigned
-            if($task->is_complete && $task->agent_id && $task->client) {
+            if ($task->is_complete && $task->agent_id && $task->client) {
                 $task->enabled = true;
-                $task->save(); 
+                $task->save();
                 Log::info('Task enabled for complete task with agent: ' . $task->reference);
             } else {
                 $task->enabled = false;
@@ -858,13 +871,13 @@ if ($search = $request->query('q')) {
             $offline = ($task->type === 'hotel' && $task->supplier_id)
                 ? ! (bool) data_get($task, 'supplier.is_online', true)
                 : false;
-            
+
             // Process financial transactions immediately if task is complete (regardless of agent assignment)
             // This ensures company liability to supplier is tracked immediately
             // Special case: Void tasks should ALWAYS process financials if they have an original_task_id
             $shouldProcessFinancials = $offline || $task->is_complete ||
-            ($task->status === 'void' && $task->original_task_id);
-            
+                ($task->status === 'void' && $task->original_task_id);
+
             if ($shouldProcessFinancials) {
                 $reason = $task->is_complete ? 'complete task' : 'void task with original_task_id';
                 Log::info("Processing financial transactions for {$reason}: " . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
@@ -888,10 +901,11 @@ if ($search = $request->query('q')) {
         }
     }
 
-    private function triggerCheckTaskEvent(Task $task, string $reason = 'manual_trigger'){
+    private function triggerCheckTaskEvent(Task $task, string $reason = 'manual_trigger')
+    {
         // Trigger the check status event for the task
         event(new \App\Events\CheckConfirmedOrIssuedTask($task, $reason));
-        
+
         Log::info("Triggered CheckConfirmedOrIssuedTask event", [
             'task_id' => $task->id,
             'reference' => $task->reference,
@@ -907,28 +921,28 @@ if ($search = $request->query('q')) {
     {
         $supplier = Supplier::find($task->supplier_id);
         $accountName = $supplier->name . ' (' . $currency . ')';
-        
+
         // Check if the currency-specific account already exists
         $currencySpecificAccount = Account::where('name', $accountName)
             ->where('company_id', $task->company_id)
             ->where('parent_id', $supplierPayableAccount->id)
             ->where('currency', $currency)
             ->first();
-        
+
         if (!$currencySpecificAccount) {
             Log::info('Creating new currency-specific account: ' . $accountName);
-            
+
             // Get the next available code
             $code = 2151;
             $lastChildAccount = Account::where('company_id', $task->company_id)
                 ->where('parent_id', $supplierPayableAccount->id)
                 ->orderBy('code', 'desc')
                 ->first();
-            
+
             if ($lastChildAccount) {
                 $code = $lastChildAccount->code + 1;
             }
-            
+
             try {
                 $currencySpecificAccount = Account::create([
                     'name' => $accountName,
@@ -947,7 +961,7 @@ if ($search = $request->query('q')) {
                     'variance' => 0.00,
                     'currency' => $currency,
                 ]);
-                
+
                 Log::info('Created currency-specific account: ' . $accountName, [
                     'account_id' => $currencySpecificAccount->id,
                     'currency' => $currency,
@@ -964,7 +978,7 @@ if ($search = $request->query('q')) {
                 throw new Exception('Failed to create currency-specific account: ' . $e->getMessage());
             }
         }
-        
+
         return $currencySpecificAccount;
     }
 
@@ -977,13 +991,13 @@ if ($search = $request->query('q')) {
         if ($task->agent && $task->agent->branch_id) {
             return $task->agent->branch_id;
         }
-        
+
         // Get company's main branch if no agent
         $company = \App\Models\Company::find($task->company_id);
         if (!$company) {
             throw new Exception('Company not found for task: ' . $task->reference);
         }
-        
+
         $mainBranch = $company->getMainBranch();
         return $mainBranch->id;
     }
@@ -993,12 +1007,12 @@ if ($search = $request->query('q')) {
      */
     public function processTaskFinancial(Task $task)
     {
-        if (!in_array($task->status, ['issued','reissued','void','refund','emd'], true)) {
+        if (!in_array($task->status, ['issued', 'reissued', 'void', 'refund', 'emd'], true)) {
             Log::info('Skipping financial processing for task: ' . $task->reference . ' - status: ' . $task->status);
             return;
         }
         Log::info('Processing financial for task: ' . $task->reference);
-        
+
         // Special handling for void tasks: they should process even if incomplete
         // as long as they have an original_task_id to reference
         if (!$task->is_complete) {
@@ -1023,7 +1037,7 @@ if ($search = $request->query('q')) {
         $liabilities = Account::where('name', 'like', '%Liabilities%')
             ->where('company_id', $task->company_id)
             ->first();
-        
+
         $expenses = Account::where('name', 'like', '%Expenses%')
             ->where('company_id', $task->company_id)
             ->first();
@@ -1060,7 +1074,7 @@ if ($search = $request->query('q')) {
         if (in_array($task->type, ['flight', 'visa'])) {
             Log::info('Processing flight task financial for: ' . $task->reference);
             $companyIssuedBy = $task->issued_by ?? 'Not Issued';
-            
+
             Log::info('Issued by value determination', [
                 'original_issued_by' => $task->issued_by,
                 'final_company_issued_by' => $companyIssuedBy,
@@ -1139,21 +1153,20 @@ if ($search = $request->query('q')) {
         $isJazeera = $jazeera !== null ? $task->supplier_id == $jazeera->id : false;
 
         $currencySpecificAccount = null;
-        if($task->type == 'hotel' && !$isJazeera) {
+        if ($task->type == 'hotel' && !$isJazeera) {
             if ($jazeera ? $task->supplier_id == $jazeera->id : false) {
                 Log::info('Processing hotel task for Jazeera Airways - using supplier payable account directly: ' . $task->reference);
-                
             }
             if ($task->original_currency && $task->original_currency !== 'KWD') {
                 // Create or find the original currency child account under supplier payable
                 Log::info('Processing hotel task with original currency: ' . $task->original_currency . ' for task: ' . $task->reference);
                 $currencySpecificAccount = $this->getOrCreateCurrencySpecificAccount(
-                    $task, 
-                    $supplierPayable, 
-                    $task->original_currency, 
+                    $task,
+                    $supplierPayable,
+                    $task->original_currency,
                     $branchId
                 );
-                
+
                 Log::info('Original currency account for hotel task: ', [
                     'account' => $currencySpecificAccount,
                     'currency' => $task->original_currency,
@@ -1163,12 +1176,12 @@ if ($search = $request->query('q')) {
                 // Even for KWD, create a KWD-specific child account for consistency
                 Log::info('Processing hotel task with KWD currency for task: ' . $task->reference);
                 $currencySpecificAccount = $this->getOrCreateCurrencySpecificAccount(
-                    $task, 
-                    $supplierPayable, 
-                    'KWD', 
+                    $task,
+                    $supplierPayable,
+                    'KWD',
                     $branchId
                 );
-                
+
                 Log::info('KWD currency account for hotel task: ', [
                     'account' => $currencySpecificAccount,
                     'currency' => 'KWD',
@@ -1264,7 +1277,7 @@ if ($search = $request->query('q')) {
     {
         // Use task's issued_date as transaction_date
         $transactionDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : Carbon::now();
-        
+
         $transaction = Transaction::create([
             'branch_id' => $branchId,
             'company_id' => $task->company_id,
@@ -1276,7 +1289,7 @@ if ($search = $request->query('q')) {
             'reference_type' => 'Payment',
             'transaction_date' => $transactionDate,
         ]);
-        
+
         if (!$transaction) {
             throw new Exception('Transaction creation failed.');
         }
@@ -1303,23 +1316,23 @@ if ($search = $request->query('q')) {
         $liabilityDescription = 'Records Payable to (Liabilities): ' . $supplierCompany->supplier->name;
         $originalCurrency = null;
         $originalAmount = null;
-        
+
         // Priority order for liability account selection:
         // 1. Currency-specific account for hotel tasks (both original currency and KWD)
         // 2. Issued by account for flight tasks  
         // 3. Default supplier payable account
-        
+
         if ($currencySpecificAccount && $task->type == 'hotel') {
             // Hotel task with currency-specific account
             $liabilityAccountId = $currencySpecificAccount->id;
-            
+
             if ($task->original_currency && $task->original_currency !== 'KWD') {
                 // Original currency task - but use converted amount for accounting balance
                 $liabilityAmount = $task->total; // Use converted amount to match expense entry
                 $liabilityDescription = 'Records Payable to (Liabilities) in ' . $task->original_currency . ': ' . $supplierCompany->supplier->name;
                 $originalCurrency = $task->original_currency;
                 $originalAmount = $task->original_price;
-                
+
                 Log::info('Using original currency account for liability entry', [
                     'task_reference' => $task->reference,
                     'original_currency' => $task->original_currency,
@@ -1332,7 +1345,7 @@ if ($search = $request->query('q')) {
             } else {
                 // KWD currency task with currency-specific account
                 $liabilityDescription = 'Records Payable to (Liabilities) in KWD: ' . $supplierCompany->supplier->name;
-                
+
                 Log::info('Using KWD currency-specific account for liability entry', [
                     'task_reference' => $task->reference,
                     'currency' => 'KWD',
@@ -1343,7 +1356,7 @@ if ($search = $request->query('q')) {
         } elseif ($issuedByAccount && in_array($task->type, ['flight', 'visa'])) {
             // Flight/visa task with issued by account
             $liabilityAccountId = $issuedByAccount->id;
-            
+
             Log::info('Using issued by account for flight/visa liability entry', [
                 'task_reference' => $task->reference,
                 'issued_by' => $task->issued_by,
@@ -1353,7 +1366,7 @@ if ($search = $request->query('q')) {
         } else {
             // Default to supplier payable account
             $liabilityAccountId = $supplierPayable->id;
-            
+
             Log::info('Using default supplier payable account for liability entry', [
                 'task_reference' => $task->reference,
                 'task_type' => $task->type,
@@ -1470,20 +1483,20 @@ if ($search = $request->query('q')) {
                     ->where('currency', 'KWD')
                     ->first();
             }
-                
+
             if ($currencySpecificAccount) {
                 $payableAccountToUse = $currencySpecificAccount;
                 Log::info('Using existing currency-specific account for refund: ' . $currencySpecificAccount->name);
             } else {
-                Log::warning('Currency-specific account not found for refund task: ' . $task->reference . 
-                           ' - falling back to main supplier account');
+                Log::warning('Currency-specific account not found for refund task: ' . $task->reference .
+                    ' - falling back to main supplier account');
             }
         }
 
-        if ($task->type == 'flight' ) {
+        if ($task->type == 'flight') {
             Log::info('Processing flight refund task financial for: ' . $task->reference);
             $companyIssuedBy = $task->issued_by ?? 'Not Issued';
-            
+
             Log::info('Refund - Issued by value determination', [
                 'original_issued_by' => $task->issued_by,
                 'final_company_issued_by' => $companyIssuedBy,
@@ -1595,14 +1608,14 @@ if ($search = $request->query('q')) {
         $refundAmount = $task->total; // Always use converted KWD amount for accounting balance
         $originalCurrency = null;
         $originalAmount = null;
-        
+
         // If this is a hotel task with currency-specific account, store original currency info
         if ($task->type == 'hotel' && $currencySpecificAccount) {
             if ($task->original_currency && $task->original_currency !== 'KWD') {
                 // Original currency refund - but use converted amount for accounting balance
                 $originalCurrency = $task->original_currency;
                 $originalAmount = $task->original_price;
-                
+
                 Log::info('Using original currency info for refund with converted amount', [
                     'task_reference' => $task->reference,
                     'original_currency' => $originalCurrency,
@@ -1619,7 +1632,7 @@ if ($search = $request->query('q')) {
                 ]);
             }
         }
-        
+
         JournalEntry::create([
             'transaction_date' => $transactionDate,
             'transaction_id' => $transaction->id,
@@ -1651,7 +1664,7 @@ if ($search = $request->query('q')) {
         ]);
     }
 
-     /**
+    /**
      * Delete financial records when task status changes.
      * Removes this task’s journal entries and linked transactions.
      */
@@ -1692,14 +1705,14 @@ if ($search = $request->query('q')) {
                 ], 400);
             }
 
-            if(!$task->agent_id) {
+            if (!$task->agent_id) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Task must have an agent assigned to be enabled.'
                 ], 400);
             }
 
-            if($task->client == null) {
+            if ($task->client == null) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Task must have a client assigned to be enabled.'
@@ -1807,7 +1820,7 @@ if ($search = $request->query('q')) {
         Log::info('Voided task refunded and reversed', [
             'void_task'     => $voidTask->reference,
             'original_task' => $issuedTask->reference,
-        ]);        
+        ]);
 
         DB::commit();
         return response()->json([
@@ -1876,7 +1889,7 @@ if ($search = $request->query('q')) {
             $oldPaymentMethod = $task->payment_method_account_id;
             $oldStatus = $task->status;
 
-            Log::info('Before task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id. ', status: ' . $task->status);
+            Log::info('Before task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id . ', status: ' . $task->status);
             Log::info('Incoming Request: agent_id: ' . $request->agent_id . ', client_id: ' . $request->client_id);
 
             $prevClientName = $task->client_name;
@@ -1924,7 +1937,7 @@ if ($search = $request->query('q')) {
                     throw new Exception('Failed to update payment method journal entries.');
                 }
 
-                if($response->getData(true)['status'] !== 'success') {
+                if ($response->getData(true)['status'] !== 'success') {
                     Log::error('Failed to update payment method journal entries', [
                         'task_id' => $task->id,
                         'error_message' => $response->getData()->message
@@ -1939,25 +1952,25 @@ if ($search = $request->query('q')) {
                     $this->revertFinancialsForTask($task);
                     $processedThisRequest = true;
                 } else {
-                    if (in_array($task->status, ['issued','reissued','emd','void','refund'], true)) {
+                    if (in_array($task->status, ['issued', 'reissued', 'emd', 'void', 'refund'], true)) {
                         if ($task->status === 'void') {
                             $original = $task->original_task_id ? Task::find($task->original_task_id) : null;
-                        
+
                             if ($original) {
                                 $originalPaid = Payment::whereHas('partials.invoice.invoiceDetails', function ($q) use ($original) {
-                                        $q->where('task_id', $original->id);
-                                    })
+                                    $q->where('task_id', $original->id);
+                                })
                                     ->whereHas('partials', function ($q) {
                                         $q->where('status', 'paid');
                                     })
                                     ->exists();
-                        
+
                                 Log::info('Void revert target', [
                                     'void_task_id'     => $task->id,
                                     'original_task_id' => $original->id,
                                     'original_paid'    => $originalPaid,
                                 ]);
-                        
+
                                 $this->revertFinancialsForTask($originalPaid ? $original : $task);
                             }
                         } else {
@@ -2002,8 +2015,8 @@ if ($search = $request->query('q')) {
 
             // If agent was assigned or changed, update branch_id in existing journal entries
             if (($agentWasAssigned || $agentWasChanged) && $task->agent_id) {
-                Log::info('Agent assignment/change detected for task: ' . $task->reference . 
-                         ' (prev: ' . ($prevAgentId ?? 'none') . ', new: ' . $task->agent_id . ')');
+                Log::info('Agent assignment/change detected for task: ' . $task->reference .
+                    ' (prev: ' . ($prevAgentId ?? 'none') . ', new: ' . $task->agent_id . ')');
                 $this->updateJournalEntriesBranch($task);
             }
 
@@ -2014,7 +2027,7 @@ if ($search = $request->query('q')) {
             if ($transaction) {
                 $transaction->amount = $task->total;
                 $transaction->save();
-            
+
                 foreach ($transaction->journalEntries as $entry) {
                     if ($entry->debit > 0) {
                         $entry->debit   = $task->total;
@@ -2041,7 +2054,7 @@ if ($search = $request->query('q')) {
 
             if (strtolower($task->status) === 'issued' && ($agentWasChanged || $clientChanged)) {
                 $children = Task::where('original_task_id', $task->id)->get();
-    
+
                 foreach ($children as $child) {
                     if ($agentWasChanged)  $child->agent_id  = $task->agent_id;
                     if ($clientChanged) $child->client_id = $task->client_id;
@@ -2076,7 +2089,7 @@ if ($search = $request->query('q')) {
             return redirect()->back()->with('error', 'User not authorized to upload tasks.');
         }
 
-        if(!$company) {
+        if (!$company) {
             Log::error("Company not found for user ID: {$user->id}");
             return redirect()->back()->with('error', 'Something went wrong.');
         }
@@ -2095,8 +2108,11 @@ if ($search = $request->query('q')) {
             'batches'       => [Rule::requiredIf($isMergeSupplier), 'array', 'min:1'],
             'batches.*'     => ['array'],
             'batches.*.*'   => ['file', 'mimes:pdf'],
-            'batch_names'   => ['nullable','array'],
-            'batch_names.*' => [ 'nullable','string','max:120',
+            'batch_names'   => ['nullable', 'array'],
+            'batch_names.*' => [
+                'nullable',
+                'string',
+                'max:120',
                 function ($attribute, $value, $fail) use ($supplier, $company) {
                     if (!is_string($value) || trim($value) === '') return;
                     $candidate = $this->sanitizePdfName($value);
@@ -2150,10 +2166,10 @@ if ($search = $request->query('q')) {
                         ->where(function ($q) use ($names) {
                             foreach ($names as $n) {
                                 $q->orWhere('file_name', $n)
-                                ->orWhereJsonContains('source_files', $n);
+                                    ->orWhereJsonContains('source_files', $n);
                             }
                         })
-                        ->get(['file_name','source_files','user_id']);
+                        ->get(['file_name', 'source_files', 'user_id']);
 
                     foreach ($matches as $match) {
                         $matchUser = $match->user;
@@ -2247,10 +2263,10 @@ if ($search = $request->query('q')) {
 
                     $mergedPath = "{$companyName}/{$supplierName}/files_unprocessed/{$mergedName}";
                     if (Storage::exists($mergedPath) || FileUpload::where([
-                            'file_name'   => $mergedName,
-                            'supplier_id' => $supplier->id,
-                            'company_id'  => $company->id,
-                        ])->exists()) {
+                        'file_name'   => $mergedName,
+                        'supplier_id' => $supplier->id,
+                        'company_id'  => $company->id,
+                    ])->exists()) {
                         $base = preg_replace('/\.pdf$/i', '', $mergedName);
                         $mergedName = $base . '-' . now()->format('ymdHi') . '.pdf';
                         $mergedPath = "{$companyName}/{$supplierName}/files_unprocessed/{$mergedName}";
@@ -2281,7 +2297,7 @@ if ($search = $request->query('q')) {
                     'data'    => $allData,
                 ]];
             } catch (\Throwable $e) {
-                Log::error('TBO batch merge failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+                Log::error('TBO batch merge failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
                 return [[
                     'status'  => 'error',
                     'message' => 'Failed to merge TBO PDFs.',
@@ -2306,14 +2322,14 @@ if ($search = $request->query('q')) {
                 'company_id' => $company->id,
             ]);
 
-            if($existingFileUpload->exists()) {
+            if ($existingFileUpload->exists()) {
                 Log::info("File {$fileName} already exists for supplier {$supplier->name}, in company {$company->name}. Skipping upload.");
 
                 $userUpload = $existingFileUpload->first()->user;
 
                 if ($userUpload->id !== $user->id) {
-                
-                    if($userUpload->company !== null){
+
+                    if ($userUpload->company !== null) {
                         $message = "File has been uploaded by your admin. Please contact them to resolve this issue.";
                     } else {
                         $message = "File has been uploaded by another user : {$userUpload->name}. Please contact them to resolve this issue.";
@@ -2325,7 +2341,6 @@ if ($search = $request->query('q')) {
                     $errorFile['message'] = $message;
 
                     $errorFilesWithMessage[] = $errorFile;
-
                 } else {
                     Log::info("File {$fileName} already uploaded by the same user: {$user->name}.");
 
@@ -2354,7 +2369,7 @@ if ($search = $request->query('q')) {
             } catch (Exception $e) {
                 Log::error("Failed to create file upload record for {$fileName}: " . $e->getMessage());
                 $errorFilesWithMessage['file_name'] = $fileName;
-                $errorFilesWithMessage['message'] = "Something went wrong"; 
+                $errorFilesWithMessage['message'] = "Something went wrong";
                 $error = true;
                 continue;
             }
@@ -2368,7 +2383,7 @@ if ($search = $request->query('q')) {
             Log::error("Some files failed to upload: ");
 
             $data = [];
-            
+
             foreach ($errorFilesWithMessage as $fileError) {
                 $data[] = [
                     'file_name' => $fileError['file_name'],
@@ -2383,7 +2398,7 @@ if ($search = $request->query('q')) {
             ];
         }
 
-        if($success){
+        if ($success) {
             Log::info("Files uploaded successfully: " . implode(', ', $successFiles));
 
             $response[] = [
@@ -2491,6 +2506,7 @@ if ($search = $request->query('q')) {
      */
     private function createSingleFlightDetail(array $data, int $taskId)
     {
+        Log::info('Creating flight detail', ['data' => $data, 'task_id' => $taskId]);
         try {
             $airline = isset($data['airline_name']) ? Airline::where('name', 'like', '%' . $data['airline_name'] . '%')->first() : null;
 
@@ -2546,7 +2562,9 @@ if ($search = $request->query('q')) {
                 'equipment' => $data['equipment'] ?? null,
                 'flight_meal' => $data['flight_meal'] ?? null,
                 'seat_no' => $data['seat_no'] ?? null,
-                'task_id' => $taskId
+                'task_id' => $taskId,
+                'is_ancillary' => !empty($data['is_ancillary']) ? 1 : 0, // <-- Add this line
+
             ];
 
             TaskFlightDetail::create($flightDetails);
@@ -2568,13 +2586,13 @@ if ($search = $request->query('q')) {
         try {
             // Handle both single hotel detail object and array of hotel details
             if (isset($data[0]) && is_array($data[0])) {
-            // Multiple hotel details - array of hotel detail objects
-            foreach ($data as $hotelData) {
-                $this->createSingleHotelDetail($hotelData, $taskId);
-            }
+                // Multiple hotel details - array of hotel detail objects
+                foreach ($data as $hotelData) {
+                    $this->createSingleHotelDetail($hotelData, $taskId);
+                }
             } else {
-            // Single hotel detail object
-            $this->createSingleHotelDetail($data, $taskId);
+                // Single hotel detail object
+                $this->createSingleHotelDetail($data, $taskId);
             }
         } catch (Exception $e) {
             throw $e;
@@ -2617,7 +2635,7 @@ if ($search = $request->query('q')) {
         }
     }
 
-        /**
+    /**
      * Save insurance details to the database
      * 
      * @param array $data
@@ -2740,7 +2758,7 @@ if ($search = $request->query('q')) {
             $response = $supplierController->getMagicHoliday();
 
             $data = json_decode($response->getContent(), true);
-            
+
             Log::channel('magic_holidays')->info('Magic Holiday response: ', $data);
 
             if (isset($data['error'])) {
@@ -2815,8 +2833,32 @@ if ($search = $request->query('q')) {
             }
         }
 
+        $supplierStatus = $reservation['service']['status'];
+
+        switch ($supplierStatus) {
+            case 'OK':
+                $status = 'issued';
+                break;
+            case 'AM':
+                $status = 'reissued';
+                break;
+            case 'RQ':
+                $status = 'confirmed';
+                break;
+            case 'XX':
+                $status = 'void';
+                break;
+            case 'XP':
+                $status = 'void';
+                break;
+            default:
+                $status = 'confirmed';
+                break;
+        }
+
+        $cancellationDate = null;
+
         if (isset($reservation['service']['cancellationPolicy'])) {
-            //logger('Cancellation Policy: ', $reservation['service']['cancellationPolicy']);
 
             foreach ($reservation['service']['cancellationPolicy']['policies'] as $policy) {
                 $cancellationPolicy[] = [
@@ -2826,20 +2868,16 @@ if ($search = $request->query('q')) {
             }
 
             $cancellationDate = $reservation['service']['cancellationPolicy']['date'];
+        }
 
-            if ($cancellationDate) {
-                $cancellationDate = Carbon::parse($cancellationDate)->toDateTimeString();
+        if ($cancellationDate && ($supplierStatus == 'OK' || $supplierStatus == 'RQ')) {
+            $cancellationDate = Carbon::parse($cancellationDate)->toDateTimeString();
 
-                if (Date::now()->greaterThanOrEqualTo($cancellationDate)) {
-                    $status = 'issued';
-                } else {
-                    $status = 'confirmed';
-                }
+            if (Date::now()->greaterThanOrEqualTo($cancellationDate)) {
+                $status = 'issued';
             } else {
-                throw new Exception('Cancellation date not found in reservation data');
+                $status = 'confirmed';
             }
-        } else {
-            throw new Exception('Cancellation policy not found in reservation data');
         }
 
         $cancellationPolicy = json_encode($cancellationPolicy);
@@ -2881,7 +2919,7 @@ if ($search = $request->query('q')) {
                 'company_id' => $companyId,
                 'type' => 'hotel',
                 'status' => $status,
-                'supplier_status' => $reservation['service']['status'],
+                'supplier_status' => $supplierStatus,
                 'client_name' => $clientName,
                 'reference' => (string)$reservation['id'] ?? null,
                 'duration' => $serviceDates['duration'] ?? null,
@@ -2928,47 +2966,13 @@ if ($search = $request->query('q')) {
             Log::channel('magic_holidays')->info('Creating Task Initiate');
 
             $request = new Request($taskData);
-            $request->merge([
-                'company_id' => $companyId,
-            ]);
 
             $existingTask = Task::where('reference', $taskData['reference'])
                 ->where('agent_id', $taskData['agent_id'])
                 ->where('supplier_id', $taskData['supplier_id'])
                 ->first();
-            if ($existingTask) {
 
-                if($existingTask->cancellation_deadline == null){
-                    $existingTask->cancellation_deadline = $cancellationDate;
-                    $existingTask->save();
-                }
-           
-
-                if ($existingTask->supplier_status !== $taskData['supplier_status']) {
-                    $existingTask->supplier_status = $taskData['supplier_status'];
-                    $existingTask->status = $taskData['status'];
-                    $existingTask->save();
-                    Log::channel('magic_holidays')->info('Updated existing task: ' . $existingTask->reference);
-
-                    $processResult['success'][] = [
-                        'reference' => $existingTask->reference,
-                        'message' => 'Task already exists, updated status',
-                    ];
-
-                    continue; // Skip creating a new task if it already exists but update the status
-                } else {
-                    Log::channel('magic_holidays')->info('Existing task already exists: ' . $existingTask->reference);
-
-                    $processResult['success'][] = [
-                        'reference' => $existingTask->reference,
-                        'message' => 'Task already exists, no changes made',
-                    ];
-
-                    continue; // Skip creating a new task if it already exists
-                }
-            } else {
-                $response = $this->store($request);
-            }
+            $response = $this->store($request);
 
             $response = json_decode($response->getContent(), true);
             logger('Task created: ', $response);
@@ -2981,7 +2985,7 @@ if ($search = $request->query('q')) {
                     'message' => 'Error creating task: ' . $response['message'],
                 ];
             }
-            
+
             $task = Task::with('hotelDetails')->find($response['data']['id']);
 
             if (!$task) {
@@ -3114,9 +3118,9 @@ if ($search = $request->query('q')) {
                 }
 
                 $response = $supplierController->getMagicHoliday($request->supplier_ref);
-                
-                if(!$response instanceof \Illuminate\Http\JsonResponse){
-                    Log::channel('magic_holidays')->error('Invalid response from Magic Holiday API',[
+
+                if (!$response instanceof \Illuminate\Http\JsonResponse) {
+                    Log::channel('magic_holidays')->error('Invalid response from Magic Holiday API', [
                         'supplier_ref' => $request->supplier_ref,
                         'expected_type' => 'Illuminate\Http\JsonResponse',
                         'actual_type' => get_class($response)
@@ -3162,12 +3166,12 @@ if ($search = $request->query('q')) {
                 // Artisan::call('app:process-files', [], null, true);
                 $redirectResponse = redirect()->back();
 
-                foreach($responses as $response) {
+                foreach ($responses as $response) {
                     if ($response['status'] == 'success') {
-                        $redirectResponse = $redirectResponse->with('success', $response['message']); 
+                        $redirectResponse = $redirectResponse->with('success', $response['message']);
                     }
 
-                    if($response['status'] == 'error') {
+                    if ($response['status'] == 'error') {
                         $redirectResponse = $redirectResponse->with('error', $response['message'])->with('data', $response['data']);
                     }
                 }
@@ -3361,7 +3365,7 @@ if ($search = $request->query('q')) {
                 'count' => $tasks->count(),
                 'ids'   => $tasks->pluck('id')->toArray()
             ]);
-    
+
             if ($tasks->isEmpty()) {
                 Log::warning("no tasks for gds_reference={$invoiceTask->gds_reference}, falling back to invoiceTask only");
                 $tasks = collect([$invoiceTask]);
@@ -3382,10 +3386,10 @@ if ($search = $request->query('q')) {
         $invoiceTask = Task::with('hotelDetails.hotel', 'hotelDetails.room', 'hotelDetails.hotel.country', 'agent', 'client')->findOrFail($taskId);
 
         if ($invoiceTask->reference) {
-            $tasks = Task::with(['agent','client'])
+            $tasks = Task::with(['agent', 'client'])
                 ->where('reference', $invoiceTask->reference)
                 ->get();
-    
+
             if ($tasks->isEmpty()) {
                 $tasks = collect([$invoiceTask]);
             }
@@ -3540,20 +3544,20 @@ if ($search = $request->query('q')) {
         }
 
         $newBranchId = $agent->branch_id;
-        
+
         // Find all transactions related to this task
         $transactions = Transaction::where('description', 'like', '%' . $task->reference . '%')->get();
-        
+
         foreach ($transactions as $transaction) {
             $oldBranchId = $transaction->branch_id;
-            
+
             // Update transaction branch_id
             $transaction->update(['branch_id' => $newBranchId]);
-            
+
             // Update all journal entries for this transaction
             $updatedEntries = JournalEntry::where('transaction_id', $transaction->id)
                 ->update(['branch_id' => $newBranchId]);
-            
+
             Log::info('Updated journal entries for task agent assignment', [
                 'task_reference' => $task->reference,
                 'transaction_id' => $transaction->id,
@@ -3660,10 +3664,10 @@ if ($search = $request->query('q')) {
                 foreach ($journalEntries as $journalEntry) {
                     // Get transaction ID before soft deleting journal entry
                     $transactionId = $journalEntry->transaction_id;
-                    
+
                     // Soft delete journal entry
                     $journalEntry->delete();
-                    
+
                     // Soft delete associated transaction if it exists
                     if ($transactionId) {
                         $transaction = Transaction::find($transactionId);
@@ -3674,14 +3678,14 @@ if ($search = $request->query('q')) {
                 }
                 Log::info("Soft deleted " . $journalEntries->count() . " journal entries and their transactions for task: {$task->reference}");
             }
-            
+
             // 2. Soft delete invoice details related to the task
             $invoiceDetails = InvoiceDetail::where('task_id', $id)->get();
             $invoiceIds = [];
-            
+
             if ($invoiceDetails->isNotEmpty()) {
                 $invoiceIds = $invoiceDetails->pluck('invoice_id')->unique()->toArray();
-                
+
                 foreach ($invoiceDetails as $invoiceDetail) {
                     $invoiceDetail->delete();
                 }
@@ -3750,7 +3754,6 @@ if ($search = $request->query('q')) {
                     'deleted_at' => now()->toISOString()
                 ]
             ], 200);
-
         } catch (Exception $e) {
             DB::rollback();
             Log::error("Error during task soft delete: " . $e->getMessage(), [
@@ -3765,8 +3768,8 @@ if ($search = $request->query('q')) {
             ], 500);
         }
     }
-    
-    public function updateJournalPaymentMethod(Task $task, int $payment_method_account_id) : JsonResponse
+
+    public function updateJournalPaymentMethod(Task $task, int $payment_method_account_id): JsonResponse
     {
         Log::info('Task ID: ' . $task->id . '. Updating journal entries for payment method account ID: ' . $payment_method_account_id);
 
@@ -3799,7 +3802,7 @@ if ($search = $request->query('q')) {
 
         $journalEntries = JournalEntry::where('task_id', $task->id)
             ->where('branch_id', $branchId)
-            ->whereHas('account' , function ($query) use ($liabilities) {
+            ->whereHas('account', function ($query) use ($liabilities) {
                 $query->where('root_id', $liabilities->id);
             })
             ->get();
@@ -3851,7 +3854,7 @@ if ($search = $request->query('q')) {
                 $totalDebit = JournalEntry::where('task_id', $task->id)
                     ->where('account_id', $journalEntry->account_id)
                     ->sum('debit');
-                
+
                 $totalCredit = JournalEntry::where('task_id', $task->id)
                     ->where('account_id', $journalEntry->account_id)
                     ->sum('credit');
@@ -3867,7 +3870,7 @@ if ($search = $request->query('q')) {
                 $reversedJournalEntry->credit = $journalEntry->debit;
                 $reversedJournalEntry->balance = -$journalEntry->balance;
                 $reversedJournalEntry->save();
-            
+
                 Log::info('Reversed journal entry ID: ' . $journalEntry->id . ' for task ID: ' . $task->id);
             }
         } else {
@@ -3876,7 +3879,7 @@ if ($search = $request->query('q')) {
 
         Log::info('Found ' . $journalEntries->count() . ' journal entries for task ID: ' . $task->id);
 
-        try{
+        try {
             $transaction = Transaction::create([
                 'branch_id' => $branchId,
                 'company_id' => $task->company_id,
@@ -3889,9 +3892,9 @@ if ($search = $request->query('q')) {
                 'reference_type' => 'Payment',
                 'transaction_date' => $task->issued_date,
             ]);
-    
+
             Log::info('Created new transaction for task ID: ' . $task->id . ' with ID: ' . $transaction->id);
-    
+
             JournalEntry::create([
                 'transaction_id' => $transaction->id,
                 'company_id' => $task->company_id,
@@ -3925,11 +3928,10 @@ if ($search = $request->query('q')) {
                 'message' => 'Failed to create transaction or journal entry: ' . $e->getMessage(),
             ], 500);
         }
-
-        
     }
 
-    public function handleTaskFromEmail(Request $request) : JsonResponse {
+    public function handleTaskFromEmail(Request $request): JsonResponse
+    {
 
         $request->validate([
             'email' => 'required|email',
@@ -3946,5 +3948,4 @@ if ($search = $request->query('q')) {
             ]
         ], 200);
     }
-
 }

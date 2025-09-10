@@ -36,6 +36,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use App\Services\ChargeService;
 
 class ClientController extends Controller
 {
@@ -825,19 +826,17 @@ class ClientController extends Controller
         }
         DB::commit();
 
-        $paymentMethod = $payment->paymentMethod; // Eloquent auto-loads relation
-        $paidBy = $paymentMethod->paid_by ?? null;
-
         DB::beginTransaction();
         try {
 
             $chargeRecord = Charge::where('name', 'LIKE', '%' . $payment->payment_gateway . '%')
                 ->where('company_id', $agent->branch->company->id)
-                ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id')
+                ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id', 'paid_by')
                 ->first();
-
+            $paymentMethod = $payment->paymentMethod;
+            $paidBy = $paymentMethod?->paid_by ?? $chargeRecord?->paid_by ?? 'Company';
+            
             if ($chargeRecord) {
-                $defaultPaymentGatewayFee = $chargeRecord->amount;
                 $coaBankIdRec = $chargeRecord->acc_bank_id; //COA (Assets) for Debited Bank Account
                 $coaFeeIdRec = $chargeRecord->acc_fee_id; //COA (Expenses) for Payment Gateway Fee
                 $coaBankFeeIdRec = $chargeRecord->acc_fee_bank_id; //COA (Assets) for Bank Account for the selected Payment Gateway
@@ -849,6 +848,36 @@ class ClientController extends Controller
                 $bankPaymentFee = Account::where('id', $coaBankFeeIdRec)
                     ->where('company_id', $agent->branch->company->id)
                     ->first();
+            }
+
+            if (strtolower($payment->payment_gateway) === 'myfatoorah') {
+                try {
+                    $gatewayFee = ChargeService::FatoorahCharge($payment->amount, $paymentMethod->id, $payment->agent->branch->company_id)['gatewayFee'] ?? 0;
+                } catch (Exception $e) {
+                    Log::error('FatoorahCharge exception', [
+                        'message' => $e->getMessage(),
+                        'paymentMethod' => $paymentMethod->id,
+                        'company_id' => $payment->agent->branch->company_id,
+                    ]);
+                    $gatewayFee = 0;
+                }
+            } elseif (strtolower($payment->payment_gateway) === 'tap') {
+                try {
+                    $gatewayFee = ChargeService::TapCharge([
+                        'amount' => $payment->amount,
+                        'client_id' => $payment->client_id,
+                        'agent_id' => $payment->agent_id,
+                        'currency' => $payment->currency
+                    ], $payment->payment_gateway)['gatewayFee'] ?? 0;
+                } catch (Exception $e) {
+                    Log::error('TapCharge exception', [
+                        'message' => $e->getMessage(),
+                        'amount' => $payment->amount,
+                        'client_id' => $payment->client_id,
+                        'agent_id' => $payment->agent_id,
+                    ]);
+                    $gatewayFee = 0;
+                }
             }
 
             $transaction = Transaction::create([
@@ -869,23 +898,6 @@ class ClientController extends Controller
             $receivableAccountId = $receivableAccount->id;
 
             if ($bankPaymentFee) {
-                // JournalEntry::create([
-                //     'transaction_id' => $transaction->id,
-                //     'branch_id' => $client->agent->branch->id,
-                //     'company_id' => $client->agent->branch->company->id,
-                //     'account_id' =>  $receivableAccountId,
-                //     'transaction_date' => Carbon::now(),
-                //     'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->full_name,
-                //     'debit' => 0,
-                //     'credit' => $payment->amount,
-                //     'balance' => null,
-                //     'name' =>  $client->full_name,
-                //     'type' => 'receivable',
-                //     'voucher_number' => $payment->voucher_number,
-                //     'type_reference_id' => $receivableAccountId
-                // ]);
-
-
                 // Create record to payment_gateway assets coa account (OK)
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
@@ -902,11 +914,11 @@ class ClientController extends Controller
                     'type_reference_id' => $bankPaymentFee->id
                 ]);
 
-                $bankPaymentFee->actual_balance += ($payment->amount - $defaultPaymentGatewayFee);
+                $bankPaymentFee->actual_balance += ($payment->amount - $gatewayFee);
                 $bankPaymentFee->save();
             }
 
-            $bankCOAFee->actual_balance += $defaultPaymentGatewayFee;
+            $bankCOAFee->actual_balance += $gatewayFee;
 
             if ($bankCOAFee) {
                 JournalEntry::create([
@@ -916,37 +928,18 @@ class ClientController extends Controller
                     'account_id'        => $bankCOAFee->id,
                     'voucher_number'    => $payment->voucher_number,
                     'transaction_date'  => Carbon::now(),
-                    'description'       => ($paidBy === 'Company'
-                        ? 'Company Pays Gateway Fee: '
-                        : 'Client Pays Gateway Fee: ') . $bankCOAFee->name,
-                    'debit'             => $defaultPaymentGatewayFee,
+                    'description'       => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $bankCOAFee->name,
+                    'debit'             => $gatewayFee,
                     'credit'            => 0,
-                    'balance'           => $bankCOAFee->actual_balance + $defaultPaymentGatewayFee,
+                    'balance'           => $bankCOAFee->actual_balance + $gatewayFee,
                     'name'              => $bankCOAFee->name,
                     'type'              => 'charges',
                     'type_reference_id' => $bankCOAFee->id
                 ]);
 
-                $bankCOAFee->actual_balance += $defaultPaymentGatewayFee;
+                $bankCOAFee->actual_balance += $gatewayFee;
                 $bankCOAFee->save();
             }
-
-
-            // $client->credit += $payment->amount;
-            // $client->save();
-
-            // Insert credit table
-            // $topupCreditClientData = [
-            //     'company_id'  => $client->agent->branch->company->id,
-            //     'client_id'   => $client->id,
-            //     'type'        => 'Topup',
-            //     'description' => 'Topup Credit via ' . $payment->voucher_number,
-            //     'amount'      => $payment->amount,
-            // ];
-
-            // Log::info('Creating Credit record:', $topupCreditClientData);
-
-            // Credit::create($topupCreditClientData);
         } catch (Exception $e) {
             DB::rollBack();
             logger('Error adding JournalEntry: ' . $e->getMessage());

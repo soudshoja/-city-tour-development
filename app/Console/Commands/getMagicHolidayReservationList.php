@@ -59,6 +59,29 @@ class getMagicHolidayReservationList extends Command
             return 0;
         }
         $fromDate = $this->option('from') ?? date('Y-m-d', strtotime('-1 day'));
+
+        switch($fromDate){
+            case 'today':
+                $fromDate = date('Y-m-d');
+                break;
+            case 'yesterday':
+                $fromDate = date('Y-m-d', strtotime('-1 day'));
+                break;
+            case 'lastWeek':
+                $fromDate = date('Y-m-d', strtotime('-7 days'));
+                break;
+            case 'lastMonth':
+                $fromDate = date('Y-m-d', strtotime('-1 month'));
+                break;
+            default:
+                $date = Date::createFromFormat('Y-m-d', $fromDate);
+                if (!($date && $date->format('Y-m-d') === $fromDate)) {
+                    $this->error('Invalid date format for --from. Use YYYY-MM-DD.');
+                    return 0;
+                }
+                break;
+        }
+
         $toDate = $this->option('to') ?? date('Y-m-d');
 
         $companies = Company::whereHas('suppliers', function ($query) {

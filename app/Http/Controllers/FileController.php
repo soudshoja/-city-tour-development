@@ -35,7 +35,7 @@ class FileController extends Controller
 
             $image->saveImage('app/public/images');
 
-            dd($image);
+            // dd($image);
 
 
             return $image;

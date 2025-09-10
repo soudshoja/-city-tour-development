@@ -1259,11 +1259,11 @@ class PaymentController extends Controller
         }
 
         $clients = Client::where(function ($query) use ($agentsId) {
-            $query->whereIn('agent_id', $agentsId)
-                ->orWhereHas('agents', function ($q) use ($agentsId) {
-                    $q->whereIn('agent_id', $agentsId);
-                })->get();
-        });
+        $query->whereIn('agent_id', $agentsId)
+            ->orWhereHas('agents', function ($q) use ($agentsId) {
+                $q->whereIn('agent_id', $agentsId);
+            });
+        })->get(); 
 
         $invoices = Invoice::all();
         $payments = Payment::all();

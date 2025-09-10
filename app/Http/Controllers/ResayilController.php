@@ -26,19 +26,17 @@ class ResayilController extends Controller
     {
         $url = $this->url . 'messages';
       
-        //if phone number already includes country code, do not add again
-        if (substr($phone, 0, strlen($country_code)) === $country_code) {
+        if (str_starts_with($phone, '+')) {
             $phoneNumber = $phone;
         } else {   
             $phoneNumber = $country_code . $phone;
         }
 
         if(app()->environment('local')){
-            $phoneNumber = '+60193058463'; // Replace with your test number
+            $phoneNumber = '+60193058463'; // Replace with your test number, remove this if you want to send to actual number
             $message = "This is a test message from local environment.\n\n" . $message;
         }
 
-        // Build the payload according to Resayil spec
         $payload = [
             'phone' => $phoneNumber,
             'message' => $message,
@@ -56,7 +54,6 @@ class ResayilController extends Controller
             $payload['buttons'] = $buttons;
         }
 
-        // Log payload for debugging
         Log::debug('Sending to Resayil:', $payload);
 
         $response = Http::withHeaders([

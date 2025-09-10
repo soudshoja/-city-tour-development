@@ -388,32 +388,77 @@ class TaskController extends Controller
         }
 
         DB::transaction(function () use ($taskIds, $clientId, $agentId, $paymentMethodId) {
+            $client = $clientId ? Client::find($clientId) : null;
             foreach ($taskIds as $id) {
                 $task = Task::find($id);
                 if ($task) {
                     if ($clientId) {
                         $task->client_id = $clientId;
-                        $client = Client::find($clientId);
-                        if ($client) {
-                            $task->client_name = $client->full_name;
-                        }
+                        $task->client_name = $client->full_name;
                     }
                     if ($agentId) $task->agent_id = $agentId;
                     if ($paymentMethodId) $task->payment_method_account_id = $paymentMethodId;
-
                     if ($task->is_complete && $task->agent && $task->client) {
-                        $journalEntries = JournalEntry::where('task_id', $task->id)->exists();
-                        if (!$journalEntries) {
+                        $shouldEnable = false;
+                        if ($task->status === 'void') {
+                            $hasJournal = JournalEntry::where('task_id', $task->original_task_id)
+                                ->whereHas('transaction', function ($q) {
+                                    $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
+                                })
+                                ->exists();
+                        } else {
+                            $hasJournal = JournalEntry::where('task_id', $task->id)->exists();
+                        }
+
+                        if ($hasJournal) {
+                            $shouldEnable = true;
+                        } else {
                             try {
                                 $this->processTaskFinancial($task);
-                                $task->enabled = true;
+                                $shouldEnable = true;
                             } catch (\Exception $e) {
+                                $shouldEnable = false;
                                 Log::error('Failed to process task financial: ' . $e->getMessage());
                             }
                         }
-                        if ($task->status === 'issued') $task->enabled = true;
+                        $task->enabled = $shouldEnable;
                     }
                     $task->save();
+                }
+
+                $linkedTasks = Task::where('original_task_id', $task->id)->get();
+                foreach ($linkedTasks as $linkTask) {
+                    if ($client) {
+                        $linkTask->client_id = $client->id;
+                        $linkTask->client_name = $client->full_name;
+                    }
+                    if ($agentId) $linkTask->agent_id = $agentId;
+                    if ($linkTask->is_complete && $linkTask->agent_id && $linkTask->client_id) {
+                        $shouldEnable = false;
+                        if ($linkTask->status === 'void') {
+                            $hasJournal = JournalEntry::where('task_id', $linkTask->original_task_id)
+                                ->whereHas('transaction', function ($q) {
+                                    $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
+                                })
+                                ->exists();
+                        } else {
+                            $hasJournal = JournalEntry::where('task_id', $linkTask->id)->exists();
+                        }
+
+                        if ($hasJournal) {
+                            $shouldEnable = true;
+                        } else {
+                            try {
+                                $this->processTaskFinancial($linkTask);
+                                $shouldEnable = true;
+                            } catch (\Throwable $e) {
+                                $shouldEnable = false;
+                                Log::error('Failed to process linked task financial', ['task_id' => $linkTask->id, 'err' => $e->getMessage()]);
+                            }
+                        }
+                        $linkTask->enabled = $shouldEnable;
+                    }
+                    $linkTask->save();
                 }
             }
         });
@@ -1691,6 +1736,39 @@ class TaskController extends Controller
         }
     }
 
+    /**
+     * Delete financial records when task status changes from void to different status.
+     * Removes this task’s journal entries and linked transactions.
+     */
+    private function revertFinancialsForVoid(Task $voidTask): void
+    {
+        if (!$voidTask->original_task_id) {
+            Log::warning('revertFinancialsForVoid called without original_task_id', [
+                'void_task_id' => $voidTask->id,
+                'reference'    => $voidTask->reference,
+            ]);
+            return;
+        }
+
+        $originalTask  = Task::find($voidTask->original_task_id);
+
+        Log::info('Reverting ONLY void financials applied to original task', [
+            'original_task_id' => $originalTask->id,
+            'void_task_id' => $voidTask->id,
+            'void_reference' => $voidTask->reference,
+        ]);
+
+        // Delete journal entries on the original that belong to void transactions
+        JournalEntry::where('task_id', $originalTask->id)
+            ->whereHas('transaction', function ($q) use ($originalTask) {
+                $q->whereRaw('LOWER(description) LIKE ?', "%void%{$originalTask->reference}%");
+            })
+            ->delete();
+
+        Transaction::whereRaw('LOWER(description) LIKE ?', "%void%{$originalTask->reference}%")
+            ->delete();
+    }
+
     public function toggleStatus(Request $request, Task $task)
     {
         $task->enabled = $request->is_enabled;
@@ -1724,7 +1802,15 @@ class TaskController extends Controller
                 ], 400);
             }
 
-            $journalEntries = JournalEntry::where('task_id', $task->id)->exists();
+            if ($task->status === 'void') {
+                $journalEntries = JournalEntry::where('task_id', $task->original_task_id)
+                    ->whereHas('transaction', function ($q) {
+                        $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
+                    })
+                    ->exists();
+            } else {
+                $journalEntries = JournalEntry::where('task_id', $task->id)->exists();
+            }
 
             if (!$journalEntries) {
                 try {
@@ -1958,26 +2044,8 @@ class TaskController extends Controller
                     $processedThisRequest = true;
                 } else {
                     if (in_array($task->status, ['issued', 'reissued', 'emd', 'void', 'refund'], true)) {
-                        if ($task->status === 'void') {
-                            $original = $task->original_task_id ? Task::find($task->original_task_id) : null;
-
-                            if ($original) {
-                                $originalPaid = Payment::whereHas('partials.invoice.invoiceDetails', function ($q) use ($original) {
-                                    $q->where('task_id', $original->id);
-                                })
-                                    ->whereHas('partials', function ($q) {
-                                        $q->where('status', 'paid');
-                                    })
-                                    ->exists();
-
-                                Log::info('Void revert target', [
-                                    'void_task_id'     => $task->id,
-                                    'original_task_id' => $original->id,
-                                    'original_paid'    => $originalPaid,
-                                ]);
-
-                                $this->revertFinancialsForTask($originalPaid ? $original : $task);
-                            }
+                        if ($oldStatus === 'void') {
+                            $this->revertFinancialsForVoid($task);
                         } else {
                             $this->revertFinancialsForTask($task);
                         }
@@ -1991,10 +2059,18 @@ class TaskController extends Controller
             $agentWasAssigned = !$prevAgentId && $task->agent_id;
             $agentWasChanged = $prevAgentId && $task->agent_id && $prevAgentId !== $task->agent_id;
 
+            if ($task->status === 'void') {
+                $wasEnabled = JournalEntry::where('task_id', $task->original_task_id)
+                    ->whereHas('transaction', function ($q) {
+                        $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
+                    })
+                    ->exists();
+            } else {
+                $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
+            }
+
             // Update enabled status: task must be complete AND have an agent assigned
             $shouldBeEnabled = $task->is_complete && $task->agent_id;
-            $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
-
             if ($shouldBeEnabled) {
                 if ($task->status !== 'issued' && $task->status !== 'confirmed' && !$task->original_task_id) {
                     DB::rollBack();
@@ -2006,7 +2082,17 @@ class TaskController extends Controller
                 $task->enabled = true;
                 $task->save();
                 // Process financials if not already processed
-                if (!JournalEntry::where('task_id', $task->id)->exists()) {
+
+                if ($task->status === 'void') {
+                    $hasJournal = JournalEntry::where('task_id', $task->original_task_id)
+                        ->whereHas('transaction', function ($q) {
+                            $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
+                        })
+                        ->exists();
+                } else {
+                    $hasJournal = JournalEntry::where('task_id', $task->id)->exists();
+                }
+                if (!$hasJournal) {
                     Log::info('Processing financial transactions for newly enabled task: ' . $task->reference);
                     $this->processTaskFinancial($task);
                 }

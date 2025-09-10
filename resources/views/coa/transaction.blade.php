@@ -1,23 +1,23 @@
 <x-app-layout>
     <div x-data="{ showFilter: false }">
         <!-- Page Heading -->
-         @if(auth()->user()->role_id == \App\Models\Role::ADMIN)
-         <div class="p-2 bg-gray-500 text-white rounded shadow mb-4 flex items-center justify-between">
-             <div class="grid">
-                 <h1 class="text-xl font-semibold">Admin View</h1>
-                 <p class="text-sm">You have access to all transactions across all companies.</p>
-             </div>
+        @if(auth()->user()->role_id == \App\Models\Role::ADMIN)
+        <div class="p-2 bg-gray-500 text-white rounded shadow mb-4 flex items-center justify-between">
+            <div class="grid">
+                <h1 class="text-xl font-semibold">Admin View</h1>
+                <p class="text-sm">You have access to all transactions across all companies.</p>
+            </div>
 
-             <select name="company_id" id="" class="form-select w-fit py-2 px-6 border rounded-md bg-white text-gray-800">
-                    <option value="">Select Company</option>
-                    @foreach($companies as $companySelect)
-                        <option value="{{ $company->id }}" {{ $companySelect->id == $company->id ? 'selected' : '' }}>
-                            {{ $company->name }}
-                        </option>
-                    @endforeach
-             </select>
-         </div>
-         @endif
+            <select name="company_id" id="" class="form-select w-fit py-2 px-6 border rounded-md bg-white text-gray-800">
+                <option value="">Select Company</option>
+                @foreach($companies as $companySelect)
+                <option value="{{ $company->id }}" {{ $companySelect->id == $company->id ? 'selected' : '' }}>
+                    {{ $company->name }}
+                </option>
+                @endforeach
+            </select>
+        </div>
+        @endif
         <div class="flex justify-between items-center gap-5 my-3 mb-4">
             <div class="flex items-center space-x-4">
                 <div class="p-3 DarkBGcolor rounded-full shadow-md flex items-center justify-center heartbeat">
@@ -142,7 +142,7 @@
                                     <p class="text-gray-600 text-sm">Date: {{ $transaction->created_at }}</p>
                                     @if ($transaction->payment)
                                     <p class="text-gray-600 text-sm">
-                                        Payment Reference: 
+                                        Payment Reference:
                                         <a href="{{ route('payment.link.index') }}" class="text-blue-500 hover:underline">
                                             {{ $transaction->payment_reference }}
                                         </a>
@@ -150,23 +150,84 @@
                                     @endif
                                 </div>
                             </div>
-                            <div x-data="{ showMenu: null }" class="relative" @click.outside="showMenu = null">
-                                @unless($transaction->journalEntries->isEmpty())
-                                <button @click="showMenu = (showMenu === {{ $transaction->id }} ? null : {{ $transaction->id }})"
-                                    class="text-black hover:text-gray-700 pl-4">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M12 6h.01M12 12h.01M12 18h.01" />
-                                    </svg>
-                                </button>
-                                <div x-show="showMenu === {{ $transaction->id }}" x-transition
-                                    class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border border-gray-200 z-10">
-                                    <a href="{{ route('journal-entries.index', $transaction->id) }}"
-                                        class="text-center block px-4 py-2 text-gray-700 hover:bg-blue-200">
-                                        View Ledger
-                                    </a>
-                                </div>
-                                @endunless
-                            </div>
+                           <div 
+    x-data="{ showMenu: null, showDeleteModal: false }" 
+    class="relative" 
+    @click.outside="showMenu = null"
+>
+    <!-- Toggle button -->
+    <button 
+        @click="showMenu = (showMenu === {{ $transaction->id }} ? null : {{ $transaction->id }})"
+        class="text-black hover:text-gray-700 pl-4"
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" 
+             viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" 
+                  d="M12 6h.01M12 12h.01M12 18h.01" />
+        </svg>
+    </button>
+
+    <!-- Dropdown Menu -->
+    <div 
+        x-show="showMenu === {{ $transaction->id }}" 
+        x-transition 
+        class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border border-gray-200 z-10"
+    >
+        @unless($transaction->journalEntries->isEmpty())
+            <a href="{{ route('journal-entries.index', $transaction->id) }}"
+                class="text-center block px-4 py-2 text-gray-700 hover:bg-blue-200">
+                View Ledger
+            </a>
+        @endunless
+
+        @if(auth()->user()->role_id == \App\Models\Role::ADMIN)
+            <button 
+                @click="showMenu = null; showDeleteModal = true"
+                class="text-center block w-full px-4 py-2 text-gray-700 hover:bg-red-200">
+                Delete Transaction
+            </button>
+        @endif
+    </div>
+
+    <!-- Delete Modal -->
+    <div 
+    x-show="showDeleteModal" 
+    x-cloak 
+    class="fixed inset-0 flex items-center justify-center backdrop-blur-sm backdrop-brightness-75 z-50"
+    @keydown.escape.window="showDeleteModal = false"
+    @click.self="showDeleteModal = false"
+>
+    <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Confirm Delete</h2>
+        <p class="text-gray-700 mb-6">
+            Are you sure you want to delete this transaction? This action cannot be undone.
+        </p>
+
+        <div class="flex justify-end space-x-4">
+            <button 
+                @click="showDeleteModal = false"
+                class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+                Cancel
+            </button>
+
+            <form 
+                action="{{ route('coa.deleteTransaction', $transaction->id) }}" 
+                method="POST"
+            >
+                @csrf
+                @method('DELETE')
+                <button 
+                    type="submit"
+                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                    Delete
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+</div>
+
                         </li>
                         @endforeach
                     </ul>

@@ -2619,4 +2619,100 @@ class InvoiceController extends Controller
             'payment_gateway' => 'required|string',
         ]);
     }
+    public function showArabic($companyId, $invoiceNumber)
+   {
+    $invoice = Invoice::where('invoice_number', $invoiceNumber)
+        ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+            $q->where('id', $companyId);
+        })
+        ->with('agent.branch.company', 'client', 'invoiceDetails')
+        ->first();
+
+    if (!$invoice) {
+        if(auth()->user()){
+            return redirect()->route('invoices.index')->with('error', 'Invoice not found!');
+        }
+        return abort(404);
+    }
+
+    if($invoice->status === 'paid by refund') {
+        return redirect()->route('invoices.index')->withErrors(['error' => 'This invoice has already been settled through a refund']);
+    }
+
+    $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)
+        ->with('client', 'invoice', 'payment')
+        ->get();
+
+    if($invoicePartials->isEmpty()){
+        if(auth()->user()){
+            return redirect()->route('invoices.index')->with('error', 'No invoice partials found for this invoice!');
+        }
+        return abort(404);
+    }
+
+    $totalGatewayFee = ['fee' => 0, 'finalAmount' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
+
+    $paidServiceCharge = $invoicePartials->where('status', 'paid')->sum('service_charge');
+    $totalGatewayFee['fee'] += $paidServiceCharge;
+
+    foreach ($invoicePartials as $partial) {
+        if ($partial->status !== 'paid') {
+            $gatewayFee = [];
+            try {
+                if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
+                    $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
+                } else if (strtolower($partial->payment_gateway) === 'tap') {
+                    $gatewayFee = ChargeService::TapCharge([
+                        'amount'    => $partial->amount,
+                        'client_id' => $invoice->client_id,
+                        'agent_id'  => $invoice->agent_id,
+                        'currency'  => $invoice->currency,
+                    ], $partial->payment_gateway);
+                } else if (strtolower($partial->payment_gateway) === 'upayment') {
+                    $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
+                }
+            } catch (\Exception $e) {
+                \Log::error('ChargeService exception', [
+                    'message' => $e->getMessage(),
+                    'gateway' => $partial->payment_gateway,
+                    'company_id' => $companyId,
+                ]);
+            }
+            $partial->service_charge = $gatewayFee['fee'] ?? 0;
+            $partial->save();
+            $partial->final_amount = $partial->amount + $partial->service_charge;
+            $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
+
+            if ($chargePayer !== 'Company') {
+                $totalGatewayFee['fee'] += $partial->service_charge;
+                $totalGatewayFee['paid_by'] = $chargePayer;
+                $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
+            }
+        }
+    }
+
+    $totalGatewayFee['fee'] += $invoice->invoice_charge ?? 0;
+    $totalGatewayFee['finalAmount'] = $invoice->sub_amount + $invoice->tax + $totalGatewayFee['fee'];
+    $paidPartials = $invoicePartials->where('status', 'paid');
+    $invoiceDetails = $invoice->invoiceDetails;
+    $company = $invoice->agent->branch->company;
+
+    $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
+        ->where('company_id', $companyId)
+        ->where('type', 'Invoice')
+        ->orderBy('id', 'asc')
+        ->get();
+
+    // Render the Arabic view (make sure to translate it)
+    return view('invoice.show-arabic', compact(
+        'invoice',
+        'invoiceDetails',
+        'invoicePartials',
+        'paidPartials',
+        'company',
+        'checkUtilizeCredit',
+        'totalGatewayFee',
+        'companyId'
+    ));
+}
 }

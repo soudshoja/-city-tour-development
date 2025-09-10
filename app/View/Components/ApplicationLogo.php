@@ -18,8 +18,8 @@ class ApplicationLogo extends Component
     public function __construct(string $companyLogo = '')
     {
         if ($companyLogo) {
-            if (file_exists(public_path($companyLogo))) {
-                $this->companyLogo = asset($companyLogo);
+            if (file_exists(public_path('storage/' . $companyLogo))) {
+                $this->companyLogo = asset('storage/' . $companyLogo);
             } else {
                 $this->companyLogo = asset('images/UserPic.svg');
             }

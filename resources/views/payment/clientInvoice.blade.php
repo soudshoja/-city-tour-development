@@ -61,10 +61,10 @@
                 <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
             </div>
             <div class="text-right">
-                <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->company->name }}</h2>
+                <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
                 <p class="text-sm text-gray-600">123 Main Street, City, Country</p>
-                <p class="text-sm text-gray-600">{{ $invoice->agent->company->phone }}</p>
-                <p class="text-sm text-gray-600">{{ $invoice->agent->company->email }}</p>
+                <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->phone }}</p>
+                <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->email }}</p>
             </div>
         </div>
 

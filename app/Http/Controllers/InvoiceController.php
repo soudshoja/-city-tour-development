@@ -360,16 +360,16 @@ class InvoiceController extends Controller
             return view('invoice.maintenance'); // Show the maintenance page
         } elseif ($user->role_id == Role::COMPANY) {
             $company = $user->company;
-            $company = Company::with('branches.agents')->find($company->id);
-            $agents = $company->branches->flatMap->agents;
             $branches = $company->branches;
-            $clients = $agents->flatMap->clients;
+            $agents = $branches->pluck('agents')->flatten();
+            $clientIds = $agents->pluck('id');
+            $clients = Client::whereIn('agent_id', $clientIds)->get()->unique('id')->values();
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
-            $agents = $company->branches->flatMap->agents;
             $branches = $company->branches;
-            $clients = $agents->flatMap->clients;
+            $agents   = $branches->pluck('agents')->flatten();
+            $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get()->unique('id')->values();
         }
 
         // Retrieve the invoice based on the invoice number
@@ -383,6 +383,10 @@ class InvoiceController extends Controller
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
         }
+
+        if($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
+
+        if($invoice->refund) return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
 
         $invoiceDetails = $invoice->invoiceDetails;
         $agentId = $invoice->agent_id;
@@ -1493,6 +1497,8 @@ class InvoiceController extends Controller
             return abort(404);
         }
 
+        if($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'This invoice has already been settled through a refund']);
+
         $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)
             ->with('client', 'invoice', 'payment')
             ->get();
@@ -1559,7 +1565,7 @@ class InvoiceController extends Controller
             ->where('type', 'Invoice')
             ->orderBy('id', 'asc')
             ->get();
-
+        
         return view('invoice.show', compact(
             'invoice',
             'invoiceDetails',

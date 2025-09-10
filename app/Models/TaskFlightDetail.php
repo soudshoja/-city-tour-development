@@ -11,6 +11,7 @@ class TaskFlightDetail extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'is_ancillary',
         'task_id',
         'farebase',
         'departure_time',
@@ -39,6 +40,8 @@ class TaskFlightDetail extends Model
             'arrival_time' => 'datetime: H:i',
             'created_at' => 'datetime: Y-m-d',
             'updated_at' => 'datetime: Y-m-d',
+            'is_ancillary' => 'boolean',
+
         ];
     }
 
@@ -104,6 +107,11 @@ class TaskFlightDetailSchema
     public static function getSchema()
     {
         return [
+            'is_ancillary' => [
+                'type' => 'boolean',
+                'description' => 'True if the service is ancillary (e.g., contains "Ancillary:" in Service Name).',
+                'example' => false,
+            ],
             'farebase' => [
                 'type' => 'float',
                 'description' => 'Fare basis of the flight.',

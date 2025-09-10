@@ -41,7 +41,7 @@
         <!-- Notification Header -->
         <div class="flex justify-between items-start mb-2">
             <p class="text-sm font-semibold text-gray-700 dark:text-white">
-                {{ $notification->title }}
+                {!! str_replace('\n', '<br>', e($notification->title)) !!}
             </p>
             <span class="text-xs text-gray-400">
                 {{ $notification->formatted_created_at }}
@@ -51,7 +51,7 @@
         <!-- Notification Message -->
         @if($notification->message)
             <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                {{ $notification->message }}
+                {!! str_replace('\n', '<br>', e($notification->message)) !!}
             </p>
         @endif
 

@@ -192,7 +192,6 @@
 
                             <input type="hidden" name="branch_id" id="selectedBranch">
                         </div>
-
                     </div>
                     <!-- invoice details -->
                     <div class="space-y-1 text-gray-500 dark:text-gray-400">
@@ -335,7 +334,7 @@
                         <div class="mt-4 flex items-center">
                             <input id="agentPhone" type="text" name="agentPhone" class="form-input flex-1"
                                 placeholder="Agent Phone"
-                                value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->phone : '' }}"
+                                value="{{ auth()->user()->role_id == \App\Models\Role::AGENT ? auth()->user()->agent->phone_number : '' }}"
                                 disabled />
                         </div>
 
@@ -3025,7 +3024,7 @@
                     // Update input fields for agent
                     document.getElementById('agentName').value = agent.name;
                     document.getElementById('agentEmail').value = agent.email;
-                    document.getElementById('agentPhone').value = agent.phone;
+                    document.getElementById('agentPhone').value = agent.phone_number;
 
                     // Update the selected branch
                     document.getElementById('selectedBranch').value = branch.id;
@@ -3050,7 +3049,7 @@
 
                 document.getElementById('agentName').value = agent.name;
                 document.getElementById('agentEmail').value = agent.email;
-                document.getElementById('agentPhone').value = agent.phone;
+                document.getElementById('agentPhone').value = agent.phone_number;
             }
 
             async function updateGateway() {

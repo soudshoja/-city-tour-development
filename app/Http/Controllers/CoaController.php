@@ -29,7 +29,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Carbon\Carbon;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 
 class CoaController extends Controller
@@ -39,7 +39,9 @@ class CoaController extends Controller
         // Get the authenticated user
         $user = Auth::user();
 
-        // Retrieve the company associated with the user
+        if ($user->role_id != Role::ADMIN && $user->role_id != Role::COMPANY) {
+            return abort(403, 'Unauthorized action.');
+        }
         $company = Company::where('user_id', $user->id)->first();
 
         // Ensure the company exists before proceeding
@@ -1091,6 +1093,38 @@ class CoaController extends Controller
         // return response()->json(['success' => 'Account has been relegated to all companies successfully']);
     }
 
+    public function deleteTransaction($id) 
+    {
 
+        $transaction = Transaction::findOrFail($id);
+
+        DB::beginTransaction();
+
+        try {
+            Log::info("Starting soft delete process for transaction of ID: {$transaction->id}");
+
+            if ($transaction) {
+                $transaction->delete();
+                Log::info('Successfully deleted transaction with ID: ' . $transaction->id);
+
+                DB::commit();
+                return redirect()->back()->with('success', 'Transaction successfully deleted');
+            } else {
+                Log::info('Transaction is not found. Transaction deletion is aborted');
+                return redirect()->back()->with('error', 'Transaction not found');
+            }
+        } catch (Exception $e) {
+            DB::rollback();
+            Log::error("Error during transaction soft delete: " . $e->getMessage(), [
+                'transaction_id' => $id,
+                'trace' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete transaction: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 
 }

@@ -1936,11 +1936,29 @@
                 const selectedClient = clients.filter(client => client.id == clientId)[0];
                 clientCredits[rowNumber] = selectedClient?.total_credit || 0;
                 
+                // Update credit display
                 const creditDisplayElement = document.getElementById(`credit_display_${rowNumber}`);
                 if (creditDisplayElement) {
-                    creditDisplayElement.innerText = `Credit: ${clientCredits[rowNumber].toFixed(2)}`;
+                    creditDisplayElement.innerText = `Credit: ${clientCredits[rowNumber]}`;
                 } else {
                     console.error('Credit display element not found:', `credit_display_${rowNumber}`);
+                }
+                
+                // Update credit payment gateway option
+                const creditOption = document.getElementById(`credit_option_${rowNumber}`);
+                if (creditOption) {
+                    const creditAmount = clientCredits[rowNumber];
+                    creditOption.textContent = `Credit (${creditAmount})`;
+                    
+                    if (creditAmount > 0) {
+                        creditOption.disabled = false;
+                        creditOption.style.color = '#000'; // Enable styling
+                    } else {
+                        creditOption.disabled = true;
+                        creditOption.style.color = '#9ca3af'; // Gray out when disabled
+                    }
+                } else {
+                    console.error('Credit option not found:', `credit_option_${rowNumber}`);
                 }
             }
 
@@ -2012,6 +2030,7 @@
                         <td class="border-b px-4 py-2">
                             <div class="w-[140px]">
                                 <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="w-full border border-gray-300 p-2 rounded">
+                                    <option value="Credit" id="credit_option_${i}" disabled>Credit (0.00)</option>
                                     @foreach ($paymentGateways as $gateway)
                                         <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
                                     @endforeach
@@ -2036,18 +2055,93 @@
                     const methodText = row.querySelector(`#payment_method_text_${i}`);
 
                     const updateMethodVisibility = () => {
-                        if (gatewaySelect.value.toLowerCase() === 'myfatoorah') {
+                        const selectedValue = gatewaySelect.value.toLowerCase();
+                        
+                        if (selectedValue === 'myfatoorah') {
                             methodContainer.classList.remove('hidden');
                             methodText.classList.add('hidden');
                         } else {
                             methodContainer.classList.add('hidden');
                             methodText.classList.remove('hidden');
                         }
+                        
+                        // Handle credit payment selection
+                        if (selectedValue === 'credit') {
+                            handleCreditPaymentSelection(i);
+                        }
                     };
 
                     updateMethodVisibility();
 
                     gatewaySelect.addEventListener('change', updateMethodVisibility);
+                }
+            }
+
+            // Handle credit payment selection
+            function handleCreditPaymentSelection(rowIndex) {
+                const clientIdInput = document.getElementById(`customer_name_${rowIndex}`);
+                const amountInput = document.getElementById(`amount_${rowIndex}`);
+                
+                if (!clientIdInput || !clientIdInput.value) {
+                    alert('Please select a client first before choosing credit payment.');
+                    // Reset gateway selection
+                    const gatewaySelect = document.getElementById(`payment_gateway_${rowIndex}`);
+                    gatewaySelect.selectedIndex = 1; // Select first non-credit option
+                    return;
+                }
+                
+                const clientId = clientIdInput.value;
+                const amount = parseFloat(amountInput.value) || 0;
+                const clientCredit = clientCredits[rowIndex] || 0;
+                
+                if (amount > clientCredit) {
+                    alert(`Insufficient credit. Client has ${clientCredit} credit but trying to pay ${amount}.`);
+                    // Reset gateway selection
+                    const gatewaySelect = document.getElementById(`payment_gateway_${rowIndex}`);
+                    gatewaySelect.selectedIndex = 1; // Select first non-credit option
+                    return;
+                }
+                
+                // Credit payment selected - processing will happen with normal save flow
+            }
+
+            // Process credit payment with backend
+            async function processCreditPayment(rowIndex, clientId, amount) {
+                try {
+                    console.log('Processing credit payment:', {rowIndex, clientId, amount});
+                    
+                    // Here you can add the actual API call to your backend
+                    // Example:
+                    /*
+                    const response = await fetch('/api/process-credit-payment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            client_id: clientId,
+                            amount: amount,
+                            row_index: rowIndex
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        alert('Credit payment processed successfully!');
+                        // Update UI as needed
+                    } else {
+                        alert('Error processing credit payment: ' + result.message);
+                    }
+                    */
+                    
+                    // For now, just log the action
+                    alert(`Credit payment of ${amount} for client ${clientId} would be processed here.`);
+                    
+                } catch (error) {
+                    console.error('Error processing credit payment:', error);
+                    alert('Error processing credit payment. Please try again.');
                 }
             }
 
@@ -3474,6 +3568,11 @@
                 } else if (type === 'split') {
                     payload.clientId = item.clientId;
                     payload.method = item.method;
+
+                    if(payload.gateway === 'Credit'){
+                        payload.credit = true;
+                    }
+
                 } else if (type === 'cash') {
                     payload.clientId = document.getElementById('receiverId').value;
                     payload.method = null;

@@ -116,7 +116,9 @@
                                         {{ $invoice->invoice_number }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
-                                        @if ($invoice->payment_type)
+                                        @if ($invoice->status === 'paid by refund')
+                                            <span class="text-gray-500 italic dark:text-gray-400">Settled by refund</span>
+                                        @elseif ($invoice->payment_type)
                                             <a href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" target="_blank">
                                                 {{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}
                                             </a>
@@ -125,7 +127,7 @@
                                         @endif
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500 dark:text-gray-400">
-                                        {{ ucwords($invoice->payment_type) }}
+                                        {{ $invoice->payment_type ? ucwords($invoice->payment_type) : 'N/A' }}
                                     </td>
                                     <td x-data="{ editClientPhone: false}">
                                         <p class="cursor-pointer text-blue-500 dark:text-blue-400 hover:underline"
@@ -183,7 +185,11 @@
                                         </div>
                                     </td>
                                     <td>
-                                        @if ($invoice->payment_type)
+                                        @if ($invoice->status === 'paid by refund')
+                                            <span class="relative inline-flex cursor-default" data-tooltip="Settled by refund">
+                                                <span class="badge badge-outline-info">Paid by Refund</span>
+                                            </span>
+                                        @elseif ($invoice->payment_type)
                                             <form action="{{ route('resayil.share-invoice-link') }}" method="POST">
                                                 @csrf
                                                 <input type="hidden" name="client_id" id="client"
@@ -214,6 +220,9 @@
                                         @if ($invoice->status === 'paid')
                                         <span
                                             class="badge badge-outline-success">{{ $invoice->status }}</span>
+                                        @elseif ($invoice->status === 'paid by refund')
+                                        <span
+                                            class="badge badge-outline-info">{{ $invoice->status }}</span>
                                         @else
                                         <span
                                             class="badge badge-outline-danger">{{ $invoice->status }}</span>

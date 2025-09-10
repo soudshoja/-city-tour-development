@@ -486,13 +486,18 @@
                                         {{ $invoice->client->full_name }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        @if (in_array($invoice->status, ['paid', 'paid by refund']))
-                                        <a href="{{ route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank">
-                                            <span class="badge badge-outline-success cursor-pointer">{{ $invoice->status }}</span>
-                                        </a>
+                                        @if ($invoice->refund)
+                                            <span class="relative inline-flex cursor-default" data-tooltip="Invoice Refund">
+                                                <span class="badge badge-outline-success">{{ $invoice->status }}</span>
+                                            </span>
+                                        @elseif (in_array($invoice->status, ['paid']))
+                                            <a href="{{ route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank">
+                                                <span class="badge badge-outline-success cursor-pointer">{{ $invoice->status }}</span>
+                                            </a>
+                                        @elseif ($invoice->status === 'paid by refund')
+                                            <span class="badge badge-outline-success">{{ $invoice->status }}</span>
                                         @else
-                                        <span
-                                            class="badge badge-outline-danger">{{ $invoice->status }}</span>
+                                            <span class="badge badge-outline-danger">{{ $invoice->status }}</span>
                                         @endif
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
@@ -505,7 +510,7 @@
                                         {{ number_format($invoice->invoicedetails->sum('markup_price'), 2) }} {{ $invoice->currency }} 
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        @if ($invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'))
+                                        @if ($invoice->status === 'paid' && !$invoice->refund && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'))
                                         <button type="button" class="underline text-blue-600 hover:text-blue-800"
                                             data-number="{{ $invoice->invoice_number }}" data-amount="{{ $invoice->amount }}" onclick="openEditModal('amount', this)">
                                                 {{ $invoice->amount }} {{ $invoice->currency }} 

@@ -12,7 +12,7 @@
                     </div>
                     <div>
                         <p><strong>Phone:</strong> {{ $agent->phone_number }}</p>
-                        <p><strong>Company:</strong> {{ $agent->company->name }}</p>
+                        <p><strong>Company:</strong> {{ $agent->branch->company->name }}</p>
                     </div>
                     <div>
                         <p><strong>Type:</strong> {{ $agent->type }}</p>

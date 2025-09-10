@@ -384,6 +384,10 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
+        if($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
+
+        if($invoice->refund) return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
+
         $invoiceDetails = $invoice->invoiceDetails;
         $agentId = $invoice->agent_id;
         $clientId = $invoice->client_id;
@@ -1492,6 +1496,8 @@ class InvoiceController extends Controller
             }
             return abort(404);
         }
+
+        if($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'This invoice has already been settled through a refund']);
 
         $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)
             ->with('client', 'invoice', 'payment')

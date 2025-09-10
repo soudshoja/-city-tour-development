@@ -702,7 +702,7 @@ class PaymentController extends Controller
         // try {
 
         //     $agentPhoneNumber = $invoice->agent->phone_number;
-        //     $agencyPhoneNumber = $invoice->agent->company->phone;
+        //     $agencyPhoneNumber = $invoice->agent->branch->company->phone;
 
         //     $whatsAppService = new WhatsAppNotificationService();
 

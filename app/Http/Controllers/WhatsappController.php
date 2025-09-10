@@ -68,7 +68,7 @@ class WhatsappController extends Controller
         $bodies = [
             $invoiceNumber,
             $agent->name,
-            $agent->company->name ?? 'N/A', // Use a fallback value if company is null
+            $agent->branch->company->name ?? 'N/A', // Use a fallback value if company is null
         ];
 
         foreach ($bodies as $body) {
@@ -208,7 +208,7 @@ class WhatsappController extends Controller
         ];
 
         // ✅ Append extra body parameters correctly
-        $bodies = [$invoiceNumber, $agent->name, $agent->company->name];
+        $bodies = [$invoiceNumber, $agent->name, $agent->branch->company->name];
         foreach ($bodies as $body) {
             $reqBody['template']['components'][0]['parameters'][] = ["type" => "text", "text" => $body];
         }

@@ -611,7 +611,7 @@ class TaskController extends Controller
         $queryChkExistTask = Task::query();
         $queryChkExistTask->where('reference', $request->reference)
             ->where('company_id', $request->company_id)
-            ->where('status', $request->status)
+            ->where('supplier_status', $request->status)
             ->when($request->filled('client_name'), fn($q) => $q->where('passenger_name', trim($request->client_name)))
             ->when($request->filled('supplier_id'), fn($q) => $q->where('supplier_id', $request->supplier_id));
 
@@ -640,6 +640,11 @@ class TaskController extends Controller
             ]);
         } else {
             $existingTask = (clone $queryChkExistTask)->first();
+
+            Log::info('Existing non-hotel task check', [
+                'existing_task_id' => optional($existingTask)->id,
+                'task' => $existingTask ? $existingTask->toArray() : null,
+            ]);
         }
 
         if ($existingTask) {

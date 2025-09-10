@@ -395,6 +395,8 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
+        if($invoice->status === 'paid') return redirect()->route('invoices.index')->with(['success' => 'Invoice Paid']);
+
         if($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
 
         if($invoice->refund) return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
@@ -560,7 +562,7 @@ class InvoiceController extends Controller
             'invoiceNumber' => 'required|string',
             'gateway' => 'required|string',
             'method' => 'nullable|string',
-            'credit' => 'nullable|boolean',
+            // 'credit' => 'nullable|boolean',
             'external_url' => 'nullable|url',
             'invoice_charge' => 'nullable|numeric|min:0',
             'companyId' => 'required',
@@ -642,13 +644,22 @@ class InvoiceController extends Controller
 
         DB::beginTransaction();
 
+        $status = 'unpaid';
+
         try {
             
-            $isTabby = ($gateway === 'Tabby');
-            if ($isTabby || $credit) {
-                $status = 'paid';
-            } else {
-                $status = 'unpaid';
+            // $isTabby = ($gateway === 'Tabby');
+
+            switch($gateway){
+                case 'Tabby':
+                    $status = 'paid';
+                    break;
+                case 'Credit':
+                    $status = 'paid';
+                    $credit = true;
+                    break;
+                default:
+                    $status = 'unpaid';
             }
 
             $invoicePartial = InvoicePartial::create([
@@ -665,12 +676,12 @@ class InvoiceController extends Controller
             ]);
             
             //if ($credit && $type == 'full') {
-            if ($type == 'credit') {
+            if ($credit) {
                 //insert credit record to reduce client's existing credit balance
                 try {
                     Credit::create([
-                        'company_id'  => $invoice->client->agent->branch->company_id,
-                        'client_id'   => $invoice->client->id,
+                        'company_id'  => $invoicePartial->client->agent->branch->company_id,
+                        'client_id'   => $invoicePartial->client->id,
                         'invoice_id'  => $invoice->id,
                         'invoice_partial_id'  => $invoicePartial->id,
                         'type'        => 'Invoice',
@@ -722,13 +733,27 @@ class InvoiceController extends Controller
                 $invoice->status = 'unpaid';
                 // Don't set paid_date for cash payments
             } else {
-                $invoice->status = $credit ? 'paid' : 'unpaid';
+                $invoicePartial->status = $credit ? 'paid' : 'unpaid';
                 if ($credit) {
                     $invoice->paid_date = now();
                 }
             }
+
+            $invoice->is_client_credit = $type === 'credit' ? true : false;
             
-            $invoice->is_client_credit = $credit;
+            $invoiceStatus = 'unpaid';
+
+            foreach ($invoice->invoicePartials as $partial){
+                // invoice is marked unpaid if any of its partials is unpaid
+                if($partial->status == 'unpaid'){
+                    $invoiceStatus = 'unpaid';
+                    break;
+                } elseif($partial->status == 'paid'){
+                    $invoiceStatus = 'paid';
+                }
+            }
+
+            $invoice->status = $invoiceStatus;
             $invoice->save();
 
             $transaction = Transaction::where('invoice_id', $invoice->id)->first();

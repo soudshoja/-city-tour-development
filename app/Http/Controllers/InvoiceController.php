@@ -362,24 +362,35 @@ class InvoiceController extends Controller
             $company = $user->company;
             $branches = $company->branches;
             $agents = $branches->pluck('agents')->flatten();
-            $clientIds = $agents->pluck('id');
-            $clients = Client::whereIn('agent_id', $clientIds)->get()->unique('id')->values();
+            $agentsId = $agents->pluck('id');
+            
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
             $branches = $company->branches;
             $agents   = $branches->pluck('agents')->flatten();
-            $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get()->unique('id')->values();
+            $agentsId = $agents->pluck('id')->toArray();
         }
 
-        // Retrieve the invoice based on the invoice number
+        $clients = Client::where(function ($query) use ($agentsId) {
+            $query->whereIn('agent_id', $agentsId)
+                ->orWhereHas('agents', function ($q) use ($agentsId) {
+                    $q->whereIn('agent_id', $agentsId);
+                })->get();
+        })->get();
+
+        foreach($clients as $client){
+            $credit = Credit::getTotalCreditsByClient($client->id);
+            $client->total_credit = $credit;
+        }
+
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
             ->whereHas('agent.branch.company', function ($q) use ($companyId) {
                 $q->where('id', $companyId);
             })
             ->with('agent.branch.company', 'client', 'invoiceDetails.task')
             ->first();
-        // Check if the invoice exists
+        
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
         }
@@ -396,7 +407,7 @@ class InvoiceController extends Controller
             ->with(['supplier', 'agent.branch', 'client'])
             ->get();
         $selectedTasks = $invoice->invoiceDetails
-            ->filter(fn($invoiceDetail) => $invoiceDetail->task) // Remove null tasks
+            ->filter(fn($invoiceDetail) => $invoiceDetail->task)
             ->map(function ($invoiceDetail) use ($invoice) {
                 $task = $invoiceDetail->task;
                 $task->agent_name = optional($task->agent)->name;

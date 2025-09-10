@@ -362,27 +362,40 @@ class InvoiceController extends Controller
             $company = $user->company;
             $branches = $company->branches;
             $agents = $branches->pluck('agents')->flatten();
-            $clientIds = $agents->pluck('id');
-            $clients = Client::whereIn('agent_id', $clientIds)->get()->unique('id')->values();
+            $agentsId = $agents->pluck('id');
+            
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
             $branches = $company->branches;
             $agents   = $branches->pluck('agents')->flatten();
-            $clients = Client::whereIn('agent_id', $agents->pluck('id'))->get()->unique('id')->values();
+            $agentsId = $agents->pluck('id')->toArray();
         }
 
-        // Retrieve the invoice based on the invoice number
+        $clients = Client::where(function ($query) use ($agentsId) {
+            $query->whereIn('agent_id', $agentsId)
+                ->orWhereHas('agents', function ($q) use ($agentsId) {
+                    $q->whereIn('agent_id', $agentsId);
+                })->get();
+        })->get();
+
+        foreach($clients as $client){
+            $credit = Credit::getTotalCreditsByClient($client->id);
+            $client->total_credit = $credit;
+        }
+
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
             ->whereHas('agent.branch.company', function ($q) use ($companyId) {
                 $q->where('id', $companyId);
             })
             ->with('agent.branch.company', 'client', 'invoiceDetails.task')
             ->first();
-        // Check if the invoice exists
+        
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
         }
+
+        if($invoice->status === 'paid') return redirect()->route('invoices.index')->with(['success' => 'Invoice Paid']);
 
         if($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
 
@@ -396,7 +409,7 @@ class InvoiceController extends Controller
             ->with(['supplier', 'agent.branch', 'client'])
             ->get();
         $selectedTasks = $invoice->invoiceDetails
-            ->filter(fn($invoiceDetail) => $invoiceDetail->task) // Remove null tasks
+            ->filter(fn($invoiceDetail) => $invoiceDetail->task)
             ->map(function ($invoiceDetail) use ($invoice) {
                 $task = $invoiceDetail->task;
                 $task->agent_name = optional($task->agent)->name;
@@ -549,7 +562,7 @@ class InvoiceController extends Controller
             'invoiceNumber' => 'required|string',
             'gateway' => 'required|string',
             'method' => 'nullable|string',
-            'credit' => 'nullable|boolean',
+            // 'credit' => 'nullable|boolean',
             'external_url' => 'nullable|url',
             'invoice_charge' => 'nullable|numeric|min:0',
             'companyId' => 'required',
@@ -631,13 +644,22 @@ class InvoiceController extends Controller
 
         DB::beginTransaction();
 
+        $status = 'unpaid';
+
         try {
             
-            $isTabby = ($gateway === 'Tabby');
-            if ($isTabby || $credit) {
-                $status = 'paid';
-            } else {
-                $status = 'unpaid';
+            // $isTabby = ($gateway === 'Tabby');
+
+            switch($gateway){
+                case 'Tabby':
+                    $status = 'paid';
+                    break;
+                case 'Credit':
+                    $status = 'paid';
+                    $credit = true;
+                    break;
+                default:
+                    $status = 'unpaid';
             }
 
             $invoicePartial = InvoicePartial::create([
@@ -654,12 +676,12 @@ class InvoiceController extends Controller
             ]);
             
             //if ($credit && $type == 'full') {
-            if ($type == 'credit') {
+            if ($credit) {
                 //insert credit record to reduce client's existing credit balance
                 try {
                     Credit::create([
-                        'company_id'  => $invoice->client->agent->branch->company_id,
-                        'client_id'   => $invoice->client->id,
+                        'company_id'  => $invoicePartial->client->agent->branch->company_id,
+                        'client_id'   => $invoicePartial->client->id,
                         'invoice_id'  => $invoice->id,
                         'invoice_partial_id'  => $invoicePartial->id,
                         'type'        => 'Invoice',
@@ -711,13 +733,27 @@ class InvoiceController extends Controller
                 $invoice->status = 'unpaid';
                 // Don't set paid_date for cash payments
             } else {
-                $invoice->status = $credit ? 'paid' : 'unpaid';
+                $invoicePartial->status = $credit ? 'paid' : 'unpaid';
                 if ($credit) {
                     $invoice->paid_date = now();
                 }
             }
+
+            $invoice->is_client_credit = $type === 'credit' ? true : false;
             
-            $invoice->is_client_credit = $credit;
+            $invoiceStatus = 'unpaid';
+
+            foreach ($invoice->invoicePartials as $partial){
+                // invoice is marked unpaid if any of its partials is unpaid
+                if($partial->status == 'unpaid'){
+                    $invoiceStatus = 'unpaid';
+                    break;
+                } elseif($partial->status == 'paid'){
+                    $invoiceStatus = 'paid';
+                }
+            }
+
+            $invoice->status = $invoiceStatus;
             $invoice->save();
 
             $transaction = Transaction::where('invoice_id', $invoice->id)->first();
@@ -2619,4 +2655,100 @@ class InvoiceController extends Controller
             'payment_gateway' => 'required|string',
         ]);
     }
+    public function showArabic($companyId, $invoiceNumber)
+   {
+    $invoice = Invoice::where('invoice_number', $invoiceNumber)
+        ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+            $q->where('id', $companyId);
+        })
+        ->with('agent.branch.company', 'client', 'invoiceDetails')
+        ->first();
+
+    if (!$invoice) {
+        if(auth()->user()){
+            return redirect()->route('invoices.index')->with('error', 'Invoice not found!');
+        }
+        return abort(404);
+    }
+
+    if($invoice->status === 'paid by refund') {
+        return redirect()->route('invoices.index')->withErrors(['error' => 'This invoice has already been settled through a refund']);
+    }
+
+    $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)
+        ->with('client', 'invoice', 'payment')
+        ->get();
+
+    if($invoicePartials->isEmpty()){
+        if(auth()->user()){
+            return redirect()->route('invoices.index')->with('error', 'No invoice partials found for this invoice!');
+        }
+        return abort(404);
+    }
+
+    $totalGatewayFee = ['fee' => 0, 'finalAmount' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
+
+    $paidServiceCharge = $invoicePartials->where('status', 'paid')->sum('service_charge');
+    $totalGatewayFee['fee'] += $paidServiceCharge;
+
+    foreach ($invoicePartials as $partial) {
+        if ($partial->status !== 'paid') {
+            $gatewayFee = [];
+            try {
+                if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
+                    $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
+                } else if (strtolower($partial->payment_gateway) === 'tap') {
+                    $gatewayFee = ChargeService::TapCharge([
+                        'amount'    => $partial->amount,
+                        'client_id' => $invoice->client_id,
+                        'agent_id'  => $invoice->agent_id,
+                        'currency'  => $invoice->currency,
+                    ], $partial->payment_gateway);
+                } else if (strtolower($partial->payment_gateway) === 'upayment') {
+                    $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
+                }
+            } catch (\Exception $e) {
+                \Log::error('ChargeService exception', [
+                    'message' => $e->getMessage(),
+                    'gateway' => $partial->payment_gateway,
+                    'company_id' => $companyId,
+                ]);
+            }
+            $partial->service_charge = $gatewayFee['fee'] ?? 0;
+            $partial->save();
+            $partial->final_amount = $partial->amount + $partial->service_charge;
+            $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
+
+            if ($chargePayer !== 'Company') {
+                $totalGatewayFee['fee'] += $partial->service_charge;
+                $totalGatewayFee['paid_by'] = $chargePayer;
+                $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
+            }
+        }
+    }
+
+    $totalGatewayFee['fee'] += $invoice->invoice_charge ?? 0;
+    $totalGatewayFee['finalAmount'] = $invoice->sub_amount + $invoice->tax + $totalGatewayFee['fee'];
+    $paidPartials = $invoicePartials->where('status', 'paid');
+    $invoiceDetails = $invoice->invoiceDetails;
+    $company = $invoice->agent->branch->company;
+
+    $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
+        ->where('company_id', $companyId)
+        ->where('type', 'Invoice')
+        ->orderBy('id', 'asc')
+        ->get();
+
+    // Render the Arabic view (make sure to translate it)
+    return view('invoice.show-arabic', compact(
+        'invoice',
+        'invoiceDetails',
+        'invoicePartials',
+        'paidPartials',
+        'company',
+        'checkUtilizeCredit',
+        'totalGatewayFee',
+        'companyId'
+    ));
+}
 }

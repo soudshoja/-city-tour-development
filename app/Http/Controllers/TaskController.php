@@ -388,32 +388,77 @@ class TaskController extends Controller
         }
 
         DB::transaction(function () use ($taskIds, $clientId, $agentId, $paymentMethodId) {
+            $client = $clientId ? Client::find($clientId) : null;
             foreach ($taskIds as $id) {
                 $task = Task::find($id);
                 if ($task) {
                     if ($clientId) {
                         $task->client_id = $clientId;
-                        $client = Client::find($clientId);
-                        if ($client) {
-                            $task->client_name = $client->full_name;
-                        }
+                        $task->client_name = $client->full_name;
                     }
                     if ($agentId) $task->agent_id = $agentId;
                     if ($paymentMethodId) $task->payment_method_account_id = $paymentMethodId;
-
                     if ($task->is_complete && $task->agent && $task->client) {
-                        $journalEntries = JournalEntry::where('task_id', $task->id)->exists();
-                        if (!$journalEntries) {
+                        $shouldEnable = false;
+                        if ($task->status === 'void') {
+                            $hasJournal = JournalEntry::where('task_id', $task->original_task_id)
+                                ->whereHas('transaction', function ($q) {
+                                    $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
+                                })
+                                ->exists();
+                        } else {
+                            $hasJournal = JournalEntry::where('task_id', $task->id)->exists();
+                        }
+
+                        if ($hasJournal) {
+                            $shouldEnable = true;
+                        } else {
                             try {
                                 $this->processTaskFinancial($task);
-                                $task->enabled = true;
+                                $shouldEnable = true;
                             } catch (\Exception $e) {
+                                $shouldEnable = false;
                                 Log::error('Failed to process task financial: ' . $e->getMessage());
                             }
                         }
-                        if ($task->status === 'issued') $task->enabled = true;
+                        $task->enabled = $shouldEnable;
                     }
                     $task->save();
+                }
+
+                $linkedTasks = Task::where('original_task_id', $task->id)->get();
+                foreach ($linkedTasks as $linkTask) {
+                    if ($client) {
+                        $linkTask->client_id = $client->id;
+                        $linkTask->client_name = $client->full_name;
+                    }
+                    if ($agentId) $linkTask->agent_id = $agentId;
+                    if ($linkTask->is_complete && $linkTask->agent_id && $linkTask->client_id) {
+                        $shouldEnable = false;
+                        if ($linkTask->status === 'void') {
+                            $hasJournal = JournalEntry::where('task_id', $linkTask->original_task_id)
+                                ->whereHas('transaction', function ($q) {
+                                    $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
+                                })
+                                ->exists();
+                        } else {
+                            $hasJournal = JournalEntry::where('task_id', $linkTask->id)->exists();
+                        }
+
+                        if ($hasJournal) {
+                            $shouldEnable = true;
+                        } else {
+                            try {
+                                $this->processTaskFinancial($linkTask);
+                                $shouldEnable = true;
+                            } catch (\Throwable $e) {
+                                $shouldEnable = false;
+                                Log::error('Failed to process linked task financial', ['task_id' => $linkTask->id, 'err' => $e->getMessage()]);
+                            }
+                        }
+                        $linkTask->enabled = $shouldEnable;
+                    }
+                    $linkTask->save();
                 }
             }
         });
@@ -1677,18 +1722,47 @@ class TaskController extends Controller
     {
         Log::info('Reverting financials for task: ' . $task->reference);
 
-        $entries = JournalEntry::where('task_id', $task->id)->get();
-        foreach ($entries as $entry) {
-            $entry->delete();
+        JournalEntry::where('task_id', $task->id)
+            ->whereHas('transaction', function ($q) use ($task) {
+                $q->whereRaw('LOWER(description) LIKE ?', ['%' . $task->reference . '%']);
+            })
+            ->delete();
+
+        Transaction::whereRaw('LOWER(description) LIKE ?', ['%' . $task->reference . '%'])
+            ->delete();
+    }
+
+    /**
+     * Delete financial records when task status changes from void to different status.
+     * Removes this task’s journal entries and linked transactions.
+     */
+    private function revertFinancialsForVoid(Task $voidTask): void
+    {
+        if (!$voidTask->original_task_id) {
+            Log::warning('revertFinancialsForVoid called without original_task_id', [
+                'void_task_id' => $voidTask->id,
+                'reference'    => $voidTask->reference,
+            ]);
+            return;
         }
 
-        $transactions = Transaction::with('journalEntries')
-            ->where('description', 'like', '%' . $task->reference . '%')
-            ->get();
+        $originalTask  = Task::find($voidTask->original_task_id);
 
-        foreach ($transactions as $transaction) {
-            $transaction->delete();
-        }
+        Log::info('Reverting ONLY void financials applied to original task', [
+            'original_task_id' => $originalTask->id,
+            'void_task_id' => $voidTask->id,
+            'void_reference' => $voidTask->reference,
+        ]);
+
+        // Delete journal entries on the original that belong to void transactions
+        JournalEntry::where('task_id', $originalTask->id)
+            ->whereHas('transaction', function ($q) use ($originalTask) {
+                $q->whereRaw('LOWER(description) LIKE ?', "%void%{$originalTask->reference}%");
+            })
+            ->delete();
+
+        Transaction::whereRaw('LOWER(description) LIKE ?', "%void%{$originalTask->reference}%")
+            ->delete();
     }
 
     public function toggleStatus(Request $request, Task $task)
@@ -1724,7 +1798,15 @@ class TaskController extends Controller
                 ], 400);
             }
 
-            $journalEntries = JournalEntry::where('task_id', $task->id)->exists();
+            if ($task->status === 'void') {
+                $journalEntries = JournalEntry::where('task_id', $task->original_task_id)
+                    ->whereHas('transaction', function ($q) {
+                        $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
+                    })
+                    ->exists();
+            } else {
+                $journalEntries = JournalEntry::where('task_id', $task->id)->exists();
+            }
 
             if (!$journalEntries) {
                 try {
@@ -1958,26 +2040,8 @@ class TaskController extends Controller
                     $processedThisRequest = true;
                 } else {
                     if (in_array($task->status, ['issued', 'reissued', 'emd', 'void', 'refund'], true)) {
-                        if ($task->status === 'void') {
-                            $original = $task->original_task_id ? Task::find($task->original_task_id) : null;
-
-                            if ($original) {
-                                $originalPaid = Payment::whereHas('partials.invoice.invoiceDetails', function ($q) use ($original) {
-                                    $q->where('task_id', $original->id);
-                                })
-                                    ->whereHas('partials', function ($q) {
-                                        $q->where('status', 'paid');
-                                    })
-                                    ->exists();
-
-                                Log::info('Void revert target', [
-                                    'void_task_id'     => $task->id,
-                                    'original_task_id' => $original->id,
-                                    'original_paid'    => $originalPaid,
-                                ]);
-
-                                $this->revertFinancialsForTask($originalPaid ? $original : $task);
-                            }
+                        if ($oldStatus === 'void') {
+                            $this->revertFinancialsForVoid($task);
                         } else {
                             $this->revertFinancialsForTask($task);
                         }
@@ -1991,10 +2055,18 @@ class TaskController extends Controller
             $agentWasAssigned = !$prevAgentId && $task->agent_id;
             $agentWasChanged = $prevAgentId && $task->agent_id && $prevAgentId !== $task->agent_id;
 
+            if ($task->status === 'void') {
+                $wasEnabled = JournalEntry::where('task_id', $task->original_task_id)
+                    ->whereHas('transaction', function ($q) {
+                        $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
+                    })
+                    ->exists();
+            } else {
+                $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
+            }
+
             // Update enabled status: task must be complete AND have an agent assigned
             $shouldBeEnabled = $task->is_complete && $task->agent_id;
-            $wasEnabled = JournalEntry::where('task_id', $task->id)->exists();
-
             if ($shouldBeEnabled) {
                 if ($task->status !== 'issued' && $task->status !== 'confirmed' && !$task->original_task_id) {
                     DB::rollBack();
@@ -2006,7 +2078,17 @@ class TaskController extends Controller
                 $task->enabled = true;
                 $task->save();
                 // Process financials if not already processed
-                if (!JournalEntry::where('task_id', $task->id)->exists()) {
+
+                if ($task->status === 'void') {
+                    $hasJournal = JournalEntry::where('task_id', $task->original_task_id)
+                        ->whereHas('transaction', function ($q) {
+                            $q->whereRaw('LOWER(description) LIKE ?', ['%void%']);
+                        })
+                        ->exists();
+                } else {
+                    $hasJournal = JournalEntry::where('task_id', $task->id)->exists();
+                }
+                if (!$hasJournal) {
                     Log::info('Processing financial transactions for newly enabled task: ' . $task->reference);
                     $this->processTaskFinancial($task);
                 }
@@ -3428,57 +3510,59 @@ class TaskController extends Controller
     public function ReverseUnpaidVoidedTask(Task $originalTask)
     {
 
-        $liabilities = Account::where('name', 'like', '%Liabilities%')
-            ->where('company_id', $originalTask->company_id)
-            ->first();
+        // $liabilities = Account::where('name', 'like', '%Liabilities%')
+        //     ->where('company_id', $originalTask->company_id)
+        //     ->first();
 
-        $expenses = Account::where('name', 'like', '%Expenses%')
-            ->where('company_id', $originalTask->company_id)
-            ->first();
+        // $expenses = Account::where('name', 'like', '%Expenses%')
+        //     ->where('company_id', $originalTask->company_id)
+        //     ->first();
 
-        $supplier = Supplier::find($originalTask->supplier_id);
-        $supplierCompany = SupplierCompany::where('supplier_id', $originalTask->supplier_id)
-            ->where('company_id', $originalTask->company_id)
-            ->first();
+        // $supplier = Supplier::find($originalTask->supplier_id);
+        // $supplierCompany = SupplierCompany::where('supplier_id', $originalTask->supplier_id)
+        //     ->where('company_id', $originalTask->company_id)
+        //     ->first();
 
-        $supplierPayable = Account::where('name', $supplier->name)
-            ->where('company_id', $originalTask->company_id)
-            ->where('root_id', $liabilities->id)
-            ->first();
+        // $supplierPayable = Account::where('name', $supplier->name)
+        //     ->where('company_id', $originalTask->company_id)
+        //     ->where('root_id', $liabilities->id)
+        //     ->first();
 
-        $companyIssuedBy = $originalTask->issued_by;
+        // $companyIssuedBy = $originalTask->issued_by;
 
-        if (!$companyIssuedBy) {
-            Log::error('Company issued by not found for task ID: ' . $originalTask->id);
-            throw new Exception('Company issued by not found.');
-        }
+        // if (!$companyIssuedBy) {
+        //     Log::error('Company issued by not found for task ID: ' . $originalTask->id);
+        //     throw new Exception('Company issued by not found.');
+        // }
 
-        $issuedByAccount = Account::where('name', $companyIssuedBy)
-            ->where('company_id', $originalTask->company_id)
-            ->where('root_id', $liabilities->id)
-            ->first();
+        // $issuedByAccount = Account::where('name', $companyIssuedBy)
+        //     ->where('company_id', $originalTask->company_id)
+        //     ->where('root_id', $liabilities->id)
+        //     ->first();
 
-        if (!$issuedByAccount) {
-            Log::error('Issued by account not found for task ID: ' . $originalTask->id);
-            throw new Exception('Issued by account not found.');
-        }
-        $supplierCost = Account::where('name', $supplier->name)
-            ->where('company_id', $originalTask->company_id)
-            ->where('root_id', $expenses->id)
-            ->first();
+        // if (!$issuedByAccount) {
+        //     Log::error('Issued by account not found for task ID: ' . $originalTask->id);
+        //     throw new Exception('Issued by account not found.');
+        // }
+        // $supplierCost = Account::where('name', $supplier->name)
+        //     ->where('company_id', $originalTask->company_id)
+        //     ->where('root_id', $expenses->id)
+        //     ->first();
 
-        if (!$supplierPayable || !$supplierCost) {
-            Log::error('Missing required accounts for reversal.', [
-                'payable' => $supplierPayable,
-                'cost' => $supplierCost
-            ]);
-            throw new Exception('Missing required accounts for reversal.');
-        }
+        // if (!$supplierPayable || !$supplierCost) {
+        //     Log::error('Missing required accounts for reversal.', [
+        //         'payable' => $supplierPayable,
+        //         'cost' => $supplierCost
+        //     ]);
+        //     throw new Exception('Missing required accounts for reversal.');
+        // }
 
         Log::info('Recording reversal journal & transaction for task ID: ' . $originalTask->id);
 
         // Use task's issued_date as transaction_date
         $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
+
+        $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
 
         $transaction = Transaction::create([
             'branch_id' => $originalTask->agent->branch_id,
@@ -3493,35 +3577,52 @@ class TaskController extends Controller
             'transaction_date' => $transactionDate,
         ]);
 
-        JournalEntry::create([
-            'transaction_id' => $transaction->id,
-            'company_id' => $originalTask->company_id,
-            'branch_id' => $originalTask->agent->branch_id,
-            'account_id' => $supplierCost->id,
-            'task_id' => $originalTask->id,
-            'transaction_date' => $transactionDate,
-            'description' => 'Reversal: Cancelled Cost from ' . $supplierCompany->supplier->name,
-            'name' => $supplierCompany->supplier->name,
-            'debit' => 0,
-            'credit' => $originalTask->total,
-            'balance' => $originalTask->total,
-            'type' => 'payable',
-        ]);
+        foreach ($journalEntries as $entry) {
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'company_id' => $entry->company_id,
+                'branch_id' => $entry->branch_id,
+                'account_id' => $entry->account_id,
+                'task_id' => $entry->task_id,
+                'transaction_date' => $transactionDate,
+                'description' => 'Reversal: ' . $entry->description,
+                'name' => $entry->name,
+                'debit' => $entry->credit,
+                'credit' => $entry->debit,
+                'balance' => $entry->balance,
+                'type' => $entry->type,
+            ]);
+        }
 
-        JournalEntry::create([
-            'transaction_id' => $transaction->id,
-            'company_id' => $originalTask->company_id,
-            'branch_id' => $originalTask->agent->branch_id,
-            'account_id' => $issuedByAccount->id,
-            'task_id' => $originalTask->id,
-            'transaction_date' => $transactionDate,
-            'description' => 'Reversal: Cancelled Payable to ' . $supplierCompany->supplier->name,
-            'name' => $supplierCompany->supplier->name,
-            'debit' => $originalTask->total,
-            'credit' => 0,
-            'balance' => $originalTask->total,
-            'type' => 'payable',
-        ]);
+        // JournalEntry::create([
+        //     'transaction_id' => $transaction->id,
+        //     'company_id' => $originalTask->company_id,
+        //     'branch_id' => $originalTask->agent->branch_id,
+        //     'account_id' => $supplierCost->id,
+        //     'task_id' => $originalTask->id,
+        //     'transaction_date' => $transactionDate,
+        //     'description' => 'Reversal: Cancelled Cost from ' . $supplierCompany->supplier->name,
+        //     'name' => $supplierCompany->supplier->name,
+        //     'debit' => 0,
+        //     'credit' => $originalTask->total,
+        //     'balance' => $originalTask->total,
+        //     'type' => 'payable',
+        // ]);
+
+        // JournalEntry::create([
+        //     'transaction_id' => $transaction->id,
+        //     'company_id' => $originalTask->company_id,
+        //     'branch_id' => $originalTask->agent->branch_id,
+        //     'account_id' => $issuedByAccount->id,
+        //     'task_id' => $originalTask->id,
+        //     'transaction_date' => $transactionDate,
+        //     'description' => 'Reversal: Cancelled Payable to ' . $supplierCompany->supplier->name,
+        //     'name' => $supplierCompany->supplier->name,
+        //     'debit' => $originalTask->total,
+        //     'credit' => 0,
+        //     'balance' => $originalTask->total,
+        //     'type' => 'payable',
+        // ]);
 
         Log::info('Void reversal journal completed for task: ' . $originalTask->reference);
         DB::commit();

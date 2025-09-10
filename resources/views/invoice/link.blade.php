@@ -313,7 +313,7 @@
                                     <td>
                                         <form action="{{ route('resayil.share-invoice-link') }}" method="POST">
                                             @csrf
-                                            <input type="hidden" name="client_id" id="client" value="{{ $partial->invoice->client_id }}">
+                                            <input type="hidden" name="client_id" id="client" value="{{ $partial->client_id }}">
                                             <input type="hidden" name="invoiceNumber" value="{{ $partial->invoice->invoice_number }}">
                                             <button type="submit" class="badge badge-outline-success">
                                                 Share via WhatsApp

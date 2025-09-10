@@ -534,7 +534,6 @@ class AgentController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone_number' => $request->phone_number,
-                'company_id' => $request->company_id, // You might need to handle this differently
                 'type' => $request->type, // You might need to handle this differently
             ]);
 
@@ -573,7 +572,7 @@ class AgentController extends Controller
                 $agent->type,
                 $agent->email,
                 $agent->phone_number,
-                $agent->company->name
+                $agent->branch->company->name
             ]);
         }
 

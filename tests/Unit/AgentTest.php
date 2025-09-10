@@ -83,7 +83,6 @@ class AgentTest extends TestCase
             'type_id',
             'phone_number',
             'country_code',
-            'company_id',
             'branch_id',
             'commission',
             'salary',

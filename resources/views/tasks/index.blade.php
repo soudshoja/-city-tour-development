@@ -1349,50 +1349,46 @@
 
                                                                                 </div>
 
-                                                                                <div class="flex flex-wrap gap-4">
+                                                                                <div
+                                                                                    x-data="{
+                                                                                        rawPrice: '{{ $task->price ?? 0 }}',
+                                                                                        rawTax: '{{ $task->tax ?? 0 }}',
+                                                                                        rawSurcharge: '{{ $task->surcharge ?? 0 }}',
+                                                                                        total: 0,
+                                                                                        parseNum(v) {
+                                                                                        if (!v) return 0;
+                                                                                        const num = parseFloat(String(v).replace(/,/g,'').trim());
+                                                                                        return isNaN(num) ? 0 : num;
+                                                                                        }
+                                                                                    }"
+                                                                                    x-effect="total = +(parseNum(rawPrice) + parseNum(rawTax) + parseNum(rawSurcharge)).toFixed(3)"
+                                                                                    class="flex flex-wrap gap-4">
                                                                                     <!-- Price -->
                                                                                     <div class="flex-1 min-w-[150px]">
-                                                                                        <label for="price"
-                                                                                            class="block text-sm font-medium text-gray-700">Price</label>
-                                                                                        <input type="text"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
-                                                                                            name="price"
-                                                                                            placeholder="Price"
-                                                                                            value="{{ $task->price }}"
-                                                                                            {{$task->task_price_changeable ? '' : 'readonly'}}>
+                                                                                        <label class="block text-sm font-medium text-gray-700">Price</label>
+                                                                                        <input type="text" name="price" x-model="rawPrice"
+                                                                                        class="border border-gray-300 p-2 rounded-md w-full">
                                                                                     </div>
 
                                                                                     <!-- Tax -->
                                                                                     <div class="flex-1 min-w-[150px]">
-                                                                                        <label for="tax"
-                                                                                            class="block text-sm font-medium text-gray-700">Tax</label>
-                                                                                        <input type="text"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
-                                                                                            name="tax"
-                                                                                            value="{{ $task->tax }}"
-                                                                                            placeholder="Tax">
+                                                                                        <label class="block text-sm font-medium text-gray-700">Tax</label>
+                                                                                        <input type="text" name="tax" x-model="rawTax"
+                                                                                        class="border border-gray-300 p-2 rounded-md w-full">
                                                                                     </div>
 
                                                                                     <!-- Surcharge -->
                                                                                     <div class="flex-1 min-w-[150px]">
-                                                                                        <label for="surcharge"
-                                                                                            class="block text-sm font-medium text-gray-700">Surcharge</label>
-                                                                                        <input type="text"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
-                                                                                            name="surcharge"
-                                                                                            value="{{ $task->surcharge }}"
-                                                                                            placeholder="Surcharge">
+                                                                                        <label class="block text-sm font-medium text-gray-700">Surcharge</label>
+                                                                                        <input type="text" name="surcharge" x-model="rawSurcharge"
+                                                                                        class="border border-gray-300 p-2 rounded-md w-full">
                                                                                     </div>
 
                                                                                     <!-- Total -->
                                                                                     <div class="flex-1 min-w-[150px]">
-                                                                                        <label for="total"
-                                                                                            class="block text-sm font-medium text-gray-700">Total</label>
-                                                                                        <input type="text" name="total"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
-                                                                                            value="{{ $task->total }}"
-                                                                                            placeholder="Total"
-                                                                                            {{$task->task_price_changeable ? '' : 'readonly'}}>
+                                                                                        <label class="block text-sm font-medium text-gray-700">Total</label>
+                                                                                        <input type="text" name="total" :value="total" readonly
+                                                                                        class="border border-gray-300 p-2 rounded-md w-full">
                                                                                     </div>
                                                                                 </div>
                                                                                 <!-- Payment Method -->

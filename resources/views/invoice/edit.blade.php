@@ -1005,53 +1005,12 @@
                     <div class="panel">
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
 
-                            {{-- <button id="generate-invoice-btn" type="button"
-                            class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
-                                <path
-                                    d="M3.46447 20.5355C4.92893 22 7.28595 22 12 22C16.714 22 19.0711 22 20.5355 20.5355C22 19.0711 22 16.714 22 12C22 11.6585 22 11.4878 21.9848 11.3142C21.9142 10.5049 21.586 9.71257 21.0637 9.09034C20.9516 8.95687 20.828 8.83317 20.5806 8.58578L15.4142 3.41944C15.1668 3.17206 15.0431 3.04835 14.9097 2.93631C14.2874 2.414 13.4951 2.08581 12.6858 2.01515C12.5122 2 12.3415 2 12 2C7.28595 2 4.92893 2 3.46447 3.46447C2 4.92893 2 7.28595 2 12C2 16.714 2 19.0711 3.46447 20.5355Z"
-                                    stroke="currentColor" stroke-width="1.5" />
-                                <path
-                                    d="M17 22V21C17 19.1144 17 18.1716 16.4142 17.5858C15.8284 17 14.8856 17 13 17H11C9.11438 17 8.17157 17 7.58579 17.5858C7 18.1716 7 19.1144 7 21V22"
-                                    stroke="currentColor" stroke-width="1.5" />
-                                <path opacity="0.5" d="M7 8H13" stroke="currentColor" stroke-width="1.5"
-                                    stroke-linecap="round" />
-                            </svg>
-                            <span id="button-text">Update</span>
-                            <span id="button-loading" style="display: none;">Saving...</span>
-                            <span id="button-saved" style="display: none;">Saved</span>
-                        </button> --}}
-
-                            <!-- Delete Button -->
-                            {{-- <button id="delete-invoice-btn" type="button"
-                            class="w-full inline-flex items-center justify-center text-sm font-semibold text-white bg-red-500 hover:bg-red-700 py-4 rounded-full shadow">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mr-2">
-                                <path d="M3 6H5H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                    stroke-linejoin="round" />
-                                <path
-                                    d="M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V6H19Z"
-                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                    stroke-linejoin="round" />
-                                <path d="M10 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                    stroke-linejoin="round" />
-                                <path d="M14 11V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                    stroke-linejoin="round" />
-                            </svg>
-                            <span>Delete</span>
-                        </button> --}}
-
                             <input id="invoiceId" type="hidden" name="invoiceId" />
-                            <!-- add form here-->
-
 
                             <div id="errorMessage" class="hidden text-red-500">
                                 <!-- Error message -->
                             </div>
 
-                            <!-- Split Payment Modal -->
                             <div id="paymentModal" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain">
                                 <div class="bg-white rounded-lg shadow-lg w-full max-w-[1100px] h-[80vh] flex flex-col">
                                     <div class="px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
@@ -1069,7 +1028,7 @@
                                                     <label class="block text-sm font-medium mb-1" for="split-into">Split into *</label>
                                                     <select id="split-into"
                                                         class="w-full p-2 border-gray-300 rounded-md shadow-sm"
-                                                        onchange="updateRows()">
+                                                        onchange="updateRowSplit()">
                                                         <option value="" disabled selected>Select a value
                                                         </option>
                                                         <option value="1">1</option>
@@ -1095,6 +1054,7 @@
                                                         <tr>
                                                             <th class="border-b px-4 py-2">S.No</th>
                                                             <th class="border-b px-4 py-2">Choose Client</th>
+                                                            <th class="border-b px-4 py-2">Credit</th>
                                                             <th class="border-b px-4 py-2">Expiry Date</th>
                                                             <th class="border-b px-4 py-2">Amount</th>
                                                             <th class="border-b px-4 py-2">Payment Gateway</th>
@@ -1150,7 +1110,7 @@
                                                             for="split-into1">Split into *</label>
                                                         <select id="split-into1"
                                                             class="w-full p-2 border-gray-300 rounded-md shadow-sm"
-                                                            onchange="updateRows1()">
+                                                            onchange="updateRowPartial()">
                                                             <option value="" disabled selected>Select a value
                                                             </option>
                                                             <option value="1">1</option>
@@ -1464,7 +1424,7 @@
             const appUrl = @json($appUrl);
             const charges = @json($paymentGateways);
             const invoiceCharges = @json($invoiceCharges);
-
+            const clients = @json($clients);
             // console.log(items);
 
             // Simple Invoice Charge Function
@@ -1775,8 +1735,8 @@
             const paymentTypeSplit = document.getElementById("payment_type_split");
             const paymentTypeCash = document.getElementById("payment_type_cash");
             const paymentTypeImport = document.getElementById('payment_type_import');
-            const isInvoicePaid = @json($invoice->status === 'paid');
-            const hasPaymentType = @json(!empty($invoice->payment_type));
+            const isInvoicePaid = "{{ $invoice->status === 'paid' }}"
+            const hasPaymentType = "{{ !empty($invoice->payment_type) }}";
 
             clientButton.disabled = true;
             agentButton.disabled = true;
@@ -1804,6 +1764,8 @@
             invoiceIdInput.value = invoice.id;
 
             const invoiceExpireDefault = @json($invoiceExpireDefault);
+
+            let clientCredits = [];
 
             function checkInvoiceId() {
                 const tabs = document.querySelectorAll('input[name="payment_type"]');
@@ -1970,12 +1932,22 @@
                 }
             }
 
+            function updateCreditRow(rowNumber, clientId) {
+                const selectedClient = clients.filter(client => client.id == clientId)[0];
+                clientCredits[rowNumber] = selectedClient?.total_credit || 0;
+                
+                const creditDisplayElement = document.getElementById(`credit_display_${rowNumber}`);
+                if (creditDisplayElement) {
+                    creditDisplayElement.innerText = `Credit: ${clientCredits[rowNumber].toFixed(2)}`;
+                } else {
+                    console.error('Credit display element not found:', `credit_display_${rowNumber}`);
+                }
+            }
 
-            function updateRows() { //split payment
+            function updateRowSplit() { //split payment
                 const splitInto = parseInt(document.getElementById('split-into').value) || 0;
                 const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
                 const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
-                const clients = @json($clients);
                 const paymentMethods = @json($paymentMethods);
                 const tbody = document.getElementById('split-rows');
                 tbody.innerHTML = ''; // Clear existing rows
@@ -1985,10 +1957,45 @@
                     row.innerHTML = `
                         <td class="border-b px-4 py-2">${i}</td>
                         <td class="border-b px-4 py-2">
-                            <div class="w-[180px]">
-                                <select id="customer_name_${i}" name="customer_name_${i}" class="w-full p-2 border rounded-md account-select" placeholder="Select Client">
-                                    ${clients.map(client => `<option value="${client.id}">${client.name}</option>`).join('')}
-                                </select>
+                            <div class="w-[180px] relative">
+                                <div id="searchable_dropdown_${i}" class="w-full">
+                                    <div class="relative">
+                                        <button type="button"
+                                                onclick="toggleSearchableDropdown(${i})"
+                                                class="w-full border border-gray-300 p-2 rounded text-base text-left bg-white text-black">
+                                            <span id="selected_text_${i}" class="text-gray-400">Select Client</span>
+                                        </button>
+
+                                        <input type="hidden" name="customer_name_${i}" id="customer_name_${i}">
+
+                                        <div id="dropdown_${i}" style="display: none; position: fixed; z-index: 9999;"
+                                             class="bg-white border w-80 max-h-48 overflow-y-auto rounded shadow">
+                                            <div class="px-2 py-2">
+                                                <input type="text"
+                                                       id="search_input_${i}"
+                                                       placeholder="Search clients..."
+                                                       onkeyup="filterClientsSplit(${i}, this.value)"
+                                                       class="w-full border border-gray-300 rounded px-2 py-1 text-sm text-black">
+                                            </div>
+
+                                            <div id="options_container_${i}" class="max-h-32 overflow-y-auto">
+                                                ${clients.map(client => `
+                                                    <div class="p-2 hover:bg-gray-100 cursor-pointer text-sm client-option"
+                                                         data-client-id="${client.id}"
+                                                         data-client-name="${(client.full_name || client.name || '').replace(/"/g, '&quot;')}"
+                                                         data-row-index="${i}">
+                                                        ${client.full_name || client.name || 'Unnamed Client'}
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="border-b px-4 py-2">
+                            <div class="w-[180px]" id="credit_display_${i}">
+                                Credit: 0.00
                             </div>
                         </td>
                         <td class="border-b px-4 py-2">
@@ -2044,7 +2051,7 @@
                 }
             }
 
-            function updateRows1() { // partial payment
+            function updateRowPartial() { // partial paymen
                 const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
                 const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
                 const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
@@ -2100,6 +2107,120 @@
                 }
             }
 
+            // Searchable dropdown functions for client selection
+            function toggleSearchableDropdown(rowIndex) {
+                const dropdown = document.getElementById(`dropdown_${rowIndex}`);
+                const searchInput = document.getElementById(`search_input_${rowIndex}`);
+                const button = document.querySelector(`#searchable_dropdown_${rowIndex} button`);
+                
+                // Close all other dropdowns first
+                document.querySelectorAll('[id^="dropdown_"]').forEach(dd => {
+                    if (dd.id !== `dropdown_${rowIndex}`) {
+                        dd.style.display = 'none';
+                    }
+                });
+
+                if (dropdown.style.display === 'none') {
+                    // Calculate position relative to the button
+                    const buttonRect = button.getBoundingClientRect();
+                    const dropdownWidth = 320; // w-80 = 320px
+                    
+                    // Position dropdown below the button
+                    dropdown.style.top = (buttonRect.bottom + 4) + 'px';
+                    dropdown.style.left = buttonRect.left + 'px';
+                    dropdown.style.width = Math.max(dropdownWidth, buttonRect.width) + 'px';
+                    
+                    // Check if dropdown would go off-screen and adjust if needed
+                    const viewportWidth = window.innerWidth;
+                    const dropdownRight = buttonRect.left + dropdownWidth;
+                    
+                    if (dropdownRight > viewportWidth) {
+                        dropdown.style.left = (viewportWidth - dropdownWidth - 10) + 'px';
+                    }
+                    
+                    dropdown.style.display = 'block';
+                    searchInput.focus();
+                    searchInput.value = '';
+                    filterClientsSplit(rowIndex, ''); // Show all clients initially
+                } else {
+                    dropdown.style.display = 'none';
+                }
+            }
+
+            function filterClientsSplit(rowIndex, searchTerm) {
+
+                const optionsContainer = document.getElementById(`options_container_${rowIndex}`);
+                const options = optionsContainer.querySelectorAll('.client-option');
+                
+                let matchCount = 0;
+                options.forEach(option => {
+                    const clientName = option.getAttribute('data-client-name').toLowerCase();
+                    const matches = clientName.includes(searchTerm.toLowerCase());
+                    option.style.display = matches ? 'block' : 'none';
+                    
+                    if (matches) matchCount++;
+                    
+                    // Highlight matching text
+                    if (searchTerm && matches) {
+                        const name = option.getAttribute('data-client-name');
+                        const regex = new RegExp(`(${searchTerm})`, 'gi');
+                        option.innerHTML = name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
+                    } else {
+                        option.innerHTML = option.getAttribute('data-client-name');
+                    }
+                });
+                
+            }
+
+            function selectSplitClient(rowIndex, clientId, clientName, element) {
+                // Update hidden input
+                const hiddenInput = document.getElementById(`customer_name_${rowIndex}`);
+                if (hiddenInput) {
+                    hiddenInput.value = clientId;
+                } else {
+                    console.error('Hidden input not found:', `customer_name_${rowIndex}`);
+                }
+                
+                // Update display text
+                const selectedText = document.getElementById(`selected_text_${rowIndex}`);
+                if (selectedText) {
+                    selectedText.textContent = clientName;
+                    selectedText.className = 'text-black'; // Remove gray color
+                } else {
+                    console.error('Selected text element not found:', `selected_text_${rowIndex}`);
+                }
+                
+                // Close dropdown
+                const dropdown = document.getElementById(`dropdown_${rowIndex}`);
+                if (dropdown) {
+                    dropdown.style.display = 'none';
+                } else {
+                    console.error('Dropdown not found:', `dropdown_${rowIndex}`);
+                }
+                
+                // Update credit row
+                updateCreditRow(rowIndex, clientId);
+            }
+
+            // Close dropdowns when clicking outside or handle option selection
+            document.addEventListener('click', function(event) {
+                // Handle client option selection - only for split payment rows
+                if (event.target.classList.contains('client-option') && event.target.getAttribute('data-row-index')) {
+                    const clientId = event.target.getAttribute('data-client-id');
+                    const clientName = event.target.getAttribute('data-client-name');
+                    const rowIndex = event.target.getAttribute('data-row-index');
+                    
+                    selectSplitClient(parseInt(rowIndex), clientId, clientName, event.target);
+                    return;
+                }
+                
+                // Close split payment dropdowns when clicking outside
+                if (!event.target.closest('[id^="searchable_dropdown_"]')) {
+                    document.querySelectorAll('[id^="dropdown_"]').forEach(dropdown => {
+                        dropdown.style.display = 'none';
+                    });
+                }
+            });
 
 
             function updateField(itemId, fieldId) {
@@ -2275,7 +2396,7 @@
 
                 const frag = document.createDocumentFragment();
                 let count = 0;
-                const isInvoicePaid = @json($invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'));
+                const isInvoicePaid = "{{ $invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash') }}";
 
                 for (const item of items) {
                     try {
@@ -2917,7 +3038,7 @@
             function filterClients() {
                 const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
                 const filteredClients = clients.filter(client =>
-                    client.name.toLowerCase().includes(searchValue) || client.email.toLowerCase().includes(searchValue)
+                    client.full_name.toLowerCase().includes(searchValue) || client.email.toLowerCase().includes(searchValue)
                 );
                 renderClientList(filteredClients);
             }
@@ -2928,7 +3049,7 @@
                 clientData.forEach(client => {
                     const li = document.createElement('li');
                     li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
-                    li.innerText = `${client.name} - ${client.email}`;
+                    li.innerText = `${client.full_name} - ${client.email}`;
                     li.onclick = () => selectClient(client);
                     clientList.appendChild(li);
                 });
@@ -2938,8 +3059,8 @@
                 document.getElementById('receiverId').value = client.id;
 
                 // Update input fields
-                document.getElementById('receiverName').value = client.name;
-                document.getElementById('receiverName1').value = client.name;
+                document.getElementById('receiverName').value = client.full_name;
+                document.getElementById('receiverName1').value = client.full_name;
                 document.getElementById('receiverEmail').value = client.email;
                 document.getElementById('receiverPhone').value = client.phone;
                 closeClientModal();
@@ -3015,8 +3136,8 @@
                     document.getElementById('receiverId').value = client.id;
                     document.getElementById('clientid').value = client.id;
                     // Update input fields for client
-                    document.getElementById('receiverName').value = client.name;
-                    document.getElementById('receiverName1').textContent = client.name;
+                    document.getElementById('receiverName').value = client.full_name;
+                    document.getElementById('receiverName1').textContent = client.full_name;
                     document.getElementById('receiverEmail').value = client.email;
                     document.getElementById('receiverPhone').value = client.phone;
 
@@ -3115,7 +3236,7 @@
                 clearErrorAlert();
 
                 // Validation for "full" mode: payment gateway and method selection
-                if (mode === 'full'){
+                if (mode === 'full') {
                     if (!gateway) {
                         showErrorAlert('Please choose a payment gateway.');
                         return;
@@ -3191,7 +3312,9 @@
                         }
 
                         const clientId = clientSelectElement.value;
-                        const clientName = clientSelectElement.options[clientSelectElement.selectedIndex].text;
+                        // Get client name from the display text instead of select options
+                        const selectedTextElement = row.querySelector(`#selected_text_${index + 1}`);
+                        const clientName = selectedTextElement ? selectedTextElement.textContent : '';
 
                         const dateInput = row.querySelector(`input[type="date"]`);
                         const date = dateInput ? dateInput.value : null;
@@ -3602,7 +3725,6 @@
             document.addEventListener("DOMContentLoaded", function() {
 
                 tasks = @json($tasks);
-                let clients = @json($clients);
                 let initialTasks = @json($selectedTasks);
 
                 if (initialTasks && initialTasks.length > 0) {
@@ -3785,8 +3907,7 @@
                     }
                 }
             }
-        </script>
-        <script>
+
             document.addEventListener('DOMContentLoaded', () => {
                 const modal = document.getElementById('importModal');
                 const openBtn = document.getElementById('openImportModalBtn');

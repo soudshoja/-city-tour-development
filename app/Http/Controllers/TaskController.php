@@ -1722,18 +1722,14 @@ class TaskController extends Controller
     {
         Log::info('Reverting financials for task: ' . $task->reference);
 
-        $entries = JournalEntry::where('task_id', $task->id)->get();
-        foreach ($entries as $entry) {
-            $entry->delete();
-        }
+        JournalEntry::where('task_id', $task->id)
+            ->whereHas('transaction', function ($q) use ($task) {
+                $q->whereRaw('LOWER(description) LIKE ?', ['%' . $task->reference . '%']);
+            })
+            ->delete();
 
-        $transactions = Transaction::with('journalEntries')
-            ->where('description', 'like', '%' . $task->reference . '%')
-            ->get();
-
-        foreach ($transactions as $transaction) {
-            $transaction->delete();
-        }
+        Transaction::whereRaw('LOWER(description) LIKE ?', ['%' . $task->reference . '%'])
+            ->delete();
     }
 
     /**
@@ -3581,7 +3577,7 @@ class TaskController extends Controller
             'transaction_date' => $transactionDate,
         ]);
 
-        foreach( $journalEntries as $entry) {
+        foreach ($journalEntries as $entry) {
             JournalEntry::create([
                 'transaction_id' => $transaction->id,
                 'company_id' => $entry->company_id,

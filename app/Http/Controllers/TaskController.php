@@ -3428,57 +3428,59 @@ class TaskController extends Controller
     public function ReverseUnpaidVoidedTask(Task $originalTask)
     {
 
-        $liabilities = Account::where('name', 'like', '%Liabilities%')
-            ->where('company_id', $originalTask->company_id)
-            ->first();
+        // $liabilities = Account::where('name', 'like', '%Liabilities%')
+        //     ->where('company_id', $originalTask->company_id)
+        //     ->first();
 
-        $expenses = Account::where('name', 'like', '%Expenses%')
-            ->where('company_id', $originalTask->company_id)
-            ->first();
+        // $expenses = Account::where('name', 'like', '%Expenses%')
+        //     ->where('company_id', $originalTask->company_id)
+        //     ->first();
 
-        $supplier = Supplier::find($originalTask->supplier_id);
-        $supplierCompany = SupplierCompany::where('supplier_id', $originalTask->supplier_id)
-            ->where('company_id', $originalTask->company_id)
-            ->first();
+        // $supplier = Supplier::find($originalTask->supplier_id);
+        // $supplierCompany = SupplierCompany::where('supplier_id', $originalTask->supplier_id)
+        //     ->where('company_id', $originalTask->company_id)
+        //     ->first();
 
-        $supplierPayable = Account::where('name', $supplier->name)
-            ->where('company_id', $originalTask->company_id)
-            ->where('root_id', $liabilities->id)
-            ->first();
+        // $supplierPayable = Account::where('name', $supplier->name)
+        //     ->where('company_id', $originalTask->company_id)
+        //     ->where('root_id', $liabilities->id)
+        //     ->first();
 
-        $companyIssuedBy = $originalTask->issued_by;
+        // $companyIssuedBy = $originalTask->issued_by;
 
-        if (!$companyIssuedBy) {
-            Log::error('Company issued by not found for task ID: ' . $originalTask->id);
-            throw new Exception('Company issued by not found.');
-        }
+        // if (!$companyIssuedBy) {
+        //     Log::error('Company issued by not found for task ID: ' . $originalTask->id);
+        //     throw new Exception('Company issued by not found.');
+        // }
 
-        $issuedByAccount = Account::where('name', $companyIssuedBy)
-            ->where('company_id', $originalTask->company_id)
-            ->where('root_id', $liabilities->id)
-            ->first();
+        // $issuedByAccount = Account::where('name', $companyIssuedBy)
+        //     ->where('company_id', $originalTask->company_id)
+        //     ->where('root_id', $liabilities->id)
+        //     ->first();
 
-        if (!$issuedByAccount) {
-            Log::error('Issued by account not found for task ID: ' . $originalTask->id);
-            throw new Exception('Issued by account not found.');
-        }
-        $supplierCost = Account::where('name', $supplier->name)
-            ->where('company_id', $originalTask->company_id)
-            ->where('root_id', $expenses->id)
-            ->first();
+        // if (!$issuedByAccount) {
+        //     Log::error('Issued by account not found for task ID: ' . $originalTask->id);
+        //     throw new Exception('Issued by account not found.');
+        // }
+        // $supplierCost = Account::where('name', $supplier->name)
+        //     ->where('company_id', $originalTask->company_id)
+        //     ->where('root_id', $expenses->id)
+        //     ->first();
 
-        if (!$supplierPayable || !$supplierCost) {
-            Log::error('Missing required accounts for reversal.', [
-                'payable' => $supplierPayable,
-                'cost' => $supplierCost
-            ]);
-            throw new Exception('Missing required accounts for reversal.');
-        }
+        // if (!$supplierPayable || !$supplierCost) {
+        //     Log::error('Missing required accounts for reversal.', [
+        //         'payable' => $supplierPayable,
+        //         'cost' => $supplierCost
+        //     ]);
+        //     throw new Exception('Missing required accounts for reversal.');
+        // }
 
         Log::info('Recording reversal journal & transaction for task ID: ' . $originalTask->id);
 
         // Use task's issued_date as transaction_date
         $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
+
+        $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
 
         $transaction = Transaction::create([
             'branch_id' => $originalTask->agent->branch_id,
@@ -3493,35 +3495,52 @@ class TaskController extends Controller
             'transaction_date' => $transactionDate,
         ]);
 
-        JournalEntry::create([
-            'transaction_id' => $transaction->id,
-            'company_id' => $originalTask->company_id,
-            'branch_id' => $originalTask->agent->branch_id,
-            'account_id' => $supplierCost->id,
-            'task_id' => $originalTask->id,
-            'transaction_date' => $transactionDate,
-            'description' => 'Reversal: Cancelled Cost from ' . $supplierCompany->supplier->name,
-            'name' => $supplierCompany->supplier->name,
-            'debit' => 0,
-            'credit' => $originalTask->total,
-            'balance' => $originalTask->total,
-            'type' => 'payable',
-        ]);
+        foreach( $journalEntries as $entry) {
+            JournalEntry::create([
+                'transaction_id' => $transaction->id,
+                'company_id' => $entry->company_id,
+                'branch_id' => $entry->branch_id,
+                'account_id' => $entry->account_id,
+                'task_id' => $entry->task_id,
+                'transaction_date' => $transactionDate,
+                'description' => 'Reversal: ' . $entry->description,
+                'name' => $entry->name,
+                'debit' => $entry->credit,
+                'credit' => $entry->debit,
+                'balance' => $entry->balance,
+                'type' => $entry->type,
+            ]);
+        }
 
-        JournalEntry::create([
-            'transaction_id' => $transaction->id,
-            'company_id' => $originalTask->company_id,
-            'branch_id' => $originalTask->agent->branch_id,
-            'account_id' => $issuedByAccount->id,
-            'task_id' => $originalTask->id,
-            'transaction_date' => $transactionDate,
-            'description' => 'Reversal: Cancelled Payable to ' . $supplierCompany->supplier->name,
-            'name' => $supplierCompany->supplier->name,
-            'debit' => $originalTask->total,
-            'credit' => 0,
-            'balance' => $originalTask->total,
-            'type' => 'payable',
-        ]);
+        // JournalEntry::create([
+        //     'transaction_id' => $transaction->id,
+        //     'company_id' => $originalTask->company_id,
+        //     'branch_id' => $originalTask->agent->branch_id,
+        //     'account_id' => $supplierCost->id,
+        //     'task_id' => $originalTask->id,
+        //     'transaction_date' => $transactionDate,
+        //     'description' => 'Reversal: Cancelled Cost from ' . $supplierCompany->supplier->name,
+        //     'name' => $supplierCompany->supplier->name,
+        //     'debit' => 0,
+        //     'credit' => $originalTask->total,
+        //     'balance' => $originalTask->total,
+        //     'type' => 'payable',
+        // ]);
+
+        // JournalEntry::create([
+        //     'transaction_id' => $transaction->id,
+        //     'company_id' => $originalTask->company_id,
+        //     'branch_id' => $originalTask->agent->branch_id,
+        //     'account_id' => $issuedByAccount->id,
+        //     'task_id' => $originalTask->id,
+        //     'transaction_date' => $transactionDate,
+        //     'description' => 'Reversal: Cancelled Payable to ' . $supplierCompany->supplier->name,
+        //     'name' => $supplierCompany->supplier->name,
+        //     'debit' => $originalTask->total,
+        //     'credit' => 0,
+        //     'balance' => $originalTask->total,
+        //     'type' => 'payable',
+        // ]);
 
         Log::info('Void reversal journal completed for task: ' . $originalTask->reference);
         DB::commit();

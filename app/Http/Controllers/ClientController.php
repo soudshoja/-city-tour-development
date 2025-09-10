@@ -789,6 +789,7 @@ class ClientController extends Controller
 
     public function addCredit(Payment $payment)
     {
+        Log::info('Starting to add credit for clint through payment link');
 
         $client = Client::findOrFail($payment->client_id);
         $agent = Agent::find($payment->agent_id);
@@ -863,6 +864,23 @@ class ClientController extends Controller
                 }
             } elseif (strtolower($payment->payment_gateway) === 'tap') {
                 try {
+                    $gatewayFee = ChargeService::TapCharge([
+                        'amount' => $payment->amount,
+                        'client_id' => $payment->client_id,
+                        'agent_id' => $payment->agent_id,
+                        'currency' => $payment->currency
+                    ], $payment->payment_gateway)['gatewayFee'] ?? 0;
+                } catch (Exception $e) {
+                    Log::error('TapCharge exception', [
+                        'message' => $e->getMessage(),
+                        'amount' => $payment->amount,
+                        'client_id' => $payment->client_id,
+                        'agent_id' => $payment->agent_id,
+                    ]);
+                    $gatewayFee = 0;
+                }
+            } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
+                 try {
                     $gatewayFee = ChargeService::TapCharge([
                         'amount' => $payment->amount,
                         'client_id' => $payment->client_id,

@@ -240,6 +240,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/export', [CoaController::class, 'exportAccounts'])->name('export');
         Route::post('/import', [CoaController::class, 'importAccounts'])->name('import');
         Route::post('/delegate-price', [CoaController::class, 'delegatePriceAmadeus'])->name('delegate-price');
+        Route::delete('/{id}', [CoaController::class, 'deleteTransaction'])->name('deleteTransaction');
     });
 
     //    / Route::get('/accounting-summary', [AccountingController::class, 'index'])->name('accounting.index');

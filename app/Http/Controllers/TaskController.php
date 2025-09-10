@@ -2838,8 +2838,32 @@ class TaskController extends Controller
             }
         }
 
+        $supplierStatus = $reservation['service']['status'];
+
+        switch ($supplierStatus) {
+            case 'OK':
+                $status = 'issued';
+                break;
+            case 'AM':
+                $status = 'reissued';
+                break;
+            case 'RQ':
+                $status = 'confirmed';
+                break;
+            case 'XX':
+                $status = 'void';
+                break;
+            case 'XP':
+                $status = 'void';
+                break;
+            default:
+                $status = 'confirmed';
+                break;
+        }
+
+        $cancellationDate = null;
+
         if (isset($reservation['service']['cancellationPolicy'])) {
-            //logger('Cancellation Policy: ', $reservation['service']['cancellationPolicy']);
 
             foreach ($reservation['service']['cancellationPolicy']['policies'] as $policy) {
                 $cancellationPolicy[] = [
@@ -2849,20 +2873,16 @@ class TaskController extends Controller
             }
 
             $cancellationDate = $reservation['service']['cancellationPolicy']['date'];
+        }
 
-            if ($cancellationDate) {
-                $cancellationDate = Carbon::parse($cancellationDate)->toDateTimeString();
+        if ($cancellationDate && ($supplierStatus == 'OK' || $supplierStatus == 'RQ')) {
+            $cancellationDate = Carbon::parse($cancellationDate)->toDateTimeString();
 
-                if (Date::now()->greaterThanOrEqualTo($cancellationDate)) {
-                    $status = 'issued';
-                } else {
-                    $status = 'confirmed';
-                }
+            if (Date::now()->greaterThanOrEqualTo($cancellationDate)) {
+                $status = 'issued';
             } else {
-                throw new Exception('Cancellation date not found in reservation data');
+                $status = 'confirmed';
             }
-        } else {
-            throw new Exception('Cancellation policy not found in reservation data');
         }
 
         $cancellationPolicy = json_encode($cancellationPolicy);
@@ -2904,7 +2924,7 @@ class TaskController extends Controller
                 'company_id' => $companyId,
                 'type' => 'hotel',
                 'status' => $status,
-                'supplier_status' => $reservation['service']['status'],
+                'supplier_status' => $supplierStatus,
                 'client_name' => $clientName,
                 'reference' => (string)$reservation['id'] ?? null,
                 'duration' => $serviceDates['duration'] ?? null,
@@ -2951,47 +2971,13 @@ class TaskController extends Controller
             Log::channel('magic_holidays')->info('Creating Task Initiate');
 
             $request = new Request($taskData);
-            $request->merge([
-                'company_id' => $companyId,
-            ]);
 
             $existingTask = Task::where('reference', $taskData['reference'])
                 ->where('agent_id', $taskData['agent_id'])
                 ->where('supplier_id', $taskData['supplier_id'])
                 ->first();
-            if ($existingTask) {
 
-                if ($existingTask->cancellation_deadline == null) {
-                    $existingTask->cancellation_deadline = $cancellationDate;
-                    $existingTask->save();
-                }
-
-
-                if ($existingTask->supplier_status !== $taskData['supplier_status']) {
-                    $existingTask->supplier_status = $taskData['supplier_status'];
-                    $existingTask->status = $taskData['status'];
-                    $existingTask->save();
-                    Log::channel('magic_holidays')->info('Updated existing task: ' . $existingTask->reference);
-
-                    $processResult['success'][] = [
-                        'reference' => $existingTask->reference,
-                        'message' => 'Task already exists, updated status',
-                    ];
-
-                    continue; // Skip creating a new task if it already exists but update the status
-                } else {
-                    Log::channel('magic_holidays')->info('Existing task already exists: ' . $existingTask->reference);
-
-                    $processResult['success'][] = [
-                        'reference' => $existingTask->reference,
-                        'message' => 'Task already exists, no changes made',
-                    ];
-
-                    continue; // Skip creating a new task if it already exists
-                }
-            } else {
-                $response = $this->store($request);
-            }
+            $response = $this->store($request);
 
             $response = json_decode($response->getContent(), true);
             logger('Task created: ', $response);

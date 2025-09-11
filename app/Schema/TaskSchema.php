@@ -93,7 +93,7 @@ class TaskSchema
             'price' => [
                 'type' => 'float',
                 'desc' => "Base price of the service before taxes and fees. For air files: Use exchanged price if different currency (e.g., from 'USD 100.00 ; KWD 30.000', use 30.000). For other documents: Look for base fare, net price, or principal amount before taxes. May be labeled as 'Base Fare', 'Net Price', 'Fare', 'Amount', or 'Price'.",
-                'example' => 100.00,
+                'example' => 30.52,
                 'default' => 0.0,
             ],
             'exchange_currency' => [
@@ -104,7 +104,7 @@ class TaskSchema
             ],
             'original_price' => [
                 'type' => 'float',
-                'desc' => "Original price before currency conversion. For air files: First amount in exchange format 'USD 100.00 ; KWD 30.000' (use 100.00). For other documents: If document shows original pricing in different currency, extract that amount. Set to null if same as price.",
+                'desc' => "Base fare in the document's ORIGINAL currency (before conversion). If the doc shows 'USD 100.00 ; KWD 30.000', set original_price = 100.00 and original_currency = 'USD'. If there is no currency difference, set to null.",
                 'example' => 100.00,
                 'default' => null,
             ],
@@ -116,20 +116,26 @@ class TaskSchema
             ],
             'total' => [
                 'type' => 'float',
-                'desc' => "Final total amount including all fees, taxes, and charges. For air files: Total stated at end of pricing line. For other documents: Look for 'Total', 'Total Amount', 'Grand Total', 'Final Amount', 'Booking Total',or 'Amount Due'. You don't need to calculate this, just extract the final total amount as stated in the document. It should include base price + taxes + fees. For multiple passengers, it should be the total for that passenger like 'Passenger total'. For some documents, the total price of a single passenger is not stated, since we separate the task for each passenger, you need to divide the total by number of passengers. If no total amount is stated, set to 0.0.",
-                'example' => 115.00,
+                'desc' => "Final total amount in KWD including all fees, taxes, and charges. For air files: Total stated at end of pricing line. For other documents: Look for 'Total', 'Total Amount', 'Grand Total', 'Final Amount', 'Booking Total',or 'Amount Due'. You don't need to calculate this, just extract the final total amount as stated in the document. It should include base price + taxes + fees. For multiple passengers, it should be the total for that passenger like 'Passenger total'. For some documents, the total price of a single passenger is not stated, since we separate the task for each passenger, you need to divide the total by number of passengers. If no total amount is stated, set to 0.0. . Only set when the document shows a KWD total. If only foreign totals exist, set total = 0.0 and fill original_total + original_currency; server will convert later.",
+                'example' => 35.10,
                 'default' => 0.0,
+            ],
+            'original_total' => [
+                'type' => 'float',
+                'desc' => "Final total in the ORIGINAL currency exactly as printed. If there is no explicit total, compute as original_price + original_tax + original_surcharge.",
+                'example' => 115.20,
+                'default' => null,
             ],
             'original_surcharge' => [
                 'type' => 'float',
-                'desc' => "Additional surcharge or service fee as printed in the document, in original_currency (before conversion). For air files: Any surcharge mentioned. For other documents: Look for surcharges, service fees, booking fees, or additional charges. May be labeled as 'Surcharge', 'Service Fee', 'Booking Fee', or 'Additional Charge'.",
+                'desc' => "Additional surcharge or service fee in the ORIGINAL currency exactly as printed. For air files: Any surcharge mentioned. For other documents: Look for surcharges, service fees, booking fees, or additional charges. May be labeled as 'Surcharge', 'Service Fee', 'Booking Fee', or 'Additional Charge'.",
                 'example' => 10.00,
                 'default' => 0.0,
             ],
             'surcharge' => [
                 'type' => 'float',
-                'desc' => "Additional surcharge or service fee. For air files: Any surcharge mentioned. For other documents: Look for surcharges, service fees, booking fees, or additional charges. May be labeled as 'Surcharge', 'Service Fee', 'Booking Fee', or 'Additional Charge'.",
-                'example' => 10.00,
+                'desc' => "Additional surcharge or service fee in KWD. For air files: Any surcharge mentioned. For other documents: Look for surcharges, service fees, booking fees, or additional charges. May be labeled as 'Surcharge', 'Service Fee', 'Booking Fee', or 'Additional Charge'. Only set when KWD amounts are present. Otherwise leave 0.0 and fill original_surcharge.",
+                'example' => 3.05,
                 'default' => 0.0,
             ],
             'penalty_fee' => [
@@ -140,13 +146,13 @@ class TaskSchema
             ],
             'original_tax' => [
                 'type' => 'float',
-                'desc' => "Total tax amount exactly as printed in the document, in original_currency (before conversion). For air files: Sum of all tax components. For other documents: Look for tax amounts, VAT, government fees, or similar charges. May be labeled as 'Tax', 'VAT', 'Government Tax', 'Fees', or 'Taxes'.",
-                'example' => 5.00,
+                'desc' => "Total taxes/fees in the ORIGINAL currency exactly as printed.",
+                'example' => 1.53,
                 'default' => 0.0,
             ],
             'tax' => [
                 'type' => 'float',
-                'desc' => "Total tax amount. For air files: Sum of all tax components. For other documents: Look for tax amounts, VAT, government fees, or similar charges. May be labeled as 'Tax', 'VAT', 'Government Tax', 'Fees', or 'Taxes'.",
+                'desc' => "Total taxes/fees in KWD. Only set when the document shows KWD taxes. If taxes are only shown in a foreign currency, set tax = 0.0 and use original_tax + original_currency; server will convert later.",
                 'example' => 5.00,
                 'default' => 0.0,
             ],
@@ -247,7 +253,7 @@ class TaskSchema
             ],
             'is_exchanged' => [
                 'type' => 'boolean',
-                'desc' => "Indicates if the ticket total has been exchanged or converted to a different currency. Some suppliers already show the exchanged price in the document, so you can check if the total is different from the original price. If there is no indication that the total has been exchanged, set to false. Otherwise, set to true.",
+                'desc' => "TRUE only if every monetary field that appears (any of price, tax, surcharge, total) is provided in KWD — the KWD field exists (0.0 is allowed). If any appeared field exists only as original_* in a non-KWD currency while its KWD field is missing/null, set FALSE. If any component shows both KWD and a non-KWD original (mixed), set FALSE. KWD-only docs → TRUE.",
                 'example' => true,
                 'default' => false,
             ],

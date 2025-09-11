@@ -157,7 +157,6 @@ class TaskController extends Controller
             'supplier_pay_date',
             'cancellation-deadline',
             'type',
-            'gds-reference',
             'amadeus-reference',
             'created-by',
             'issued-by',
@@ -503,6 +502,7 @@ class TaskController extends Controller
             'total' => 'nullable|numeric',
             'original_tax' => 'nullable|numeric',
             'tax' => 'nullable|numeric',
+            'original_total' => 'nullable|numeric',
             'original_surcharge' => 'nullable|numeric',
             'surcharge' => 'nullable|numeric',
             'penalty_fee' => 'nullable|numeric',
@@ -529,35 +529,37 @@ class TaskController extends Controller
             $request->merge([
                 'exchange_currency' => 'KWD',
                 'original_currency' => $request->exchange_currency,
-                'original_price' => $request->total > $request->price ? $request->total : $request->price,
             ]);
         }
 
         $amadeus = Supplier::where('name', 'Amadeus')->first();
-
         $exceptionConvert = [];
-
         if ($amadeus) $exceptionConvert[] = $amadeus->id;
 
-        if (!in_array($request->supplier_id, $exceptionConvert) && $request->original_currency && $request->original_price && !$request->is_exchanged) {
+        $isExchanged = filter_var($request->input('is_exchanged', false), FILTER_VALIDATE_BOOLEAN);
+        $originalCurrency = $request->input('original_currency');
+        $exchangeCurrency = $request->input('exchange_currency');
 
+        $emptyOrZero = function ($v) {
+            return $v === null || $v === '' || round((float)$v, 3) === 0.0;
+        };
+
+        $needPriceConversion = !$isExchanged && $request->filled('original_price') && $emptyOrZero($request->input('price'));
+        $needTotalConversion = $request->filled('original_total') && $emptyOrZero($request->input('total'));
+        $needTaxConversion = $request->filled('original_tax') && $emptyOrZero($request->input('tax'));
+        $needSurchargeConversion = $request->filled('original_surcharge') && $emptyOrZero($request->input('surcharge'));
+
+        $shouldConvert = !in_array($request->supplier_id, $exceptionConvert ?? [], true) && $request->filled('original_currency')
+            && $request->filled('exchange_currency') && ($needPriceConversion || $needTotalConversion || $needTaxConversion || $needSurchargeConversion);
+
+        if ($shouldConvert) {
             $companyId = $request->company_id;
-            $originalCurrency = $request->original_currency;
-            $exchangeCurrency = $request->exchange_currency;
-            $originalPrice = $request->original_price;
 
-            try {
-                $convertResponse = $this->convert(
-                    $companyId,
-                    $originalCurrency,
-                    $exchangeCurrency,
-                    $originalPrice
-                );
+            $ensureConvert = function (float $amount) use ($companyId, $originalCurrency, $exchangeCurrency) {
+                $response = $this->convert($companyId, $originalCurrency, $exchangeCurrency, $amount);
 
-                if ($convertResponse['status'] === 'error' || $convertResponse['exchange_rate'] === null) {
+                if (($response['status'] ?? 'success') === 'error' || empty($response['exchange_rate'])) {
                     $currencyExchangeController = new CurrencyExchangeController();
-
-
                     $currencyExchangeResponse = $currencyExchangeController->storeProcess(new Request([
                         'company_id' => $companyId,
                         'base_currency' => $originalCurrency,
@@ -566,80 +568,57 @@ class TaskController extends Controller
                     ]));
 
                     if (!$currencyExchangeResponse instanceof JsonResponse) {
-                        Log::error('Response from updateJournalPaymentMethod is not a JsonResponse', [
-                            'expected_type' => JsonResponse::class,
-                            'actual_type' => is_object($currencyExchangeResponse) ? get_class($currencyExchangeResponse) : gettype($currencyExchangeResponse)
-                        ]);
-
-                        throw new Exception('Failed to update payment method journal entries.');
+                        throw new \RuntimeException('Exchange-rate bootstrap failed.');
+                    }
+                    $data = $currencyExchangeResponse->getData(true);
+                    if (($data['status'] ?? 'error') === 'error') {
+                        throw new \RuntimeException('Failed to create exchange rate: '.$data['message']);
                     }
 
-                    $currencyExchangeResponse = $currencyExchangeResponse->getData(true);
-
-                    if ($currencyExchangeResponse['status'] === 'error') {
-                        Log::error('Failed to create currency exchange', [
-                            'error' => $currencyExchangeResponse['message'],
-                            'company_id' => $companyId,
-                            'base_currency' => $originalCurrency,
-                            'exchange_currency' => $exchangeCurrency,
-                        ]);
-
-                        return response()->json([
-                            'status' => 'error',
-                            'message' => 'Failed to create currency exchange: ' . $currencyExchangeResponse['message'],
-                        ], 500);
-                    }
-
-                    $convertResponse = $this->convert(
-                        $companyId,
-                        $originalCurrency,
-                        $exchangeCurrency,
-                        $originalPrice
-                    );
-
-                    if ($convertResponse['status'] === 'error') {
-                        Log::error('Failed to convert currency after creating exchange rate', [
-                            'error' => $convertResponse['message'],
-                            'company_id' => $companyId,
-                            'original_currency' => $originalCurrency,
-                            'exchange_currency' => $exchangeCurrency,
-                            'original_price' => $originalPrice
-                        ]);
-
-                        return response()->json([
-                            'status' => 'error',
-                            'message' => 'Failed to convert currency after creating exchange rate: ' . $convertResponse['message'],
-                        ], 500);
+                    $response = $this->convert($companyId, $originalCurrency, $exchangeCurrency, $amount);
+                    if (($response['status'] ?? 'success') === 'error' || empty($response['exchange_rate'])) {
+                        throw new \RuntimeException('Conversion failed after creating exchange rate.');
                     }
                 }
 
-                $price = $convertResponse['converted_amount'];
-                $exchangeRate = $convertResponse['exchange_rate'];
+                return [$response['converted_amount'], $response['exchange_rate']];
+            };
 
-                $request->merge([
-                    'price' => $price,
-                    'total' => $price,
-                    'exchange_rate' => $exchangeRate,
-                ]);
-
-                $map = ['tax' => 'original_tax', 'surcharge' => 'original_surcharge'];
-                foreach ($map as $dst => $src) {
-                    $base = $request->input($src, $request->input($dst));
-                    if ($base === null || $base === '') {
-                        continue;
-                    }
-
-                    $resp = $this->convert($companyId, $originalCurrency, $exchangeCurrency, $base);
-
-                    if (($resp['status'] ?? 'success') !== 'error' && isset($resp['converted_amount'])) {
-                        $request->merge([$dst => round($resp['converted_amount'], 3)]);
+            try {
+                if ($needPriceConversion) {
+                    [$price, $rate] = $ensureConvert((float)$request->input('original_price'));
+                    $request->merge([
+                        'price' => $price,
+                        'exchange_rate' => $rate,
+                    ]);
+                }
+                if ($needTotalConversion) {
+                    [$total, $rate] = $ensureConvert((float)$request->input('original_total'));
+                    $request->merge([
+                        'total' => $total,
+                        'exchange_rate' => $request->input('exchange_rate', null) ?: $rate,
+                    ]);
+                }
+                if ($needTaxConversion) {
+                    [$amount, $rate] = $ensureConvert((float)$request->input('original_tax'));
+                    $request->merge(['tax' => round($amount, 3)]);
+                    if (!$request->has('exchange_rate')) {
+                        $request->merge(['exchange_rate' => $rate]);
                     }
                 }
-            } catch (Exception $e) {
-                Log::error('Currency conversion failed: ' . $e->getMessage(), [
-                    'original_currency' => $request->original_currency,
-                    'exchange_currency' => $request->exchange_currency,
-                    'original_price' => $request->original_price
+                if ($needSurchargeConversion) {
+                    [$amount, $rate] = $ensureConvert((float)$request->input('original_surcharge'));
+                    $request->merge(['surcharge' => round($amount, 3)]);
+                    if (!$request->has('exchange_rate')) {
+                        $request->merge(['exchange_rate' => $rate]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Currency conversion failed: '.$e->getMessage(), [
+                    'original_currency' => $originalCurrency,
+                    'exchange_currency' => $exchangeCurrency,
+                    'original_price' => $request->input('original_price'),
+                    'original_total' => $request->input('original_total'),
                 ]);
 
                 return response()->json([
@@ -647,6 +626,13 @@ class TaskController extends Controller
                     'message' => 'Currency conversion failed: ' . $e->getMessage(),
                 ], 500);
             }
+        }
+
+        if ($emptyOrZero($request->input('price')) && $emptyOrZero($request->input('tax')) && $emptyOrZero($request->input('surcharge')) && !$emptyOrZero($request->input('total')) &&
+            $request->input('exchange_currency') === 'KWD') {
+            $request->merge([
+                'price' => $request->input('total'),
+            ]);
         }
 
         $queryChkExistTask = Task::query();

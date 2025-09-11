@@ -524,6 +524,7 @@ class OpenAIClient implements AIClientInterface
                 'original_price': 100.00,
                 'original_currency': 'USD',
                 'total': 115.00,
+                'original_total': 115.00,
                 'original_surcharge': 10.00,
                 'surcharge': 10.00,
                 'original_tax': 5.00,
@@ -582,6 +583,7 @@ class OpenAIClient implements AIClientInterface
                 'original_price': 100.00,
                 'original_currency': 'USD',
                 'total': 115.00,
+                'original_total': 115.00,
                 'original_surcharge': 10.00,
                 'surcharge': 10.00,
                 'original_tax': 5.00,
@@ -764,6 +766,17 @@ class OpenAIClient implements AIClientInterface
 
         // Build comprehensive prompt for PDF extraction
         $prompt = "You are an assistant for processing uploaded PDF documents to extract structured travel booking data.\n\n";
+        $prompt .= "HARD CURRENCY RULES:\n";
+        $prompt .= "- If no explicit KWD base fare is shown → `price` = 0.0.\n";
+        $prompt .= "- If both KWD and foreign currency exist: put KWD into price/tax/surcharge/total; put foreign amounts into original_* + original_currency.\n";
+        $prompt .= "- If only foreign currency exists: set price/tax/surcharge/total = 0.0; fill original_* + original_currency.\n";
+        $prompt .= "- If only KWD exists: fill price/tax/surcharge/total in KWD; set all original_* and original_currency = null.\n";
+        $prompt .= "- Fallback (no taxes/fees): If tax and surcharge are blank or 0 AND a KWD Total is present, set `price = total` when `price` is 0/missing.\n";
+        $prompt .= "CURRENCY CAPTURE (component-wise):\n";
+        $prompt .= "- Create original_* only when that component is shown in a non-KWD currency.\n";
+        $prompt .= "- Do NOT create original_* for KWD-only components.\n";
+        $prompt .= "- Missing KWD base fare only zeros `price`, not other components.\n";
+        $prompt .= "- Example: Fare 72 USD; Charges 105.20 USD; Total 177.20 USD and 54.90 KWD → price=0, tax=0, surcharge=0, total=54.90; original_price=72 USD; original_tax=105.20 USD; original_total=177.20 USD; exchange_currency=KWD; original_currency=USD; is_exchanged=false.\n";
         $prompt .= "Extract data following these models:\n\n";
         $prompt .= "1. `tasks` model with the following fields:\n";
         foreach ($taskFields as $field => $meta) {
@@ -851,10 +864,10 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Fly Cham, Cham Wings Airlines and Air Arabia):\n";
         $prompt .= "  • Set tasks.ticket_number = full E-Ticket Number exactly as shown (e.g. 3862304374206/1). Set issued_by and created_by to Como Travels.\n";
         $prompt .= "  • Set tasks.reference = last 10 digits of the E-Ticket Number, before the slash (e.g. 3862304374206/1 → 2304374206).\n";
-        $prompt .= "  • For every non-KWD amount (Fare/Charges/Taxes/etc.), append to additional_info exactly as 'Label: CUR 999.99' (e.g., 'Fare: AED 278.17'); keep the document’s grand original in original_price/original_tax/original_currency. Map the itinerary column 'Charges' to tax only.\n";
+        $prompt .= "  • For every non-KWD amount (Fare/Charges/Taxes/etc.), append to additional_info exactly as 'Label: CUR 999.99' (e.g., 'Fare: AED 278.17'); keep the document’s grand original in original_price/original_total/original_tax/original_currency. Map the itinerary column 'Charges' to tax only.\n";
         $prompt .= "  • When multiple passengers are listed, create a separate task for each passenger:\n";
-        $prompt .= "      – tasks.total = that passenger’s Paid Amount (e.g. 636.06 AED).\n";
-        $prompt .= "      – tasks.price = that passenger’s Fare amount (e.g. 335.50 AED).\n";
+        $prompt .= "      – tasks.original_total/total = that passenger’s Paid Amount (e.g. 636.06 AED/54.90 KWD).\n";
+        $prompt .= "      – tasks.original_price = that passenger’s Fare amount (e.g. 335.50 AED).\n";
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Bella Vita, World of Luxury, Travel Collection and Heysam Group):\n";
         $prompt .= "  • SEGMENTATION: Treat each Accomodation block as EXACTLY ONE task. NEVER merge blocks even if Voucher/Hotel/guests are the same.\n";
         $prompt .= "  • TASK COUNT ASSERTION: tasks.length MUST equal the number of Accomodation occurrences found in the text.\n";
@@ -922,16 +935,17 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "      \"status\": \"issued/confirmed/cancelled/refunded\",\n";
         $prompt .= "      \"supplier_status\": \"same as status\",\n";
         $prompt .= "      \"refund_date\": \"2025-06-01 10:00:00\",\n";
-        $prompt .= "      \"price\": 100.00,\n";
+        $prompt .= "      \"price\": 30.52,\n";
         $prompt .= "      \"exchange_currency\": \"KWD\",\n";
         $prompt .= "      \"original_price\": 100.00,\n";
         $prompt .= "      \"original_currency\": \"USD\",\n";
-        $prompt .= "      \"total\": 115.00,\n";
+        $prompt .= "      \"total\": 35.10,\n";
+        $prompt .= "      \"original_total\": 115.00,\n";
         $prompt .= "      \"original_surcharge\": 10.00,\n";
-        $prompt .= "      \"surcharge\": 10.00,\n";
+        $prompt .= "      \"surcharge\": 3.05,\n";
         $prompt .= "      \"penalty_fee\": 0.00,\n";
         $prompt .= "      \"original_tax\": 5.00,\n";
-        $prompt .= "      \"tax\": 5.00,\n";
+        $prompt .= "      \"tax\": 1.53,\n";
         $prompt .= "      \"taxes_record\": \"tax breakdown if available\",\n";
         $prompt .= "      \"refund_charge\": 0.00,\n";
         $prompt .= "      \"reference\": \"main reference number\",\n";
@@ -1399,6 +1413,7 @@ class OpenAIClient implements AIClientInterface
                 $prompt .= "        \"original_price\": 100.00,\n";
                 $prompt .= "        \"original_currency\": \"USD\",\n";
                 $prompt .= "        \"total\": 115.00,\n";
+                $prompt .= "        \"original_total\": 115.00,\n";
                 $prompt .= "        \"original_surcharge\": 10.00,\n";
                 $prompt .= "        \"surcharge\": 10.00,\n";
                 $prompt .= "        \"penalty_fee\": 0.00,\n";
@@ -1573,6 +1588,7 @@ class OpenAIClient implements AIClientInterface
             $prompt .= "        \"original_price\": 100.00,\n";
             $prompt .= "        \"original_currency\": \"USD\",\n";
             $prompt .= "        \"total\": 115.00,\n";
+            $prompt .= "        \"original_total\": 115.00,\n";
             $prompt .= "        \"original_surcharge\": 10.00,\n";
             $prompt .= "        \"surcharge\": 10.00,\n";
             $prompt .= "        \"penalty_fee\": 0.00,\n";

@@ -532,6 +532,7 @@ class getMagicHolidayReservationList extends Command
             'tax' => '0.00',
             'surcharge' => '0.00',
             'penalty_fee' => 'NULL',
+            'original_total' => $prices['total']['selling']['value'] ?? 0,
             'total' => $prices['total']['selling']['value'] ?? 0,
             'cancellation_policy' => isset($reservation['service']['cancellationPolicy']) ? "'" . addslashes(json_encode($reservation['service']['cancellationPolicy'])) . "'" : 'NULL',
             'cancellation_deadline' => isset($reservation['service']['cancellationPolicy']['date']) ? "'" . date('Y-m-d H:i:s', strtotime($reservation['service']['cancellationPolicy']['date'])) . "'" : 'NULL',

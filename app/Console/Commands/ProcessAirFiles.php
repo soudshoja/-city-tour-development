@@ -1072,8 +1072,11 @@ class ProcessAirFiles extends Command
         });
 
         if ($agentQuery->first()) {
-            return $agentQuery->whereIn('branch_id', $branchesId)
-                ->where('company_id', $companyId)
+            return $agentQuery
+                ->whereIn('branch_id', $branchesId)
+                ->whereHas('branch', function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                })
                 ->first();
         }
 

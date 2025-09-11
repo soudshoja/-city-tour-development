@@ -84,6 +84,7 @@ class TaskController extends Controller
             $tasks = $tasks->where(function ($query) use ($search, $searchTerm) {
                 $query->where('reference', 'LIKE', $searchTerm)
                     ->orWhere('passenger_name', 'LIKE', $searchTerm)
+                    ->orWhere('gds_reference', 'LIKE', $searchTerm)
                     ->orWhereHas('client', function ($q) use ($searchTerm) {
                         $q->where('first_name', 'LIKE', $searchTerm)
                             ->orWhere('middle_name', 'LIKE', $searchTerm)
@@ -233,11 +234,6 @@ class TaskController extends Controller
                 case 'type':
                     if ($request->filled('type')) {
                         $tasks = $tasks->where('type', $request->input('type'));
-                    }
-                    break;
-                case 'gds-reference':
-                    if ($request->filled('gds-reference')) {
-                        $tasks = $tasks->where('gds_reference', 'like', '%' . $request->input('gds-reference') . '%');
                     }
                     break;
                 case 'amadeus-reference':

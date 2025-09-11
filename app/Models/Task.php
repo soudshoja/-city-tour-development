@@ -44,6 +44,7 @@ class Task extends Model
         'original_surcharge',
         'penalty_fee',
         'total',
+        'original_total',
         'cancellation_policy',
         'cancellation_deadline',
         'additional_info',

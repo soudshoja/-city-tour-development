@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Task extends Model
 {
@@ -82,6 +84,7 @@ class Task extends Model
         'issued_date' => 'datetime',
         'expiry_date' => 'datetime',
         'supplier_pay_date' => 'datetime',
+        'cancellation_deadline' => 'datetime',
         'is_complete' => 'bool',
     ];
 
@@ -143,6 +146,19 @@ class Task extends Model
     public function getTaskPriceChangeableAttribute()
     {
         return $this->original_currency !== null && $this->original_price !== 'KWD';
+    }
+
+    protected function cancellationDeadline(): Attribute
+    {
+        return Attribute::make(
+            set: function ($value) {
+                if (empty($value)) return null;
+    
+                // Parse the ISO8601 (with offset) but DO NOT change timezone. Just format to 'Y-m-d H:i:s' to fit MySQL DATETIME.
+                $dt = Carbon::parse($value);
+                return $dt->format('Y-m-d H:i:s');
+            },
+        );
     }
 
     public function flightDetails() // temporary fix

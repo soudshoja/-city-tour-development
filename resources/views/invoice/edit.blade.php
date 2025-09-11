@@ -814,7 +814,16 @@
                                 $selectedMethod = optional($invoice->invoicePartials->first())->payment_method ?? '';
                                 @endphp
                                 <div id="payment_gateway_dropdowns">
-                                    <div x-data="{ selectedGateway: '{{ $selectedGateway }}', selectedMethod: '{{ $selectedMethod }}', paymentType: '{{ $invoice->payment_type ?? '' }}' }">
+                                    <div x-data="{ 
+                                        selectedGateway: '{{ $selectedGateway }}', 
+                                        selectedMethod: '{{ $selectedMethod }}', 
+                                        paymentType: '{{ $invoice->payment_type ?? '' }}',
+                                        updateGateway() {
+                                            this.selectedGateway = '';
+                                            this.selectedMethod = '';
+                                            this.paymentType = '';
+                                        }
+                                        }">
                                         <div class="mt-4">
                                             <div class="flex items-center">
                                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
@@ -825,24 +834,49 @@
                                                 class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
                                                 <option value="">Choose a Payment Gateway</option>
                                                 @foreach ($paymentGateways as $gateway)
-                                                <option value="{{ $gateway->name }}"
-                                                    {{ $selectedGateway === $gateway->name ? 'selected' : '' }}>
+                                                <option value="{{ $gateway->name }}" {{ $selectedGateway === $gateway->name ? 'selected' : '' }}>
                                                     {{ $gateway->name }}
                                                 </option>
                                                 @endforeach
                                             </select>
                                         </div>
-                                        <div class="mt-4" x-cloak
-                                            x-show="selectedGateway === 'MyFatoorah'" x-transition>
-                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Method</h2>
-                                            <select name="payment_method" id="payment_method_full"
-                                                class="border border-gray-300 p-2 rounded w-full">
-                                                @foreach ($paymentMethods as $methods)
-                                                <option value="{{ $methods->id }}" {{ $selectedMethod == $methods->id ? 'selected' : '' }}>{{ $methods->english_name }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
 
+                                        <div
+                                            :class="selectedGateway === 'MyFatoorah' || selectedGateway === 'Hesabe' ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' : 'block'">
+
+                                            <!-- MyFatoorah Payment Methods -->
+                                            <template x-if="selectedGateway === 'MyFatoorah'">
+                                                <div class="mt-4" x-cloak x-transition>
+                                                    <label for="payment-method-myfatoorah" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                    <select name="payment_method" id="payment_method_full"
+                                                        class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" x-model="selectedMethod">
+                                                        @foreach ($myFatoorahMethods as $method)
+                                                        <option value="{{ $method->id }}" {{ $selectedMethod == $method->id ? 'selected' : '' }}>
+                                                            {{ $method->english_name }}
+                                                        </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </template>
+
+                                            <!-- Hesabe Payment Methods -->
+                                            <template x-if="selectedGateway === 'Hesabe'">
+                                                <div class="mt-4" x-cloak x-transition>
+                                                    <label for="payment-method-hesabe" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                    <select name="payment_method" id="payment_method_full"
+                                                        class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" x-model="selectedMethod">
+                                                        <option value="" disabled>Select a method</option>
+                                                        @foreach ($hesabeMethods as $method)
+                                                        <option value="{{ $method->id }}" {{ $selectedMethod == $method->id ? 'selected' : '' }}>
+                                                            {{ $method->english_name }}
+                                                        </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </template>
+                                        </div>
+                                        <input type="hidden" name="payment_method" :value="selectedMethod">
+                           
                                         <!-- Auto Payment Notification -->
                                         <div class="mt-4" id="auto_payment_notification" style="display: none;">
                                             <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -863,13 +897,10 @@
                                         @if($invoiceCharges->count() > 0)
                                         <div id="invoice_charge_section" class="mt-4" style="display: none;">
                                             <h2 id="invoice_charge_title" class="text-lg font-semibold mb-3 text-gray-700">Invoice Charge</h2>
-
-                                            <!-- Simple Charge Amount Input -->
                                             <div class="mb-3">
                                                 <label class="block text-sm font-medium text-gray-700 mb-1">Charge Amount:</label>
                                                 <input type="number" id="invoice_charge_amount_input" name="invoice_charge_amount_input"
-                                                    class="form-input" step="0.01" min="0"
-                                                    value="{{ $invoice->invoice_charge }}"
+                                                    class="form-input" step="0.01" min="0" value="{{ $invoice->invoice_charge }}"
                                                     placeholder="Enter charge amount">
                                                 <input type="hidden" id="invoice_charge_amount" name="invoice_charge_amount" value="{{ $invoice->invoice_charge }}">
                                             </div>
@@ -885,7 +916,6 @@
                                                 value="{{ $invoice->external_url ?? '' }}">
                                             <p class="text-sm text-gray-500 mt-1">Optionally provide an external payment gateway URL for this invoice</p>
                                         </div>
-
                                     </div>
                                     <div id="payment-response-message" class="hidden mt-4 text-sm font-semibold rounded px-4 py-2"></div>
                                 </div>
@@ -3559,6 +3589,8 @@
                     payload.clientId = document.getElementById('receiverId').value;
                     if (item.gateway === 'MyFatoorah') {
                         payload.method = document.getElementById('payment_method_full')?.value;
+                    } else if (item.gateway === 'Hesabe') {
+                        payload.method = document.getElementById('payment_method_full')?.value
                     } else {
                         payload.method = null;
                     }

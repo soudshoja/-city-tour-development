@@ -33,7 +33,7 @@ class ResayilController extends Controller
         }
 
         if(app()->environment('local')){
-            $phoneNumber = '+60193058463'; // Replace with your test number, remove this if you want to send to actual number
+            $phoneNumber = '+60126103085'; // Replace with your test number, remove this if you want to send to actual number
             $message = "This is a test message from local environment.\n\n" . $message;
         }
 

@@ -431,6 +431,13 @@ class InvoiceController extends Controller
             ->where('can_charge_invoice', true)
             ->get();
         $paymentMethods = PaymentMethod::where('is_active', true)->get();
+        $myFatoorahMethods = PaymentMethod::where('is_active', true)
+            ->where('type', 'myfatoorah')
+            ->get();
+
+        $hesabeMethods = PaymentMethod::where('is_active', true)
+            ->where('type', 'hesabe')
+            ->get();
         $invoiceDate = $invoice->invoice_date;
         $invprice = $invoice->amount;
         $dueDate =  $invoice->due_date;
@@ -439,7 +446,7 @@ class InvoiceController extends Controller
             // Only set self_charge to amount if both are null or self_charge is explicitly null
             // but don't override self_charge if it has a value (including 0)
             if (strtolower($gateway->name) === 'myfatoorah') {
-                foreach($paymentMethods as $method){
+                foreach($myFatoorahMethods as $method){
                     if($method->company_id == $invoice->agent->branch->company_id && $method->type == 'myfatoorah'){
                         try {
                             $method->gateway_fee = ChargeService::FatoorahCharge($invprice, $method->id, $invoice->agent->branch->company_id)['fee'] ?? 0;
@@ -449,6 +456,23 @@ class InvoiceController extends Controller
                                 'paymentMethod' => $method->id,
                                 'company_id' => $invoice->agent->branch->company_id,
                             ]);
+                            $method->gateway_fee = 0;
+                        }
+                    }
+                }
+            } elseif (strtolower($gateway->name) === 'hesabe') {
+                foreach ($hesabeMethods as$method) {
+                    if ($method->company == $invoice->agent->branch->company && $method->type == 'hesabe') {
+                        try {
+                            Log::info('Ke sini ke?');
+
+                            $method->gateway_fee = ChargeService::HesabeCharge($invprice, $method->id, $invoice->agent->branch->company_id)['fee'] ?? 0;
+                        } catch (Exception $e) {
+                            Log::error('HesabeCharge exception', [
+                                'message' => $e->getMessage(),
+                                'paymentMethod' => $method->id,
+                                'company_id' => $invoice->agent->branch->company_id,
+                            ]); 
                             $method->gateway_fee = 0;
                         }
                     }
@@ -497,6 +521,8 @@ class InvoiceController extends Controller
             'creditUsed',
             'invoiceExpireDefault',
             'companyId',
+            'myFatoorahMethods',
+            'hesabeMethods',
         ));
     }
 
@@ -515,7 +541,7 @@ class InvoiceController extends Controller
         $invoice = Invoice::where('invoice_number', $validated['invoiceNumber'])->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
         $companyId = $invoice->agent->branch->company_id;
 
-        if (strtolower($validated['gateway']) === 'myfatoorah' && $validated['method']) {
+        if (strtolower($validated['gateway']) === 'myfatoorah' &&  strtolower($validated['gateway']) === 'hesabe' && $validated['method']) {
             try {
                 $gatewayFee = ChargeService::FatoorahCharge($validated['amount'], $validated['method'], $companyId);
             } catch (\Exception $e) {
@@ -621,7 +647,7 @@ class InvoiceController extends Controller
             $invoice->save();
         }
 
-        if (strtolower($gateway) === 'myfatoorah' && $method) {
+        if (strtolower($gateway) === 'myfatoorah' && strtolower($gateway) === 'hesabe' && $method) {
             try {
                 $gatewayFee = ChargeService::FatoorahCharge($amount, $method, $companyId);
             } catch (\Exception $e) {
@@ -1559,15 +1585,19 @@ class InvoiceController extends Controller
                     if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
                         $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
                         
-                    } else if (strtolower($partial->payment_gateway) === 'tap') {
+                    } elseif (strtolower($partial->payment_gateway) === 'tap') {
                         $gatewayFee = ChargeService::TapCharge([
                             'amount'    => $partial->amount,
                             'client_id' => $invoice->client_id,
                             'agent_id'  => $invoice->agent_id,
                             'currency'  => $invoice->currency,
                         ], $partial->payment_gateway);
-                    } else if (strtolower($partial->payment_gateway) === 'upayment') {
+                    } elseif (strtolower($partial->payment_gateway) === 'upayment') {
                         $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
+                    } elseif (strtolower($partial->payment_gateway) === 'hesabe') {
+                        Log::info('Atau sini ke?');
+
+                        $gatewayFee = ChargeService::HesabeCharge($partial->amount, $partial->payment_method, $companyId);
                     }
                 } catch (\Exception $e) {
                     Log::error('ChargeService exception', [

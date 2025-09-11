@@ -121,7 +121,6 @@ class GatewayConfigService
 
     public function getHesabeConfig(): array 
     {                
-        Log::info('Masuk HesabeConfig');
 
         $configFromService = Config::get('services.hesabe');
 

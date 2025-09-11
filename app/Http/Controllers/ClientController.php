@@ -880,19 +880,15 @@ class ClientController extends Controller
                     $gatewayFee = 0;
                 }
             } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
+                Log::info('Sini ke?');
                  try {
-                    $gatewayFee = ChargeService::TapCharge([
-                        'amount' => $payment->amount,
-                        'client_id' => $payment->client_id,
-                        'agent_id' => $payment->agent_id,
-                        'currency' => $payment->currency
-                    ], $payment->payment_gateway)['gatewayFee'] ?? 0;
+                    $gatewayFee = ChargeService::HesabeCharge($payment->amount, $paymentMethod->id, $payment->agent->branch->company_id)['gatewayFee'] ?? 0;
                 } catch (Exception $e) {
-                    Log::error('TapCharge exception', [
+                    Log::error('HesabeCharge exception', [
                         'message' => $e->getMessage(),
                         'amount' => $payment->amount,
-                        'client_id' => $payment->client_id,
-                        'agent_id' => $payment->agent_id,
+                        'payment_method' => $paymentMethod->id,
+                        'company_id' => $payment->agent->branch->company_id,
                     ]);
                     $gatewayFee = 0;
                 }

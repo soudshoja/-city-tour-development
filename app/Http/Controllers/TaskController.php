@@ -84,6 +84,7 @@ class TaskController extends Controller
             $tasks = $tasks->where(function ($query) use ($search, $searchTerm) {
                 $query->where('reference', 'LIKE', $searchTerm)
                     ->orWhere('passenger_name', 'LIKE', $searchTerm)
+                    ->orWhere('gds_reference', 'LIKE', $searchTerm)
                     ->orWhereHas('client', function ($q) use ($searchTerm) {
                         $q->where('first_name', 'LIKE', $searchTerm)
                             ->orWhere('middle_name', 'LIKE', $searchTerm)
@@ -233,11 +234,6 @@ class TaskController extends Controller
                 case 'type':
                     if ($request->filled('type')) {
                         $tasks = $tasks->where('type', $request->input('type'));
-                    }
-                    break;
-                case 'gds-reference':
-                    if ($request->filled('gds-reference')) {
-                        $tasks = $tasks->where('gds_reference', 'like', '%' . $request->input('gds-reference') . '%');
                     }
                     break;
                 case 'amadeus-reference':
@@ -656,7 +652,10 @@ class TaskController extends Controller
         $queryChkExistTask = Task::query();
         $queryChkExistTask->where('reference', $request->reference)
             ->where('company_id', $request->company_id)
-            ->where('supplier_status', $request->status)
+            ->when(!in_array(strtolower($request->supplier_name), ['jazeera airways', 'fly dubai']),
+                fn($q) => $q->where('supplier_status', $request->supplier_status)
+                    ->where('status', $request->status)
+            )
             ->when($request->filled('client_name'), fn($q) => $q->where('passenger_name', trim($request->client_name)))
             ->when($request->filled('supplier_id'), fn($q) => $q->where('supplier_id', $request->supplier_id));
 
@@ -925,8 +924,7 @@ class TaskController extends Controller
             // Process financial transactions immediately if task is complete (regardless of agent assignment)
             // This ensures company liability to supplier is tracked immediately
             // Special case: Void tasks should ALWAYS process financials if they have an original_task_id
-            $shouldProcessFinancials = $offline || $task->is_complete ||
-                ($task->status === 'void' && $task->original_task_id);
+            $shouldProcessFinancials = $offline && $task->is_complete || ($task->status === 'void' && $task->original_task_id);
 
             if ($shouldProcessFinancials) {
                 $reason = $task->is_complete ? 'complete task' : 'void task with original_task_id';
@@ -3033,10 +3031,10 @@ class TaskController extends Controller
                     'check_out' => Carbon::parse($serviceDates['endDate'])->toDateTimeString() ?? null,
                     'room_reference' => (string) $room['id'] ?? null,
                     'room_number' => $room['number'] ?? null,
-                    'room_type' => $room['type'] ?? null,
+                    'room_type' => $room['name'] ?? null,
                     'room_amount' => count($room['passengers'] ?? []),
                     'room_details' => json_encode($room) ?? null,
-                    'rate' => $price['issue']['selling']['value'] ?? null,
+                    'rate' => $prices['issue']['selling']['value'] ?? null,
                     'meal_type' => $room['board'] ?? null,
                     'is_refundable' => strpos(strtolower($room['info'] ?? ''), 'non-refundable') === false,
                 ],
@@ -3061,7 +3059,7 @@ class TaskController extends Controller
 
             $response = $this->store($request);
 
-            $response = json_decode($response->getContent(), true);
+            $response = json_decode($response->getContent(), true) ?? [];
             logger('Task created: ', $response);
 
             if ($response['status'] == 'error') {

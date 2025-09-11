@@ -525,29 +525,6 @@
                         :action="route('tasks.index')"
                         searchParam="q"
                         placeholder="Quick search for tasks" />
-                    <!-- Status Filter Checkboxes -->
-                    <!-- <form method="GET" action="{{ route('tasks.index') }}" id="status-filter-form" class="flex flex-wrap gap-2 items-center my-2">
-                        @php
-                        $statuses = ['issued', 'refund', 'reissued', 'confirmed', 'void'];
-                        $selectedStatuses = request()->input('status', []);
-                        if (!is_array($selectedStatuses)) $selectedStatuses = [$selectedStatuses];
-                        @endphp
-                        <span class="font-semibold text-gray-700 mr-2">Status:</span>
-                        @foreach($statuses as $status)
-                        <label class="inline-flex items-center px-3 py-1 bg-white border border-gray-300 rounded-full shadow-sm cursor-pointer hover:bg-blue-50 transition
-                            {{ in_array($status, $selectedStatuses) ? 'ring-2 ring-blue-400' : '' }}">
-                            <input type="checkbox" name="status[]" value="{{ $status }}"
-                                class="form-checkbox accent-blue-600 rounded mr-2"
-                                onchange="document.getElementById('status-filter-form').submit();"
-                                {{ in_array($status, $selectedStatuses) ? 'checked' : '' }}>
-                            <span class="capitalize text-sm text-gray-700">{{ $status }}</span>
-                        </label>
-                        @endforeach
-                        @if(request()->has('q'))
-                        <input type="hidden" name="q" value="{{ request('q') }}">
-                        @endif
-                    </form> -->
-
                         <button type="button" id="toggleFilters"
                             class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
                             <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
@@ -589,15 +566,6 @@
                                 </div>
                             </div>
                         </div>
-                    <!-- <button type="button" id="toggleFilters"
-                        class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
-                        <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 32 32">
-                            <path fill="#333333"
-                                d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3-3-3-3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3-3-3-3s-3-1.3-3-3" />
-                        </svg>
-                        <span class="text-xs md:text-sm dark:text-black">Filters</span>
-                    </button> -->
                     <div class="relative">
                         <button type="button" id="customizeColumnsBtn"
                             class="flex px-3 py-2 w-full h-10 md:w-auto DarkBGcolor dark:!bg-blue-700 dark:!hover:bg-blue-600 rounded-full shadow-sm items-center text-xs text-white font-semibold md:text-sm">
@@ -1349,50 +1317,46 @@
 
                                                                                 </div>
 
-                                                                                <div class="flex flex-wrap gap-4">
+                                                                                <div
+                                                                                    x-data="{
+                                                                                        rawPrice: '{{ $task->price ?? 0 }}',
+                                                                                        rawTax: '{{ $task->tax ?? 0 }}',
+                                                                                        rawSurcharge: '{{ $task->surcharge ?? 0 }}',
+                                                                                        total: 0,
+                                                                                        parseNum(v) {
+                                                                                        if (!v) return 0;
+                                                                                        const num = parseFloat(String(v).replace(/,/g,'').trim());
+                                                                                        return isNaN(num) ? 0 : num;
+                                                                                        }
+                                                                                    }"
+                                                                                    x-effect="total = +(parseNum(rawPrice) + parseNum(rawTax) + parseNum(rawSurcharge)).toFixed(3)"
+                                                                                    class="flex flex-wrap gap-4">
                                                                                     <!-- Price -->
                                                                                     <div class="flex-1 min-w-[150px]">
-                                                                                        <label for="price"
-                                                                                            class="block text-sm font-medium text-gray-700">Price</label>
-                                                                                        <input type="text"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
-                                                                                            name="price"
-                                                                                            placeholder="Price"
-                                                                                            value="{{ $task->price }}"
-                                                                                            {{$task->task_price_changeable ? '' : 'readonly'}}>
+                                                                                        <label class="block text-sm font-medium text-gray-700">Price</label>
+                                                                                        <input type="text" name="price" x-model="rawPrice"
+                                                                                        class="border border-gray-300 p-2 rounded-md w-full">
                                                                                     </div>
 
                                                                                     <!-- Tax -->
                                                                                     <div class="flex-1 min-w-[150px]">
-                                                                                        <label for="tax"
-                                                                                            class="block text-sm font-medium text-gray-700">Tax</label>
-                                                                                        <input type="text"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
-                                                                                            name="tax"
-                                                                                            value="{{ $task->tax }}"
-                                                                                            placeholder="Tax">
+                                                                                        <label class="block text-sm font-medium text-gray-700">Tax</label>
+                                                                                        <input type="text" name="tax" x-model="rawTax"
+                                                                                        class="border border-gray-300 p-2 rounded-md w-full">
                                                                                     </div>
 
                                                                                     <!-- Surcharge -->
                                                                                     <div class="flex-1 min-w-[150px]">
-                                                                                        <label for="surcharge"
-                                                                                            class="block text-sm font-medium text-gray-700">Surcharge</label>
-                                                                                        <input type="text"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
-                                                                                            name="surcharge"
-                                                                                            value="{{ $task->surcharge }}"
-                                                                                            placeholder="Surcharge">
+                                                                                        <label class="block text-sm font-medium text-gray-700">Surcharge</label>
+                                                                                        <input type="text" name="surcharge" x-model="rawSurcharge"
+                                                                                        class="border border-gray-300 p-2 rounded-md w-full">
                                                                                     </div>
 
                                                                                     <!-- Total -->
                                                                                     <div class="flex-1 min-w-[150px]">
-                                                                                        <label for="total"
-                                                                                            class="block text-sm font-medium text-gray-700">Total</label>
-                                                                                        <input type="text" name="total"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
-                                                                                            value="{{ $task->total }}"
-                                                                                            placeholder="Total"
-                                                                                            {{$task->task_price_changeable ? '' : 'readonly'}}>
+                                                                                        <label class="block text-sm font-medium text-gray-700">Total</label>
+                                                                                        <input type="text" name="total" :value="total" readonly
+                                                                                        class="border border-gray-300 p-2 rounded-md w-full">
                                                                                     </div>
                                                                                 </div>
                                                                                 <!-- Payment Method -->
@@ -1942,16 +1906,6 @@
                                     Load More
                                 </button>
                             </div>
-                            <!-- <p id="noTasksFound"
-                                class="flex flex-col items-center justify-center py-6 text-center text-gray-500 text-sm gap-2 hidden">
-                                <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor"
-                                    stroke-width="1.5" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M9.75 9.75a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5zm3 0a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5zM12 21a9 9 0 100-18 9 9 0 000 18z" />
-                                </svg>
-                                <span>No tasks found matching your search</span>
-                            </p> -->
-                            <!-- Pagination Links -->
                         </div>
 
                         <x-pagination :data="$tasks->appends(request()->query())" />
@@ -2830,7 +2784,6 @@
             "supplier_pay_date": { label: "Issued Date", type: "date-range" },
             "cancellation-deadline": { label: "Cancellation Deadline", type: "date" },
             type:              { label: "Type", type: "select", options: ["hotel", "flight"] },
-            "gds-reference":   { label: "GDS Reference", type: "text" },
             "amadeus-reference": { label: "Amadeus Reference", type: "text" },
             "created-by":      { label: "Created By", type: "text" },
             "issued-by":       { label: "Issued By", type: "text" },
@@ -2918,9 +2871,7 @@
         filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
         renderFilterRows();
     };
-    // Clear all
 
-    // ...existing code...
     document.getElementById('editActiveFilters').addEventListener('click', function() {
         const params = new URLSearchParams(window.location.search);
         filterRows = [];
@@ -2966,7 +2917,6 @@
         renderFilterRows();
         document.getElementById('filterModal').classList.add('active');
     });
-    // ...existing code...
     // Remove row or update value
     document.getElementById('filterContainer').addEventListener('input', function(e) {
         const idx = +e.target.dataset.idx;
@@ -3019,6 +2969,7 @@
                     params.append(row.column, row.value);
                 }
             });
+            resetPagination(params);
             window.location = `{{ route('tasks.index') }}?${params.toString()}`;
         }
     });
@@ -3043,10 +2994,13 @@
                 params.append(row.column, row.value);
             }
         });
+        resetPagination(params);
         window.location = `{{ route('tasks.index') }}?${params.toString()}`;
     };
 
-
+    function resetPagination(params) {
+        params.delete('page');
+    }
 
         function getActiveFiltersFromURL() {
             const params = new URLSearchParams(window.location.search);
@@ -3184,10 +3138,10 @@ function renderFilterRows() {
                 } else {
                     params.delete(key);
                 }
+                resetPagination(params);
                 window.location = `{{ route('tasks.index') }}?${params.toString()}`;
             }
         });
-        // Remove all filters
         document.getElementById('clearAllActiveFilters').addEventListener('click', function() {
             const params = new URLSearchParams(window.location.search);
             Object.keys(filterConfig.columns).forEach(key => params.delete(key));

@@ -880,8 +880,7 @@ class ClientController extends Controller
                     $gatewayFee = 0;
                 }
             } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
-                Log::info('Sini ke?');
-                 try {
+                try {
                     $gatewayFee = ChargeService::HesabeCharge($payment->amount, $paymentMethod->id, $payment->agent->branch->company_id)['gatewayFee'] ?? 0;
                 } catch (Exception $e) {
                     Log::error('HesabeCharge exception', [

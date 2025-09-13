@@ -464,8 +464,6 @@ class InvoiceController extends Controller
                 foreach ($hesabeMethods as$method) {
                     if ($method->company == $invoice->agent->branch->company && $method->type == 'hesabe') {
                         try {
-                            Log::info('Ke sini ke?');
-
                             $method->gateway_fee = ChargeService::HesabeCharge($invprice, $method->id, $invoice->agent->branch->company_id)['fee'] ?? 0;
                         } catch (Exception $e) {
                             Log::error('HesabeCharge exception', [
@@ -546,6 +544,17 @@ class InvoiceController extends Controller
                 $gatewayFee = ChargeService::FatoorahCharge($validated['amount'], $validated['method'], $companyId);
             } catch (\Exception $e) {
                 Log::error('FatoorahCharge exception during partial save', [
+                    'message' => $e->getMessage(),
+                    'paymentMethod' => $validated['method'],
+                    'company_id' => $companyId,
+                ]);
+                $gatewayFee = null;
+            }
+        } elseif (strtolower($validated['gateway']) === 'hesabe' && $validated['method']) {
+            try {
+                $gatewayFee = ChargeService::HesabeCharge($validated['amount'], $validated['method'], $companyId);
+            } catch (Exception $e) {
+                Log::error('HesabeCharge exception during partial save', [
                     'message' => $e->getMessage(),
                     'paymentMethod' => $validated['method'],
                     'company_id' => $companyId,
@@ -647,11 +656,22 @@ class InvoiceController extends Controller
             $invoice->save();
         }
 
-        if (strtolower($gateway) === 'myfatoorah' && strtolower($gateway) === 'hesabe' && $method) {
+        if (strtolower($gateway) === 'myfatoorah' && $method) {
             try {
                 $gatewayFee = ChargeService::FatoorahCharge($amount, $method, $companyId);
             } catch (\Exception $e) {
                 Log::error('FatoorahCharge exception during partial save', [
+                    'message' => $e->getMessage(),
+                    'paymentMethod' => $method,
+                    'company_id' => $companyId,
+                ]);
+                $gatewayFee = null;
+            }
+        } elseif (strtolower($gateway) === 'hesabe' && $method) {
+            try {
+
+            } catch (Exception $e) {
+                Log::error('HesabeCharge exception during partial save', [
                     'message' => $e->getMessage(),
                     'paymentMethod' => $method,
                     'company_id' => $companyId,
@@ -1584,7 +1604,6 @@ class InvoiceController extends Controller
                 try {
                     if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
                         $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
-                        
                     } elseif (strtolower($partial->payment_gateway) === 'tap') {
                         $gatewayFee = ChargeService::TapCharge([
                             'amount'    => $partial->amount,
@@ -1595,8 +1614,6 @@ class InvoiceController extends Controller
                     } elseif (strtolower($partial->payment_gateway) === 'upayment') {
                         $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
                     } elseif (strtolower($partial->payment_gateway) === 'hesabe') {
-                        Log::info('Atau sini ke?');
-
                         $gatewayFee = ChargeService::HesabeCharge($partial->amount, $partial->payment_method, $companyId);
                     }
                 } catch (\Exception $e) {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="ar" dir="rtl">
 
 <head>
     <meta charset="utf-8">
@@ -50,23 +50,22 @@
         <!-- Header -->
         <div class="flex justify-between items-center mb-10">
             {{-- Left: Invoice Details --}}
-            <div class="text-left">
-                <h1 class="text-2xl font-bold text-gray-800">PAYMENT VOUCHER</h1>
+            <div class="text-right">
+                <h1 class="text-2xl font-bold text-gray-800">قسيمة الدفع</h1>
                 <p class="text-sm text-gray-600">{{ $payment->voucher_number }}</p>
-                <p class="text-sm text-gray-600">Date: {{ $payment->created_at->format('d M Y') }}</p>
+                <p class="text-sm text-gray-600">التاريخ: {{ $payment->created_at->format('d M Y') }}</p>
             </div>
-            
+
             {{-- Right: Company Logo --}}
             <div>
                 <img class="w-auto h-[95px] object-contain" src="{{ $payment->agent->branch->company->logo ? Storage::url($payment->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
             </div>
-
         </div>
         <!-- Header Ends -->
 
         <div class="flex justify-between items-start mb-8">
-            <div class="text-left">
-                <h3 class="text-lg font-bold text-gray-800 mb-1">Billed To</h3>
+            <div>
+                <h3 class="text-lg font-bold text-gray-800 mb-1">الفاتورة مرسلة إلى:</h3>
                 <p class="text-sm text-gray-600">{{ $payment->client->full_name }}</p>
                 <p class="text-sm text-gray-600">
                     <a href="mailto:{{ $payment->client->email }}" class="hover:underline hover:text-blue-600">
@@ -79,7 +78,7 @@
                     </a>
                 </p>
             </div>
-            <div class="max-w-xs text-right">
+            <div class="max-w-xs text-left">
                 <h2 class="text-xl font-bold text-gray-800">{{ $payment->agent->branch->company->name }}</h2>
                 <p class="text-sm text-gray-600 break-words">
                     {{ $payment->agent->branch->company->address }}
@@ -97,24 +96,24 @@
             </div>
         </div>
 
-        <table class="w-full text-sm text-left text-gray-700 border border-gray-300 mb-5">
+        <table class="w-full text-sm text-gray-700 border border-gray-300 mb-5">
             <thead class="bg-gray-100">
                 <tr>
-                    <th colspan="2" class="py-3 px-4 text-lg font-semibold">Payment Details</th>
+                    <th colspan="2" class="py-3 px-4 text-lg font-semibold">معلومات الدفع</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td class="py-3 px-4">Client Name</td>
+                    <td class="py-3 px-4">اسم العميل</td>
                     <td class="py-3 px-4 text-right">{{ $payment->client->full_name }}</td>
                 </tr>
                 <tr>
-                    <td class="py-3 px-4">Payment Gateway</td>
+                    <td class="py-3 px-4">بوابة الدفع</td>
                     <td class="py-3 px-4 text-right">{{ $payment->payment_gateway }}</td>
                 </tr>
                 @if($payment->payment_gateway === 'MyFatoorah')
                 <tr>
-                    <td class="py-3 px-4">Payment Method</td>
+                    <td class="py-3 px-4">طريقة الدفع</td>
                     <td class="py-3 px-4 text-right">{{ $payment->paymentMethod->english_name ?? '-' }}</td>
                 </tr>
                 @endif
@@ -123,17 +122,17 @@
                             @if ($payment->payment_gateway !== 'MyFatoorah')
                                 <td class="py-3 px-4">Payment Reference</td>
                             @elseif ($payment->invoice_reference == '' && $payment->auth_code == '')
-                                <td class="py-3 px-4">Invoice ID</td>
+                                <td class="py-3 px-4">رمز الفاتورة</td>
                             @endif
                             <td class="py-3 px-4 text-right">{{ $payment->payment_reference }}</td>
                         </tr>
                     @if($payment->payment_gateway === 'MyFatoorah' && $payment->status === 'completed')
                         <tr>
-                            <td class="py-3 px-4">Invoice Reference</td>
+                            <td class="py-3 px-4">مرجع الفاتورة</td>
                             <td class="py-3 px-4 text-right">{{ $invoiceRef }}</td>
                         </tr>
                         <tr>
-                            <td class="py-3 px-4">Auth Code</td>
+                            <td class="py-3 px-4">رمز التحقق</td>
                             <td class="py-3 px-4 text-right">{{ $authorizationId }}</td>
                         </tr>
                     @endif
@@ -145,11 +144,11 @@
             <div class="md:col-span-2">
                 @if ($payment->status === 'completed')
                 <span class="inline-flex items-center px-3 py-1 text-green-700 font-semibold text-lg">
-                    PAID
+                    تم الدفع
                 </span>
                 @else
                 @if($payment->notes && $payment->notes !== '')
-                <div class="text-left max-w-xs">
+                <div class="max-w-xs">
                     <h3 class="text-lg text-gray-800">
                         Notes from <span class="font-semibold">Agent {{ $payment->agent->name }}</span>
                     </h3>
@@ -171,7 +170,7 @@
                 @endphp
 
                 <div class="flex justify-between py-2 border-b border-gray-200">
-                    <span>Amount:</span>
+                    <span>المبلغ:</span>
                     <!--  <span>{{ number_format($payment->amount, 2) }}</span> -->
                     <span>{{ number_format(!empty($finalAmount) ? $finalAmount : $payment->amount, 2) }} {{ $payment->currency }}</span>
                 </div>
@@ -188,7 +187,7 @@
                 @endif -->
 
                 <div class="flex justify-between items-center py-2 font-bold text-gray-800">
-                    <span>Total:</span>
+                    <span>المجموع:</span>
                     <span>{{ number_format(!empty($finalAmount) ? $finalAmount : $payment->amount, 2) }} {{ $payment->currency }}</span>
                 </div>
             </div>
@@ -203,17 +202,17 @@
                     @csrf
                     <input type="hidden" name="payment_id" value="{{ $payment->id }}">
                     <button type="submit"
-                        class="city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-5 py-2 shadow-md font-semibold w-[180px] text-left">
-                        Pay Now
+                        class="city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-5 py-2 shadow-md font-semibold w-[180px]">
+                        ادفع الآن
                     </button>
                 </form>
             </div>
             @endunless
 
             <div class="space-y-2 text-center w-full">
-                <p class="text-lg font-bold text-gray-800">Thank you for your business!</p>
+                <p class="text-lg font-bold text-gray-800">شكراً لتعاونك معنا!</p>
                 <div class="text-sm text-gray-600 w-full overflow-x-auto">
-                    <p class="whitespace-nowrap">If you have any questions about this voucher, please contact:</p>
+                    <p class="whitespace-nowrap">إذا كان لديك أي أسئلة بخصوص هذه الفاتورة، يرجى التواصل معنا:</p>
                     <p>
                         {{ $payment->agent->name }} -
                         <a href="mailto:{{ $payment->agent->email }}" class="hover:underline hover:text-blue-600">
@@ -229,10 +228,10 @@
 
         <!-- DESKTOP -->
         <div class="mt-10 hidden md:flex items-start justify-between w-full">
-            <div class="space-y-2 text-left">
-                <p class="text-lg font-bold text-gray-800">Thank you for your business!</p>
+            <div class="space-y-2">
+                <p class="text-lg font-bold text-gray-800">شكراً لتعاونك معنا!</p>
                 <div class="text-sm text-gray-600 w-full overflow-x-auto">
-                    <p class="whitespace-nowrap">If you have any questions about this voucher, please contact:</p>
+                    <p class="whitespace-nowrap">إذا كان لديك أي أسئلة بخصوص هذه الفاتورة، يرجى التواصل معنا:</p>
                     <p>
                         {{ $payment->agent->name }} -
                         <a href="mailto:{{ $payment->agent->email }}" class="hover:underline hover:text-blue-600">
@@ -251,19 +250,23 @@
                 <input type="hidden" name="payment_id" value="{{ $payment->id }}">
                 <button type="submit"
                     class="city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-6 py-2 shadow-md font-semibold">
-                    Pay Now
+                    ادفع الآن
                 </button>
             </form>
             @endunless
-                <div class="flex justify-end mb-4">
-                    <button
-                        onclick="window.open('{{ route('payment.link.show-arabic', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number]) }}', '_blank')"
-                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                        عرض القسيمة بالعربية
-                    </button>
-                </div>
-          
+            <div class="flex justify-end mb-4">
+    <a target="_self" href="{{ route('payment.link.show', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number]) }}">
+        <button class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+            View Voucher in English
+        </button>
+    </a>
+</div>
         </div>
+
+
+         
     </div>
+
 </body>
+
 </html>

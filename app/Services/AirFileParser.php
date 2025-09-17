@@ -904,6 +904,10 @@ class AirFileParser
         if ($match) {
             return strtolower($match[1]); // Return email without E- prefix
         }
+
+        // Look for APE- prefix followed by email
+        $match = $this->findLine('/APE-([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/');
+        if ($match) return strtolower($match[1]);
         
         // Fallback: Look for any email pattern without prefix
         $match = $this->findLine('/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/');

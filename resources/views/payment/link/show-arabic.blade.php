@@ -58,7 +58,7 @@
 
             {{-- Right: Company Logo --}}
             <div>
-                <img class="w-auto h-[95px] object-contain" src="{{ $payment->agent->branch->company->logo ? Storage::url($payment->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
+                <x-application-logo class="w-auto h-[90px] object-contain" companyLogo="{{ $payment->agent->branch->company->logo }}"/>
             </div>
         </div>
         <!-- Header Ends -->
@@ -97,7 +97,7 @@
         </div>
 
         <table class="w-full text-sm text-gray-700 border border-gray-300 mb-5">
-            <thead class="bg-gray-100">
+            <thead class="bg-gray-100 text-right">
                 <tr>
                     <th colspan="2" class="py-3 px-4 text-lg font-semibold">معلومات الدفع</th>
                 </tr>
@@ -105,16 +105,16 @@
             <tbody>
                 <tr>
                     <td class="py-3 px-4">اسم العميل</td>
-                    <td class="py-3 px-4 text-right">{{ $payment->client->full_name }}</td>
+                    <td class="py-3 px-4 text-left">{{ $payment->client->full_name }}</td>
                 </tr>
                 <tr>
                     <td class="py-3 px-4">بوابة الدفع</td>
-                    <td class="py-3 px-4 text-right">{{ $payment->payment_gateway }}</td>
+                    <td class="py-3 px-4 text-left">{{ $payment->payment_gateway }}</td>
                 </tr>
                 @if($payment->payment_gateway === 'MyFatoorah')
                 <tr>
                     <td class="py-3 px-4">طريقة الدفع</td>
-                    <td class="py-3 px-4 text-right">{{ $payment->paymentMethod->english_name ?? '-' }}</td>
+                    <td class="py-3 px-4 text-left">{{ $payment->paymentMethod->english_name ?? '-' }}</td>
                 </tr>
                 @endif
                 @if($payment->payment_gateway !== 'Tabby' && $payment->payment_reference != '')
@@ -124,16 +124,16 @@
                             @elseif ($payment->invoice_reference == '' && $payment->auth_code == '')
                                 <td class="py-3 px-4">رمز الفاتورة</td>
                             @endif
-                            <td class="py-3 px-4 text-right">{{ $payment->payment_reference }}</td>
+                            <td class="py-3 px-4 text-left">{{ $payment->payment_reference }}</td>
                         </tr>
                     @if($payment->payment_gateway === 'MyFatoorah' && $payment->status === 'completed')
                         <tr>
                             <td class="py-3 px-4">مرجع الفاتورة</td>
-                            <td class="py-3 px-4 text-right">{{ $invoiceRef }}</td>
+                            <td class="py-3 px-4 text-left">{{ $invoiceRef }}</td>
                         </tr>
                         <tr>
                             <td class="py-3 px-4">رمز التحقق</td>
-                            <td class="py-3 px-4 text-right">{{ $authorizationId }}</td>
+                            <td class="py-3 px-4 text-left">{{ $authorizationId }}</td>
                         </tr>
                     @endif
                 @endif

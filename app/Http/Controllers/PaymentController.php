@@ -3126,12 +3126,12 @@ class PaymentController extends Controller
 
     public function success()
     {
-        return view('payments.success');
+        return view('payment.success');
     }
 
     public function failed()
     {
-        return view('payments.failed');
+        return view('payment.failed');
     }
     public function paymentShowLinkArabic($companyId, $voucherNumber)
     {

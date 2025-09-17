@@ -19,9 +19,11 @@ class InvoicePartial extends Model
         'status',
         'expiry_date',  
         'type',    
+        'charge_id',
         'payment_gateway',
         'payment_method',
         'payment_id',
+        'has_payment_link',
     ];
     
     public function client()
@@ -42,5 +44,10 @@ class InvoicePartial extends Model
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class, 'payment_method');
+    }
+
+    public function charge()
+    {
+        return $this->belongsTo(Charge::class, 'charge_id');
     }
 }

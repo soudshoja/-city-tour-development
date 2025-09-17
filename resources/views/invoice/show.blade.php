@@ -86,7 +86,6 @@
             <p class="text-3xl">PAID</p>
             <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
         </div>
-  
     </div>
 
 
@@ -105,17 +104,18 @@
     <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         <!-- Header -->
         <div class="flex justify-between items-center mb-10">
-            <div>
-                <x-application-logo class="w-auto h-[90px] object-contain" companyLogo="{{ $company->logo }}"/>
-                <p class="text-base font-semibold">{{ $invoice->agent->branch->company->name }}</p>
-            </div>
-            <div class="text-right">
+            <div class="text-left">
                 <h1 class="text-2xl font-bold text-gray-800">INVOICE</h1>
                 @if ($invoice->refund)
-                    <p class="text-sm text-gray-600">Generated from Refund {{ $invoice->refund->refund_number }}</p>
+                <p class="text-sm text-gray-600">Generated from Refund {{ $invoice->refund->refund_number }}</p>
                 @endif
                 <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
                 <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
+            </div>
+        
+            <div>
+                <x-application-logo class="w-auto h-[90px] object-contain" companyLogo="{{ $company->logo }}" />
+                <p class="text-base font-semibold">{{ $invoice->agent->branch->company->name }}</p>
             </div>
         </div>
 
@@ -226,15 +226,15 @@
         </table>
         @endif
 
-       @php
-            $typeIsPartial = strcasecmp(trim($invoice->payment_type ?? ''), 'partial') === 0;
+        @php
+        $typeIsPartial = strcasecmp(trim($invoice->payment_type ?? ''), 'partial') === 0;
 
-            // true when there are 2+ different gateways among partials
-            $hasMismatch = collect($invoicePartials)
-                ->pluck('payment_gateway')
-                ->filter(fn ($g) => filled($g))
-                ->unique()
-                ->count() > 1;
+        // true when there are 2+ different gateways among partials
+        $hasMismatch = collect($invoicePartials)
+        ->pluck('payment_gateway')
+        ->filter(fn ($g) => filled($g))
+        ->unique()
+        ->count() > 1;
         @endphp
 
         @if ($invoice->payment_type === 'partial' && !$hasMismatch)
@@ -290,9 +290,9 @@
 
         <!-- Partial Payment of Different Gateway -->
         @if ($invoice->payment_type === 'partial' && $hasMismatch)
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Partial Payment ({{ $invoice->currency }})</h3>        
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Partial Payment ({{ $invoice->currency }})</h3>
 
-            <div class="mb-4">
+        <div class="mb-4">
             <h4 class="text-lg font-bold text-gray-800">Task Descriptions</h4>
             <ul class="list-disc pl-6">
                 @foreach ($invoiceDetails as $detail)
@@ -465,18 +465,18 @@
         @endif
 
         <!-- Totals Section -->
-        <div class="flex justify-end mb-8">
+        <div class="flex mb-8">
             <div class="w-1/3 text-sm">
                 @if ($invoice->refund?->original_invoice)
-                    <div class="flex justify-between py-2 border-b border-gray-200">
-                        <span>
-                            Original Invoice
-                            <span class="text-xs text-gray-500">
-                                ({{ $invoice->refund->original_invoice->invoice_number }})
-                            </span>
+                <div class="flex justify-between py-2 border-b border-gray-200">
+                    <span>
+                        Original Invoice
+                        <span class="text-xs text-gray-500">
+                            ({{ $invoice->refund->original_invoice->invoice_number }})
                         </span>
-                        <span>{{ number_format($invoice->refund->original_invoice->amount, 2) }}</span>
-                    </div>
+                    </span>
+                    <span>{{ number_format($invoice->refund->original_invoice->amount, 2) }}</span>
+                </div>
                 @endif
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Subtotal:</span>
@@ -605,13 +605,13 @@
                 </p>
             </div>
             <div class="text-right">
-                          <div class="flex justify-end mb-4">
-        <button
-            onclick="window.open('{{ route('invoice.show-arabic', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}', '_blank')"
-            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-            عرض الفاتورة بالعربية
-        </button>
-    </div>
+                <div class="flex justify-end mb-4">
+                    <button
+                        onclick="window.open('{{ route('invoice.show-arabic', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}', '_blank')"
+                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                        عرض الفاتورة بالعربية
+                    </button>
+                </div>
                 <p class="font-bold text-gray-800">Thank you for your business!</p>
             </div>
         </div>
@@ -653,22 +653,22 @@
                             @endif
                         </td>
                         @php
-                            $paymentReferenceCredit = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial($partial->client_id, $partial->id);
+                        $paymentReferenceCredit = \App\Models\Credit::getTotalUtilizeCreditsByClientPartial($partial->client_id, $partial->id);
                         @endphp
                         @if ($paymentReferenceCredit)
-                            <td class="px-4 py-2 border">Client Credit by {{ $partial->client->full_name }}
-                                ({{ $paymentReferenceCredit }})
-                            </td>
+                        <td class="px-4 py-2 border">Client Credit by {{ $partial->client->full_name }}
+                            ({{ $paymentReferenceCredit }})
+                        </td>
                         @else
-                            <td class="px-4 py-2 border">{{ $partial->payment->payment_reference ?? 'N/A' }}</td>
+                        <td class="px-4 py-2 border">{{ $partial->payment->payment_reference ?? 'N/A' }}</td>
                         @endif
                         <td class="px-4 py-2 border">
                             {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : \Carbon\Carbon::parse($partial->updated_at)->format('d M, Y H:i') }}
                         </td>
                         @if ($paymentReferenceCredit)
-                            <td class="px-4 py-2 border">Client Credit</td>
+                        <td class="px-4 py-2 border">Client Credit</td>
                         @else
-                            <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
+                        <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
                         @endif
                         <td class="px-4 py-2 border">
                             {{ number_format($partial->amount ?? 0, 2) }}

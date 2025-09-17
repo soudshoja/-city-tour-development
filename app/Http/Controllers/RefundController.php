@@ -136,6 +136,8 @@ class RefundController extends Controller
             }
         }
 
+        $task->calculated_refund_charge = $task->originalTask->total - $task->total;
+
         return view('refunds.create', [
             'task' => $task,
             'invoicePaid' => $invoicePaid,

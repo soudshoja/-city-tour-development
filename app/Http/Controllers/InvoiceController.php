@@ -642,7 +642,7 @@ class InvoiceController extends Controller
         if (strtolower($gateway) === 'myfatoorah' && $method) {
             try {
                 $gatewayFee = ChargeService::FatoorahCharge($amount, $method, $companyId);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::error('FatoorahCharge exception during partial save', [
                     'message' => $e->getMessage(),
                     'paymentMethod' => $method,
@@ -1574,7 +1574,7 @@ class InvoiceController extends Controller
 
         foreach($invoice->invoicePartials as $partial) {
             if ($partial->has_payment_link == false) {
-                $hasPaymentLink = false;
+                $hasPaymentLink = $partial->charge ? $partial->charge->has_payment_link : false;
                 break;
             }
         }
@@ -1675,7 +1675,9 @@ class InvoiceController extends Controller
         $invoiceDetails = $invoice->invoiceDetails;
 
         $gatewayFee = [];
-        if ($invoicePartial->status !== 'paid') {
+        $hasPaymentLink = $invoice->charge ? $invoice->charge->has_payment_link : false;
+
+        if ($invoicePartial->status !== 'paid' && $hasPaymentLink) {
             try {
                 $paymentGateway = $invoicePartial->payment_gateway ?? 'Tap';
                 $paymentMethod = $invoicePartial->payment_method;
@@ -1719,7 +1721,15 @@ class InvoiceController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
-        return view('invoice.split', compact('invoice', 'invoiceDetails', 'invoicePartial', 'checkUtilizeCredit', 'checkUtilizeCreditPartial', 'gatewayFee'));
+        return view('invoice.split', compact(
+            'invoice',
+            'invoiceDetails',
+            'invoicePartial',
+            'checkUtilizeCredit',
+            'checkUtilizeCreditPartial',
+            'gatewayFee',
+            'hasPaymentLink'
+        ));
     }
 
     public function sendInvoice(string $invoiceNumber)

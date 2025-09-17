@@ -49,7 +49,6 @@ use Illuminate\Support\Facades\Mail;
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('invoice/{companyId}/{invoiceNumber}/arabic', [\App\Http\Controllers\InvoiceController::class, 'showArabic'])->name('invoice.show-arabic');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -373,6 +372,7 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'invoice',
         'as' => 'invoice.',
     ], function () {
+        Route::get('/{companyId}/{invoiceNumber}/arabic', [InvoiceController::class, 'showArabic'])->name('show-arabic');
         Route::post('/store', [InvoiceController::class, 'store'])->name('store');
         Route::put('/{id}', [InvoiceController::class, 'update'])->name('update');
         Route::delete('/delete/{id}', [InvoiceController::class, 'delete'])->name('delete');
@@ -420,6 +420,8 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'payment',
         'as' => 'payment.',
     ], function () {
+        Route::get('/link/show-arabic/{companyId}/{voucherNumber}', [PaymentController::class, 'paymentShowLinkArabic'])->name('link.show-arabic');
+
         // Route::get('/', [PaymentController::class, 'showPaymentPage'])->name('choose')->withoutMiddleware(['auth']);
         Route::post('/create/{companyId}/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         //Route::match(['get', 'post'], '/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
@@ -433,6 +435,7 @@ Route::middleware(['auth'])->group(function () {
             'prefix' => 'link',
             'as' => 'link.',
         ], function () {
+
             Route::get('/', [PaymentController::class, 'paymentLink'])->name('index');
             Route::get('/create', [PaymentController::class, 'paymentCreateLink'])->name('create');
             Route::post('/store', [PaymentController::class, 'paymentStoreLink'])->name('store');

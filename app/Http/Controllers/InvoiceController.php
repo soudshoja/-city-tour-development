@@ -535,11 +535,29 @@ class InvoiceController extends Controller
             ], $validated['gateway']);
         }
 
+        if($invoice){
+            Log::info('Updating payment gateway for invoice', [
+                'invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'new_gateway' => $validated['gateway'],
+                'new_method' => $validated['method'] ?? null,
+                'new_amount' => $validated['amount'],
+                'gateway_fee' => $gatewayFee['fee'] ?? 0,
+            ]);
+
+            $invoice->update([
+                'payment_gateway' => $validated['gateway'],
+                'payment_type' => 'full',
+            ]);
+        }
+
         $invoicePartial = InvoicePartial::where('invoice_id', $invoice->id)->first();
 
         if ($invoicePartial) {
             $invoicePartial->update([
                 'payment_gateway' => $validated['gateway'],
+                'type' => 'full',
+                'has_payment_link' => true,
                 'payment_method' => $validated['method'] ?? null,
                 'service_charge' => $gatewayFee['fee'] ?? 0,
                 'amount' => $invoice->amount,
@@ -1552,39 +1570,50 @@ class InvoiceController extends Controller
         $paidServiceCharge = $invoicePartials->where('status', 'paid')->sum('service_charge');
         $totalGatewayFee['fee'] += $paidServiceCharge;
 
-        foreach ($invoicePartials as $partial) {
-            if ($partial->status !== 'paid') {
-                $gatewayFee = [];
-                try {
-                    if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
-                        $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
-                        
-                    } else if (strtolower($partial->payment_gateway) === 'tap') {
-                        $gatewayFee = ChargeService::TapCharge([
-                            'amount'    => $partial->amount,
-                            'client_id' => $invoice->client_id,
-                            'agent_id'  => $invoice->agent_id,
-                            'currency'  => $invoice->currency,
-                        ], $partial->payment_gateway);
-                    } else if (strtolower($partial->payment_gateway) === 'upayment') {
-                        $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
-                    }
-                } catch (\Exception $e) {
-                    Log::error('ChargeService exception', [
-                        'message' => $e->getMessage(),
-                        'gateway' => $partial->payment_gateway,
-                        'company_id' => $companyId,
-                    ]);
-                }
-                $partial->service_charge = $gatewayFee['fee'];
-                $partial->save();
-                $partial->final_amount = $partial->amount + $partial->service_charge;
-                $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
+        $hasPaymentLink = true;
 
-                if ($chargePayer !== 'Company') {
-                    $totalGatewayFee['fee'] += $partial->service_charge;
-                    $totalGatewayFee['paid_by'] = $chargePayer;
-                    $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
+        foreach($invoice->invoicePartials as $partial) {
+            if ($partial->has_payment_link == false) {
+                $hasPaymentLink = false;
+                break;
+            }
+        }
+
+        if($hasPaymentLink) {
+            foreach ($invoicePartials as $partial) {
+                if ($partial->status !== 'paid') {
+                    $gatewayFee = [];
+                    try {
+                        if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
+                            $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
+                            
+                        } else if (strtolower($partial->payment_gateway) === 'tap') {
+                            $gatewayFee = ChargeService::TapCharge([
+                                'amount'    => $partial->amount,
+                                'client_id' => $invoice->client_id,
+                                'agent_id'  => $invoice->agent_id,
+                                'currency'  => $invoice->currency,
+                            ], $partial->payment_gateway);
+                        } else if (strtolower($partial->payment_gateway) === 'upayment') {
+                            $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('ChargeService exception', [
+                            'message' => $e->getMessage(),
+                            'gateway' => $partial->payment_gateway,
+                            'company_id' => $companyId,
+                        ]);
+                    }
+                    $partial->service_charge = $gatewayFee['fee'];
+                    $partial->save();
+                    $partial->final_amount = $partial->amount + $partial->service_charge;
+                    $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
+    
+                    if ($chargePayer !== 'Company') {
+                        $totalGatewayFee['fee'] += $partial->service_charge;
+                        $totalGatewayFee['paid_by'] = $chargePayer;
+                        $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
+                    }
                 }
             }
         }
@@ -1606,6 +1635,7 @@ class InvoiceController extends Controller
             'invoice',
             'invoiceDetails',
             'invoicePartials',
+            'hasPaymentLink',
             'paidPartials',
             'company',
             'checkUtilizeCredit',

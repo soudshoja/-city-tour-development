@@ -77,6 +77,10 @@ class Tap
         
         $tapConfig = $tapConfigResponse['data'];
 
+        logger('Create Charge request', $data);
+        logger('url: ' . $tapConfig['url'] . '/charges');
+        logger('secret: ' . $tapConfig['secret']);
+
         $response = $this->postRequest(
             $tapConfig['url'] . '/charges',
             array(

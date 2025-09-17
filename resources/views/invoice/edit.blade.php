@@ -428,8 +428,6 @@
                         @endif
                     </form>
                 </div>
-
-
             </div>
             <div class="mt-6 w-full xl:mt-0 xl:w-96">
                 <div class="panel mb-5">
@@ -1414,419 +1412,418 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <script>
-            let invoice = @json($invoice);
-            let items = [];
-            let tasks = [];
-            const itemsBody = document.getElementById('items-body');
-            const appUrl = @json($appUrl);
-            const charges = @json($paymentGateways);
-            const invoiceCharges = @json($invoiceCharges);
-            const clients = @json($clients);
-            // console.log(items);
+    <script>
+        let invoice = @json($invoice);
+        let items = [];
+        let tasks = [];
+        const itemsBody = document.getElementById('items-body');
+        const appUrl = @json($appUrl);
+        const charges = @json($paymentGateways);
+        const invoiceCharges = @json($invoiceCharges);
+        const clients = @json($clients);
+        // console.log(items);
 
-            // Simple Invoice Charge Function
-            function updateInvoiceChargeFromInput() {
-                const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
-                const invoiceChargeAmount = parseFloat(invoiceChargeAmountInput.value) || 0;
+        // Simple Invoice Charge Function
+        function updateInvoiceChargeFromInput() {
+            const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
+            const invoiceChargeAmount = parseFloat(invoiceChargeAmountInput.value) || 0;
 
-                // Validate and prevent negative values
-                if (invoiceChargeAmount < 0) {
-                    invoiceChargeAmountInput.value = 0;
-                    showValidationError(invoiceChargeAmountInput, 'Charge amount cannot be negative');
-                    return;
-                } else {
-                    hideValidationError(invoiceChargeAmountInput);
-                }
-
-                // Update hidden fields
-                const invoiceChargeElement = document.getElementById('invoice_charge');
-                const invoiceChargeAmountHidden = document.getElementById('invoice_charge_amount');
-
-                if (invoiceChargeElement) {
-                    invoiceChargeElement.value = invoiceChargeAmount.toFixed(2);
-                }
-                if (invoiceChargeAmountHidden) {
-                    invoiceChargeAmountHidden.value = invoiceChargeAmount.toFixed(2);
-                }
-
-                // Update displays
-                calculateSubtotal();
+            // Validate and prevent negative values
+            if (invoiceChargeAmount < 0) {
+                invoiceChargeAmountInput.value = 0;
+                showValidationError(invoiceChargeAmountInput, 'Charge amount cannot be negative');
+                return;
+            } else {
+                hideValidationError(invoiceChargeAmountInput);
             }
 
-            function resetInvoiceCharge() {
-                const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
-                const invoiceChargeElement = document.getElementById('invoice_charge');
-                const invoiceChargeAmountHidden = document.getElementById('invoice_charge_amount');
-                const invoiceChargeDisplay = document.getElementById('invoiceChargeDisplay');
+            // Update hidden fields
+            const invoiceChargeElement = document.getElementById('invoice_charge');
+            const invoiceChargeAmountHidden = document.getElementById('invoice_charge_amount');
 
-                if (invoiceChargeAmountInput) invoiceChargeAmountInput.value = '';
-                if (invoiceChargeElement) invoiceChargeElement.value = '0';
-                if (invoiceChargeAmountHidden) invoiceChargeAmountHidden.value = '0';
-                if (invoiceChargeDisplay) invoiceChargeDisplay.textContent = '0.00';
-
-                calculateSubtotal();
+            if (invoiceChargeElement) {
+                invoiceChargeElement.value = invoiceChargeAmount.toFixed(2);
+            }
+            if (invoiceChargeAmountHidden) {
+                invoiceChargeAmountHidden.value = invoiceChargeAmount.toFixed(2);
             }
 
-            // Validation helper functions
-            function showValidationError(inputElement, message) {
-                // Remove existing error message
+            // Update displays
+            calculateSubtotal();
+        }
+
+        function resetInvoiceCharge() {
+            const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
+            const invoiceChargeElement = document.getElementById('invoice_charge');
+            const invoiceChargeAmountHidden = document.getElementById('invoice_charge_amount');
+            const invoiceChargeDisplay = document.getElementById('invoiceChargeDisplay');
+
+            if (invoiceChargeAmountInput) invoiceChargeAmountInput.value = '';
+            if (invoiceChargeElement) invoiceChargeElement.value = '0';
+            if (invoiceChargeAmountHidden) invoiceChargeAmountHidden.value = '0';
+            if (invoiceChargeDisplay) invoiceChargeDisplay.textContent = '0.00';
+
+            calculateSubtotal();
+        }
+
+        // Validation helper functions
+        function showValidationError(inputElement, message) {
+            // Remove existing error message
+            hideValidationError(inputElement);
+
+            // Add error styling
+            inputElement.classList.add('border-red-500');
+
+            // Create and show error message
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'text-red-500 text-sm mt-1 validation-error';
+            errorDiv.textContent = message;
+            inputElement.parentNode.appendChild(errorDiv);
+        }
+
+        function hideValidationError(inputElement) {
+            // Remove error styling
+            inputElement.classList.remove('border-red-500');
+
+            // Remove error message
+            const existingError = inputElement.parentNode.querySelector('.validation-error');
+            if (existingError) {
+                existingError.remove();
+            }
+        }
+
+        // Function to validate invoice charge amount input
+        function validateInvoiceChargeAmount(inputElement) {
+            const value = parseFloat(inputElement.value);
+
+            if (value < 0) {
+                inputElement.value = 0;
+                showValidationError(inputElement, 'Charge amount cannot be negative');
+                return false;
+            } else {
                 hideValidationError(inputElement);
-
-                // Add error styling
-                inputElement.classList.add('border-red-500');
-
-                // Create and show error message
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'text-red-500 text-sm mt-1 validation-error';
-                errorDiv.textContent = message;
-                inputElement.parentNode.appendChild(errorDiv);
+                return true;
             }
+        }
 
-            function hideValidationError(inputElement) {
-                // Remove error styling
-                inputElement.classList.remove('border-red-500');
+        // Function to update invoice charge labels with payment gateway name
+        function updateInvoiceChargeLabels(gatewayName) {
+            const invoiceChargeTitle = document.getElementById('invoice_charge_title');
+            const invoiceChargeLabel = document.getElementById('invoice_charge_label');
+            const calculatedChargeLabel = document.getElementById('calculated_charge_label');
 
-                // Remove error message
-                const existingError = inputElement.parentNode.querySelector('.validation-error');
-                if (existingError) {
-                    existingError.remove();
+            if (gatewayName) {
+                const chargeText = `${gatewayName} Charge`;
+                const calculatedChargeText = `Calculated ${gatewayName} Charge:`;
+
+                if (invoiceChargeTitle) {
+                    invoiceChargeTitle.textContent = chargeText;
+                }
+                if (invoiceChargeLabel) {
+                    invoiceChargeLabel.textContent = chargeText + ':';
+                }
+                if (calculatedChargeLabel) {
+                    calculatedChargeLabel.textContent = calculatedChargeText;
+                }
+            } else {
+                // Fallback to default labels
+                if (invoiceChargeTitle) {
+                    invoiceChargeTitle.textContent = 'Invoice Charge';
+                }
+                if (invoiceChargeLabel) {
+                    invoiceChargeLabel.textContent = 'Invoice Charge:';
+                }
+                if (calculatedChargeLabel) {
+                    calculatedChargeLabel.textContent = 'Calculated Invoice Charge:';
+                }
+            }
+        }
+
+
+        // Function to check if external URL should be shown and handle auto-payment
+        function checkExternalUrlVisibility() {
+            const selectedGateway = document.getElementById('payment_gateway_option').value;
+            const externalUrlSection = document.getElementById('external_url_section');
+            const externalUrlInput = document.getElementById('external_url');
+            const autoPaymentNotification = document.getElementById('auto_payment_notification');
+
+            // Find the charge settings for the selected gateway
+            const selectedCharge = charges.find(charge => charge.name === selectedGateway);
+
+            // Handle external URL visibility
+            if (selectedCharge && typeof selectedCharge.has_url !== 'undefined' && selectedCharge.has_url) {
+                externalUrlSection.style.display = 'block';
+                // External URL is optional, not required
+            } else {
+                externalUrlSection.style.display = 'none';
+                if (externalUrlInput) {
+                    externalUrlInput.value = '';
                 }
             }
 
-            // Function to validate invoice charge amount input
-            function validateInvoiceChargeAmount(inputElement) {
-                const value = parseFloat(inputElement.value);
+            // Handle invoice charge section visibility
+            const invoiceChargeSection = document.getElementById('invoice_charge_section');
+            const invoiceChargeDisplayRow = document.getElementById('invoice_charge_display_row');
 
-                if (value < 0) {
-                    inputElement.value = 0;
-                    showValidationError(inputElement, 'Charge amount cannot be negative');
-                    return false;
-                } else {
-                    hideValidationError(inputElement);
-                    return true;
+            if (selectedCharge && selectedCharge.can_charge_invoice) {
+                if (invoiceChargeSection) {
+                    invoiceChargeSection.style.display = 'block';
+                    // Update labels with payment gateway name
+                    updateInvoiceChargeLabels(selectedGateway);
+                }
+                if (invoiceChargeDisplayRow) {
+                    invoiceChargeDisplayRow.style.display = 'flex';
+                }
+            } else {
+                if (invoiceChargeSection) {
+                    invoiceChargeSection.style.display = 'none';
+                    // Reset invoice charge values when hidden
+                    resetInvoiceCharge();
+                }
+                if (invoiceChargeDisplayRow) {
+                    invoiceChargeDisplayRow.style.display = 'none';
                 }
             }
 
-            // Function to update invoice charge labels with payment gateway name
-            function updateInvoiceChargeLabels(gatewayName) {
-                const invoiceChargeTitle = document.getElementById('invoice_charge_title');
-                const invoiceChargeLabel = document.getElementById('invoice_charge_label');
-                const calculatedChargeLabel = document.getElementById('calculated_charge_label');
+            // Handle auto-payment logic
+            if (selectedCharge && selectedCharge.is_auto_paid) {
+                // Show auto-payment notification
+                autoPaymentNotification.style.display = 'block';
 
-                if (gatewayName) {
-                    const chargeText = `${gatewayName} Charge`;
-                    const calculatedChargeText = `Calculated ${gatewayName} Charge:`;
+                // Auto-select full payment
+                const fullPaymentRadio = document.getElementById('payment_type_full');
+                if (fullPaymentRadio) {
+                    fullPaymentRadio.checked = true;
+                    fullPaymentRadio.click(); // Trigger any onclick events
+                }
 
-                    if (invoiceChargeTitle) {
-                        invoiceChargeTitle.textContent = chargeText;
-                    }
-                    if (invoiceChargeLabel) {
-                        invoiceChargeLabel.textContent = chargeText + ':';
-                    }
-                    if (calculatedChargeLabel) {
-                        calculatedChargeLabel.textContent = calculatedChargeText;
-                    }
-                } else {
-                    // Fallback to default labels
-                    if (invoiceChargeTitle) {
-                        invoiceChargeTitle.textContent = 'Invoice Charge';
-                    }
-                    if (invoiceChargeLabel) {
-                        invoiceChargeLabel.textContent = 'Invoice Charge:';
-                    }
-                    if (calculatedChargeLabel) {
-                        calculatedChargeLabel.textContent = 'Calculated Invoice Charge:';
-                    }
+                // Disable other payment options
+                const partialPaymentRadio = document.getElementById('payment_type_partial');
+                const splitPaymentRadio = document.getElementById('payment_type_split');
+                const cashPaymentRadio = document.getElementById('payment_type_cash');
+                const importPaymentRadio = document.getElementById('payment_type_import');
+
+                if (partialPaymentRadio) {
+                    partialPaymentRadio.disabled = true;
+                    partialPaymentRadio.parentElement.style.opacity = '0.5';
+                    partialPaymentRadio.parentElement.style.pointerEvents = 'none';
+                }
+                if (splitPaymentRadio) {
+                    splitPaymentRadio.disabled = true;
+                    splitPaymentRadio.parentElement.style.opacity = '0.5';
+                    splitPaymentRadio.parentElement.style.pointerEvents = 'none';
+                }
+                if (cashPaymentRadio) {
+                    cashPaymentRadio.disabled = true;
+                    cashPaymentRadio.parentElement.style.opacity = '0.5';
+                    cashPaymentRadio.parentElement.style.pointerEvents = 'none';
+                }
+                if (importPaymentRadio) {
+                    importPaymentRadio.disabled = true;
+                    importPaymentRadio.parentElement.style.opacity = '0.5';
+                    importPaymentRadio.parentElement.style.pointerEvents = 'none';
+                }
+            } else {
+                // Hide auto-payment notification
+                autoPaymentNotification.style.display = 'none';
+
+                // Re-enable other payment options
+                const partialPaymentRadio = document.getElementById('payment_type_partial');
+                const splitPaymentRadio = document.getElementById('payment_type_split');
+                const cashPaymentRadio = document.getElementById('payment_type_cash');
+                const importPaymentRadio = document.getElementById('payment_type_import');
+
+                if (partialPaymentRadio) {
+                    partialPaymentRadio.disabled = false;
+                    partialPaymentRadio.parentElement.style.opacity = '1';
+                    partialPaymentRadio.parentElement.style.pointerEvents = 'auto';
+                }
+                if (splitPaymentRadio) {
+                    splitPaymentRadio.disabled = false;
+                    splitPaymentRadio.parentElement.style.opacity = '1';
+                    splitPaymentRadio.parentElement.style.pointerEvents = 'auto';
+                }
+                if (cashPaymentRadio) {
+                    cashPaymentRadio.disabled = false;
+                    cashPaymentRadio.parentElement.style.opacity = '1';
+                    cashPaymentRadio.parentElement.style.pointerEvents = 'auto';
+                }
+                if (importPaymentRadio) {
+                    importPaymentRadio.disabled = false;
+                    importPaymentRadio.parentElement.style.opacity = '1';
+                    importPaymentRadio.parentElement.style.pointerEvents = 'auto';
                 }
             }
+        }
 
+        // Gateway selection setup function - will be called in main DOMContentLoaded
+        function setupGatewaySelection() {
+            const gatewaySelect = document.getElementById('payment_gateway_option');
+            if (gatewaySelect) {
+                gatewaySelect.addEventListener('change', function() {
+                    checkExternalUrlVisibility();
+                    calculateSubtotal(); // Recalculate when gateway changes
+                });
+                // Check on initial load
+                checkExternalUrlVisibility();
+                calculateSubtotal(); // Calculate on initial load
+            }
 
-            // Function to check if external URL should be shown and handle auto-payment
-            function checkExternalUrlVisibility() {
-                const selectedGateway = document.getElementById('payment_gateway_option').value;
-                const externalUrlSection = document.getElementById('external_url_section');
-                const externalUrlInput = document.getElementById('external_url');
-                const autoPaymentNotification = document.getElementById('auto_payment_notification');
+            // Invoice Charge Event Listeners
+            const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
 
-                // Find the charge settings for the selected gateway
-                const selectedCharge = charges.find(charge => charge.name === selectedGateway);
+            if (invoiceChargeAmountInput) {
+                invoiceChargeAmountInput.addEventListener('input', updateInvoiceChargeFromInput);
+                invoiceChargeAmountInput.addEventListener('change', updateInvoiceChargeFromInput);
 
-                // Handle external URL visibility
-                if (selectedCharge && typeof selectedCharge.has_url !== 'undefined' && selectedCharge.has_url) {
-                    externalUrlSection.style.display = 'block';
-                    // External URL is optional, not required
-                } else {
-                    externalUrlSection.style.display = 'none';
-                    if (externalUrlInput) {
-                        externalUrlInput.value = '';
+                // Add real-time validation for negative values
+                invoiceChargeAmountInput.addEventListener('input', function() {
+                    validateInvoiceChargeAmount(this);
+                });
+
+                // Prevent negative values on keydown
+                invoiceChargeAmountInput.addEventListener('keydown', function(e) {
+                    // Prevent typing minus sign
+                    if (e.key === '-' || e.key === 'Minus') {
+                        e.preventDefault();
                     }
-                }
+                });
 
-                // Handle invoice charge section visibility
+                // Validate on blur (when user leaves the field)
+                invoiceChargeAmountInput.addEventListener('blur', function() {
+                    validateInvoiceChargeAmount(this);
+                });
+            }
+
+            // Check if invoice charge section should be visible on page load
+            const currentGateway = document.getElementById('payment_gateway_option')?.value;
+            if (currentGateway) {
+                const currentCharge = charges.find(charge => charge.name === currentGateway);
                 const invoiceChargeSection = document.getElementById('invoice_charge_section');
                 const invoiceChargeDisplayRow = document.getElementById('invoice_charge_display_row');
 
-                if (selectedCharge && selectedCharge.can_charge_invoice) {
+                if (currentCharge && currentCharge.can_charge_invoice && invoice.invoice_charge > 0) {
                     if (invoiceChargeSection) {
                         invoiceChargeSection.style.display = 'block';
-                        // Update labels with payment gateway name
-                        updateInvoiceChargeLabels(selectedGateway);
+                        // Update labels with payment gateway name on page load
+                        updateInvoiceChargeLabels(currentGateway);
                     }
                     if (invoiceChargeDisplayRow) {
                         invoiceChargeDisplayRow.style.display = 'flex';
                     }
-                } else {
-                    if (invoiceChargeSection) {
-                        invoiceChargeSection.style.display = 'none';
-                        // Reset invoice charge values when hidden
-                        resetInvoiceCharge();
-                    }
-                    if (invoiceChargeDisplayRow) {
-                        invoiceChargeDisplayRow.style.display = 'none';
-                    }
-                }
-
-                // Handle auto-payment logic
-                if (selectedCharge && selectedCharge.is_auto_paid) {
-                    // Show auto-payment notification
-                    autoPaymentNotification.style.display = 'block';
-
-                    // Auto-select full payment
-                    const fullPaymentRadio = document.getElementById('payment_type_full');
-                    if (fullPaymentRadio) {
-                        fullPaymentRadio.checked = true;
-                        fullPaymentRadio.click(); // Trigger any onclick events
-                    }
-
-                    // Disable other payment options
-                    const partialPaymentRadio = document.getElementById('payment_type_partial');
-                    const splitPaymentRadio = document.getElementById('payment_type_split');
-                    const cashPaymentRadio = document.getElementById('payment_type_cash');
-                    const importPaymentRadio = document.getElementById('payment_type_import');
-
-                    if (partialPaymentRadio) {
-                        partialPaymentRadio.disabled = true;
-                        partialPaymentRadio.parentElement.style.opacity = '0.5';
-                        partialPaymentRadio.parentElement.style.pointerEvents = 'none';
-                    }
-                    if (splitPaymentRadio) {
-                        splitPaymentRadio.disabled = true;
-                        splitPaymentRadio.parentElement.style.opacity = '0.5';
-                        splitPaymentRadio.parentElement.style.pointerEvents = 'none';
-                    }
-                    if (cashPaymentRadio) {
-                        cashPaymentRadio.disabled = true;
-                        cashPaymentRadio.parentElement.style.opacity = '0.5';
-                        cashPaymentRadio.parentElement.style.pointerEvents = 'none';
-                    }
-                    if (importPaymentRadio) {
-                        importPaymentRadio.disabled = true;
-                        importPaymentRadio.parentElement.style.opacity = '0.5';
-                        importPaymentRadio.parentElement.style.pointerEvents = 'none';
-                    }
-                } else {
-                    // Hide auto-payment notification
-                    autoPaymentNotification.style.display = 'none';
-
-                    // Re-enable other payment options
-                    const partialPaymentRadio = document.getElementById('payment_type_partial');
-                    const splitPaymentRadio = document.getElementById('payment_type_split');
-                    const cashPaymentRadio = document.getElementById('payment_type_cash');
-                    const importPaymentRadio = document.getElementById('payment_type_import');
-
-                    if (partialPaymentRadio) {
-                        partialPaymentRadio.disabled = false;
-                        partialPaymentRadio.parentElement.style.opacity = '1';
-                        partialPaymentRadio.parentElement.style.pointerEvents = 'auto';
-                    }
-                    if (splitPaymentRadio) {
-                        splitPaymentRadio.disabled = false;
-                        splitPaymentRadio.parentElement.style.opacity = '1';
-                        splitPaymentRadio.parentElement.style.pointerEvents = 'auto';
-                    }
-                    if (cashPaymentRadio) {
-                        cashPaymentRadio.disabled = false;
-                        cashPaymentRadio.parentElement.style.opacity = '1';
-                        cashPaymentRadio.parentElement.style.pointerEvents = 'auto';
-                    }
-                    if (importPaymentRadio) {
-                        importPaymentRadio.disabled = false;
-                        importPaymentRadio.parentElement.style.opacity = '1';
-                        importPaymentRadio.parentElement.style.pointerEvents = 'auto';
-                    }
                 }
             }
+        }
 
-            // Add event listener for gateway selection change
-            document.addEventListener('DOMContentLoaded', function() {
-                const gatewaySelect = document.getElementById('payment_gateway_option');
-                if (gatewaySelect) {
-                    gatewaySelect.addEventListener('change', function() {
-                        checkExternalUrlVisibility();
-                        calculateSubtotal(); // Recalculate when gateway changes
-                    });
-                    // Check on initial load
-                    checkExternalUrlVisibility();
-                    calculateSubtotal(); // Calculate on initial load
-                }
+        // console.log('invoice', invoice);
+        // Handle Tab Switching
+        const selectTabButton = document.getElementById('selectTabButton');
+        const addTabButton = document.getElementById('addTabButton');
+        const selectTab = document.getElementById('selectTab');
+        const addTab = document.getElementById('addTab');
+        const clientButton = document.getElementById("openClientModalButton");
+        const agentButton = document.getElementById("select-agent");
+        const updateInvoiceBtn = document.getElementById("update-invoice-btn");
 
-                // Invoice Charge Event Listeners
-                const invoiceChargeAmountInput = document.getElementById('invoice_charge_amount_input');
+        const paymentTypeFull = document.getElementById("payment_type_full");
+        const paymentTypePartial = document.getElementById("payment_type_partial");
+        const paymentTypeSplit = document.getElementById("payment_type_split");
+        const paymentTypeCash = document.getElementById("payment_type_cash");
+        const paymentTypeImport = document.getElementById('payment_type_import');
+        const isInvoicePaid = "{{ $invoice->status === 'paid' }}"
+        const hasPaymentType = "{{ !empty($invoice->payment_type) }}";
 
-                if (invoiceChargeAmountInput) {
-                    invoiceChargeAmountInput.addEventListener('input', updateInvoiceChargeFromInput);
-                    invoiceChargeAmountInput.addEventListener('change', updateInvoiceChargeFromInput);
+        clientButton.disabled = true;
+        agentButton.disabled = true;
 
-                    // Add real-time validation for negative values
-                    invoiceChargeAmountInput.addEventListener('input', function() {
-                        validateInvoiceChargeAmount(this);
-                    });
+        document.getElementById("openClientModalButton").onclick = openClientModal;
+        document.getElementById("closeClientModalButton").onclick = closeClientModal;
+        document.getElementById('clientSearchInput').addEventListener('input', filterClients);
 
-                    // Prevent negative values on keydown
-                    invoiceChargeAmountInput.addEventListener('keydown', function(e) {
-                        // Prevent typing minus sign
-                        if (e.key === '-' || e.key === 'Minus') {
-                            e.preventDefault();
-                        }
-                    });
+        document.getElementById("openTaskModalButton").onclick = openTaskModal;
+        document.getElementById("closeTaskModalButton").onclick = closeTaskModal;
+        document.getElementById('taskSearchInput').addEventListener('input', filterTasks);
 
-                    // Validate on blur (when user leaves the field)
-                    invoiceChargeAmountInput.addEventListener('blur', function() {
-                        validateInvoiceChargeAmount(this);
-                    });
-                }
+        let selectedTasks1 = @json($selectedTasks);
+        let selectedAgent = @json($selectedAgent);
+        let selectedClient = @json($selectedClient);
 
+        updateClientAgent(selectedClient.id, selectedAgent.id);
 
-                // Check if invoice charge section should be visible on page load
-                const currentGateway = document.getElementById('payment_gateway_option')?.value;
-                if (currentGateway) {
-                    const currentCharge = charges.find(charge => charge.name === currentGateway);
-                    const invoiceChargeSection = document.getElementById('invoice_charge_section');
-                    const invoiceChargeDisplayRow = document.getElementById('invoice_charge_display_row');
-
-                    if (currentCharge && currentCharge.can_charge_invoice && invoice.invoice_charge > 0) {
-                        if (invoiceChargeSection) {
-                            invoiceChargeSection.style.display = 'block';
-                            // Update labels with payment gateway name on page load
-                            updateInvoiceChargeLabels(currentGateway);
-                        }
-                        if (invoiceChargeDisplayRow) {
-                            invoiceChargeDisplayRow.style.display = 'flex';
-                        }
-                    }
-                }
-            });
-
-            // console.log('invoice', invoice);
-            // Handle Tab Switching
-            const selectTabButton = document.getElementById('selectTabButton');
-            const addTabButton = document.getElementById('addTabButton');
-            const selectTab = document.getElementById('selectTab');
-            const addTab = document.getElementById('addTab');
-            const clientButton = document.getElementById("openClientModalButton");
-            const agentButton = document.getElementById("select-agent");
-            const updateInvoiceBtn = document.getElementById("update-invoice-btn");
-
-            const paymentTypeFull = document.getElementById("payment_type_full");
-            const paymentTypePartial = document.getElementById("payment_type_partial");
-            const paymentTypeSplit = document.getElementById("payment_type_split");
-            const paymentTypeCash = document.getElementById("payment_type_cash");
-            const paymentTypeImport = document.getElementById('payment_type_import');
-            const isInvoicePaid = "{{ $invoice->status === 'paid' }}"
-            const hasPaymentType = "{{ !empty($invoice->payment_type) }}";
-
-            clientButton.disabled = true;
-            agentButton.disabled = true;
-
-            document.getElementById("openClientModalButton").onclick = openClientModal;
-            document.getElementById("closeClientModalButton").onclick = closeClientModal;
-            document.getElementById('clientSearchInput').addEventListener('input', filterClients);
-
-            document.getElementById("openTaskModalButton").onclick = openTaskModal;
-            document.getElementById("closeTaskModalButton").onclick = closeTaskModal;
-            document.getElementById('taskSearchInput').addEventListener('input', filterTasks);
-
-            let selectedTasks1 = @json($selectedTasks);
-            let selectedAgent = @json($selectedAgent);
-            let selectedClient = @json($selectedClient);
-
-            updateClientAgent(selectedClient.id, selectedAgent.id);
-
-            const buttonText = document.getElementById('button-text');
-            const buttonLoading = document.getElementById('button-loading');
-            const buttonSaved = document.getElementById('button-saved');
+        const buttonText = document.getElementById('button-text');
+        const buttonLoading = document.getElementById('button-loading');
+        const buttonSaved = document.getElementById('button-saved');
 
 
-            const invoiceIdInput = document.getElementById('invoiceId');
-            invoiceIdInput.value = invoice.id;
+        const invoiceIdInput = document.getElementById('invoiceId');
+        invoiceIdInput.value = invoice.id;
 
-            const invoiceExpireDefault = @json($invoiceExpireDefault);
+        const invoiceExpireDefault = @json($invoiceExpireDefault);
 
-            let clientCredits = [];
+        let clientCredits = [];
 
-            function checkInvoiceId() {
-                const tabs = document.querySelectorAll('input[name="payment_type"]');
-                const paymentType = invoice.payment_type;
-                // console.log('paymenttype', paymentType);
-                const paymentGatewaySection = document.getElementById('payment_gateway_section');
-                const additionalActions = document.getElementById('additional-actions');
-                const paymentModal = document.getElementById('paymentModal');
-                const paymentModal1 = document.getElementById('paymentModal1');
+        function checkInvoiceId() {
+            const tabs = document.querySelectorAll('input[name="payment_type"]');
+            const paymentType = invoice.payment_type;
+            // console.log('paymenttype', paymentType);
+            const paymentGatewaySection = document.getElementById('payment_gateway_section');
+            const additionalActions = document.getElementById('additional-actions');
+            const paymentModal = document.getElementById('paymentModal');
+            const paymentModal1 = document.getElementById('paymentModal1');
 
-                const paymentGatewayDropdowns = document.getElementById('payment_gateway_dropdowns');
+            const paymentGatewayDropdowns = document.getElementById('payment_gateway_dropdowns');
 
-                if (paymentType === 'full' || paymentType === 'cash') {
-                    paymentGatewaySection.style.display = 'block'; // Show the section
-                    additionalActions.style.display = 'block';
-                    updateInvoiceBtn.disabled = true;
-                    paymentTypeFull.disabled = true;
-                    paymentTypePartial.disabled = true;
-                    paymentTypeSplit.disabled = true;
-                    paymentTypeCash.disabled = true;
-                    paymentTypeImport.disabled = true;
-                    paymentGatewayDropdowns.classList.remove('hidden');
-                } else if (paymentType === 'partial') {
-                    paymentGatewaySection.style.display = 'block'; // Show the section
-                    additionalActions.style.display = 'block';
-                    updateInvoiceBtn.disabled = true;
-                    paymentTypeFull.disabled = true;
-                    paymentTypePartial.disabled = true;
-                    paymentTypeSplit.disabled = true;
-                    paymentTypeCash.disabled = true;
-                    paymentTypeImport.disabled = true;
-                    paymentGatewayDropdowns.classList.add('hidden');
-                    paymentModal1.classList.add('hidden');
-                } else if (paymentType === 'split') {
-                    paymentGatewaySection.style.display = 'block'; // Show the section
-                    additionalActions.style.display = 'block';
-                    updateInvoiceBtn.disabled = true;
-                    paymentTypeFull.disabled = true;
-                    paymentTypePartial.disabled = true;
-                    paymentTypeSplit.disabled = true;
-                    paymentTypeCash.disabled = true;
-                    paymentTypeImport.disabled = true;
-                    paymentGatewayDropdowns.classList.add('hidden');
-                    paymentModal.classList.add('hidden');
-                } else {
-                    paymentGatewaySection.style.display = 'none'; // Hide the section
-                    additionalActions.style.display = 'none';
-                    updateInvoiceBtn.disabled = false;
-                    paymentTypeFull.disabled = false;
-                    paymentTypePartial.disabled = false;
-                    paymentTypeSplit.disabled = false;
-                    paymentTypeCash.disabled = false;
-                    paymentTypeImport.disabled = false;
-                }
-
+            if (paymentType === 'full' || paymentType === 'cash') {
+                paymentGatewaySection.style.display = 'block'; // Show the section
+                additionalActions.style.display = 'block';
+                updateInvoiceBtn.disabled = true;
+                paymentTypeFull.disabled = true;
+                paymentTypePartial.disabled = true;
+                paymentTypeSplit.disabled = true;
+                paymentTypeCash.disabled = true;
+                paymentTypeImport.disabled = true;
+                paymentGatewayDropdowns.classList.remove('hidden');
+            } else if (paymentType === 'partial') {
+                paymentGatewaySection.style.display = 'block'; // Show the section
+                additionalActions.style.display = 'block';
+                updateInvoiceBtn.disabled = true;
+                paymentTypeFull.disabled = true;
+                paymentTypePartial.disabled = true;
+                paymentTypeSplit.disabled = true;
+                paymentTypeCash.disabled = true;
+                paymentTypeImport.disabled = true;
+                paymentGatewayDropdowns.classList.add('hidden');
+                paymentModal1.classList.add('hidden');
+            } else if (paymentType === 'split') {
+                paymentGatewaySection.style.display = 'block'; // Show the section
+                additionalActions.style.display = 'block';
+                updateInvoiceBtn.disabled = true;
+                paymentTypeFull.disabled = true;
+                paymentTypePartial.disabled = true;
+                paymentTypeSplit.disabled = true;
+                paymentTypeCash.disabled = true;
+                paymentTypeImport.disabled = true;
+                paymentGatewayDropdowns.classList.add('hidden');
+                paymentModal.classList.add('hidden');
+            } else {
+                paymentGatewaySection.style.display = 'none'; // Hide the section
+                additionalActions.style.display = 'none';
+                updateInvoiceBtn.disabled = false;
+                paymentTypeFull.disabled = false;
+                paymentTypePartial.disabled = false;
+                paymentTypeSplit.disabled = false;
+                paymentTypeCash.disabled = false;
+                paymentTypeImport.disabled = false;
             }
 
-            // Run the check on page load and whenever the input value changes
-            document.addEventListener('DOMContentLoaded', checkInvoiceId);
-            document.addEventListener('DOMContentLoaded', function() {
-                const saveBtn = document.getElementById('update-invoice-btn');
+        }
 
+        // Setup save button click handler - will be called in main DOMContentLoaded
+        function setupSaveButton() {
+            const saveBtn = document.getElementById('update-invoice-btn');
+            if (saveBtn) {
                 saveBtn.addEventListener('click', function() {
                     // Check which payment type is selected
                     const selectedPaymentType = document.querySelector('input[name="payment_type"]:checked');
@@ -1847,55 +1844,67 @@
                         savePartial('full');
                     }
                 });
+            }
 
-                const addTaskButton = document.getElementById('openTaskModalButton');
-                const actionsHeader = document.querySelector('#itemsTable th:last-child');
-                const actionCells = document.querySelectorAll('#itemsTable td:last-child');
+            const addTaskButton = document.getElementById('openTaskModalButton');
+            const actionsHeader = document.querySelector('#itemsTable th:last-child');
+            const actionCells = document.querySelectorAll('#itemsTable td:last-child');
 
-                if (isInvoicePaid || hasPaymentType) {
-                    if (addTaskButton) {
-                        addTaskButton.style.display = 'none';
-                    }
-                    if (actionsHeader) {
-                        actionsHeader.style.display = 'none';
-                    }
-                    actionCells.forEach(cell => cell.style.display = 'none');
+            if (isInvoicePaid || hasPaymentType) {
+                if (addTaskButton) {
+                    addTaskButton.style.display = 'none';
                 }
-            });
+                if (actionsHeader) {
+                    actionsHeader.style.display = 'none';
+                }
+                actionCells.forEach(cell => cell.style.display = 'none');
+            }
+        }
 
+        // Consolidated DOMContentLoaded event handler
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup all initialization functions
+            setupGatewaySelection();
+            setupSaveButton();
+            setupPaymentTypesAndTasks();
+            setupImportModal();
 
+            // Run initial checks
+            checkInvoiceId();
+
+            // Setup invoice ID input listener
             invoiceIdInput.addEventListener('input', checkInvoiceId);
+        });
 
+        // Set initial states
+        let isSaving = false;
+        let isSaved = false;
 
-            // Set initial states
-            let isSaving = false;
-            let isSaved = false;
-
-            function showModal(type) {
-                if (type == 'split') {
-                    document.getElementById('paymentModal').classList.remove('hidden');
-                } else if (type == 'partial') {
-                    document.getElementById('paymentModal1').classList.remove('hidden');
-                }
-
-                checkInvoiceId();
+        function showModal(type) {
+            if (type == 'split') {
+                document.getElementById('paymentModal').classList.remove('hidden');
+            } else if (type == 'partial') {
+                document.getElementById('paymentModal1').classList.remove('hidden');
             }
 
-            function hideModal() {
-                document.getElementById('paymentModal').classList.add('hidden');
-                document.getElementById('paymentModal1').classList.add('hidden');
-                checkInvoiceId();
-            }
+            checkInvoiceId();
+        }
+
+        function hideModal() {
+            document.getElementById('paymentModal').classList.add('hidden');
+            document.getElementById('paymentModal1').classList.add('hidden');
+            checkInvoiceId();
+        }
 
 
-            function showClientModal() {
-                // Create the modal container
-                const modalContainer = document.createElement('div');
-                modalContainer.id = 'clientModal';
-                modalContainer.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+        function showClientModal() {
+            // Create the modal container
+            const modalContainer = document.createElement('div');
+            modalContainer.id = 'clientModal';
+            modalContainer.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
 
-                // Modal content
-                modalContainer.innerHTML = `
+            // Modal content
+            modalContainer.innerHTML = `
                 <div class="bg-white w-full max-w-lg rounded-lg shadow-lg p-6 relative">
                     <!-- Close Button -->
                     <button class="absolute top-3 right-3 text-gray-500 hover:text-gray-800" onclick="closeClientModal1()">✕</button>
@@ -1919,59 +1928,59 @@
                 </div>
             `;
 
-                // Append the modal to the body
-                document.body.appendChild(modalContainer);
+            // Append the modal to the body
+            document.body.appendChild(modalContainer);
+        }
+
+        function closeClientModal1() {
+            // Remove the modal from the DOM
+            const modal = document.getElementById('clientModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        function updateCreditRow(rowNumber, clientId) {
+            const selectedClient = clients.filter(client => client.id == clientId)[0];
+            clientCredits[rowNumber] = selectedClient?.total_credit || 0;
+
+            // Update credit display
+            const creditDisplayElement = document.getElementById(`credit_display_${rowNumber}`);
+            if (creditDisplayElement) {
+                creditDisplayElement.innerText = `Credit: ${clientCredits[rowNumber]}`;
+            } else {
+                console.error('Credit display element not found:', `credit_display_${rowNumber}`);
             }
 
-            function closeClientModal1() {
-                // Remove the modal from the DOM
-                const modal = document.getElementById('clientModal');
-                if (modal) {
-                    modal.remove();
-                }
-            }
+            // Update credit payment gateway option
+            const creditOption = document.getElementById(`credit_option_${rowNumber}`);
+            if (creditOption) {
+                const creditAmount = clientCredits[rowNumber];
+                creditOption.textContent = `Credit (${creditAmount})`;
 
-            function updateCreditRow(rowNumber, clientId) {
-                const selectedClient = clients.filter(client => client.id == clientId)[0];
-                clientCredits[rowNumber] = selectedClient?.total_credit || 0;
-
-                // Update credit display
-                const creditDisplayElement = document.getElementById(`credit_display_${rowNumber}`);
-                if (creditDisplayElement) {
-                    creditDisplayElement.innerText = `Credit: ${clientCredits[rowNumber]}`;
+                if (creditAmount > 0) {
+                    creditOption.disabled = false;
+                    creditOption.style.color = '#000'; // Enable styling
                 } else {
-                    console.error('Credit display element not found:', `credit_display_${rowNumber}`);
+                    creditOption.disabled = true;
+                    creditOption.style.color = '#9ca3af'; // Gray out when disabled
                 }
-
-                // Update credit payment gateway option
-                const creditOption = document.getElementById(`credit_option_${rowNumber}`);
-                if (creditOption) {
-                    const creditAmount = clientCredits[rowNumber];
-                    creditOption.textContent = `Credit (${creditAmount})`;
-
-                    if (creditAmount > 0) {
-                        creditOption.disabled = false;
-                        creditOption.style.color = '#000'; // Enable styling
-                    } else {
-                        creditOption.disabled = true;
-                        creditOption.style.color = '#9ca3af'; // Gray out when disabled
-                    }
-                } else {
-                    console.error('Credit option not found:', `credit_option_${rowNumber}`);
-                }
+            } else {
+                console.error('Credit option not found:', `credit_option_${rowNumber}`);
             }
+        }
 
-            function updateRowSplit() { //split payment
-                const splitInto = parseInt(document.getElementById('split-into').value) || 0;
-                const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-                const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
-                const paymentMethods = @json($paymentMethods);
-                const tbody = document.getElementById('split-rows');
-                tbody.innerHTML = ''; // Clear existing rows
+        function updateRowSplit() { //split payment
+            const splitInto = parseInt(document.getElementById('split-into').value) || 0;
+            const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+            const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
+            const paymentMethods = @json($paymentMethods);
+            const tbody = document.getElementById('split-rows');
+            tbody.innerHTML = ''; // Clear existing rows
 
-                for (let i = 1; i <= splitInto; i++) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
+            for (let i = 1; i <= splitInto; i++) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
                         <td class="border-b px-4 py-2">${i}</td>
                         <td class="border-b px-4 py-2">
                             <div class="w-[180px] relative">
@@ -2047,125 +2056,81 @@
                             </div>
                         </td>
                     `;
-                    tbody.appendChild(row);
+                tbody.appendChild(row);
 
-                    const gatewaySelect = row.querySelector(`#payment_gateway_${i}`);
-                    const methodContainer = row.querySelector(`#payment_method_container_${i}`);
-                    const methodText = row.querySelector(`#payment_method_text_${i}`);
+                const gatewaySelect = row.querySelector(`#payment_gateway_${i}`);
+                const methodContainer = row.querySelector(`#payment_method_container_${i}`);
+                const methodText = row.querySelector(`#payment_method_text_${i}`);
 
-                    const updateMethodVisibility = () => {
-                        const selectedValue = gatewaySelect.value.toLowerCase();
+                const updateMethodVisibility = () => {
+                    const selectedValue = gatewaySelect.value.toLowerCase();
 
-                        if (selectedValue === 'myfatoorah') {
-                            methodContainer.classList.remove('hidden');
-                            methodText.classList.add('hidden');
-                        } else {
-                            methodContainer.classList.add('hidden');
-                            methodText.classList.remove('hidden');
-                        }
-
-                        // Handle credit payment selection
-                        if (selectedValue === 'credit') {
-                            handleCreditPaymentSelection(i);
-                        }
-                    };
-
-                    updateMethodVisibility();
-
-                    gatewaySelect.addEventListener('change', updateMethodVisibility);
-                }
-            }
-
-            // Handle credit payment selection
-            function handleCreditPaymentSelection(rowIndex) {
-                const clientIdInput = document.getElementById(`customer_name_${rowIndex}`);
-                const amountInput = document.getElementById(`amount_${rowIndex}`);
-
-                if (!clientIdInput || !clientIdInput.value) {
-                    alert('Please select a client first before choosing credit payment.');
-                    // Reset gateway selection
-                    const gatewaySelect = document.getElementById(`payment_gateway_${rowIndex}`);
-                    gatewaySelect.selectedIndex = 1; // Select first non-credit option
-                    return;
-                }
-
-                const clientId = clientIdInput.value;
-                const amount = parseFloat(amountInput.value) || 0;
-                const clientCredit = clientCredits[rowIndex] || 0;
-
-                if (amount > clientCredit) {
-                    alert(`Insufficient credit. Client has ${clientCredit} credit but trying to pay ${amount}.`);
-                    // Reset gateway selection
-                    const gatewaySelect = document.getElementById(`payment_gateway_${rowIndex}`);
-                    gatewaySelect.selectedIndex = 1; // Select first non-credit option
-                    return;
-                }
-
-                // Credit payment selected - processing will happen with normal save flow
-            }
-
-            // Process credit payment with backend
-            async function processCreditPayment(rowIndex, clientId, amount) {
-                try {
-                    console.log('Processing credit payment:', {
-                        rowIndex,
-                        clientId,
-                        amount
-                    });
-
-                    // Here you can add the actual API call to your backend
-                    // Example:
-                    /*
-                    const response = await fetch('/api/process-credit-payment', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify({
-                            client_id: clientId,
-                            amount: amount,
-                            row_index: rowIndex
-                        })
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (response.ok) {
-                        alert('Credit payment processed successfully!');
-                        // Update UI as needed
+                    if (selectedValue === 'myfatoorah') {
+                        methodContainer.classList.remove('hidden');
+                        methodText.classList.add('hidden');
                     } else {
-                        alert('Error processing credit payment: ' + result.message);
+                        methodContainer.classList.add('hidden');
+                        methodText.classList.remove('hidden');
                     }
-                    */
 
-                    // For now, just log the action
-                    alert(`Credit payment of ${amount} for client ${clientId} would be processed here.`);
+                    // Handle credit payment selection
+                    if (selectedValue === 'credit') {
+                        handleCreditPaymentSelection(i);
+                    }
+                };
 
-                } catch (error) {
-                    console.error('Error processing credit payment:', error);
-                    alert('Error processing credit payment. Please try again.');
-                }
+                updateMethodVisibility();
+
+                gatewaySelect.addEventListener('change', updateMethodVisibility);
+            }
+        }
+
+        // Handle credit payment selection
+        function handleCreditPaymentSelection(rowIndex) {
+            const clientIdInput = document.getElementById(`customer_name_${rowIndex}`);
+            const amountInput = document.getElementById(`amount_${rowIndex}`);
+
+            if (!clientIdInput || !clientIdInput.value) {
+                alert('Please select a client first before choosing credit payment.');
+                // Reset gateway selection
+                const gatewaySelect = document.getElementById(`payment_gateway_${rowIndex}`);
+                gatewaySelect.selectedIndex = 1; // Select first non-credit option
+                return;
             }
 
-            function updateRowPartial() { // partial paymen
-                const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
-                const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
-                const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
-                const paymentMethods = @json($paymentMethods);
-                const tbody = document.getElementById('split-rows1');
-                tbody.innerHTML = '';
+            const clientId = clientIdInput.value;
+            const amount = parseFloat(amountInput.value) || 0;
+            const clientCredit = clientCredits[rowIndex] || 0;
 
-                for (let i = 1; i <= splitInto1; i++) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
+            if (amount > clientCredit) {
+                alert(`Insufficient credit. Client has ${clientCredit} credit but trying to pay ${amount}.`);
+                // Reset gateway selection
+                const gatewaySelect = document.getElementById(`payment_gateway_${rowIndex}`);
+                gatewaySelect.selectedIndex = 1; // Select first non-credit option
+                return;
+            }
+
+            // Credit payment selected - processing will happen with normal save flow
+        }
+
+        function updateRowPartial() { // partial paymen
+            const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
+            const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
+            const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
+            const paymentMethods = @json($paymentMethods);
+            const tbody = document.getElementById('split-rows1');
+            tbody.innerHTML = '';
+
+            for (let i = 1; i <= splitInto1; i++) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
                     <td class="border-b px-4 py-2">${i}</td>
                     <td class="border-b px-4 py-2">
                         <input type="date" id="date_${i}" name="date_${i}" value="${invoiceExpireDefault}" class="border-gray-300 rounded-md shadow-sm" />
                     </td>
                     <td class="border-b px-4 py-2">
                         <input type="number" id="amount_${i}" name="amount_${i}" class="border-gray-300 rounded-md no-spin" value="${perRowAmount1}"
-                        onblur="checkInputAmountOnInput('partial', ${i})" oninput="checkInputAmount('partial', ${i})" />
+                        onblur="checkInputAmount('partial', ${i})" oninput="checkInputAmount('partial', ${i})" />
                     </td>
                     <td class="border-b px-4 py-2 text-left">
                         <select id="payment_gateway1_${i}" name="payment_gateway1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
@@ -2185,186 +2150,186 @@
                         </div>
                     </td>
                     `;
-                    tbody.appendChild(row);
+                tbody.appendChild(row);
 
-                    const gatewaySelect = row.querySelector(`#payment_gateway1_${i}`);
-                    const methodWrapper = row.querySelector(`#method_wrapper_${i}`);
-                    const methodContainer = row.querySelector(`#payment_method_container1_${i}`);
-                    const methodText = row.querySelector(`#payment_method_text1_${i}`);
+                const gatewaySelect = row.querySelector(`#payment_gateway1_${i}`);
+                const methodWrapper = row.querySelector(`#method_wrapper_${i}`);
+                const methodContainer = row.querySelector(`#payment_method_container1_${i}`);
+                const methodText = row.querySelector(`#payment_method_text1_${i}`);
 
-                    const updateMethodVisibility = () => {
-                        const isMF = (gatewaySelect.value || '').toLowerCase() === 'myfatoorah';
-                        methodContainer.classList.toggle('hidden', !isMF);
-                        methodText.classList.toggle('hidden', isMF);
-                        methodWrapper.style.display = ''; // keep wrapper visible; we toggle inner parts instead
-                    };
+                const updateMethodVisibility = () => {
+                    const isMF = (gatewaySelect.value || '').toLowerCase() === 'myfatoorah';
+                    methodContainer.classList.toggle('hidden', !isMF);
+                    methodText.classList.toggle('hidden', isMF);
+                    methodWrapper.style.display = ''; // keep wrapper visible; we toggle inner parts instead
+                };
 
-                    updateMethodVisibility();
-                    gatewaySelect.addEventListener('change', updateMethodVisibility);
-                }
+                updateMethodVisibility();
+                gatewaySelect.addEventListener('change', updateMethodVisibility);
             }
+        }
 
-            // Searchable dropdown functions for client selection
-            function toggleSearchableDropdown(rowIndex) {
-                const dropdown = document.getElementById(`dropdown_${rowIndex}`);
-                const searchInput = document.getElementById(`search_input_${rowIndex}`);
-                const button = document.querySelector(`#searchable_dropdown_${rowIndex} button`);
+        // Searchable dropdown functions for client selection
+        function toggleSearchableDropdown(rowIndex) {
+            const dropdown = document.getElementById(`dropdown_${rowIndex}`);
+            const searchInput = document.getElementById(`search_input_${rowIndex}`);
+            const button = document.querySelector(`#searchable_dropdown_${rowIndex} button`);
 
-                // Close all other dropdowns first
-                document.querySelectorAll('[id^="dropdown_"]').forEach(dd => {
-                    if (dd.id !== `dropdown_${rowIndex}`) {
-                        dd.style.display = 'none';
-                    }
-                });
-
-                if (dropdown.style.display === 'none') {
-                    // Calculate position relative to the button
-                    const buttonRect = button.getBoundingClientRect();
-                    const dropdownWidth = 320; // w-80 = 320px
-
-                    // Position dropdown below the button
-                    dropdown.style.top = (buttonRect.bottom + 4) + 'px';
-                    dropdown.style.left = buttonRect.left + 'px';
-                    dropdown.style.width = Math.max(dropdownWidth, buttonRect.width) + 'px';
-
-                    // Check if dropdown would go off-screen and adjust if needed
-                    const viewportWidth = window.innerWidth;
-                    const dropdownRight = buttonRect.left + dropdownWidth;
-
-                    if (dropdownRight > viewportWidth) {
-                        dropdown.style.left = (viewportWidth - dropdownWidth - 10) + 'px';
-                    }
-
-                    dropdown.style.display = 'block';
-                    searchInput.focus();
-                    searchInput.value = '';
-                    filterClientsSplit(rowIndex, ''); // Show all clients initially
-                } else {
-                    dropdown.style.display = 'none';
-                }
-            }
-
-            function filterClientsSplit(rowIndex, searchTerm) {
-
-                const optionsContainer = document.getElementById(`options_container_${rowIndex}`);
-                const options = optionsContainer.querySelectorAll('.client-option');
-
-                let matchCount = 0;
-                options.forEach(option => {
-                    const clientName = option.getAttribute('data-client-name').toLowerCase();
-                    const matches = clientName.includes(searchTerm.toLowerCase());
-                    option.style.display = matches ? 'block' : 'none';
-
-                    if (matches) matchCount++;
-
-                    // Highlight matching text
-                    if (searchTerm && matches) {
-                        const name = option.getAttribute('data-client-name');
-                        const regex = new RegExp(`(${searchTerm})`, 'gi');
-                        option.innerHTML = name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
-                    } else {
-                        option.innerHTML = option.getAttribute('data-client-name');
-                    }
-                });
-
-            }
-
-            function selectSplitClient(rowIndex, clientId, clientName, element) {
-                // Update hidden input
-                const hiddenInput = document.getElementById(`customer_name_${rowIndex}`);
-                if (hiddenInput) {
-                    hiddenInput.value = clientId;
-                } else {
-                    console.error('Hidden input not found:', `customer_name_${rowIndex}`);
-                }
-
-                // Update display text
-                const selectedText = document.getElementById(`selected_text_${rowIndex}`);
-                if (selectedText) {
-                    selectedText.textContent = clientName;
-                    selectedText.className = 'text-black'; // Remove gray color
-                } else {
-                    console.error('Selected text element not found:', `selected_text_${rowIndex}`);
-                }
-
-                // Close dropdown
-                const dropdown = document.getElementById(`dropdown_${rowIndex}`);
-                if (dropdown) {
-                    dropdown.style.display = 'none';
-                } else {
-                    console.error('Dropdown not found:', `dropdown_${rowIndex}`);
-                }
-
-                // Update credit row
-                updateCreditRow(rowIndex, clientId);
-            }
-
-            // Close dropdowns when clicking outside or handle option selection
-            document.addEventListener('click', function(event) {
-                // Handle client option selection - only for split payment rows
-                if (event.target.classList.contains('client-option') && event.target.getAttribute('data-row-index')) {
-                    const clientId = event.target.getAttribute('data-client-id');
-                    const clientName = event.target.getAttribute('data-client-name');
-                    const rowIndex = event.target.getAttribute('data-row-index');
-
-                    selectSplitClient(parseInt(rowIndex), clientId, clientName, event.target);
-                    return;
-                }
-
-                // Close split payment dropdowns when clicking outside
-                if (!event.target.closest('[id^="searchable_dropdown_"]')) {
-                    document.querySelectorAll('[id^="dropdown_"]').forEach(dropdown => {
-                        dropdown.style.display = 'none';
-                    });
+            // Close all other dropdowns first
+            document.querySelectorAll('[id^="dropdown_"]').forEach(dd => {
+                if (dd.id !== `dropdown_${rowIndex}`) {
+                    dd.style.display = 'none';
                 }
             });
 
+            if (dropdown.style.display === 'none') {
+                // Calculate position relative to the button
+                const buttonRect = button.getBoundingClientRect();
+                const dropdownWidth = 320; // w-80 = 320px
 
-            function updateField(itemId, fieldId) {
-                // console.log('updated', itemId + '-' + fieldId);
-                const inputField = document.getElementById(`${fieldId}-${itemId}`);
-                const newValue = inputField.value || NULL;
+                // Position dropdown below the button
+                dropdown.style.top = (buttonRect.bottom + 4) + 'px';
+                dropdown.style.left = buttonRect.left + 'px';
+                dropdown.style.width = Math.max(dropdownWidth, buttonRect.width) + 'px';
 
-                const item = items.find(item => item.id === itemId);
+                // Check if dropdown would go off-screen and adjust if needed
+                const viewportWidth = window.innerWidth;
+                const dropdownRight = buttonRect.left + dropdownWidth;
 
-                if (item) {
-                    // if (fieldId === 'invprice') {
-                    if (fieldId.includes('invprice')) {
-                        // Set fieldId to 'invprice' if it includes 'invprice'
-                        fieldId1 = 'invprice'; // Update fieldId to 'invprice' if modal or table input is updated
-                        item[fieldId1] = newValue;
+                if (dropdownRight > viewportWidth) {
+                    dropdown.style.left = (viewportWidth - dropdownWidth - 10) + 'px';
+                }
+
+                dropdown.style.display = 'block';
+                searchInput.focus();
+                searchInput.value = '';
+                filterClientsSplit(rowIndex, ''); // Show all clients initially
+            } else {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        function filterClientsSplit(rowIndex, searchTerm) {
+
+            const optionsContainer = document.getElementById(`options_container_${rowIndex}`);
+            const options = optionsContainer.querySelectorAll('.client-option');
+
+            let matchCount = 0;
+            options.forEach(option => {
+                const clientName = option.getAttribute('data-client-name').toLowerCase();
+                const matches = clientName.includes(searchTerm.toLowerCase());
+                option.style.display = matches ? 'block' : 'none';
+
+                if (matches) matchCount++;
+
+                // Highlight matching text
+                if (searchTerm && matches) {
+                    const name = option.getAttribute('data-client-name');
+                    const regex = new RegExp(`(${searchTerm})`, 'gi');
+                    option.innerHTML = name.replace(regex, '<mark class="bg-blue-200">$1</mark>');
+                } else {
+                    option.innerHTML = option.getAttribute('data-client-name');
+                }
+            });
+
+        }
+
+        function selectSplitClient(rowIndex, clientId, clientName, element) {
+            // Update hidden input
+            const hiddenInput = document.getElementById(`customer_name_${rowIndex}`);
+            if (hiddenInput) {
+                hiddenInput.value = clientId;
+            } else {
+                console.error('Hidden input not found:', `customer_name_${rowIndex}`);
+            }
+
+            // Update display text
+            const selectedText = document.getElementById(`selected_text_${rowIndex}`);
+            if (selectedText) {
+                selectedText.textContent = clientName;
+                selectedText.className = 'text-black'; // Remove gray color
+            } else {
+                console.error('Selected text element not found:', `selected_text_${rowIndex}`);
+            }
+
+            // Close dropdown
+            const dropdown = document.getElementById(`dropdown_${rowIndex}`);
+            if (dropdown) {
+                dropdown.style.display = 'none';
+            } else {
+                console.error('Dropdown not found:', `dropdown_${rowIndex}`);
+            }
+
+            // Update credit row
+            updateCreditRow(rowIndex, clientId);
+        }
+
+        // Close dropdowns when clicking outside or handle option selection
+        document.addEventListener('click', function(event) {
+            // Handle client option selection - only for split payment rows
+            if (event.target.classList.contains('client-option') && event.target.getAttribute('data-row-index')) {
+                const clientId = event.target.getAttribute('data-client-id');
+                const clientName = event.target.getAttribute('data-client-name');
+                const rowIndex = event.target.getAttribute('data-row-index');
+
+                selectSplitClient(parseInt(rowIndex), clientId, clientName, event.target);
+                return;
+            }
+
+            // Close split payment dropdowns when clicking outside
+            if (!event.target.closest('[id^="searchable_dropdown_"]')) {
+                document.querySelectorAll('[id^="dropdown_"]').forEach(dropdown => {
+                    dropdown.style.display = 'none';
+                });
+            }
+        });
 
 
-                        if (fieldId === 'invprice-modal') {
-                            // Update the corresponding table input
-                            const tableInput = document.getElementById(`invprice-table-${itemId}`);
-                            if (tableInput) {
-                                tableInput.value = newValue;
-                            }
-                        } else if (fieldId === 'invprice-table') {
-                            // Update the corresponding modal input
-                            const modalInput = document.getElementById(`invprice-modal-${itemId}`);
-                            if (modalInput) {
-                                modalInput.value = newValue;
-                            }
+        function updateField(itemId, fieldId) {
+            // console.log('updated', itemId + '-' + fieldId);
+            const inputField = document.getElementById(`${fieldId}-${itemId}`);
+            const newValue = inputField.value || NULL;
+
+            const item = items.find(item => item.id === itemId);
+
+            if (item) {
+                // if (fieldId === 'invprice') {
+                if (fieldId.includes('invprice')) {
+                    // Set fieldId to 'invprice' if it includes 'invprice'
+                    fieldId1 = 'invprice'; // Update fieldId to 'invprice' if modal or table input is updated
+                    item[fieldId1] = newValue;
+
+
+                    if (fieldId === 'invprice-modal') {
+                        // Update the corresponding table input
+                        const tableInput = document.getElementById(`invprice-table-${itemId}`);
+                        if (tableInput) {
+                            tableInput.value = newValue;
                         }
+                    } else if (fieldId === 'invprice-table') {
+                        // Update the corresponding modal input
+                        const modalInput = document.getElementById(`invprice-modal-${itemId}`);
+                        if (modalInput) {
+                            modalInput.value = newValue;
+                        }
+                    }
 
-                        const nettValue = (item.invprice - item.price);
-                        // console.log(item);
-                        // console.log('Supplier price: ' + item.total);
-                        // console.log('Invoice price: ' + item.invprice);
-                        // console.log('Nett of markup: ' + nettValue);
-                        calculateSubtotal(); // Recalculate the subtotal
+                    const nettValue = (item.invprice - item.price);
+                    // console.log(item);
+                    // console.log('Supplier price: ' + item.total);
+                    // console.log('Invoice price: ' + item.invprice);
+                    // console.log('Nett of markup: ' + nettValue);
+                    calculateSubtotal(); // Recalculate the subtotal
 
-                        let existingAlert = document.getElementById("errorNotification");
+                    let existingAlert = document.getElementById("errorNotification");
 
-                        if (nettValue <= 0) {
-                            // console.log("The Invoice Price must be higher than the Task Price.");
+                    if (nettValue <= 0) {
+                        // console.log("The Invoice Price must be higher than the Task Price.");
 
-                            if (!existingAlert) {
-                                let errorNotification = document.createElement('div');
-                                errorNotification.id = "errorNotification"; // Prevent duplicate alerts
-                                errorNotification.innerHTML = ` 
+                        if (!existingAlert) {
+                            let errorNotification = document.createElement('div');
+                            errorNotification.id = "errorNotification"; // Prevent duplicate alerts
+                            errorNotification.innerHTML = ` 
                             <div class="alert alert-danger fixed top-5 right-5 bg-red-500 text-white p-4 rounded shadow-lg">
                                 The Invoice Price must be higher than the Task Price.
                                 <button type="button" class="close text-white ml-2" aria-label="Close"
@@ -2373,154 +2338,154 @@
                                 </button>
                             </div>`;
 
-                                document.body.appendChild(errorNotification);
+                            document.body.appendChild(errorNotification);
 
-                                // Auto-close after 5 seconds
-                                setTimeout(() => {
-                                    let alertBox = document.getElementById("errorNotification");
-                                    if (alertBox) {
-                                        alertBox.remove();
-                                    }
-                                }, 10000);
-                            }
-                        } else {
-                            // Remove error notification if nettValue is fixed (>= 0)
-                            if (existingAlert) {
-                                existingAlert.remove();
-                            }
+                            // Auto-close after 5 seconds
+                            setTimeout(() => {
+                                let alertBox = document.getElementById("errorNotification");
+                                if (alertBox) {
+                                    alertBox.remove();
+                                }
+                            }, 10000);
                         }
-
-
-
-
                     } else {
-                        item[fieldId] = newValue; // Update other fields
+                        // Remove error notification if nettValue is fixed (>= 0)
+                        if (existingAlert) {
+                            existingAlert.remove();
+                        }
                     }
-                }
 
-            }
 
-            function updateItemPrice(itemId) {
-                const item = items.find(item => item.id === itemId);
-                const priceInput = document.getElementById(`invprice-table-${itemId}`);
-                if (item && priceInput) {
-                    item.task_price = parseFloat(priceInput.value) || 0;
-                    calculateSubtotal();
+
+
+                } else {
+                    item[fieldId] = newValue; // Update other fields
                 }
             }
 
-            function calculateSubtotal() {
-                const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
-                const invoiceChargeElement = document.getElementById('invoice_charge');
-                const invoiceCharge = invoiceChargeElement ? parseFloat(invoiceChargeElement.value) || 0 : 0;
-                const paymentMethods = @json($paymentMethods);
+        }
 
-                // Get service charge from selected payment gateway
-                let serviceCharge = 0;
-                const selectedGateway = document.getElementById('payment_gateway_option')?.value;
-                let selectedPaymentMethod = document.getElementById('payment_method_full')?.value;
+        function updateItemPrice(itemId) {
+            const item = items.find(item => item.id === itemId);
+            const priceInput = document.getElementById(`invprice-table-${itemId}`);
+            if (item && priceInput) {
+                item.task_price = parseFloat(priceInput.value) || 0;
+                calculateSubtotal();
+            }
+        }
 
-                if (selectedGateway) {
-                    if (selectedGateway.toLowerCase() === 'myfatoorah' && selectedPaymentMethod) {
-                        const method = paymentMethods.find(m => m.id === parseInt(selectedPaymentMethod));
-                        // Use the backend-calculated gateway_fee directly
-                        serviceCharge = method ? (method.gateway_fee || 0) : 0;
-                    } else {
-                        const selectedCharge = charges.find(charge => charge.name === selectedGateway);
-                        // Use the backend-calculated gateway_fee directly
-                        serviceCharge = selectedCharge ? (selectedCharge.gateway_fee || 0) : 0;
-                    }
+        function calculateSubtotal() {
+            const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
+            const invoiceChargeElement = document.getElementById('invoice_charge');
+            const invoiceCharge = invoiceChargeElement ? parseFloat(invoiceChargeElement.value) || 0 : 0;
+            const paymentMethods = @json($paymentMethods);
+
+            // Get service charge from selected payment gateway
+            let serviceCharge = 0;
+            const selectedGateway = document.getElementById('payment_gateway_option')?.value;
+            let selectedPaymentMethod = document.getElementById('payment_method_full')?.value;
+
+            if (selectedGateway) {
+                if (selectedGateway.toLowerCase() === 'myfatoorah' && selectedPaymentMethod) {
+                    const method = paymentMethods.find(m => m.id === parseInt(selectedPaymentMethod));
+                    // Use the backend-calculated gateway_fee directly
+                    serviceCharge = method ? (method.gateway_fee || 0) : 0;
+                } else {
+                    const selectedCharge = charges.find(charge => charge.name === selectedGateway);
+                    // Use the backend-calculated gateway_fee directly
+                    serviceCharge = selectedCharge ? (selectedCharge.gateway_fee || 0) : 0;
                 }
-
-                const finalAmount = subtotal + serviceCharge;
-                const finalTotal = finalAmount + invoiceCharge;
-
-                // Update all display elements
-                document.getElementById('subTotalDisplay').textContent = `${subtotal.toFixed(2)}`;
-
-                // Update service charge display
-                const serviceChargeDisplayElement = document.getElementById('serviceChargeDisplay');
-                const serviceChargeDisplayRow = document.getElementById('service_charge_display_row');
-                if (serviceChargeDisplayElement) {
-                    serviceChargeDisplayElement.textContent = `${serviceCharge.toFixed(2)}`;
-                }
-                if (serviceChargeDisplayRow) {
-                    serviceChargeDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
-                }
-
-                // Update final amount display (subtotal + service charge)
-                const finalAmountDisplayElement = document.getElementById('finalAmountDisplay');
-                const finalAmountDisplayRow = document.getElementById('final_amount_display_row');
-                if (finalAmountDisplayElement) {
-                    finalAmountDisplayElement.textContent = `${finalAmount.toFixed(2)}`;
-                }
-                if (finalAmountDisplayRow) {
-                    finalAmountDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
-                }
-
-                document.getElementById('invoiceChargeDisplay').textContent = `${invoiceCharge.toFixed(2)}`;
-                document.getElementById('subT').textContent = `${finalTotal.toFixed(2)}`;
-
-                const subT1Element = document.getElementById('subT1');
-                if (subT1Element) subT1Element.textContent = `${finalTotal.toFixed(2)}`;
-
-                document.getElementById('subTotal').value = subtotal;
-
-                const totalAmountElement = document.getElementById('total-amount');
-                if (totalAmountElement) totalAmountElement.value = finalTotal;
-
-                const netTotals = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
-                const netT = document.getElementById('netT');
-                if (netT) netT.textContent = netTotals.toFixed(2);
-                const netTotal = document.getElementById('netTotal');
-                if (netTotal) netTotal.value = netTotals.toFixed(2);
             }
 
-            document.getElementById('payment_method_full')?.addEventListener('change', calculateSubtotal);
+            const finalAmount = subtotal + serviceCharge;
+            const finalTotal = finalAmount + invoiceCharge;
 
-            function renderItems() {
-                const tbody = itemsBody;
-                if (!tbody) return;
-                tbody.innerHTML = '';
+            // Update all display elements
+            document.getElementById('subTotalDisplay').textContent = `${subtotal.toFixed(2)}`;
 
-                if (!Array.isArray(items) || items.length === 0) {
-                    const noItemsRow = document.createElement('tr');
-                    noItemsRow.innerHTML =
-                        '<td colspan="13" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
-                    tbody.appendChild(noItemsRow);
-                    return;
-                }
+            // Update service charge display
+            const serviceChargeDisplayElement = document.getElementById('serviceChargeDisplay');
+            const serviceChargeDisplayRow = document.getElementById('service_charge_display_row');
+            if (serviceChargeDisplayElement) {
+                serviceChargeDisplayElement.textContent = `${serviceCharge.toFixed(2)}`;
+            }
+            if (serviceChargeDisplayRow) {
+                serviceChargeDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
+            }
 
-                const frag = document.createDocumentFragment();
-                let count = 0;
-                const isInvoicePaid = "{{ $invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash') }}";
+            // Update final amount display (subtotal + service charge)
+            const finalAmountDisplayElement = document.getElementById('finalAmountDisplay');
+            const finalAmountDisplayRow = document.getElementById('final_amount_display_row');
+            if (finalAmountDisplayElement) {
+                finalAmountDisplayElement.textContent = `${finalAmount.toFixed(2)}`;
+            }
+            if (finalAmountDisplayRow) {
+                finalAmountDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
+            }
 
-                for (const item of items) {
-                    try {
-                        const task = {
-                            desc: item?.description ?? '',
-                            info: item?.additional_info ?? '',
-                            total: item?.total ?? 0,
-                            taskPrice: item?.task_price ?? 0,
-                            clientName: item?.client_name ?? '',
-                            agentName: item?.agent?.name ?? item?.agent_name ?? '',
-                            branchName: item?.agent?.branch?.name ?? item?.branch_name ?? '',
-                            supplierName: item?.supplier_name ?? item?.supplier?.name ?? '',
-                            type: (item?.type ?? ''),
-                            typeCap: (item?.type ? (item.type.charAt(0).toUpperCase() + item.type.slice(1)) : ''),
-                            id: item?.id ?? `row-${count+1}`,
-                            quantity: item?.quantity ?? 1,
-                            invprice: item?.invprice ?? '',
-                            flight: item?.flight_details ?? null,
-                            hotel: item?.hotel_details ?? null,
-                        };
+            document.getElementById('invoiceChargeDisplay').textContent = `${invoiceCharge.toFixed(2)}`;
+            document.getElementById('subT').textContent = `${finalTotal.toFixed(2)}`;
 
-                        const isSaved = item.saved === true;
-                        const canSavePrice = (!invoice.payment_type || invoice.payment_type === 'full' || invoice.payment_type === 'cash');
-                        const row = document.createElement('tr');
-                        row.className = `border-b border-[#e0e6ed] align-top dark:border-[#1b2e4b] ${!isSaved ? 'bg-sky-100' : ''}`;
+            const subT1Element = document.getElementById('subT1');
+            if (subT1Element) subT1Element.textContent = `${finalTotal.toFixed(2)}`;
 
-                        row.innerHTML = `
+            document.getElementById('subTotal').value = subtotal;
+
+            const totalAmountElement = document.getElementById('total-amount');
+            if (totalAmountElement) totalAmountElement.value = finalTotal;
+
+            const netTotals = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+            const netT = document.getElementById('netT');
+            if (netT) netT.textContent = netTotals.toFixed(2);
+            const netTotal = document.getElementById('netTotal');
+            if (netTotal) netTotal.value = netTotals.toFixed(2);
+        }
+
+        document.getElementById('payment_method_full')?.addEventListener('change', calculateSubtotal);
+
+        function renderItems() {
+            const tbody = itemsBody;
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (!Array.isArray(items) || items.length === 0) {
+                const noItemsRow = document.createElement('tr');
+                noItemsRow.innerHTML =
+                    '<td colspan="13" class="w-full !text-center font-semibold text-gray-900 dark:bg-[#121e32] dark:text-white">No Tasks Available</td>';
+                tbody.appendChild(noItemsRow);
+                return;
+            }
+
+            const frag = document.createDocumentFragment();
+            let count = 0;
+            const isInvoicePaid = "{{ $invoice->status === 'paid' && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash') }}";
+
+            for (const item of items) {
+                try {
+                    const task = {
+                        desc: item?.description ?? '',
+                        info: item?.additional_info ?? '',
+                        total: item?.total ?? 0,
+                        taskPrice: item?.task_price ?? 0,
+                        clientName: item?.client_name ?? '',
+                        agentName: item?.agent?.name ?? item?.agent_name ?? '',
+                        branchName: item?.agent?.branch?.name ?? item?.branch_name ?? '',
+                        supplierName: item?.supplier_name ?? item?.supplier?.name ?? '',
+                        type: (item?.type ?? ''),
+                        typeCap: (item?.type ? (item.type.charAt(0).toUpperCase() + item.type.slice(1)) : ''),
+                        id: item?.id ?? `row-${count+1}`,
+                        quantity: item?.quantity ?? 1,
+                        invprice: item?.invprice ?? '',
+                        flight: item?.flight_details ?? null,
+                        hotel: item?.hotel_details ?? null,
+                    };
+
+                    const isSaved = item.saved === true;
+                    const canSavePrice = (!invoice.payment_type || invoice.payment_type === 'full' || invoice.payment_type === 'cash');
+                    const row = document.createElement('tr');
+                    row.className = `border-b border-[#e0e6ed] align-top dark:border-[#1b2e4b] ${!isSaved ? 'bg-sky-100' : ''}`;
+
+                    row.innerHTML = `
                             <td class="flex-grow"><p>${++count}</p></td>
                             <td class="flex-grow"><p><b>${task.desc}</b><br>Info: ${task.info}</br></p></td>
                             <td><p>${task.total} KWD</p></td>
@@ -2567,11 +2532,11 @@
                             </td>
                         `;
 
-                        frag.appendChild(row);
+                    frag.appendChild(row);
 
-                        const taskDetails = document.getElementById('task-details_' + task.id);
-                        if (taskDetails) {
-                            taskDetails.innerHTML = `
+                    const taskDetails = document.getElementById('task-details_' + task.id);
+                    if (taskDetails) {
+                        taskDetails.innerHTML = `
                     <div class="mb-4 flex flex-col gap-2"> 
                         <div class="header text-lg font-bold mt-4 border-b">Task Details</div> 
                         <div class="flex justify-between items-center text-lg">
@@ -2592,10 +2557,10 @@
                     </div>
                     `;
 
-                            if (task.flight !== null && task.hotel !== null) {
-                                taskDetails.innerHTML = '<div class="text-red-500">Something Went Wrong</div>';
-                            } else if (task.flight !== null) {
-                                taskDetails.innerHTML += ` <div class="text-lg font-bold mt-4">Flight Details</div>
+                        if (task.flight !== null && task.hotel !== null) {
+                            taskDetails.innerHTML = '<div class="text-red-500">Something Went Wrong</div>';
+                        } else if (task.flight !== null) {
+                            taskDetails.innerHTML += ` <div class="text-lg font-bold mt-4">Flight Details</div>
                             <hr/> 
                                 <div class="flex flex-row-reverse items-center">
                                     <div class="p-2">
@@ -2724,8 +2689,8 @@
                             </form>
                             `;
 
-                            } else if (task.hotel !== null) {
-                                taskDetails.innerHTML += ` <div class="text-lg font-bold mt-4">Hotel Details</div>
+                        } else if (task.hotel !== null) {
+                            taskDetails.innerHTML += ` <div class="text-lg font-bold mt-4">Hotel Details</div>
                             <hr/>
                             <div class="flex flex-row-reverse items-center">
                                 <div class="p-2">
@@ -2823,800 +2788,787 @@
                             </div>
                             </form>
                         `;
-                            }
                         }
-
-                        if (isInvoicePaid || hasPaymentType) {
-                            const actionCell = row.querySelector('.action-cell');
-                            if (actionCell) actionCell.style.display = 'none';
-                        }
-
-                        const openButton = document.getElementById('modal-open-button_' + task.id);
-                        const closeButton = document.getElementById('modal-close-button_' + task.id);
-                        const modal = document.querySelector('dialog[data-modal-invoice="' + task.id + '"]');
-
-                        if (openButton && closeButton && modal) {
-                            openButton.addEventListener('click', function() {
-                                // console.log(item.id);
-                                modalInvoice.showModal();
-                            });
-
-                            closeButton.addEventListener('click', function() {
-                                modalInvoice.close();
-                            });
-                        }
-
-                    } catch (err) {
-                        console.error('renderItems(): failed on item ->', item, err);
                     }
+
+                    if (isInvoicePaid || hasPaymentType) {
+                        const actionCell = row.querySelector('.action-cell');
+                        if (actionCell) actionCell.style.display = 'none';
+                    }
+
+                    const openButton = document.getElementById('modal-open-button_' + task.id);
+                    const closeButton = document.getElementById('modal-close-button_' + task.id);
+                    const modal = document.querySelector('dialog[data-modal-invoice="' + task.id + '"]');
+
+                    if (openButton && closeButton && modal) {
+                        openButton.addEventListener('click', function() {
+                            // console.log(item.id);
+                            modalInvoice.showModal();
+                        });
+
+                        closeButton.addEventListener('click', function() {
+                            modalInvoice.close();
+                        });
+                    }
+
+                } catch (err) {
+                    console.error('renderItems(): failed on item ->', item, err);
                 }
-
-                tbody.appendChild(frag);
-
-                // console.info('renderItems(): rendered rows =', tbody.rows.length, 'from items len =', items.length);
             }
 
-            function saveTaskPrice(itemId) {
-                const input = document.getElementById(`invprice-table-${itemId}`);
-                const newPrice = parseFloat(input.value);
+            tbody.appendChild(frag);
 
-                if (isNaN(newPrice) || newPrice <= 0) {
-                    displayErrorMessage('Please enter a valid price.');
-                    return;
-                }
+            // console.info('renderItems(): rendered rows =', tbody.rows.length, 'from items len =', items.length);
+        }
 
-                // Send AJAX request to update the price
-                fetch(`/invoice/update-task-price`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': "{{ csrf_token() }}",
-                        },
-                        body: JSON.stringify({
-                            task_id: itemId,
-                            new_price: newPrice,
-                        }),
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Update the item in the items array
-                            const item = items.find(item => item.id === itemId);
-                            if (item) {
-                                item.task_price = newPrice;
-                            }
-                            calculateSubtotal(); // <-- This updates #subT and others
-                            displaySuccessMessage('Task price updated!');
-                        } else {
-                            displayErrorMessage(data.message || 'Failed to update price.');
+        function saveTaskPrice(itemId) {
+            const input = document.getElementById(`invprice-table-${itemId}`);
+            const newPrice = parseFloat(input.value);
+
+            if (isNaN(newPrice) || newPrice <= 0) {
+                displayErrorMessage('Please enter a valid price.');
+                return;
+            }
+
+            // Send AJAX request to update the price
+            fetch(`/invoice/update-task-price`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': "{{ csrf_token() }}",
+                    },
+                    body: JSON.stringify({
+                        task_id: itemId,
+                        new_price: newPrice,
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update the item in the items array
+                        const item = items.find(item => item.id === itemId);
+                        if (item) {
+                            item.task_price = newPrice;
                         }
-                    })
-                    .catch(() => {
-                        displayErrorMessage('Failed to update price.');
-                    });
-            }
+                        calculateSubtotal(); // <-- This updates #subT and others
+                        displaySuccessMessage('Task price updated!');
+                    } else {
+                        displayErrorMessage(data.message || 'Failed to update price.');
+                    }
+                })
+                .catch(() => {
+                    displayErrorMessage('Failed to update price.');
+                });
+        }
 
-            function removeItem(itemId) {
-                items = items.filter(item => item.id !== itemId);
-                renderItems(); // Re-render the table after removal
+        function removeItem(itemId) {
+            const itemIndex = items.findIndex(item => item.id === itemId);
+            if (itemIndex > -1) {
+                items.splice(itemIndex, 1);
+                renderItems();
+                calculateSubtotal();
                 renderTaskList(tasks);
             }
+        }
 
-            function removeItem(itemId) {
-                const itemIndex = items.findIndex(item => item.id === itemId);
-                if (itemIndex > -1) {
-                    items.splice(itemIndex, 1);
-                    renderItems();
-                    calculateSubtotal();
+        function chooseTasksAgent(agent) {
+
+            agent = JSON.parse(agent);
+            const agentId = agent.id;
+            const agentName = agent.name;
+            const agentEmail = agent.email;
+            const agentPhone = agent.phone_number;
+
+            itemsBody.innerHTML = '';
+            document.getElementById('agentId').value = agentId;
+            document.getElementById('agentName').value = agentName;
+            document.getElementById('agentEmail').value = agentEmail;
+            document.getElementById('agentPhone').value = agentPhone;
+            let url = "{{ route('tasks.agent', ['agentId' => '_agentId_']) }}";
+            url = url.replace('_agentId_', agentId);
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    tasks = data;
                     renderTaskList(tasks);
+                })
+                .catch(error => console.error(error));
+
+            closeAgentModal();
+        }
+        // Show Select Client Tab
+        selectTabButton.addEventListener('click', () => {
+            selectTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
+            selectTabButton.classList.remove('text-gray-500');
+            addTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
+            addTabButton.classList.add('text-gray-500');
+
+            selectTab.classList.remove('hidden');
+            addTab.classList.add('hidden');
+        });
+
+        // Show Add New Client Tab
+        addTabButton.addEventListener('click', () => {
+            addTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
+            addTabButton.classList.remove('text-gray-500');
+            selectTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
+            selectTabButton.classList.add('text-gray-500');
+
+            addTab.classList.remove('hidden');
+            selectTab.classList.add('hidden');
+        });
+
+        function loadInitialTasks(initialTasks) {
+            items = initialTasks.map(task => ({
+                ...task,
+                saved: true,
+                remark: task.remark || '',
+                quantity: task.quantity || 1,
+                description: task.description || `${task.reference}`,
+                client_name: task.client_name,
+                task_price: task.task_price || 0
+            }));
+            renderItems();
+            calculateSubtotal();
+
+            // Set initial invoice charge value if it exists
+            if (invoice.invoice_charge > 0) {
+                const invoiceChargeInput = document.getElementById('invoice_charge_amount');
+                const calculatedChargeInput = document.getElementById('calculated_invoice_charge');
+                const invoiceChargeHidden = document.getElementById('invoice_charge');
+
+                if (invoiceChargeInput) {
+                    invoiceChargeInput.value = invoice.invoice_charge;
+                }
+                if (calculatedChargeInput) {
+                    calculatedChargeInput.value = invoice.invoice_charge.toFixed(2);
+                }
+                if (invoiceChargeHidden) {
+                    invoiceChargeHidden.value = invoice.invoice_charge;
                 }
             }
+        }
 
-            function chooseTasksAgent(agent) {
+        function selectTask(task) {
+            const newTask = {
+                ...task,
+                saved: false,
+                task_price: 0,
+                remark: '',
+                quantity: 1,
+                description: `${task.reference}`,
+                client_name: task.client_name
+            };
 
-                agent = JSON.parse(agent);
-                const agentId = agent.id;
-                const agentName = agent.name;
-                const agentEmail = agent.email;
-                const agentPhone = agent.phone_number;
+            items.push(newTask);
+            renderItems();
+            calculateSubtotal();
+            renderTaskList();
+            closeTaskModal();
+        }
 
-                itemsBody.innerHTML = '';
-                document.getElementById('agentId').value = agentId;
-                document.getElementById('agentName').value = agentName;
-                document.getElementById('agentEmail').value = agentEmail;
-                document.getElementById('agentPhone').value = agentPhone;
-                let url = "{{ route('tasks.agent', ['agentId' => '_agentId_']) }}";
-                url = url.replace('_agentId_', agentId);
+        async function saveSingleTask(taskId) {
+            const taskToSave = items.find(item => item.id === taskId);
 
-                fetch(url)
-                    .then(response => response.json())
-                    .then(data => {
-                        tasks = data;
-                        renderTaskList(tasks);
+            if (!taskToSave) {
+                console.error("Could not find the task to save.");
+                return;
+            }
+
+            const priceInput = document.getElementById(`invprice-table-${taskId}`);
+            const price = parseFloat(priceInput.value);
+
+            if (isNaN(price) || price <= 0) {
+                displayErrorMessage("Please enter a valid invoice price for the task before saving.");
+                priceInput.focus();
+                return;
+            }
+
+            taskToSave.task_price = price;
+
+            try {
+                const response = await fetch('{{ route("invoice.add-task") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        invoice_id: invoice.id,
+                        task_id: taskToSave.id,
+                        task_price: taskToSave.task_price
                     })
-                    .catch(error => console.error(error));
+                });
 
-                closeAgentModal();
-            }
-            // Show Select Client Tab
-            selectTabButton.addEventListener('click', () => {
-                selectTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
-                selectTabButton.classList.remove('text-gray-500');
-                addTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
-                addTabButton.classList.add('text-gray-500');
+                const result = await response.json();
 
-                selectTab.classList.remove('hidden');
-                addTab.classList.add('hidden');
-            });
-
-            // Show Add New Client Tab
-            addTabButton.addEventListener('click', () => {
-                addTabButton.classList.add('text-blue-500', 'border-b-2', 'border-blue-500');
-                addTabButton.classList.remove('text-gray-500');
-                selectTabButton.classList.remove('text-blue-500', 'border-b-2', 'border-blue-500');
-                selectTabButton.classList.add('text-gray-500');
-
-                addTab.classList.remove('hidden');
-                selectTab.classList.add('hidden');
-            });
-
-            function loadInitialTasks(initialTasks) {
-                items = initialTasks.map(task => ({
-                    ...task,
-                    saved: true,
-                    remark: task.remark || '',
-                    quantity: task.quantity || 1,
-                    description: task.description || `${task.reference}`,
-                    client_name: task.client_name,
-                    task_price: task.task_price || 0
-                }));
-                renderItems();
-                calculateSubtotal();
-
-                // Set initial invoice charge value if it exists
-                if (invoice.invoice_charge > 0) {
-                    const invoiceChargeInput = document.getElementById('invoice_charge_amount');
-                    const calculatedChargeInput = document.getElementById('calculated_invoice_charge');
-                    const invoiceChargeHidden = document.getElementById('invoice_charge');
-
-                    if (invoiceChargeInput) {
-                        invoiceChargeInput.value = invoice.invoice_charge;
-                    }
-                    if (calculatedChargeInput) {
-                        calculatedChargeInput.value = invoice.invoice_charge.toFixed(2);
-                    }
-                    if (invoiceChargeHidden) {
-                        invoiceChargeHidden.value = invoice.invoice_charge;
-                    }
+                if (!response.ok) {
+                    throw new Error(result.message || 'Failed to save task.');
                 }
-            }
 
-            function selectTask(task) {
-                const newTask = {
-                    ...task,
-                    saved: false,
-                    task_price: 0,
-                    remark: '',
-                    quantity: 1,
-                    description: `${task.reference}`,
-                    client_name: task.client_name
-                };
-
-                items.push(newTask);
+                taskToSave.saved = true;
                 renderItems();
-                calculateSubtotal();
-                renderTaskList();
-                closeTaskModal();
+                displaySuccessMessage('Task saved successfully!');
+
+            } catch (error) {
+                displayErrorMessage(error.message);
+            }
+        }
+
+        async function removeTaskFromInvoice(taskId) {
+            if (items.length <= 1) {
+                displayErrorMessage("An invoice must have at least one task. You cannot remove the last item.");
+                return;
             }
 
-            async function saveSingleTask(taskId) {
-                const taskToSave = items.find(item => item.id === taskId);
+            const taskToRemove = items.find(item => item.id === taskId);
+            if (!taskToRemove) return;
 
-                if (!taskToSave) {
-                    console.error("Could not find the task to save.");
+            if (taskToRemove.saved) {
+                if (!confirm('Are you sure you want to remove this saved task?')) {
                     return;
                 }
-
-                const priceInput = document.getElementById(`invprice-table-${taskId}`);
-                const price = parseFloat(priceInput.value);
-
-                if (isNaN(price) || price <= 0) {
-                    displayErrorMessage("Please enter a valid invoice price for the task before saving.");
-                    priceInput.focus();
-                    return;
-                }
-
-                taskToSave.task_price = price;
 
                 try {
-                    const response = await fetch('{{ route("invoice.add-task") }}', {
+                    const response = await fetch('{{ route("invoice.remove-task") }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                            'Accept': 'application/json'
                         },
                         body: JSON.stringify({
                             invoice_id: invoice.id,
-                            task_id: taskToSave.id,
-                            task_price: taskToSave.task_price
+                            task_id: taskId
                         })
                     });
 
                     const result = await response.json();
+                    if (!response.ok) throw new Error(result.message || 'Failed to remove task.');
 
-                    if (!response.ok) {
-                        throw new Error(result.message || 'Failed to save task.');
-                    }
-
-                    taskToSave.saved = true;
-                    renderItems();
-                    displaySuccessMessage('Task saved successfully!');
+                    displaySuccessMessage('Task removed successfully!');
 
                 } catch (error) {
                     displayErrorMessage(error.message);
-                }
-            }
-
-            async function removeTaskFromInvoice(taskId) {
-                if (items.length <= 1) {
-                    displayErrorMessage("An invoice must have at least one task. You cannot remove the last item.");
                     return;
                 }
-
-                const taskToRemove = items.find(item => item.id === taskId);
-                if (!taskToRemove) return;
-
-                if (taskToRemove.saved) {
-                    if (!confirm('Are you sure you want to remove this saved task?')) {
-                        return;
-                    }
-
-                    try {
-                        const response = await fetch('{{ route("invoice.remove-task") }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                            },
-                            body: JSON.stringify({
-                                invoice_id: invoice.id,
-                                task_id: taskId
-                            })
-                        });
-
-                        const result = await response.json();
-                        if (!response.ok) throw new Error(result.message || 'Failed to remove task.');
-
-                        displaySuccessMessage('Task removed successfully!');
-
-                    } catch (error) {
-                        displayErrorMessage(error.message);
-                        return;
-                    }
-                }
-
-                items = items.filter(item => item.id !== taskId);
-
-                renderItems();
-                calculateSubtotal();
-                renderTaskList();
             }
 
-            function updateTotal(items) {
-                const total = items.reduce((sum, item) => sum + (item.invoice_price * item.quantity),
-                    0); // Calculate total based on price and quantity
-                this.subtotal = total;
-                // this.updateSubTotal();
-            };
+            items = items.filter(item => item.id !== taskId);
 
-            function openClientModal() {
-                const modal = document.getElementById("clientModal");
-                modal.classList.remove("hidden");
-            }
+            renderItems();
+            calculateSubtotal();
+            renderTaskList();
+        }
 
-            // Close Client Modal
-            function closeClientModal() {
-                const modal = document.getElementById("clientModal");
-                modal.classList.add("hidden");
-            }
+        function openClientModal() {
+            const modal = document.getElementById("clientModal");
+            modal.classList.remove("hidden");
+        }
 
-            function openAgentModal() {
-                const modal = document.getElementById("agentModal");
-                modal.classList.remove("hidden");
-            }
+        // Close Client Modal
+        function closeClientModal() {
+            const modal = document.getElementById("clientModal");
+            modal.classList.add("hidden");
+        }
 
-            // Close Agent Modal
-            function closeAgentModal() {
-                const modal = document.getElementById("agentModal");
-                modal.classList.add("hidden");
-            }
+        function openAgentModal() {
+            const modal = document.getElementById("agentModal");
+            modal.classList.remove("hidden");
+        }
 
-            function filterClients() {
-                const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
-                const filteredClients = clients.filter(client =>
-                    client.full_name.toLowerCase().includes(searchValue) || client.email.toLowerCase().includes(searchValue)
+        // Close Agent Modal
+        function closeAgentModal() {
+            const modal = document.getElementById("agentModal");
+            modal.classList.add("hidden");
+        }
+
+        function filterClients() {
+            const searchValue = document.getElementById('clientSearchInput').value.toLowerCase();
+            const filteredClients = clients.filter(client =>
+                client.full_name.toLowerCase().includes(searchValue) || client.email.toLowerCase().includes(searchValue)
+            );
+            renderClientList(filteredClients);
+        }
+
+        function renderClientList(clientData) {
+            const clientList = document.getElementById('clientList');
+            clientList.innerHTML = '';
+            clientData.forEach(client => {
+                const li = document.createElement('li');
+                li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
+                li.innerText = `${client.full_name} - ${client.email}`;
+                li.onclick = () => selectClient(client);
+                clientList.appendChild(li);
+            });
+        }
+
+        function selectClient(client) {
+            document.getElementById('receiverId').value = client.id;
+
+            // Update input fields
+            document.getElementById('receiverName').value = client.full_name;
+            document.getElementById('receiverName1').value = client.full_name;
+            document.getElementById('receiverEmail').value = client.email;
+            document.getElementById('receiverPhone').value = client.phone;
+            closeClientModal();
+        }
+
+        function openTaskModal() {
+            document.getElementById('taskModal').classList.remove('hidden');
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.add('hidden');
+        }
+
+        function filterTasks() {
+            renderTaskList();
+        }
+
+        function renderTaskList() {
+            const taskList = document.getElementById('taskList');
+            const searchValue = document.getElementById('taskSearchInput').value.toLowerCase();
+            taskList.innerHTML = '';
+
+            let availableTasks = tasks.filter(task =>
+                !items.some(selectedItem => selectedItem.id === task.id)
+            );
+
+            if (searchValue) {
+                availableTasks = availableTasks.filter(task =>
+                    (task.reference && task.reference.toLowerCase().includes(searchValue)) ||
+                    (task.type && task.type.toLowerCase().includes(searchValue))
                 );
-                renderClientList(filteredClients);
             }
 
-            function renderClientList(clientData) {
-                const clientList = document.getElementById('clientList');
-                clientList.innerHTML = '';
-                clientData.forEach(client => {
-                    const li = document.createElement('li');
-                    li.className = 'cursor-pointer p-2 hover:bg-gray-100 text-gray-800';
-                    li.innerText = `${client.full_name} - ${client.email}`;
-                    li.onclick = () => selectClient(client);
-                    clientList.appendChild(li);
-                });
+            if (availableTasks.length === 0) {
+                const p = document.createElement('p');
+                p.className = 'text-center text-gray-500 p-4';
+                p.innerText = 'No more tasks available to add.';
+                taskList.appendChild(p);
+                return;
             }
 
-            function selectClient(client) {
-                document.getElementById('receiverId').value = client.id;
+            availableTasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = 'cursor-pointer p-3 hover:bg-gray-100 text-gray-800 border-b';
+                li.innerText = `${task.reference} - ${task.type} (${task.venue})`;
+                li.onclick = () => selectTask(task);
+                taskList.appendChild(li);
+            });
+        }
 
-                // Update input fields
-                document.getElementById('receiverName').value = client.full_name;
-                document.getElementById('receiverName1').value = client.full_name;
-                document.getElementById('receiverEmail').value = client.email;
-                document.getElementById('receiverPhone').value = client.phone;
-                closeClientModal();
-            }
+        // Call the function with the selectedClient object
+        if (selectedClient && selectedAgent) {
+            updateFormFields(selectedClient, selectedAgent);
+        }
 
-            function openTaskModal() {
-                document.getElementById('taskModal').classList.remove('hidden');
-            }
+        function updateClientAgent(clientId, agentId) {
+            const clients = @json($clients);
+            const agents = @json($agents);
+            const branches = @json($branches);
+            // Find the client by clientId
+            let client = clients.find(c => c.id === clientId);
 
-            function closeTaskModal() {
-                document.getElementById('taskModal').classList.add('hidden');
-            }
-
-            function filterTasks() {
-                renderTaskList();
-            }
-
-            function renderTaskList() {
-                const taskList = document.getElementById('taskList');
-                const searchValue = document.getElementById('taskSearchInput').value.toLowerCase();
-                taskList.innerHTML = '';
-
-                let availableTasks = tasks.filter(task =>
-                    !items.some(selectedItem => selectedItem.id === task.id)
-                );
-
-                if (searchValue) {
-                    availableTasks = availableTasks.filter(task =>
-                        (task.reference && task.reference.toLowerCase().includes(searchValue)) ||
-                        (task.type && task.type.toLowerCase().includes(searchValue))
-                    );
-                }
-
-                if (availableTasks.length === 0) {
-                    const p = document.createElement('p');
-                    p.className = 'text-center text-gray-500 p-4';
-                    p.innerText = 'No more tasks available to add.';
-                    taskList.appendChild(p);
-                    return;
-                }
-
-                availableTasks.forEach(task => {
-                    const li = document.createElement('li');
-                    li.className = 'cursor-pointer p-3 hover:bg-gray-100 text-gray-800 border-b';
-                    li.innerText = `${task.reference} - ${task.type} (${task.venue})`;
-                    li.onclick = () => selectTask(task);
-                    taskList.appendChild(li);
-                });
-            }
-
-            // Call the function with the selectedClient object
-            if (selectedClient && selectedAgent) {
-                updateFormFields(selectedClient, selectedAgent);
-            }
-
-            function updateClientAgent(clientId, agentId) {
-                const clients = @json($clients);
-                const agents = @json($agents);
-                const branches = @json($branches);
-                // Find the client by clientId
-                let client = clients.find(c => c.id === clientId);
-
-                // Find the agent by agentId
-                let agent = agents.find(a => a.id === agentId);
-                // Find the branch associated with the agent
-                // Find the branch associated with the agent
-                let branch = branches.find(b => b.id === agent.branch_id);
+            // Find the agent by agentId
+            let agent = agents.find(a => a.id === agentId);
+            // Find the branch associated with the agent
+            // Find the branch associated with the agent
+            let branch = branches.find(b => b.id === agent.branch_id);
 
 
-                // Check if client and agent exist
-                if (client && agent && branch) {
-                    // Update hidden fields
-                    document.getElementById('receiverId').value = client.id;
-                    document.getElementById('clientid').value = client.id;
-                    // Update input fields for client
-                    document.getElementById('receiverName').value = client.full_name;
-                    document.getElementById('receiverName1').textContent = client.full_name;
-                    document.getElementById('receiverEmail').value = client.email;
-                    document.getElementById('receiverPhone').value = client.phone;
-
-                    document.getElementById('agentId').value = agent.id;
-                    // Update input fields for agent
-                    document.getElementById('agentName').value = agent.name;
-                    document.getElementById('agentEmail').value = agent.email;
-                    document.getElementById('agentPhone').value = agent.phone_number;
-
-                    // Update the selected branch
-                    document.getElementById('selectedBranch').value = branch.id;
-
-                    // Update the trigger text for branch selection
-                    document.querySelector('.select-trigger').textContent = branch.name;
-
-                } else {
-                    console.error('Client or Agent not found');
-                }
-            }
-
-            function updateFormFields(client, agent) {
+            // Check if client and agent exist
+            if (client && agent && branch) {
                 // Update hidden fields
                 document.getElementById('receiverId').value = client.id;
                 document.getElementById('clientid').value = client.id;
-                // Update input fields
+                // Update input fields for client
                 document.getElementById('receiverName').value = client.full_name;
                 document.getElementById('receiverName1').textContent = client.full_name;
                 document.getElementById('receiverEmail').value = client.email;
                 document.getElementById('receiverPhone').value = client.phone;
 
+                document.getElementById('agentId').value = agent.id;
+                // Update input fields for agent
                 document.getElementById('agentName').value = agent.name;
                 document.getElementById('agentEmail').value = agent.email;
                 document.getElementById('agentPhone').value = agent.phone_number;
+
+                // Update the selected branch
+                document.getElementById('selectedBranch').value = branch.id;
+
+                // Update the trigger text for branch selection
+                document.querySelector('.select-trigger').textContent = branch.name;
+
+            } else {
+                console.error('Client or Agent not found');
+            }
+        }
+
+        function updateFormFields(client, agent) {
+            // Update hidden fields
+            document.getElementById('receiverId').value = client.id;
+            document.getElementById('clientid').value = client.id;
+            // Update input fields
+            document.getElementById('receiverName').value = client.full_name;
+            document.getElementById('receiverName1').textContent = client.full_name;
+            document.getElementById('receiverEmail').value = client.email;
+            document.getElementById('receiverPhone').value = client.phone;
+
+            document.getElementById('agentName').value = agent.name;
+            document.getElementById('agentEmail').value = agent.email;
+            document.getElementById('agentPhone').value = agent.phone_number;
+        }
+
+        async function updateGateway() {
+            const gateway = document.getElementById('payment_gateway_option').value;
+            const amount = document.getElementById('subTotal').value;
+            const invoiceId = document.getElementById('invoiceId').value;
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+            const responseBox = document.getElementById('payment-response-message');
+
+            const data = {
+                invoiceId,
+                gateway,
+                amount,
+                invoiceNumber
+            };
+
+            if (gateway !== 'Tap') {
+                const method = document.getElementById('payment_method_full').value;
+                data.method = method;
             }
 
-            async function updateGateway() {
-                const gateway = document.getElementById('payment_gateway_option').value;
-                const amount = document.getElementById('subTotal').value;
-                const invoiceId = document.getElementById('invoiceId').value;
-                const invoiceNumber = document.getElementById('invoiceNumber').value;
-                const responseBox = document.getElementById('payment-response-message');
+            const csrfToken = "{{ csrf_token() }}";
+            const invoiceUrl = "{{ route('invoice.update-gateway') }}";
 
-                const data = {
-                    invoiceId,
-                    gateway,
-                    amount,
-                    invoiceNumber
-                };
+            try {
+                const response = await fetch(invoiceUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify(data),
+                });
 
-                if (gateway !== 'Tap') {
-                    const method = document.getElementById('payment_method_full').value;
-                    data.method = method;
-                }
+                const result = await response.json();
 
-                const csrfToken = "{{ csrf_token() }}";
-                const invoiceUrl = "{{ route('invoice.update-gateway') }}";
+                responseBox.classList.remove('hidden', 'bg-red-100', 'text-red-700');
+                responseBox.classList.add('bg-green-100', 'text-green-700');
+                responseBox.textContent = result.message || 'Success';
 
-                try {
-                    const response = await fetch(invoiceUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                        },
-                        body: JSON.stringify(data),
-                    });
-
-                    const result = await response.json();
-
-                    responseBox.classList.remove('hidden', 'bg-red-100', 'text-red-700');
-                    responseBox.classList.add('bg-green-100', 'text-green-700');
-                    responseBox.textContent = result.message || 'Success';
-
-                } catch (error) {
-                    responseBox.classList.remove('hidden', 'bg-green-100', 'text-green-700');
-                    responseBox.classList.add('bg-red-100', 'text-red-700');
-                    responseBox.textContent = error.message || 'Something went wrong';
-                }
-
-                setTimeout(() => {
-                    responseBox.classList.add('hidden');
-                    responseBox.textContent = '';
-                }, 3000);
+            } catch (error) {
+                responseBox.classList.remove('hidden', 'bg-green-100', 'text-green-700');
+                responseBox.classList.add('bg-red-100', 'text-red-700');
+                responseBox.textContent = error.message || 'Something went wrong';
             }
 
-            function savePartial(mode) {
-                const gateway = document.getElementById('payment_gateway_option')?.value;
-                const validation = checkPaymentAmount(mode);
+            setTimeout(() => {
+                responseBox.classList.add('hidden');
+                responseBox.textContent = '';
+            }, 3000);
+        }
 
-                if (!validation.isValid) {
-                    showErrorAlert(validation.errorMessage);
+        function savePartial(mode) {
+            const gateway = document.getElementById('payment_gateway_option')?.value;
+            const validation = checkPaymentAmount(mode);
+
+            if (!validation.isValid) {
+                showErrorAlert(validation.errorMessage);
+                return;
+            }
+
+
+            clearErrorAlert();
+
+            // Validation for "full" mode: payment gateway and method selection
+            if (mode === 'full') {
+                if (!gateway) {
+                    showErrorAlert('Please choose a payment gateway.');
                     return;
                 }
-
-
-                clearErrorAlert();
-
-                // Validation for "full" mode: payment gateway and method selection
-                if (mode === 'full') {
-                    if (!gateway) {
-                        showErrorAlert('Please choose a payment gateway.');
+                // Check if selected gateway requires payment method
+                if (gateway.toLowerCase() === 'myfatoorah') {
+                    const method = document.getElementById('payment_method_full')?.value;
+                    if (!method) {
+                        showErrorAlert('Please choose a payment method for MyFatoorah.');
                         return;
                     }
-                    // Check if selected gateway requires payment method
-                    if (gateway.toLowerCase() === 'myfatoorah') {
-                        const method = document.getElementById('payment_method_full')?.value;
-                        if (!method) {
-                            showErrorAlert('Please choose a payment method for MyFatoorah.');
-                            return;
-                        }
-                    }
+                }
+            }
+
+            if (mode === 'full' || mode === 'cash' || mode === 'credit') {
+                const date = document.getElementById('duedate').value;
+                const amount = document.getElementById('subTotal').value;
+                const externalUrl = document.getElementById('external_url')?.value;
+                const fullData = [];
+
+                // Set appropriate gateway based on mode
+                let paymentGateway = gateway;
+                if (mode === 'cash') {
+                    paymentGateway = 'Cash';
+                } else if (mode === 'credit') {
+                    paymentGateway = 'Credit';
                 }
 
-                if (mode === 'full' || mode === 'cash' || mode === 'credit') {
-                    const date = document.getElementById('duedate').value;
-                    const amount = document.getElementById('subTotal').value;
-                    const externalUrl = document.getElementById('external_url')?.value;
-                    const fullData = [];
+                fullData.push({
+                    date,
+                    amount,
+                    gateway: paymentGateway,
+                    external_url: externalUrl
+                });
 
-                    // Set appropriate gateway based on mode
-                    let paymentGateway = gateway;
-                    if (mode === 'cash') {
-                        paymentGateway = 'Cash';
-                    } else if (mode === 'credit') {
-                        paymentGateway = 'Credit';
-                    }
+                for (const item of fullData) {
+                    save(mode, item); // Use the actual mode (full or cash)
+                }
 
-                    fullData.push({
-                        date,
-                        amount,
-                        gateway: paymentGateway,
-                        external_url: externalUrl
-                    });
+                const button = document.getElementById('update-invoice-btn');
+                const icon = document.getElementById('button-icon-full');
+                const text = document.getElementById('button-text-full');
 
-                    for (const item of fullData) {
-                        save(mode, item); // Use the actual mode (full or cash)
-                    }
+                button.disabled = true;
 
-                    const button = document.getElementById('update-invoice-btn');
-                    const icon = document.getElementById('button-icon-full');
-                    const text = document.getElementById('button-text-full');
-
-                    button.disabled = true;
-
-                    // Replace icon with spinner
-                    icon.innerHTML = `
+                // Replace icon with spinner
+                icon.innerHTML = `
                     <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor"
                             d="M4 12a8 8 0 018-8v8z"></path>
                     </svg>
                 `;
-                    text.textContent = 'Saving...';
+                text.textContent = 'Saving...';
 
-                    setTimeout(() => {
-                        icon.innerHTML = '';
-                        text.textContent = 'Saved ✅';
-                        location.reload();
-                    }, 500);
-
-
-                } else if (mode === 'split') {
-                    // Collect Split Payment Data
-                    const rows = document.querySelectorAll('#split-rows tr');
-                    const splitData = [];
-                    rows.forEach((row, index) => {
-                        const clientSelectElement = row.querySelector(`#customer_name_${index + 1}`);
-
-                        if (!clientSelectElement) {
-                            console.error(`Client select element not found for row ${index + 1}`);
-                            return;
-                        }
-
-                        const clientId = clientSelectElement.value;
-                        // Get client name from the display text instead of select options
-                        const selectedTextElement = row.querySelector(`#selected_text_${index + 1}`);
-                        const clientName = selectedTextElement ? selectedTextElement.textContent : '';
-
-                        const dateInput = row.querySelector(`input[type="date"]`);
-                        const date = dateInput ? dateInput.value : null;
-
-                        const amountInput = row.querySelector(`input[type="number"]`);
-                        const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
-
-                        const gatewaySelect = row.querySelector(`#payment_gateway_${index + 1}`);
-                        const gateway = gatewaySelect ? gatewaySelect.value : null;
-
-                        const methodSelect = row.querySelector(`#payment_method_${index + 1}`);
-                        const method = methodSelect ? methodSelect.value : null;
+                setTimeout(() => {
+                    icon.innerHTML = '';
+                    text.textContent = 'Saved ✅';
+                    location.reload();
+                }, 500);
 
 
-                        splitData.push({
-                            clientId,
-                            clientName,
-                            date,
-                            amount,
-                            gateway,
-                            method
-                        });
-                    });
+            } else if (mode === 'split') {
+                // Collect Split Payment Data
+                const rows = document.querySelectorAll('#split-rows tr');
+                const splitData = [];
+                rows.forEach((row, index) => {
+                    const clientSelectElement = row.querySelector(`#customer_name_${index + 1}`);
 
-                    for (const item of splitData) {
-                        save('split', item);
+                    if (!clientSelectElement) {
+                        console.error(`Client select element not found for row ${index + 1}`);
+                        return;
                     }
 
+                    const clientId = clientSelectElement.value;
+                    // Get client name from the display text instead of select options
+                    const selectedTextElement = row.querySelector(`#selected_text_${index + 1}`);
+                    const clientName = selectedTextElement ? selectedTextElement.textContent : '';
 
-                    const buttonSplit = document.getElementById('splitbutton');
-                    const iconSplit = document.getElementById('button-icon-split');
-                    const textSplit = document.getElementById('button-text-split');
+                    const dateInput = row.querySelector(`input[type="date"]`);
+                    const date = dateInput ? dateInput.value : null;
 
-                    if (buttonSplit && iconSplit && textSplit) {
-                        buttonSplit.disabled = true;
+                    const amountInput = row.querySelector(`input[type="number"]`);
+                    const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
 
-                        // Show spinner
-                        iconSplit.innerHTML = `
+                    const gatewaySelect = row.querySelector(`#payment_gateway_${index + 1}`);
+                    const gateway = gatewaySelect ? gatewaySelect.value : null;
+
+                    const methodSelect = row.querySelector(`#payment_method_${index + 1}`);
+                    const method = methodSelect ? methodSelect.value : null;
+
+
+                    splitData.push({
+                        clientId,
+                        clientName,
+                        date,
+                        amount,
+                        gateway,
+                        method
+                    });
+                });
+
+                for (const item of splitData) {
+                    save('split', item);
+                }
+
+
+                const buttonSplit = document.getElementById('splitbutton');
+                const iconSplit = document.getElementById('button-icon-split');
+                const textSplit = document.getElementById('button-text-split');
+
+                if (buttonSplit && iconSplit && textSplit) {
+                    buttonSplit.disabled = true;
+
+                    // Show spinner
+                    iconSplit.innerHTML = `
                         <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                         </svg>
                     `;
 
-                        textSplit.textContent = 'Saving...';
+                    textSplit.textContent = 'Saving...';
 
-                        setTimeout(() => {
-                            iconSplit.innerHTML = ''; // remove spinner
-                            textSplit.textContent = 'Saved ✅';
-                            location.reload();
-                        }, 500);
-                    } else {
-                        console.error('Split button or icon/text elements not found in the DOM.');
-                    }
+                    setTimeout(() => {
+                        iconSplit.innerHTML = ''; // remove spinner
+                        textSplit.textContent = 'Saved ✅';
+                        location.reload();
+                    }, 500);
+                } else {
+                    console.error('Split button or icon/text elements not found in the DOM.');
+                }
 
 
-                } else if (mode === 'partial') {
-                    const partialRows = document.querySelectorAll('#split-rows1 tr');
-                    const partialData = [];
+            } else if (mode === 'partial') {
+                const partialRows = document.querySelectorAll('#split-rows1 tr');
+                const partialData = [];
 
-                    console.log('--- Collecting PARTIAL rows ---');
+                console.log('--- Collecting PARTIAL rows ---');
 
-                    partialRows.forEach((row, index) => {
-                        const i = index + 1;
+                partialRows.forEach((row, index) => {
+                    const i = index + 1;
 
-                        const date = row.querySelector(`#date_${i}`)?.value || '';
-                        const amount = parseFloat(row.querySelector(`#amount_${i}`)?.value) || 0;
-                        const gatewayEl = row.querySelector(`#payment_gateway1_${i}`);
-                        const methodBox = row.querySelector(`#payment_method_container1_${i}`);
-                        const methodEl = row.querySelector(`#payment_method1_${i}`);
+                    const date = row.querySelector(`#date_${i}`)?.value || '';
+                    const amount = parseFloat(row.querySelector(`#amount_${i}`)?.value) || 0;
+                    const gatewayEl = row.querySelector(`#payment_gateway1_${i}`);
+                    const methodBox = row.querySelector(`#payment_method_container1_${i}`);
+                    const methodEl = row.querySelector(`#payment_method1_${i}`);
 
-                        const gateway = gatewayEl ? gatewayEl.value : null;
-                        const method = (methodBox && !methodBox.classList.contains('hidden')) ? (methodEl?.value || null) : null;
+                    const gateway = gatewayEl ? gatewayEl.value : null;
+                    const method = (methodBox && !methodBox.classList.contains('hidden')) ? (methodEl?.value || null) : null;
 
-                        // 🔎 Per-row log
-                        console.log(`row ${i}`, {
-                            date,
-                            amount,
-                            gatewayId: gatewayEl?.id,
-                            gateway,
-                            methodId: methodEl?.id,
-                            methodVisible: methodBox && !methodBox.classList.contains('hidden'),
-                            method
-                        });
-
-                        partialData.push({
-                            date,
-                            amount,
-                            gateway,
-                            method
-                        });
+                    // 🔎 Per-row log
+                    console.log(`row ${i}`, {
+                        date,
+                        amount,
+                        gatewayId: gatewayEl?.id,
+                        gateway,
+                        methodId: methodEl?.id,
+                        methodVisible: methodBox && !methodBox.classList.contains('hidden'),
+                        method
                     });
 
-                    // 🔎 Table of what will be sent
-                    console.table(partialData);
+                    partialData.push({
+                        date,
+                        amount,
+                        gateway,
+                        method
+                    });
+                });
 
-                    for (const item of partialData) {
-                        // 🔎 Log payload before each call
-                        console.log('[save][partial] sending', item);
-                        save('partial', item);
-                    }
+                // 🔎 Table of what will be sent
+                console.table(partialData);
 
-                    // UI feedback (unchanged)
-                    const buttonPartial = document.getElementById('partialbutton');
-                    const iconPartial = document.getElementById('button-icon-partial');
-                    const textPartial = document.getElementById('button-text-partial');
-                    if (buttonPartial && iconPartial && textPartial) {
-                        buttonPartial.disabled = true;
-                        iconPartial.innerHTML = `
+                for (const item of partialData) {
+                    // 🔎 Log payload before each call
+                    console.log('[save][partial] sending', item);
+                    save('partial', item);
+                }
+
+                // UI feedback (unchanged)
+                const buttonPartial = document.getElementById('partialbutton');
+                const iconPartial = document.getElementById('button-icon-partial');
+                const textPartial = document.getElementById('button-text-partial');
+                if (buttonPartial && iconPartial && textPartial) {
+                    buttonPartial.disabled = true;
+                    iconPartial.innerHTML = `
                         <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                         </svg>`;
-                        textPartial.textContent = 'Saving...';
-                        setTimeout(() => {
-                            iconPartial.innerHTML = '';
-                            textPartial.textContent = 'Saved ✅';
-                            location.reload();
-                        }, 500);
-                    } else {
-                        console.error('One or more elements (button, icon, text) not found in the DOM');
-                    }
+                    textPartial.textContent = 'Saving...';
+                    setTimeout(() => {
+                        iconPartial.innerHTML = '';
+                        textPartial.textContent = 'Saved ✅';
+                        location.reload();
+                    }, 500);
+                } else {
+                    console.error('One or more elements (button, icon, text) not found in the DOM');
                 }
             }
+        }
 
-            async function save(type, item) {
-                const invoiceUrl = "{{ route('invoice.partial') }}";
-                const csrfToken = "{{ csrf_token() }}";
-                const invoiceId = document.getElementById('invoiceId').value;
-                const invoiceNumber = document.getElementById('invoiceNumber').value;
-                const companyId = document.getElementById('companyId').value;
+        async function save(type, item) {
+            const invoiceUrl = "{{ route('invoice.partial') }}";
+            const csrfToken = "{{ csrf_token() }}";
+            const invoiceId = document.getElementById('invoiceId').value;
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+            const companyId = document.getElementById('companyId').value;
 
-                const invoiceCharge = document.getElementById('invoice_charge') ? document.getElementById('invoice_charge').value : 0;
+            const invoiceCharge = document.getElementById('invoice_charge') ? document.getElementById('invoice_charge').value : 0;
 
-                let payload = {
-                    invoiceId,
-                    invoiceNumber,
-                    companyId,
-                    type,
-                    date: item.date,
-                    amount: item.amount,
-                    gateway: item.gateway,
-                    external_url: item.external_url || null,
-                    invoice_charge: invoiceCharge,
-                };
+            let payload = {
+                invoiceId,
+                invoiceNumber,
+                companyId,
+                type,
+                date: item.date,
+                amount: item.amount,
+                gateway: item.gateway,
+                external_url: item.external_url || null,
+                invoice_charge: invoiceCharge,
+            };
 
-                if (type === 'full' || type === 'credit') {
-                    payload.clientId = document.getElementById('receiverId').value;
-                    if (item.gateway === 'MyFatoorah') {
-                        payload.method = document.getElementById('payment_method_full')?.value;
-                    } else {
-                        payload.method = null;
-                    }
-                } else if (type === 'partial') {
-                    payload.clientId = document.getElementById('receiverId').value;
-                    payload.method = item.method;
-                } else if (type === 'split') {
-                    payload.clientId = item.clientId;
-                    payload.method = item.method;
-
-                    if (payload.gateway === 'Credit') {
-                        payload.credit = true;
-                    }
-
-                } else if (type === 'cash') {
-                    payload.clientId = document.getElementById('receiverId').value;
+            if (type === 'full' || type === 'credit') {
+                payload.clientId = document.getElementById('receiverId').value;
+                if (item.gateway === 'MyFatoorah') {
+                    payload.method = document.getElementById('payment_method_full')?.value;
+                } else {
                     payload.method = null;
                 }
+            } else if (type === 'partial') {
+                payload.clientId = document.getElementById('receiverId').value;
+                payload.method = item.method;
+            } else if (type === 'split') {
+                payload.clientId = item.clientId;
+                payload.method = item.method;
 
-                if (type === 'credit') {
+                if (payload.gateway === 'Credit') {
                     payload.credit = true;
                 }
-                console.log(payload);
 
-                try {
-                    const response = await fetch(invoiceUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(payload),
-                    });
-
-                    // console.log("Response status:", response.status);
-
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.message || `Failed to process ${type} payment.`);
-                    }
-
-                    const result = await response.json();
-                    // console.log("Backend response for single item:", result);
-                    displaySuccessMessage(result.message || `${type} payment processed successfully!`);
-
-                } catch (error) {
-                    console.error(`Error processing ${type} payment for item:`, item, error);
-                    displayErrorMessage(error.message || `Something went wrong with ${type} payment.`);
-                }
+            } else if (type === 'cash') {
+                payload.clientId = document.getElementById('receiverId').value;
+                payload.method = null;
             }
 
-            function displayErrorMessage(message) {
-                const alert = document.createElement('div');
-                alert.innerHTML = `
+            if (type === 'credit') {
+                payload.credit = true;
+            }
+            console.log(payload);
+
+            try {
+                const response = await fetch(invoiceUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                // console.log("Response status:", response.status);
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Failed to process ${type} payment.`);
+                }
+
+                const result = await response.json();
+                // console.log("Backend response for single item:", result);
+                displaySuccessMessage(result.message || `${type} payment processed successfully!`);
+
+            } catch (error) {
+                console.error(`Error processing ${type} payment for item:`, item, error);
+                displayErrorMessage(error.message || `Something went wrong with ${type} payment.`);
+            }
+        }
+
+        function displayErrorMessage(message) {
+            const alert = document.createElement('div');
+            alert.innerHTML = `
                   <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
                       ${message}
                       <button type="button" class="close text-white ml-2" aria-label="Close" onclick="this.parentElement.style.display='none';">
@@ -3624,12 +3576,12 @@
                       </button>
                   </div>
               `;
-                document.body.appendChild(alert);
-            }
+            document.body.appendChild(alert);
+        }
 
-            function displaySuccessMessage(message) {
-                const alert = document.createElement('div');
-                alert.innerHTML = `
+        function displaySuccessMessage(message) {
+            const alert = document.createElement('div');
+            alert.innerHTML = `
                   <div class="alert alert-success fixed mt-5 top-1 right-4 bg-green-500 text-white p-4 rounded shadow-lg">
                       ${message}
                       <button type="button" class="close text-white ml-2" aria-label="Close" onclick="this.parentElement.style.display='none';">
@@ -3637,22 +3589,12 @@
                       </button>
                   </div>
               `;
-                document.body.appendChild(alert);
-            }
+            document.body.appendChild(alert);
+        }
 
-            function afterPaymentType() {
-                const tabs = document.querySelectorAll('input[name="payment_type"]');
-                const partial = document.getElementById('payment_type_partial');
-                const split = document.getElementById('payment_type_split');
-                const full = document.getElementById('payment_type_full');
-                const update = document.getElementById('update-invoice-btn');
-                const updateSplitButton = document.getElementById('splitbutton');
-                const updatePartialButton = document.getElementById('partialbutton');
-            }
-
-            function showNotification(message, type) {
-                let notification = document.createElement('div');
-                notification.innerHTML = `
+        function showNotification(message, type) {
+            let notification = document.createElement('div');
+            notification.innerHTML = `
                 <div class="alert alert-${type} fixed mt-5 top-1 right-4 p-4 rounded shadow-lg ${
                     type === 'danger' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
                 }">
@@ -3663,36 +3605,36 @@
                     </button>
                 </div>
             `;
-                document.body.appendChild(notification);
-            }
+            document.body.appendChild(notification);
+        }
 
-            // Generate invoice
-            async function updateInvoice() {
+        // Generate invoice
+        async function updateInvoice() {
 
-                const invoiceUrl = `/invoice/${invoice.id}`;
-                const csrfToken = "{{ csrf_token() }}";
+            const invoiceUrl = `/invoice/${invoice.id}`;
+            const csrfToken = "{{ csrf_token() }}";
 
-                const currency = document.getElementById('currency').value;
-                const invoiceNumber = document.getElementById('invoiceNumber').value;
-                const invdate = document.getElementById('invdate').value;
-                const duedate = document.getElementById('duedate').value;
-                const subTotal = document.getElementById('subTotal').value;
-                const tasks = items;
-                const clientId = document.getElementById('receiverId').value;
-                const agentId = document.getElementById('agentId').value;
+            const currency = document.getElementById('currency').value;
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+            const invdate = document.getElementById('invdate').value;
+            const duedate = document.getElementById('duedate').value;
+            const subTotal = document.getElementById('subTotal').value;
+            const tasks = items;
+            const clientId = document.getElementById('receiverId').value;
+            const agentId = document.getElementById('agentId').value;
 
-                // Show loading state
-                buttonText.style.display = "none";
-                buttonLoading.style.display = "inline";
-                // console.log(
-                //     'clientId:', clientId,
-                //     'agentId:', agentId,
-                //     'tasksLength:', tasks.length,
-                // );
-                if (!clientId || !agentId || !tasks.length) {
-                    console.error("Required data is missing.");
-                    let errorNotification = document.createElement('div');
-                    errorNotification.innerHTML = ` 
+            // Show loading state
+            buttonText.style.display = "none";
+            buttonLoading.style.display = "inline";
+            // console.log(
+            //     'clientId:', clientId,
+            //     'agentId:', agentId,
+            //     'tasksLength:', tasks.length,
+            // );
+            if (!clientId || !agentId || !tasks.length) {
+                console.error("Required data is missing.");
+                let errorNotification = document.createElement('div');
+                errorNotification.innerHTML = ` 
                  <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
                        Please Fill In All Required Data 
                      <button type="button" class="close text-white ml-2" aria-label="Close"
@@ -3701,59 +3643,59 @@
                      </button>
                  </div>
                  `
-                    document.body.appendChild(errorNotification);
-                    return;
+                document.body.appendChild(errorNotification);
+                return;
+            }
+
+            try {
+                const response = await fetch(invoiceUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        invoice,
+                        clientId,
+                        agentId,
+                        tasks,
+                        subTotal,
+                        invoiceNumber,
+                        currency,
+                        invdate,
+                        duedate
+
+                    })
+                });
+                if (!response.ok) {
+                    throw new Error("Failed to reach the invoice controller.");
                 }
 
-                try {
-                    const response = await fetch(invoiceUrl, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                        },
-                        body: JSON.stringify({
-                            invoice,
-                            clientId,
-                            agentId,
-                            tasks,
-                            subTotal,
-                            invoiceNumber,
-                            currency,
-                            invdate,
-                            duedate
+                const result = await response.json();
+                const {
+                    invoiceId
+                } = result;
+                // console.log(invoiceId);
 
-                        })
-                    });
-                    if (!response.ok) {
-                        throw new Error("Failed to reach the invoice controller.");
-                    }
+                document.getElementById('invoiceId').value = invoiceId;
+                const generatedLink = appUrl + '/invoice/' + invoiceNumber;
 
-                    const result = await response.json();
-                    const {
-                        invoiceId
-                    } = result;
-                    // console.log(invoiceId);
+                // Invoice link elements
+                const invoiceLinkContainer = document.getElementById("invoice-link-container");
+                const invoiceLink = document.getElementById("invoice-link");
 
-                    document.getElementById('invoiceId').value = invoiceId;
-                    const generatedLink = appUrl + '/invoice/' + invoiceNumber;
+                // Update and show the invoice link
+                invoiceLink.href = generatedLink;
+                invoiceLink.textContent = generatedLink;
+                invoiceLinkContainer.style.display = "block";
 
-                    // Invoice link elements
-                    const invoiceLinkContainer = document.getElementById("invoice-link-container");
-                    const invoiceLink = document.getElementById("invoice-link");
+                // Show success state
+                isSaved = true; // Mark as saved after generating
 
-                    // Update and show the invoice link
-                    invoiceLink.href = generatedLink;
-                    invoiceLink.textContent = generatedLink;
-                    invoiceLinkContainer.style.display = "block";
-
-                    // Show success state
-                    isSaved = true; // Mark as saved after generating
-
-                } catch (error) {
-                    console.error('Error generating invoice:', error);
-                    let alert = document.createElement('div');
-                    alert.innerHTML = ` 
+            } catch (error) {
+                console.error('Error generating invoice:', error);
+                let alert = document.createElement('div');
+                alert.innerHTML = ` 
                  <div class="alert alert-danger fixed mt-5 top-1 right-4 bg-red-500 text-white p-4 rounded shadow-lg">
                        Error Generating Invoice: make sure all fields are filled correctly
                      <button type="button" class="close text-white ml-2" aria-label="Close"
@@ -3762,143 +3704,142 @@
                      </button>
                  </div>
                  `
-                    document.body.appendChild(alert);
-                } finally {
-                    // Reset button states
-                    buttonLoading.style.display = "none";
-                    setTimeout(() => {
-                        checkInvoiceId();
-                    }, 1000);
-                }
-            };
-
-            function copyLink() {
-                const invoiceNumber = document.getElementById('invoiceNumber').value;
-                const copyFeedback = document.getElementById('copyFeedback');
-                const companyId = document.getElementById('companyId').value;
-                const fetchUrl = "{{ route('invoice.show', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
-
-                navigator.clipboard.writeText(fetchUrl).then(() => {
-                    alert('Link copied to clipboard: ' + fetchUrl); // Use invoiceLink here
-                    copyFeedback.classList.remove('hidden');
-                    // console.log(fetchUrl);
-                    setTimeout(() => copyFeedback.classList.add('hidden'), 3000);
-
-                    fetch(fetchUrl, {
-                            method: 'GET',
-                            headers: {
-                                'Content-Type': 'application/pdf',
-                            },
-                        })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error(`HTTP error! status: ${response.status}`);
-                            }
-                            return response.blob();
-                        })
-                        .then(blob => {
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `Invoice_${invoiceNumber}.pdf`; // Filename for the downloaded PDF
-                            document.body.appendChild(a);
-                            a.click();
-                            a.remove();
-                            window.URL.revokeObjectURL(url); // Clean up the URL object
-                        })
-                        .catch(err => {
-                            console.error('Failed to download PDF: ', err);
-                            alert('Failed to download PDF. Please try again.');
-                        });
-
-                }).catch(err => {
-                    alert('Failed to copy link: ' + err);
-                });
+                document.body.appendChild(alert);
+            } finally {
+                // Reset button states
+                buttonLoading.style.display = "none";
+                setTimeout(() => {
+                    checkInvoiceId();
+                }, 1000);
             }
+        };
 
+        function copyLink() {
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+            const copyFeedback = document.getElementById('copyFeedback');
+            const companyId = document.getElementById('companyId').value;
+            const fetchUrl = "{{ route('invoice.show', ['companyId' => ':companyId', 'invoiceNumber' => ':invoiceNumber']) }}".replace(':companyId', companyId).replace(':invoiceNumber', invoiceNumber);
 
-            function showSpinner() {
-                document.getElementById("submitButton").disabled = true;
-                document.getElementById("buttonText").textContent = "Sending...";
-                document.getElementById("spinner").classList.remove("hidden");
-            }
+            navigator.clipboard.writeText(fetchUrl).then(() => {
+                alert('Link copied to clipboard: ' + fetchUrl); // Use invoiceLink here
+                copyFeedback.classList.remove('hidden');
+                // console.log(fetchUrl);
+                setTimeout(() => copyFeedback.classList.add('hidden'), 3000);
 
-
-            document.addEventListener("DOMContentLoaded", function() {
-
-                tasks = @json($tasks);
-                let initialTasks = @json($selectedTasks);
-
-                if (initialTasks && initialTasks.length > 0) {
-                    loadInitialTasks(initialTasks);
-                } else {
-                    // Ensure subtotal is calculated even with no initial tasks
-                    calculateSubtotal();
-                }
-
-                // Initialize modals with full data
-                renderClientList(clients);
-                renderTaskList();
-
-                const paymentTypeRadios = document.querySelectorAll('input[name="payment_type"]');
-                const paymentTypeSavedInput = document.getElementById('paymentTypeSaved');
-                const paymentTypeSaved = paymentTypeSavedInput ? paymentTypeSavedInput.value : '';
-
-                if (paymentTypeSaved) {
-                    const matchingRadio = document.querySelector(
-                        `input[name="payment_type"][value="${paymentTypeSaved}"]`);
-                    if (matchingRadio) {
-                        matchingRadio.checked = true;
-
-                        // Trigger modal function manually if needed
-                        if (paymentTypeSaved === 'partial') {
-                            showModal('partial');
-                        } else if (paymentTypeSaved === 'split') {
-                            showModal('split');
-                        } else {
-                            hideModal();
+                fetch(fetchUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/pdf',
+                        },
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
                         }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `Invoice_${invoiceNumber}.pdf`; // Filename for the downloaded PDF
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url); // Clean up the URL object
+                    })
+                    .catch(err => {
+                        console.error('Failed to download PDF: ', err);
+                        alert('Failed to download PDF. Please try again.');
+                    });
+
+            }).catch(err => {
+                alert('Failed to copy link: ' + err);
+            });
+        }
+
+
+        function showSpinner() {
+            document.getElementById("submitButton").disabled = true;
+            document.getElementById("buttonText").textContent = "Sending...";
+            document.getElementById("spinner").classList.remove("hidden");
+        }
+
+
+        // Setup payment types and initial tasks - will be called in main DOMContentLoaded
+        function setupPaymentTypesAndTasks() {
+            tasks = @json($tasks);
+            let initialTasks = @json($selectedTasks);
+
+            if (initialTasks && initialTasks.length > 0) {
+                loadInitialTasks(initialTasks);
+            } else {
+                // Ensure subtotal is calculated even with no initial tasks
+                calculateSubtotal();
+            }
+
+            // Initialize modals with full data
+            renderClientList(clients);
+            renderTaskList();
+
+            const paymentTypeRadios = document.querySelectorAll('input[name="payment_type"]');
+            const paymentTypeSavedInput = document.getElementById('paymentTypeSaved');
+            const paymentTypeSaved = paymentTypeSavedInput ? paymentTypeSavedInput.value : '';
+
+            if (paymentTypeSaved) {
+                const matchingRadio = document.querySelector(
+                    `input[name="payment_type"][value="${paymentTypeSaved}"]`);
+                if (matchingRadio) {
+                    matchingRadio.checked = true;
+
+                    // Trigger modal function manually if needed
+                    if (paymentTypeSaved === 'partial') {
+                        showModal('partial');
+                    } else if (paymentTypeSaved === 'split') {
+                        showModal('split');
+                    } else {
+                        hideModal();
                     }
                 }
+            }
 
-                // Optional: Attach listeners to update hidden input
-                const radios = document.querySelectorAll('input[name="payment_type"]');
-                radios.forEach(radio => {
-                    radio.addEventListener('change', function() {
-                        paymentTypeSavedInput.value = this.value;
-                    });
+            // Optional: Attach listeners to update hidden input
+            const radios = document.querySelectorAll('input[name="payment_type"]');
+            radios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    paymentTypeSavedInput.value = this.value;
                 });
-
-                creditClientRadioChoice = document.getElementsByName('choice-invoice')
-
-                yesChosen = document.getElementById('yes-chosen');
-                noChosen = document.getElementById('no-chosen');
-
-                if (yesChosen && noChosen) {
-                    yesChosen.style.display = 'none';
-                    noChosen.style.display = 'none';
-                }
-
-                creditClientRadioChoice.forEach(radio => {
-                    radio.addEventListener('change', function() {
-                        if (this.value === 'yes') {
-                            yesChosen.style.display = 'block';
-                            noChosen.style.display = 'none';
-                        } else {
-                            yesChosen.style.display = 'none';
-                            noChosen.style.display = 'block';
-                        }
-                    });
-                });
-
             });
 
-            function showErrorAlert(message) {
-                clearErrorAlert();
+            creditClientRadioChoice = document.getElementsByName('choice-invoice')
 
-                let errorNotification = document.createElement('div');
-                errorNotification.id = "paymentValidationError";
-                errorNotification.innerHTML = ` 
+            yesChosen = document.getElementById('yes-chosen');
+            noChosen = document.getElementById('no-chosen');
+
+            if (yesChosen && noChosen) {
+                yesChosen.style.display = 'none';
+                noChosen.style.display = 'none';
+            }
+
+            creditClientRadioChoice.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'yes') {
+                        yesChosen.style.display = 'block';
+                        noChosen.style.display = 'none';
+                    } else {
+                        yesChosen.style.display = 'none';
+                        noChosen.style.display = 'block';
+                    }
+                });
+            });
+        }
+
+        function showErrorAlert(message) {
+            clearErrorAlert();
+
+            let errorNotification = document.createElement('div');
+            errorNotification.id = "paymentValidationError";
+            errorNotification.innerHTML = ` 
                     <div class="alert alert-danger fixed top-5 right-5 bg-red-500 text-white p-4 rounded shadow-lg z-50">
                         ${message}
                         <button type="button" class="close text-white ml-2" aria-label="Close"
@@ -3907,138 +3848,143 @@
                         </button>
                     </div>`;
 
-                document.body.appendChild(errorNotification);
+            document.body.appendChild(errorNotification);
 
-                setTimeout(() => {
-                    clearErrorAlert();
-                }, 10000);
+            setTimeout(() => {
+                clearErrorAlert();
+            }, 10000);
+        }
+
+        function clearErrorAlert() {
+            let existingAlert = document.getElementById("paymentValidationError");
+            if (existingAlert) {
+                existingAlert.remove();
             }
+        }
 
-            function clearErrorAlert() {
-                let existingAlert = document.getElementById("paymentValidationError");
-                if (existingAlert) {
-                    existingAlert.remove();
-                }
-            }
+        function checkPaymentAmount(mode) {
+            const totalInvoiceAmount = parseFloat(document.getElementById('total-amount').value) || 0;
+            let totalEnteredAmount = 0;
+            let isValid = true;
+            let errorMessage = '';
 
-            function checkPaymentAmount(mode) {
-                const totalInvoiceAmount = parseFloat(document.getElementById('total-amount').value) || 0;
-                let totalEnteredAmount = 0;
-                let isValid = true;
-                let errorMessage = '';
+            if (mode === 'split') {
+                const rows = document.querySelectorAll('#split-rows tr');
 
-                if (mode === 'split') {
-                    const rows = document.querySelectorAll('#split-rows tr');
-
-                    rows.forEach((row, index) => {
-                        const amountInput = row.querySelector(`input[type="number"]`);
-                        const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
-                        totalEnteredAmount += amount;
-                    });
-
-                    if (totalEnteredAmount !== totalInvoiceAmount) {
-                        isValid = false;
-                        errorMessage = `Total split payment amounts (${totalEnteredAmount.toFixed(2)} KWD) must equal the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Please adjust the amounts to match exactly.`;
-                    }
-
-                } else if (mode === 'partial') {
-                    const partialRows = document.querySelectorAll('#split-rows1 tr');
-
-                    partialRows.forEach(row => {
-                        const amountInput = row.querySelector('input[type="number"]');
-                        const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
-                        totalEnteredAmount += amount;
-                    });
-
-                    if (totalEnteredAmount > totalInvoiceAmount) {
-                        isValid = false;
-                        errorMessage = `Total partial payment amounts (${totalEnteredAmount.toFixed(2)} KWD) exceed the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Partial payments cannot exceed the invoice total.`;
-                    } else if (totalEnteredAmount < totalInvoiceAmount) {
-                        isValid = false;
-                        errorMessage = `Total partial payment amounts (${totalEnteredAmount.toFixed(2)} KWD) are less than the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Partial payments cannot be less than the invoice total.`;
-                    }
-                }
-
-                return {
-                    isValid,
-                    errorMessage,
-                    totalEnteredAmount,
-                    totalInvoiceAmount
-                };
-            }
-
-            function checkInputAmount(mode, rowIndex = null) {
-                const validation = checkPaymentAmount(mode);
-
-                const existingError = document.getElementById('payment-validation-error');
-                if (existingError) {
-                    existingError.remove();
-                }
-
-                if (!validation.isValid) {
-                    showErrorAlert(validation.errorMessage);
-
-                    const modalContent = mode === 'split' ?
-                        document.querySelector('#paymentModal .bg-white') :
-                        document.querySelector('#paymentModal1 .bg-white');
-
-                    if (modalContent) {
-                        modalContent.insertBefore(errorDiv, modalContent.firstChild);
-                    }
-
-                    const saveButton = mode === 'split' ?
-                        document.getElementById('splitbutton') :
-                        document.getElementById('partialbutton');
-
-                    if (saveButton) {
-                        saveButton.disabled = true;
-                        saveButton.style.opacity = '0.5';
-                        saveButton.style.cursor = 'not-allowed';
-                    }
-                } else {
-                    clearErrorAlert();
-
-                    const saveButton = mode === 'split' ?
-                        document.getElementById('splitbutton') :
-                        document.getElementById('partialbutton');
-
-                    if (saveButton) {
-                        saveButton.disabled = false;
-                        saveButton.style.opacity = '1';
-                        saveButton.style.cursor = 'pointer';
-                    }
-                }
-            }
-
-            document.addEventListener('DOMContentLoaded', () => {
-                const modal = document.getElementById('importModal');
-                const openBtn = document.getElementById('openImportModalBtn');
-                const closeBtn = document.getElementById('closeImportModalBtn');
-                const cancelBtn = document.getElementById('cancelImport');
-                const form = document.getElementById('importForm');
-                const input = document.getElementById('import_invoice_id');
-
-                const successBox = document.getElementById('successBox');
-                const errorBox = document.getElementById('errorBox');
-                const loadingBox = document.getElementById('loadingBox');
-
-                // Show modal
-                openBtn.addEventListener('click', () => {
-                    input.value = '';
-                    errorBox.classList.add('hidden');
-                    successBox.classList.add('hidden');
-                    loadingBox.classList.add('hidden');
-                    modal.classList.remove('hidden');
+                rows.forEach((row, index) => {
+                    const amountInput = row.querySelector(`input[type="number"]`);
+                    const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
+                    totalEnteredAmount += amount;
                 });
 
-                // Hide modal
-                function closeModal() {
-                    modal.classList.add('hidden');
+                if (totalEnteredAmount !== totalInvoiceAmount) {
+                    isValid = false;
+                    errorMessage = `Total split payment amounts (${totalEnteredAmount.toFixed(2)} KWD) must equal the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Please adjust the amounts to match exactly.`;
                 }
-                closeBtn.addEventListener('click', closeModal);
-                cancelBtn.addEventListener('click', closeModal);
 
-                // Submit logic
+            } else if (mode === 'partial') {
+                const partialRows = document.querySelectorAll('#split-rows1 tr');
+
+                partialRows.forEach(row => {
+                    const amountInput = row.querySelector('input[type="number"]');
+                    const amount = parseFloat(amountInput ? amountInput.value : 0) || 0;
+                    totalEnteredAmount += amount;
+                });
+
+                if (totalEnteredAmount > totalInvoiceAmount) {
+                    isValid = false;
+                    errorMessage = `Total partial payment amounts (${totalEnteredAmount.toFixed(2)} KWD) exceed the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Partial payments cannot exceed the invoice total.`;
+                } else if (totalEnteredAmount < totalInvoiceAmount) {
+                    isValid = false;
+                    errorMessage = `Total partial payment amounts (${totalEnteredAmount.toFixed(2)} KWD) are less than the invoice amount (${totalInvoiceAmount.toFixed(2)} KWD). Partial payments cannot be less than the invoice total.`;
+                }
+            }
+
+            return {
+                isValid,
+                errorMessage,
+                totalEnteredAmount,
+                totalInvoiceAmount
+            };
+        }
+
+        function checkInputAmount(mode, rowIndex = null) {
+            const validation = checkPaymentAmount(mode);
+
+            const existingError = document.getElementById('payment-validation-error');
+            if (existingError) {
+                existingError.remove();
+            }
+
+            if (!validation.isValid) {
+                showErrorAlert(validation.errorMessage);
+
+                const modalContent = mode === 'split' ?
+                    document.querySelector('#paymentModal .bg-white') :
+                    document.querySelector('#paymentModal1 .bg-white');
+
+                if (modalContent) {
+                    modalContent.insertBefore(errorDiv, modalContent.firstChild);
+                }
+
+                const saveButton = mode === 'split' ?
+                    document.getElementById('splitbutton') :
+                    document.getElementById('partialbutton');
+
+                if (saveButton) {
+                    saveButton.disabled = true;
+                    saveButton.style.opacity = '0.5';
+                    saveButton.style.cursor = 'not-allowed';
+                }
+            } else {
+                clearErrorAlert();
+
+                const saveButton = mode === 'split' ?
+                    document.getElementById('splitbutton') :
+                    document.getElementById('partialbutton');
+
+                if (saveButton) {
+                    saveButton.disabled = false;
+                    saveButton.style.opacity = '1';
+                    saveButton.style.cursor = 'pointer';
+                }
+            }
+        }
+
+        // Setup import modal - will be called in main DOMContentLoaded
+        function setupImportModal() {
+            const modal = document.getElementById('importModal');
+            const openBtn = document.getElementById('openImportModalBtn');
+            const closeBtn = document.getElementById('closeImportModalBtn');
+            const cancelBtn = document.getElementById('cancelImport');
+            const form = document.getElementById('importForm');
+            const input = document.getElementById('import_invoice_id');
+
+            const successBox = document.getElementById('successBox');
+            const errorBox = document.getElementById('errorBox');
+            const loadingBox = document.getElementById('loadingBox');
+
+            if (!modal || !openBtn) return; // Exit if elements don't exist
+
+            // Show modal
+            openBtn.addEventListener('click', () => {
+                input.value = '';
+                errorBox.classList.add('hidden');
+                successBox.classList.add('hidden');
+                loadingBox.classList.add('hidden');
+                modal.classList.remove('hidden');
+            });
+
+            // Hide modal
+            function closeModal() {
+                modal.classList.add('hidden');
+            }
+
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+            // Submit logic
+            if (form) {
                 form.addEventListener('submit', async (e) => {
                     e.preventDefault();
 
@@ -4104,6 +4050,7 @@
                         errorBox.classList.remove('hidden');
                     }
                 });
-            });
-        </script>
+            }
+        }
+    </script>
 </x-app-layout>

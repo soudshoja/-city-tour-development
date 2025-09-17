@@ -572,7 +572,7 @@ class TaskController extends Controller
                     }
                     $data = $currencyExchangeResponse->getData(true);
                     if (($data['status'] ?? 'error') === 'error') {
-                        throw new \RuntimeException('Failed to create exchange rate: '.$data['message']);
+                        throw new \RuntimeException('Failed to create exchange rate: ' . $data['message']);
                     }
 
                     $response = $this->convert($companyId, $originalCurrency, $exchangeCurrency, $amount);
@@ -614,7 +614,7 @@ class TaskController extends Controller
                     }
                 }
             } catch (\Exception $e) {
-                Log::error('Currency conversion failed: '.$e->getMessage(), [
+                Log::error('Currency conversion failed: ' . $e->getMessage(), [
                     'original_currency' => $originalCurrency,
                     'exchange_currency' => $exchangeCurrency,
                     'original_price' => $request->input('original_price'),
@@ -633,6 +633,10 @@ class TaskController extends Controller
             $request->merge([
                 'price' => $request->input('total'),
             ]);
+        }
+
+        if (strtolower($request->input('status')) === 'emd') {
+            $request->merge(['status' => 'issued']);
         }
 
         $queryChkExistTask = Task::query();

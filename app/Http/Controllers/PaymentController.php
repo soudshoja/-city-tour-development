@@ -51,6 +51,7 @@ use App\Models\Charge;
 use App\Models\Currency;
 use App\Models\Role;
 use App\Models\Credit;
+use App\Models\Company;
 use App\Models\MyFatoorahPayment;
 use Carbon\Carbon;
 use Exception;
@@ -145,13 +146,16 @@ class PaymentController extends Controller
 
         $response = json_decode($this->initiatePayment($data)->content(), true);
 
-        if (isset($response['error'])) {
-            if(auth()->user()){
-                return redirect()->back()->with('error', $response['error']);
+        if ((isset($response['error'])) || (isset($response['status']) && $response['status'] === 'error')) {
+            $errorMessage = $response['message'] ?? ($response['error'] ?? 'Payment initiation failed');
+
+            if (auth()->user()) {
+                return redirect()->back()->with('error', $errorMessage);
             }
-            return abort(400);
+
+            return abort(400, $errorMessage);
         }
-        
+
         $this->storeNotification([
             'user_id' => $invoice->agent->id,
             'title' => 'Payment Initiated',
@@ -352,6 +356,9 @@ class PaymentController extends Controller
                 $expiryDate = $response['transaction']['expiryDate'];
             }
         } elseif (strtolower($data['payment_gateway']) === 'hesabe') {
+
+            $companyId = $payment->agent->branch->company_id;
+            $company = Company::find($companyId);
             $configService = new GatewayConfigService();
             $hesabeConfig = $configService->getHesabeConfig();
 
@@ -362,7 +369,20 @@ class PaymentController extends Controller
                 ]);
             }
 
-            $apiKey = $hesabeConfig['data']['api_key'];
+            $apiKey = Charge::where('company_id', $companyId)  
+                ->where('name', 'Hesabe')
+                ->pluck('api_key')
+                ->first();
+            Log::info('API key received from database', ['api_key' => $apiKey]);
+
+            if (!$apiKey) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'API key of ' . ucwords($data['payment_gateway']) .
+                        ' gateway for company ' . ($company?->name ?? 'Unknown') .
+                        ' does not exist. Contact support team for more detail',
+                ], 422);
+            }
             $baseUrl = $hesabeConfig['data']['base_url'];
             $accessCode = $hesabeConfig['data']['access_code'];
             $merchantCode = $hesabeConfig['data']['merchant_code'];
@@ -378,7 +398,6 @@ class PaymentController extends Controller
             $lastName = $payment->client->last_name;
             $customerName = trim("$firstName $middleName $lastName");
 
-            /* Hit Hesabe */
             $checkoutPayload = [
                 "amount" => $finalAmount,
                 "currency" => 'KWD',
@@ -428,7 +447,6 @@ class PaymentController extends Controller
                 ]);
             }
 
-            /* Decrypt response from baseUrl/checkout */
             $decryptedData = HesabeCrypt::decrypt($response, $apiKey, $encryptionKey);
             Log::info('Hesabe decryption: ' . $decryptedData);
 
@@ -440,7 +458,6 @@ class PaymentController extends Controller
                 ]);
             }
 
-            /* Decode decrypted response into json */
             $responseData = json_decode($decryptedData, true);
             Log::info('Response data: ', ['response', $responseData]);
 
@@ -452,14 +469,14 @@ class PaymentController extends Controller
                 ]);
             }
 
-            /* Fetch the token to hit baseUrl/payment api */
             $responseToken = $responseData['response']['data'];
             $paymentUrl = $baseUrl . '/payment' . '?data=' . $responseToken;
-            $paymentReference = $payment->voucher_number;        
+            $paymentReference = $payment->voucher_number;
         } else {
             $payment->delete();
             return response()->json(['error' => 'Unsupported payment method'], 400);
         }
+        
         if ($paymentReference && $paymentUrl) {
 
             $payment->payment_reference = $paymentReference;
@@ -485,6 +502,7 @@ class PaymentController extends Controller
             return response()->json(['error' => 'Failed to initiate payment.'], 500);
         }
     }
+    
 
     public function process(Request $request)
     {
@@ -1794,6 +1812,8 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'MyFatoorah response missing PaymentURL or InvoiceId.');
         } elseif (strtolower($paymentGateway) === 'hesabe') {
 
+            $companyId = $payment->agent->branch->company_id;
+            $company = Company::find($companyId);
             $configService = new GatewayConfigService();
             $hesabeConfig = $configService->getHesabeConfig();
 
@@ -1801,7 +1821,17 @@ class PaymentController extends Controller
                 return redirect()->back()->with('error', $hesabeConfig['message'] ?? 'Hesabe configuration is missing or inactive');
             }
 
-            $apiKey = $hesabeConfig['data']['api_key'];
+            $apiKey = Charge::where('company_id', $companyId)
+                        ->where('name', 'Hesabe')
+                        ->pluck('api_key')
+                        ->first();
+            Log::info('API key received from database', ['api_key' => $apiKey]);
+
+            if (!$apiKey) {
+                return redirect()->back()->with('error', 'API key of ' . ucwords($paymentGateway) .' gateway for company ' . $company->name . ' does not exist. Contact support team for more details');
+            }
+
+            /* $apiKey = $hesabeConfig['data']['api_key']; */            
             $baseUrl = $hesabeConfig['data']['base_url'];
             $accessCode = $hesabeConfig['data']['access_code'];
             $merchantCode = $hesabeConfig['data']['merchant_code'];
@@ -1817,7 +1847,6 @@ class PaymentController extends Controller
             $lastName = $payment->client->last_name;
             $customerName = trim("$firstName $middleName $lastName");
             
-            /* Hit Hesabe */
             $checkoutPayload = [
                 "amount" => $finalAmount,
                 "currency" => 'KWD',
@@ -1864,7 +1893,6 @@ class PaymentController extends Controller
                 return redirect()->back()->with('error', 'Hesabe checkout failed due to cURL error');
             }
 
-            /* Decrypt response from baseUrl/checkout */
             $decryptedData = HesabeCrypt::decrypt($response, $apiKey, $encryptionKey);
             Log::info('Hesabe decryption: ' . $decryptedData);
 
@@ -1873,7 +1901,6 @@ class PaymentController extends Controller
                 return redirect()->back()->with('error', 'Hesabe decryption failed');
             }
 
-            /* Decode decrypted response into json */
             $responseData = json_decode($decryptedData, true);
             Log::info('Response data: ', ['response', $responseData]);
 
@@ -1882,7 +1909,6 @@ class PaymentController extends Controller
                 return redirect()->back()->with('error', 'Hesabe checkout failed, no response data');
             }
 
-            /* Fetch the token to hit baseUrl/payment api */
             $responseToken = $responseData['response']['data'];
             $paymentUrl = $baseUrl . '/payment' . '?data=' . $responseToken;
 
@@ -3734,7 +3760,7 @@ class PaymentController extends Controller
                     'description' => 'Hesabe payment success: ' . $payment->invoice->invoice_number,
                     'invoice_id' => $payment->invoice->id,
                     'payment_id' => $payment->id,
-                    'payment_reference' => $payment->paymen_reference,
+                    'payment_reference' => $payment->payment_reference,
                     'reference_type' => 'Invoice',
                     'transaction_date' => now(),
                 ]);

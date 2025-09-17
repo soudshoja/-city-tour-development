@@ -105,10 +105,6 @@
     <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         <!-- Header -->
         <div class="flex justify-between items-center mb-10">
-            <div>
-                <x-application-logo class="w-auto h-[90px] object-contain" companyLogo="{{ $company->logo }}"/>
-                <p class="text-base font-semibold">{{ $invoice->agent->branch->company->name }}</p>
-            </div>
             <div class="text-right">
                 <h1 class="text-2xl font-bold text-gray-800">فاتورة</h1>
                 @if ($invoice->refund)
@@ -116,7 +112,12 @@
                 @endif
                 <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
                 <p class="text-sm text-gray-600">التاريخ: {{ $invoice->created_at->format('d M, Y') }}</p>
+            </div>    
+            <div>
+                <x-application-logo class="w-auto h-[90px] object-contain" companyLogo="{{ $company->logo }}"/>
+                <p class="text-base font-semibold">{{ $invoice->agent->branch->company->name }}</p>
             </div>
+            
         </div>
 
         <!-- Header Ends -->
@@ -124,27 +125,27 @@
         <div class="flex justify-between items-center mb-8">
             <div class="text-left">
                 <h3 class="text-lg font-bold text-gray-800">الفاتورة مرسلة إلى:</h3>
-                <p class="text-sm text-gray-600">{{ $invoice->client->full_name }}</p>
-                <p class="text-sm text-gray-600">
+                <p class="text-sm text-gray-600 text-justify">{{ $invoice->client->full_name }}</p>
+                <p class="text-sm text-justify text-gray-600">
                     <a href="mailto:{{ $invoice->client->email}}" class="hover:underline hover:text-blue-600">
                         {{ $invoice->client->email ?? 'N/A' }}
                     </a>
                 </p>
-                <p class="text-sm text-gray-600">
+                <p class="text-sm text-gray-600 text-justify">
                     <a href="tel:{{ $invoice->client->country_code }}{{ $invoice->client->phone }}" class="hover:underline hover:text-blue-600">
                         {{ $invoice->client->country_code ?? ''}}{{ $invoice->client->phone ?? 'N/A' }}
                     </a>
                 </p>
             </div>
             <div class="text-right max-w-xs">
-                <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
-                <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->address }}</p>
+                <h2 class="text-xl font-bold text-gray-800 text-justify text-end">{{ $invoice->agent->branch->company->name }}</h2>
+                <p class="text-sm text-gray-600 text-justify text-end">{{ $invoice->agent->branch->company->address }}</p>
                 <p class="text-sm text-gray-600">
                     <a href="mailto:{{ $invoice->agent->branch->company->email }}" class="hover:underline hover:text-blue-600">
                         {{ $invoice->agent->branch->company->email }}
                     </a>
                 </p>
-                <p class="text-sm text-gray-600">
+                <p class="text-sm text-gray-600 text-justify text-end">
                     <a href="tel:{{ $invoice->agent->branch->company->phone }}" class="hover:underline hover:text-blue-600">
                         {{ $invoice->agent->branch->company->phone }}
                     </a>
@@ -153,7 +154,9 @@
         </div>
 
         @if (in_array($invoice->payment_type, ['full', 'credit', 'cash'], true))
-        <h3 class="text-lg font-bold text-gray-800 mb-4">{{ ucfirst($invoice->payment_type )}} Payment ({{ $invoice->currency }})</h3>
+        <div class="flex justify-end mb-4">
+            <h3 class="text-lg font-bold text-gray-800">{{ ucfirst($invoice->payment_type )}} Payment ({{ $invoice->currency }})</h3>
+        </div>
         <table class="min-w-full mb-8 border border-gray-200">
             <thead>
                 <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
@@ -400,7 +403,7 @@
                         {{ $partial->client->full_name }}
 
                         @if ($creditBalance > 0 && $partial->status === 'unpaid')
-                        <br>Credit Balance: {{ number_format($creditBalance, 2) }} |
+                        <br>رصيد المحفظة: {{ number_format($creditBalance, 2) }} |
                         <button @click="open = true" type="button" class="text-blue-600 underline text">
                             استخدم الآن لسداد هذا الجزء؟
                         </button>
@@ -465,7 +468,7 @@
         @endif
 
         <!-- Totals Section -->
-        <div class="flex justify-end mb-8">
+        <div class="flex mb-8">
             <div class="w-1/3 text-sm">
                 @if ($invoice->refund?->original_invoice)
                     <div class="flex justify-between py-2 border-b border-gray-200">
@@ -565,7 +568,7 @@
                     @if ($invoice->payment_type !== 'split' && !($invoice->payment_type === 'partial' && $hasMismatch))
                     <button type="submit" id="payNowBtn"
                         class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                        Pay Now
+                        ادفع الآن
                     </button>
                     @endif
                 </div>
@@ -648,7 +651,7 @@
                                 class="text-blue-500 underline" target="_blank">{{ $partial->payment->voucher_number }}
                             </a>
                             @else
-                            <a href="{{ route('clients.credits', $partial->client_id) }}" class="text-blue-500 underline" target="_blank">Credit</a>
+                            <a href="{{ route('clients.credits', $partial->client_id) }}" class="text-blue-500 underline" target="_blank">المحفظة</a>
                             @endif
                         </td>
                         @php

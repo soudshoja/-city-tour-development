@@ -327,6 +327,8 @@ class InvoiceController extends Controller
         $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
 
         $countries = Country::all();
+        
+        
 
         return view('invoice.create', compact(
             'clients',
@@ -486,7 +488,7 @@ class InvoiceController extends Controller
         }
 
         $appUrl = config('app.url');
-
+        
         // Check if the credit has been used for this invoice
         $creditUsed = Credit::where('client_id', $invoice->client_id)
             ->where('invoice_id', $invoice->id)
@@ -495,7 +497,10 @@ class InvoiceController extends Controller
         $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')->first();
 
         $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
-        // dd($selectedTasks);
+        $companyId = Auth::user()->branch->company_id;
+        $can_import = Charge::where('company_id', $companyId)
+                    ->where('can_import', true)
+                    ->get();
         return view('invoice.edit', compact(
             'clients',
             'invoice',
@@ -521,6 +526,7 @@ class InvoiceController extends Controller
             'companyId',
             'myFatoorahMethods',
             'hesabeMethods',
+            'can_import',
         ));
     }
 

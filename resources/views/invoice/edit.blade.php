@@ -741,7 +741,7 @@
                                         px-4 py-2 border border-gray-300 
                                         bg-white text-gray-700 transition gap-2 
                                         hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                        <span id="openImportModalBtn" class="font-medium">Import from MyFatoorah</span>
+                                        <span id="openImportModalBtn" class="font-medium">Import from Payment Gateway</span>
                                     </div>
                                 </label>
                             </div>
@@ -762,14 +762,42 @@
                                     </div>
 
                                     <!-- Form -->
-                                    <form id="importForm" class="space-y-4">
+                                    <form id="importForm" action="{{ route('payment.link.import-fatoorah.payment') }}" method="POST" class="space-y-4" x-data="{ gateway: '' }">
+                                        @csrf
+
+                                        <!-- Gateway selector -->
                                         <div>
+                                            <label for="gateway" class="block text-sm font-medium text-gray-700 mb-1">
+                                                Payment Gateway
+                                            </label>
+                                            <select name="gateway" id="gateway" x-model="gateway"
+                                                class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                required>
+                                                <option value="" selected disabled hidden>Select Payment Gateway</option>
+                                                @foreach($can_import as $gateway)
+                                                    <option value="{{ strtolower($gateway->name) }}">{{ $gateway->name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <!-- MyFatoorah: Invoice ID -->
+                                        <div x-show="gateway === 'myfatoorah'" class="mt-4" x-cloak>
                                             <label for="import_invoice_id" class="block text-sm font-medium text-gray-700 mb-1">
                                                 Existing Invoice ID
                                             </label>
-                                            <input type="text" id="import_invoice_id"
+                                            <input type="text" name="import_invoice_id" id="import_invoice_id"
                                                 class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                                placeholder="Enter invoice ID" required>
+                                                placeholder="Enter invoice ID">
+                                        </div>
+
+                                        <!-- Hesabe: Order Reference -->
+                                        <div x-show="gateway === 'hesabe'" class="mt-4" x-cloak>
+                                            <label for="import_order_reference" class="block text-sm font-medium text-gray-700 mb-1">
+                                                Existing Order Reference
+                                            </label>
+                                            <input type="text" name="import_order_reference" id="import_order_reference"
+                                                class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                placeholder="Enter order reference">
                                         </div>
 
                                         <!-- Success Message -->
@@ -3990,7 +4018,9 @@
             const closeBtn = document.getElementById('closeImportModalBtn');
             const cancelBtn = document.getElementById('cancelImport');
             const form = document.getElementById('importForm');
-            const input = document.getElementById('import_invoice_id');
+            const gateway = document.getElementById('gateway');
+                const fatoorah = document.getElementById('import_invoice_id');
+                const hesabe = document.getElementById('import_order_reference');
 
             const successBox = document.getElementById('successBox');
             const errorBox = document.getElementById('errorBox');
@@ -4000,7 +4030,9 @@
 
             // Show modal
             openBtn.addEventListener('click', () => {
-                input.value = '';
+                gateway.value = '';
+                    fatoorah.value = '';
+                    hesabe.value = '';
                 errorBox.classList.add('hidden');
                 successBox.classList.add('hidden');
                 loadingBox.classList.add('hidden');
@@ -4022,8 +4054,18 @@
 
                     const agentName = document.getElementById('agentName')?.value || '';
                     const clientName = document.getElementById('receiverName')?.value || '';
-                    const paymentId = input.value.trim();
+                    const gateway = document.getElementById('gateway').value || '';
+                    const invoiceId = fatoorah.value.trim();
+                    const orderRef = hesabe.value.trim();
                     const page = 'invoice';
+
+                    console.log("=== Import Form Debug ===");
+                    console.log("Gateway: ", gateway);
+                    console.log("Agent (hidden input):", agentName);
+                    console.log("Client (hidden input):", clientName);
+                    console.log("Invoice ID (Fatoorah):", invoiceId);
+                    console.log("Order Reference (Hesabe):", orderRef);
+                    console.log("Page:", page);
 
                     successBox.classList.add('hidden');
                     errorBox.classList.add('hidden');
@@ -4036,45 +4078,56 @@
                         return;
                     }
 
-                    if (!paymentId) {
+                    if (!invoiceId && !orderRef) {
                         loadingBox.classList.add('hidden');
-                        errorBox.textContent = 'Payment ID is required.';
+                        errorBox.textContent = 'Payment ID or Order Reference is required.';
                         errorBox.classList.remove('hidden');
                         return;
                     }
 
                     const formData = new FormData();
                     formData.append('_token', '{{ csrf_token() }}');
-                    formData.append('import_invoice_id', paymentId);
+                    formData.append('gateway', gateway);
                     formData.append('agentName', agentName);
                     formData.append('receiverName', clientName);
                     formData.append('page', page);
 
+                    if (invoiceId) formData.append('import_invoice_id', invoiceId);
+                    if (orderRef) formData.append('import_order_reference', orderRef);
+
                     try {
                         const res = await fetch(`{{ route('payment.link.import-fatoorah.invoice') }}`, {
                             method: 'POST',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
                             body: formData,
                         });
 
                         loadingBox.classList.add('hidden');
 
                         if (res.ok) {
+                            let data;
+                            try {
+                                data = await res.json();
+                            } catch {
+                                const text = await res.text();
+                                throw new Error("Non-JSON response: " + text.substring(0, 200));
+                            }
                             successBox.textContent = `Payment imported successfully.`;
                             successBox.classList.remove('hidden');
-                            input.value = '';
                             setTimeout(() => {
                                 closeModal();
                                 window.location.reload();
                             }, 2000);
                         } else {
-                            const data = await res.json();
-                            errorBox.textContent = `${data.message}`;
+                            let data;
+                            try {
+                                data = await res.json();
+                                errorBox.textContent = data.message || "Import failed.";
+                            } catch {
+                                errorBox.textContent = "Import failed. Non-JSON response.";
+                            }
                             errorBox.classList.remove('hidden');
                         }
-
                     } catch (err) {
                         console.error(err);
                         loadingBox.classList.add('hidden');
@@ -4082,6 +4135,7 @@
                         errorBox.classList.remove('hidden');
                     }
                 });
+
             }
         }
     </script>

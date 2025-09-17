@@ -214,11 +214,11 @@
                             </div>
                         </div>  
                     </div>
-                    <!-- Import Fatoorah Payment -->
+                    <!-- Import Payment from Payment Gateway-->
                     <div x-data="{ importFatoorahModal: false }" class="flex items-center gap-5">
                         <div @click="importFatoorahModal = true"
                             class="p-2 text-center bg-white rounded-full shadow-xl ring-1 ring-black/5 group hover:bg-black dark:hover:bg-gray-600 dark:bg-gray-700 cursor-pointer transition duration-150 ease-in-out"
-                            data-tooltip-left="Import MyFatoorah Payment">
+                            data-tooltip-left="Import Payment from Payment Gateway">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
                                 xmlns="http://www.w3.org/2000/svg"
                                 class="stroke-black dark:stroke-gray-300 group-hover:stroke-white group-focus:stroke-white filter drop-shadow-md">
@@ -233,8 +233,8 @@
                             <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl overflow-y-auto" style="max-height: 90vh;">
                                 <div class="flex items-center justify-between mb-6">
                                     <div>
-                                        <h2 class="text-xl font-bold text-gray-800">Import MyFatoorah Payment</h2>
-                                        <p class="text-gray-600 italic text-xs mt-1">Import a payment from an existing transaction on MyFatoorah Portal</p>
+                                        <h2 class="text-xl font-bold text-gray-800">Import Payment</h2>
+                                        <p class="text-gray-600 italic text-xs mt-1">Import a payment from an existing transaction on Portal</p>
                                     </div>
                                     <button @click="importFatoorahModal = false"
                                         class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">
@@ -244,13 +244,40 @@
 
                                 <form action="{{ route('payment.link.import-fatoorah.payment') }}" method="POST" class="space-y-4">
                                     @csrf
-                                    <div>
-                                        <label for="import_invoice_id" class="block text-sm font-medium text-gray-700 mb-1">
-                                            Existing Invoice ID
-                                        </label>
-                                        <input type="text" name="import_invoice_id" id="import_invoice_id"
-                                            class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                            placeholder="Enter invoice ID" required>
+                                    <div x-data="{ gateway: '' }">
+                                        <div>
+                                            <label for="gateway" class="block text-sm font-medium text-gray-700 mb-1">
+                                                Payment Gateway
+                                            </label>
+                                            <select name="gateway" id="gateway" x-model="gateway"
+                                                class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                required>
+                                                <option value="" selected disabled hidden>Select Payment Gateway</option>
+                                                @foreach($can_import as $gateway)
+                                                    <option value="{{ strtolower($gateway->name) }}">{{ $gateway->name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <!-- MyFatoorah: Invoice ID -->
+                                        <div x-show="gateway === 'myfatoorah'" class="mt-4" x-cloak>
+                                            <label for="import_invoice_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                                Existing Invoice ID
+                                            </label>
+                                            <input type="text" name="import_invoice_id" id="import_invoice_id"
+                                                class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                placeholder="Enter invoice ID">
+                                        </div>
+
+                                        <!-- Hesabe: Order Reference -->
+                                        <div x-show="gateway === 'hesabe'" class="mt-4" x-cloak>
+                                            <label for="import_order_reference" class="block text-sm font-medium text-gray-700 mb-1">
+                                                Existing Order Reference
+                                            </label>
+                                            <input type="text" name="import_order_reference" id="import_order_reference"
+                                                class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                placeholder="Enter order reference">
+                                        </div>
                                     </div>
 
                                     <div class="flex justify-between pt-4 mt-4">
@@ -290,7 +317,10 @@
                 <input type="hidden" name="source" value="{{ old('source', $prefill['source'] ?? '') }}">
                 <input type="hidden" name="invoice_reference" value="{{ old('invoice_reference', $prefill['invoice_reference'] ?? '') }}">
                 <input type="hidden" name="auth_code" value="{{ old('auth_code', $prefill['auth_code'] ?? '') }}">
+                <input type="hidden" name="payment_reference" value="{{ old('payment_reference', $prefill['payment_reference'] ?? '') }}">
+                <input type="hidden" name="track_id" value="{{ old('track_id', $prefill['track_id'] ?? '') }}">
 
+                                
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     @php
                     $selectedClient = null;

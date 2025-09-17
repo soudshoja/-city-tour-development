@@ -3907,4 +3907,98 @@ class PaymentController extends Controller
     {
         return view('payments.failed');
     }
+    public function paymentShowLinkArabic($companyId, $voucherNumber)
+    {
+         $payment = Payment::with(['agent.branch.company', 'client'])
+            ->where('voucher_number', $voucherNumber)
+            ->whereHas('agent.branch', fn ($q) => $q->where('company_id', $companyId))
+            ->first();
+
+        if (!$payment) {
+            return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
+        }
+
+        if (!$payment->client) {
+            return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
+        }
+
+        if (!$payment->agent) {
+            return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
+        }
+
+        $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
+
+        $fatoorahPayment = $payment->findMyFatoorahPayment();
+
+        $invoiceRef = null;
+        $authorizationId = null;
+
+        if ($fatoorahPayment) {
+            $payloadData = $fatoorahPayment->payload;
+            
+            if (is_array($payloadData) && isset($payloadData['Data'])) {
+                $invoiceRef = $payloadData['Data']['InvoiceReference'] ?? 'N/A';
+                $transactions = $payloadData['Data']['InvoiceTransactions'] ?? [];
+                if (!empty($transactions)) {
+                    $authorizationId = $transactions[0]['AuthorizationId'] ?? 'N/A';
+                }
+            }
+        }
+
+        $companyId = optional($payment->agent->branch)->company_id;
+        $chargeResult = [];
+        $gatewayFee = 0;
+        $finalAmount = 0;
+        $paidBy = 'Company';
+        $chargeData = [
+            'amount'    => $payment->amount,
+            'client_id' => $payment->client_id,
+            'agent_id'  => $payment->agent_id,
+            'currency'  => $payment->currency,
+        ];
+
+        if ($payment->status === 'completed' && is_null($payment->service_charge)) {
+            if ($payment->invoice) {
+                $invoicePartial = InvoicePartial::where('invoice_id', $payment->invoice->id)->first();
+                if ($invoicePartial) {
+                    $gatewayFee = $invoicePartial->service_charge ?? 0;
+                    $finalAmount = $payment->amount;
+                    $paidBy = ($gatewayFee > 0) ? 'Client' : 'Company';
+                } else {
+                    $gatewayFee = 0;
+                    $finalAmount = $payment->amount;
+                    $paidBy = 'Company';
+                }
+            } else {
+                $tempChargeResult = $payment->payment_gateway === 'MyFatoorah'
+                    ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
+                    : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+
+                $gatewayFee = $tempChargeResult['fee'] ?? 0;
+                $finalAmount = $payment->amount;
+                $paidBy = ($gatewayFee > 0) ? 'Client' : 'Company';
+            }
+        } else if ($payment->status !== 'completed') {
+            $chargeData = [
+                'amount'     => $payment->amount,
+                'currency'   => $payment->currency,
+                'client_id'  => $payment->client_id,
+                'agent_id'   => $payment->agent_id,
+            ];
+
+            $chargeResult = $payment->payment_gateway === 'MyFatoorah'
+                ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
+                : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+
+            $gatewayFee = $chargeResult['fee'] ?? 0;
+            $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
+            $paidBy = $chargeResult['paid_by'] ?? 'Company';
+
+            $payment->service_charge = ($chargeResult['paid_by'] === 'Company') ? 0 : $chargeResult['fee'];
+            $payment->save();
+        }
+
+        return view('payment.link.show-arabic', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy', 'invoiceRef', 'authorizationId'));
+    
+    }
 }

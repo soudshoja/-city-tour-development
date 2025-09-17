@@ -123,7 +123,7 @@
         <!-- Header Ends -->
 
         <div class="flex justify-between items-center mb-8">
-            <div class="text-left">
+            <div class="text-right">
                 <h3 class="text-lg font-bold text-gray-800">الفاتورة مرسلة إلى:</h3>
                 <p class="text-sm text-gray-600 text-justify">{{ $invoice->client->full_name }}</p>
                 <p class="text-sm text-justify text-gray-600">

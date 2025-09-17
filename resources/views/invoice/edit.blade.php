@@ -909,6 +909,15 @@
 
                                         <span id="button-text-full">Save Payment</span>
                                     </button>
+
+                                </div>
+                            </section>
+                            @endif
+
+                            <!-- Added Buttons/Links Section -->
+                            <section id="additional-actions" class="mt-6">
+                                <div class="flex flex-wrap gap-4">
+                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Share Invoice</h2>
                                     <div class="mt-4">
                                         <a target="_blank" href="{{ route('invoice.proforma', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}"
                                             class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 bg-blue-500 hover:bg-blue-700">
@@ -922,15 +931,6 @@
                                             Proforma Invoice
                                         </a>
                                     </div>
-                                </div>
-                            </section>
-                            @endif
-
-                            <!-- Added Buttons/Links Section -->
-                            <section id="additional-actions" class="mt-6">
-                                <div class="flex flex-wrap gap-4">
-                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Share Invoice</h2>
-
                                     <!-- Share Buttons -->
                                     <div class="flex items-center gap-2 w-full">
                                         <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}"
@@ -1935,7 +1935,7 @@
             function updateCreditRow(rowNumber, clientId) {
                 const selectedClient = clients.filter(client => client.id == clientId)[0];
                 clientCredits[rowNumber] = selectedClient?.total_credit || 0;
-                
+
                 // Update credit display
                 const creditDisplayElement = document.getElementById(`credit_display_${rowNumber}`);
                 if (creditDisplayElement) {
@@ -1943,13 +1943,13 @@
                 } else {
                     console.error('Credit display element not found:', `credit_display_${rowNumber}`);
                 }
-                
+
                 // Update credit payment gateway option
                 const creditOption = document.getElementById(`credit_option_${rowNumber}`);
                 if (creditOption) {
                     const creditAmount = clientCredits[rowNumber];
                     creditOption.textContent = `Credit (${creditAmount})`;
-                    
+
                     if (creditAmount > 0) {
                         creditOption.disabled = false;
                         creditOption.style.color = '#000'; // Enable styling
@@ -2056,7 +2056,7 @@
 
                     const updateMethodVisibility = () => {
                         const selectedValue = gatewaySelect.value.toLowerCase();
-                        
+
                         if (selectedValue === 'myfatoorah') {
                             methodContainer.classList.remove('hidden');
                             methodText.classList.add('hidden');
@@ -2064,7 +2064,7 @@
                             methodContainer.classList.add('hidden');
                             methodText.classList.remove('hidden');
                         }
-                        
+
                         // Handle credit payment selection
                         if (selectedValue === 'credit') {
                             handleCreditPaymentSelection(i);
@@ -2081,7 +2081,7 @@
             function handleCreditPaymentSelection(rowIndex) {
                 const clientIdInput = document.getElementById(`customer_name_${rowIndex}`);
                 const amountInput = document.getElementById(`amount_${rowIndex}`);
-                
+
                 if (!clientIdInput || !clientIdInput.value) {
                     alert('Please select a client first before choosing credit payment.');
                     // Reset gateway selection
@@ -2089,11 +2089,11 @@
                     gatewaySelect.selectedIndex = 1; // Select first non-credit option
                     return;
                 }
-                
+
                 const clientId = clientIdInput.value;
                 const amount = parseFloat(amountInput.value) || 0;
                 const clientCredit = clientCredits[rowIndex] || 0;
-                
+
                 if (amount > clientCredit) {
                     alert(`Insufficient credit. Client has ${clientCredit} credit but trying to pay ${amount}.`);
                     // Reset gateway selection
@@ -2101,15 +2101,19 @@
                     gatewaySelect.selectedIndex = 1; // Select first non-credit option
                     return;
                 }
-                
+
                 // Credit payment selected - processing will happen with normal save flow
             }
 
             // Process credit payment with backend
             async function processCreditPayment(rowIndex, clientId, amount) {
                 try {
-                    console.log('Processing credit payment:', {rowIndex, clientId, amount});
-                    
+                    console.log('Processing credit payment:', {
+                        rowIndex,
+                        clientId,
+                        amount
+                    });
+
                     // Here you can add the actual API call to your backend
                     // Example:
                     /*
@@ -2135,10 +2139,10 @@
                         alert('Error processing credit payment: ' + result.message);
                     }
                     */
-                    
+
                     // For now, just log the action
                     alert(`Credit payment of ${amount} for client ${clientId} would be processed here.`);
-                    
+
                 } catch (error) {
                     console.error('Error processing credit payment:', error);
                     alert('Error processing credit payment. Please try again.');
@@ -2206,7 +2210,7 @@
                 const dropdown = document.getElementById(`dropdown_${rowIndex}`);
                 const searchInput = document.getElementById(`search_input_${rowIndex}`);
                 const button = document.querySelector(`#searchable_dropdown_${rowIndex} button`);
-                
+
                 // Close all other dropdowns first
                 document.querySelectorAll('[id^="dropdown_"]').forEach(dd => {
                     if (dd.id !== `dropdown_${rowIndex}`) {
@@ -2218,20 +2222,20 @@
                     // Calculate position relative to the button
                     const buttonRect = button.getBoundingClientRect();
                     const dropdownWidth = 320; // w-80 = 320px
-                    
+
                     // Position dropdown below the button
                     dropdown.style.top = (buttonRect.bottom + 4) + 'px';
                     dropdown.style.left = buttonRect.left + 'px';
                     dropdown.style.width = Math.max(dropdownWidth, buttonRect.width) + 'px';
-                    
+
                     // Check if dropdown would go off-screen and adjust if needed
                     const viewportWidth = window.innerWidth;
                     const dropdownRight = buttonRect.left + dropdownWidth;
-                    
+
                     if (dropdownRight > viewportWidth) {
                         dropdown.style.left = (viewportWidth - dropdownWidth - 10) + 'px';
                     }
-                    
+
                     dropdown.style.display = 'block';
                     searchInput.focus();
                     searchInput.value = '';
@@ -2245,15 +2249,15 @@
 
                 const optionsContainer = document.getElementById(`options_container_${rowIndex}`);
                 const options = optionsContainer.querySelectorAll('.client-option');
-                
+
                 let matchCount = 0;
                 options.forEach(option => {
                     const clientName = option.getAttribute('data-client-name').toLowerCase();
                     const matches = clientName.includes(searchTerm.toLowerCase());
                     option.style.display = matches ? 'block' : 'none';
-                    
+
                     if (matches) matchCount++;
-                    
+
                     // Highlight matching text
                     if (searchTerm && matches) {
                         const name = option.getAttribute('data-client-name');
@@ -2263,7 +2267,7 @@
                         option.innerHTML = option.getAttribute('data-client-name');
                     }
                 });
-                
+
             }
 
             function selectSplitClient(rowIndex, clientId, clientName, element) {
@@ -2274,7 +2278,7 @@
                 } else {
                     console.error('Hidden input not found:', `customer_name_${rowIndex}`);
                 }
-                
+
                 // Update display text
                 const selectedText = document.getElementById(`selected_text_${rowIndex}`);
                 if (selectedText) {
@@ -2283,7 +2287,7 @@
                 } else {
                     console.error('Selected text element not found:', `selected_text_${rowIndex}`);
                 }
-                
+
                 // Close dropdown
                 const dropdown = document.getElementById(`dropdown_${rowIndex}`);
                 if (dropdown) {
@@ -2291,7 +2295,7 @@
                 } else {
                     console.error('Dropdown not found:', `dropdown_${rowIndex}`);
                 }
-                
+
                 // Update credit row
                 updateCreditRow(rowIndex, clientId);
             }
@@ -2303,11 +2307,11 @@
                     const clientId = event.target.getAttribute('data-client-id');
                     const clientName = event.target.getAttribute('data-client-name');
                     const rowIndex = event.target.getAttribute('data-row-index');
-                    
+
                     selectSplitClient(parseInt(rowIndex), clientId, clientName, event.target);
                     return;
                 }
-                
+
                 // Close split payment dropdowns when clicking outside
                 if (!event.target.closest('[id^="searchable_dropdown_"]')) {
                     document.querySelectorAll('[id^="dropdown_"]').forEach(dropdown => {
@@ -3569,7 +3573,7 @@
                     payload.clientId = item.clientId;
                     payload.method = item.method;
 
-                    if(payload.gateway === 'Credit'){
+                    if (payload.gateway === 'Credit') {
                         payload.credit = true;
                     }
 

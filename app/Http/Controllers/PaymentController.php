@@ -1503,28 +1503,28 @@ class PaymentController extends Controller
         /* $clientController = new ClientController(); */
 
         if ($source === 'import') {
-        try {
-            $request = new Request([
-                'payment_id' => $payment->id,
-                'payment_gateway' => $payment->payment_gateway,
-                'payment_method' => $payment->paymentMethod?->myfatoorah_id,
-                'amount' => $payment->amount,
-                'client_id' => $payment->client_id,
-                'agent_id' => $payment->agent_id,
-                'invoice_id' => $payment->payment_reference,
-                'fatoorah_payment_id' => $payment->paymentId,
-                'notes' => $payment->notes,
-                'source' => 'import',
-            ]);
+            try {
+                $request = new Request([
+                    'payment_id' => $payment->id,
+                    'payment_gateway' => $payment->payment_gateway,
+                    'payment_method' => $payment->paymentMethod?->myfatoorah_id,
+                    'amount' => $payment->amount,
+                    'client_id' => $payment->client_id,
+                    'agent_id' => $payment->agent_id,
+                    'invoice_id' => $payment->payment_reference,
+                    'fatoorah_payment_id' => $payment->paymentId,
+                    'notes' => $payment->notes,
+                    'source' => 'import',
+                ]);
 
-            $result = $this->paymentLinkProcess($request);
-            Log::info('Add Credit & Journal for import payment response');
-        } catch (\Exception $e) {
-            Log::error('Add Credit & Journal for import payment', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-        }
+                $result = $this->paymentLinkProcess($request);
+                Log::info('Add Credit & Journal for import payment response');
+            } catch (\Exception $e) {
+                Log::error('Add Credit & Journal for import payment', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
         }
 
             return [
@@ -2043,6 +2043,10 @@ class PaymentController extends Controller
             $paymentId = $request->payment_id;
             $payment = Payment::findorFail($paymentId);
 
+            if($payment->status === 'completed'){
+                return redirect()->back()->with('info', 'Payment already completed.');
+            }
+
             $clientController = new ClientController;
 
             $addCreditResponse = $clientController->addCredit($payment);
@@ -2139,9 +2143,13 @@ class PaymentController extends Controller
 
             return abort(500);
         }
+            $payment = Payment::with('client', 'agent.branch')->find($response['metadata']['payment_id']);
+
+        if ($payment->status === 'completed') {
+            return auth()->user() ? redirect()->route('invoices.index')->with('error', 'Payment already completed.') : abort(200, 'Payment already completed.');
+        }
 
         if ($response['status'] != 'CAPTURED') {
-            $payment = Payment::with('client', 'agent.branch')->find($response['metadata']['payment_id']);
             Transaction::create([
                 'branch_id' => $payment->agent->branch->id,
                 'company_id' => $payment->agent->branch->company->id,
@@ -2477,6 +2485,10 @@ class PaymentController extends Controller
                 if ($payment->status === 'completed') {
                     Log::info('Callback ignored: payment already completed', ['payment_id' => $payment->id]);
                     return response('OK', 200);
+                }
+
+                if ($payment->status == 'completed'){
+                    return auth()->user() ? redirect()->route('invoices.index')->with('success', 'Payment already completed.') : abort(200, 'Payment already completed.');
                 }
 
                 $process = $userDefinedField['process'] ?? 'invoice';
@@ -2947,7 +2959,6 @@ class PaymentController extends Controller
         return redirect()->route('payment.link.index')->with('success', 'Payment link deleted successfully!');
     }
 
-
     public function shareLink($paymentId) {}
 
     public function handleWebhookFatoorah(Request $request)
@@ -3019,6 +3030,18 @@ class PaymentController extends Controller
                 Log::error('UPayment callback missing trackId', ['request' => $request->all()]);
                 return redirect()->to('/invoices')->with('error', 'Invalid payment callback data.');
             }
+            // Find the payment record by track_id
+            $payment = Payment::where('payment_reference', $trackId)->first();
+            
+            if (!$payment) {
+                Log::error('Payment not found for UPayment track_id', ['track_id' => $trackId]);
+                return redirect()->to('/invoices')->with('error', 'Payment record not found.');
+            }
+
+            if ($payment->status === 'completed') {
+                Log::info('Callback ignored: payment already completed', ['payment_id' => $payment->id]);
+                return response('OK', 200);
+            }
 
             $uPayment = new UPayment();
             $statusResponse = $uPayment->getPaymentStatus($trackId);
@@ -3047,13 +3070,8 @@ class PaymentController extends Controller
                 return redirect()->to('/invoices')->with('error', 'Payment was not completed successfully.');
             }
 
-            // Find the payment record by track_id
-            $payment = Payment::where('payment_reference', $trackId)->first();
-            
-            if (!$payment) {
-                Log::error('Payment not found for UPayment track_id', ['track_id' => $trackId]);
-                return redirect()->to('/invoices')->with('error', 'Payment record not found.');
-            }
+
+
 
             // Determine if this is a topup or invoice payment
             $process = $payment->invoice ? 'invoice' : 'topup';
@@ -3900,12 +3918,12 @@ class PaymentController extends Controller
 
     public function success()
     {
-        return view('payments.success');
+        return view('payment.success');
     }
 
     public function failed()
     {
-        return view('payments.failed');
+        return view('payment.failed');
     }
     public function paymentShowLinkArabic($companyId, $voucherNumber)
     {

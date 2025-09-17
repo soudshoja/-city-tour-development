@@ -113,6 +113,8 @@ Route::prefix('/whatsapp/hotel')->group(function () {
     });
 });
 
+Route::post('/hesabe/transaction-enquiry', [PaymentController::class, 'hesabeTransactionEnquiry'])->name('hesabe.transaction.enquiry');
+
 Route::post('/magic/webhook/callback', [SupplierController::class, 'magicReserveWebhookCallback'])->name('magic-webhook-callback')->withoutMiddleware(['auth']);
 
 require __DIR__ . '/auth.php';

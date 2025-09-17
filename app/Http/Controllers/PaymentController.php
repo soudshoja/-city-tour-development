@@ -1054,7 +1054,9 @@ class PaymentController extends Controller
             "KeyType" => "InvoiceId"
         ]);
 
-        Log::info('getPaymentStatusMyFatoorah Response: ', $response->json());
+        Log::info('getPaymentStatusMyFatoorah Response', [
+            'response' => $response->json() ?? $response->body()
+        ]);
 
         if(!$response->successful()){
 
@@ -1156,25 +1158,20 @@ class PaymentController extends Controller
     public function importMyFatoorahFromInvoice(Request $request) : JsonResponse
     {
         Log::info('Starting to import MyFatoorah payment from invoice');
+        
+        $gateway = strtolower($request->input('gateway'));
 
         $request->validate([
-            'import_invoice_id' => 'required|string',
+            'gateway' => 'required|in:myfatoorah,hesabe',
+            'import_invoice_id' => 'nullable|string',
+            'import_order_reference' => 'nullable|string',
             'receiverName' => 'required|string',
             'agentName' => 'required|string',
         ]);
 
-        $importinvoiceId = $request->input('import_invoice_id');
-
-        $response = $this->getPaymentStatusMyFatoorah($importinvoiceId)->getData(true);
-
-        if($response['status'] === 'error') {
-            Log::error('Error fetching payment status from MyFatoorah', ['message' => $response['message']]);
-            return response()->json([
-                'status' => 'error',
-                'message' => $response['message']
-            ], 400);
-        }
-
+        $importInvoiceId = $request->input('import_invoice_id');
+        $importOrderReference = $request->input('import_order_reference');
+        
         $agentId = Agent::where('name', $request->input('agentName'))->value('id');
         $clientId = Client::where('name', $request->input('receiverName'))->value('id');
 
@@ -1190,17 +1187,66 @@ class PaymentController extends Controller
                 'message' => 'Something went wrong, please ensure all fields are filled correctly.'
             ], 400);
         }
-  
-        $data = [
-            'invoice_id' => $importinvoiceId,
-            'payment_gateway' => $response['payment_gateway'],
-            'payment_method' => $response['payment_method_id'],
-            'amount' => $response['amount'],
-            'client_id' => $clientId,
-            'agent_id' => $agentId,
-            'notes' => 'Imported from MyFatoorah Portal with Invoice ID: ' . $response['invoice_id'],
-            'source' => 'import',
-        ];
+
+        if ($gateway === 'myfatoorah') {
+
+            $response = $this->getPaymentStatusMyFatoorah($importInvoiceId)->getData(true);
+
+            if ($response['status'] === 'error') {
+                Log::error('Error fetching payment status from MyFatoorah', [
+                    'message' => $response['message']
+                ]);
+                
+                return response()->json([
+                    'status' => 'error', 
+                    'message' => $response['message']
+                ], 400);
+            }
+
+            $data = [
+                'invoice_id' => $importInvoiceId,
+                'payment_gateway' => $response['payment_gateway'],
+                'payment_method' => $response['payment_method_id'],
+                'amount' => $response['amount'],
+                'client_id' => $clientId,
+                'agent_id' => $agentId,
+                'notes' => 'Imported from MyFatoorah Portal with Invoice ID: ' . $response['invoice_id'],
+                'source' => 'import',
+            ];
+           
+        } elseif ($gateway === 'hesabe') {
+
+            $response = $this->getHesabeTransaction($importOrderReference)->getData(true);
+
+            if ($response['status'] === 'error') {
+                Log::error('Error fetching payment status from Hesabe', [
+                    'message' => $response['message'],
+                ]);
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $response['message']
+                ], 400);
+            }
+
+            $data = [
+                'invoice_id' => $importOrderReference,
+                'payment_gateway' => $response['payment_gateway'],
+                'payment_method' => $response['payment_method_id'],
+                'amount' => $response['amount'],
+                'client_id' => $clientId,
+                'agent_id' => $agentId,
+                'notes' => 'Imported from Hesabe Portal with Order Reference Number: ' . $response['payment_reference'],
+                'source' => 'import',
+            ];
+            
+        } else {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Unsupported payment gateway selected.'
+            ], 400);
+        }
+
 
         $response = $this->paymentStoreLinkProcess(new Request($data));
 
@@ -1224,29 +1270,56 @@ class PaymentController extends Controller
 
     public function importMyFatoorahFromPayment(Request $request) : RedirectResponse
     {
+        $gateway = strtolower($request->input('gateway'));
+
         $request->validate([
-            'import_invoice_id' => 'required|string',
+            'gateway' => 'required|string|in:myfatoorah,hesabe',
+            'import_invoice_id' => 'required_if:gateway,myfatoorah|string|nullable',
+            'import_order_reference' => 'required_if:gateway,hesabe|string|nullable',
         ]);
 
-        $invoiceId = $request->input('import_invoice_id');
+        if ($gateway === 'myfatoorah') {
+            $invoiceId = $request->input('import_invoice_id');
 
-        $response = $this->getPaymentStatusMyFatoorah($invoiceId)->getData(true);
+            $response = $this->getPaymentStatusMyFatoorah($invoiceId)->getData(true);
 
-        if ($response['status'] === 'error') {
-            Log::error('Error fetching payment status from MyFatoorah', ['message' => $response['message']]);
-            return redirect()->back()->with('error', $response['message']);
+            if ($response['status'] === 'error') {
+                Log::error('Error fetching payment status from MyFatoorah', ['message' => $response['message']]);
+                return redirect()->back()->with('error', $response['message']);
+            }
+
+            return redirect()->route('payment.link.create')->withInput([
+                'invoice_id'        => $response['invoice_id'],
+                'payment_gateway'   => $response['payment_gateway'],
+                'payment_method'    => $response['payment_method_id'],
+                'amount'            => $response['amount'],
+                'notes'             => 'Imported from MyFatoorah Portal with Invoice ID: ' . $response['invoice_id'],
+                'source'            => 'import',
+                'invoice_reference' => $response['invoice_reference'],
+                'auth_code'         => $response['auth_code'],
+            ]);
+        } elseif ($gateway === 'hesabe') {
+            $orderRef = $request->input('import_order_reference');
+
+            $response = $this->getHesabeTransaction($orderRef)->getData(true);
+
+            if ($response['status'] === 'error') {
+                return redirect()->back()->with('error', $response['message']);
+            }
+
+            return redirect()->route('payment.link.create')->withInput([
+                'order_reference'       => $response['data']['reference_number'],
+                'payment_gateway'       => 'Hesabe',
+                'payment_method'        => $response['data']['payment_type'],
+                'amount'                => $response['data']['amount'],
+                'notes'                 => 'Imported from Hesabe Portal with Order Reference Number: ' . $response['data']['reference_number'],
+                'source'                => 'import',
+                'payment_reference'     => $response['data']['TransactionID'],
+                'track_id'            => $response['data']['TrackID'],
+            ]);
         }
 
-        return redirect()->route('payment.link.create')->withInput([
-            'invoice_id' => $response['invoice_id'],
-            'payment_gateway' => $response['payment_gateway'],
-            'payment_method' => $response['payment_method_id'],
-            'amount' => $response['amount'],
-            'notes' => 'Imported from MyFatoorah Portal with Invoice ID: ' . $response['invoice_id'],
-            'source' => 'import',
-            'invoice_reference' => $response['invoice_reference'],
-            'auth_code' => $response['auth_code'],
-        ]);
+        return redirect()->back()->with('error', 'Unsupported payment gateway selected.');
     }
 
     public function paymentLink(Request $request)
@@ -1401,7 +1474,10 @@ class PaymentController extends Controller
                 ->where('type', 'hesabe')
                 ->get();
             /* $paymentMethods = PaymentMethod::where('is_active', true)->get(); */
-
+            $companyId = Auth::user()->branch->company_id;
+            $can_import = Charge::where('company_id', $companyId)
+                        ->where('can_import', true)
+                        ->get();
             return view('payment.link.create', compact(
                 'payments',
                 'clients',
@@ -1410,7 +1486,8 @@ class PaymentController extends Controller
                 'currencies',
                 'paymentGateways',
                 'myFatoorahMethods',
-                'hesabeMethods'
+                'hesabeMethods',
+                'can_import'
             ));
     }
 
@@ -1420,6 +1497,8 @@ class PaymentController extends Controller
         $invoiceId = $request->input('invoice_id');
         $invoiceReference = $request->input('invoice_reference');
         $authCode = $request->input('auth_code');
+        $paymentReference = $request->input('payment_reference');
+        $trackId = $request->input('track_id');
 
         $request->validate([
             'payment_gateway' => 'required',
@@ -1430,6 +1509,8 @@ class PaymentController extends Controller
             'invoice_id' => 'nullable',
             'invoice_reference' => 'nullable',
             'auth_code' => 'nullable',
+            'paymentReference' => 'nullable',
+            'trackId' => 'nullable',
             'notes' => 'nullable|string|max:255'
         ]);
 
@@ -1473,8 +1554,8 @@ class PaymentController extends Controller
         try {
             $data = [
                 'voucher_number' => $voucherNumber,
-                'payment_reference' => $invoiceId,
-                'invoice_reference' => $invoiceReference,
+                'payment_reference' => $invoiceId ?? $paymentReference,
+                'invoice_reference' => $invoiceReference ?? $trackId,
                 'auth_code' => $authCode,
                 'from' => $client->full_name,
                 'pay_to' => $agent->branch->company->name,
@@ -2111,7 +2192,7 @@ class PaymentController extends Controller
                     'type_reference_id' => $clientAdvance->id
                 ]);
 
-                Log::info('Successfully created transaction and journal entry for import payment of myFatoorah from the portal');
+                Log::info('Successfully created transaction and journal entry for import payment of ' . $payment->payment_gateway . ' from the portal');
             } catch (Exception $e) {
                 DB::rollBack();
                 logger('Failed to create journal entry', [
@@ -2122,7 +2203,7 @@ class PaymentController extends Controller
             }
             DB::commit();
 
-            return redirect()->back()->with('success', 'Import payment from myFatoorah portal is success!');
+            return redirect()->back()->with('success', 'Import payment from ' . $payment->payment_gateway . ' portal is success!');
         } else if ($request->tap_id) {
             $tapId = $request->tap_id;
             $tap = new Tap();
@@ -3409,6 +3490,7 @@ class PaymentController extends Controller
             } 
 
             $payment->payment_reference = $data['transactionId'];
+            $payment->invoice_reference = $data['trackID'];
             $payment->payment_date = $data['paidOn'];
             $payment->updated_at = now();
             $payment->status = 'completed';
@@ -4019,4 +4101,205 @@ class PaymentController extends Controller
         return view('payment.link.show-arabic', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy', 'invoiceRef', 'authorizationId'));
     
     }
+
+   public function hesabeTransactionEnquiry(Request $request): JsonResponse
+    {
+        $request->validate([
+            'data' => 'required|string',        
+            'accessCode' => 'required|string',
+            'isOrderReference' => 'sometimes|boolean',
+        ]);
+
+        $dataValue   = $request->input('data');
+        $accessCode  = $request->input('accessCode');
+        $useOrderRef = $request->boolean('isOrderReference', false);
+
+        $configService = new GatewayConfigService();
+        $hesabeConfig = $configService->getHesabeConfig();
+        $baseUrl = $hesabeConfig['data']['base_url'];
+
+        $url = rtrim($baseUrl, '/') . '/api/transaction/' . urlencode($dataValue);
+
+        if ($useOrderRef) {
+            $url .= '?isOrderReference=1';
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'accessCode' => $accessCode,
+                'Accept'     => 'application/json',
+            ])->get($url);
+
+        } catch (Exception $e) {
+            Log::error('Hesabe Transaction Enquiry HTTP error', [
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to call Hesabe Transaction Enquiry: ' . $e->getMessage(),
+            ], 500);
+        }
+
+        $statusCode = $response->status();
+        $body = $response->json();
+
+        Log::info('Hesabe Transaction Enquiry response', [
+            'url' => $url,
+            'response_status' => $statusCode,
+            'body' => $body,
+        ]);
+
+        if ($statusCode >= 200 && $statusCode < 300) {
+            return response()->json($body);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => $body['message'] ?? 'Hesabe Transaction Enquiry failed',
+            'code' => $statusCode,
+        ], $statusCode);
+    }
+
+public function getHesabeTransaction(string $orderRef) : JsonResponse
+{
+    $companyId = Auth::user()->branch->company_id;
+    $charge = Charge::where('company_id', $companyId)
+        ->where('name', 'Hesabe')
+        ->first();
+
+    if (!$charge) {
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Hesabe configuration not found for this company.'
+        ]);
+    }
+    $configService = new GatewayConfigService();
+    $hesabeConfig = $configService->getHesabeConfig();
+    $baseUrl = $hesabeConfig['data']['base_url'];
+    $accessCode = $hesabeConfig['data']['access_code'];
+
+    $url = $baseUrl . '/api/transaction/' . urlencode($orderRef) . '?isOrderReference=1';
+
+    try {
+        $response = Http::withHeaders([
+            'accessCode' => $accessCode,
+            'Accept'     => 'application/json',
+        ])->get($url);
+    } catch (\Exception $e) {
+        Log::error('Import Hesabe Transaction error', [
+            'company_id' => $companyId,
+            'error' => $e->getMessage(),
+        ]);
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Failed to call Hesabe Transaction Enquiry: ' . $e->getMessage(),
+        ]);
+    }
+    Log::info('Response: ', ['data' => $response]);
+
+    $responseData = $response->json();
+
+    if (empty($responseData) || empty($responseData['data'])) {
+        Log::error('No data found in Hesabe response', ['response' => $responseData]);
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'No data found in Hesabe response'
+        ], 404);
+    }
+
+    $referenceNumber = $responseData['data']['reference_number'] ?? null;
+
+    if (!$referenceNumber) {
+        Log::info('Reference Number not found in Hesabe portal', ['response' => $responseData]);
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'No such transaction found in Hesabe portal'
+        ], 400);
+    }
+
+    $transactionStatus = $responseData['data']['status'];
+
+    if(!$transactionStatus) {
+        Log::error('Transaction status not found in Hesabe response', [
+            'response' => $responseData
+        ]);
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Transaction status not found in Hesabe response'
+        ], 400);
+    }
+
+    $paymentMethodId = null;
+
+    if ($transactionStatus === 'SUCCESSFUL') {
+    
+        $referenceNumber   = $responseData['data']['reference_number'] ?? null;
+        $transactionId     = $responseData['data']['TransactionID'] ?? null;
+        $trackId           = $responseData['data']['TrackID'] ?? null;
+
+        if (Payment::where('voucher_number', $referenceNumber)->exists()) {
+            Log::info('Duplicate payment found by voucher_number', [
+                'voucher_number' => $referenceNumber,
+            ]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'A payment with this Order Reference Number has already been imported.'
+            ], 400);
+        }
+
+        if (Payment::where('payment_reference', $transactionId)->exists()) {
+            Log::info('Duplicate payment found by TransactionID', [
+                'payment_reference' => $transactionId,
+            ]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'A payment with this Transaction ID has already been imported.'
+            ], 400);
+        }
+
+        if (Payment::where('invoice_reference', $trackId)->exists()) {
+            Log::info('Duplicate payment found by TrackID', [
+                'invoice_reference' => $trackId,
+            ]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'A payment with this Track ID has already been imported.'
+            ], 400);
+        }
+
+        $paymentMethod = $responseData['data']['payment_type'];
+        $paymentMethodId = PaymentMethod::whereRaw('LOWER(english_name) = ?', [strtolower($paymentMethod)])->value('id');
+
+    } elseif ($transactionStatus === 'FAILED') {
+        Log::info('Transaction status is not paid', [
+            'transaction_status' => $transactionStatus
+        ]);
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Transaction status is not paid'
+        ], 400);
+    }
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Transaction status fetched successfully',
+        'data' => $responseData['data'],
+        'amount' => $responseData['data']['amount'],
+        'payment_reference' => $responseData['data']['TransactionID'],
+        'transaction_status' => $transactionStatus,
+        'invoice_reference' => $responseData['data']['TrackID'],
+        'customer_name' => $responseData['data']['customerName'] ?? null,
+        'created_date' => $responseData['data']['datetime'],
+        'payment_gateway' => 'Hesabe',
+        'payment_method_id' => $paymentMethodId,
+    ]);
+}
+
 }

@@ -642,7 +642,8 @@ class TaskController extends Controller
         $queryChkExistTask = Task::query();
         $queryChkExistTask->where('reference', $request->reference)
             ->where('company_id', $request->company_id)
-            ->when(!in_array(strtolower($request->supplier_name), ['jazeera airways', 'fly dubai']),
+            ->when(in_array(strtolower($request->supplier_name), ['jazeera airways', 'fly dubai']),
+                fn($q) => $q->where('supplier_status', $request->supplier_status),
                 fn($q) => $q->where('supplier_status', $request->supplier_status)
                     ->where('status', $request->status)
             )

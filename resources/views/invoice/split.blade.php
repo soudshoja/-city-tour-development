@@ -143,7 +143,7 @@
          </table>
 
          <!-- Totals Section -->
-         <div class="flex justify-start mb-8">
+         <div class="flex justify-end mb-8">
              <div class="w-1/3 text-sm">
                  <div class="flex justify-between py-2 border-b border-gray-200">
                      <span>Subtotal:</span>
@@ -207,7 +207,7 @@
                      </div>
                     @else
                     <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
-                        This invoice is {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} payment. Please contact your agent for assistance.
+                        This invoice is {{ $invoicePartial->payment_gateway }} payment. Please contact your agent for assistance.
                     </div>
                     @endif
                      <div id="loadingSpinner" class="hidden mt-2">

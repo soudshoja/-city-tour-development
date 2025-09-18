@@ -598,7 +598,7 @@ class InvoiceController extends Controller
             $invoicePartial->update([
                 'payment_gateway' => $validated['gateway'],
                 'type' => 'full',
-                'has_payment_link' => true,
+                'charge_id' => Charge::where('name', $validated['gateway'])->value('id'),
                 'payment_method' => $validated['method'] ?? null,
                 'service_charge' => $gatewayFee['fee'] ?? 0,
                 'amount' => $invoice->amount,
@@ -1623,8 +1623,7 @@ class InvoiceController extends Controller
         $paidServiceCharge = $invoicePartials->where('status', 'paid')->sum('service_charge');
         $totalGatewayFee['fee'] += $paidServiceCharge;
 
-        $canGenerateLink = true;
-
+        $canGenerateLink = false;
         foreach($invoice->invoicePartials as $partial) {
             if ($partial->charge_id) {
                 $canGenerateLink = $partial->charge ? $partial->charge->can_generate_link : false;
@@ -1658,7 +1657,7 @@ class InvoiceController extends Controller
                             'company_id' => $companyId,
                         ]);
                     }
-                    $partial->service_charge = $gatewayFee['fee'];
+                    $partial->service_charge = $gatewayFee['fee'] ?? 0.00;
                     $partial->save();
                     $partial->final_amount = $partial->amount + $partial->service_charge;
                     $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
@@ -1734,8 +1733,7 @@ class InvoiceController extends Controller
         $paidServiceCharge = $invoicePartials->where('status', 'paid')->sum('service_charge');
         $totalGatewayFee['fee'] += $paidServiceCharge;
 
-        $canGenerateLink = true;
-
+        $canGenerateLink = false;
         foreach ($invoice->invoicePartials as $partial) {
             if ($partial->charge_id) {
                 $canGenerateLink = $partial->charge ? $partial->charge->can_generate_link : false;

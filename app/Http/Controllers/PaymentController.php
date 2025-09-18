@@ -3837,7 +3837,7 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', $hesaebCofnig['message'] ?? 'Hesabe configuration is missing or inactive');
         }
         
-        $apiKey = $$hesabeConfig['data']['api_key'];
+        $apiKey = $hesabeConfig['data']['api_key'];
         $encryptionKey = $$hesabeConfig['data']['iv_key'];
         
         $response = $request->input('data');
@@ -4227,6 +4227,7 @@ class PaymentController extends Controller
     {
         return view('payment.failed');
     }
+
     public function paymentShowLinkArabic($companyId, $voucherNumber)
     {
          $payment = Payment::with(['agent.branch.company', 'client'])
@@ -4322,7 +4323,7 @@ class PaymentController extends Controller
     
     }
 
-   public function hesabeTransactionEnquiry(Request $request): JsonResponse
+    public function hesabeTransactionEnquiry(Request $request): JsonResponse
     {
         $request->validate([
             'data' => 'required|string',        
@@ -4380,157 +4381,157 @@ class PaymentController extends Controller
         ], $statusCode);
     }
 
-public function getHesabeTransaction(string $orderRef) : JsonResponse
-{
-    $user = Auth::user();
-    
-    if ($user->role_id == Role::AGENT) {
-        $companyId = $user->agent->branch->company_id;
-    } elseif ($user->role_id == Role::BRANCH) {
-        $companyId = $user->branch->company_id;
-    } elseif ($user->role_id == Role::COMPANY) {
-        $companyId = $user->company->id;
-    } else {
-        $companyId = null;
-    }
-    
-    $charge = Charge::where('company_id', $companyId)
-        ->where('name', 'Hesabe')
-        ->first();
+    public function getHesabeTransaction(string $orderRef) : JsonResponse
+    {
+        $user = Auth::user();
+        
+        if ($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->branch->company_id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company_id;
+        } elseif ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } else {
+            $companyId = null;
+        }
+        
+        $charge = Charge::where('company_id', $companyId)
+            ->where('name', 'Hesabe')
+            ->first();
 
-    if (!$charge) {
-        return response()->json([
-            'status'  => 'error',
-            'message' => 'Hesabe configuration not found for this company.'
-        ]);
-    }
-    $configService = new GatewayConfigService();
-    $hesabeConfig = $configService->getHesabeConfig();
-    $baseUrl = $hesabeConfig['data']['base_url'];
-    $accessCode = $hesabeConfig['data']['access_code'];
-
-    $url = $baseUrl . '/api/transaction/' . urlencode($orderRef) . '?isOrderReference=1';
-
-    try {
-        $response = Http::withHeaders([
-            'accessCode' => $accessCode,
-            'Accept'     => 'application/json',
-        ])->get($url);
-    } catch (\Exception $e) {
-        Log::error('Import Hesabe Transaction error', [
-            'company_id' => $companyId,
-            'error' => $e->getMessage(),
-        ]);
-        return response()->json([
-            'status'  => 'error',
-            'message' => 'Failed to call Hesabe Transaction Enquiry: ' . $e->getMessage(),
-        ]);
-    }
-    Log::info('Response: ', ['data' => $response]);
-
-    $responseData = $response->json();
-
-    if (empty($responseData) || empty($responseData['data'])) {
-        Log::error('No data found in Hesabe response', ['response' => $responseData]);
-
-        return response()->json([
-            'status' => 'error',
-            'message' => 'No data found in Hesabe response'
-        ], 404);
-    }
-
-    $referenceNumber = $responseData['data']['reference_number'] ?? null;
-
-    if (!$referenceNumber) {
-        Log::info('Reference Number not found in Hesabe portal', ['response' => $responseData]);
-
-        return response()->json([
-            'status' => 'error',
-            'message' => 'No such transaction found in Hesabe portal'
-        ], 400);
-    }
-
-    $transactionStatus = $responseData['data']['status'];
-
-    if(!$transactionStatus) {
-        Log::error('Transaction status not found in Hesabe response', [
-            'response' => $responseData
-        ]);
-
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Transaction status not found in Hesabe response'
-        ], 400);
-    }
-
-    $paymentMethodId = null;
-
-    if ($transactionStatus === 'SUCCESSFUL') {
-    
-        $referenceNumber   = $responseData['data']['reference_number'] ?? null;
-        $transactionId     = $responseData['data']['TransactionID'] ?? null;
-        $trackId           = $responseData['data']['TrackID'] ?? null;
-
-        if (Payment::where('voucher_number', $referenceNumber)->exists()) {
-            Log::info('Duplicate payment found by voucher_number', [
-                'voucher_number' => $referenceNumber,
-            ]);
-
+        if (!$charge) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'A payment with this Order Reference Number has already been imported.'
+                'message' => 'Hesabe configuration not found for this company.'
+            ]);
+        }
+        $configService = new GatewayConfigService();
+        $hesabeConfig = $configService->getHesabeConfig();
+        $baseUrl = $hesabeConfig['data']['base_url'];
+        $accessCode = $hesabeConfig['data']['access_code'];
+
+        $url = $baseUrl . '/api/transaction/' . urlencode($orderRef) . '?isOrderReference=1';
+
+        try {
+            $response = Http::withHeaders([
+                'accessCode' => $accessCode,
+                'Accept'     => 'application/json',
+            ])->get($url);
+        } catch (\Exception $e) {
+            Log::error('Import Hesabe Transaction error', [
+                'company_id' => $companyId,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to call Hesabe Transaction Enquiry: ' . $e->getMessage(),
+            ]);
+        }
+        Log::info('Response: ', ['data' => $response]);
+
+        $responseData = $response->json();
+
+        if (empty($responseData) || empty($responseData['data'])) {
+            Log::error('No data found in Hesabe response', ['response' => $responseData]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No data found in Hesabe response'
+            ], 404);
+        }
+
+        $referenceNumber = $responseData['data']['reference_number'] ?? null;
+
+        if (!$referenceNumber) {
+            Log::info('Reference Number not found in Hesabe portal', ['response' => $responseData]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No such transaction found in Hesabe portal'
             ], 400);
         }
 
-        if (Payment::where('payment_reference', $transactionId)->exists()) {
-            Log::info('Duplicate payment found by TransactionID', [
-                'payment_reference' => $transactionId,
+        $transactionStatus = $responseData['data']['status'];
+
+        if(!$transactionStatus) {
+            Log::error('Transaction status not found in Hesabe response', [
+                'response' => $responseData
             ]);
 
             return response()->json([
-                'status'  => 'error',
-                'message' => 'A payment with this Transaction ID has already been imported.'
+                'status' => 'error',
+                'message' => 'Transaction status not found in Hesabe response'
             ], 400);
         }
 
-        if (Payment::where('invoice_reference', $trackId)->exists()) {
-            Log::info('Duplicate payment found by TrackID', [
-                'invoice_reference' => $trackId,
+        $paymentMethodId = null;
+
+        if ($transactionStatus === 'SUCCESSFUL') {
+        
+            $referenceNumber   = $responseData['data']['reference_number'] ?? null;
+            $transactionId     = $responseData['data']['TransactionID'] ?? null;
+            $trackId           = $responseData['data']['TrackID'] ?? null;
+
+            if (Payment::where('voucher_number', $referenceNumber)->exists()) {
+                Log::info('Duplicate payment found by voucher_number', [
+                    'voucher_number' => $referenceNumber,
+                ]);
+
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'A payment with this Order Reference Number has already been imported.'
+                ], 400);
+            }
+
+            if (Payment::where('payment_reference', $transactionId)->exists()) {
+                Log::info('Duplicate payment found by TransactionID', [
+                    'payment_reference' => $transactionId,
+                ]);
+
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'A payment with this Transaction ID has already been imported.'
+                ], 400);
+            }
+
+            if (Payment::where('invoice_reference', $trackId)->exists()) {
+                Log::info('Duplicate payment found by TrackID', [
+                    'invoice_reference' => $trackId,
+                ]);
+
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'A payment with this Track ID has already been imported.'
+                ], 400);
+            }
+
+            $paymentMethod = $responseData['data']['payment_type'];
+            $paymentMethodId = PaymentMethod::whereRaw('LOWER(english_name) = ?', [strtolower($paymentMethod)])->value('id');
+
+        } elseif ($transactionStatus === 'FAILED') {
+            Log::info('Transaction status is not paid', [
+                'transaction_status' => $transactionStatus
             ]);
 
             return response()->json([
-                'status'  => 'error',
-                'message' => 'A payment with this Track ID has already been imported.'
+                'status' => 'error',
+                'message' => 'Transaction status is not paid'
             ], 400);
         }
-
-        $paymentMethod = $responseData['data']['payment_type'];
-        $paymentMethodId = PaymentMethod::whereRaw('LOWER(english_name) = ?', [strtolower($paymentMethod)])->value('id');
-
-    } elseif ($transactionStatus === 'FAILED') {
-        Log::info('Transaction status is not paid', [
-            'transaction_status' => $transactionStatus
-        ]);
 
         return response()->json([
-            'status' => 'error',
-            'message' => 'Transaction status is not paid'
-        ], 400);
+            'status' => 'success',
+            'message' => 'Transaction status fetched successfully',
+            'data' => $responseData['data'],
+            'amount' => $responseData['data']['amount'],
+            'payment_reference' => $responseData['data']['TransactionID'],
+            'transaction_status' => $transactionStatus,
+            'invoice_reference' => $responseData['data']['TrackID'],
+            'customer_name' => $responseData['data']['customerName'] ?? null,
+            'created_date' => $responseData['data']['datetime'],
+            'payment_gateway' => 'Hesabe',
+            'payment_method_id' => $paymentMethodId,
+        ]);
     }
-
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Transaction status fetched successfully',
-        'data' => $responseData['data'],
-        'amount' => $responseData['data']['amount'],
-        'payment_reference' => $responseData['data']['TransactionID'],
-        'transaction_status' => $transactionStatus,
-        'invoice_reference' => $responseData['data']['TrackID'],
-        'customer_name' => $responseData['data']['customerName'] ?? null,
-        'created_date' => $responseData['data']['datetime'],
-        'payment_gateway' => 'Hesabe',
-        'payment_method_id' => $paymentMethodId,
-    ]);
-}
 
 }

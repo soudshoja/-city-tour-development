@@ -1110,6 +1110,7 @@ class RefundController extends Controller
                     'type' => 'full',
                     'payment_gateway' => $paymentGateway,
                     'payment_method' => $paymentMethod,
+                    'charge_id' => Charge::where('name', $paymentGateway)->value('id'),
                 ]);
     
                 $transaction = Transaction::where('invoice_id', $invoice->id)->first();

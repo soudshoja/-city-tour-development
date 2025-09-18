@@ -789,6 +789,7 @@ class ClientController extends Controller
 
     public function addCredit(Payment $payment)
     {
+        Log::info('Starting to add credit for clint through payment link');
 
         $client = Client::findOrFail($payment->client_id);
         $agent = Agent::find($payment->agent_id);
@@ -875,6 +876,18 @@ class ClientController extends Controller
                         'amount' => $payment->amount,
                         'client_id' => $payment->client_id,
                         'agent_id' => $payment->agent_id,
+                    ]);
+                    $gatewayFee = 0;
+                }
+            } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
+                try {
+                    $gatewayFee = ChargeService::HesabeCharge($payment->amount, $paymentMethod->id, $payment->agent->branch->company_id)['gatewayFee'] ?? 0;
+                } catch (Exception $e) {
+                    Log::error('HesabeCharge exception', [
+                        'message' => $e->getMessage(),
+                        'amount' => $payment->amount,
+                        'payment_method' => $paymentMethod->id,
+                        'company_id' => $payment->agent->branch->company_id,
                     ]);
                     $gatewayFee = 0;
                 }

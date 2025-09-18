@@ -248,4 +248,60 @@ class ChargeService
             chargeType: $chargeType
         );
     }
+
+    public static function HesabeCharge($amount, $methodCode)
+    {
+        $method = PaymentMethod::find($methodCode);
+
+        if (!$method) {
+            throw new \Exception("Payment method [$methodCode] not found.");
+        }
+
+        $paidBy = $method->paid_by;
+        $apiServiceCharge = $method->service_charge ?? 0;
+        
+        // Determine which self charge to use: self_charge takes priority over service_charge (amount)
+        $selfChargeValue = $method->self_charge ? $method->self_charge : $method->service_charge;
+        $selfChargeType = $method->charge_type ?? 'Flat Rate';
+        // Calculate self charge amount and round up
+        $selfChargeAmount = 0;
+        if ($selfChargeValue > 0) {
+            $selfChargeAmount = ceil(self::calculateChargeAmount($amount, $selfChargeValue, $selfChargeType));
+        }
+
+        $totalFee = 0;
+        // Calculate final amounts based on who pays
+        if ($paidBy === 'Client') {
+           $totalFee = $selfChargeAmount;
+        }
+
+        $finalAmount = $amount + $totalFee;
+        $netReceived = $amount - $totalFee;
+
+        Log::info('Hesabe Gateway charge calculated from PaymentMethod table', [
+            'amount' => $amount,
+            'using_self_charge' => !is_null($method->self_charge),
+            'api_service_charge' => $apiServiceCharge,
+            'self_charge_value' => $selfChargeValue,
+            'self_charge_amount' => $selfChargeAmount,
+            'self_charge_type' => $selfChargeType,
+            'total_fee' => $totalFee,
+            'finalAmount' => $finalAmount,
+            'netReceived' => $netReceived,
+            'paid_by' => $paidBy,
+            'gatewayFee' => $selfChargeAmount,
+        ]);
+
+        return self::standardReturn(
+            finalAmount: $finalAmount,
+            fee: $totalFee,
+            paidBy: $paidBy,
+            netReceived: $netReceived,
+            chargeType: $method->charge_type,
+            selfChargeType: $method->self_charge_type,
+            selfCharge: $method->self_charge,
+            apiServiceCharge: $apiServiceCharge,
+            gatewayFee: $selfChargeAmount,
+        );
+    }
 }

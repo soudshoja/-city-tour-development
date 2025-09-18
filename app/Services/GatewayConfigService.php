@@ -118,4 +118,58 @@ class GatewayConfigService
         
         return $config;
     }
+
+    public function getHesabeConfig(): array 
+    {                
+
+        $configFromService = Config::get('services.hesabe');
+
+        if($configFromService === null) {
+            Log::warning('Hesabe does not have any configuration yet. Please contact your support team.');
+
+            return [
+                'status' => 'error',
+                'message' => 'Hesabe payment gateway is not configured. Please contact your support team.'
+            ];
+        }
+
+        $config = [
+            'status' => 'success',
+            'message' => 'Hesabe configuration loaded successfully.',
+            'data' => $configFromService,
+        ];
+
+        Log::info('Hesabe gateway config loaded from config/services.php', [
+            'base_url' => $config['data']['base_url'] ?? null,
+            'api_key' => $config['data']['api_key'] ?? null,
+        ]);
+
+        $hesabeCharge = Charge::where('name', 'like', '%hesabe%')
+            ->where('is_active', true)
+            ->first();
+
+        if ($hesabeCharge && $hesabeCharge->api_key) {
+            $config = [
+                'status' => 'success',
+                'message' => 'Hesabe configuration loaded successfully.',
+                'data' => [
+                    'api_key' => $hesabeCharge->api_key,
+                    'base_url' => $configFromService['base_url'],
+                    'access_code' => $configFromService['access_code'],
+                    'merchant_code' => $configFromService['merchant_code'],
+                    'iv_key' => $configFromService['iv_key'],
+                ]
+            ];
+
+            Log::info('Hesabe gateway config loaded from database.', [
+                'company_id' => $hesabeCharge->company_id,
+                'base_url' => $config['data']['base_url'],
+                'api_key' => $config['data']['api_key'],
+            ]);
+
+            return $config;
+        }
+
+        return $config;
+    }
 }

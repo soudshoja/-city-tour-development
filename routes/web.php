@@ -372,7 +372,7 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'invoice',
         'as' => 'invoice.',
     ], function () {
-        Route::get('/{companyId}/{invoiceNumber}/arabic', [InvoiceController::class, 'showArabic'])->name('show-arabic');
+        Route::get('/{companyId}/{invoiceNumber}/arabic', [InvoiceController::class, 'showArabic'])->name('show-arabic')->withoutMiddleware(['auth']);
         Route::post('/store', [InvoiceController::class, 'store'])->name('store');
         Route::put('/{id}', [InvoiceController::class, 'update'])->name('update');
         Route::delete('/delete/{id}', [InvoiceController::class, 'delete'])->name('delete');
@@ -384,6 +384,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/partial', [InvoiceController::class, 'savePartial'])->name('partial');
         Route::post('/remove/partial', [InvoiceController::class, 'removePartial'])->name('removepartial');
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split')->withoutMiddleware(['auth']);
+        Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}/arabic', [InvoiceController::class, 'splitarabic'])->name('split-arabic')->withoutMiddleware(['auth']);
         Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
         Route::get('/{invoiceNumber}' , function(){
             return redirect()->route('invoice.show', ['companyId' => 1, 'invoiceNumber' => request()->invoiceNumber]);
@@ -420,8 +421,6 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'payment',
         'as' => 'payment.',
     ], function () {
-        Route::get('/link/show-arabic/{companyId}/{voucherNumber}', [PaymentController::class, 'paymentShowLinkArabic'])->name('link.show-arabic');
-
         // Route::get('/', [PaymentController::class, 'showPaymentPage'])->name('choose')->withoutMiddleware(['auth']);
         Route::post('/create/{companyId}/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         //Route::match(['get', 'post'], '/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
@@ -443,6 +442,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/show/{voucherNumber}', function () {
                 return redirect()->route('payment.link.show', ['companyId' => 1, 'voucherNumber' => request()->voucherNumber]);
             })->withoutMiddleware(['auth']);
+            Route::get('/show-arabic/{companyId}/{voucherNumber}', [PaymentController::class, 'paymentShowLinkArabic'])->name('show-arabic')->withoutMiddleware(['auth']);
             Route::put('/update/{paymentId}', [PaymentController::class, 'paymentUpdateLink'])->name('update');
             Route::delete('/delete/{paymentId}', [PaymentController::class, 'paymentDeleteLink'])->name('delete');
             Route::get('/share/{paymentId}', [PaymentController::class, 'shareLink'])->name('share');
@@ -462,6 +462,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/uPayment-callback' , [PaymentController::class, 'handleUPaymentCallback'])->name('uPayment.callback')->withoutMiddleware(['auth']);
         Route::get('/uPayment-error' , [PaymentController::class, 'handleUPaymentError'])->name('uPayment.error')->withoutMiddleware(['auth']);
         Route::get('/uPayment-noti' , [PaymentController::class, 'handleUPaymentNoti'])->name('uPayment.notifications')->withoutMiddleware(['auth']);
+
+        Route::get('/hesabe-callback', [PaymentController::class, 'handleHesabeResponse'])->name('hesabe.response');
+        Route::get('/hesabe-error', [PaymentController::class, 'handleHesabeFailure'])->name('hesabe.failure');
     });
 
     Route::group([

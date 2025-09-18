@@ -741,7 +741,7 @@
                                         px-4 py-2 border border-gray-300 
                                         bg-white text-gray-700 transition gap-2 
                                         hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                        <span id="openImportModalBtn" class="font-medium">Import from MyFatoorah</span>
+                                        <span id="openImportModalBtn" class="font-medium">Import from Payment Gateway</span>
                                     </div>
                                 </label>
                             </div>
@@ -762,14 +762,42 @@
                                     </div>
 
                                     <!-- Form -->
-                                    <form id="importForm" class="space-y-4">
+                                    <form id="importForm" action="{{ route('payment.link.import-fatoorah.payment') }}" method="POST" class="space-y-4" x-data="{ gateway: '' }">
+                                        @csrf
+
+                                        <!-- Gateway selector -->
                                         <div>
+                                            <label for="gateway" class="block text-sm font-medium text-gray-700 mb-1">
+                                                Payment Gateway
+                                            </label>
+                                            <select name="gateway" id="gateway" x-model="gateway"
+                                                class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                required>
+                                                <option value="" selected disabled hidden>Select Payment Gateway</option>
+                                                @foreach($can_import as $gateway)
+                                                    <option value="{{ strtolower($gateway->name) }}">{{ $gateway->name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <!-- MyFatoorah: Invoice ID -->
+                                        <div x-show="gateway === 'myfatoorah'" class="mt-4" x-cloak>
                                             <label for="import_invoice_id" class="block text-sm font-medium text-gray-700 mb-1">
                                                 Existing Invoice ID
                                             </label>
-                                            <input type="text" id="import_invoice_id"
+                                            <input type="text" name="import_invoice_id" id="import_invoice_id"
                                                 class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                                placeholder="Enter invoice ID" required>
+                                                placeholder="Enter invoice ID">
+                                        </div>
+
+                                        <!-- Hesabe: Order Reference -->
+                                        <div x-show="gateway === 'hesabe'" class="mt-4" x-cloak>
+                                            <label for="import_order_reference" class="block text-sm font-medium text-gray-700 mb-1">
+                                                Existing Order Reference
+                                            </label>
+                                            <input type="text" name="import_order_reference" id="import_order_reference"
+                                                class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                placeholder="Enter order reference">
                                         </div>
 
                                         <!-- Success Message -->
@@ -812,35 +840,64 @@
                                 $selectedMethod = optional($invoice->invoicePartials->first())->payment_method ?? '';
                                 @endphp
                                 <div id="payment_gateway_dropdowns">
-                                    <div x-data="{ selectedGateway: '{{ $selectedGateway }}', selectedMethod: '{{ $selectedMethod }}', paymentType: '{{ $invoice->payment_type ?? '' }}' }">
+                                    <div x-data="{ 
+                                        selectedGateway: '{{ $selectedGateway }}', 
+                                        selectedMethod: '{{ $selectedMethod }}', 
+                                        paymentType: '{{ $invoice->payment_type ?? '' }}',
+                                        }">
                                         <div class="mt-4">
                                             <div class="flex items-center">
                                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
                                                 <span x-show="paymentType !== ''" class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
-                                                    @click="updateGateway">(Change)</span>
+                                                    @click="window.updateGateway && window.updateGateway()">(Change)</span>
                                             </div>
                                             <select id="payment_gateway_option" name="payment_gateway_option"
                                                 class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
                                                 <option value="">Choose a Payment Gateway</option>
                                                 @foreach ($paymentGateways as $gateway)
-                                                <option value="{{ $gateway->name }}"
-                                                    {{ $selectedGateway === $gateway->name ? 'selected' : '' }}>
+                                                <option value="{{ $gateway->name }}" {{ $selectedGateway === $gateway->name ? 'selected' : '' }}>
                                                     {{ $gateway->name }}
                                                 </option>
                                                 @endforeach
                                             </select>
                                         </div>
-                                        <div class="mt-4" x-cloak
-                                            x-show="selectedGateway === 'MyFatoorah'" x-transition>
-                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Method</h2>
-                                            <select name="payment_method" id="payment_method_full"
-                                                class="border border-gray-300 p-2 rounded w-full">
-                                                @foreach ($paymentMethods as $methods)
-                                                <option value="{{ $methods->id }}" {{ $selectedMethod == $methods->id ? 'selected' : '' }}>{{ $methods->english_name }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
 
+                                        <div
+                                            :class="selectedGateway === 'MyFatoorah' || selectedGateway === 'Hesabe' ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' : 'block'">
+
+                                            <!-- MyFatoorah Payment Methods -->
+                                            <template x-if="selectedGateway === 'MyFatoorah'">
+                                                <div class="mt-4" x-cloak x-transition>
+                                                    <label for="payment-method-myfatoorah" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                    <select name="payment_method" id="payment_method_full"
+                                                        class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" x-model="selectedMethod">
+                                                        @foreach ($myFatoorahMethods as $method)
+                                                        <option value="{{ $method->id }}" {{ $selectedMethod == $method->id ? 'selected' : '' }}>
+                                                            {{ $method->english_name }}
+                                                        </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </template>
+
+                                            <!-- Hesabe Payment Methods -->
+                                            <template x-if="selectedGateway === 'Hesabe'">
+                                                <div class="mt-4" x-cloak x-transition>
+                                                    <label for="payment-method-hesabe" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                    <select name="payment_method" id="payment_method_full"
+                                                        class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" x-model="selectedMethod">
+                                                        <option value="" disabled>Select a method</option>
+                                                        @foreach ($hesabeMethods as $method)
+                                                        <option value="{{ $method->id }}" {{ $selectedMethod == $method->id ? 'selected' : '' }}>
+                                                            {{ $method->english_name }}
+                                                        </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </template>
+                                        </div>
+                                        <input type="hidden" name="payment_method" :value="selectedMethod">
+                           
                                         <!-- Auto Payment Notification -->
                                         <div class="mt-4" id="auto_payment_notification" style="display: none;">
                                             <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -861,13 +918,10 @@
                                         @if($invoiceCharges->count() > 0)
                                         <div id="invoice_charge_section" class="mt-4" style="display: none;">
                                             <h2 id="invoice_charge_title" class="text-lg font-semibold mb-3 text-gray-700">Invoice Charge</h2>
-
-                                            <!-- Simple Charge Amount Input -->
                                             <div class="mb-3">
                                                 <label class="block text-sm font-medium text-gray-700 mb-1">Charge Amount:</label>
                                                 <input type="number" id="invoice_charge_amount_input" name="invoice_charge_amount_input"
-                                                    class="form-input" step="0.01" min="0"
-                                                    value="{{ $invoice->invoice_charge }}"
+                                                    class="form-input" step="0.01" min="0" value="{{ $invoice->invoice_charge }}"
                                                     placeholder="Enter charge amount">
                                                 <input type="hidden" id="invoice_charge_amount" name="invoice_charge_amount" value="{{ $invoice->invoice_charge }}">
                                             </div>
@@ -883,7 +937,6 @@
                                                 value="{{ $invoice->external_url ?? '' }}">
                                             <p class="text-sm text-gray-500 mt-1">Optionally provide an external payment gateway URL for this invoice</p>
                                         </div>
-
                                     </div>
                                     <div id="payment-response-message" class="hidden mt-4 text-sm font-semibold rounded px-4 py-2"></div>
                                 </div>
@@ -1099,8 +1152,7 @@
                                                     </div>
                                                 </div>
 
-                                                <div x-data="{ paymentGateway: '' }" x-init="paymentGateway = document.getElementById('payment_gateway1').value;
-                                            document.getElementById('payment_gateway1').addEventListener('change', e => paymentGateway = e.target.value)"
+                                                <div x-data="{ paymentGateway: '' }" x-init="$nextTick(() => { const el = document.querySelector('select[id^=payment_gateway1_]'); if (!el) return; paymentGateway = el.value;el.addEventListener('change', e => paymentGateway = e.target.value); })"
                                                     class="grid grid-cols-3 gap-4 mb-5">
                                                     <div>
                                                         <label class="block text-sm font-medium mb-1"
@@ -3514,6 +3566,8 @@
                 payload.clientId = document.getElementById('receiverId').value;
                 if (item.gateway === 'MyFatoorah') {
                     payload.method = document.getElementById('payment_method_full')?.value;
+                } else if (item.gateway === 'Hesabe') {
+                    payload.method = document.getElementById('payment_method_full')?.value
                 } else {
                     payload.method = null;
                 }
@@ -3958,7 +4012,9 @@
             const closeBtn = document.getElementById('closeImportModalBtn');
             const cancelBtn = document.getElementById('cancelImport');
             const form = document.getElementById('importForm');
-            const input = document.getElementById('import_invoice_id');
+            const gateway = document.getElementById('gateway');
+                const fatoorah = document.getElementById('import_invoice_id');
+                const hesabe = document.getElementById('import_order_reference');
 
             const successBox = document.getElementById('successBox');
             const errorBox = document.getElementById('errorBox');
@@ -3968,7 +4024,9 @@
 
             // Show modal
             openBtn.addEventListener('click', () => {
-                input.value = '';
+                gateway.value = '';
+                    fatoorah.value = '';
+                    hesabe.value = '';
                 errorBox.classList.add('hidden');
                 successBox.classList.add('hidden');
                 loadingBox.classList.add('hidden');
@@ -3990,8 +4048,18 @@
 
                     const agentName = document.getElementById('agentName')?.value || '';
                     const clientName = document.getElementById('receiverName')?.value || '';
-                    const paymentId = input.value.trim();
+                    const gateway = document.getElementById('gateway').value || '';
+                    const invoiceId = fatoorah.value.trim();
+                    const orderRef = hesabe.value.trim();
                     const page = 'invoice';
+
+                    console.log("=== Import Form Debug ===");
+                    console.log("Gateway: ", gateway);
+                    console.log("Agent (hidden input):", agentName);
+                    console.log("Client (hidden input):", clientName);
+                    console.log("Invoice ID (Fatoorah):", invoiceId);
+                    console.log("Order Reference (Hesabe):", orderRef);
+                    console.log("Page:", page);
 
                     successBox.classList.add('hidden');
                     errorBox.classList.add('hidden');
@@ -4004,45 +4072,56 @@
                         return;
                     }
 
-                    if (!paymentId) {
+                    if (!invoiceId && !orderRef) {
                         loadingBox.classList.add('hidden');
-                        errorBox.textContent = 'Payment ID is required.';
+                        errorBox.textContent = 'Payment ID or Order Reference is required.';
                         errorBox.classList.remove('hidden');
                         return;
                     }
 
                     const formData = new FormData();
                     formData.append('_token', '{{ csrf_token() }}');
-                    formData.append('import_invoice_id', paymentId);
+                    formData.append('gateway', gateway);
                     formData.append('agentName', agentName);
                     formData.append('receiverName', clientName);
                     formData.append('page', page);
 
+                    if (invoiceId) formData.append('import_invoice_id', invoiceId);
+                    if (orderRef) formData.append('import_order_reference', orderRef);
+
                     try {
                         const res = await fetch(`{{ route('payment.link.import-fatoorah.invoice') }}`, {
                             method: 'POST',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
                             body: formData,
                         });
 
                         loadingBox.classList.add('hidden');
 
                         if (res.ok) {
+                            let data;
+                            try {
+                                data = await res.json();
+                            } catch {
+                                const text = await res.text();
+                                throw new Error("Non-JSON response: " + text.substring(0, 200));
+                            }
                             successBox.textContent = `Payment imported successfully.`;
                             successBox.classList.remove('hidden');
-                            input.value = '';
                             setTimeout(() => {
                                 closeModal();
                                 window.location.reload();
                             }, 2000);
                         } else {
-                            const data = await res.json();
-                            errorBox.textContent = `${data.message}`;
+                            let data;
+                            try {
+                                data = await res.json();
+                                errorBox.textContent = data.message || "Import failed.";
+                            } catch {
+                                errorBox.textContent = "Import failed. Non-JSON response.";
+                            }
                             errorBox.classList.remove('hidden');
                         }
-
                     } catch (err) {
                         console.error(err);
                         loadingBox.classList.add('hidden');
@@ -4050,6 +4129,7 @@
                         errorBox.classList.remove('hidden');
                     }
                 });
+
             }
         }
     </script>

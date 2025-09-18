@@ -329,7 +329,7 @@
                 <tr x-data="{ open: false }" class="text-sm text-gray-700 text-center">
                     <td class="px-4 py-2 border">{{ $partial->payment_gateway ?? 'N/A'}}</td>
                     <td class="px-4 py-2 border">
-                        <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}"
+                        <a href="{{ route('invoice.split-arabic', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) }}"
                             class="text-blue-500 underline" target="_blank">
                             View Details
                         </a>
@@ -393,7 +393,7 @@
                         {{ $count }}
                     </td>
                     <td class="px-4 py-2 border">
-                        <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}"
+                        <a href="{{ route('invoice.split-arabic', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) }}"
                             class="text-blue-500 underline" target="_blank">
                             رؤية التفاصيل
                         </a>
@@ -564,6 +564,7 @@
                 <input type="hidden" name="payment_gateway" value="{{ $invoice->invoicePartials->first()->payment_gateway }}">
                 <input type="hidden" name="payment_method" value="{{ $invoice->invoicePartials->first()->payment_method }}">
 
+                @if($canGenerateLink)
                 <div class="flex items-center gap-2">
                     @if ($invoice->payment_type !== 'split' && !($invoice->payment_type === 'partial' && $hasMismatch))
                     <button type="submit" id="payNowBtn"
@@ -572,6 +573,13 @@
                     </button>
                     @endif
                 </div>
+                @else
+                    @if(!in_array($invoice->payment_type, ['split', 'partial'], true))
+                    <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
+                        تتم معالجة الدفعة لهذه الفاتورة عبر {{ $invoice->invoicePartials->first()->payment_gateway }}. يُرجى التواصل مع وكيلك للحصول على المساعدة.
+                    </div>
+                    @endif
+                @endif
 
                 <div id="loadingSpinner" class="hidden mt-2">
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -647,7 +655,7 @@
                     <tr class="text-sm text-gray-700">
                         <td class="px-4 py-2 border">
                             @if(optional($partial->payment)->voucher_number)
-                            <a href="{{ route('payment.link.show', ['companyId' => $companyId, 'voucherNumber' => $partial->payment->voucher_number]) }}"
+                            <a href="{{ route('payment.link.show-arabic', ['companyId' => $companyId, 'voucherNumber' => $partial->payment->voucher_number]) }}"
                                 class="text-blue-500 underline" target="_blank">{{ $partial->payment->voucher_number }}
                             </a>
                             @else

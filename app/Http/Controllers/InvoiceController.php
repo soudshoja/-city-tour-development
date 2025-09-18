@@ -327,6 +327,8 @@ class InvoiceController extends Controller
         $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
 
         $countries = Country::all();
+        
+        
 
         return view('invoice.create', compact(
             'clients',
@@ -431,6 +433,13 @@ class InvoiceController extends Controller
             ->where('can_charge_invoice', true)
             ->get();
         $paymentMethods = PaymentMethod::where('is_active', true)->get();
+        $myFatoorahMethods = PaymentMethod::where('is_active', true)
+            ->where('type', 'myfatoorah')
+            ->get();
+
+        $hesabeMethods = PaymentMethod::where('is_active', true)
+            ->where('type', 'hesabe')
+            ->get();
         $invoiceDate = $invoice->invoice_date;
         $invprice = $invoice->amount;
         $dueDate =  $invoice->due_date;
@@ -439,7 +448,7 @@ class InvoiceController extends Controller
             // Only set self_charge to amount if both are null or self_charge is explicitly null
             // but don't override self_charge if it has a value (including 0)
             if (strtolower($gateway->name) === 'myfatoorah') {
-                foreach($paymentMethods as $method){
+                foreach($myFatoorahMethods as $method){
                     if($method->company_id == $invoice->agent->branch->company_id && $method->type == 'myfatoorah'){
                         try {
                             $method->gateway_fee = ChargeService::FatoorahCharge($invprice, $method->id, $invoice->agent->branch->company_id)['fee'] ?? 0;
@@ -449,6 +458,21 @@ class InvoiceController extends Controller
                                 'paymentMethod' => $method->id,
                                 'company_id' => $invoice->agent->branch->company_id,
                             ]);
+                            $method->gateway_fee = 0;
+                        }
+                    }
+                }
+            } elseif (strtolower($gateway->name) === 'hesabe') {
+                foreach ($hesabeMethods as$method) {
+                    if ($method->company == $invoice->agent->branch->company && $method->type == 'hesabe') {
+                        try {
+                            $method->gateway_fee = ChargeService::HesabeCharge($invprice, $method->id, $invoice->agent->branch->company_id)['fee'] ?? 0;
+                        } catch (Exception $e) {
+                            Log::error('HesabeCharge exception', [
+                                'message' => $e->getMessage(),
+                                'paymentMethod' => $method->id,
+                                'company_id' => $invoice->agent->branch->company_id,
+                            ]); 
                             $method->gateway_fee = 0;
                         }
                     }
@@ -464,7 +488,7 @@ class InvoiceController extends Controller
         }
 
         $appUrl = config('app.url');
-
+        
         // Check if the credit has been used for this invoice
         $creditUsed = Credit::where('client_id', $invoice->client_id)
             ->where('invoice_id', $invoice->id)
@@ -473,7 +497,20 @@ class InvoiceController extends Controller
         $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')->first();
 
         $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
-        // dd($selectedTasks);
+    
+        if ($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->branch->company_id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company_id;
+        } elseif ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } else {
+            $companyId = null;
+        }
+        
+        $can_import = Charge::where('company_id', $companyId)
+                    ->where('can_import', true)
+                    ->get();
         return view('invoice.edit', compact(
             'clients',
             'invoice',
@@ -497,6 +534,9 @@ class InvoiceController extends Controller
             'creditUsed',
             'invoiceExpireDefault',
             'companyId',
+            'myFatoorahMethods',
+            'hesabeMethods',
+            'can_import',
         ));
     }
 
@@ -515,11 +555,22 @@ class InvoiceController extends Controller
         $invoice = Invoice::where('invoice_number', $validated['invoiceNumber'])->with('agent.branch.company', 'client', 'invoiceDetails.task')->first();
         $companyId = $invoice->agent->branch->company_id;
 
-        if (strtolower($validated['gateway']) === 'myfatoorah' && $validated['method']) {
+        if (strtolower($validated['gateway']) === 'myfatoorah' &&  strtolower($validated['gateway']) === 'hesabe' && $validated['method']) {
             try {
                 $gatewayFee = ChargeService::FatoorahCharge($validated['amount'], $validated['method'], $companyId);
             } catch (\Exception $e) {
                 Log::error('FatoorahCharge exception during partial save', [
+                    'message' => $e->getMessage(),
+                    'paymentMethod' => $validated['method'],
+                    'company_id' => $companyId,
+                ]);
+                $gatewayFee = null;
+            }
+        } elseif (strtolower($validated['gateway']) === 'hesabe' && $validated['method']) {
+            try {
+                $gatewayFee = ChargeService::HesabeCharge($validated['amount'], $validated['method'], $companyId);
+            } catch (Exception $e) {
+                Log::error('HesabeCharge exception during partial save', [
                     'message' => $e->getMessage(),
                     'paymentMethod' => $validated['method'],
                     'company_id' => $companyId,
@@ -557,7 +608,7 @@ class InvoiceController extends Controller
             $invoicePartial->update([
                 'payment_gateway' => $validated['gateway'],
                 'type' => 'full',
-                'has_payment_link' => true,
+                'charge_id' => Charge::where('name', $validated['gateway'])->value('id'),
                 'payment_method' => $validated['method'] ?? null,
                 'service_charge' => $gatewayFee['fee'] ?? 0,
                 'amount' => $invoice->amount,
@@ -650,6 +701,17 @@ class InvoiceController extends Controller
                 ]);
                 $gatewayFee = null;
             }
+        } elseif (strtolower($gateway) === 'hesabe' && $method) {
+            try {
+
+            } catch (Exception $e) {
+                Log::error('HesabeCharge exception during partial save', [
+                    'message' => $e->getMessage(),
+                    'paymentMethod' => $method,
+                    'company_id' => $companyId,
+                ]);
+                $gatewayFee = null;
+            }
         } else {
             $gatewayFee = ChargeService::TapCharge([
                 'amount' => $amount,
@@ -691,6 +753,7 @@ class InvoiceController extends Controller
                 'type' => $type,
                 'payment_gateway' => $gateway,
                 'payment_method' => $method,
+                'charge_id' => Charge::where('name', $gateway)->value('id'),
             ]);
             
             //if ($credit && $type == 'full') {
@@ -1570,33 +1633,33 @@ class InvoiceController extends Controller
         $paidServiceCharge = $invoicePartials->where('status', 'paid')->sum('service_charge');
         $totalGatewayFee['fee'] += $paidServiceCharge;
 
-        $hasPaymentLink = true;
-
+        $canGenerateLink = false;
         foreach($invoice->invoicePartials as $partial) {
-            if ($partial->has_payment_link == false) {
-                $hasPaymentLink = $partial->charge ? $partial->charge->has_payment_link : false;
+            if ($partial->charge_id) {
+                $canGenerateLink = $partial->charge ? $partial->charge->can_generate_link : false;
                 break;
             }
         }
 
-        if($hasPaymentLink) {
+        if($canGenerateLink) {
             foreach ($invoicePartials as $partial) {
                 if ($partial->status !== 'paid') {
                     $gatewayFee = [];
                     try {
                         if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
                             $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
-                            
-                        } else if (strtolower($partial->payment_gateway) === 'tap') {
+                            } elseif (strtolower($partial->payment_gateway) === 'tap') {
                             $gatewayFee = ChargeService::TapCharge([
                                 'amount'    => $partial->amount,
                                 'client_id' => $invoice->client_id,
                                 'agent_id'  => $invoice->agent_id,
                                 'currency'  => $invoice->currency,
                             ], $partial->payment_gateway);
-                        } else if (strtolower($partial->payment_gateway) === 'upayment') {
+                        } elseif (strtolower($partial->payment_gateway) === 'upayment') {
                             $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
-                        }
+                        } elseif (strtolower($partial->payment_gateway) === 'hesabe') {
+                        $gatewayFee = ChargeService::HesabeCharge($partial->amount, $partial->payment_method, $companyId);
+                    }
                     } catch (\Exception $e) {
                         Log::error('ChargeService exception', [
                             'message' => $e->getMessage(),
@@ -1604,7 +1667,7 @@ class InvoiceController extends Controller
                             'company_id' => $companyId,
                         ]);
                     }
-                    $partial->service_charge = $gatewayFee['fee'];
+                    $partial->service_charge = $gatewayFee['fee'] ?? 0.00;
                     $partial->save();
                     $partial->final_amount = $partial->amount + $partial->service_charge;
                     $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
@@ -1635,12 +1698,120 @@ class InvoiceController extends Controller
             'invoice',
             'invoiceDetails',
             'invoicePartials',
-            'hasPaymentLink',
+            'canGenerateLink',
             'paidPartials',
             'company',
             'checkUtilizeCredit',
             'totalGatewayFee',
             'companyId',
+        ));
+    }
+
+    public function showArabic($companyId, $invoiceNumber)
+    {
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
+            ->with('agent.branch.company', 'client', 'invoiceDetails')
+            ->first();
+
+        if (!$invoice) {
+            if (auth()->user()) {
+                return redirect()->route('invoices.index')->with('error', 'Invoice not found!');
+            }
+            return abort(404);
+        }
+
+        if ($invoice->status === 'paid by refund') {
+            return redirect()->route('invoices.index')->withErrors(['error' => 'This invoice has already been settled through a refund']);
+        }
+
+        $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)
+            ->with('client', 'invoice', 'payment')
+            ->get();
+
+        if ($invoicePartials->isEmpty()) {
+            if (auth()->user()) {
+                return redirect()->route('invoices.index')->with('error', 'No invoice partials found for this invoice!');
+            }
+            return abort(404);
+        }
+
+        $totalGatewayFee = ['fee' => 0, 'finalAmount' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
+
+        $paidServiceCharge = $invoicePartials->where('status', 'paid')->sum('service_charge');
+        $totalGatewayFee['fee'] += $paidServiceCharge;
+
+        $canGenerateLink = false;
+        foreach ($invoice->invoicePartials as $partial) {
+            if ($partial->charge_id) {
+                $canGenerateLink = $partial->charge ? $partial->charge->can_generate_link : false;
+                break;
+            }
+        }
+
+        if ($canGenerateLink) {
+            foreach ($invoicePartials as $partial) {
+                if ($partial->status !== 'paid') {
+                    $gatewayFee = [];
+                    try {
+                        if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
+                            $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
+                        } else if (strtolower($partial->payment_gateway) === 'tap') {
+                            $gatewayFee = ChargeService::TapCharge([
+                                'amount'    => $partial->amount,
+                                'client_id' => $invoice->client_id,
+                                'agent_id'  => $invoice->agent_id,
+                                'currency'  => $invoice->currency,
+                            ], $partial->payment_gateway);
+                        } else if (strtolower($partial->payment_gateway) === 'upayment') {
+                            $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('ChargeService exception', [
+                            'message' => $e->getMessage(),
+                            'gateway' => $partial->payment_gateway,
+                            'company_id' => $companyId,
+                        ]);
+                    }
+                    $partial->service_charge = $gatewayFee['fee'];
+                    $partial->save();
+                    $partial->final_amount = $partial->amount + $partial->service_charge;
+                    $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
+
+                    if ($chargePayer !== 'Company') {
+                        $totalGatewayFee['fee'] += $partial->service_charge;
+                        $totalGatewayFee['paid_by'] = $chargePayer;
+                        $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
+                    }
+                }
+            }
+        }
+
+        $totalGatewayFee['fee'] += $invoice->invoice_charge ?? 0;
+        $totalGatewayFee['finalAmount'] = $invoice->sub_amount + $invoice->tax + $totalGatewayFee['fee'];
+        $paidPartials = $invoicePartials->where('status', 'paid');
+        $invoiceDetails = $invoice->invoiceDetails;
+        $company = $invoice->agent->branch->company;
+
+        $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
+            ->where('company_id', $companyId)
+            ->where('type', 'Invoice')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        // Render the Arabic view (make sure to translate it)
+        return view('invoice.show-arabic', compact(
+            'invoice',
+            'invoiceDetails',
+            'invoicePartials',
+            'paidPartials',
+            'company',
+            'checkUtilizeCredit',
+            'totalGatewayFee',
+            'companyId',
+            'canGenerateLink',
         ));
     }
 
@@ -1659,7 +1830,6 @@ class InvoiceController extends Controller
         return $pdf->download("Invoice_{$invoiceNumber}.pdf");
     }
 
-
     public function split(string $invoiceNumber, int $clientId, int $partialId)
     {
         // Retrieve the invoice based on the invoice number
@@ -1675,9 +1845,9 @@ class InvoiceController extends Controller
         $invoiceDetails = $invoice->invoiceDetails;
 
         $gatewayFee = [];
-        $hasPaymentLink = $invoice->charge ? $invoice->charge->has_payment_link : false;
+        $canGenerateLink = $invoicePartial->charge ? $invoicePartial->charge->can_generate_link : false;
 
-        if ($invoicePartial->status !== 'paid' && $hasPaymentLink) {
+        if ($invoicePartial->status !== 'paid' && $canGenerateLink) {
             try {
                 $paymentGateway = $invoicePartial->payment_gateway ?? 'Tap';
                 $paymentMethod = $invoicePartial->payment_method;
@@ -1728,7 +1898,79 @@ class InvoiceController extends Controller
             'checkUtilizeCredit',
             'checkUtilizeCreditPartial',
             'gatewayFee',
-            'hasPaymentLink'
+            'canGenerateLink'
+        ));
+    }
+
+    public function splitarabic(string $invoiceNumber, int $clientId, int $partialId)
+    {
+        // Retrieve the invoice based on the invoice number
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)->with('agent.branch.company', 'client', 'invoiceDetails')->first();
+        $invoicePartial = InvoicePartial::where('id', $partialId)->where('invoice_number', $invoiceNumber)->where('client_id', $clientId)->with('client', 'invoice')->first();
+
+        // Check if the invoice exists
+        if (!$invoice) {
+            return redirect()->back()->with('error', 'Invoice not found!');
+        }
+
+        $invoicePartial->expiry_date = \Carbon\Carbon::parse($invoicePartial->expiry_date);
+        $invoiceDetails = $invoice->invoiceDetails;
+
+        $gatewayFee = [];
+        $canGenerateLink = $invoicePartial->charge ? $invoicePartial->charge->can_generate_link : false;
+
+        if ($invoicePartial->status !== 'paid' && $canGenerateLink) {
+            try {
+                $paymentGateway = $invoicePartial->payment_gateway ?? 'Tap';
+                $paymentMethod = $invoicePartial->payment_method;
+                $companyId = $invoice->agent->branch->company_id;
+
+                if (strtolower($paymentGateway) === 'myfatoorah' && $paymentMethod) {
+                    $gatewayFee = ChargeService::FatoorahCharge($invoicePartial->amount, $paymentMethod, $companyId);
+                } else {
+                    $gatewayFee = ChargeService::TapCharge([
+                        'amount'    => $invoicePartial->amount,
+                        'client_id' => $invoice->client_id,
+                        'agent_id'  => $invoice->agent_id,
+                        'currency'  => $invoice->currency,
+                    ], $paymentGateway);
+                }
+            } catch (\Exception $e) {
+                Log::error('ChargeService exception on split page', [
+                    'message' => $e->getMessage(),
+                    'partial_id' => $partialId
+                ]);
+                $gatewayFee = ['fee' => 0, 'paid_by' => 'Company'];
+            }
+            $invoicePartial->service_charge = ($gatewayFee['paid_by'] === 'Company') ? 0 : $gatewayFee['fee'];
+            $invoicePartial->save();
+            $invoicePartial->final_amount = $invoicePartial->amount + $invoicePartial->service_charge;
+        } else {
+            $invoicePartial->final_amount = $invoicePartial->amount;
+            $gatewayFee['paid_by'] = ($invoicePartial->service_charge > 0) ? 'Client' : 'Company';
+        }
+
+        $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
+            ->where('invoice_partial_id', $invoicePartial->id)
+            ->where('client_id', $invoice->client_id)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $checkUtilizeCreditPartial = Credit::where('invoice_id', $invoice->id)
+            ->where('invoice_partial_id', $invoicePartial->id)
+            ->where('client_id', $invoice->client_id)
+            ->where('type', 'Invoice')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        return view('invoice.split-arabic', compact(
+            'invoice',
+            'invoiceDetails',
+            'invoicePartial',
+            'checkUtilizeCredit',
+            'checkUtilizeCreditPartial',
+            'gatewayFee',
+            'canGenerateLink'
         ));
     }
 
@@ -2353,6 +2595,7 @@ class InvoiceController extends Controller
                         'payment_gateway' => $gateway,
                         'payment_method' => $method ?? null,
                         'service_charge' => 0,
+                        'charge_id' => Charge::where('name', $gateway)->value('id'),
                     ]);
 
                     //2nd partial for credit utilization
@@ -2495,6 +2738,7 @@ class InvoiceController extends Controller
                         'payment_gateway' => $gateway,
                         'payment_method' => $method ?? null,
                         'service_charge' => 0,
+                        'charge_id' => Charge::where('name', $gateway)->value('id'),
                     ]
                 );
 
@@ -2695,100 +2939,4 @@ class InvoiceController extends Controller
             'payment_gateway' => 'required|string',
         ]);
     }
-    public function showArabic($companyId, $invoiceNumber)
-   {
-    $invoice = Invoice::where('invoice_number', $invoiceNumber)
-        ->whereHas('agent.branch.company', function ($q) use ($companyId) {
-            $q->where('id', $companyId);
-        })
-        ->with('agent.branch.company', 'client', 'invoiceDetails')
-        ->first();
-
-    if (!$invoice) {
-        if(auth()->user()){
-            return redirect()->route('invoices.index')->with('error', 'Invoice not found!');
-        }
-        return abort(404);
-    }
-
-    if($invoice->status === 'paid by refund') {
-        return redirect()->route('invoices.index')->withErrors(['error' => 'This invoice has already been settled through a refund']);
-    }
-
-    $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)
-        ->with('client', 'invoice', 'payment')
-        ->get();
-
-    if($invoicePartials->isEmpty()){
-        if(auth()->user()){
-            return redirect()->route('invoices.index')->with('error', 'No invoice partials found for this invoice!');
-        }
-        return abort(404);
-    }
-
-    $totalGatewayFee = ['fee' => 0, 'finalAmount' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
-
-    $paidServiceCharge = $invoicePartials->where('status', 'paid')->sum('service_charge');
-    $totalGatewayFee['fee'] += $paidServiceCharge;
-
-    foreach ($invoicePartials as $partial) {
-        if ($partial->status !== 'paid') {
-            $gatewayFee = [];
-            try {
-                if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
-                    $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
-                } else if (strtolower($partial->payment_gateway) === 'tap') {
-                    $gatewayFee = ChargeService::TapCharge([
-                        'amount'    => $partial->amount,
-                        'client_id' => $invoice->client_id,
-                        'agent_id'  => $invoice->agent_id,
-                        'currency'  => $invoice->currency,
-                    ], $partial->payment_gateway);
-                } else if (strtolower($partial->payment_gateway) === 'upayment') {
-                    $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
-                }
-            } catch (\Exception $e) {
-                \Log::error('ChargeService exception', [
-                    'message' => $e->getMessage(),
-                    'gateway' => $partial->payment_gateway,
-                    'company_id' => $companyId,
-                ]);
-            }
-            $partial->service_charge = $gatewayFee['fee'] ?? 0;
-            $partial->save();
-            $partial->final_amount = $partial->amount + $partial->service_charge;
-            $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
-
-            if ($chargePayer !== 'Company') {
-                $totalGatewayFee['fee'] += $partial->service_charge;
-                $totalGatewayFee['paid_by'] = $chargePayer;
-                $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
-            }
-        }
-    }
-
-    $totalGatewayFee['fee'] += $invoice->invoice_charge ?? 0;
-    $totalGatewayFee['finalAmount'] = $invoice->sub_amount + $invoice->tax + $totalGatewayFee['fee'];
-    $paidPartials = $invoicePartials->where('status', 'paid');
-    $invoiceDetails = $invoice->invoiceDetails;
-    $company = $invoice->agent->branch->company;
-
-    $checkUtilizeCredit = Credit::where('invoice_id', $invoice->id)
-        ->where('company_id', $companyId)
-        ->where('type', 'Invoice')
-        ->orderBy('id', 'asc')
-        ->get();
-
-    // Render the Arabic view (make sure to translate it)
-    return view('invoice.show-arabic', compact(
-        'invoice',
-        'invoiceDetails',
-        'invoicePartials',
-        'paidPartials',
-        'company',
-        'checkUtilizeCredit',
-        'totalGatewayFee',
-        'companyId'
-    ));
-}
 }

@@ -497,7 +497,17 @@ class InvoiceController extends Controller
         $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')->first();
 
         $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
-        $companyId = Auth::user()->branch->company_id;
+    
+        if ($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->branch->company_id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company_id;
+        } elseif ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } else {
+            $companyId = null;
+        }
+        
         $can_import = Charge::where('company_id', $companyId)
                     ->where('can_import', true)
                     ->get();

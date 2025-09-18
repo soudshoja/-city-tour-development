@@ -1322,7 +1322,243 @@ class PaymentController extends Controller
         return redirect()->back()->with('error', 'Unsupported payment gateway selected.');
     }
 
-    public function paymentLink(Request $request)
+    public function importPaymentProcess (Request $request) 
+    {
+        Log::info('Strating the process of importing payment from Portal');
+
+        $request->validate([
+            'payment_gateway' => 'required',
+            'payment_method' => 'nullable',
+            'amount' => 'required|numeric',
+            'client_id' => 'nullable',
+            'agent_id' => 'nullable',
+            'invoice_id' => 'nullable',
+            'invoice_reference' => 'nullable',
+            'auth_code' => 'nullable',
+            'paymentReference' => 'nullable',
+            'trackId' => 'nullable',
+            'notes' => 'nullable|string|max:255'
+        ]);
+
+        $invoiceId = $request->input('invoice_id');
+        $invoiceReference = $request->input('invoice_reference');
+        $authCode = $request->input('auth_code');
+        $paymentReference = $request->input('payment_reference');
+        $trackId = $request->input('track_id');
+        $companyId = null;
+        $user = Auth::user();
+
+        if ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company->id;
+        } elseif ($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->branch->company->id;
+        }
+
+        $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
+        $client = Client::find($request->client_id);
+        $agent = Agent::find($request->agent_id);
+
+        if (!$client) {
+            return [
+                'status' => 'error', 
+                'message' => 'Client cannot be found'
+            ];
+        }
+
+        if (!$agent) {
+            return [
+                'status' => 'error', 
+                'message' => 'Agent cannot be found'
+            ];
+        }
+
+        $currentSequence = $voucherSequence->current_sequence;
+        $voucherNumber = $this->generateVoucherNumber($currentSequence);
+        
+        try {
+            $voucherSequence->current_sequence++;
+            $voucherSequence->save();
+        } catch (Exception $e) {
+            logger('Failed to save voucher sequence', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return [
+                'status' => 'error', 
+                'message' => $e->getMessage()
+            ];
+        }
+
+        try {
+            Log::info('Starting to create payment for import payment from payment gateway ' . $request->payment_gateway);
+
+            $data = [
+                'voucher_number' => $voucherNumber,
+                'payment_reference' => $invoiceId ?? $paymentReference,
+                'invoice_reference' => $invoiceReference ?? $trackId,
+                'auth_code' => $authCode,
+                'from' => $client->full_name,
+                'pay_to' => $agent->branch->company->name,
+                'currency' => 'KWD',
+                'payment_date' => Carbon::now(),
+                'amount' => $request->amount,
+                'payment_gateway' => $request->payment_gateway,
+                'payment_method_id' => $request->payment_method,
+                'status' => 'completed',
+                'client_id' => $client->id,
+                'agent_id' => $agent->id,
+                'notes' => $request->notes,
+                'created_by' => Auth::id()
+
+            ];
+
+            $payment = Payment::create($data);
+            Log::info('Payment successfully created');
+
+            if (!$payment) {
+                Log::error('Payment failed to create');
+            }
+
+        } catch (Exception $e) {
+            Log::error('Failed to create payment', [
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ];
+        }
+
+        try {
+            Log::info('Starting to add credit for the import payment from payment gateway ' . $payment->payment_gateway);
+            
+            $payment = Payment::findOrFail($payment->id);
+
+            if ($payment->status === 'completed') {
+                Log::info('Payment for the import has already completed');
+                
+                $clientController = new ClientController;
+                $addCredit = $clientController->addCredit($payment);
+                
+                if (isset($addCredit['error'])) {
+                    Log::error('Failed to add credit to client', [
+                        'status' => 'error',
+                        'message' => $addCredit['error'],
+                        'payment_id' => $payment->id,
+                    ]);
+
+                    return [
+                        'status' => 'error',
+                        'message' => 'Client credit cannot be updated',
+                    ];
+                }
+
+                $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
+                ->where('company_id', $payment->agent->branch->company->id)
+                ->first();
+
+                if (!$liabilitiesAccount) {
+                    return [
+                        'status' => 'error',
+                        'message' => 'Liabilities account not found'
+                    ];
+                }
+
+                $clientAdvance = Account::where('name', 'Client')
+                    ->where('company_id', $payment->agent->branch->company->id)
+                    ->where('root_id', $liabilitiesAccount->id)
+                    ->first();
+
+                if (!$clientAdvance) {
+                    return [
+                        'status' => 'error',
+                        'message' => 'Client advance account not found'
+                    ];
+                }                
+
+                DB::beginTransaction();
+
+                try {
+                    $transaction = Transaction::create([
+                        'branch_id' => $payment->agent->branch->id,
+                        'company_id' => $payment->agent->branch->company->id,
+                        'entity_id' => $payment->agent->branch->company->id,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'debit',
+                        'amount' => $payment->amount,
+                        'description' => 'Topup success by ' . $payment->client->full_name,
+                        'payment_id' => $payment->id,
+                        'invoice_id' => $payment->invoice_id,
+                        'payment_reference' => $payment->payment_reference,
+                        'reference_type' => 'Payment',
+                        'transaction_date' => now(),
+                    ]);
+
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $payment->agent->branch->id,
+                        'company_id' => $payment->agent->branch->company->id,
+                        'invoice_id' => $payment->invoice_id,
+                        'account_id' => $clientAdvance->id,
+                        'transaction_date' => now(),
+                        'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
+                        'debit' => 0,
+                        'credit' => $payment->amount,
+                        'balance' => $clientAdvance->actual_balance - $payment->amount,
+                        'name' => $payment->client->full_name,
+                        'type' => 'receivable',
+                        'voucher_number' => $payment->voucher_number,
+                        'type_reference_id' => $clientAdvance->id
+                    ]);
+
+                    Log::info('Successfully created transaction and journal entry for import payment of ' . $payment->payment_gateway . ' from the portal');
+                } catch (Exception $e) {
+                    DB::rollBack();
+                    logger('Failed to create journal entry', [
+                        'message' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    return [
+                        'status' => 'error',
+                        'message' => 'Payment cannot be updated',
+                    ];
+                }
+
+                DB::commit();
+
+                Log::info('dia memang stay sini sampai habis');
+                return [
+                    'status' => 'success',
+                    'message' => 'Successfully importing payment from payment gateway ' . $payment->payment_gateway . ' for payment ID ' . $payment->id,
+                    'data' => [
+                        'voucher_number' => $payment->voucher_number,
+                        'payment_id' => $payment->id,
+                    ],
+                ];
+
+            } elseif ($payment->status != 'completed') {
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to add credit and journal entry as the payment is not yet completed'
+                ];
+            }
+        } catch (Exception $e) {
+            Log::error('Failed to add credit & journal entry for import payment from payment gateway ' . $payment->payment_gateway);
+
+            return [
+                'status' => 'error',
+                'message' => 'Failed to add credit & journal entry for import payment',
+            ];
+        }
+    }
+
+    public function paymentLink(Request $request) 
     {
         $user = Auth::user();
 
@@ -1506,9 +1742,11 @@ class PaymentController extends Controller
         $source = $request->input('source');
         $invoiceId = $request->input('invoice_id');
         $invoiceReference = $request->input('invoice_reference');
-        $authCode = $request->input('auth_code');
-        $paymentReference = $request->input('payment_reference');
-        $trackId = $request->input('track_id');
+
+        if ($source === 'import') {
+            return $this->importPaymentProcess($request);
+            exit;
+        }
 
         $request->validate([
             'payment_gateway' => 'required',
@@ -1564,9 +1802,8 @@ class PaymentController extends Controller
         try {
             $data = [
                 'voucher_number' => $voucherNumber,
-                'payment_reference' => $invoiceId ?? $paymentReference,
-                'invoice_reference' => $invoiceReference ?? $trackId,
-                'auth_code' => $authCode,
+                'payment_reference' => $invoiceId,
+                'invoice_reference' => $invoiceReference,
                 'from' => $client->full_name,
                 'pay_to' => $agent->branch->company->name,
                 'currency' => 'KWD',
@@ -1574,7 +1811,7 @@ class PaymentController extends Controller
                 'amount' => $request->amount,
                 'payment_gateway' => $request->payment_gateway,
                 'payment_method_id' => $request->payment_method,
-                'status' => $source === 'import' ? 'completed' : 'pending',
+                'status' => 'pending',
                 'client_id' => $client->id,
                 'agent_id' => $agent->id,
                 'notes' => $request->notes,
@@ -1591,39 +1828,13 @@ class PaymentController extends Controller
             ]);
             return ['status' => 'error', 'message' => $e->getMessage()];
         }
-        /* $clientController = new ClientController(); */
 
-        if ($source === 'import') {
-            try {
-                $request = new Request([
-                    'payment_id' => $payment->id,
-                    'payment_gateway' => $payment->payment_gateway,
-                    'payment_method' => $payment->paymentMethod?->myfatoorah_id,
-                    'amount' => $payment->amount,
-                    'client_id' => $payment->client_id,
-                    'agent_id' => $payment->agent_id,
-                    'invoice_id' => $payment->payment_reference,
-                    'fatoorah_payment_id' => $payment->paymentId,
-                    'notes' => $payment->notes,
-                    'source' => 'import',
-                ]);
-
-                $result = $this->paymentLinkProcess($request);
-                Log::info('Add Credit & Journal for import payment response');
-            } catch (\Exception $e) {
-                Log::error('Add Credit & Journal for import payment', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-            }
-        }
-
-            return [
-                'status' => 'success',
-                'message' => 'Payment Link Created',
-                'clientEmail' => $client->email,
-                'data' => $payment
-            ];
+        return [
+            'status' => 'success',
+            'message' => 'Payment Link Created',
+            'clientEmail' => $client->email,
+            'data' => $payment
+        ];
     }
 
     public function paymentStoreLink(Request $request)
@@ -3470,7 +3681,7 @@ class PaymentController extends Controller
         $hesabeConfig = $configService->getHesabeConfig();
 
         if (!$hesabeConfig['status'] || !$hesabeConfig['data']) {
-            return redirect()->back()->with('error', $hesabeConfig['message'] ?? 'Hesabe configuration is missing or inactive');
+            return redirect()->route('/invoices')->with('error', $hesabeConfig['message'] ?? 'Hesabe configuration is missing or inactive');
         }
         
         $apiKey = $hesabeConfig['data']['api_key'];
@@ -3482,7 +3693,7 @@ class PaymentController extends Controller
 
         if ($decryptedResponse === false) {
             Log::error('Hesabe: Response decryption failed ', ['response' => $decryptedResponse]);
-            return redirect()->back()->with('error', 'Hesabe response decryption failed');
+            return redirect()->route('/invoices')->with('error', 'Hesabe response decryption failed');
         }
         
         $responseData = json_decode($decryptedResponse, true);
@@ -3496,7 +3707,7 @@ class PaymentController extends Controller
             $payment = Payment::where('voucher_number', $voucherNumber)->first();
             if (!$payment) {
                 Log::info('Payment record not found', ['voucher_number' => $voucherNumber]);
-                return redirect()->back()->with('error', 'Payment record not found');
+                return redirect()->route('/invoices')->with('error', 'Payment record not found');
             } 
 
             $payment->payment_reference = $data['transactionId'];
@@ -3508,7 +3719,7 @@ class PaymentController extends Controller
             $payment->save();
         } else {
             Log::error('Response from Hesabe failed');
-            return redirect()->back()->with('error', 'Something went wrong. Please contact support');
+            return redirect()->route('/invoices')->with('error', 'Something went wrong. Please contact support');
         }
 
         DB::beginTransaction();
@@ -3538,7 +3749,7 @@ class PaymentController extends Controller
                 if (!$payment) {
                     Log::error('Payment record not found', [
                         'voucher_number' => $voucherNumber]);
-                    return redirect()->back()->with('error', 'Payment record not found');
+                    return redirect()->route('/invoices')->with('error', 'Payment record not found');
                 } 
 
                 $addCreditResponse = $clientController->addCredit($payment);
@@ -3551,7 +3762,7 @@ class PaymentController extends Controller
                     Log::error('Failed to add credit to client', [
                         'payment_reference' => $data['transactionId'],
                     ]);
-                    return redirect()->back()->with('error', $addCreditResponse['error']);
+                    return redirect()->route('invoices.index')->with('error', $addCreditResponse['error']);
                 }
 
                 $creditCoa = $this->creditCOA($payment);
@@ -3559,7 +3770,7 @@ class PaymentController extends Controller
                     Log::error('Failed to create journal entry for credit payment', [
                         'data' => $creditCoa,
                     ]);
-                    return redirect()->back()->with('error', 'Failed to create journal entry for credit payment');
+                    return redirect()->route('invoices.index')->with('error', 'Failed to create journal entry for credit payment');
                 }
             } elseif ($process === 'invoice') {
                 Log::info('Starting to process the invoice for successfull callback from Hesabe');
@@ -3569,7 +3780,7 @@ class PaymentController extends Controller
                 if (!$payment) {
                     Log::error('Payment record not found', [
                         'voucher_number' => $voucherNumber]);
-                    return redirect()->back()->with('error', 'Payment record not found');
+                    return redirect()->route('invoices.index')->with('error', 'Payment record not found');
                 } 
 
                 $selectedPartialIds = InvoicePartial::where('id', $payment->invoice_id)->first();
@@ -3580,7 +3791,7 @@ class PaymentController extends Controller
                     Log::error('Failed to create journal entry for invoice payment', [
                         'data' => $invoiceCoa,
                     ]);
-                    return redirect()->back()->with('error', 'Failed to create journal entry for invoice payment');
+                    return redirect()->route('invoices.index')->with('error', 'Failed to create journal entry for invoice payment');
                 }
             }
 
@@ -3609,10 +3820,13 @@ class PaymentController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->back()->with('error', 'Payment to Hesabe failed');
+            return redirect()->route('invoices.index')->with('error', 'Payment to Hesabe failed');
         }
 
-        return redirect()->back()->with('success', 'Payment succeed!');
+        return redirect()->route('payment.link.show', [
+            'companyId' => $payment->agent->branch->company_id,
+            'voucherNumber' => $payment->voucher_number
+        ])->with('success', 'Payment succeed!');
     }
 
     public function handleHesabeFailure(Request $request)
@@ -3765,7 +3979,7 @@ class PaymentController extends Controller
                         'trace' =>$e->getTraceAsString(),
                     ]);
 
-                    return redirect()->back()->with('error', 'Payment cannot be updated');
+                    return redirect()->route('invoices.index')->with('error', 'Payment cannot be updated');
                 }
 
                 return true;
@@ -4004,8 +4218,9 @@ class PaymentController extends Controller
             $message,
         );
 
-        return redirect()->route('invoice.show', ['companyId' => $payment->agent->branch->company_id, 'invoiceNumber' => $payment->invoice->invoice_number])
-            ->with('status', 'Payment successful! Thank you for your payment.');
+        return redirect()->route('invoice.show', [
+            'companyId' => $payment->agent->branch->company_id, 'invoiceNumber' => $payment->invoice->invoice_number
+        ])->with('status', 'Payment successful! Thank you for your payment');
     }
 
     public function success()
@@ -4172,7 +4387,18 @@ class PaymentController extends Controller
 
 public function getHesabeTransaction(string $orderRef) : JsonResponse
 {
-    $companyId = Auth::user()->branch->company_id;
+    $user = Auth::user();
+    
+    if ($user->role_id == Role::AGENT) {
+        $companyId = $user->agent->branch->company_id;
+    } elseif ($user->role_id == Role::BRANCH) {
+        $companyId = $user->branch->company_id;
+    } elseif ($user->role_id == Role::COMPANY) {
+        $companyId = $user->company->id;
+    } else {
+        $companyId = null;
+    }
+    
     $charge = Charge::where('company_id', $companyId)
         ->where('name', 'Hesabe')
         ->first();

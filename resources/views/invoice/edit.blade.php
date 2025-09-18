@@ -762,7 +762,7 @@
                                     </div>
 
                                     <!-- Form -->
-                                    <form id="importForm" action="{{ route('payment.link.import-fatoorah.payment') }}" method="POST" class="space-y-4" x-data="{ gateway: '' }">
+                                    <form id="importForm" action="{{ route('payment.link.import.payment') }}" method="POST" class="space-y-4" x-data="{ gateway: '' }">
                                         @csrf
 
                                         <!-- Gateway selector -->
@@ -4090,7 +4090,7 @@
                     if (orderRef) formData.append('import_order_reference', orderRef);
 
                     try {
-                        const res = await fetch(`{{ route('payment.link.import-fatoorah.invoice') }}`, {
+                        const res = await fetch(`{{ route('payment.link.import.invoice') }}`, {
                             method: 'POST',
                             headers: { 'X-Requested-With': 'XMLHttpRequest' },
                             body: formData,

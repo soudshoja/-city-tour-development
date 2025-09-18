@@ -880,6 +880,21 @@
                                                 </div>
                                             </template>
 
+                                            <template x-if="selectedGateway === 'UPayment'">
+                                                <div class="mt-4" x-cloak x-transition>
+                                                    <label for="payment-method-u-payment" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                    <select name="payment_method" id="payment_method_full"
+                                                        class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" x-model="selectedMethod">
+                                                        <option value="">Select Payment Method</option>
+                                                        @foreach ($uPaymentMethods as $method)
+                                                        <option value="{{ $method->id }}" {{ $selectedMethod == $method->id ? 'selected' : '' }}>
+                                                            {{ $method->english_name }}
+                                                        </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </template>
+
                                             <!-- Hesabe Payment Methods -->
                                             <template x-if="selectedGateway === 'Hesabe'">
                                                 <div class="mt-4" x-cloak x-transition>
@@ -3419,10 +3434,10 @@
                     return;
                 }
                 // Check if selected gateway requires payment method
-                if (gateway.toLowerCase() === 'myfatoorah') {
+                if (gateway.toLowerCase() === 'myfatoorah' || gateway.toLowerCase() === 'upayment') {
                     const method = document.getElementById('payment_method_full')?.value;
                     if (!method) {
-                        showErrorAlert('Please choose a payment method for MyFatoorah.');
+                        showErrorAlert('Please choose a payment method for ' + gateway + '.');
                         return;
                     }
                 }
@@ -3638,11 +3653,15 @@
                 invoice_charge: invoiceCharge,
             };
 
+            console.log('payment method : ' + document.getElementById('payment_method_full').value);
+
             if (type === 'full' || type === 'credit') {
                 payload.clientId = document.getElementById('receiverId').value;
                 if (item.gateway === 'MyFatoorah') {
                     payload.method = document.getElementById('payment_method_full')?.value;
                 } else if (item.gateway === 'Hesabe') {
+                    payload.method = document.getElementById('payment_method_full')?.value
+                } else if (item.gateway === 'UPayment') {
                     payload.method = document.getElementById('payment_method_full')?.value
                 } else {
                     payload.method = null;

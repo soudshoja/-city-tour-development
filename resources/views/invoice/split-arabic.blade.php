@@ -1,5 +1,5 @@
  <!DOCTYPE html>
- <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+ <html lang="ar" dir="rtl">
 
  <head>
      <meta charset="utf-8">
@@ -54,27 +54,28 @@
          <div
              class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 flex items-center text-white rounded-lg">
              <div class="flex items-center justify-between text-white">
-                 <p class="text-3xl">PAID</p>
+                 <p class="text-3xl">تم الدفع</p>
                  <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
              </div>
          </div>
      @endif
      <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         <div class="flex justify-between items-center mb-10">
+            <div class="text-right">
+                <h1 class="text-2xl font-bold text-gray-800">الفاتورة</h1>
+                <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
+                <p class="text-sm text-gray-600">التاريخ: {{ $invoice->created_at->format('d M, Y') }}</p>
+            </div>
             <div>
                 <img class="w-auto h-[90px] object-contain" src="{{ $invoice->agent->branch->company->logo ? Storage::url($invoice->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
                 <p class="text-base font-semibold">{{ $invoice->agent->branch->company->name }}</p>
             </div>
-            <div class="text-right">
-                <h1 class="text-2xl font-bold text-gray-800">INVOICE</h1>
-                <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
-                <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
-            </div>
+           
         </div>
 
         <div class="flex justify-between items-center mb-8">
-            <div class="text-left">
-                <h3 class="text-lg font-bold text-gray-800">Billed To</h3>
+            <div class="text-right">
+                <h3 class="text-lg font-bold text-gray-800">الفاتورة مرسلة إلى:</h3>
                 <p class="text-sm text-gray-600">{{ $invoicePartial->client->full_name }}</p>
                 <p class="text-sm text-gray-600">
                     <a href="mailto:{{ $invoicePartial->client->email}}" class="hover:underline hover:text-blue-600">
@@ -87,7 +88,7 @@
                     </a>
                 </p>
             </div>
-            <div class="text-right max-w-xs">
+            <div class="text-left max-w-xs">
                 <h2 class="text-xl font-bold text-gray-800">{{ $invoice->agent->branch->company->name }}</h2>
                 <p class="text-sm text-gray-600">{{ $invoice->agent->branch->company->address }}</p>
                 <p class="text-sm text-gray-600">
@@ -112,10 +113,10 @@
          <table class="min-w-full mb-8 border border-gray-200">
              <thead>
                  <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
-                     <th class="px-4 py-2 border">Item Description</th>
-                     <th class="px-4 py-2 border">Quantity</th>
-                     <th class="px-4 py-2 border">Price</th>
-                     <th class="px-4 py-2 border">Total</th>
+                     <th class="px-4 py-2 border">الوصف</th>
+                     <th class="px-4 py-2 border">العدد</th>
+                     <th class="px-4 py-2 border">السعر</th>
+                     <th class="px-4 py-2 border">المجموع</th>
                  </tr>
              </thead>
              <tbody>
@@ -123,10 +124,10 @@
                      <tr class="text-sm text-gray-700">
                          <td class="px-4 py-2 border">{{ $detail->task_description ?? 'N/A' }}
                              <p>
-                                 <br>Info: {{ $detail->task->additional_info }}
-                                 <br>Type: {{ ucfirst($detail->task->type) }}
-                                 <br>Venue: {{ $detail->task->venue }}
-                                 <br>Note: {{ $detail->client_notes ?? 'N/A' }}
+                                 <br>المعلومات: {{ $detail->task->additional_info }}
+                                 <br>النوع: {{ ucfirst($detail->task->type) }}
+                                 <br>المكان: {{ $detail->task->venue }}
+                                 <br>ملاحظات: {{ $detail->client_notes ?? 'N/A' }}
                              </p>
                          </td>
                          <td class="px-4 py-2 border">{{ $detail->quantity ?? 1 }}</td>
@@ -145,29 +146,29 @@
          <div class="flex justify-end mb-8">
              <div class="w-1/3 text-sm">
                  <div class="flex justify-between py-2 border-b border-gray-200">
-                     <span>Subtotal:</span>
+                     <span>المجموع الفرعي:</span>
                      <span>{{ number_format($invoicePartial->status === 'paid' ? $invoicePartial->amount - $invoicePartial->service_charge : $invoicePartial->amount, 2) }}</span>
                  </div>
                  @if ($checkUtilizeCredit && $checkUtilizeCredit->count())
                      @foreach ($checkUtilizeCredit as $credit)
                          <div class="flex justify-between py-2 border-b border-gray-200">
-                             <span>Client's Credit ({{ $credit->created_at->format('d M Y') }}):</span>
+                             <span>محفظة العميل ({{ $credit->created_at->format('d M Y') }}):</span>
                              <span>{{ number_format($credit->amount, 2) }}</span>
                          </div>
                      @endforeach
                  @endif
                  <div class="flex justify-between py-2 border-b border-gray-200">
-                     <span>Tax ({{ $invoice->tax_rate }}%):</span>
+                     <span>الضريبة ({{ $invoice->tax_rate }}%):</span>
                      <span>{{ number_format($invoice->tax, 2) }}</span>
                  </div>
                  @if(isset($gatewayFee['paid_by']) && $gatewayFee['paid_by'] !== 'Company' && $invoicePartial->service_charge > 0)
                 <div class="flex justify-between py-2 border-b border-gray-200">
-                    <span>Service Charge:</span>
+                    <span>رسوم الخدمة:</span>
                     <span>{{ number_format($invoicePartial->service_charge, 2) }}</span>
                 </div>
                 @endif
                  <div class="flex justify-between py-2 font-bold text-gray-800">
-                     <span>Total:</span>
+                     <span>المجموع:</span>
                      <span>{{ number_format($invoicePartial->final_amount - abs($checkUtilizeCredit->sum('amount')) ?? 0, 2) }}</span>
                  </div>
              </div>
@@ -183,7 +184,7 @@
                          <input type="hidden" name="invoiceNumber" value='{{ $invoicePartial->invoice_number }}'>
                          <button type="submit"
                              class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-black">
-                             Send Invoice To Client
+                             أرسل الفاتورة إلى العميل
                          </button>
                      </form>
                  @endif
@@ -201,17 +202,17 @@
                      <div class="flex items-center gap-2">
                          <button type="submit" id="payNowBtn"
                              class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-black">
-                             Pay Now
+                             إدفع الآن
                          </button>
                      </div>
                     @else
                     <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
-                        This invoice is {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} payment. Please contact your agent for assistance.
+                       هذه الفاتورة مدفوعة عبر نظام الدفع الإلكتروني {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} للمدفوعات. يرجى التواصل مع وكيلكم للحصول على المساعدة.
                     </div>
                     @endif
                      <div id="loadingSpinner" class="hidden mt-2">
                          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                         Processing...
+                         قيد المعالجة...
                      </div>
                  </form>
 
@@ -280,14 +281,14 @@
                      </span>
                  </div>
              @else
-                 <span class="text-green-600 font-bold">PAID</span>
+                 <span class="text-green-600 font-bold">تم الدفع</span>
              @endif
          </div>
 
          <!-- Signature Section -->
          <div class="flex justify-between items-center">
              <div class="text-sm">
-                 <p class="text-gray-600">If you have any questions about this invoice, please contact:</p>
+                 <p class="text-gray-600">إذا كانت لديكم أي استفسارات حول هذه الفاتورة، يرجى التواصل معنا.:</p>
                  <p class="text-gray-600">{{ $invoice->agent->branch->company->name }},
                      {{ $invoice->agent->branch->company->phone }}, {{ $invoice->agent->branch->company->email }}</p>
              </div>
@@ -295,12 +296,12 @@
              <div class="text-right">
                 <div class="flex justify-end mb-4">
                     <button
-                        onclick="window.open('{{ route('invoice.split-arabic', ['invoiceNumber' => $invoicePartial->invoice_number, 'clientId' => $invoicePartial->client_id,'partialId' => $invoicePartial->id]) }}', '_blank')"
+                        onclick="window.open('{{ route('invoice.split', ['invoiceNumber' => $invoicePartial->invoice_number,'clientId' => $invoicePartial->client_id,'partialId' => $invoicePartial->id]) }}', '_blank')"
                         class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                        عرض الفاتورة بالعربية
+                        Show Invoice in English
                     </button>
                 </div>
-                 <p class="font-bold text-gray-800">Thank you for your business!</p>
+                 <p class="font-bold text-gray-800">شكراً لتعاملكم معنا!</p>
              </div>
          </div>
      </div>

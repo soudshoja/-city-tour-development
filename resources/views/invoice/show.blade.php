@@ -326,7 +326,7 @@
                 <tr x-data="{ open: false }" class="text-sm text-gray-700 text-center">
                     <td class="px-4 py-2 border">{{ $partial->payment_gateway ?? 'N/A'}}</td>
                     <td class="px-4 py-2 border">
-                        <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}"
+                        <a href="{{ route('invoice.split', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) }}"
                             class="text-blue-500 underline" target="_blank">
                             View Details
                         </a>
@@ -390,7 +390,7 @@
                         {{ $count }}
                     </td>
                     <td class="px-4 py-2 border">
-                        <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}"
+                        <a href="{{ route('invoice.split', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) }}"
                             class="text-blue-500 underline" target="_blank">
                             View Details
                         </a>
@@ -571,9 +571,11 @@
                     @endif
                 </div>
                 @else
-                <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
-                    This invoice is {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} payment. Please contact your agent for assistance.
-                </div>
+                    @if(!in_array($invoice->payment_type, ['split', 'partial'], true))
+                    <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
+                        This invoice is {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} payment. Please contact your agent for assistance.
+                    </div>
+                    @endif
                 @endif
 
                 <div id="loadingSpinner" class="hidden mt-2">

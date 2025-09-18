@@ -844,17 +844,12 @@
                                         selectedGateway: '{{ $selectedGateway }}', 
                                         selectedMethod: '{{ $selectedMethod }}', 
                                         paymentType: '{{ $invoice->payment_type ?? '' }}',
-                                        updateGateway() {
-                                            this.selectedGateway = '';
-                                            this.selectedMethod = '';
-                                            this.paymentType = '';
-                                        }
                                         }">
                                         <div class="mt-4">
                                             <div class="flex items-center">
                                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
                                                 <span x-show="paymentType !== ''" class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
-                                                    @click="updateGateway">(Change)</span>
+                                                    @click="window.updateGateway && window.updateGateway()">(Change)</span>
                                             </div>
                                             <select id="payment_gateway_option" name="payment_gateway_option"
                                                 class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
@@ -1157,8 +1152,7 @@
                                                     </div>
                                                 </div>
 
-                                                <div x-data="{ paymentGateway: '' }" x-init="paymentGateway = document.getElementById('payment_gateway1').value;
-                                            document.getElementById('payment_gateway1').addEventListener('change', e => paymentGateway = e.target.value)"
+                                                <div x-data="{ paymentGateway: '' }" x-init="$nextTick(() => { const el = document.querySelector('select[id^=payment_gateway1_]'); if (!el) return; paymentGateway = el.value;el.addEventListener('change', e => paymentGateway = e.target.value); })"
                                                     class="grid grid-cols-3 gap-4 mb-5">
                                                     <div>
                                                         <label class="block text-sm font-medium mb-1"

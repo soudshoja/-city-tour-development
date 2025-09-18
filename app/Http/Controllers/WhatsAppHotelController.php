@@ -391,6 +391,98 @@ class WhatsAppHotelController extends Controller
         }
     }
 
+    public function findAllOffers(Request $request){
+        Log::channel('whatsapp')->info('findOffer: Incoming request', ['request' => $request->all()]);
+        try {
+            $request->validate([
+                'telephone' => 'required|string',
+                // 'room_name' => 'required|string',
+                'board_basis' => 'nullable|string',
+                'non_refundable' => 'nullable|boolean',
+                'price' => 'nullable|numeric',
+                'occupancy' => 'nullable|array',
+            ]);
+
+            $offers = TemporaryOffer::where('telephone', $request->telephone)->get();
+
+            $roomQuery = OfferedRoom::whereIn('temp_offer_id', $offers->pluck('id'));
+
+            if ($offers->isEmpty()) {
+                Log::channel('whatsapp')->warning('findOffer: No matching offer found', ['telephone' => $request->telephone]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No matching offer found.'
+                ], 404);
+            }
+
+            if ($request->has('board_basis')) {
+                if (is_null($request->board_basis)) {
+                    $roomQuery->whereNull('board_basis');
+                } else {
+                    $roomQuery->where('board_basis', 'like', '%' . $request->board_basis . '%');
+                }
+            }
+
+            if ($request->has('non_refundable')) {
+                $roomQuery->where('non_refundable', $request->non_refundable);
+            }
+
+            if ($request->has('price')) {
+                $roomQuery->where('price', $request->price);
+            }
+
+            if ($request->has('occupancy')) {
+                $roomQuery->where('occupancy', 'like', '%' . json_encode($request->occupancy) . '%');
+            }
+
+            $rooms = $roomQuery->get();
+
+            if ($rooms->isEmpty()) {
+                Log::channel('whatsapp')->warning('findOffer: No matching room(s) found', ['request' => $request->all()]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No matching room(s) found.'
+                ], 404);
+            }
+
+            $groupedOffers = $rooms->groupBy(function ($room) {
+                return $room->temporaryOffer->offer_index;
+            })->map(function ($group, $offerIndex) {
+                return [
+                    'offer_index' => $offerIndex,
+                    'room_details' => $group->map(function ($room) {
+                        return [
+                            'room_name' => $room->room_name,
+                            'board_basis' => $room->board_basis,
+                            'non_refundable' => (bool) $room->non_refundable,
+                            'room_token' => $room->room_token,
+                            'package_token' => $room->package_token,
+                            'price' => (float) $room->price,
+                            'currency' => $room->currency ?? 'KWD',
+                            'occupancy' => json_decode($room->occupancy, true) ?: [],
+                        ];
+                    })->values(),
+                ];
+            })->values();
+
+            $response = [
+                'success' => true,
+                'data' => [
+                    'telephone' => $request->telephone,
+                    'offers' => $groupedOffers,
+                ],
+            ];
+            Log::channel('whatsapp')->info('findOffer: Success response', ['response' => $response]);
+            return response()->json($response);
+        } catch (Exception $e) {
+            Log::channel('whatsapp')->error('findOffer: Exception', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred.',
+            ], 500);
+        }
+    }
+
     public function storePrebook(Request $request)
     {
         Log::channel('whatsapp')->info('storePrebook: Incoming request', ['request' => $request->all()]);

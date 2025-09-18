@@ -326,7 +326,7 @@
                 <tr x-data="{ open: false }" class="text-sm text-gray-700 text-center">
                     <td class="px-4 py-2 border">{{ $partial->payment_gateway ?? 'N/A'}}</td>
                     <td class="px-4 py-2 border">
-                        <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}"
+                        <a href="{{ route('invoice.split', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) }}"
                             class="text-blue-500 underline" target="_blank">
                             View Details
                         </a>
@@ -390,7 +390,7 @@
                         {{ $count }}
                     </td>
                     <td class="px-4 py-2 border">
-                        <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}"
+                        <a href="{{ route('invoice.split', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) }}"
                             class="text-blue-500 underline" target="_blank">
                             View Details
                         </a>
@@ -465,7 +465,7 @@
         @endif
 
         <!-- Totals Section -->
-        <div class="flex mb-8">
+        <div class="flex justify-end mb-8">
             <div class="w-1/3 text-sm">
                 @if ($invoice->refund?->original_invoice)
                 <div class="flex justify-between py-2 border-b border-gray-200">
@@ -561,7 +561,7 @@
                 <input type="hidden" name="payment_gateway" value="{{ $invoice->invoicePartials->first()->payment_gateway }}">
                 <input type="hidden" name="payment_method" value="{{ $invoice->invoicePartials->first()->payment_method }}">
 
-                @if($hasPaymentLink)
+                @if($canGenerateLink)
                 <div class="flex items-center gap-2">
                     @if ($invoice->payment_type !== 'split' && !($invoice->payment_type === 'partial' && $hasMismatch))
                     <button type="submit" id="payNowBtn"
@@ -571,9 +571,11 @@
                     @endif
                 </div>
                 @else
-                <div class="p-2 rounded-lg border border-gray-500 text-gray-500 flex justify-center items-middle">
-                    This invoice is {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} payment. Please contact your agent for assistance.
-                </div>
+                    @if(!in_array($invoice->payment_type, ['split', 'partial'], true))
+                    <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
+                        This invoice is {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} payment. Please contact your agent for assistance.
+                    </div>
+                    @endif
                 @endif
 
                 <div id="loadingSpinner" class="hidden mt-2">

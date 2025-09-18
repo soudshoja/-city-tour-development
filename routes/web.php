@@ -450,8 +450,8 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/process', [PaymentController::class, 'paymentLinkProcess'])->name('process')->withoutMiddleware(['auth']);
             Route::post('/webhook', [PaymentController::class, 'paymentLinkWebhook'])->name('webhook');
             Route::post('/reinitiate', [PaymentController::class, 'paymentLinkReInitiate'])->name('reinitiate')->withoutMiddleware(['auth']);
-            Route::post('/import-fatoorah/invoice', [PaymentController::class, 'importMyFatoorahFromInvoice'])->name('import-fatoorah.invoice');
-            Route::post('/import-fatoorah/payment', [PaymentController::class, 'importMyFatoorahFromPayment'])->name('import-fatoorah.payment');
+            Route::post('/import/invoice', [PaymentController::class, 'importFromInvoice'])->name('import.invoice');
+            Route::post('/import/payment', [PaymentController::class, 'importFromPayment'])->name('import.payment');
         });
 
         Route::get('/test-payment', [PaymentController::class, 'testPayment'])->name('payment.test');

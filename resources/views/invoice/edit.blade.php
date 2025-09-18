@@ -762,7 +762,7 @@
                                     </div>
 
                                     <!-- Form -->
-                                    <form id="importForm" action="{{ route('payment.link.import-fatoorah.payment') }}" method="POST" class="space-y-4" x-data="{ gateway: '' }">
+                                    <form id="importForm" action="{{ route('payment.link.import.payment') }}" method="POST" class="space-y-4" x-data="{ gateway: '' }">
                                         @csrf
 
                                         <!-- Gateway selector -->
@@ -1132,47 +1132,46 @@
                                 </div>
                             </div>
 
-                            <div id="paymentModal1"
-                                class="fixed inset-0 z-50 hidden bg-gray-800 bg-opacity-50 flex items-center justify-center">
-                                <div class="bg-white rounded-lg shadow-lg w-3/4 p-5">
-                                    <h3 class="text-xl font-bold mb-4">Partial Payment Details</h3>
-                                    <div class="bg-gray-100 p-5">
-                                        <div class="max-w-5xl mx-auto bg-white shadow-md rounded-lg p-6">
-                                            <!-- Partial Payment Tab Content -->
-                                            <div id="partial-payment-container" class="tab-content">
-                                                <div class="grid grid-cols-3 gap-4 mb-5">
-                                                    <div>
-                                                        <label class="block text-sm font-medium mb-1">Client Name</label>
-                                                        <span id="receiverName1">AHMED</span>
-                                                    </div>
-                                                    <div>
-                                                        <label for="receiverEmail1" class="mb-0 w-1/3 mr-2 ">Invoice
-                                                            Total</label>
-                                                        <span id="subT1">0.00</span>
-                                                    </div>
+                            <div id="paymentModal1" class="fixed inset-0 z-50 hidden bg-gray-800/50 p-4 md:p-6 grid place-items-center overscroll-contain">
+                                <div class="bg-white rounded-lg shadow-lg w-full max-w-[1100px] h-[80vh] flex flex-col">
+                                    <div class="px-6 py-4 border-b sticky top-0 bg-white rounded-t-lg">
+                                        <h3 class="text-xl font-bold">Partial Payment Details</h3>
+                                    </div>
+                                    <div class="bg-gray-100 p-6 flex-1 overflow-y-auto">
+                                        <div id="partial-payment-container" class="space-y-5">
+                                            <div class="grid grid-cols-3 gap-4 mb-5">
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1">Client Name</label>
+                                                    <span id="receiverName1">AHMED</span>
                                                 </div>
+                                                <div>
+                                                    <label class="mb-0 w-1/3 mr-2 ">Invoice Total</label>
+                                                    <span id="subT1">0.00</span>
+                                                </div>
+                                                <div>
+                                                    <label class="mb-0 w-1/3 mr-2 ">Client's Credit</label>
+                                                    <span>{{ $balanceCredit }} KWD</span>
+                                                </div>
+                                            </div>
 
-                                                <div x-data="{ paymentGateway: '' }" x-init="$nextTick(() => { const el = document.querySelector('select[id^=payment_gateway1_]'); if (!el) return; paymentGateway = el.value;el.addEventListener('change', e => paymentGateway = e.target.value); })"
-                                                    class="grid grid-cols-3 gap-4 mb-5">
-                                                    <div>
-                                                        <label class="block text-sm font-medium mb-1"
-                                                            for="split-into1">Split into *</label>
-                                                        <select id="split-into1"
-                                                            class="w-full p-2 border-gray-300 rounded-md shadow-sm"
-                                                            onchange="updateRowPartial()">
-                                                            <option value="" disabled selected>Select a value
-                                                            </option>
-                                                            <option value="1">1</option>
-                                                            <option value="2">2</option>
-                                                            <option value="3">3</option>
-                                                            <option value="4">4</option>
-                                                            <option value="5">5</option>
-                                                            <option value="6">6</option>
-                                                        </select>
-                                                    </div>
+                                            <div x-data="{ paymentGateway: '' }" x-init="$nextTick(() => { const el = document.querySelector('select[id^=payment_gateway1_]'); if (!el) return; paymentGateway = el.value;el.addEventListener('change', e => paymentGateway = e.target.value); })"
+                                                class="grid grid-cols-3 gap-4 mb-5">
+                                                <div>
+                                                    <label class="block text-sm font-medium mb-1" for="split-into1">Split into *</label>
+                                                    <select id="split-into1" class="w-full p-2 border-gray-300 rounded-md shadow-sm"
+                                                        onchange="updateRowPartial()">
+                                                        <option value="" disabled selected>Select a value</option>
+                                                        <option value="1">1</option>
+                                                        <option value="2">2</option>
+                                                        <option value="3">3</option>
+                                                        <option value="4">4</option>
+                                                        <option value="5">5</option>
+                                                        <option value="6">6</option>
+                                                    </select>
                                                 </div>
-                                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment
-                                                    Breakdown</h2>
+                                            </div>
+                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Partial Payment Breakdown</h2>
+                                            <div class="overflow-x-auto">
                                                 <table class="min-w-full bg-white border border-gray-300 text-center">
                                                     <thead>
                                                         <tr>
@@ -1186,25 +1185,19 @@
                                                         <!-- Dynamic rows will be generated here -->
                                                     </tbody>
                                                 </table>
-
-                                                <p id="error-message" class="text-red-500 mt-3 hidden">The total of
-                                                    partial payments must match the invoice total.</p>
-
-                                                <div class="flex space-x-4 mt-5">
-                                                    <button id="partialbutton" onclick="savePartial('partial')"
-                                                        type="button"
-                                                        class="inline-flex items-center justify-center text-sm text-black font-semibold
-                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white  py-2 px-10  rounded-full shadow">
-                                                        <span id="button-icon-partial" class="mr-2"></span>
-                                                        <span id="button-text-partial">Save Partial Payment</span>
-                                                    </button>
-                                                </div>
+                                            </div>
+                                            <div class="flex">
+                                                <button id="partialbutton" onclick="savePartial('partial')" type="button"
+                                                    class="inline-flex items-center justify-center text-sm text-black font-semibold
+                                                            city-light-yellow hover:bg-[#004c9e] hover:text-white py-2 px-10 rounded-full shadow">
+                                                    <span id="button-icon-partial" class="mr-2"></span>
+                                                    <span id="button-text-partial">Save Partial Payment</span>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="mt-4 flex justify-end">
-                                        <button onclick="hideModal()"
-                                            class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
+                                    <div class="px-6 py-4 border-t sticky bottom-0 bg-white rounded-b-lg flex justify-end">
+                                        <button onclick="hideModal()" class="bg-gray-600 text-white px-4 py-2 rounded-md">Close</button>
                                     </div>
                                 </div>
                             </div>
@@ -1475,6 +1468,9 @@
         const charges = @json($paymentGateways);
         const invoiceCharges = @json($invoiceCharges);
         const clients = @json($clients);
+        const partialCredit = Number(@json(\App\Models\Credit::getTotalCreditsByClient($invoice->client_id)) || 0);
+        let creditRemaining = partialCredit;
+        const creditUsed = {};
         // console.log(items);
 
         // Simple Invoice Charge Function
@@ -2165,13 +2161,30 @@
             // Credit payment selected - processing will happen with normal save flow
         }
 
-        function updateRowPartial() { // partial paymen
+        function updateCreditUI(splitCount) {
+            for (let i = 1; i <= splitCount; i++) {
+            const opt = document.getElementById(`credit_option1_${i}`);
+            const amt = Number(document.getElementById(`amount_${i}`)?.value || 0);
+            const usesCredit = Number(creditUsed[i] || 0) > 0;
+
+            // disable credit if this row doesn't already use it and amount > remaining
+            opt.disabled = !usesCredit && (amt <= 0 || amt > creditRemaining);
+            opt.textContent = `Credit (${creditRemaining.toFixed(2)})`;
+            opt.style.color = opt.disabled ? '#9ca3af' : '#000';
+            }
+        }
+
+        function updateRowPartial() { // partial payment
             const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
             const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
             const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
             const paymentMethods = @json($paymentMethods);
             const tbody = document.getElementById('split-rows1');
             tbody.innerHTML = '';
+
+            // reset credit pool for a fresh split layout
+            creditRemaining = partialCredit;
+            for (const k in creditUsed) delete creditUsed[k];
 
             for (let i = 1; i <= splitInto1; i++) {
                 const row = document.createElement('tr');
@@ -2186,19 +2199,21 @@
                     </td>
                     <td class="border-b px-4 py-2 text-left">
                         <select id="payment_gateway1_${i}" name="payment_gateway1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
-                        @foreach ($paymentGateways as $gateway)
+                            <option value="" selected>Select payment gateway</option>
+                            <option value="Credit" id="credit_option1_${i}">Credit (${creditRemaining.toFixed(2)})</option>
+                            @foreach ($paymentGateways as $gateway)
                             <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
-                        @endforeach
+                            @endforeach
                         </select>
 
                         <div id="method_wrapper_${i}" class="mt-2">
-                        <label class="block text-sm font-medium mb-1">Payment Method</label>
-                        <div id="payment_method_container1_${i}" class="hidden">
-                            <select id="payment_method1_${i}" name="payment_method1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
-                            ${paymentMethods.map(m => `<option value="${m.id}">${m.english_name}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div id="payment_method_text1_${i}" class="text-gray-500 p-2">No specific method required</div>
+                            <label class="block text-sm font-medium mb-1">Payment Method</label>
+                            <div id="payment_method_container1_${i}" class="hidden">
+                                <select id="payment_method1_${i}" name="payment_method1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                                ${paymentMethods.map(m => `<option value="${m.id}">${m.english_name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div id="payment_method_text1_${i}" class="text-gray-500 p-2">No specific method required</div>
                         </div>
                     </td>
                     `;
@@ -2208,6 +2223,7 @@
                 const methodWrapper = row.querySelector(`#method_wrapper_${i}`);
                 const methodContainer = row.querySelector(`#payment_method_container1_${i}`);
                 const methodText = row.querySelector(`#payment_method_text1_${i}`);
+                const amountEl = row.querySelector(`#amount_${i}`);
 
                 const updateMethodVisibility = () => {
                     const isMF = (gatewaySelect.value || '').toLowerCase() === 'myfatoorah';
@@ -2216,9 +2232,69 @@
                     methodWrapper.style.display = ''; // keep wrapper visible; we toggle inner parts instead
                 };
 
+                // credit selection logic (simple + strict)
+                const onGatewayChange = () => {
+                    const val = (gatewaySelect.value || '').toLowerCase();
+                    const amt = Number(amountEl.value || 0);
+                    const prevUsed = Number(creditUsed[i] || 0);
+
+                    if (val === 'credit') {
+                        // release any previous usage for this row before checking
+                        if (prevUsed > 0) { creditRemaining += prevUsed; creditUsed[i] = 0; }
+
+                        if (amt > 0 && amt <= creditRemaining) {
+                            creditUsed[i] = amt;
+                            creditRemaining -= amt;
+                        } else {
+                            // not enough credit → revert and keep things consistent
+                            alert(`Not enough credit. Remaining: ${creditRemaining.toFixed(2)}; Row ${i} needs: ${amt.toFixed(2)}.`);
+                            gatewaySelect.value = '';
+                        }
+                    } else {
+                        // switching away from credit → give back
+                        if (prevUsed > 0) {
+                            creditRemaining += prevUsed;
+                            creditUsed[i] = 0;
+                        }
+                    }
+                    updateMethodVisibility();
+                    updateCreditUI(splitInto1);
+                };
+
+                // if user edits amount while using credit, adjust usage and remaining
+                const onAmountInput = () => {
+                    const using = Number(creditUsed[i] || 0);
+                    if (using > 0) {
+                        const newAmt = Number(amountEl.value || 0);
+                        const delta  = newAmt - using;
+
+                        if (delta > 0) {
+                            // need more credit
+                            if (delta <= creditRemaining) {
+                            creditUsed[i] += delta;
+                            creditRemaining -= delta;
+                            } else {
+                            // cap to max possible
+                            const maxPossible = using + creditRemaining;
+                            amountEl.value = maxPossible.toFixed(2);
+                            creditUsed[i] = maxPossible;
+                            creditRemaining = 0;
+                            }
+                        } else if (delta < 0) {
+                            creditUsed[i] = newAmt;
+                            creditRemaining += (using - newAmt);
+                        }
+                        updateCreditUI(splitInto1);
+                    } else {
+                        updateCreditUI(splitInto1);
+                    }
+                };
+
                 updateMethodVisibility();
-                gatewaySelect.addEventListener('change', updateMethodVisibility);
+                gatewaySelect.addEventListener('change', onGatewayChange);
+                amountEl.addEventListener('input', onAmountInput);
             }
+            updateCreditUI(splitInto1);
         }
 
         // Searchable dropdown functions for client selection
@@ -4090,7 +4166,7 @@
                     if (orderRef) formData.append('import_order_reference', orderRef);
 
                     try {
-                        const res = await fetch(`{{ route('payment.link.import-fatoorah.invoice') }}`, {
+                        const res = await fetch(`{{ route('payment.link.import.invoice') }}`, {
                             method: 'POST',
                             headers: { 'X-Requested-With': 'XMLHttpRequest' },
                             body: formData,

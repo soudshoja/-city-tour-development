@@ -242,7 +242,7 @@
                                     </button>
                                 </div>
 
-                                <form action="{{ route('payment.link.import-fatoorah.payment') }}" method="POST" class="space-y-4">
+                                <form action="{{ route('payment.link.import.payment') }}" method="POST" class="space-y-4">
                                     @csrf
                                     <div x-data="{ gateway: '' }">
                                         <div>

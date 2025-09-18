@@ -143,7 +143,7 @@
          </table>
 
          <!-- Totals Section -->
-         <div class="flex justify-end mb-8">
+         <div class="flex justify-start mb-8">
              <div class="w-1/3 text-sm">
                  <div class="flex justify-between py-2 border-b border-gray-200">
                      <span>Subtotal:</span>

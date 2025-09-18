@@ -96,6 +96,7 @@ Route::prefix('/whatsapp/hotel')->group(function () {
     Route::post('/details', [WhatsAppHotelController::class, 'getHotelDetails']);
     Route::post('/offers', [WhatsAppHotelController::class, 'storeTemporaryOffer']);
     Route::post('/offers/find', [WhatsAppHotelController::class, 'findOffer']);
+    Route::post('/offers/all', [WhatsAppHotelController::class, 'findAllOffers']);
     Route::post('/store-prebook', [WhatsAppHotelController::class, 'storePrebook']);
     Route::post('/prebook-details', [WhatsAppHotelController::class, 'getPrebookDetails']);
     Route::post('/store-book', [WhatsAppHotelController::class, 'storeBooking']);

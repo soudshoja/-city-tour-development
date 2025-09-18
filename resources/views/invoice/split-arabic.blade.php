@@ -207,7 +207,7 @@
                      </div>
                     @else
                     <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
-                       هذه الفاتورة مدفوعة عبر نظام الدفع الإلكتروني {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} للمدفوعات. يرجى التواصل مع وكيلكم للحصول على المساعدة.
+                       هذه الفاتورة مدفوعة عبر نظام الدفع الإلكتروني {{ $invoicePartial->payment_gateway }} للمدفوعات. يرجى التواصل مع وكيلكم للحصول على المساعدة.
                     </div>
                     @endif
                      <div id="loadingSpinner" class="hidden mt-2">

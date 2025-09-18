@@ -329,7 +329,7 @@
                 <tr x-data="{ open: false }" class="text-sm text-gray-700 text-center">
                     <td class="px-4 py-2 border">{{ $partial->payment_gateway ?? 'N/A'}}</td>
                     <td class="px-4 py-2 border">
-                        <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}"
+                        <a href="{{ route('invoice.split-arabic', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) }}"
                             class="text-blue-500 underline" target="_blank">
                             View Details
                         </a>
@@ -393,7 +393,7 @@
                         {{ $count }}
                     </td>
                     <td class="px-4 py-2 border">
-                        <a href="{{ url('invoice/partial/' . $partial->invoice_number . '/' . $partial->client_id . '/' . $partial->id) }}"
+                        <a href="{{ route('invoice.split-arabic', ['invoiceNumber' => $partial->invoice_number, 'clientId' => $partial->client_id, 'partialId' => $partial->id]) }}"
                             class="text-blue-500 underline" target="_blank">
                             رؤية التفاصيل
                         </a>
@@ -574,9 +574,11 @@
                     @endif
                 </div>
                 @else
-                <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
-                    تتم معالجة الدفعة لهذه الفاتورة عبر {{ $invoice->invoicePartials->first()->payment_gateway }}. يُرجى التواصل مع وكيلك للحصول على المساعدة.
-                </div>
+                    @if(!in_array($invoice->payment_type, ['split', 'partial'], true))
+                    <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
+                        تتم معالجة الدفعة لهذه الفاتورة عبر {{ $invoice->invoicePartials->first()->payment_gateway }}. يُرجى التواصل مع وكيلك للحصول على المساعدة.
+                    </div>
+                    @endif
                 @endif
 
                 <div id="loadingSpinner" class="hidden mt-2">

@@ -61,15 +61,16 @@
      @endif
      <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         <div class="flex justify-between items-center mb-10">
-            <div>
-                <img class="w-auto h-[90px] object-contain" src="{{ $invoice->agent->branch->company->logo ? Storage::url($invoice->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
-                <p class="text-base font-semibold">{{ $invoice->agent->branch->company->name }}</p>
-            </div>
-            <div class="text-right">
+            <div class="text-left">
                 <h1 class="text-2xl font-bold text-gray-800">INVOICE</h1>
                 <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
                 <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
             </div>
+            <div>
+                <img class="w-auto h-[90px] object-contain" src="{{ $invoice->agent->branch->company->logo ? Storage::url($invoice->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
+                <p class="text-base font-semibold">{{ $invoice->agent->branch->company->name }}</p>
+            </div>
+          
         </div>
 
         <div class="flex justify-between items-center mb-8">

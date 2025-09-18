@@ -1474,7 +1474,17 @@ class PaymentController extends Controller
                 ->where('type', 'hesabe')
                 ->get();
             /* $paymentMethods = PaymentMethod::where('is_active', true)->get(); */
-            $companyId = Auth::user()->branch->company_id;
+            
+            if ($user->role_id == Role::AGENT) {
+                $companyId = $user->agent->branch->company_id;
+            } elseif ($user->role_id == Role::BRANCH) {
+                $companyId = $user->branch->company_id;
+            } elseif ($user->role_id == Role::COMPANY) {
+                $companyId = $user->company->id;
+            } else {
+                $companyId = null;
+            }
+
             $can_import = Charge::where('company_id', $companyId)
                         ->where('can_import', true)
                         ->get();

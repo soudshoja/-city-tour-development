@@ -1324,7 +1324,7 @@ class PaymentController extends Controller
 
     public function importPaymentProcess (Request $request) 
     {
-        Log::info('Strating the process of importing payment from Portal');
+        Log::info('Starting the process of importing payment from Portal');
 
         $request->validate([
             'payment_gateway' => 'required',
@@ -1392,8 +1392,6 @@ class PaymentController extends Controller
         }
 
         try {
-            Log::info('Starting to create payment for import payment from payment gateway ' . $request->payment_gateway);
-
             $data = [
                 'voucher_number' => $voucherNumber,
                 'payment_reference' => $invoiceId ?? $paymentReference,
@@ -1435,13 +1433,11 @@ class PaymentController extends Controller
             ];
         }
 
-        try {
-            Log::info('Starting to add credit for the import payment from payment gateway ' . $payment->payment_gateway);
-            
+        try {            
             $payment = Payment::findOrFail($payment->id);
 
             if ($payment->status === 'completed') {
-                Log::info('Payment for the import has already completed');
+                Log::info('Import payment has already been paid');
                 
                 $clientController = new ClientController;
                 $addCredit = $clientController->addCredit($payment);
@@ -1532,7 +1528,6 @@ class PaymentController extends Controller
 
                 DB::commit();
 
-                Log::info('dia memang stay sini sampai habis');
                 return [
                     'status' => 'success',
                     'message' => 'Successfully importing payment from payment gateway ' . $payment->payment_gateway . ' for payment ID ' . $payment->id,

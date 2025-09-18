@@ -3,6 +3,7 @@
 namespace App\Support\PaymentGateway;
 
 use App\Models\Payment;
+use App\Models\PaymentMethod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;

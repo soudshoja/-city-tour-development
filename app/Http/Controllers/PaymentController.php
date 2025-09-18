@@ -334,7 +334,7 @@ class PaymentController extends Controller
                 'invoice_number' => $invoice->invoice_number,
                 'payment_id' => $payment->id,
                 'payment_number' => $payment->voucher_number,
-                'payment_gateway' => 'google-pay',
+                'payment_gateway' => $data['payment_method'] ?? 'knet',
                 'invoice_partial_id' => $data['invoice_partial_id'],
                 'currency' => $invoice->currency,
             ]);
@@ -1909,9 +1909,21 @@ class PaymentController extends Controller
                     $paidBy = 'Company';
                 }
             } else {
-                $tempChargeResult = $payment->payment_gateway === 'MyFatoorah'
-                    ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
-                    : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+
+                $tempChargeResult = [
+                    'finalAmount' => $payment->amount,
+                    'fee' => 0,
+                    'amount' => $payment->amount,
+                    'gatewayFee' => 0,
+                ];
+
+                if(strtolower($payment->payment_gateway) === 'myfatoorah'){
+                    $tempChargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+                } else if(strtolower($payment->payment_gateway) === 'tap'){
+                    $tempChargeResult = ChargeService::TapCharge($payment->amount, $payment->payment_method_id, $companyId);
+                } else if(strtolower($payment->payment_gateway) === 'upayment'){
+                    $tempChargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+                }
 
                 $gatewayFee = $tempChargeResult['fee'] ?? 0;
                 $finalAmount = $payment->amount;
@@ -1925,9 +1937,15 @@ class PaymentController extends Controller
                 'agent_id'   => $payment->agent_id,
             ];
 
-            $chargeResult = $payment->payment_gateway === 'MyFatoorah'
-                ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
-                : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+            $chargeResult = [];
+            
+            if(strtolower($payment->payment_gateway) === 'tap'){
+                $chargeResult = ChargeService::TapCharge($chargeData, 'Tap');
+            } else if (strtolower($payment->payment_gateway) === 'upayment'){
+                $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+            } else if(strtolower($payment->payment_gateway) === 'myfatoorah'){
+                $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+            }
 
             $gatewayFee = $chargeResult['fee'] ?? 0;
             $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
@@ -4199,9 +4217,21 @@ class PaymentController extends Controller
                     $paidBy = 'Company';
                 }
             } else {
-                $tempChargeResult = $payment->payment_gateway === 'MyFatoorah'
-                    ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
-                    : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+                // $tempChargeResult = $payment->payment_gateway === 'MyFatoorah'
+                //     ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
+                //     : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+
+                $tempChargeResult = [];
+
+                if(strtolower($payment->payment_gateway) === 'myfatoorah') {
+                    $tempChargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+                } elseif (strtolower($payment->payment_gateway) === 'tap') {
+                    $tempChargeResult = ChargeService::TapCharge($chargeData, 'Tap');
+                } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
+                    $tempChargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+                } elseif (strtolower($payment->payment_gateway) === 'upayment') {
+                    $tempChargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+                }
 
                 $gatewayFee = $tempChargeResult['fee'] ?? 0;
                 $finalAmount = $payment->amount;
@@ -4215,9 +4245,21 @@ class PaymentController extends Controller
                 'agent_id'   => $payment->agent_id,
             ];
 
-            $chargeResult = $payment->payment_gateway === 'MyFatoorah'
-                ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
-                : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+            // $chargeResult = $payment->payment_gateway === 'MyFatoorah'
+            //     ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
+            //     : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+
+            $chargeResult = [];
+
+            if(strtolower($payment->payment_gateway) === 'myfatoorah') {
+                $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+            } elseif (strtolower($payment->payment_gateway) === 'tap') {
+                $chargeResult = ChargeService::TapCharge($chargeData, 'Tap');
+            } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
+                $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+            } elseif (strtolower($payment->payment_gateway) === 'upayment') {
+                $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+            }
 
             $gatewayFee = $chargeResult['fee'] ?? 0;
             $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;

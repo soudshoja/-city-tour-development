@@ -397,13 +397,15 @@ class WhatsAppHotelController extends Controller
             $request->validate([
                 'telephone' => 'required|string',
                 // 'room_name' => 'required|string',
-                // 'board_basis' => 'nullable|string',
-                // 'non_refundable' => 'nullable|boolean',
-                // 'price' => 'nullable|numeric',
-                // 'occupancy' => 'nullable|array',
+                'board_basis' => 'nullable|string',
+                'non_refundable' => 'nullable|boolean',
+                'price' => 'nullable|numeric',
+                'occupancy' => 'nullable|array',
             ]);
 
             $offers = TemporaryOffer::where('telephone', $request->telephone)->get();
+
+            $roomQuery = OfferedRoom::whereIn('temp_offer_id', $offers->pluck('id'));
 
             if ($offers->isEmpty()) {
                 Log::channel('whatsapp')->warning('findOffer: No matching offer found', ['telephone' => $request->telephone]);
@@ -413,9 +415,25 @@ class WhatsAppHotelController extends Controller
                 ], 404);
             }
 
-            $offer = $offers->first();
+            if ($request->has('board_basis')) {
+                if (is_null($request->board_basis)) {
+                    $roomQuery->whereNull('board_basis');
+                } else {
+                    $roomQuery->where('board_basis', 'like', '%' . $request->board_basis . '%');
+                }
+            }
 
-            $roomQuery = OfferedRoom::whereIn('temp_offer_id', $offers->pluck('id'));
+            if ($request->has('non_refundable')) {
+                $roomQuery->where('non_refundable', $request->non_refundable);
+            }
+
+            if ($request->has('price')) {
+                $roomQuery->where('price', $request->price);
+            }
+
+            if ($request->has('occupancy')) {
+                $roomQuery->where('occupancy', 'like', '%' . json_encode($request->occupancy) . '%');
+            }
 
             $rooms = $roomQuery->get();
 
@@ -450,7 +468,7 @@ class WhatsAppHotelController extends Controller
             $response = [
                 'success' => true,
                 'data' => [
-                    'telephone' => $offer->telephone,
+                    'telephone' => $request->telephone,
                     'offers' => $groupedOffers,
                 ],
             ];

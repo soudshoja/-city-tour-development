@@ -1155,7 +1155,7 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function importMyFatoorahFromInvoice(Request $request) : JsonResponse
+    public function importFromInvoice(Request $request) : JsonResponse
     {
         Log::info('Starting to import MyFatoorah payment from invoice');
         
@@ -1268,7 +1268,7 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function importMyFatoorahFromPayment(Request $request) : RedirectResponse
+    public function importFromPayment(Request $request) : RedirectResponse
     {
         $gateway = strtolower($request->input('gateway'));
 
@@ -2330,97 +2330,7 @@ class PaymentController extends Controller
 
     public function paymentLinkProcess(Request $request)
     {   
-        $source = $request->input('source');
-        if ($source === 'import') {
-
-            if(!auth()->user()){
-                return abort(403, 'Unauthorized action.');
-            }
-
-            $paymentId = $request->payment_id;
-            $payment = Payment::findorFail($paymentId);
-
-            if($payment->status === 'completed'){
-                return redirect()->back()->with('info', 'Payment already completed.');
-            }
-
-            $clientController = new ClientController;
-
-            $addCreditResponse = $clientController->addCredit($payment);
-
-            if (isset($addCreditResponse['error'])) {
-                logger('Failed to add credit to client', [
-                    'message' => $addCreditResponse['error'],
-                    'payment_id' => $paymentId,
-                ]);
-                return redirect()->back()->with('error', 'Payment cannot be updated');
-            }
-
-            $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
-                ->where('company_id', $payment->agent->branch->company->id)
-                ->first();
-
-            if (!$liabilitiesAccount) {
-                return redirect()->back()->with('error', 'Liabilities account not found.');
-            }
-
-            $clientAdvance = Account::where('name', 'Client')
-                ->where('company_id', $payment->agent->branch->company->id)
-                ->where('root_id', $liabilitiesAccount->id)
-                ->first();
-
-            if (!$clientAdvance) {
-                return redirect()->back()->with('error', 'Client advance account not found.');
-            }
-
-            DB::beginTransaction();
-
-            try {
-                $transaction = Transaction::create([
-                    'branch_id' => $payment->agent->branch->id,
-                    'company_id' => $payment->agent->branch->company->id,
-                    'entity_id' => $payment->agent->branch->company->id,
-                    'entity_type' => 'company',
-                    'transaction_type' => 'debit',
-                    'amount' => $payment->amount,
-                    'description' => 'Topup success by ' . $payment->client->full_name,
-                    'payment_id' => $payment->id,
-                    'invoice_id' => $payment->invoice_id,
-                    'payment_reference' => $payment->payment_reference,
-                    'reference_type' => 'Payment',
-                    'transaction_date' => now(),
-                ]);
-
-                JournalEntry::create([
-                    'transaction_id' => $transaction->id,
-                    'branch_id' => $payment->agent->branch->id,
-                    'company_id' => $payment->agent->branch->company->id,
-                    'invoice_id' => $payment->invoice_id,
-                    'account_id' => $clientAdvance->id,
-                    'transaction_date' => now(),
-                    'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
-                    'debit' => 0,
-                    'credit' => $payment->amount,
-                    'balance' => $clientAdvance->actual_balance - $payment->amount,
-                    'name' => $payment->client->full_name,
-                    'type' => 'receivable',
-                    'voucher_number' => $payment->voucher_number,
-                    'type_reference_id' => $clientAdvance->id
-                ]);
-
-                Log::info('Successfully created transaction and journal entry for import payment of ' . $payment->payment_gateway . ' from the portal');
-            } catch (Exception $e) {
-                DB::rollBack();
-                logger('Failed to create journal entry', [
-                    'message' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                return redirect()->back()->with('error', 'Payment cannot be updated');
-            }
-            DB::commit();
-
-            return redirect()->back()->with('success', 'Import payment from ' . $payment->payment_gateway . ' portal is success!');
-        } else if ($request->tap_id) {
+        if ($request->tap_id) {
             $tapId = $request->tap_id;
             $tap = new Tap();
             $response = $tap->getCharge($tapId);
@@ -3714,7 +3624,7 @@ class PaymentController extends Controller
             $payment->save();
         } else {
             Log::error('Response from Hesabe failed');
-            return redirect()->route('/invoices')->with('error', 'Something went wrong. Please contact support');
+            return redirect()->route('/invoices')->with('error', 'Something went wrong. Please contact support team');
         }
 
         DB::beginTransaction();
@@ -3891,8 +3801,6 @@ class PaymentController extends Controller
                     ]);
                     return redirect()->back()->with('error', 'Failed to create journal entry for credit payment');
                 }
-
-               
 
                 DB::commit();
             } catch (Exception $e) {

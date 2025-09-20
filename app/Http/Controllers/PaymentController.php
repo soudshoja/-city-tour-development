@@ -334,16 +334,12 @@ class PaymentController extends Controller
                 'invoice_number' => $invoice->invoice_number,
                 'payment_id' => $payment->id,
                 'payment_number' => $payment->voucher_number,
-                'payment_gateway' => $data['payment_method'] ?? 'knet',
+                'payment_method_id' => (int) $data['payment_method'],
                 'invoice_partial_id' => $data['invoice_partial_id'],
                 'currency' => $invoice->currency,
             ]);
 
-            Log::info('requestUPayment', ['requestUPayment' => $requestUPayment]);
-
             $response = $uPayment->makeCharge($requestUPayment);
-
-            Log::info('UPayment: createCharge response', ['response' => $response]);
 
             if (!$response['status']) {
                 return response()->json(['error' => $response['message']], 500);

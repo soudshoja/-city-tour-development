@@ -334,16 +334,12 @@ class PaymentController extends Controller
                 'invoice_number' => $invoice->invoice_number,
                 'payment_id' => $payment->id,
                 'payment_number' => $payment->voucher_number,
-                'payment_gateway' => 'google-pay',
+                'payment_method_id' => (int) $data['payment_method'],
                 'invoice_partial_id' => $data['invoice_partial_id'],
                 'currency' => $invoice->currency,
             ]);
 
-            Log::info('requestUPayment', ['requestUPayment' => $requestUPayment]);
-
             $response = $uPayment->makeCharge($requestUPayment);
-
-            Log::info('UPayment: createCharge response', ['response' => $response]);
 
             if (!$response['status']) {
                 return response()->json(['error' => $response['message']], 500);
@@ -1553,45 +1549,53 @@ class PaymentController extends Controller
         }
     }
 
-    public function paymentLink(Request $request) 
+    public function paymentLink(Request $request)
     {
         $user = Auth::user();
 
+        $companyId = null;
         if ($user->role_id == Role::ADMIN) {
-            $agents = Agent::all();
-            $agentsId = $agents->pluck('id')->toArray();
+
+            return redirect()->back()->with('error', 'Admin cannot view payment links.');
+
+            // $agents = Agent::all();
+            // $agentsId = $agents->pluck('id')->toArray();
         } else if ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
             $branches = Branch::where('company_id', $user->company->id)->get();
             $agents = Agent::where('branch_id', $branches->pluck('id')->toArray())->get();
             $agentsId = $agents->pluck('id')->toArray();
         } else if ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company_id;
             $agents = Agent::where('branch_id', $user->branch->id)->get();
             $agentsId = $agents->pluck('id')->toArray();
         } else if ($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->branch->company_id;
             $agents = Agent::where('id', $user->agent->id)->get();
             $agentsId = $agents->pluck('id')->toArray();
         } else {
             return redirect()->back()->with('error', 'You are not authorized to view payment links.');
         }
 
-    $clients = Client::where(function ($query) use ($agentsId) {
-        $query->whereIn('agent_id', $agentsId)
-              ->orWhereHas('agents', function ($q) use ($agentsId) {
-                  $q->whereIn('agent_id', $agentsId);
-              });
-    })->get();        $payments = Payment::with('invoice')
+        $clients = Client::where(function ($query) use ($agentsId) {
+            $query->whereIn('agent_id', $agentsId)
+                ->orWhereHas('agents', function ($q) use ($agentsId) {
+                    $q->whereIn('agent_id', $agentsId);
+                });
+        })->get();
+        $payments = Payment::with('invoice')
             ->where(function ($query) use ($agentsId) {
                 $query->whereHas('invoice', function ($payment) use ($agentsId) {
                     $payment->whereIn('agent_id', $agentsId);
                 })->orWhereIn('agent_id', $agentsId);
-            });      
+            });
 
         if ($request->boolean('clear')) {
             session()->forget('filter');
             return redirect()->route('payment.link.index', array_filter([
                 'q' => $request->query('q'),
             ]));
-        }        
+        }
 
         if ($search = $request->query('q')) {
             $payments = $payments->where(function ($query) use ($search) {
@@ -1615,7 +1619,7 @@ class PaymentController extends Controller
         }
 
         $incoming = collect($request->input('filter', []))
-            ->filter(fn($v) => is_array($v) ? array_filter($v, fn($x)=>$x!=='' && $x!==null) : $v !== '' && $v !== null)
+            ->filter(fn($v) => is_array($v) ? array_filter($v, fn($x) => $x !== '' && $x !== null) : $v !== '' && $v !== null)
             ->all();
         if ($request->has('filter')) {
             session(['filter' => array_replace(session('filter', []), $incoming)]);
@@ -1645,8 +1649,24 @@ class PaymentController extends Controller
         $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
             ->where('is_active', true)->get();
         $paymentMethods = PaymentMethod::where('is_active', true)->get();
+
+        $myFatoorahPaymentMethods = PaymentMethod::where('is_active', true)
+            ->where('company_id', $companyId)
+            ->where('type', 'myfatoorah')
+            ->get();
+
+        $hesabeMethods = PaymentMethod::where('is_active', true)
+            ->where('company_id', $companyId)
+            ->where('type', 'hesabe')
+            ->get();
+
+        $uPaymentMethods = PaymentMethod::where('is_active', true)
+            ->where('company_id', $companyId)
+            ->where('type', 'upayment')
+            ->get();
+
         $users = User::whereIn('id', Payment::select('created_by')->distinct()->pluck('created_by'))->get();
-        $status = ['pending','initiate','completed','failed','cancelled'];
+        $status = ['pending', 'initiate', 'completed', 'failed', 'cancelled'];
 
         return view('payment.link.index', compact(
             'payments',
@@ -1654,6 +1674,9 @@ class PaymentController extends Controller
             'agents',
             'paymentGateways',
             'paymentMethods',
+            'myFatoorahPaymentMethods',
+            'hesabeMethods',
+            'uPaymentMethods',
             'users',
             'status',
             'filters',
@@ -1663,21 +1686,26 @@ class PaymentController extends Controller
     public function paymentCreateLink()
     {
         $user = Auth::user();
+        $companyId = null;
         if ($user->role_id == Role::ADMIN) {
+            return redirect()->back()->with('error', 'Admin users cannot create payment links.');
 
-            $agents = Agent::all();
-            $agentsId = $agents->pluck('id')->toArray();
+            // $agents = Agent::all();
+            // $agentsId = $agents->pluck('id')->toArray();
         } else if ($user->role_id == Role::COMPANY) {
 
-            $branches = Branch::where('company_id', $user->company->id)->get();
+            $companyId = $user->company->id;
+            $branches = Branch::where('company_id', $companyId)->get();
             $agents = Agent::where('branch_id', $branches->pluck('id')->toArray())->get();
             $agentsId = $agents->pluck('id')->toArray();
         } else if ($user->role_id == Role::BRANCH) {
 
+            $companyId = $user->branch->company_id;
             $agents = Agent::where('branch_id', $user->branch->id)->get();
             $agentsId = $agents->pluck('id')->toArray();
         } else if ($user->role_id == Role::AGENT) {
 
+            $companyId = $user->agent->branch->company_id;
             $agents = Agent::where('id', $user->agent->id)->get();
             $agentsId = $agents->pluck('id')->toArray();
         } else {
@@ -1685,51 +1713,60 @@ class PaymentController extends Controller
         }
 
         $clients = Client::where(function ($query) use ($agentsId) {
-        $query->whereIn('agent_id', $agentsId)
-            ->orWhereHas('agents', function ($q) use ($agentsId) {
-                $q->whereIn('agent_id', $agentsId);
-            });
-        })->get(); 
+            $query->whereIn('agent_id', $agentsId)
+                ->orWhereHas('agents', function ($q) use ($agentsId) {
+                    $q->whereIn('agent_id', $agentsId);
+                });
+        })->get();
 
         $invoices = Invoice::all();
-            $payments = Payment::all();
-            $currencies = Currency::all();
-            $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
-                ->where('is_active', true)->get();
+        $payments = Payment::all();
+        $currencies = Currency::all();
+        $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
+            ->where('company_id', $companyId)
+            ->where('is_active', true)->get();
 
-            $myFatoorahMethods = PaymentMethod::where('is_active', true)
-                ->where('type', 'myfatoorah')
-                ->get();
+        $myFatoorahMethods = PaymentMethod::where('is_active', true)
+            ->where('company_id', $companyId)
+            ->where('type', 'myfatoorah')
+            ->get();
 
-            $hesabeMethods = PaymentMethod::where('is_active', true)
-                ->where('type', 'hesabe')
-                ->get();
-            /* $paymentMethods = PaymentMethod::where('is_active', true)->get(); */
-            
-            if ($user->role_id == Role::AGENT) {
-                $companyId = $user->agent->branch->company_id;
-            } elseif ($user->role_id == Role::BRANCH) {
-                $companyId = $user->branch->company_id;
-            } elseif ($user->role_id == Role::COMPANY) {
-                $companyId = $user->company->id;
-            } else {
-                $companyId = null;
-            }
+        $uPaymentMethods = PaymentMethod::where('is_active', true)
+            ->where('company_id', $companyId)
+            ->where('type', 'upayment')
+            ->get();
 
-            $can_import = Charge::where('company_id', $companyId)
-                        ->where('can_import', true)
-                        ->get();
-            return view('payment.link.create', compact(
-                'payments',
-                'clients',
-                'agents',
-                'invoices',
-                'currencies',
-                'paymentGateways',
-                'myFatoorahMethods',
-                'hesabeMethods',
-                'can_import'
-            ));
+        $hesabeMethods = PaymentMethod::where('is_active', true)
+            ->where('company_id', $companyId)
+            ->where('type', 'hesabe')
+            ->get();
+        /* $paymentMethods = PaymentMethod::where('is_active', true)->get(); */
+
+        if ($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->branch->company_id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company_id;
+        } elseif ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } else {
+            $companyId = null;
+        }
+
+        $can_import = Charge::where('company_id', $companyId)
+            ->where('can_import', true)
+            ->get();
+        return view('payment.link.create', compact(
+            'payments',
+            'clients',
+            'agents',
+            'invoices',
+            'currencies',
+            'paymentGateways',
+            'myFatoorahMethods',
+            'hesabeMethods',
+            'uPaymentMethods',
+            'can_import'
+        ));
     }
 
     public function paymentStoreLinkProcess(Request $request)
@@ -1909,9 +1946,21 @@ class PaymentController extends Controller
                     $paidBy = 'Company';
                 }
             } else {
-                $tempChargeResult = $payment->payment_gateway === 'MyFatoorah'
-                    ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
-                    : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+
+                $tempChargeResult = [
+                    'finalAmount' => $payment->amount,
+                    'fee' => 0,
+                    'amount' => $payment->amount,
+                    'gatewayFee' => 0,
+                ];
+
+                if(strtolower($payment->payment_gateway) === 'myfatoorah'){
+                    $tempChargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+                } else if(strtolower($payment->payment_gateway) === 'tap'){
+                    $tempChargeResult = ChargeService::TapCharge($payment->amount, $payment->payment_method_id, $companyId);
+                } else if(strtolower($payment->payment_gateway) === 'upayment'){
+                    $tempChargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+                }
 
                 $gatewayFee = $tempChargeResult['fee'] ?? 0;
                 $finalAmount = $payment->amount;
@@ -1925,9 +1974,15 @@ class PaymentController extends Controller
                 'agent_id'   => $payment->agent_id,
             ];
 
-            $chargeResult = $payment->payment_gateway === 'MyFatoorah'
-                ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
-                : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+            $chargeResult = [];
+            
+            if(strtolower($payment->payment_gateway) === 'tap'){
+                $chargeResult = ChargeService::TapCharge($chargeData, 'Tap');
+            } else if (strtolower($payment->payment_gateway) === 'upayment'){
+                $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+            } else if(strtolower($payment->payment_gateway) === 'myfatoorah'){
+                $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+            }
 
             $gatewayFee = $chargeResult['fee'] ?? 0;
             $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
@@ -4199,9 +4254,21 @@ class PaymentController extends Controller
                     $paidBy = 'Company';
                 }
             } else {
-                $tempChargeResult = $payment->payment_gateway === 'MyFatoorah'
-                    ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
-                    : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+                // $tempChargeResult = $payment->payment_gateway === 'MyFatoorah'
+                //     ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
+                //     : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+
+                $tempChargeResult = [];
+
+                if(strtolower($payment->payment_gateway) === 'myfatoorah') {
+                    $tempChargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+                } elseif (strtolower($payment->payment_gateway) === 'tap') {
+                    $tempChargeResult = ChargeService::TapCharge($chargeData, 'Tap');
+                } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
+                    $tempChargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+                } elseif (strtolower($payment->payment_gateway) === 'upayment') {
+                    $tempChargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+                }
 
                 $gatewayFee = $tempChargeResult['fee'] ?? 0;
                 $finalAmount = $payment->amount;
@@ -4215,9 +4282,21 @@ class PaymentController extends Controller
                 'agent_id'   => $payment->agent_id,
             ];
 
-            $chargeResult = $payment->payment_gateway === 'MyFatoorah'
-                ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
-                : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+            // $chargeResult = $payment->payment_gateway === 'MyFatoorah'
+            //     ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
+            //     : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
+
+            $chargeResult = [];
+
+            if(strtolower($payment->payment_gateway) === 'myfatoorah') {
+                $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+            } elseif (strtolower($payment->payment_gateway) === 'tap') {
+                $chargeResult = ChargeService::TapCharge($chargeData, 'Tap');
+            } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
+                $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+            } elseif (strtolower($payment->payment_gateway) === 'upayment') {
+                $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+            }
 
             $gatewayFee = $chargeResult['fee'] ?? 0;
             $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;

@@ -3,27 +3,27 @@
 namespace App\Support\PaymentGateway;
 
 use App\Models\Payment;
+use App\Models\PaymentMethod;
+use App\Services\GatewayConfigService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class UPayment
 {
-    public $baseUrl;
-    public $apiKey;
+    protected $configService;
 
     public function __construct()
     {
         // Initialize with your UPayment configuration
-        $this->baseUrl = rtrim(config('services.uPayment.base_url'), '/');
-        $this->apiKey = config('services.uPayment.api_key');
+        $this->configService = new GatewayConfigService;
     }
 
     public function makeCharge(Request $request)
     {
         $request->validate([
             'final_amount' => 'required|numeric|min:1',
-            'client_id' => 'required|string|max:255',
+            'client_id' => 'required|integer|exists:clients,id',
             'client_name' => 'required|string|max:255',
             'client_email' => 'nullable|email|max:255',
             'client_phone' => 'nullable|string|max:20',
@@ -32,10 +32,34 @@ class UPayment
             'invoice_number' => 'nullable|string|max:255',
             'payment_id' => 'required|integer|exists:payments,id',
             'payment_number' => 'required|string|max:255',
-            'payment_gateway' => 'required|string|max:255',
+            'payment_method_id' => 'required|integer|exists:payment_methods,id',
             'invoice_partial_id' => 'nullable|array',
             'currency' => 'required|string|max:10',
         ]);
+
+        $uPaymentConfig = $this->configService->getUPaymentConfig();
+
+        if ($uPaymentConfig['status'] === 'error') {
+            $payment = Payment::find($request->input('payment_id'));
+            if ($payment) {
+                $payment->delete();
+            }
+
+            return [
+                'status' => 'error',
+                'message' => $uPaymentConfig['message'],
+            ];
+        }
+
+        $uPaymentConfig = $uPaymentConfig['data'];
+
+        $uPaymentApiKey = $uPaymentConfig['api_key'];
+        $uPaymentBaseUrl = rtrim($uPaymentConfig['base_url'], '/');
+
+        $paymentGateway = 'knet'; //Default to knet
+        $paymentMethod = PaymentMethod::find($request->input('payment_method_id'));
+
+        if($paymentMethod) $paymentGateway = $paymentMethod->code ?? 'knet';
 
         $orderId = $request->input('invoice_id') ?? $request->input('payment_id');
         $orderReference = $request->input('invoice_number') ?? $request->input('payment_number');
@@ -56,7 +80,7 @@ class UPayment
                 'amount' => $request->input('final_amount'),
             ],
             'paymentGateway' => [
-                'src' => $request->input('payment_gateway'),
+                'src' => $paymentGateway,
             ],
             'language' => 'en',
             'tokens' => [
@@ -89,24 +113,41 @@ class UPayment
             // 'paymentLinkExpiryInMinutes' => 60,
         ];
 
+        Log::info('UPayment Charge Request', ['request' => $requestData]);
+
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->apiKey,
+            'Authorization' => 'Bearer ' . $uPaymentApiKey,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-        ])->post($this->baseUrl . '/charge', $requestData);
+        ])->post( $uPaymentBaseUrl . '/charge', $requestData);
 
-        Log::info('UPayment Charge Request', ['request' => $requestData, 'response' => $response->json()]);
+        Log::info('UPayment Charge Response', ['response' => $response->json()]);
 
        return $response->json();
     }
 
     public function getPaymentStatus($trackId)
     {
+
+        $uPaymentConfig = $this->configService->getUPaymentConfig();
+
+        if ($uPaymentConfig['status'] === 'error') {
+            return [
+                'status' => 'error',
+                'message' => $uPaymentConfig['message'],
+            ];
+        }
+
+        $uPaymentConfig = $uPaymentConfig['data'];
+
+        $uPaymentApiKey = $uPaymentConfig['api_key'];
+        $uPaymentBaseUrl = rtrim($uPaymentConfig['base_url'], '/');
+
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->apiKey,
+        'Authorization' => 'Bearer ' . $uPaymentApiKey,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-        ])->get($this->baseUrl . '/get-payment-status/' . $trackId);
+        ])->get( $uPaymentBaseUrl . '/get-payment-status/' . $trackId);
 
 
         return $response->json();

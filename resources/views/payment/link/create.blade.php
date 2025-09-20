@@ -371,7 +371,7 @@
 
                 <div x-data="{ selectedGateway: '{{ $selectedGateway }}' }">
                     <div
-                        :class="selectedGateway === 'MyFatoorah' || selectedGateway === 'Hesabe' ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' :
+                        :class="selectedGateway === 'MyFatoorah' || selectedGateway === 'Hesabe' || selectedGateway === 'UPayment' ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' :
                             'block'">
                         <div>
                             <label for="payment-gateway" class="block text-sm font-medium text-gray-700">Payment
@@ -420,6 +420,25 @@
                                 </select>
                             </div>
                         </template>
+
+                        <!-- UPayment -->
+                        <template x-if="selectedGateway === 'UPayment'">
+                            <div>
+                                <label for="hesabe-payment-method" class="block text-sm font-medium text-gray-700">
+                                    Payment Method
+                                </label>
+                                <select name="payment_method" id="hesabe-payment-method"
+                                    class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    @foreach ($uPaymentMethods as $method)
+                                        <option value="{{ $method->id }}" 
+                                                {{ old('payment_method') == $method->id ? 'selected' : '' }}>
+                                            {{ $method->english_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </template>
+
                     </div>
                 </div>
 

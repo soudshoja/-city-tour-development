@@ -357,7 +357,7 @@
                                                         </div>
 
                                                         <div class="mb-4" x-data="{ selectedGateway: '{{ $payment->payment_gateway ?? '' }}', selectedMethod: '{{ $payment->paymentMethod ? $payment->paymentMethod->id : '' }}' }">
-                                                            <div :class="selectedGateway === 'MyFatoorah' ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' : 'block'">
+                                                            <div :class="selectedGateway === 'MyFatoorah' || selectedGateway === 'Hesabe' || selectedGateway === 'UPayment' ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' : 'block'">
                                                                 <div>
                                                                     <label for="payment-gateway" class="block text-sm font-medium text-gray-700">Payment Gateway</label>
                                                                     <select name="payment_gateway" id="payment_gateway"
@@ -379,7 +379,22 @@
                                                                         <select name="payment_method_id" id="payment_method_id"
                                                                             class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" x-model="selectedMethod">
                                                                             <option value="" disabled>Select Method</option>
-                                                                            @foreach ($paymentMethods as $method)
+                                                                            @foreach ($myFatoorahPaymentMethods as $method)
+                                                                            <option value="{{ $method->id }}" @if ($payment->payment_method_id === $method->id) selected @endif>
+                                                                                {{ $method->english_name }}
+                                                                            </option>
+                                                                            @endforeach
+                                                                        </select>
+                                                                    </div>
+                                                                </template>
+
+                                                                <template x-if="selectedGateway === 'UPayment'">
+                                                                    <div>
+                                                                        <label for="payment-method" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                                        <select name="payment_method_id" id="payment_method_id"
+                                                                            class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" x-model="selectedMethod">
+                                                                            <option value="" disabled>Select Method</option>
+                                                                            @foreach ($uPaymentMethods as $method)
                                                                             <option value="{{ $method->id }}" @if ($payment->payment_method_id === $method->id) selected @endif>
                                                                                 {{ $method->english_name }}
                                                                             </option>

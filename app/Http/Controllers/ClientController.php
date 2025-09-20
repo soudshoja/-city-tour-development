@@ -891,6 +891,20 @@ class ClientController extends Controller
                     ]);
                     $gatewayFee = 0;
                 }
+            } else if (strtolower($payment->payment_gateway) === 'upayment') {
+                try {
+                    $gatewayFee = ChargeService::UPaymentCharge($payment->amount, $paymentMethod->id, $payment->agent->branch->company_id)['fee'] ?? 0;
+                } catch (Exception $e) {
+                    Log::error('PaypalCharge exception', [
+                        'message' => $e->getMessage(),
+                        'amount' => $payment->amount,
+                        'payment_method' => $paymentMethod->id,
+                        'company_id' => $payment->agent->branch->company_id,
+                    ]);
+                    $gatewayFee = 0;
+                }
+            } else {
+                $gatewayFee = $chargeRecord?->amount ?? 0;
             }
 
             $transaction = Transaction::create([

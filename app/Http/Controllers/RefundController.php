@@ -126,6 +126,21 @@ class RefundController extends Controller
                         }
                     }
                 }
+            }  else if (strtolower($gateway->name) === 'upayment') {
+                foreach($paymentMethods as $method){
+                    if($method->company_id == $task->agent->branch->company_id && $method->type == 'upayment'){
+                        try {
+                            $method->gateway_fee = ChargeService::UPaymentCharge($invoiceAmount, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
+                        } catch (\Exception $e) {
+                            Log::error('UPaymentCharge exception in refund', [
+                                'message' => $e->getMessage(),
+                                'paymentMethod' => $method->id,
+                                'company_id' => $task->agent->branch->company_id,
+                            ]);
+                            $method->gateway_fee = 0;
+                        }
+                    }
+                }
             } else {
                 $gateway->gateway_fee = ChargeService::TapCharge([
                     'amount' => $invoiceAmount,
@@ -722,6 +737,22 @@ class RefundController extends Controller
                             $method->gateway_fee = ChargeService::FatoorahCharge($refund->airline_nett_fare - $refund->total_nett_refund, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
                         } catch (Exception $e) {
                             Log::error('FatoorahCharge exception in refund edit', [
+                                'message' => $e->getMessage(),
+                                'paymentMethod' => $method->id,
+                                'company_id' => $task->agent->branch->company_id,
+                            ]);
+                            $method->gateway_fee = 0;
+                        }
+                    }
+                }
+            } else if (strtolower($gateway->name) === 'upayment') {
+
+                foreach ($paymentMethods as $method) {
+                    if ($method->company_id == $task->agent->branch->company_id && $method->type == 'upayment') {
+                        try {
+                            $method->gateway_fee = ChargeService::UPaymentCharge($refund->airline_nett_fare - $refund->total_nett_refund, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
+                        } catch (Exception $e) {
+                            Log::error('UPaymentCharge exception in refund edit', [
                                 'message' => $e->getMessage(),
                                 'paymentMethod' => $method->id,
                                 'company_id' => $task->agent->branch->company_id,

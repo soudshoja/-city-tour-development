@@ -109,7 +109,7 @@ class getMagicHolidayReservationList extends Command
 
                     if ($supplier->name == 'Magic Holiday') {
 
-                        foreach ($supplier->credentials as $credential) {
+                        foreach ($supplier->credentials->where('company_id', $company->id) as $credential) {
 
                             $this->info("Processing Magic Holiday credentials for company: " . $company->name);
 

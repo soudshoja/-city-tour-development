@@ -172,4 +172,54 @@ class GatewayConfigService
 
         return $config;
     }
+
+    public function getUPaymentConfig(): array 
+    {                
+        $configFromService = Config::get('services.uPayment');
+
+        if($configFromService === null) {
+            Log::warning('UPayment does not have any configuration yet. Please contact your support team.');
+
+            return [
+                'status' => 'error',
+                'message' => 'UPayment payment gateway is not configured. Please contact your support team.'
+            ];
+        }
+
+        $config = [
+            'status' => 'success',
+            'message' => 'UPayment configuration loaded successfully.',
+            'data' => $configFromService,
+        ];
+
+        Log::info('UPayment gateway config loaded from config/services.php', [
+            'base_url' => $config['data']['base_url'] ?? null,
+            'api_key' => $config['data']['api_key'] ?? null,
+        ]);
+
+        $uPaymentCharge = Charge::where('name', 'like', '%upayment%')
+            ->where('is_active', true)
+            ->first();
+
+        if ($uPaymentCharge && $uPaymentCharge->api_key) {
+            $config = [
+                'status' => 'success',
+                'message' => 'UPayment configuration loaded successfully.',
+                'data' => [
+                    'api_key' => $uPaymentCharge->api_key,
+                    'base_url' => $configFromService['base_url'],
+                ]
+            ];
+
+            Log::info('UPayment gateway config loaded from database.', [
+                'company_id' => $uPaymentCharge->company_id,
+                'base_url' => $config['data']['base_url'],
+                'api_key' => $config['data']['api_key'],
+            ]);
+
+            return $config;
+        }
+
+        return $config;
+    }
 }

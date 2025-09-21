@@ -179,11 +179,14 @@
                 @foreach ($invoiceDetails as $detail)
                 <tr class="text-sm text-gray-700">
                     <td class="px-4 py-2 border">
+                        @if(!empty($detail->task->reference))
+                            Reference: {{ $detail->task->reference }}
+                        @endif
                         @if ($detail->task->type === 'hotel')
-                        @php
-                        $roomDetails = json_decode($detail->task->hotelDetails->room_details, true);
-                        $passengerCount = count($roomDetails['passengers'] ?? []);
-                        @endphp
+                            @php
+                                $roomDetails = json_decode($detail->task->hotelDetails->room_details, true);
+                                $passengerCount = count($roomDetails['passengers'] ?? []);
+                            @endphp
                         <p>
                             <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}
                             <br>Hotel Name: {{ $detail->task->hotelDetails->hotel->name ?? 'N/A' }}
@@ -194,8 +197,10 @@
                         </p>
                         @elseif ($detail->task->type === 'flight')
                         <p>
-                            GDS Reference: {{ $detail->task->gds_reference ?? 'N/A' }}
-                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}
+                            @if(!empty($detail->task->gds_reference))
+                                GDS Reference: {{ $detail->task->gds_reference }}<br>
+                            @endif
+                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}
                             <br>Route:
                             {{ $detail->task->flightDetails->countryFrom->name ?? '' }}
                             ({{ $detail->task->flightDetails->airport_from ?? '' }})

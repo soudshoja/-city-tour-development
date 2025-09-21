@@ -789,8 +789,6 @@ class ClientController extends Controller
 
     public function addCredit(Payment $payment)
     {
-        Log::info('Starting to add credit for clint through payment link');
-
         $client = Client::findOrFail($payment->client_id);
         $agent = Agent::find($payment->agent_id);
 

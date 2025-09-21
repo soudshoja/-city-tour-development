@@ -73,6 +73,14 @@ class Supplier extends Model
         return $this->hasMany(SupplierExchangeRate::class);
     }
 
+    public function scopeActiveForCompany($query, int $companyId)
+    {
+        return $query->whereHas('companies', function ($q) use ($companyId) {
+            $q->where('companies.id', $companyId)
+                ->where('supplier_companies.is_active', 1);
+        });
+    }
+
     public function isMergeSupplier(): bool
     {
         if (in_array($this->name, ['TBO Air', 'TBO Car'])) {

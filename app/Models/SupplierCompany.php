@@ -20,6 +20,10 @@ class SupplierCompany extends Pivot
         'is_active',
     ];
 
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);

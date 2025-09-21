@@ -444,7 +444,11 @@ class AgentController extends Controller
                 'role_id' => Role::AGENT,
                 'remember_token' => Str::random(10),
                 'first_login' => 1,
-            ])->assignRole('agent');
+            ]);
+
+            // Assign the agent role for this specific company
+            $response = $user->assignRole('agent', $branch->company_id);
+            dd($response);
 
         } catch(Exception $e){
             logger('Failed to create user for agent: ' . $e->getMessage());

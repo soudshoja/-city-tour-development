@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use League\OAuth2\Client\Provider\GenericProvider;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class SupplierController extends Controller
 {
@@ -41,36 +42,33 @@ class SupplierController extends Controller
 
         $suppliers = Supplier::all();
 
-        if($user->role_id == Role::ADMIN) {
+        if ($user->role_id == Role::ADMIN) {
 
             // Only get SupplierCompany which is active
-            $suppliers = Supplier::with(['companies' => function($query) {
-            $query->where('is_active', true);
+            $suppliers = Supplier::with(['companies' => function ($query) {
+                $query->where('is_active', true);
             }])->get();
         } elseif ($user->role_id == Role::COMPANY) {
-
-            $suppliers = Supplier::with('credentials')->whereHas('companies', function ($query) use ($user) {
-                $query->where('company_id', $user->company->id)->where('is_active', true);
-            })->with('companies')->get();
-
+            $suppliers = Supplier::with(['credentials', 'companies'])
+                ->activeForCompany($user->company->id)
+                ->get();
         } else {
             return abort(403, 'Unauthorized action.');
-
         }
 
         foreach ($suppliers as $supplier) {
             if (!is_null($supplier->route)) {
-                $route = Route::getRoutes()->getByName('suppliers.'. $supplier->route . '.index');
+                $route = Route::getRoutes()->getByName('suppliers.' . $supplier->route . '.index');
                 $supplier->named_route = $route ? $route->getName() : null;
             } else {
                 $supplier->named_route = null;
             }
         }
-       
+
         $suppliersCount = $suppliers->count();
         $countries = Country::all();
         $supplierAuthTypes = SupplierAuthType::cases();
-        
+
         return view('suppliers.index', compact(
             'suppliers',
             'suppliersCount',
@@ -80,60 +78,60 @@ class SupplierController extends Controller
     }
 
     public function exchangeRates($supplierId)
-{
-    
-    $supplier = Supplier::with('exchangeRates')->findOrFail($supplierId);
-    $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
-    return view('suppliers.exchange_rates', compact('supplier', 'currencies'));
-}
-
-public function updateExchangeRates(Request $request, $supplierId)
-{
-    $supplier = Supplier::findOrFail($supplierId);
-    $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
-
-    foreach ($currencies as $currency) {
-        $rate = $request->input(strtolower($currency));
-        if ($rate !== null) {
-            $supplier->exchangeRates()->updateOrCreate(
-                ['currency' => $currency],
-                ['rate' => $rate]
-            );
-        }
+    {
+        $supplier = Supplier::with('exchangeRates')->findOrFail($supplierId);
+        $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
+        return view('suppliers.exchange_rates', compact('supplier', 'currencies'));
     }
 
-    return redirect()->back()->with('success', 'Exchange rates updated.');
-}
+    public function updateExchangeRates(Request $request, $supplierId)
+    {
+        $supplier = Supplier::findOrFail($supplierId);
+        $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
+
+        foreach ($currencies as $currency) {
+            $rate = $request->input(strtolower($currency));
+            if ($rate !== null) {
+                $supplier->exchangeRates()->updateOrCreate(
+                    ['currency' => $currency],
+                    ['rate' => $rate]
+                );
+            }
+        }
+
+        return redirect()->back()->with('success', 'Exchange rates updated.');
+    }
+
     public function show($suppliersId)
-{
-    Gate::authorize('view', Supplier::class);
+    {
+        Gate::authorize('view', Supplier::class);
 
-    $supplier = SupplierCompany::with('supplier.tasks.agent')->findOrFail($suppliersId)->supplier;
-    $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
-    $invoicesId = array_values(array_filter($invoicesId));
-    $taskIds = $supplier->tasks->pluck('id')->toArray();
-    $JournalEntry = JournalEntry::select('id', 'debit', 'credit', 'created_at', 'task_id', 'account_id')
-        ->with(['task.agent', 'account'])
-        ->whereIn('task_id', $taskIds)
-        ->get();
-    $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR']; 
-    return view('suppliers.show', compact('supplier', 'JournalEntry', 'currencies'));
-}
-    
-public function ledgerByDateRange(Request $request, $supplierId)
-{
-    $fromDate = $request->input('fromDate');
-    $toDate = $request->input('toDate');
+        $supplier = SupplierCompany::with('supplier.tasks.agent')->findOrFail($suppliersId)->supplier;
+        $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
+        $invoicesId = array_values(array_filter($invoicesId));
+        $taskIds = $supplier->tasks->pluck('id')->toArray();
+        $JournalEntry = JournalEntry::select('id', 'debit', 'credit', 'created_at', 'task_id', 'account_id')
+            ->with(['task.agent', 'account'])
+            ->whereIn('task_id', $taskIds)
+            ->get();
+        $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
+        return view('suppliers.show', compact('supplier', 'JournalEntry', 'currencies'));
+    }
 
-    $tasks = Task::with(['agent', 'flightDetails', 'hotelDetails.hotel'])
-        ->where('supplier_id', $supplierId)
-        ->whereBetween('supplier_pay_date', [$fromDate, $toDate])
-        ->get();
+    public function ledgerByDateRange(Request $request, $supplierId)
+    {
+        $fromDate = $request->input('fromDate');
+        $toDate = $request->input('toDate');
 
-    return response()->json([
-        'entries' => $tasks
-    ]);
-}
+        $tasks = Task::with(['agent', 'flightDetails', 'hotelDetails.hotel'])
+            ->where('supplier_id', $supplierId)
+            ->whereBetween('supplier_pay_date', [$fromDate, $toDate])
+            ->get();
+
+        return response()->json([
+            'entries' => $tasks
+        ]);
+    }
 
     public function create()
     {
@@ -197,7 +195,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
 
         $request->validate([
             'name' => 'required',
-            'auth_type' => ['required', Rule::in(['basic','oauth'])],
+            'auth_type' => ['required', Rule::in(['basic', 'oauth'])],
             'has_hotel' => 'nullable',
             'has_flight' => 'nullable',
             'has_visa' => 'nullable',
@@ -248,7 +246,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
         $invoicesId = array_values(array_filter($invoicesId));
         $totalDebit = JournalEntry::whereIn('invoice_id', $invoicesId)->where('created_at', '<=', $endDate)->sum('debit');
         $totalCredit = JournalEntry::whereIn('invoice_id', $invoicesId)->where('created_at', '<=', $endDate)->sum('credit');
-        
+
         return response()->json([
             'totalDebit' => $totalDebit,
             'totalCredit' => $totalCredit,
@@ -320,18 +318,18 @@ public function ledgerByDateRange(Request $request, $supplierId)
         }
     }
 
-    public function getMagicHoliday($ref = null) : JsonResponse
+    public function getMagicHoliday($ref = null): JsonResponse
     {
-        if($ref) {
-            $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations/' . $ref;
+        if ($ref) {
+            $url = config('services.magic-holiday.url') . '/reservationsApi/v1/reservations/' . $ref;
         } else {
-            $url =config('services.magic-holiday.url') . '/reservationsApi/v1/reservations';
+            $url = config('services.magic-holiday.url') . '/reservationsApi/v1/reservations';
         }
 
         $scopes = ['read:reservations'];
 
         $response = $this->magicApiRequest('GET', $url, [], [], $scopes, ['id' => $ref]);
-        
+
         return response()->json($response);
     }
 
@@ -342,12 +340,11 @@ public function ledgerByDateRange(Request $request, $supplierId)
         array $data = [],
         array $scopes = ['read:reservations'],
         array $queryParams = []
-    ) : array
-    {
-        
+    ): array {
+
         $responseCredential = $this->getClientCredential($scopes);
 
-        if(isset($responseCredential['error'])){
+        if (isset($responseCredential['error'])) {
             return [
                 'status' => 'error',
                 'data' => $responseCredential,
@@ -406,35 +403,35 @@ public function ledgerByDateRange(Request $request, $supplierId)
         // dd($response->json());
 
         //end test
-        
-         
-         switch ($method) {
+
+
+        switch ($method) {
             case 'GET':
 
-            if (strpos($url, '?') !== false) {
-                $url .= '&' . http_build_query($queryParams);
-            } else {
-                $url .= '?' . http_build_query($queryParams);
-            }
+                if (strpos($url, '?') !== false) {
+                    $url .= '&' . http_build_query($queryParams);
+                } else {
+                    $url .= '?' . http_build_query($queryParams);
+                }
 
-            $response = Http::withoutVerifying()->withHeaders($header)->get($url);
-            break;
+                $response = Http::withoutVerifying()->withHeaders($header)->get($url);
+                break;
             case 'POST':
-            $response = Http::withoutVerifying()->withHeaders($header)->post($url, $data);
-            break;
+                $response = Http::withoutVerifying()->withHeaders($header)->post($url, $data);
+                break;
             case 'PUT':
-            $response = Http::withoutVerifying()->withHeaders($header)->put($url, $data);
-            break;
+                $response = Http::withoutVerifying()->withHeaders($header)->put($url, $data);
+                break;
             case 'DELETE':
-            $response = Http::withoutVerifying()->withHeaders($header)->delete($url);
-            break;
+                $response = Http::withoutVerifying()->withHeaders($header)->delete($url);
+                break;
             default:
-            throw new \InvalidArgumentException("Unsupported HTTP method: $method");
+                throw new \InvalidArgumentException("Unsupported HTTP method: $method");
         }
 
         Log::channel('magic_holidays')->info('Response', $response->json());
 
-        if(isset($response['status']) && $response['status'] !== 200){
+        if (isset($response['status']) && $response['status'] !== 200) {
             return [
                 'status' => 'error',
                 'data' => $response->json(),
@@ -448,64 +445,67 @@ public function ledgerByDateRange(Request $request, $supplierId)
         ];
     }
 
-    public function getClientCredential(array $scopes) : array
+    public function getClientCredential(array $scopes): array
     {
         $user = Auth::user();
         if ($user->role_id == Role::COMPANY) {
             $companyId = $user->company->id;
         } elseif ($user->role_id == Role::BRANCH) {
             $companyId = $user->branch->company_id;
-        } elseif($user->role_id == Role::AGENT) {
+        } elseif ($user->role_id == Role::AGENT) {
             $companyId = $user->agent->branch->company_id;
-        } 
-        
+        }
+
         $credential = SupplierCredential::query()
             ->where('company_id', $companyId)
             ->where('supplier_id', 2)
             ->first();
 
+        if (!$credential || empty($credential->client_id) || empty($credential->client_secret)) {
+            throw ValidationException::withMessages([
+                'credentials' => 'Magic Holiday credentials are missing for this company. Please add the client ID and client secret to proceed.',
+            ]);
+        }
+
         $key = 'magic_holiday_client_credential_' . $credential->client_id . '_' . implode('_', $scopes);
         $ttl = 60 * 60 * 24; // seconds * minutes * hours (1 day)
 
-        if ($companyId && $credential) {
-            return Cache::remember($key, $ttl, function () use ($scopes, $credential) {
-                
-                $tokenUrl = config('services.magic-holiday.token-url');
+        return Cache::remember($key, $ttl, function () use ($scopes, $credential) {
+            $tokenUrl = config('services.magic-holiday.token-url');
 
-                $data = [
-                    'client_id'     => $credential->client_id,
-                    'client_secret' => $credential->client_secret,
-                    'grant_type'    => 'client_credentials',
-                    'scope'         => $scopes,
-                ];
+            $data = [
+                'client_id'     => $credential->client_id,
+                'client_secret' => $credential->client_secret,
+                'grant_type'    => 'client_credentials',
+                'scope'         => $scopes,
+            ];
 
-                $response = Http::withoutVerifying()->post($tokenUrl, $data);
+            $response = Http::withoutVerifying()->post($tokenUrl, $data);
 
-                Log::channel('magic_holidays')->info('Credential Response', [
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
-                ]);
+            Log::channel('magic_holidays')->info('Credential Response', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
 
-                if (!$response->successful()) {
-                    throw new Exception('Unable to retrieve access token.');
-                }
+            if (!$response->successful()) {
+                throw new \RuntimeException(
+                    'Unable to retrieve access token: HTTP ' . $response->status() . ' ' . $response->body()
+                );
+            }
 
-                return $response->json();
-            });
-            
-        }
-
+            return $response->json();
+        });
     }
-    
+
     public function magicReserveWebhook($id)
     {
 
         $data = $this->getClientCredential(['write:reservations-webhooks']);
 
 
-        if(isset($data['error'])){
+        if (isset($data['error'])) {
             return;
-        } 
+        }
 
         $accessToken = $data['token_type'] . ' ' . $data['access_token'];
 
@@ -518,7 +518,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
         $data = [
             'url' => route('magic-webhook-callback'),
         ];
-        
+
         Log::channel('magic_holidays')->info('Magic Holiday Webhook Request', [
             'url' => $url,
             'header' => $header,
@@ -526,7 +526,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
         ]);
 
         $response = $this->magicApiRequest('PUT', $url, $header, $data, ['write:reservations-webhooks']);
-        
+
         Log::channel('magic_holidays')->info('Magic Holiday Webhook Response', $response);
 
         return;
@@ -540,7 +540,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
         $event = $request->input('event');
         $data = $request->input('data');
 
-        if(!$id || !$event || !$data) {
+        if (!$id || !$event || !$data) {
             Log::channel('magic_webhook')->error('Invalid webhook data', $request->all());
 
             return response()
@@ -555,13 +555,13 @@ public function ledgerByDateRange(Request $request, $supplierId)
                 ->header('X-RateLimit-Reset', time() + 3600)
                 ->header('Content-Type', 'application/problem+json');
         }
-        if($event == 'status.change'){
+        if ($event == 'status.change') {
             $data = json_decode($data, true);
 
             $currentStatus = $data['current_status'] ?? null;
             $previousStatus = $data['previous_status'] ?? null;
 
-            if(!$currentStatus || !$previousStatus) {
+            if (!$currentStatus || !$previousStatus) {
                 Log::channel('magic_webhook')->error('Invalid webhook data for status change', $request->all());
 
                 return response()
@@ -584,8 +584,8 @@ public function ledgerByDateRange(Request $request, $supplierId)
             ]);
 
             $amendments = $data['amendments'] ?? null;
-            
-            if(!$amendments){
+
+            if (!$amendments) {
 
                 Log::channel('magic_webhook')->info('No amendments found for status change', $request->all());
 
@@ -606,7 +606,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
             $original = $amendments['original'] ?? null;
             $amendedBy = $amendments['amendedBy'] ?? null;
 
-            if(!$group || !$original || !$amendedBy) {
+            if (!$group || !$original || !$amendedBy) {
                 Log::channel('magic_webhook')->error('Invalid webhook data for status change amendments', $request->all());
 
                 return response()
@@ -624,7 +624,7 @@ public function ledgerByDateRange(Request $request, $supplierId)
 
             $magicHolidaySupplier = Supplier::where('name', 'Magic Holiday')->first();
 
-            if(!$magicHolidaySupplier) {
+            if (!$magicHolidaySupplier) {
                 Log::channel('magic_webhook')->error('Magic Holiday supplier not found', $request->all());
 
                 return response()
@@ -643,8 +643,8 @@ public function ledgerByDateRange(Request $request, $supplierId)
             $existingReservation = Task::where('reference', $original)
                 ->where('supplier_id', $magicHolidaySupplier->id)
                 ->first();
-            
-            if(!$existingReservation) {
+
+            if (!$existingReservation) {
                 Log::channel('magic_webhook')->error('Reservation not found for original reference', [
                     'original' => $original,
                     'supplier_id' => $magicHolidaySupplier->id,

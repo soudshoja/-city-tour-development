@@ -387,7 +387,9 @@ class PaymentController extends Controller
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $paymentMethod = $payment->paymentMethod?->myfatoorah_id;
             $companyId = optional($payment->agent->branch)->company_id;
-            $finalAmount = $payment->amount;
+
+            $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+            $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
 
             $firstName = $payment->client->first_name;
             $middleName = $payment->client->middle_name;
@@ -1278,6 +1280,7 @@ class PaymentController extends Controller
             $invoiceId = $request->input('import_invoice_id');
 
             $response = $this->getPaymentStatusMyFatoorah($invoiceId)->getData(true);
+            session(['fatoorah_import' => $response]);
 
             if ($response['status'] === 'error') {
                 Log::error('Error fetching payment status from MyFatoorah', ['message' => $response['message']]);
@@ -1298,6 +1301,7 @@ class PaymentController extends Controller
             $orderRef = $request->input('import_order_reference');
 
             $response = $this->getHesabeTransaction($orderRef)->getData(true);
+            session(['hesabe_import' => $response]);
 
             if ($response['status'] === 'error') {
                 return redirect()->back()->with('error', $response['message']);
@@ -1413,6 +1417,70 @@ class PaymentController extends Controller
 
             if (!$payment) {
                 Log::error('Payment failed to create');
+            }
+
+            if ($payment->payment_gateway === 'MyFatoorah') {
+                $fatoorahPayload = session()->pull('fatoorah_import');
+                Log::info('MyFatoorah Payload from session', [
+                    'fatoorah_payload' => $fatoorahPayload,
+                ]);
+
+                $fatoorahData = [
+                    'payment_int_id' => $payment->id,
+                    'payment_id' => $fatoorahPayload['user_defined']['payment_id'] ?? null,
+                    'invoice_id' => $fatoorahPayload['invoice_id'] ?? null,
+                    'invoice_reference' => $fatoorahPayload['invoice_reference'] ?? null,
+                    'invoice_status' => $fatoorahPayload['invoice_status'] ?? null,
+                    'customer_reference' => $fatoorahPayload['customer_name'] ?? null,
+                    'payload' => $fatoorahPayload ?? null,
+                ];
+
+                $fatoorah = MyFatoorahPayment::create($fatoorahData);
+                Log::info('MyFatoorah Payment successfully created');
+
+                if (!$fatoorah) {
+                    Log::error('MyFatoorah Payment failed to create');
+                }
+
+            } elseif ($payment->payment_gateway === 'Hesabe') {
+                $hesabePayload = session()->pull('hesabe_import');
+
+                if (is_string($hesabePayload)) {
+                    $hesabePayload = json_decode($hesabePayload, true);
+                }
+
+                Log::info('Hesabe Payload from session', ['hesabePayload' => $hesabePayload]);
+
+                if (!$hesabePayload) {
+                    Log::error('Hesabe payload not found in session');
+                    return [
+                        'status' => 'error', 
+                        'message' => 'Hesabe payload not found in session'
+                    ];
+                }
+                
+                $payload = $hesabePayload['data'] ?? null;
+
+                $hesabeData = [
+                    'payment_int_id' => $payment->id,
+                    'status' => $payload['status'] ?? null,
+                    'payment_token' => $payload['token'] ?? null,
+                    'payment_id' => $payload['PaymentID'] ?? null,
+                    'order_reference_number' => $payload['reference_number'] ?? null,
+                    'auth_code' => $payload['auth'] ?? null,
+                    'track_id' => $payload['TrackID'] ?? null,
+                    'transaction_id' => $payload['TransactionID'] ?? null,
+                    'invoice_id' => $payload['Id'] ?? null,
+                    'paid_on' => $payload['datetime'] ?? null,
+                    'payload' => $hesabePayload ?? null,
+                ];
+
+                $hesabe = HesabePayment::create($hesabeData);
+                Log::info('Hesabe Payment successfully created');
+
+                if (!$hesabe) {
+                    Log::error('Hesabe Payment failed to create');
+                }
             }
 
         } catch (Exception $e) {
@@ -1960,6 +2028,8 @@ class PaymentController extends Controller
                     $tempChargeResult = ChargeService::TapCharge($payment->amount, $payment->payment_method_id, $companyId);
                 } else if(strtolower($payment->payment_gateway) === 'upayment'){
                     $tempChargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+                } else if(strtolower($payment->payment_gateway) === 'hesabe') {
+                    $tempChargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
                 }
 
                 $gatewayFee = $tempChargeResult['fee'] ?? 0;
@@ -1982,6 +2052,8 @@ class PaymentController extends Controller
                 $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
             } else if(strtolower($payment->payment_gateway) === 'myfatoorah'){
                 $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+            } else if(strtolower($payment->payment_gateway) === 'hesabe') {
+                $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
             }
 
             $gatewayFee = $chargeResult['fee'] ?? 0;
@@ -2004,7 +2076,6 @@ class PaymentController extends Controller
         $payment = Payment::with('invoice')->find($request->payment_id);
 
         if (!$payment) {
-
             if(auth()->user()){
                 return redirect()->back()->with('error', 'Payment not found.');
             }
@@ -2069,7 +2140,6 @@ class PaymentController extends Controller
             $companyId = optional($payment->agent->branch)->company_id;
 
             if ($payment->status === 'initiate') {
-             
                 if ($payment->payment_url && $payment->expiry_date && now()->lt($payment->expiry_date)) {
                     Log::info('Reusing existing payment URL', [
                         'invoice_id' => $payment->payment_reference,
@@ -2191,14 +2261,15 @@ class PaymentController extends Controller
             
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $paymentMethod = $payment->paymentMethod?->myfatoorah_id;
-            $companyId = optional($payment->agent->branch)->company_id;
-            $finalAmount = $payment->amount;
 
             $firstName = $payment->client->first_name;
             $middleName = $payment->client->middle_name;
             $lastName = $payment->client->last_name;
             $customerName = trim("$firstName $middleName $lastName");
             
+            $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+            $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
+
             $checkoutPayload = [
                 "amount" => $finalAmount,
                 "currency" => 'KWD',
@@ -2276,9 +2347,13 @@ class PaymentController extends Controller
                 ]);
 
                 return redirect($paymentUrl);
+            } else {
+                Log::error('Hesabe: Missing token for payment URL', [
+                    'response_token' => $responseData['response']['data'],
+                    'payment_url' => $paymentUrl,
+                ]);
+                return redirect()->back()->with('error', 'Hesabe response missing token for PaymentURL');
             }
-
-            return redirect()->back()->with('error', 'Hesabe response missing token for PaymentURL');
         }
 
         return redirect()->route('payment.link.index')->with('success', 'Payment initiated successfully!');
@@ -2354,8 +2429,6 @@ class PaymentController extends Controller
                 ]
             ],
         ];
-
-        // dd($executePayload);
 
         $executeResponse = Http::withHeaders([
             'Authorization' => "Bearer $apiKey",
@@ -2612,41 +2685,6 @@ class PaymentController extends Controller
                 $invoice->save();
             }
 
-            // if ($invoice->is_client_credit == 2) {
-            //     $creditSubmit = Credit::create([
-            //         'company_id'  => $invoice->client->agent->branch->company_id,
-            //         'client_id'   => $invoice->client->id,
-            //         'invoice_id'  => $invoice->id,
-            //         'type'        => 'Topup',
-            //         'description' => 'Topup Client Credit for ' . $invoice->client->full_name,
-            //         'amount'      => $invoice->amount,
-            //     ]);    
-            // }
-
-            // $croppedOriginalInvoiceNo = Str::before($invoice->invoice_number, '-TC-');
-
-            // $originalInvoice = Invoice::where('invoice_number', $croppedOriginalInvoiceNo)
-            //     ->where('is_client_credit', 1)
-            //     ->where('status', 'unpaid')
-            //     ->first();
-
-            // if ($originalInvoice) {
-            //     $originalInvoice->status = 'paid';
-            //     $originalInvoice->paid_date = now();
-            //     $originalInvoice->save();
-
-            //     $creditSubmit = Credit::create([
-            //         'company_id'  => $originalInvoice->client->agent->branch->company_id,
-            //         'client_id'   => $originalInvoice->client->id,
-            //         'invoice_id'  => $originalInvoice->id,
-            //         'type'        => 'Topup',
-            //         'description' => 'Payment for ' . $originalInvoice->invoice_number,
-            //         'amount'      => -($invoice->amount),
-            //     ]);  
-            // }
-
-            //dd($process);
-
             if(auth()->user()){
             return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
             } else {
@@ -2746,10 +2784,6 @@ class PaymentController extends Controller
 
                 if ($payment->status === 'completed') {
                     Log::info('Callback ignored: payment already completed', ['payment_id' => $payment->id]);
-                    return response('OK', 200);
-                }
-
-                if ($payment->status == 'completed'){
                     return auth()->user() ? redirect()->route('invoices.index')->with('success', 'Payment already completed.') : abort(200, 'Payment already completed.');
                 }
 
@@ -3156,7 +3190,7 @@ class PaymentController extends Controller
             ]);
         }
 
-        return redirect()->route('payment.link.index')->with('error', 'Payment was not completed or was cancelled.');
+        return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('error', 'Payment was not completed or was cancelled.');
     }
 
     public function paymentUpdateLink($paymentId, Request $request)
@@ -3231,48 +3265,77 @@ class PaymentController extends Controller
         Log::info('Received Signature From MyFatoorah: ' . $incomingSignature);
 
         $rawBody = $request->getContent();
-        Log::info('Raw Body: ' . $rawBody);
-        if ($rawBody) {
-            $data = json_decode($rawBody, true);
-        } else {
-            Log::error('Webhook body is empty');
+        if (empty($rawBody)) {
+            Log::error('MF Webhook: empty body');
             return response()->json(['error' => 'Empty body received'], 400);
         }
+        Log::info('Raw Body: ' . $rawBody);
 
-        $generatedSignature = hash_hmac('sha256', $rawBody, $secretKey);
-        Log::info('Our Generated Signature: ' . $generatedSignature);
+        $payload = json_decode($rawBody, true);
+        if (!is_array($payload)) {
+            Log::error('MF Webhook: invalid JSON');
+            return response()->json(['error' => 'Invalid JSON'], 400);
+        }
+        Log::info('MyFatoorah Webhook Received', ['body' => json_decode($rawBody, true)]);
+
+        $sigString = sprintf(
+            'Invoice.Id=%s,Invoice.Status=%s,Transaction.Status=%s,Transaction.PaymentId=%s,Invoice.ExternalIdentifier=%s',
+            (string) data_get($payload, 'Data.Invoice.Id', ''),
+            (string) data_get($payload, 'Data.Invoice.Status', ''),
+            (string) data_get($payload, 'Data.Transaction.Status', ''),
+            (string) data_get($payload, 'Data.Transaction.PaymentId', ''),
+            (string) data_get($payload, 'Data.Invoice.ExternalIdentifier', '')
+        );
+        $generatedSignature = base64_encode(hash_hmac('sha256', $sigString, $secretKey, true));
+
+        Log::info('MF Webhook: signature check', [
+            'match' => hash_equals($generatedSignature, $incomingSignature),
+            'generated_signature' => $generatedSignature,
+            'received_signature' => $incomingSignature,
+        ]);
 
         if (!hash_equals($generatedSignature, $incomingSignature)) {
-            Log::error('Invalid signature', [
-                'received_signature' => $incomingSignature,
-                'generated_signature' => $generatedSignature,
-            ]);
+            Log::error('MF Webhook: invalid signature');
             return response()->json(['error' => 'Unauthorized request'], 403);
         }
 
-        Log::info('MyFatoorah Webhook Received', ['body' => json_decode($rawBody, true)]);
+        $invoiceId = data_get($payload, 'Data.Invoice.Id');
+        $invoiceStatus = data_get($payload, 'Data.Invoice.Status');
 
-        $data = $request->input('Data');
-        $invoice = $data['Invoice'];
-
-        $invoiceId = $invoice['Id'];
-        $invoiceStatus = $invoice['Status'];
-
-        Log::info('Looking for Payment with Invoice ID: ' . $invoiceId);
+        if (!$invoiceId || !$invoiceStatus) {
+            Log::warning('MF Webhook: missing invoice fields', compact('invoiceId', 'invoiceStatus'));
+            return response()->json(['message' => 'Ignored (missing fields)'], 200);
+        }
 
         $payment = Payment::where('payment_reference', $invoiceId)->first();
-        Log::info('Looking in Payments table for payment_reference: ' . $invoiceId);
-
         if ($payment) {
-            $payment->status = $invoiceStatus;
-            $payment->save();
-
-            Log::info('Payment Status Updated', [
-                'payment_reference' => $invoiceId,
-                'new_status' => $invoiceStatus
-            ]);
+            if ($payment->status === 'initiate') {
+                if ($invoiceStatus === 'PAID') {
+                    $payment->status = $invoiceStatus;
+                    $payment->save();
+                    Log::info('MF Webhook: payment status updated', [
+                        'payment_id' => $payment->id,
+                        'payment_reference' => $invoiceId,
+                        'new_status' => $invoiceStatus
+                    ]);
+                } else {
+                    Log::info('MF Webhook: ignoring downgrade from initiate', [
+                        'payment_id' => $payment->id,
+                        'current_status' => $payment->status,
+                        'incoming_status' => $invoiceStatus,
+                    ]);
+                }
+            } else {
+                $payment->status = $invoiceStatus;
+                $payment->save();
+                Log::info('MF Webhook: payment status updated', [
+                    'payment_id' => $payment->id,
+                    'payment_reference' => $invoiceId,
+                    'new_status' => $invoiceStatus
+                ]);
+            }
         } else {
-            Log::warning('No matching payment found for Invoice ID: ' . $invoiceId);
+            Log::warning('MF Webhook: no matching payment', ['invoice_id' => $invoiceId]);
         }
         return response()->json(['message' => 'Webhook processed successfully'], 200);
     }
@@ -3875,7 +3938,7 @@ class PaymentController extends Controller
             Log::info('Found record of the payment in Hesabe Payment');
         }
 
-        if ($hesabePayment->status === 'ACCEPT') {
+        if ($hesabePayment->status === 'ACCEPT' ) {
             Log::info('Credit payment success, creating credit COA');
 
             try {

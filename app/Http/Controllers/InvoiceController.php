@@ -123,14 +123,8 @@ class InvoiceController extends Controller
         $invoices = $invoices->orderBy($sortBy, $sortOrder) // 👈 Use dynamic sorting
             ->paginate(20)
             ->withQueryString();
-        
-        $clients = Client::whereIn('agent_id', $agentIds)->get();
-        $tasks = Task::whereIn('agent_id', $agentIds)->get();
-        $suppliers = Supplier::all();
-        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $companiesId)->get();
-        $types = Task::distinct()->pluck('type');
            
-        return view('invoice.index', compact('invoices', 'types', 'suppliers', 'branches', 'agents', 'clients', 'tasks', 'totalInvoices', 'totalNet', 'totalSales'));
+        return view('invoice.index', compact('invoices', 'totalInvoices', 'totalNet', 'totalSales'));
     }
 
     public function salelist()
@@ -328,8 +322,6 @@ class InvoiceController extends Controller
 
         $countries = Country::all();
         
-        
-
         return view('invoice.create', compact(
             'clients',
             'agents',

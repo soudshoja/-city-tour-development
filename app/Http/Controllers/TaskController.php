@@ -58,7 +58,6 @@ class TaskController extends Controller
 
     public function index(Request $request)
     {
-
         $user = Auth::user();
 
         $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'info'];
@@ -297,9 +296,7 @@ class TaskController extends Controller
             //     $query->where('company_id', $user->company->id)->where('is_active', true);
             // })->get();
 
-            $suppliers = $suppliers->whereHas('companies', function ($query) use ($user) {
-                $query->where('company_id', $user->company->id);
-            });
+            $suppliers = $suppliers->activeForCompany($user->company->id);
         } elseif ($user->role_id == Role::BRANCH) {
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
@@ -312,9 +309,7 @@ class TaskController extends Controller
             })->get();
             $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
 
-            $suppliers = $suppliers->whereHas('companies', function ($query) use ($user) {
-                $query->where('company_id', $user->company_id);
-            });
+            $suppliers = $suppliers->activeForCompany($user->company_id);
         } elseif ($user->role_id == Role::AGENT) {
 
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
@@ -335,16 +330,12 @@ class TaskController extends Controller
             })->where('company_id', $user->agent->branch->company_id);
 
             $companyId = $user->agent->branch->company_id;
-            $suppliers = $suppliers->whereHas('companies', function ($query) use ($companyId) {
-                $query->where('company_id', $companyId);
-            });
+            $suppliers = $suppliers->whereHas('companies', fn($query) => $query->where('supplier_companies.is_active', 1));
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
 
-        $suppliers = $suppliers->whereHas('companies', function ($query) {
-            $query->where('is_active', true);
-        })->get();
+        $suppliers = $suppliers->with('companies')->get();
 
         $taskCount = $tasks->count();
         $tasks = $tasks->orderBy($sortBy, $sortOrder)

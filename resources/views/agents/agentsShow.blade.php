@@ -248,34 +248,52 @@
         <!-- ./edit agent details modal -->
 
             <div class="mt-5 panel">
-                <div class="mb-5 flex justify-between">
-                    <div class="flex justify-between items-center">
-                        <h5 class="text-lg font-semibold dark:text-white-light">
-                            <span class="customBlueColor">Invoices</span> List
-                        </h5>
-                        <form method="GET" class="flex items-center gap-2 ml-3">
-                            <input type="month" name="month"
+                <div class="mb-5 flex items-center justify-between">
+                    <!-- Left: Title -->
+                    <h5 class="text-lg font-semibold dark:text-white-light">
+                        <span class="customBlueColor">Invoices</span> List
+                    </h5>
+
+                    <!-- Right: Filter -->
+                    <form method="GET"
+                        class="ml-auto flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg">
+                        <div class="relative">
+                            <input type="month" id="month" name="month"
                                 value="{{ request('month', now()->format('Y-m')) }}"
-                                class="border px-2 py-1 text-sm rounded w-28">
-                            <button type="submit"
-                                class="bg-blue-500 text-white text-sm px-2.5 py-1 rounded">Filter</button>
-                            @if(request()->has('month'))
-                                <a href="{{ url()->current() }}" 
-                                    class="bg-gray-300 hover:bg-gray-400 text-gray-800 text-sm px-2.5 py-1 rounded">
-                                    Clear
-                                </a>
-                            @endif
-                        </form>
-                    </div>
-                    <div class="flex gap-2">
-                        @if($agent->type_id != 1)
-                        <div class="bg-green-100 text-green-700 font-bold px-4 py-2 rounded shadow">
-                            Total Commission: {{ $totalCommission }} KWD
+                                class="px-3 py-1.5 text-sm rounded-lg w-42 focus:outline-none focus:ring-2 focus:ring-blue-400">
                         </div>
+
+                        <button type="submit"
+                            class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition">
+                            <i class="fas fa-filter mr-1"></i> Filter
+                        </button>
+
+                        @if(request()->has('month'))
+                            <a href="{{ url()->current() }}"
+                                class="bg-red-100 hover:bg-red-300 text-red-800 text-sm font-medium px-4 py-1.5 rounded-lg transition">
+                                <i class="fas fa-times mr-1"></i> Clear
+                            </a>
                         @endif
-                        <div class="bg-blue-100 text-blue-800 font-bold px-4 py-2 rounded shadow">
-                            Total Profit: {{ $totalProfit }} KWD
-                        </div>
+                    </form>
+                </div>
+                <div class="mb-5 mt-5 items-center justify-center flex gap-6 flex-wrap shadow-sm">
+                    <div class="flex-1 min-w-[200px] bg-green-100 text-green-700 px-4 py-2 text-center rounded-md shadow">
+                        <p>Total Client Paid</p>
+                        <p class="text-lg font-bold">{{ $totalPaid }} KWD</p>
+                    </div>
+                    <div class="flex-1 min-w-[200px] bg-red-100 text-red-700 px-4 py-2 text-center rounded-md shadow">
+                        <p>Total Client Outstanding</p>
+                        <p class="text-lg font-bold">{{ $totalOutstanding }} KWD</p>
+                    </div>
+                    @if($agent->type_id != 1)
+                    <div class="flex-1 min-w-[200px] bg-yellow-100 text-yellow-700 px-4 py-2 text-center rounded-md shadow">
+                        <p>Total Commission</p>
+                        <p class="text-lg font-bold">{{ $totalCommission }} KWD</p>
+                    </div>
+                    @endif
+                    <div class="flex-1 min-w-[200px] bg-blue-100 text-blue-800 px-4 py-2 text-center rounded-md shadow">
+                        <p>Total Profit</p>
+                        <p class="text-lg font-bold">{{ $totalProfit }} KWD</p>
                     </div>
                 </div>
                 <div>
@@ -362,7 +380,6 @@
                                 @endforeach
                             </tbody>
                         </table>
-
                     </div>
 
                     <div class="mt-4">

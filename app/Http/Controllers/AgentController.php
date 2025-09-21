@@ -147,7 +147,9 @@ class AgentController extends Controller
         // Calculate monthly totals from all invoices
         $monthlyCommission = 0;
         $monthlyProfit = 0;
-        
+        $monthlyPaid = 0;
+        $monthlyOutstanding = 0;
+
         foreach ($allInvoices as $invoice) {
             // Calculate total profit for this invoice: markup_price + invoice_charge
             $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
@@ -166,10 +168,23 @@ class AgentController extends Controller
             $monthlyProfit += $invoiceProfit;
             $monthlyCommission += $invoiceCommission;
         }
+
+        // Paid & outstanding
+        $monthlyPaid = Invoice::where('agent_id', $id)
+            ->whereBetween('invoice_date', [$month, $month->copy()->endOfMonth()])
+            ->where('status', 'paid')
+            ->sum('amount');
+
+        $monthlyOutstanding = Invoice::where('agent_id', $id)
+            ->whereBetween('invoice_date', [$month, $month->copy()->endOfMonth()])
+            ->where('status', '<>', 'paid')
+            ->sum('amount');
         
         // Format monthly totals
         $totalCommission = number_format($monthlyCommission, 2);
         $totalProfit = number_format($monthlyProfit, 2);
+        $totalPaid = number_format($monthlyPaid, 2);
+        $totalOutstanding = number_format($monthlyOutstanding, 2);
 
         // Now get paginated invoices for display
         $invoices = $allInvoicesQuery->orderBy('invoice_date', 'asc')->paginate(5, ['*'], 'invoices');
@@ -234,6 +249,8 @@ class AgentController extends Controller
             'clients',
             'paid',
             'unpaid',
+            'totalPaid',
+            'totalOutstanding',
             'taskInvoiced',
             'taskNotInvoiced',
             'supplierCompany',

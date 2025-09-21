@@ -736,7 +736,7 @@ class InvoiceController extends Controller
             }
         } elseif (strtolower($gateway) === 'hesabe' && $method) {
             try {
-
+                $gatewayFee = ChargeService::HesabeCharge($amount, $method, $companyId);
             } catch (Exception $e) {
                 Log::error('HesabeCharge exception during partial save', [
                     'message' => $e->getMessage(),
@@ -1817,6 +1817,8 @@ class InvoiceController extends Controller
                             ], $partial->payment_gateway);
                         } else if (strtolower($partial->payment_gateway) === 'upayment') {
                             $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
+                        } else if (strtolower($partial->payment_gateway) === 'hesabe') {
+                            $gatewayFee = ChargeService::HesabeCharge($partial->amount, $partial->payment_method, $companyId);
                         }
                     } catch (Exception $e) {
                         Log::error('ChargeService exception', [
@@ -1912,9 +1914,12 @@ class InvoiceController extends Controller
                         'agent_id'  => $invoice->agent_id,
                         'currency'  => $invoice->currency,
                     ], $paymentGateway);
-                } else {
+                } else if (strtolower($paymentGateway) === 'upayment') {
                     $gatewayFee = ChargeService::UPaymentCharge($invoicePartial->amount, $paymentMethod, $companyId);
+                } else if (strtolower($paymentGateway) === 'hesabe') {
+                    $gatewayFee = ChargeService::HesabeCharge($invoicePartial->amount, $paymentMethod, $companyId);
                 }
+
             } catch (\Exception $e) {
                 Log::error('ChargeService exception on split page', [
                     'message' => $e->getMessage(),
@@ -1988,6 +1993,8 @@ class InvoiceController extends Controller
                     ], $paymentGateway);
                 } else if (strtolower($paymentGateway) === 'upayment') {
                     $gatewayFee = ChargeService::UPaymentCharge($invoicePartial->amount, $paymentMethod, $companyId);
+                } else if (strtolower($paymentGateway) === 'hesabe') {
+                    $gatewayFee = ChargeService::HesabeCharge($invoicePartial->amount, $paymentMethod, $companyId);
                 }
 
             } catch (\Exception $e) {

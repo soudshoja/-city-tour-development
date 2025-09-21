@@ -569,7 +569,8 @@
                                                 class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
                                                 id="taskSearchInput" oninput="filterTasks()">
                                         </div>
-                                        <div x-data="{ addTaskModal: false }">
+                                        {{-- HIDE: Add Task For Specific Supplier --}}
+                                        {{-- <div x-data="{ addTaskModal: false }">
                                             <div @click="addTaskModal = true"
                                                 class="p-2 text-center bg-white rounded-full shadow group hover:bg-black dark:hover:bg-gray-600 dark:bg-gray-700 cursor-pointer"
                                                 data-tooltip-left="Add Task">
@@ -623,7 +624,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </div> --}}
                                     </div>
 
                                     <!-- List of Tasks -->

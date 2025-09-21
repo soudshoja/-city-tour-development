@@ -387,7 +387,9 @@ class PaymentController extends Controller
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $paymentMethod = $payment->paymentMethod?->myfatoorah_id;
             $companyId = optional($payment->agent->branch)->company_id;
-            $finalAmount = $payment->amount;
+
+            $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+            $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
 
             $firstName = $payment->client->first_name;
             $middleName = $payment->client->middle_name;
@@ -1278,6 +1280,7 @@ class PaymentController extends Controller
             $invoiceId = $request->input('import_invoice_id');
 
             $response = $this->getPaymentStatusMyFatoorah($invoiceId)->getData(true);
+            session(['fatoorah_import' => $response]);
 
             if ($response['status'] === 'error') {
                 Log::error('Error fetching payment status from MyFatoorah', ['message' => $response['message']]);
@@ -1298,6 +1301,7 @@ class PaymentController extends Controller
             $orderRef = $request->input('import_order_reference');
 
             $response = $this->getHesabeTransaction($orderRef)->getData(true);
+            session(['hesabe_import' => $response]);
 
             if ($response['status'] === 'error') {
                 return redirect()->back()->with('error', $response['message']);
@@ -1413,6 +1417,70 @@ class PaymentController extends Controller
 
             if (!$payment) {
                 Log::error('Payment failed to create');
+            }
+
+            if ($payment->payment_gateway === 'MyFatoorah') {
+                $fatoorahPayload = session()->pull('fatoorah_import');
+                Log::info('MyFatoorah Payload from session', [
+                    'fatoorah_payload' => $fatoorahPayload,
+                ]);
+
+                $fatoorahData = [
+                    'payment_int_id' => $payment->id,
+                    'payment_id' => $fatoorahPayload['user_defined']['payment_id'] ?? null,
+                    'invoice_id' => $fatoorahPayload['invoice_id'] ?? null,
+                    'invoice_reference' => $fatoorahPayload['invoice_reference'] ?? null,
+                    'invoice_status' => $fatoorahPayload['invoice_status'] ?? null,
+                    'customer_reference' => $fatoorahPayload['customer_name'] ?? null,
+                    'payload' => $fatoorahPayload ?? null,
+                ];
+
+                $fatoorah = MyFatoorahPayment::create($fatoorahData);
+                Log::info('MyFatoorah Payment successfully created');
+
+                if (!$fatoorah) {
+                    Log::error('MyFatoorah Payment failed to create');
+                }
+
+            } elseif ($payment->payment_gateway === 'Hesabe') {
+                $hesabePayload = session()->pull('hesabe_import');
+
+                if (is_string($hesabePayload)) {
+                    $hesabePayload = json_decode($hesabePayload, true);
+                }
+
+                Log::info('Hesabe Payload from session', ['hesabePayload' => $hesabePayload]);
+
+                if (!$hesabePayload) {
+                    Log::error('Hesabe payload not found in session');
+                    return [
+                        'status' => 'error', 
+                        'message' => 'Hesabe payload not found in session'
+                    ];
+                }
+                
+                $payload = $hesabePayload['data'] ?? null;
+
+                $hesabeData = [
+                    'payment_int_id' => $payment->id,
+                    'status' => $payload['status'] ?? null,
+                    'payment_token' => $payload['token'] ?? null,
+                    'payment_id' => $payload['PaymentID'] ?? null,
+                    'order_reference_number' => $payload['reference_number'] ?? null,
+                    'auth_code' => $payload['auth'] ?? null,
+                    'track_id' => $payload['TrackID'] ?? null,
+                    'transaction_id' => $payload['TransactionID'] ?? null,
+                    'invoice_id' => $payload['Id'] ?? null,
+                    'paid_on' => $payload['datetime'] ?? null,
+                    'payload' => $hesabePayload ?? null,
+                ];
+
+                $hesabe = HesabePayment::create($hesabeData);
+                Log::info('Hesabe Payment successfully created');
+
+                if (!$hesabe) {
+                    Log::error('Hesabe Payment failed to create');
+                }
             }
 
         } catch (Exception $e) {
@@ -1960,6 +2028,8 @@ class PaymentController extends Controller
                     $tempChargeResult = ChargeService::TapCharge($payment->amount, $payment->payment_method_id, $companyId);
                 } else if(strtolower($payment->payment_gateway) === 'upayment'){
                     $tempChargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+                } else if(strtolower($payment->payment_gateway) === 'hesabe') {
+                    $tempChargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
                 }
 
                 $gatewayFee = $tempChargeResult['fee'] ?? 0;
@@ -1982,6 +2052,8 @@ class PaymentController extends Controller
                 $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
             } else if(strtolower($payment->payment_gateway) === 'myfatoorah'){
                 $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+            } else if(strtolower($payment->payment_gateway) === 'hesabe') {
+                $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
             }
 
             $gatewayFee = $chargeResult['fee'] ?? 0;
@@ -2189,14 +2261,15 @@ class PaymentController extends Controller
             
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $paymentMethod = $payment->paymentMethod?->myfatoorah_id;
-            $companyId = optional($payment->agent->branch)->company_id;
-            $finalAmount = $payment->amount;
 
             $firstName = $payment->client->first_name;
             $middleName = $payment->client->middle_name;
             $lastName = $payment->client->last_name;
             $customerName = trim("$firstName $middleName $lastName");
             
+            $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+            $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
+
             $checkoutPayload = [
                 "amount" => $finalAmount,
                 "currency" => 'KWD',
@@ -2274,9 +2347,13 @@ class PaymentController extends Controller
                 ]);
 
                 return redirect($paymentUrl);
+            } else {
+                Log::error('Hesabe: Missing token for payment URL', [
+                    'response_token' => $responseData['response']['data'],
+                    'payment_url' => $paymentUrl,
+                ]);
+                return redirect()->back()->with('error', 'Hesabe response missing token for PaymentURL');
             }
-
-            return redirect()->back()->with('error', 'Hesabe response missing token for PaymentURL');
         }
 
         return redirect()->route('payment.link.index')->with('success', 'Payment initiated successfully!');
@@ -3861,7 +3938,7 @@ class PaymentController extends Controller
             Log::info('Found record of the payment in Hesabe Payment');
         }
 
-        if ($hesabePayment->status === 'ACCEPT') {
+        if ($hesabePayment->status === 'ACCEPT' ) {
             Log::info('Credit payment success, creating credit COA');
 
             try {

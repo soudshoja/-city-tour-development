@@ -272,6 +272,7 @@ class TaskController extends Controller
 
         $countries = Country::all();
         $suppliers = Supplier::with('companies');
+        $companyId = $user->accountant->branch->company_id;
 
         if ($user->role_id == Role::ADMIN) {
             $tasks = $tasks;
@@ -331,6 +332,27 @@ class TaskController extends Controller
 
             $companyId = $user->agent->branch->company_id;
             $suppliers = $suppliers->whereHas('companies', fn($query) => $query->where('supplier_companies.is_active', 1));
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $branches = Branch::where('company_id', $companyId)->get();
+
+            $agents = Agent::with('branch')
+                ->whereIn('branch_id', $branches->pluck('id'))
+                ->get();
+
+            $agentsId = $agents->pluck('id');
+
+            $clients = Client::whereIn('agent_id', $agentsId)->get();
+
+            $fullClients = Client::where(function ($query) use ($agentsId) {
+                $query->whereIn('agent_id', $agentsId)
+                    ->orWhereHas('agents', function ($q) use ($agentsId) {
+                        $q->whereIn('agent_id', $agentsId);
+                    });
+            })->get();
+
+            $tasks = $tasks->where('company_id', $companyId);
+
+            $suppliers = $suppliers->activeForCompany($companyId);
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }

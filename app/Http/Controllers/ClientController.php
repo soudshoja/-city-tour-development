@@ -63,6 +63,10 @@ class ClientController extends Controller
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
             $agentIds = [$agent->id];
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $branch = Branch::where('id', $user->accountant->branch_id)->pluck('id')->toArray();
+            $agent = Agent::whereIn('branch_id', $branch)->first();
+            $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
         }
 
         $clients = $clients->where(function ($query) use ($agentIds) {

@@ -39,14 +39,20 @@ class CoaController extends Controller
         // Get the authenticated user
         $user = Auth::user();
 
-        if ($user->role_id != Role::ADMIN && $user->role_id != Role::COMPANY) {
+        if ($user->role_id != Role::ADMIN && $user->role_id != Role::COMPANY && $user->role_id != Role::ACCOUNTANT) {
             return abort(403, 'Unauthorized action.');
         }
         $company = Company::where('user_id', $user->id)->first();
-
+        
         // Ensure the company exists before proceeding
         if (!$company) {
-            return redirect()->route('dashboard')->with('error', 'Company not found.');
+            try {
+                $companyId = data_get($user, 'accountant.branch.company_id') ?? data_get($user, 'role.company_id');
+                $company = $companyId ? Company::find($companyId) : null;
+            } catch (Exception $e) {
+                Log::error('Error fetching company: ' . $e->getMessage());
+                return redirect()->route('dashboard')->with('error', 'Company not found.');
+            }
         }
 
         // Fetch all agents related to the company
@@ -593,7 +599,13 @@ class CoaController extends Controller
         $companies = Company::all();
     
         if (!$company) {
-            return redirect()->route('dashboard')->with('error', 'Company not found.');
+            try {
+                $companyId = $user->accountant->branch->company->id;
+                $company = $companyId ? Company::find($companyId) : null;
+            } catch (Exception $e) {
+                Log::error('Error fetching company: ' . $e->getMessage());
+                return redirect()->route('dashboard')->with('error', 'Company not found.');
+            }
         }
     
         $startDate = $request->input('start_date');

@@ -65,6 +65,17 @@ class InvoiceController extends Controller
         } else if ($user->role_id == Role::AGENT) {
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $companiesId[] = $user->agent->branch->company_id;
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companyId = $user->accountant->branch->company_id;                
+
+            if ($companyId) {
+                $agents = Agent::whereHas('branch', fn ($q) => $q->where('company_id', $companyId))
+                            ->with(['branch:id,company_id', 'branch.company:id,name'])
+                            ->get();
+                $companiesId[] = $companyId;
+            } else {
+                $agents = collect();
+            }
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
@@ -1528,6 +1539,10 @@ class InvoiceController extends Controller
             $agents = $agents->where('branch_id', $user->branch->id)->get();
         } else if ($user->role_id == Role::AGENT) {
             $agents = $agents->where('id', $user->agent->id)->get();
+        } else if ($user->role_id == Role::ACCOUNTANT) {
+            $agents = $agents->where('branch_id', $user->accountant->branch_id)->get();
+        } else {
+            return abort(403, 'Unauthorized action.');
         }
 
         $agentIds = $agents->pluck('id');

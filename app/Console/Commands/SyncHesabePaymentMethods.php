@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Charge;
+use App\Services\HesabeMethodSyncService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use App\Models\PaymentMethod;
 
 class SyncHesabePaymentMethods extends Command 
 {
@@ -15,54 +15,41 @@ class SyncHesabePaymentMethods extends Command
     {
         $this->info('Start to sync payment method for Hesabe payment gateway');
 
-        $methods = [
-            1 => 'KNET',
-            2 => 'Visa/MasterCard',
-            7 => 'Amex',
-            9 => 'Apple Pay',
-        ];
+        $limit = collect($this->option('company'))->filter()->map(fn($v) => (int) $v);
 
-        $companyIds = $this->option('company');
-        if (empty($companyIds)) {
-            $companyIds = [1];
+        if ($limit->isEmpty()) {
+            $companyIds = Charge::query()
+                ->withoutGlobalScopes()
+                ->where('is_active', true)
+                ->where('name', 'like', '%hesabe%')
+                ->whereNotNull('company_id')
+                ->pluck('company_id')
+                ->unique();
+        } else {
+            $companyIds = $limit;
+        }
+
+        if ($companyIds->isEmpty()) {
+            $this->warn('No companies found. Exiting...');
+            return self::SUCCESS;
         }
 
         $total = 0; $error = 0;
 
-        foreach ($companyIds as $company) {
-            foreach ($methods as $id => $name) {
-                try {
-                    DB::transaction(function () use ($company, $id, $name, &$total) {
-                        PaymentMethod::updateOrCreate(
-                            [
-                                'myfatoorah_id' => $id,
-                                'company_id' => $company,
-                                'type' => 'hesabe',
-                            ],
-                            [
-                                'english_name' => $name,
-                                'arabic_name' => null, 
-                                'code' => strtolower(str_replace(['/', ' '], '_', $name)),
-                                'is_active' => true,
-                                'currency' => 'KWD',
-                                'service_charge' => 0,
-                                'self_charge' => 0,
-                                'paid_by' => 'Company',
-                                'charge_type' => 'Percent',
-                                'description' => '',
-                                'image' => null,
-                            ]
-                        );
+        foreach ($companyIds as $companyId) {
+            $this->line("Processing company ID: {$companyId}");
+            $response = app(HesabeMethodSyncService::class)->sync($companyId);
 
-                        $total++;
-                    });
-                } catch (\Exception $e) {
-                    $this->error("Failed syncing {$name} for company {$company}: " . $e->getMessage());
-                    $error++;
-                }
+            if ($response === false) {
+                $this->error("Failed syncing company {$companyId}");
+                $error++;
+            } else {
+                $this->info("✓ Completed syncing {$response} methods for company {$companyId}");
+                $total += $response;
             }
         }
 
         $this->info("Syncing completed. Total methods: {$total}. Errors: {$error}");
+        return self::SUCCESS;
     }    
 }

@@ -16,13 +16,13 @@ class Charge extends Model
         'type',
         'description',
         'auth_type',
-        'base_url',
         'api_key',
         'paid_by',
         'amount',
         'extra_charge', //Not yet being used
         'self_charge',
         'is_active',
+        'can_generate_link',
         'charge_type',
         'company_id',
         'branch_id',
@@ -32,6 +32,14 @@ class Charge extends Model
         'is_auto_paid',
         'has_url',
         'can_charge_invoice', // New column added for invoice charge capability
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'can_generate_link' => 'boolean',
+        'is_auto_paid' => 'boolean',
+        'has_url' => 'boolean',
+        'can_charge_invoice' => 'boolean',
     ];
 
     public function getAmountAttribute($value)

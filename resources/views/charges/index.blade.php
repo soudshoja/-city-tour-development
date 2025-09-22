@@ -13,7 +13,7 @@
         </div>
         <!-- add new charge & refresh page -->
         <div class="flex items-center gap-5">
-            <div data-tooltip="Reload"
+            <div data-tooltip-left="Reload"
                 class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                     <path fill="currentColor"
@@ -25,7 +25,7 @@
             </div>
             <!-- Add New Charge Button -->
             <div x-data="{ createModal: false }" class="relative">
-                <div id="createCharge" data-tooltip="Add new charge"
+                <div id="createCharge" data-tooltip-left="Add new charge"
                     class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm cursor-pointer"
                     @click="createModal = true">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
@@ -103,6 +103,25 @@
                                     <label for="api_key" class="block text-sm font-medium">API Key</label>
                                     <input type="text" name="api_key" required class="w-full border px-3 py-2 rounded-full" placeholder="Paste your secret key">
                                     <p class="text-xs text-gray-500 mt-1">This key is required to connect with the payment gateway.</p>
+                                </div>
+
+                                <div class="mb-4 flex gap-4">
+                                    <div class="w-1/2">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" name="is_active" id="is_active" value="1" checked
+                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                            <label for="is_active" class="ml-2 text-sm font-medium text-gray-700">Active</label>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">If unchecked, gateway will be saved but inactive</p>
+                                    </div>
+                                    <div class="w-1/2">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" name="can_generate_link" id="can_generate_link" value="1" checked
+                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                            <label for="can_generate_link" class="ml-2 text-sm font-medium text-gray-700">Can Generate Link</label>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">Allow customers to pay invoices using this gateway</p>
+                                    </div>
                                 </div>
 
                                 <!-- Auto Payment and External URL Settings -->
@@ -188,9 +207,11 @@
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Service Charge</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Self Charge</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Charge Type</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Active</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Invoice Charge</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Auto Payment</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">External URL</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500">Generate Link</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
                                     </tr>
@@ -198,7 +219,7 @@
                                 <tbody>
                                     @forelse ($charges as $charge)
                                     <tr class="cursor-pointer bg-gray-100 hover:bg-gray-200" @click="open[{{ $charge->id }}] = !open[{{ $charge->id }}]">
-                                        <td class="p-3 font-bold text-gray-800 bg-gray-100" colspan="11">
+                                        <td class="p-3 font-bold text-gray-800 bg-gray-100" colspan="13">
                                             {{ $charge->name }}
                                         </td>
                                         <td class="p-3 bg-gray-100">
@@ -228,45 +249,15 @@
                                         <td class="p-3 text-sm text-gray-600">{{ $method->paid_by }}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $method->currency}}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $method->service_charge }}</td>
-                                        <td class="p-3 text-sm text-gray-600">{{ $method->self_charge}}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ number_format($method->self_charge ?? 0, 2) }}</td>
                                         <td class="p-3 text-sm text-gray-600">{{ $method->charge_type }}</td>
-                                        <td class="p-3 text-sm text-gray-600">-</td>
-                                        <td class="p-3 text-sm text-gray-600">-</td>
-                                        <td class="p-3 text-sm text-gray-600">-</td>
-                                        <td class="p-3 text-sm text-gray-600">
-                                            {{ $method->description ? $method->description : 'Not Set' }}
+                                        <td class="p-3 text-sm">
+                                            @if($charge->is_active)
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
+                                            @else
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Inactive</span>
+                                            @endif
                                         </td>
-                                        <td class="p-3 text-sm text-gray-600">
-                                            <div class="relative group inline-block">
-                                                <button @click="openModal({{ $method->id }}, 'methods')" class="text-blue-600 hover:text-blue-800">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <title>Edit</title>
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M15.232 5.232l3.536 3.536M9 11l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 14.5H9v-3.5z" />
-                                                    </svg>
-                                                </button>
-                                                <div
-                                                    class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
-                                                    Edit
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                    @else
-                                    <tr x-cloak x-show="open[{{ $charge->id }}]" x-transition>
-                                        <td colspan="12" class="p-3 pl-6 italic text-sm text-red-500 text-center align-middle">
-                                            No payment method for this payment gateway
-                                        </td>
-                                    </tr>
-                                    <tr x-cloak x-show="open[{{ $charge->id }}]" x-transition>
-                                        <td class="p-3 pl-6 text-sm text-gray-600">{{ $charge->name }}</td>
-                                        <td class="p-3 text-sm text-gray-600">{{ $charge->type }}</td>
-                                        <td class="p-3 text-sm text-gray-600">{{ $charge->paid_by }}</td>
-                                        <td class="p-3 text-sm text-gray-600">{{ $charge->currency}}</td>
-                                        <td class="p-3 text-sm text-gray-600">{{ $charge->amount }}</td>
-                                        <td class="p-3 text-sm text-gray-600">{{ $charge->self_charge}}</td>
-                                        <td class="p-3 text-sm text-gray-600">{{ $charge->charge_type }}</td>
                                         <td class="p-3 text-sm text-gray-600">
                                             @if($charge->can_charge_invoice)
                                             <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
@@ -301,6 +292,97 @@
                                             </span>
                                             @else
                                             <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Not Allowed</span>
+                                            @endif
+                                        </td>
+                                        <td class="p-3 text-sm">
+                                            @if($charge->can_generate_link)
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Allowed</span>
+                                            @else
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Disabled</span>
+                                            @endif
+                                        </td>
+                                        <td class="p-3 text-sm text-gray-600">
+                                            {{ $method->description ? $method->description : 'Not Set' }}
+                                        </td>
+                                        <td class="p-3 text-sm text-gray-600">
+                                            <div class="relative group inline-block">
+                                                <button @click="openModal({{ $method->id }}, 'methods')" class="text-blue-600 hover:text-blue-800">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <title>Edit</title>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M15.232 5.232l3.536 3.536M9 11l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 14.5H9v-3.5z" />
+                                                    </svg>
+                                                </button>
+                                                <div
+                                                    class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
+                                                    Edit
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                    @else
+                                    <tr x-cloak x-show="open[{{ $charge->id }}]" x-transition>
+                                        <td colspan="14" class="p-3 pl-6 italic text-sm text-red-500 text-center align-middle">
+                                            No payment method for this payment gateway
+                                        </td>
+                                    </tr>
+                                    <tr x-cloak x-show="open[{{ $charge->id }}]" x-transition>
+                                        <td class="p-3 pl-6 text-sm text-gray-600">{{ $charge->name }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $charge->type }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $charge->paid_by }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $charge->currency ?? 'KWD' }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $charge->amount }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ number_format($charge->self_charge ?? 0, 2) }}</td>
+                                        <td class="p-3 text-sm text-gray-600">{{ $charge->charge_type }}</td>
+                                        <td class="p-3 text-sm">
+                                            @if($charge->is_active)
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
+                                            @else
+                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Inactive</span>
+                                            @endif
+                                        </td>
+                                        <td class="p-3 text-sm text-gray-600">
+                                            @if($charge->can_charge_invoice)
+                                            <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                </svg>
+                                                Enabled
+                                            </span>
+                                            @else
+                                            <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Disabled</span>
+                                            @endif
+                                        </td>
+                                        <td class="p-3 text-sm text-gray-600">
+                                            @if($charge->is_auto_paid)
+                                            <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                </svg>
+                                                Auto
+                                            </span>
+                                            @else
+                                            <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Manual</span>
+                                            @endif
+                                        </td>
+                                        <td class="p-3 text-sm text-gray-600">
+                                            @if($charge->has_url)
+                                            <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clip-rule="evenodd" />
+                                                </svg>
+                                                Allowed
+                                            </span>
+                                            @else
+                                            <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Not Allowed</span>
+                                            @endif
+                                        </td>
+                                        <td class="p-3 text-sm">
+                                            @if($charge->can_generate_link)
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Allowed</span>
+                                            @else
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Disabled</span>
                                             @endif
                                         </td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->description }}</td>
@@ -476,6 +558,25 @@
                                         <div class="mb-4">
                                             <label class="block text-sm font-medium">Description</label>
                                             <input type="text" name="description" x-model="editData.description" class="w-full border px-3 py-2 rounded-full" />
+                                        </div>
+
+                                        <div class="mb-6 flex gap-4">
+                                            <div class="w-1/2">
+                                                <div class="flex items-center">
+                                                    <input type="checkbox" name="is_active" x-model="editData.is_active" value="1"
+                                                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                    <label class="ml-2 text-sm font-medium text-gray-700">Active</label>
+                                                </div>
+                                                <p class="text-xs text-gray-500 mt-1">If unchecked, gateway will be saved but inactive</p>
+                                            </div>
+                                            <div class="w-1/2">
+                                                <div class="flex items-center">
+                                                    <input type="checkbox" name="can_generate_link" x-model="editData.can_generate_link" value="1"
+                                                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                    <label class="ml-2 text-sm font-medium text-gray-700">Can Generate Link</label>
+                                                </div>
+                                                <p class="text-xs text-gray-500 mt-1">Allow customers to pay invoices using this gateway</p>
+                                            </div>
                                         </div>
 
                                         <!-- Auto Payment and External URL Settings -->
@@ -681,6 +782,4 @@
             }
         }
     </script>
-
-
 </x-app-layout>

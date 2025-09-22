@@ -92,7 +92,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/companies/new', [AdminUsersController::class, 'newCompany'])->name('companiesnew.new');
         Route::get('/create', [AdminUsersController::class, 'create'])->name('users.create');
         Route::post('/companies', [AdminUsersController::class, 'store'])->name('companies.store');
-        Route::get('/edit/{roleId}', [AdminUsersController::class, 'editRole'])->name('users.edit');
+        Route::get('/edit/{userId}', [AdminUsersController::class, 'editRole'])->name('users.edit');
         Route::put('/update-role', [AdminUsersController::class, 'storeRole'])->name('users.role');
         Route::put('/{user}/update-info', [AdminUsersController::class, 'updateInfo'])->name('users.updateInfo');
     });

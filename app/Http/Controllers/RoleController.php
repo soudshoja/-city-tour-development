@@ -22,9 +22,17 @@ class RoleController extends Controller
         $this->aiService = new AIService();
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $roles = $this->getAllRole();
+        $user = Auth::user();
+
+        if(!($user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY )){
+            return abort(403, 'Unauthorized action.');
+        }
+
+        $companyId = $request->company_id ?? $user->company->id;
+
+        $roles = $this->getAllRole($companyId);
         $user = Auth::user();
         // Log::info('Debugging User Permissions:', [
         //     'roles' => $user->getRoleNames(),
@@ -52,9 +60,15 @@ class RoleController extends Controller
 
     public function store(Request $request)
     {
+        $user = Auth::user();
+
+        if($user->role_id != Role::COMPANY ) {
+            return redirect()->back()->with('error', 'Not Authorized');
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
-            'description' => 'required|string|max:255',
+            'description' => 'nullable|string|max:255',
             'permissionsId' => 'required|array'
         ], [
             // 'name.required' => 'The role name is required.',
@@ -70,8 +84,11 @@ class RoleController extends Controller
 
         $role = Role::create([
             'name' => $request->name,
-            'description' => $request->description
+            'guard_name' => 'web',
+            'description' => $request->description,
+            'company_id' => $user->company->id
         ]);
+
         $permissions = Permission::whereIn('id', $request->permissionsId)->get();
         $role->syncPermissions($permissions);
 
@@ -82,7 +99,7 @@ class RoleController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role_id == Role::ADMIN) {
+        if ($user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY) {
             $groupedPermissions = cache()->remember('permissions', 3600, function () {
                 return $this->getAllPermission();
             });
@@ -193,8 +210,10 @@ class RoleController extends Controller
         return json_decode($response['choices'][0]['message']['content'], true);
     }
 
-    public function getAllRole()
+    public function getAllRole($companyId)
     {
-        return Role::with('permissions')->get();
+        return Role::with('permissions')
+            ->where('company_id', $companyId)
+            ->get();
     }
 }

@@ -3653,8 +3653,6 @@
                 invoice_charge: invoiceCharge,
             };
 
-            console.log('payment method : ' + document.getElementById('payment_method_full').value);
-
             if (type === 'full' || type === 'credit') {
                 payload.clientId = document.getElementById('receiverId').value;
                 if (item.gateway === 'MyFatoorah') {

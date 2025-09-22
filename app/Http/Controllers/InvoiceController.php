@@ -123,14 +123,8 @@ class InvoiceController extends Controller
         $invoices = $invoices->orderBy($sortBy, $sortOrder) // 👈 Use dynamic sorting
             ->paginate(20)
             ->withQueryString();
-        
-        $clients = Client::whereIn('agent_id', $agentIds)->get();
-        $tasks = Task::whereIn('agent_id', $agentIds)->get();
-        $suppliers = Supplier::all();
-        $branches = $user->role_id == Role::ADMIN ? Branch::all() : Branch::where('company_id', $companiesId)->get();
-        $types = Task::distinct()->pluck('type');
            
-        return view('invoice.index', compact('invoices', 'types', 'suppliers', 'branches', 'agents', 'clients', 'tasks', 'totalInvoices', 'totalNet', 'totalSales'));
+        return view('invoice.index', compact('invoices', 'totalInvoices', 'totalNet', 'totalSales'));
     }
 
     public function salelist()
@@ -328,8 +322,6 @@ class InvoiceController extends Controller
 
         $countries = Country::all();
         
-        
-
         return view('invoice.create', compact(
             'clients',
             'agents',
@@ -744,7 +736,7 @@ class InvoiceController extends Controller
             }
         } elseif (strtolower($gateway) === 'hesabe' && $method) {
             try {
-
+                $gatewayFee = ChargeService::HesabeCharge($amount, $method, $companyId);
             } catch (Exception $e) {
                 Log::error('HesabeCharge exception during partial save', [
                     'message' => $e->getMessage(),
@@ -1825,6 +1817,8 @@ class InvoiceController extends Controller
                             ], $partial->payment_gateway);
                         } else if (strtolower($partial->payment_gateway) === 'upayment') {
                             $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
+                        } else if (strtolower($partial->payment_gateway) === 'hesabe') {
+                            $gatewayFee = ChargeService::HesabeCharge($partial->amount, $partial->payment_method, $companyId);
                         }
                     } catch (Exception $e) {
                         Log::error('ChargeService exception', [
@@ -1920,9 +1914,12 @@ class InvoiceController extends Controller
                         'agent_id'  => $invoice->agent_id,
                         'currency'  => $invoice->currency,
                     ], $paymentGateway);
-                } else {
+                } else if (strtolower($paymentGateway) === 'upayment') {
                     $gatewayFee = ChargeService::UPaymentCharge($invoicePartial->amount, $paymentMethod, $companyId);
+                } else if (strtolower($paymentGateway) === 'hesabe') {
+                    $gatewayFee = ChargeService::HesabeCharge($invoicePartial->amount, $paymentMethod, $companyId);
                 }
+
             } catch (\Exception $e) {
                 Log::error('ChargeService exception on split page', [
                     'message' => $e->getMessage(),
@@ -1996,6 +1993,8 @@ class InvoiceController extends Controller
                     ], $paymentGateway);
                 } else if (strtolower($paymentGateway) === 'upayment') {
                     $gatewayFee = ChargeService::UPaymentCharge($invoicePartial->amount, $paymentMethod, $companyId);
+                } else if (strtolower($paymentGateway) === 'hesabe') {
+                    $gatewayFee = ChargeService::HesabeCharge($invoicePartial->amount, $paymentMethod, $companyId);
                 }
 
             } catch (\Exception $e) {

@@ -141,6 +141,20 @@ class RefundController extends Controller
                         }
                     }
                 }
+            } else if (strtolower($gateway->name) === 'hesabe') {
+                foreach ($paymentMethods as $method) {
+                    if ($method->company_id == $task->agent->branch->company_id && $method->type == 'hesabe') {
+                        try {
+                            $method->gateway_fee = ChargeService::HesabeCharge($invoiceAmount, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
+                        } catch (Exception $e) {
+                            Log::error('HesabeCharge exception in refund', [
+                                'message' => $e->getMessage(),
+                                'paymentMethod' => $method->id,
+                                'company_id' => $task->agent->branch->company_id,
+                            ]);
+                        }   
+                    }
+                }
             } else {
                 $gateway->gateway_fee = ChargeService::TapCharge([
                     'amount' => $invoiceAmount,
@@ -753,6 +767,21 @@ class RefundController extends Controller
                             $method->gateway_fee = ChargeService::UPaymentCharge($refund->airline_nett_fare - $refund->total_nett_refund, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
                         } catch (Exception $e) {
                             Log::error('UPaymentCharge exception in refund edit', [
+                                'message' => $e->getMessage(),
+                                'paymentMethod' => $method->id,
+                                'company_id' => $task->agent->branch->company_id,
+                            ]);
+                            $method->gateway_fee = 0;
+                        }
+                    }
+                }
+            } else if (strtolower($gateway->name) === 'hesabe') {
+                foreach ($paymentMethods as $method) {
+                    if ($method->company_id == $task->agent->branch->company_id && $method->type == 'hesabe') {
+                        try {
+                            $method->gateway_fee = ChargeService::HesabeCharge($refund->airline_nett_fare - $refund->total_nett_refund, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
+                        } catch (Exception $e) {
+                            Log::error('HesabeCharge exception in refund edit', [
                                 'message' => $e->getMessage(),
                                 'paymentMethod' => $method->id,
                                 'company_id' => $task->agent->branch->company_id,

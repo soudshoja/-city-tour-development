@@ -10,13 +10,6 @@
             border-radius: 7px;
             border: 1px solid rgba(255, 255, 255, 0.18);
         }
-
-        .rotate {
-            transform: rotate(0deg);
-            writing-mode: tb-rl;
-            -o-writing-mode: tb-rl;
-            -ms-writing-mode: tb-rl;
-        }
     </style>
 
     <div class="flex justify-between items-center gap-5 my-3 ">
@@ -32,8 +25,8 @@
         </div>
         <!-- add new Invoice & refresh page -->
         <div class="flex items-center gap-5">
-            <div data-tooltip="Reload"
-                class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
+            <div data-tooltip-left="Reload"
+                class="refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                     <path fill="currentColor"
                         d="M12.079 2.25c-4.794 0-8.734 3.663-9.118 8.333H2a.75.75 0 0 0-.528 1.283l1.68 1.666a.75.75 0 0 0 1.056 0l1.68-1.666a.75.75 0 0 0-.528-1.283h-.893c.38-3.831 3.638-6.833 7.612-6.833a7.66 7.66 0 0 1 6.537 3.643a.75.75 0 1 0 1.277-.786A9.16 9.16 0 0 0 12.08 2.25" />
@@ -43,10 +36,9 @@
                 </svg>
             </div>
 
-
             <!-- add new invoice -->
             <a href="{{ route('invoices.create') }}">
-                <div data-tooltip="Create new Invoice"
+                <div data-tooltip-left="Create new Invoice"
                     class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                         <path fill="#fff"

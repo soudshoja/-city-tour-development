@@ -15,6 +15,7 @@ class Accountant extends Model
         'user_id',
         'name',
         'email',
+        'country_code',
         'phone_number',
         'branch_id',
     ];

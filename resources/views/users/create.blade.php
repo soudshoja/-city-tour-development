@@ -640,7 +640,7 @@
                                                         class="custom-input w-50 px-2 pr-8 border border-[#6B7280] rounded-md appearance-none">
                                                         @foreach ($countries as $country)
                                                         <option value="{{ $country->dialing_code }}">
-                                                            {{ $country->dialing_code }} ({{ $country->name }})
+                                                            {{ $country->name }} ({{ $country->dialing_code }})
                                                         </option>
                                                         @endforeach
                                                         <!-- Add more country codes as needed -->

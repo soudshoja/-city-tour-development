@@ -51,6 +51,7 @@ class ProcessExpiredConfirmedTasks extends Command
                     }
                 });
             })
+            ->whereDoesntHave('invoiceDetail')
             ->with(['agent.branch', 'client', 'supplier'])
             ->get();
 

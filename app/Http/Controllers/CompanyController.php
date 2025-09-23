@@ -391,31 +391,51 @@ class CompanyController extends Controller
     public function createAccountant(Request $request)
     {
         $auth = Auth()->user();
-        $branchId = $auth->branch->id;
+        $companyId = $auth->branch->company_id;
+
+        $company = Company::findOrFail($companyId);
+
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'dial_code' => 'required|string',
             'phone' => 'nullable|string|max:15',
         ]);
-        // Create the accountant user
+
+        $role = Role::where('name', 'accountant')
+                ->where('company_id', $companyId)
+                ->first();
+
+            if (!$role) {
+
+                $role = Role::create([
+                    'name' => 'accountant',
+                    'description' => 'Accountant role for company ' . $company->name,
+                    'company_id' => $companyId,
+                ]);
+            }
+
         $user = User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
-            'password' => bcrypt(Str::random(10)), // Generate a random password
+            'password' => bcrypt(Str::random(10)), 
             'role_id' => Role::ACCOUNTANT,
             'remember_token' => Str::random(10),
             'first_login' => 1,
-        ]);
+        ])->assignRole($role);
         
-        $user->accountant()->create([
+        $accountant = $user->accountant()->create([
             'name'         => $validatedData['name'],
             'email'        => $validatedData['email'],
             'country_code' => $validatedData['dial_code'],
             'phone_number' => $validatedData['phone'],
-            'branch_id'    => $branchId,
+            'company_id'    => $companyId,
         ]);
 
+        Log::info('Accountant role has succesfully created for company ' . $company->name, [
+            'user' => $user,
+            'accountant' => $accountant,
+        ]);
         return redirect()->back()->with('success', 'Accountant created successfully.');
     }
 

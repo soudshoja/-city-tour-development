@@ -107,20 +107,28 @@ class WhatsAppHotelController extends Controller
     {
         Log::channel('whatsapp')->info('saveBookingDetails: Incoming request', ['request' => $request->all()]);
 
-        $topValidator = Validator::make($request->all(), [
+        // Non-blocking validation (collect errors but don't immediately stop)
+        $validator = Validator::make($request->all(), [
             'phone_number'    => 'required|string',
             'checkIn'         => 'required|date',
             'checkOut'        => 'required|date|after_or_equal:checkIn',
             'occupancy'       => 'required|array',
             'occupancy.rooms' => 'required|array|min:1',
-            'hotel'           => 'required|string',
+            'hotel'           => 'nullable|string'
         ]);
 
-        if ($topValidator->fails()) {
+        $topLevelErrors = $validator->errors();
+
+        // Block only if we miss essentials to save any row
+        $missingEssentials = $topLevelErrors->only([
+            'phone_number', 'checkIn', 'checkOut', 'occupancy', 'occupancy.rooms'
+        ]);
+
+        if (!empty(array_filter($missingEssentials))) {
             return response()->json([
                 'success'       => false,
                 'message'       => 'Validation failed',
-                'errors'        => $topValidator->errors(),
+                'errors'        => $topLevelErrors,
                 'saved_count'   => 0,
                 'saved_ids'     => [],
                 'skipped_count' => 0,
@@ -129,7 +137,14 @@ class WhatsAppHotelController extends Controller
 
         $savedIds = [];
         $errors   = [];
-        $rooms    = $request->input('occupancy.rooms', []);
+        $warnings = [];
+
+        // Non-blocking error for missing optional hotel
+        if (!$request->filled('hotel')) {
+            $warnings['hotel'][] = 'Hotel was not provided; rows saved without hotel.';
+        }
+
+        $rooms = $request->input('occupancy.rooms', []);
 
         foreach ($rooms as $index => $room) {
             $roomValidator = Validator::make($room, [
@@ -150,7 +165,7 @@ class WhatsAppHotelController extends Controller
                     'check_out'     => $request->checkOut,
                     'adults'        => $room['adults'],
                     'children_ages' => isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null,
-                    'hotel'         => $request->hotel,
+                    'hotel'         => $request->hotel ?? null,
                 ]);
                 $savedIds[] = $row->id;
             } catch (Exception $e) {
@@ -163,14 +178,17 @@ class WhatsAppHotelController extends Controller
         }
 
         return response()->json([
-            'success'       => count($savedIds) > 0,
-            'message'       => count($savedIds) > 0 ? 'Booking details processed.' : 'No rooms were saved.',
-            'saved_count'   => count($savedIds),
-            'saved_ids'     => $savedIds,
-            'skipped_count' => isset($errors['rooms']) ? count($errors['rooms']) : 0,
-            'errors'        => $errors,
+            'success'         => count($savedIds) > 0,
+            'message'         => count($savedIds) > 0 ? 'Booking details processed (partial save allowed).' : 'No rooms were saved.',
+            'saved_count'     => count($savedIds),
+            'saved_ids'       => $savedIds,
+            'skipped_count'   => isset($errors['rooms']) ? count($errors['rooms']) : 0,
+            'errors'          => $errors,        // per-room validation/save errors
+            'top_level_errors'=> $topLevelErrors, // non-blocking top-level errors (e.g., missing hotel)
+            'warnings'        => $warnings,
         ], count($savedIds) > 0 ? 200 : 422);
     }
+
 
 
 

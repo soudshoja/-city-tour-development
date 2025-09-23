@@ -20,6 +20,7 @@ use App\Models\Task;
 use App\Models\Invoice;
 use App\Models\AgentMonthlyCommissions;
 use App\Models\InvoiceDetail;
+use App\Models\Permission;
 
 class AgentTest extends TestCase
 {
@@ -38,6 +39,8 @@ class AgentTest extends TestCase
     {
         parent::setUp();
 
+        $this->artisan('db:seed', ['--class' => 'PermissionSeeder']);
+
         // Create agent types first
         $this->agentType = AgentType::create([
             'id' => 1,
@@ -47,8 +50,6 @@ class AgentTest extends TestCase
         AgentType::create(['id' => 2, 'name' => 'Salary']);
         AgentType::create(['id' => 3, 'name' => 'Both-A']);
         AgentType::create(['id' => 4, 'name' => 'Both-B']);
-
-
 
         // Create admin user
         $this->adminUser = User::factory()->create([
@@ -71,15 +72,20 @@ class AgentTest extends TestCase
             'user_id' => $this->companyUser->id
         ]);
 
+        $permissions = Permission::pluck('name')->toArray();
+
         // Update company user with company_id
         $this->companyUser->update(['company_id' => $this->company->id]);
 
-        Role::create(['id' => Role::ADMIN, 'name' => 'Admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
-        Role::create(['id' => Role::COMPANY, 'name' => 'Company', 'guard_name' => 'web', 'company_id' => $this->company->id]);
-        Role::create(['id' => Role::BRANCH, 'name' => 'Branch', 'guard_name' => 'web', 'company_id' => $this->company->id]);
-        Role::create(['id' => Role::AGENT, 'name' => 'Agent', 'guard_name' => 'web', 'company_id' => $this->company->id]);
-        Role::create(['id' => Role::ACCOUNTANT, 'name' => 'Accountant', 'guard_name' => 'web', 'company_id' => $this->company->id]);
-        Role::create(['id' => Role::CLIENT, 'name' => 'Client', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        $roleAdmin = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        $this->adminUser->assignRole($roleAdmin);
+
+        $roleAdmin->syncPermissions($permissions);
+
+        $roleCompany = Role::create(['name' => 'company', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        $this->companyUser->assignRole($roleCompany);
+
+        $roleCompany->syncPermissions('view agent');
 
         // Create branch user
         $this->branchUser = User::factory()->create([
@@ -87,6 +93,12 @@ class AgentTest extends TestCase
             'name' => 'Branch User',
             'email' => 'branch@test.com'
         ]);
+
+        $roleBranch = Role::create(['name' => 'branch', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        $this->branchUser->assignRole($roleBranch);
+
+        $roleBranch->syncPermissions('view agent');
+
 
         // Create test branch
         $this->branch = Branch::factory()->create([
@@ -158,6 +170,11 @@ class AgentTest extends TestCase
             'target' => 5000.00
         ]);
 
+        $roleAgent = Role::create(['name' => 'Agent', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        $this->agentUser->assignRole($roleAgent);
+
+        Role::create(['name' => 'Accountant', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::create(['name' => 'Client', 'guard_name' => 'web', 'company_id' => $this->company->id]);
     }
 
     public function test_admin_can_view_all_agents()

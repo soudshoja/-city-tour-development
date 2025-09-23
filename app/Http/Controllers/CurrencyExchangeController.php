@@ -296,14 +296,15 @@ class CurrencyExchangeController extends Controller
     public function convertFromSidebar(Request $request): JsonResponse
     {
         Log::info('Starting to convert an exchange currency with ' . json_encode($request->all()));
-
         $user = Auth::user();
         if ($user->role_id == Role::ADMIN) {
             $companyId = 1;
         } elseif ($user->role_id == Role::COMPANY) {
             $companyId = Company::where('user_id', $user->id)->value('id');
         } elseif ($user->role_id == Role::AGENT) {
-            $companyId = Agent::where('user_id', $user->id)->value('company_id');
+            $companyId = auth()->user()->agent->branch->company_id;
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companyId = auth()->user()->accountant->company_id;
         } else {
             return response()->json([
                 'status'  => 'error',

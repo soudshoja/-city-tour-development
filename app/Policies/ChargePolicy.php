@@ -13,7 +13,7 @@ class ChargePolicy
      */
     public function viewAny(User $user): bool
     {
-        if($user->roles('admin')) return true;
+        if($user->hasRole('admin')) return true;
 
         return $user->can('view charges');
     }

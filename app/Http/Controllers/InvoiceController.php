@@ -65,6 +65,17 @@ class InvoiceController extends Controller
         } else if ($user->role_id == Role::AGENT) {
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $companiesId[] = $user->agent->branch->company_id;
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companyId = $user->accountant->branch->company_id;                
+
+            if ($companyId) {
+                $agents = Agent::whereHas('branch', fn ($q) => $q->where('company_id', $companyId))
+                            ->with(['branch:id,company_id', 'branch.company:id,name'])
+                            ->get();
+                $companiesId[] = $companyId;
+            } else {
+                $agents = collect();
+            }
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
@@ -187,6 +198,16 @@ class InvoiceController extends Controller
 
         $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel')->where('enabled', true);
         $selectedTasks = (clone $tasks)->whereIn('id', $taskIdsArray)->get();
+
+        $blockedSuppliers = ['jazeera airways'];
+        foreach ($selectedTasks as $task) {
+            $supplierName = strtolower($task->supplier->name ?? '');
+            $isBlockedStatus = in_array($task->status, ['confirmed', 'void'], true);
+
+            if (in_array($supplierName, $blockedSuppliers, true) && $isBlockedStatus) {
+                return back()->with('error', "You cannot create an invoice for {$task->status} tasks from {$task->supplier->name}");
+            }
+        }
 
         foreach ($selectedTasks as $task) {
             if ($task->invoiceDetail) {
@@ -1518,6 +1539,10 @@ class InvoiceController extends Controller
             $agents = $agents->where('branch_id', $user->branch->id)->get();
         } else if ($user->role_id == Role::AGENT) {
             $agents = $agents->where('id', $user->agent->id)->get();
+        } else if ($user->role_id == Role::ACCOUNTANT) {
+            $agents = $agents->where('branch_id', $user->accountant->branch_id)->get();
+        } else {
+            return abort(403, 'Unauthorized action.');
         }
 
         $agentIds = $agents->pluck('id');

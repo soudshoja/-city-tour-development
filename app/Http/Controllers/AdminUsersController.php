@@ -52,23 +52,58 @@ class AdminUsersController extends Controller
         return view('users.index', compact('users', 'usersCount'));
     }
 
-    public function editRole($roleId)
+    public function editRole($userId)
     {
-        $user = User::find($roleId);
-        $roles = Role::all();
+        if(auth()->user()->role_id != Role::COMPANY){
+            abort(403, 'Unauthorized action.');
+        }
+        $user = User::find($userId);
+        
+        if($user->role_id == Role::ADMIN) {
+            abort(403, 'Cannot change role of Admin users.');
+        }
 
-        return view('users.edit', compact('user', 'roles'));
+        $roles = Role::where('company_id', auth()->user()->company->id)->get();
+
+        $userRole = null;
+        $phone = null;
+
+        if($user->role_id == Role::COMPANY && $user->company) {
+            $userRole = 'company';
+            $phone = $user->company->phone;
+        } elseif($user->role_id == Role::BRANCH && $user->branch) {
+            $userRole = 'branch';
+            $phone = $user->branch->phone;
+        } elseif($user->role_id == Role::AGENT && $user->agent) {
+            $userRole = 'agent';
+            $phone = $user->agent->phone_number;
+        } elseif($user->role_id == Role::ACCOUNTANT && $user->company) {
+            $userRole = 'accountant';
+        } elseif($user->role_id == Role::CLIENT && $user->client) {
+            $userRole = 'client';
+        }
+
+        return view('users.edit', compact(
+            'user',
+            'roles',
+            'userRole',
+            'phone'
+        ));
     }
 
     public function storeRole(Request $request)
     {
-        $validatedData = $request->validate([
+        $request->validate([
             'role_id' => 'required|integer|exists:roles,id',
             'user_id' => 'required|integer|exists:users,id',
+            'company_id' => 'required|integer|exists:companies,id',
         ]);
 
-        $user = User::find($validatedData['user_id']);
-        $role = Role::find($validatedData['role_id']);
+        $user = User::find($request->user_id);
+        $role = Role::where('id', $request->role_id)
+            ->where('company_id', $request->company_id)
+            ->first();
+
         try {
             $user->syncRoles($role);
         } catch (Exception $e) {

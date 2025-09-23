@@ -468,6 +468,10 @@ class ReportController extends Controller
             $suppliers = SupplierCompany::where('company_id', $user->company->id)
                 ->with('supplier')
                 ->get();
+        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
+            $suppliers = SupplierCompany::where('company_id', $user->accountant->branch->company->id)
+                ->with('supplier')
+                ->get();
         } else {
             return redirect()->back()->with('error', 'Unauthorized action.');
         }
@@ -489,7 +493,6 @@ class ReportController extends Controller
             'allAccounts' => $allAccounts,
         ]);
     }
-
 
     public function paidaccountsPayableReceivableReport(Request $request)
     {
@@ -606,6 +609,10 @@ class ReportController extends Controller
             $suppliers = SupplierCompany::where('company_id', $user->company->id)
                 ->with('supplier')
                 ->get();
+        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
+            $suppliers = SupplierCompany::where('company_id', $user->accountant->branch->company->id)
+                ->with('supplier')
+                ->get();
         } else {
             return redirect()->back()->with('error', 'Unauthorized action.');
         }
@@ -661,8 +668,8 @@ class ReportController extends Controller
                 'journal_entries.account_id',
                 DB::raw('SUM(COALESCE(journal_entries.credit, 0)) - SUM(COALESCE(journal_entries.debit, 0)) AS total')
             )
-            ->where('journal_entries.company_id', $user->company->id)
-            ->where('journal_entries.branch_id', $user->branch->id)
+            ->where('journal_entries.company_id', $user->company->id ?? $user->accountant->branch->company->id)
+            ->where('journal_entries.branch_id', $user->branch->id ?? $user->accountant->branch->id)
             ->whereBetween('journal_entries.transaction_date', [$from, $to])
             ->whereIn('root_a.name', ['Liabilities']);
 
@@ -686,8 +693,8 @@ class ReportController extends Controller
 
         // Fetch journal entries filtered by reconcile status
         $entriesQuery = JournalEntry::whereIn('account_id', $totalsByAccount->keys())
-            ->where('company_id', $user->company->id)
-            ->where('branch_id', $user->branch->id)
+            ->where('company_id', $user->company->id ?? $user->accountant->branch->company->id)
+            ->where('branch_id', $user->branch->id ?? $user->accountant->branch->id)
             ->whereBetween('transaction_date', [$from, $to])
             ->where('credit', '!=', 0)
             ->whereNull('voucher_number')
@@ -1044,7 +1051,7 @@ class ReportController extends Controller
         $user = Auth::user();
 
         // Only allow ADMIN and COMPANY roles
-        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
             abort(403, 'Unauthorized');
         }
 

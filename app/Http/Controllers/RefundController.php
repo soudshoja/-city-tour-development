@@ -55,6 +55,12 @@ class RefundController extends Controller
                 ->where('agent_id', $user->agent->id)
                 ->orderBy('id', 'desc')
                 ->get();
+        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
+            $refundClients = $user->accountant->branch->agents->pluck('refundClients')->flatten();
+            $refunds = Refund::with('task.client', 'task.agent')
+                ->whereIn('agent_id', $refundClients->pluck('id'))
+                ->orderBy('id', 'desc')
+                ->get();
         } else {
             $refundClients = $user->agent->refundClients;
             $refunds = collect();

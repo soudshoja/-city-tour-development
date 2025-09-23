@@ -437,6 +437,19 @@ class AgentController extends Controller
 
         try{
 
+            $role = Role::where('name', 'agent')
+                ->where('company_id', $branch->company_id)
+                ->first();
+
+            if (!$role) {
+
+                $role = Role::create([
+                    'name' => 'agent',
+                    'description' => 'Agent role for company ' . $branch->company->name,
+                    'company_id' => $branch->company_id,
+                ]);
+            }
+
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
@@ -444,7 +457,8 @@ class AgentController extends Controller
                 'role_id' => Role::AGENT,
                 'remember_token' => Str::random(10),
                 'first_login' => 1,
-            ])->assignRole('agent');
+            ])->assignRole($role);
+
 
         } catch(Exception $e){
             logger('Failed to create user for agent: ' . $e->getMessage());

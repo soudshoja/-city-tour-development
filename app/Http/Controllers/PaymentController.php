@@ -220,6 +220,12 @@ class PaymentController extends Controller
                 if ($existingPayment->expiry_date && Carbon::parse($existingPayment->expiry_date)->isPast()) {
                     Log::info('Found an expired payment link. A new one will be generated.', ['payment_id' => $existingPayment->id]);
                     $existingPayment->delete();
+                } elseif ($existingPayment->payment_method_id != $data['payment_method']) {
+                    Log::info('Payment method changed. A new payment link will be generated.', [
+                        'old_method' => $existingPayment->payment_method_id,
+                        'new_method' => $data['payment_method'],
+                    ]);
+                    $existingPayment->delete();
                 } else {
                     Log::info('Reusing existing payment link.', ['payment_id' => $existingPayment->id, 'url' => $existingPayment->payment_url]);
                     return response()->json([
@@ -1640,6 +1646,11 @@ class PaymentController extends Controller
         } else if ($user->role_id == Role::AGENT) {
             $companyId = $user->agent->branch->company_id;
             $agents = Agent::where('id', $user->agent->id)->get();
+            $agentsId = $agents->pluck('id')->toArray();
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companyId = $user->accountant->branch->company_id;
+            $branches = Branch::where('company_id', $companyId)->get();
+            $agents = Agent::whereIn('branch_id', $branches->pluck('id')->toArray())->get();
             $agentsId = $agents->pluck('id')->toArray();
         } else {
             return redirect()->back()->with('error', 'You are not authorized to view payment links.');

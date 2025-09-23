@@ -12,11 +12,11 @@ rounded-lg shadow-md p-4 flex flex-col space-y-6 items-center mx-auto w-full">
 
                 <!-- Second Row: Buttons -->
                 <div class="flex gap-4 flex-wrap">
-                    <button onclick="enableSubFeatures('{{ $key }}')"
+                    <button type="button" onclick="enableSubFeatures('{{ $key }}')"
                         class="border border-gray-500 dark:border-gray-400 rounded-lg px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-300 text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-150 ease-in-out shadow hover:shadow-md">
                         Enable All
                     </button>
-                    <button onclick="disableSubFeatures('{{ $key }}')"
+                    <button type="button" onclick="disableSubFeatures('{{ $key }}')"
                         class="border border-gray-500 dark:border-gray-400 rounded-lg px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-300 text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-150 ease-in-out shadow hover:shadow-md">
                         Disable All
                     </button>
@@ -38,23 +38,23 @@ rounded-lg shadow-md p-4 flex flex-col space-y-6 items-center mx-auto w-full">
         @endforeach
 
         <script>
-          function enableSubFeatures(id) {
-              var subFeatures = document.getElementById(id + '-sub');
-              var checkboxes = subFeatures.getElementsByTagName('input');
+            function enableSubFeatures(id) {
+                var subFeatures = document.getElementById(id + '-sub');
+                var checkboxes = subFeatures.getElementsByTagName('input');
 
-              for (var i = 0; i < checkboxes.length; i++) {
-                  checkboxes[i].checked = true;
-              }
-          }
+                for (var i = 0; i < checkboxes.length; i++) {
+                    checkboxes[i].checked = true;
+                }
+            }
 
-          function disableSubFeatures(id) {
-              var subFeatures = document.getElementById(id + '-sub');
-              var checkboxes = subFeatures.getElementsByTagName('input');
+            function disableSubFeatures(id) {
+                var subFeatures = document.getElementById(id + '-sub');
+                var checkboxes = subFeatures.getElementsByTagName('input');
 
-              for (var i = 0; i < checkboxes.length; i++) {
-                  checkboxes[i].checked = false;
-              }
-          }
-      </script>
+                for (var i = 0; i < checkboxes.length; i++) {
+                    checkboxes[i].checked = false;
+                }
+            }
+        </script>
     </div>
 </div>

@@ -16,6 +16,7 @@ use App\Models\Transaction;
 use App\Models\Role;
 use App\Models\Company;
 use App\Models\Task;
+use App\Models\Report;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -859,7 +860,7 @@ class ReportController extends Controller
     public function getPayableSupplier()
     {
 
-        $companyId = auth()->user()->company->id; // Adjust this to get the current company ID
+        $companyId = auth()->user()->company->id ?? auth()->user()->accountant->branch->company->id; // Adjust this to get the current company ID
         $accountPayable = Account::where('name', 'Accounts Payable')->first();
 
         if (!$accountPayable) {
@@ -1130,53 +1131,64 @@ class ReportController extends Controller
         $endDate = $request->input('end_date');
         $groupBySupplier = $request->input('group_by_supplier', false);
 
-        if($user->role_id != Role::COMPANY){
+        if($user->role_id != Role::COMPANY && $user->role_id != Role::ACCOUNTANT){
             return abort(403, 'Unauthorized action.');
         }
 
         $liabilitiesAccount = Account::where('name', 'Liabilities')
-            ->where('company_id', $user->company->id)
+            ->where('company_id', $user->company->id ?? $user->accountant->branch->company->id)
             ->first();
-        
+
         if (!$liabilitiesAccount) {
-            Log::info('Liabilities account not found for company ID: ' . $user->company->name);
+            Log::info('Liabilities account not found for company ID: ' . $user->company->name ?? $user->accountant->branch->company->name);
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
 
         $payableAccounts = Account::where('name', 'Accounts Payable')
-            ->where('company_id', $user->company->id)
+            ->where('company_id', $user->company->id ?? $user->accountant->branch->company->id)
             ->where('parent_id', $liabilitiesAccount->id)
             ->first();
-        
+
         if(!$payableAccounts) {
             Log::info('Accounts Payable account not found under Liabilities for company ID: ' . $user->company->id);
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
         
         $creditorsAccount = Account::where('name', 'Creditors')
-            ->where('company_id', $user->company->id)
+            ->where('company_id', $user->company->id  ?? $user->accountant->branch->company->id)
             ->where('parent_id', $payableAccounts->id)
             ->where('root_id', $liabilitiesAccount->id)
             ->first();
-        
+
         if (!$creditorsAccount) {
             Log::info('Creditors account not found under Accounts Payable for company ID: ' . $user->company->id);
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
-
+dd(Account::where('parent_id', 39)->get());
         $childOfCreditors = Account::where('parent_id', $creditorsAccount->id)
-            ->where('company_id', $user->company->id)
+            ->where('company_id', $user->company->id ?? $user->accountant->branch->company->id)
             ->get();
 
-        $accountForReport = $childOfCreditors->first(); // default
+        $accountForReport = null; 
 
+        if ($childOfCreditors->isNotEmpty()) {
+            $accountForReport = $childOfCreditors->first();
+        } else {
+            Log::info('null do');
+        }
+        
         if($accountId){
             $accountForReport = Account::find($accountId);
         }
 
+        if (!$accountForReport) {
+        Log::info('No valid account found for the report. AccountId: ' . $accountId . ', ChildOfCreditors empty: ' . $childOfCreditors->isEmpty());
+        return redirect()->back()->with('error', 'No valid account found for the report.');
+    }
+
         // Build query with date filtering
         $journalQuery = JournalEntry::where('account_id', $accountForReport->id)
-            ->where('company_id', $user->company->id);
+            ->where('company_id', $user->company->id ?? $user->accountant->branch->company->id);
 
         if ($startDate) {
             $journalQuery->whereDate('transaction_date', '>=', $startDate);

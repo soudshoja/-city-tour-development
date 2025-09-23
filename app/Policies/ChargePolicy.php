@@ -31,15 +31,31 @@ class ChargePolicy
      */
     public function create(User $user): bool
     {
-        return false;
+        if ($user->hasRole('admin')) {
+            return true;
+        } elseif ($user->hasRole('company') || $user->hasRole('agent')) {
+            return $user->can('create charges');
+        } elseif ($user->hasRole('accountant')) {
+            return false;
+        } else {
+            return false;
+        }
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Charge $charge): bool
+    public function update(User $user): bool
     {
-        return false;
+        if ($user->hasRole('admin')) {
+            return true;
+        } elseif ($user->hasRole('company') || $user->hasRole('agent')) {
+            return $user->can('update charges');
+        } elseif ($user->hasRole('accountant')) {
+            return false;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -47,7 +63,15 @@ class ChargePolicy
      */
     public function delete(User $user, Charge $charge): bool
     {
-        return false;
+        if ($user->hasRole('admin')) {
+            return true;
+        } elseif ($user->hasRole('company') || $user->hasRole('agent')) {
+            return $user->can('delete charges');
+        } elseif ($user->hasRole('accountant')) {
+            return false;
+        } else {
+            return false;
+        }
     }
 
     /**

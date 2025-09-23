@@ -304,7 +304,7 @@ class CurrencyExchangeController extends Controller
         } elseif ($user->role_id == Role::AGENT) {
             $companyId = auth()->user()->agent->branch->company_id;
         } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $companyId = auth()->user()->accountant->company_id;
+            $companyId = auth()->user()->accountant->branch->company->id;
         } else {
             return response()->json([
                 'status'  => 'error',

@@ -23,6 +23,7 @@ class DashboardController extends Controller
     {
         $serializedData = [];
 
+
         if (Auth::user()->role_id == Role::ADMIN) {
             $dashboardData =  $this->adminDashboard();
 
@@ -76,8 +77,8 @@ class DashboardController extends Controller
         } elseif (Auth::user()->role_id == Role::BRANCH) {
             return $this->branchDashboard();
         } elseif (Auth::user()->role_id == Role::ACCOUNTANT) {
-
-            $dashboardData = $this->adminDashboard();
+            
+            $dashboardData = $this->accountantDasboard();
 
             $serializedData = [
                 'payableSupplier'   => (object)['balance' => 0],
@@ -85,16 +86,17 @@ class DashboardController extends Controller
                 'totalReceivable'   => 0,
                 'totalBank'         => 0,
                 'gatewayReceivable' => 0,
-                'companies'       => $dashboardData['companies'],
-                'branches'        => $dashboardData['branches'],
-                'agents'          => $dashboardData['agents'],
-                'clients'         => $dashboardData['clients'],
+                'companies'         => $dashboardData['companies'],
+                'branches'          => $dashboardData['branches'],
+                'agents'            => $dashboardData['agents'],
+                'clients'           => $dashboardData['clients'],
                 'pieChartTitle'   => 'Companies Sales',
                 'pieChartNumbers' => $dashboardData['companiesSales'],
                 'pieChartLabels'  => $dashboardData['companiesNames'],
                 'pieChartColors'  => $this->generateColors($dashboardData['companies']->count()),
             ];
         }
+
 
         return view('dashboard', $serializedData);
     }
@@ -181,6 +183,36 @@ class DashboardController extends Controller
     {
         $taskController = new TaskController();
         return $taskController->index(new Request());
+    }
+
+    public function accountantDasboard()
+    {
+        $user = Auth::user();
+
+        $companies = Company::with('branches.agents.invoices.invoicePartials')->whereHas('branches.agents.invoices')->get();
+        $companiesSales = $companies->map(function ($company) {
+            return $company->branches->flatMap(function ($branch) {
+                return $branch->agents->flatMap(function ($agent) {
+                    return $agent->invoices;
+                });
+            })->sum('amount');
+        });
+
+
+
+        $branches = Branch::all();
+        $agents = Agent::all();
+        $clients = Client::all();
+
+        return [
+            'companies' => $companies,
+            'branches' => $branches,
+            'agents' => $agents,
+            'clients' => $clients,
+            'companiesSales' => $companiesSales,
+            'companiesNames' => $companies->pluck('name'),
+            // 'notifications' => $notifications,
+        ];
     }
 
     // public function agentDashboard()

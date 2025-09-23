@@ -22,13 +22,15 @@
                 $gridCols = 'sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2';
             } elseif (auth()->user()->hasRole('client')) {
                 $gridCols = 'sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-1';
+            } elseif (auth()->user()->hasRole('accountant')) {
+                $gridCols = 'sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-1';
             } else {
                 $gridCols = 'sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-1';
             }
         @endphp
 
         <div class="grid {{ $gridCols }} gap-3 mt-3">
-            @can('viewAny', App\Models\Company::class && auth()->user()->hasRole('admin'))
+            @can('viewAny', App\Models\Company::class && auth()->user()->hasRole('admin') || auth()->user()->hasRole('accountant'))
                 <div class="p-4 bg-green-100/50 dark:bg-green-900/50 rounded-lg shadow-md w-full flex">
                     <div class="w-full">
                         <h1 class="text-2xl font-bold text-green-800 dark:text-green-300">{{ $companies->count() }}</h1>
@@ -72,7 +74,7 @@
 
 
         {{-- <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 mt-3">
-            @can('viewAny', App\Models\Company::class && auth()->user()->hasRole('admin'))
+            @can('viewAny', App\Models\Company::class && auth()->user()->hasRole('admin') || auth()->user()->hasRole('accountant'))
                 <div class="p-4 bg-green-100/50 dark:bg-green-900/50 rounded-lg shadow-md w-full flex">
                     <div class="w-full">
                         <h1 class="text-2xl font-bold text-green-800 dark:text-green-300">{{ $companies->count() }}</h1>
@@ -114,7 +116,7 @@
             @endcan
         </div> --}}
 
-        @if (auth()->user()->company && auth()->user()->hasRole('company'))
+        @if (auth()->user()->company && auth()->user()->hasRole('company') || auth()->user()->hasRole('accountant'))
             <div class="my-5 w-full">
                 <div class="flex flex-col lg:flex-row gap-3">
                     @if (isset($paidAmounts) && isset($unpaidAmounts))

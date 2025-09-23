@@ -48,12 +48,7 @@ class AgentTest extends TestCase
         AgentType::create(['id' => 3, 'name' => 'Both-A']);
         AgentType::create(['id' => 4, 'name' => 'Both-B']);
 
-        Role::create(['id' => Role::ADMIN, 'name' => 'Admin', 'guard_name' => 'web']);
-        Role::create(['id' => Role::COMPANY, 'name' => 'Company', 'guard_name' => 'web']);
-        Role::create(['id' => Role::BRANCH, 'name' => 'Branch', 'guard_name' => 'web']);
-        Role::create(['id' => Role::AGENT, 'name' => 'Agent', 'guard_name' => 'web']);
-        Role::create(['id' => Role::ACCOUNTANT, 'name' => 'Accountant', 'guard_name' => 'web']);
-        Role::create(['id' => Role::CLIENT, 'name' => 'Client', 'guard_name' => 'web']);
+
 
         // Create admin user
         $this->adminUser = User::factory()->create([
@@ -78,6 +73,13 @@ class AgentTest extends TestCase
 
         // Update company user with company_id
         $this->companyUser->update(['company_id' => $this->company->id]);
+
+        Role::create(['id' => Role::ADMIN, 'name' => 'Admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::create(['id' => Role::COMPANY, 'name' => 'Company', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::create(['id' => Role::BRANCH, 'name' => 'Branch', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::create(['id' => Role::AGENT, 'name' => 'Agent', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::create(['id' => Role::ACCOUNTANT, 'name' => 'Accountant', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::create(['id' => Role::CLIENT, 'name' => 'Client', 'guard_name' => 'web', 'company_id' => $this->company->id]);
 
         // Create branch user
         $this->branchUser = User::factory()->create([

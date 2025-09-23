@@ -213,4 +213,9 @@ class Role extends Model implements RoleContract
 
         return $this->permissions->contains($permission->getKeyName(), $permission->getKey());
     }
+
+    public function company() 
+    {
+        return $this->belongsTo(Company::class, 'company_id');
+    }
 }

@@ -124,5 +124,5 @@ return [
     'company_password' => env('AUTH_COMPANY_PASSWORD', 'Alphia1234'),
     'branch_password' => env('AUTH_BRANCH_PASSWORD', 'Alphia1234'),
     'agent_password' => env('AUTH_AGENT_PASSWORD', 'Alphia1234'),
-
+    'accountant_password' => env('AUTH_ACCOUNTANT_PASSWORD', 'Alphia1234'),
 ];

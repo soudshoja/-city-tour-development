@@ -7,98 +7,237 @@ use App\Models\TemporaryOffer;
 use App\Models\OfferedRoom;
 use App\Models\MapHotel;
 use App\Models\Prebooking;
+use App\Models\Hotel;
 use App\Models\HotelBooking;
 use App\Models\RequestBookingRoom;
 use App\Models\UserStep;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class WhatsAppHotelController extends Controller
 {
-    public function getListOfHotels(Request $request)
+    // public function getListOfHotels(Request $request)
+    // {
+    //     Log::channel('whatsapp')->info('getListOfHotels: Incoming request', ['request' => $request->all()]);
+    //     try {
+    //         $request->validate([
+    //             'first_name' => 'required|string',
+    //             'second_name' => 'required|string',
+    //             'city' => 'required|string',
+    //             'checkIn' => 'required|date',
+    //             'checkOut' => 'required|date',
+    //             'phone_number' => 'required|string',
+    //             'occupancy' => 'required|array',
+    //             'occupancy.rooms' => 'required|array',
+    //             'occupancy.rooms.*.adults' => 'required|integer|min:1',
+    //             'occupancy.rooms.*.childrenAges' => 'nullable|array',
+    //         ]);
+
+    //         $hotel = MapHotel::where('name', 'like', '%' . $request->first_name . '%')
+    //             ->where('name', 'like', '%' . $request->second_name . '%')
+    //             ->whereHas('city', function ($query) use ($request) {
+    //                 $query->where('name', 'like', '%' . $request->city . '%');
+    //             })
+    //             ->get()
+    //             ->map(function ($hotel) {
+    //                 return [
+    //                     'hotel_name' => $hotel->name,
+    //                     'hotel_address' => $hotel->address,
+    //                 ];
+    //             })->toArray();
+
+    //         $rooms = $request->occupancy['rooms'];
+
+    //         if (!$hotel) {
+    //             Log::channel('whatsapp')->warning('getListOfHotels: Hotel not found', ['request' => $request->all()]);
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Hotel not found.',
+    //             ], 404);
+    //         }
+
+    //         $requestBookingRoomId = [];
+    //         foreach ($rooms as $index => $room) {
+    //             if (!isset($room['adults']) || $room['adults'] < 1) {
+    //                 Log::channel('whatsapp')->warning('getListOfHotels: Each room must have at least one adult', ['room' => $room]);
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'Each room must have at least one adult.',
+    //                 ], 422);
+    //             }
+
+    //             $requestBookingRoom = RequestBookingRoom::create([
+    //                 'phone_number' => $request->phone_number,
+    //                 'check_in' => $request->checkIn,
+    //                 'check_out' => $request->checkOut,
+    //                 'adults' => $room['adults'],
+    //                 'children_ages' => isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null,
+    //             ]);
+
+    //             if(!$requestBookingRoom) {
+    //                 Log::channel('whatsapp')->error('getListOfHotels: Failed to create booking request', ['room' => $room]);
+    //                 return response()->json([
+    //                     'success' => false,
+    //                     'message' => 'Failed to create booking request.',
+    //                 ], 500);
+    //             }
+
+    //             $requestBookingRoomId[] = $requestBookingRoom->id;
+    //         }
+
+    //         $response = [
+    //             'success' => true,
+    //             'message' => 'Hotels found successfully.',
+    //             'hotels' => $hotel,
+    //             'request_booking_room_id' => $requestBookingRoomId,
+    //         ];
+    //         Log::channel('whatsapp')->info('getListOfHotels: Success response', ['response' => $response]);
+    //         return response()->json($response);
+
+    //     } catch (Exception $e) {
+    //         Log::channel('whatsapp')->error('getListOfHotels: Exception', ['error' => $e->getMessage()]);
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'An error occurred.',
+    //         ], 500);
+    //     }
+    // }
+    public function saveBookingDetails(Request $request)
     {
-        Log::channel('whatsapp')->info('getListOfHotels: Incoming request', ['request' => $request->all()]);
-        try {
-            $request->validate([
-                'first_name' => 'required|string',
-                'second_name' => 'required|string',
-                'city' => 'required|string',
-                'checkIn' => 'required|date',
-                'checkOut' => 'required|date',
-                'phone_number' => 'required|string',
-                'occupancy' => 'required|array',
-                'occupancy.rooms' => 'required|array',
-                'occupancy.rooms.*.adults' => 'required|integer|min:1',
-                'occupancy.rooms.*.childrenAges' => 'nullable|array',
+        Log::channel('whatsapp')->info('saveBookingDetails: Incoming request', ['request' => $request->all()]);
+
+        $validator = Validator::make($request->all(), [
+            'phone_number'    => 'required|string',
+            'checkIn'         => 'required|date',
+            'checkOut'        => 'required|date|after_or_equal:checkIn',
+            'occupancy'       => 'required|array',
+            'occupancy.rooms' => 'required|array|min:1',
+            'hotel'           => 'nullable|string'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success'       => false,
+                'message'       => 'Validation failed',
+                'errors'        => $validator->errors(),
+                'saved_count'   => 0,
+                'saved_ids'     => [],
+                'skipped_count' => 0,
+            ], 422);
+        }
+
+        $matchedHotelName = null;
+        $warnings = [];
+
+        if ($request->filled('hotel')) {
+            $inputHotelName = trim($request->hotel);
+            // case-insensitive exact match; switch to whereRaw('BINARY name = ?') for case-sensitive
+            $matched = \App\Models\Hotel::where('name', $inputHotelName)->first();
+            if ($matched) {
+                $matchedHotelName = $matched->name;
+            } else {
+                $warnings['hotel'][] = 'Hotel not found with exact name; saved without hotel.';
+                // (optional) provide close suggestions:
+                $suggestions = \App\Models\Hotel::where('name', 'like', $inputHotelName.'%')
+                    ->limit(5)->pluck('name')->toArray();
+                if (!empty($suggestions)) {
+                    $warnings['hotel_suggestions'] = $suggestions;
+                }
+            }
+        } else {
+            $warnings['hotel'][] = 'Hotel not provided; saved without hotel.';
+        }
+
+        $savedIds = [];
+        $errors   = [];
+        $rooms    = $request->input('occupancy.rooms', []);
+
+        foreach ($rooms as $index => $room) {
+            $roomValidator = Validator::make($room, [
+                'adults'         => 'required|integer|min:1',
+                'childrenAges'   => 'nullable|array',
+                'childrenAges.*' => 'integer|min:0',
             ]);
 
-            $hotel = MapHotel::where('name', 'like', '%' . $request->first_name . '%')
+            if ($roomValidator->fails()) {
+                $errors['rooms'][$index] = $roomValidator->errors();
+                continue;
+            }
+
+            try {
+                $row = new RequestBookingRoom();
+                $row->phone_number  = $request->phone_number;
+                $row->check_in      = $request->checkIn;
+                $row->check_out     = $request->checkOut;
+                $row->adults        = $room['adults'];
+                $row->children_ages = isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null;
+                $row->hotel         = $matchedHotelName; // null if not matched/provided
+                $row->save();
+                $savedIds[] = $row->id;
+            } catch (Exception $e) {
+                Log::channel('whatsapp')->error('saveBookingDetails: Room save failed', ['index' => $index, 'error' => $e->getMessage()]);
+                $errors['rooms'][$index]['save'][] = 'Failed to save this room.';
+            }
+        }
+
+        return response()->json([
+            'success'         => count($savedIds) > 0,
+            'message'         => count($savedIds) > 0 ? 'Booking details processed.' : 'No rooms were saved.',
+            'saved_count'     => count($savedIds),
+            'saved_ids'       => $savedIds,
+            'skipped_count'   => isset($errors['rooms']) ? count($errors['rooms']) : 0,
+            'errors'          => $errors,
+            'warnings'        => $warnings,
+        ], count($savedIds) > 0 ? 200 : 422);
+    }
+
+
+
+
+
+
+
+
+    public function listHotels(Request $request)
+    {
+        Log::channel('whatsapp')->info('listHotels: Incoming request', ['request' => $request->all()]);
+
+        $request->validate([
+            'first_name' => 'required|string',
+            'second_name' => 'required|string',
+            'city' => 'required|string',
+            // optional date filters if needed
+            'checkIn' => 'nullable|date',
+            'checkOut' => 'nullable|date|after_or_equal:checkIn',
+        ]);
+
+        try {
+            $hotels = MapHotel::query()
+                ->where('name', 'like', '%' . $request->first_name . '%')
                 ->where('name', 'like', '%' . $request->second_name . '%')
-                ->whereHas('city', function ($query) use ($request) {
-                    $query->where('name', 'like', '%' . $request->city . '%');
+                ->whereHas('city', function ($q) use ($request) {
+                    $q->where('name', 'like', '%' . $request->city . '%');
                 })
                 ->get()
-                ->map(function ($hotel) {
-                    return [
-                        'hotel_name' => $hotel->name,
-                        'hotel_address' => $hotel->address,
-                    ];
-                })->toArray();
+                ->map(fn($h) => [
+                    'hotel_name'    => $h->name,
+                    'hotel_address' => $h->address,
+                ])->values()->toArray();
 
-            $rooms = $request->occupancy['rooms'];
-
-            if (!$hotel) {
-                Log::channel('whatsapp')->warning('getListOfHotels: Hotel not found', ['request' => $request->all()]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Hotel not found.',
-                ], 404);
+            if (empty($hotels)) {
+                return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
             }
 
-            $requestBookingRoomId = [];
-            foreach ($rooms as $index => $room) {
-                if (!isset($room['adults']) || $room['adults'] < 1) {
-                    Log::channel('whatsapp')->warning('getListOfHotels: Each room must have at least one adult', ['room' => $room]);
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Each room must have at least one adult.',
-                    ], 422);
-                }
-
-                $requestBookingRoom = RequestBookingRoom::create([
-                    'phone_number' => $request->phone_number,
-                    'check_in' => $request->checkIn,
-                    'check_out' => $request->checkOut,
-                    'adults' => $room['adults'],
-                    'children_ages' => isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null,
-                ]);
-
-                if(!$requestBookingRoom) {
-                    Log::channel('whatsapp')->error('getListOfHotels: Failed to create booking request', ['room' => $room]);
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Failed to create booking request.',
-                    ], 500);
-                }
-
-                $requestBookingRoomId[] = $requestBookingRoom->id;
-            }
-
-            $response = [
-                'success' => true,
-                'message' => 'Hotels found successfully.',
-                'hotels' => $hotel,
-                'request_booking_room_id' => $requestBookingRoomId,
-            ];
-            Log::channel('whatsapp')->info('getListOfHotels: Success response', ['response' => $response]);
-            return response()->json($response);
-
-        } catch (Exception $e) {
-            Log::channel('whatsapp')->error('getListOfHotels: Exception', ['error' => $e->getMessage()]);
             return response()->json([
-                'success' => false,
-                'message' => 'An error occurred.',
-            ], 500);
+                'success' => true,
+                'message' => 'Hotels found.',
+                'hotels' => $hotels,
+            ]);
+        } catch (Exception $e) {
+            Log::channel('whatsapp')->error('listHotels: Exception', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'An error occurred.'], 500);
         }
     }
 

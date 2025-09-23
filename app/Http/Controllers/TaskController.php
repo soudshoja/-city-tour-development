@@ -334,9 +334,15 @@ class TaskController extends Controller
             $companyId = $user->agent->branch->company_id;
             $suppliers = $suppliers->whereHas('companies', fn($query) => $query->where('supplier_companies.is_active', 1));
         } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $company = $user->accountant->branch->company;
+            $companyId = $user->accountant->branch->company->id;
+            $company = Company::findOrFail($companyId);
+            $agents = collect(); // Initialize an empty collection to hold all agents
 
-            $agents = $company->branches->agents;
+            // Iterate through each branch associated with the company
+            foreach ($company->branches as $branch) {
+                // Merge the agents from the current branch into the main collection
+                $agents = $agents->merge($branch->agents);
+            }
 
             $agentsId = $agents->pluck('id');
 

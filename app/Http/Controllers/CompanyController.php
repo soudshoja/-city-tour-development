@@ -392,7 +392,7 @@ class CompanyController extends Controller
     {
         $auth = Auth()->user();
         $companyId = $auth->branch->company_id;
-
+        $branchId = $auth->branch->id;
         $company = Company::findOrFail($companyId);
 
         $validatedData = $request->validate([
@@ -429,7 +429,7 @@ class CompanyController extends Controller
             'email'        => $validatedData['email'],
             'country_code' => $validatedData['dial_code'],
             'phone_number' => $validatedData['phone'],
-            'company_id'    => $companyId,
+            'branch_id'    => $branchId,
         ]);
 
         Log::info('Accountant role has succesfully created for company ' . $company->name, [

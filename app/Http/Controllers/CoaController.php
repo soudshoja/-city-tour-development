@@ -48,8 +48,8 @@ class CoaController extends Controller
         // Ensure the company exists before proceeding
         if (!$company) {
             try {
-                $companyId = data_get($user, 'accountant.branch.company_id') ?? data_get($user, 'role.company_id');
-                $company = $companyId ? Company::find($companyId) : null;
+                $companyId = $user->accountant->branch->company->id;
+                $company = Company::find($companyId) ?? null;
             } catch (Exception $e) {
                 Log::error('Error fetching company: ' . $e->getMessage());
                 return redirect()->route('dashboard')->with('error', 'Company not found.');

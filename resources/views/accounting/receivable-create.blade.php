@@ -104,9 +104,9 @@
                                     </select>
                                 @else
                                     <input type="hidden" id="company_id_receivable" name="company_id"
-                                        value="{{ auth()->user()->company->id }}">
+                                        value="{{ auth()->user()->company->id ?? auth()->user()->accountant->branch->company->id }}">
                                     <input type="text" class="w-full p-2 border rounded bg-gray-100"
-                                        value="{{ auth()->user()->company->name }}" readonly>
+                                        value="{{ auth()->user()->company->name ?? auth()->user()->accountant->branch->company->id }}" readonly>
                                 @endif
                             </div>
 
@@ -348,7 +348,7 @@
 
             // Pass Laravel variables into JavaScript
             const userRole = `{{ auth()->user()->role_id }}`; // Get user role
-            const userCompanyId = `{{ auth()->user()->company->id }}`; // Get user's company ID
+            const userCompanyId = `{{ auth()->user()->company->id ?? auth()->user()->accountant->branch->company->id }}`; // Get user's company ID
 
             // Initialize dropdowns
             setupAccountDropdownReceivable(

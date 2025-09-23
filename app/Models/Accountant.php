@@ -17,7 +17,7 @@ class Accountant extends Model
         'email',
         'country_code',
         'phone_number',
-        'company_id',
+        'branch_id',
     ];
 
     public function branch()

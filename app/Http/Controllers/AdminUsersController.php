@@ -14,6 +14,7 @@ use App\Models\Agent;
 use App\Models\AgentType;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Accountant;
 use Exception;
 use Carbon\Carbon;
 use Database\Seeders\CoaSeeder;
@@ -28,7 +29,7 @@ class AdminUsersController extends Controller
         if(auth()->user()->role_id == Role::ADMIN) {
             $users = User::with('roles')->get();
         } else if(auth()->user()->role_id == Role::COMPANY) {
-
+            
             $branches = Branch::where('company_id', auth()->user()->company->id)->pluck('id');
             $branchUsers = User::with('roles')
                 ->whereHas('branch', function($query) use ($branches) {
@@ -43,8 +44,31 @@ class AdminUsersController extends Controller
                 })
                 ->get();
 
-            $users = $branchUsers->merge($agentUsers)->unique('id');
+            $accountant = auth()->user()->accountant;
 
+if (!$accountant || !$accountant->branch) {
+    abort(403, 'Accountant or branch not found.');
+}
+
+$companyId = $accountant->branch->company_id;
+
+// now fetch accountants for that company
+$accountantIds = Accountant::whereHas('branch', function ($query) use ($companyId) {
+        $query->where('company_id', $companyId);
+    })
+    ->pluck('id');
+
+$accountantUsers = User::with('roles')
+    ->whereHas('accountant', function ($query) use ($accountantIds) {
+        $query->whereIn('id', $accountantIds);
+    })
+    ->get();
+
+
+            $users = $branchUsers
+                    ->merge($agentUsers)
+                    ->merge($accountantUsers)
+                    ->unique('id');
         } else {
             abort(403, 'Unauthorized action.');
         }

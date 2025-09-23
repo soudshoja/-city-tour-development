@@ -15,6 +15,7 @@ use App\Models\Branch;
 use App\Models\Role;
 use App\Models\Country;
 use App\Models\AgentType;
+use App\Models\Accountant;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
@@ -389,20 +390,30 @@ class CompanyController extends Controller
 
     public function createAccountant(Request $request)
     {
+        $auth = Auth()->user();
+        $branchId = $auth->branch->id;
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
+            'dial_code' => 'required|string',
             'phone' => 'nullable|string|max:15',
         ]);
-
         // Create the accountant user
-        User::create([
+        $user = User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'password' => bcrypt(Str::random(10)), // Generate a random password
             'role_id' => Role::ACCOUNTANT,
             'remember_token' => Str::random(10),
             'first_login' => 1,
+        ]);
+        
+        $user->accountant()->create([
+            'name'         => $validatedData['name'],
+            'email'        => $validatedData['email'],
+            'country_code' => $validatedData['dial_code'],
+            'phone_number' => $validatedData['phone'],
+            'branch_id'    => $branchId,
         ]);
 
         return redirect()->back()->with('success', 'Accountant created successfully.');

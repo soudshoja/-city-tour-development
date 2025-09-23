@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\Role;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use App\Jobs\SyncGatewayMethods;
 
 class ChargeController extends Controller
 {
@@ -118,8 +119,6 @@ class ChargeController extends Controller
         // Fetch COA for Payment Gateway (Assets)
         $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')->first();
 
-        //dd($coaPaymentGateway,$childCoaPaymentGateway,$coaPaymentGatewayBankAcc);
-
         // Fetch COA for Bank Account
         $coaBankAccount = Account::whereHas('parent', function ($query) {
             $query->where('name', 'Bank Accounts');
@@ -137,6 +136,8 @@ class ChargeController extends Controller
             'is_auto_paid' => 'nullable|boolean',
             'has_url' => 'nullable|boolean',
             'can_charge_invoice' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
+            'can_generate_link' => 'nullable|boolean',
             // 'auth_type' => 'required|in:basic,oauth',
             // 'base_url' => 'nullable|url',
             'api_key' => 'required|string',
@@ -214,6 +215,8 @@ class ChargeController extends Controller
                 'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
                 'has_url' => $request->has('has_url') ? 1 : 0,
                 'can_charge_invoice' => $request->has('can_charge_invoice') ? 1 : 0,
+                'is_active' => $request->has('is_active') ? $request->boolean('is_active') : true,
+                'can_generate_link' => $request->has('can_generate_link') ? $request->boolean('can_generate_link') : true,
                 // 'auth_type' => $request->get('auth_type'),
                 // 'base_url' => $request->get('base_url'),
                 'api_key' => $request->get('api_key'),
@@ -221,12 +224,25 @@ class ChargeController extends Controller
 
             // Commit the transaction
             DB::commit();
-
-            return redirect()->route('charges.index')->with('success', 'Charge created successfully!');
         } catch (Exception $e) {
             DB::rollBack();
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
+
+        try {
+            SyncGatewayMethods::dispatchSync(
+                companyId: Auth::user()->company->id,
+                gatewayName: $request->get('name')
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Gateway sync failed (non-blocking)', [
+                'company_id' => Auth::user()->company->id,
+                'gateway' => $request->get('name'),
+                'error' => $e->getMessage(),
+            ]);
+        }        
+
+        return redirect()->route('charges.index')->with('success', 'Charge created successfully!');
     }
 
     public function edit($id)
@@ -279,6 +295,8 @@ class ChargeController extends Controller
             'is_auto_paid' => 'nullable|boolean',
             'has_url' => 'nullable|boolean',
             'can_change_invoice' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
+            'can_generate_link' => 'nullable|boolean',
             // 'auth_type' => 'required|in:basic,oauth',
             // 'base_url'    => 'nullable|url',
             'api_key'     => 'nullable|string',
@@ -302,6 +320,8 @@ class ChargeController extends Controller
                 'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
                 'has_url' => $request->has('has_url') ? 1 : 0,
                 'can_change_invoice' => $request->has('can_change_invoice') ? 1 : 0,
+                'is_active' => $request->has('is_active') ? 1 : 0,
+                'can_generate_link' => $request->has('can_generate_link') ? 1 : 0,
                 // 'auth_type' => $request->get('auth_type'),
                 // 'base_url'    => $request->get('base_url'),
                 // 'api_key'    => $request->get('api_key'),
@@ -379,7 +399,6 @@ class ChargeController extends Controller
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
     }
-
 
     public function destroy($id)
     {

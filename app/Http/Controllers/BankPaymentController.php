@@ -10,14 +10,18 @@ use App\Models\JournalEntry;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\Branch;
+use App\Models\CoaCategory;
 use App\Models\Role;
 use App\Models\Refund;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
 class BankPaymentController extends Controller
 {
     public function index()
     {
+        Gate::authorize('viewAny', CoaCategory::class);
+
         $user = auth()->user();
 
         if ($user->role_id == Role::ADMIN) {

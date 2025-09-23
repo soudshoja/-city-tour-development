@@ -35,6 +35,8 @@ class RefundController extends Controller
 
     public function index()
     {
+        Gate::authorize('viewAny', Refund::class);
+
         $user = Auth::user();
         if (Auth::user()->role->id == Role::COMPANY) {
             $agents = $user->company->branches->pluck('agents')->flatten();

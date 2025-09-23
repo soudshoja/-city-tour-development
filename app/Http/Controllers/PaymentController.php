@@ -55,6 +55,7 @@ use App\Models\Company;
 use App\Models\MyFatoorahPayment;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Support\Facades\Gate;
 
 class PaymentController extends Controller
 {
@@ -62,33 +63,20 @@ class PaymentController extends Controller
 
     public function index(string $invoiceNumber)
     {
-        // Retrieve the invoice based on the invoice number
+        Gate::authorize('viewAny', Payment::class);
+
         $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
 
-        // Check if the invoice exists
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
-
-        // Fetch the invoice details as a list
         $invoiceDetails = InvoiceDetail::where('invoice_number', $invoiceNumber)->get();
-        // Retrieve the transaction related to the invoice
+        
         $transaction = Transaction::where('invoice_id', $invoice->id)->first();
 
         return view('payment.index', compact('invoice', 'invoiceDetails', 'transaction'));
     }
-
-    // public function showPaymentPage()
-    // {
-    //     $invoice = [
-    //         'number' => 'INV12345',
-    //         'amount' => 1000.00, // Example amount
-    //     ];
-    //     $paymentGateways = ['PayPal', 'Stripe', 'Bank Transfer'];
-
-    //     return view('payment.choose', compact('invoice', 'paymentGateways'));
-    // }
 
     public function create($companyId, $invoiceNumber, Request $request)
     {

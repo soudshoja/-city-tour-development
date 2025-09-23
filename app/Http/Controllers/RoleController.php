@@ -12,6 +12,8 @@ use App\Models\Permission;
 use App\Models\Role;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 
 class RoleController extends Controller
 {
@@ -24,6 +26,8 @@ class RoleController extends Controller
 
     public function index(Request $request)
     {
+        Gate::authorize('viewAny', Role::class);
+
         $user = Auth::user();
 
         if(!($user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY )){
@@ -54,12 +58,16 @@ class RoleController extends Controller
 
     public function create()
     {
+        Gate::authorize('create', Role::class);
+
         $permissions = $this->getAllPermission();
         return view('role.create', compact('permissions'));
     }
 
     public function store(Request $request)
     {
+        Gate::authorize('create', Role::class);
+
         $user = Auth::user();
 
         if($user->role_id != Role::COMPANY ) {
@@ -89,7 +97,13 @@ class RoleController extends Controller
             'company_id' => $user->company->id
         ]);
 
+        if (Str::lower($role->name) === 'accountant') {
+            $permissions = Permission::whereIn('id', $this->viewOnlyPermissionsIds())->get();
+        } else {
+    
         $permissions = Permission::whereIn('id', $request->permissionsId)->get();
+        }
+
         $role->syncPermissions($permissions);
 
         return redirect()->route('role.index');
@@ -97,6 +111,8 @@ class RoleController extends Controller
 
     public function edit($roleId)
     {
+        Gate::authorize('update', Role::class);
+
         $user = Auth::user();
 
         if ($user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY) {
@@ -107,7 +123,11 @@ class RoleController extends Controller
             $groupedPermissions = cache()->remember('permissions_company', 3600, function () {
                 return $this->getAllPermissionForAgent();
             });
-        } else {
+        } else if ($user->role_id == Role::ACCOUNTANT) {
+            $groupedPermissions = cache()->remember('permissions', 3600, function () {
+                return $this->getAllPermission();
+            });
+        }else {
             return redirect()->back()->with('error', 'You do not have role, please contact your administrator');
         }
 
@@ -133,6 +153,8 @@ class RoleController extends Controller
 
     public function update(Request $request)
     {
+        Gate::authorize('update', Role::class);
+
         $request->validate([
             'role_id' => 'required',
             'permissionsId' => 'array'
@@ -181,7 +203,6 @@ class RoleController extends Controller
         return $permissions;
     }
 
-
     public function getAllPermissionGroupedByAI() //not used
     {
         $permissions = Permission::all();
@@ -210,6 +231,38 @@ class RoleController extends Controller
         return json_decode($response['choices'][0]['message']['content'], true);
     }
 
+    public function getAllPermissionForAccountant() 
+    {
+        $permissions = Permission::getGroupedByGroup();
+
+        foreach ($permissions as $permission => $items) {
+            $permissions[$permission] = collect($items)->fileter(function ($perm) {
+                $n = Str::lower($perm['name'] ?? '');
+                return Str::startsWith($n, ['view', 'read', 'list', 'show', 'export']) || Str::contains($n, 'download');
+            })->values()->all();
+
+            if (empty($permissions[$permission])) {
+                unset($permissions[$permission]);
+            }
+        }
+        return $permissions;
+    }
+
+    public function viewOnlyPermissionsIds()
+    {
+        return Permission::query()
+        ->where(function ($q) {
+            $q->where('name', 'like', 'view %')
+            ->orWhere('name', 'like', 'read %')
+            ->orWhere('name', 'like', 'list %')
+            ->orWhere('name', 'like', 'show %')
+            ->orWhere('name', 'like', 'export %')
+            ->orWhere('name', 'like', '% download%');
+        })
+        ->pluck('id')
+        ->all();
+    }
+    
     public function getAllRole($companyId)
     {
         return Role::with('permissions')

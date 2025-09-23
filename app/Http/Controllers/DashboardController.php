@@ -75,6 +75,25 @@ class DashboardController extends Controller
             return $this->agentDashboard();
         } elseif (Auth::user()->role_id == Role::BRANCH) {
             return $this->branchDashboard();
+        } elseif (Auth::user()->role_id == Role::ACCOUNTANT) {
+
+            $dashboardData = $this->adminDashboard();
+
+            $serializedData = [
+                'payableSupplier'   => (object)['balance' => 0],
+                'profitAgentWise'   => 0,
+                'totalReceivable'   => 0,
+                'totalBank'         => 0,
+                'gatewayReceivable' => 0,
+                'companies'       => $dashboardData['companies'],
+                'branches'        => $dashboardData['branches'],
+                'agents'          => $dashboardData['agents'],
+                'clients'         => $dashboardData['clients'],
+                'pieChartTitle'   => 'Companies Sales',
+                'pieChartNumbers' => $dashboardData['companiesSales'],
+                'pieChartLabels'  => $dashboardData['companiesNames'],
+                'pieChartColors'  => $this->generateColors($dashboardData['companies']->count()),
+            ];
         }
 
         return view('dashboard', $serializedData);

@@ -199,13 +199,13 @@ class InvoiceController extends Controller
         $tasks = Task::with('supplier', 'agent.branch', 'invoiceDetail.invoice', 'flightDetails.countryFrom', 'flightDetails.countryTo', 'hotelDetails.hotel')->where('enabled', true);
         $selectedTasks = (clone $tasks)->whereIn('id', $taskIdsArray)->get();
 
-        $blockedSuppliers = ['jazeera airways', 'fly dubai'];
+        $blockedSuppliers = ['jazeera airways'];
         foreach ($selectedTasks as $task) {
             $supplierName = strtolower($task->supplier->name ?? '');
-            $statusIsConfirmed = $task->status === 'confirmed';
+            $isBlockedStatus = in_array($task->status, ['confirmed', 'void'], true);
 
-            if (in_array($supplierName, $blockedSuppliers, true) && $statusIsConfirmed) {
-                return back()->with('error', 'You cannot create an invoice for Confirmed tasks from ' . $task->supplier->name);
+            if (in_array($supplierName, $blockedSuppliers, true) && $isBlockedStatus) {
+                return back()->with('error', "You cannot create an invoice for {$task->status} tasks from {$task->supplier->name}");
             }
         }
 

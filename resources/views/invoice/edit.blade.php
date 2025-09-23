@@ -463,7 +463,7 @@
                                     $balanceCredit = \App\Models\Credit::getTotalCreditsByClient($selectedClient->id);
                                     @endphp
                                     @if ($invoice->amount <= $balanceCredit)
-                                        <button type="button" @click="clientCreditModal = true"
+                                        <button type="button" onclick="showModal('credit')" id="payment_type_credit" name="payment_type"
                                         class="rounded-full flex flex-col items-center justify-center w-full
                                         px-4 py-2 border border-gray-300 
                                         bg-white text-gray-700 transition gap-2 
@@ -475,8 +475,8 @@
                                         <span class="text-red-500">Credit Limit Exceeded</span>
                                         @endif
                                         </button>
-                                        <div x-cloak x-show="clientCreditModal"
-                                            class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50">
+                                        <div id="clientCreditModal"
+                                            class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
                                             <div class="bg-white rounded-lg p-6 shadow-lg">
                                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Are you sure you want to proceed with this payment?</h2>
                                                 <p class="text-gray-600">The client has a credit limit of
@@ -489,7 +489,7 @@
                                                 <div class="mt-4 flex justify-end">
                                                     <button @click="savePartial('credit')"
                                                         class="mr-2 px-4 py-2 bg-blue-500 text-white rounded">Proceed</button>
-                                                    <button @click="clientCreditModal = false"
+                                                    <button onclick="hideModal()"
                                                         class="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
                                                 </div>
                                             </div>
@@ -1667,6 +1667,7 @@
                 const splitPaymentRadio = document.getElementById('payment_type_split');
                 const cashPaymentRadio = document.getElementById('payment_type_cash');
                 const importPaymentRadio = document.getElementById('payment_type_import');
+                const creditPaymentRadio = document.getElementById('payment_type_credit');
 
                 if (partialPaymentRadio) {
                     partialPaymentRadio.disabled = true;
@@ -1687,6 +1688,12 @@
                     importPaymentRadio.disabled = true;
                     importPaymentRadio.parentElement.style.opacity = '0.5';
                     importPaymentRadio.parentElement.style.pointerEvents = 'none';
+                }
+
+                if (creditPaymentRadio) {
+                    creditPaymentRadio.disabled = true;
+                    creditPaymentRadio.parentElement.style.opacity = '0.5';
+                    creditPaymentRadio.parentElement.style.pointerEvents = 'none';
                 }
             } else {
                 // Hide auto-payment notification
@@ -1795,6 +1802,7 @@
         const paymentTypeSplit = document.getElementById("payment_type_split");
         const paymentTypeCash = document.getElementById("payment_type_cash");
         const paymentTypeImport = document.getElementById('payment_type_import');
+        const paymentTypeCredit = document.getElementById('payment_type_credit');
         const isInvoicePaid = "{{ $invoice->status === 'paid' }}"
         const hasPaymentType = "{{ !empty($invoice->payment_type) }}";
 
@@ -1835,6 +1843,7 @@
             const additionalActions = document.getElementById('additional-actions');
             const paymentModal = document.getElementById('paymentModal');
             const paymentModal1 = document.getElementById('paymentModal1');
+            const creditModal = document.getElementById('clientCreditModal');
 
             const paymentGatewayDropdowns = document.getElementById('payment_gateway_dropdowns');
 
@@ -1847,6 +1856,7 @@
                 paymentTypeSplit.disabled = true;
                 paymentTypeCash.disabled = true;
                 paymentTypeImport.disabled = true;
+                paymentTypeCredit.disabled = true;
                 paymentGatewayDropdowns.classList.remove('hidden');
             } else if (paymentType === 'partial') {
                 paymentGatewaySection.style.display = 'block'; // Show the section
@@ -1857,6 +1867,7 @@
                 paymentTypeSplit.disabled = true;
                 paymentTypeCash.disabled = true;
                 paymentTypeImport.disabled = true;
+                paymentTypeCredit.disabled = true;
                 paymentGatewayDropdowns.classList.add('hidden');
                 paymentModal1.classList.add('hidden');
             } else if (paymentType === 'split') {
@@ -1868,8 +1879,21 @@
                 paymentTypeSplit.disabled = true;
                 paymentTypeCash.disabled = true;
                 paymentTypeImport.disabled = true;
+                paymentTypeCredit.disabled = true;
                 paymentGatewayDropdowns.classList.add('hidden');
                 paymentModal.classList.add('hidden');
+            } else if (paymentType === 'credit') {
+                paymentGatewaySection.style.display = 'block'; // Show the section
+                additionalActions.style.display = 'block';
+                updateInvoiceBtn.disabled = true;
+                paymentTypeFull.disabled = true;
+                paymentTypePartial.disabled = true;
+                paymentTypeSplit.disabled = true;
+                paymentTypeCash.disabled = true;
+                paymentTypeImport.disabled = true;
+                paymentTypeCredit.disabled = true;
+                paymentGatewayDropdowns.classList.add('hidden');
+                creditModal.classList.add('hidden');
             } else {
                 paymentGatewaySection.style.display = 'none'; // Hide the section
                 additionalActions.style.display = 'none';
@@ -1879,6 +1903,9 @@
                 paymentTypeSplit.disabled = false;
                 paymentTypeCash.disabled = false;
                 paymentTypeImport.disabled = false;
+                if (paymentTypeCredit) {
+                    paymentTypeCredit.disabled = false;
+                }
             }
 
         }
@@ -1948,6 +1975,8 @@
                 document.getElementById('paymentModal').classList.remove('hidden');
             } else if (type == 'partial') {
                 document.getElementById('paymentModal1').classList.remove('hidden');
+            } else if (type == 'credit') {
+                document.getElementById('clientCreditModal')?.classList.remove('hidden');
             }
 
             checkInvoiceId();
@@ -1956,6 +1985,7 @@
         function hideModal() {
             document.getElementById('paymentModal').classList.add('hidden');
             document.getElementById('paymentModal1').classList.add('hidden');
+            document.getElementById('clientCreditModal')?.classList.add('hidden');
             checkInvoiceId();
         }
 

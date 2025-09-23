@@ -114,7 +114,7 @@ class WhatsAppHotelController extends Controller
             'checkOut'        => 'required|date|after_or_equal:checkIn',
             'occupancy'       => 'required|array',
             'occupancy.rooms' => 'required|array|min:1',
-            'hotel'           => 'nullable|string',
+            'hotel'           => 'nullable|string', // user may omit; we’ll still save rooms
         ]);
 
         if ($validator->fails()) {
@@ -128,6 +128,8 @@ class WhatsAppHotelController extends Controller
             ], 422);
         }
 
+        // Use SAME logic style as your getHotelDetails(): MapHotel with city(id,name),
+        // but require an EXACT name match (not LIKE) before saving hotel/city.
         $matchedHotelName = null;
         $matchedCityId    = null;
         $matchedCityName  = null;
@@ -136,11 +138,8 @@ class WhatsAppHotelController extends Controller
         if ($request->filled('hotel')) {
             $inputHotelName = trim($request->hotel);
 
-            // Load hotel with its city relation (table: hotels, column: name)
-            // Make sure your Hotel model has: public function city(){ return $this->belongsTo(City::class, 'city_id'); }
-            $matched = \App\Models\Hotel::with('city')
-                ->where('name', $inputHotelName)                           // exact match (case-insensitive in most collations)
-                // ->whereRaw('BINARY `name` = ?', [$inputHotelName])       // uncomment for case-sensitive exact match
+            $matched = \App\Models\MapHotel::with(['city:id,name'])
+                ->where('name', $inputHotelName) // exact match (LIKE was used before; here you asked for exact)
                 ->first();
 
             if ($matched) {
@@ -153,14 +152,6 @@ class WhatsAppHotelController extends Controller
                 }
             } else {
                 $warnings['hotel'][] = 'Hotel not found with exact name; saved without hotel/city.';
-                // (optional) suggestions
-                $suggestions = \App\Models\Hotel::where('name', 'like', $inputHotelName . '%')
-                    ->limit(5)
-                    ->pluck('name')
-                    ->toArray();
-                if (!empty($suggestions)) {
-                    $warnings['hotel_suggestions'] = $suggestions;
-                }
             }
         } else {
             $warnings['hotel'][] = 'Hotel not provided; saved without hotel/city.';
@@ -190,10 +181,10 @@ class WhatsAppHotelController extends Controller
                 $row->adults        = $room['adults'];
                 $row->children_ages = isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null;
 
-                // Save hotel & city info only if we had an exact match
-                $row->hotel   = $matchedHotelName;   // e.g. "GRAND SINA HOTEL" or null
-                $row->city_id = $matchedCityId;      // e.g. 2 or null
-                $row->city    = $matchedCityName;    // e.g. "Dubai" or null
+                // Save hotel + city ONLY when exact match was found via MapHotel::with('city')
+                $row->hotel   = $matchedHotelName;   // null if not matched/provided
+                $row->city_id = $matchedCityId;      // null if no city
+                $row->city    = $matchedCityName;    // null if no city
 
                 $row->save();
                 $savedIds[] = $row->id;

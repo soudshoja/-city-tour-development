@@ -220,6 +220,12 @@ class PaymentController extends Controller
                 if ($existingPayment->expiry_date && Carbon::parse($existingPayment->expiry_date)->isPast()) {
                     Log::info('Found an expired payment link. A new one will be generated.', ['payment_id' => $existingPayment->id]);
                     $existingPayment->delete();
+                } elseif ($existingPayment->payment_method_id != $data['payment_method']) {
+                    Log::info('Payment method changed. A new payment link will be generated.', [
+                        'old_method' => $existingPayment->payment_method_id,
+                        'new_method' => $data['payment_method'],
+                    ]);
+                    $existingPayment->delete();
                 } else {
                     Log::info('Reusing existing payment link.', ['payment_id' => $existingPayment->id, 'url' => $existingPayment->payment_url]);
                     return response()->json([

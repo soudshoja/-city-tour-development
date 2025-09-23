@@ -36,6 +36,7 @@ use App\Models\Task;
 use App\Models\Charge;
 use Google\ApiCore\Testing\ProtobufMessageComparator;
 use App\Http\Controllers\BankPaymentController;
+use App\Http\Controllers\ReceiptVoucherController;
 use App\Http\Controllers\CreditController;
 use App\Http\Controllers\JournalEntryController;
 use App\Http\Controllers\TransactionController;
@@ -188,7 +189,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/magic/callback', [SupplierController::class, 'handleAuthorizationCallback'])->name('magic-callback');
         Route::get('/magic/provider', [SupplierController::class, 'redirectToAuthorization'])->name('magic-provider');
         Route::get('/magic/webhook-initiate/{id}', [SupplierController::class, 'magicReserveWebhook'])->name('magic-webhook');
-        Route::get('/ledger-by-date/{supplierId}', [SupplierController::class, 'ledgerByDateRange'])->name('suppliers.ledger-by-date');        Route::get('/', [SupplierController::class, 'index'])->name('index');
+        Route::get('/ledger-by-date/{supplierId}', [SupplierController::class, 'ledgerByDateRange'])->name('suppliers.ledger-by-date');
+        Route::get('/', [SupplierController::class, 'index'])->name('index');
 
 
         Route::group([
@@ -234,7 +236,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/create', [CoaController::class, 'createAccounts'])->name('create');
         Route::delete('/api/{id}', [CoaController::class, 'dstry'])->name('destroy');
         Route::post('/updateCode/{id}', [CoaController::class, 'updateCode'])->name('updateCode');
-        Route::get('/payment-voucher', [CoaController::class, 'payment'])->name('payment');
         Route::get('/transactions', [CoaController::class, 'transaction'])->name('transaction');
         Route::post('/addCategory', [CoaController::class, 'addCategory'])->name('addCategory');
         Route::get('/export', [CoaController::class, 'exportAccounts'])->name('export');
@@ -309,7 +310,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('suppliers/{supplier}/exchange-rates', [SupplierController::class, 'exchangeRates'])->name('suppliers.exchange-rates');
     Route::post('suppliers/{supplier}/exchange-rates', [SupplierController::class, 'updateExchangeRates'])->name('suppliers.exchange-rates.update');
-        //TRANSACTION
+    //TRANSACTION
     Route::group([
         'prefix' => 'transactions',
         'as' => 'transactions.',
@@ -386,7 +387,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split')->withoutMiddleware(['auth']);
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}/arabic', [InvoiceController::class, 'splitarabic'])->name('split-arabic')->withoutMiddleware(['auth']);
         Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
-        Route::get('/{invoiceNumber}' , function(){
+        Route::get('/{invoiceNumber}', function () {
             return redirect()->route('invoice.show', ['companyId' => 1, 'invoiceNumber' => request()->invoiceNumber]);
         })->withoutMiddleware(['auth']);
         Route::get('/{companyId}/{invoiceNumber}', [InvoiceController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
@@ -459,9 +460,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/myfatoorah-callback', [PaymentController::class, 'myFatoorahCallback'])->name('payment.success');
         Route::get('/myfatoorah-error', [PaymentController::class, 'myFatoorahCallback'])->name('payment.failed');
 
-        Route::get('/uPayment-callback' , [PaymentController::class, 'handleUPaymentCallback'])->name('uPayment.callback')->withoutMiddleware(['auth']);
-        Route::get('/uPayment-error' , [PaymentController::class, 'handleUPaymentError'])->name('uPayment.error')->withoutMiddleware(['auth']);
-        Route::get('/uPayment-noti' , [PaymentController::class, 'handleUPaymentNoti'])->name('uPayment.notifications')->withoutMiddleware(['auth']);
+        Route::get('/uPayment-callback', [PaymentController::class, 'handleUPaymentCallback'])->name('uPayment.callback')->withoutMiddleware(['auth']);
+        Route::get('/uPayment-error', [PaymentController::class, 'handleUPaymentError'])->name('uPayment.error')->withoutMiddleware(['auth']);
+        Route::get('/uPayment-noti', [PaymentController::class, 'handleUPaymentNoti'])->name('uPayment.notifications')->withoutMiddleware(['auth']);
 
         Route::get('/hesabe-callback', [PaymentController::class, 'handleHesabeResponse'])->name('hesabe.response');
         Route::get('/hesabe-error', [PaymentController::class, 'handleHesabeFailure'])->name('hesabe.failure');
@@ -493,7 +494,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}/agent', [ClientController::class, 'getAgent'])->name('get-agent');
         Route::get('/{id}/credit-balance', [ClientController::class, 'getCreditBalance']);
         Route::get('/{id}/credits', [ClientController::class, 'showCredit'])->name('credits')->withoutMiddleware(['auth']);
-        
+
         // Assignment request routes
         Route::post('/request-assignment', [ClientController::class, 'requestAssignment'])->name('request-assignment');
         Route::get('/assignment/approve/{token}', [ClientController::class, 'approveAssignment'])->name('assignment.approve');
@@ -608,6 +609,16 @@ Route::get('/search-item', [InvoiceController::class, 'searchItems'])->name('sea
 Route::post('/select-item', [InvoiceController::class, 'selectItems'])->name('select.item');
 
 
+Route::post('/receipt-voucher/approve/{id}', [ReceiptVoucherController::class, 'approve'])->name('receipt-voucher.approve');
+Route::get('/receipt-voucher', [ReceiptVoucherController::class, 'index'])->name('receipt-voucher.index');
+Route::get('/receipt-voucher/create', [ReceiptVoucherController::class, 'create'])->name('receipt-voucher.create');
+Route::post('/receipt-voucher/store', [ReceiptVoucherController::class, 'store'])->name('receipt-voucher.store');
+Route::get('/receipt-voucher/edit/{id}', [ReceiptVoucherController::class, 'edit'])->name('receipt-voucher.edit');
+Route::put('/receipt-voucher/update/{id}', [ReceiptVoucherController::class, 'update'])->name('receipt-voucher.update');
+Route::get('/receipt-voucher/fetch-journals-by-date', [ReceiptVoucherController::class, 'fetchPaymentsByDate'])->name('receipt-voucher.fetchPaymentsByDate');
+Route::get('/receipt-voucher/fetch-journals-view', [ReceiptVoucherController::class, 'fetchJournalEntriesByIds'])->name('receipt-voucher.fetch-journals');
+Route::post('/receipt-voucher/{id}/decline-reconcile', [ReceiptVoucherController::class, 'declineReconcile'])->name('receipt-voucher.decline-reconcile');
+
 
 Route::get('/bank-payments/create', [BankPaymentController::class, 'create'])->name('bank-payments.create');
 Route::post('/bank-payments/store', [BankPaymentController::class, 'store'])->name('bank-payments.store');
@@ -675,4 +686,4 @@ Route::group([
 Route::get('/exchange-rate/histories', [\App\Http\Controllers\CurrencyExchangeController::class, 'allHistories'])
     ->name('exchange.histories.all');
 
-    require __DIR__ . '/auth.php';
+require __DIR__ . '/auth.php';

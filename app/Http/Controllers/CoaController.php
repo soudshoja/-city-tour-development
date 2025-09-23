@@ -36,6 +36,7 @@ class CoaController extends Controller
 {
     public function index(Request $request)
     {
+        Gate::authorize('viewAny', CoaCategory::class);
         // Get the authenticated user
         $user = Auth::user();
 

@@ -44,6 +44,8 @@ class InvoiceController extends Controller
 
     public function index(Request $request)
     {
+        Gate::authorize('viewAny', Invoice::class);
+
         $user = Auth::user();
         $companiesId = [];
 
@@ -1526,6 +1528,8 @@ class InvoiceController extends Controller
 
     public function link(Request $request)
     {
+        Gate::authorize('viewAny', Invoice::class);
+
         $user = Auth::user();
 
         $agents = Agent::with('branch');

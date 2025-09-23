@@ -12,6 +12,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class RoleController extends Controller
@@ -25,6 +26,8 @@ class RoleController extends Controller
 
     public function index(Request $request)
     {
+        Gate::authorize('viewAny', Role::class);
+
         $user = Auth::user();
 
         if(!($user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY )){
@@ -55,12 +58,16 @@ class RoleController extends Controller
 
     public function create()
     {
+        Gate::authorize('create', Role::class);
+
         $permissions = $this->getAllPermission();
         return view('role.create', compact('permissions'));
     }
 
     public function store(Request $request)
     {
+        Gate::authorize('create', Role::class);
+
         $user = Auth::user();
 
         if($user->role_id != Role::COMPANY ) {
@@ -104,6 +111,8 @@ class RoleController extends Controller
 
     public function edit($roleId)
     {
+        Gate::authorize('update', Role::class);
+
         $user = Auth::user();
 
         if ($user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY) {
@@ -144,6 +153,8 @@ class RoleController extends Controller
 
     public function update(Request $request)
     {
+        Gate::authorize('update', Role::class);
+
         $request->validate([
             'role_id' => 'required',
             'permissionsId' => 'array'
@@ -252,7 +263,7 @@ class RoleController extends Controller
         ->all();
     }
     
-    public function getAllRole()
+    public function getAllRole($companyId)
     {
         return Role::with('permissions')
             ->where('company_id', $companyId)

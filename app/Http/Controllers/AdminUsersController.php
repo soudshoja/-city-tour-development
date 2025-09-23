@@ -23,6 +23,8 @@ class AdminUsersController extends Controller
 {
     public function index()
     {
+        Gate::authorize('viewAny', User::class);
+
         if(auth()->user()->role_id == Role::ADMIN) {
             $users = User::with('roles')->get();
         } else if(auth()->user()->role_id == Role::COMPANY) {

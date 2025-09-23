@@ -78,6 +78,12 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'update currency exchange', 'group' => 'currency exchange']);
         Permission::firstOrCreate(['name' => 'delete currency exchange', 'group' => 'currency exchange']);
         Permission::firstOrCreate(['name' => 'view credit', 'group' => 'credit']);
+        Permission::firstOrCreate(['name' => 'view payment', 'group' => 'payment']);
+        Permission::firstOrCreate(['name' => 'view refund', 'group' => 'refund']);
+        Permission::firstOrCreate(['name' => 'view reconcile report', 'group' => 'report']);
+        Permission::firstOrCreate(['name' => 'view profit loss', 'group' => 'report']);
+        Permission::firstOrCreate(['name' => 'view settlement', 'group' => 'report']);
+        Permission::firstOrCreate(['name' => 'view creditors', 'group' => 'report']);
 
         $role = Role::where('name', 'admin')->first();
         $permissions = Permission::all();

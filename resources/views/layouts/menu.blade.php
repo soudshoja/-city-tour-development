@@ -53,6 +53,12 @@
             </menuitem>
             @endcan
             @can('viewAny', 'App\Models\CoaCategory')
+            <menuitem><a href="{{ route('receipt-voucher.index') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Receipt 
+                Voucher</a>
+            </menuitem>
+            @endcan
+            @can('viewAny', 'App\Models\CoaCategory')
             <menuitem><a href="{{ route('receivable-details.receivable-create') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Receivable</a>
             </menuitem>

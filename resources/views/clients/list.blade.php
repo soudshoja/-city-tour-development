@@ -431,10 +431,7 @@
             } else {
 
                 showClientRightDiv.classList.add("hidden");
-
             }
-
-
         });
     });
 

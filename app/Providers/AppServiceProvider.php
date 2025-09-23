@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\View;
 use App\Models\Role;
 use App\Models\Branch;
 use App\Models\Agent;
+use App\Policies\AccountPolicy;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -41,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Client::class, ClientPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);
         Gate::policy(CoaCategory::class, COAPolicy::class);
+
         
         // Register event listeners
         Event::listen(

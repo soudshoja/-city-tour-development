@@ -14,11 +14,14 @@ use App\Models\Role;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use App\Jobs\SyncGatewayMethods;
+use Illuminate\Support\Facades\Gate;
 
 class ChargeController extends Controller
 {
     public function index()
     {
+        Gate::authorize('viewAny', Charge::class);
+
         if (Auth::user()->role->id == Role::COMPANY) {
             $totalCharges = Charge::where('company_id', Auth::user()->company->id)->count();
             $charges = Charge::where('company_id', Auth::user()->company->id)->get();

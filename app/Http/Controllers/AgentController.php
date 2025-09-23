@@ -34,6 +34,8 @@ class AgentController extends Controller
 
     public function index(Request $request)
     {
+        Gate::authorize('viewAny', Agent::class);
+
         $user = Auth::user();
         $agents = collect();
         $agentCount = 0;
@@ -76,7 +78,6 @@ class AgentController extends Controller
         // Pass both 'agents' and 'agentCount' to the view
         return view('agents.index', compact('agents', 'agentCount'));
     }
-
 
     public function new()
     {
@@ -442,7 +443,6 @@ class AgentController extends Controller
                 ->first();
 
             if (!$role) {
-
                 $role = Role::create([
                     'name' => 'agent',
                     'description' => 'Agent role for company ' . $branch->company->name,

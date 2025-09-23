@@ -292,11 +292,11 @@ class ChargeController extends Controller
             'amount' => 'required|numeric',
             'extra_charge' => 'nullable|numeric',
             'self_charge' => 'nullable|numeric',
-            'is_auto_paid' => 'nullable|boolean',
-            'has_url' => 'nullable|boolean',
-            'can_change_invoice' => 'nullable|boolean',
-            'is_active' => 'nullable|boolean',
-            'can_generate_link' => 'nullable|boolean',
+            // 'is_auto_paid' => 'nullable|boolean',
+            // 'has_url' => 'nullable|boolean',
+            // 'can_change_invoice' => 'nullable|boolean',
+            // 'is_active' => 'nullable|boolean',
+            // 'can_generate_link' => 'nullable|boolean',
             // 'auth_type' => 'required|in:basic,oauth',
             // 'base_url'    => 'nullable|url',
             'api_key'     => 'nullable|string',
@@ -317,11 +317,11 @@ class ChargeController extends Controller
                 'paid_by' => $request->get('paid_by'),
                 'description' => $request->get('description'),
                 'charge_type' => $request->get('charge_type'),
-                'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
-                'has_url' => $request->has('has_url') ? 1 : 0,
-                'can_change_invoice' => $request->has('can_change_invoice') ? 1 : 0,
-                'is_active' => $request->has('is_active') ? 1 : 0,
-                'can_generate_link' => $request->has('can_generate_link') ? 1 : 0,
+                // 'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
+                // 'has_url' => $request->has('has_url') ? 1 : 0,
+                // 'can_change_invoice' => $request->has('can_change_invoice') ? 1 : 0,
+                // 'is_active' => $request->has('is_active') ? 1 : 0,
+                // 'can_generate_link' => $request->has('can_generate_link') ? 1 : 0,
                 // 'auth_type' => $request->get('auth_type'),
                 // 'base_url'    => $request->get('base_url'),
                 // 'api_key'    => $request->get('api_key'),
@@ -445,6 +445,11 @@ class ChargeController extends Controller
     {
         $request->validate([
             'api_key'     => 'required|string',
+            'is_auto_paid' => 'nullable|boolean',
+            'has_url' => 'nullable|boolean',
+            'can_charge_invoice' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
+            'can_generate_link' => 'nullable|boolean',
         ]);
 
         $charge = Charge::findOrFail($id);
@@ -456,19 +461,17 @@ class ChargeController extends Controller
         try{
             $charge->update([
                 'api_key' => $request->get('api_key'),
+                'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
+                'has_url' => $request->has('has_url') ? 1 : 0,
+                'can_charge_invoice' => $request->has('can_charge_invoice') ? 1 : 0,
+                'is_active' => $request->has('is_active') ? 1 : 0,
+                'can_generate_link' => $request->has('can_generate_link') ? 1 : 0,
             ]);
         } catch (Exception $e) {
 
             Log::error('Failed to update charge credentials', ['error' => $e->getMessage()]);
 
             return redirect()->back()->withInput()->with('error', 'Something went wrong while updating credentials.');
-        }
-
-        if($charge->api_key != null && $charge->is_active == false){
-            $charge->is_active = true;
-            $charge->save();
-
-            return redirect()->route('charges.index')->with('success', 'Gateway is now active and credentials updated.');
         }
 
         return redirect()->route('charges.index')->with('success', 'Gateway credentials updated.');

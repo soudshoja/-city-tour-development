@@ -47,6 +47,7 @@ class PaymentMethodController extends Controller
             'charge_type' => 'required',
             'paid_by' => 'required',
             'description' => 'nullable',
+            'is_active' => 'nullable|boolean',
         ]);
 
         try {
@@ -60,7 +61,7 @@ class PaymentMethodController extends Controller
                 'charge_type' => $request->get('charge_type'),
                 'paid_by' => $request->get('paid_by'),
                 'description' => $request->get('description'),
-
+                'is_active' => $request->has('is_active') ? 1 : 0,
             ]);
 
             DB::commit();

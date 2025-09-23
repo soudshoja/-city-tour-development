@@ -360,21 +360,12 @@ class WhatsAppHotelController extends Controller
                 'phone_number' => 'required|string',
             ]);
 
-            $bookingRequest = RequestBookingRoom::where('phone_number', $request->phone_number)
-                ->get()
-                ->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'phone_number' => $item->phone_number,
-                        'check_in' => $item->check_in ? date('Y-m-d', strtotime($item->check_in)) : null,
-                        'check_out' => $item->check_out ? date('Y-m-d', strtotime($item->check_out)) : null,
-                        'adults' => $item->adults,
-                        'children_ages' => $item->children_ages ? json_decode($item->children_ages, true) : [],
-                    ];
-                })
-                ->toArray();
+            // Get the last inserted row for this phone number
+            $last = RequestBookingRoom::where('phone_number', $request->phone_number)
+                ->orderByDesc('id')
+                ->first();
 
-            if (!$bookingRequest) {
+            if (!$last) {
                 Log::channel('whatsapp')->warning('getHotelDetails: No booking request found', ['phone_number' => $request->phone_number]);
                 return response()->json([
                     'success' => false,
@@ -382,34 +373,45 @@ class WhatsAppHotelController extends Controller
                 ], 400);
             }
 
-            $checkIn = $bookingRequest[0]['check_in'] ?? null;
-            $checkOut = $bookingRequest[0]['check_out'] ?? null;
+            $checkIn  = $last->check_in  ? date('Y-m-d', strtotime($last->check_in))   : null;
+            $checkOut = $last->check_out ? date('Y-m-d', strtotime($last->check_out))  : null;
 
-            if( !$checkIn || !$checkOut) {
-                Log::channel('whatsapp')->warning('getHotelDetails: Check-in or check-out date not found', ['booking_request' => $bookingRequest]);
+            if (!$checkIn || !$checkOut) {
+                Log::channel('whatsapp')->warning('getHotelDetails: Check-in or check-out date not found', ['last_id' => $last->id]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Check-in or check-out date not found.',
                 ], 400);
             }
 
-            $bookingRequest = collect($bookingRequest)->map(function ($item) {
-                return [
-                    'adults' => $item['adults'],
-                    'childrenAges' => $item['children_ages'],
-                ];
-            })->toArray();
+            // Collect all rooms that belong to the same latest booking window
+            $rooms = RequestBookingRoom::where('phone_number', $request->phone_number)
+                ->whereDate('check_in',  $last->check_in)
+                ->whereDate('check_out', $last->check_out)
+                ->orderBy('id')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'adults'        => (int) $item->adults,
+                        'childrenAges'  => $item->children_ages ? json_decode($item->children_ages, true) : [],
+                    ];
+                })
+                ->toArray();
 
             $response = [
                 'success' => true,
                 'booking' => [
-                    'check_in' => $checkIn,
-                    'check_out' => $checkOut,
-                    'booking_request' => $bookingRequest,
+                    'hotel'           => $last->hotel,            // may be null if no exact match earlier
+                    'city_id'         => $last->city_id,          // may be null
+                    'check_in'        => $checkIn,
+                    'check_out'       => $checkOut,
+                    'booking_request' => $rooms,
                 ],
             ];
+
             Log::channel('whatsapp')->info('getHotelDetails: Success response', ['response' => $response]);
             return response()->json($response);
+
         } catch (\Exception $e) {
             Log::channel('whatsapp')->error('getHotelDetails: Exception', ['error' => $e->getMessage()]);
             return response()->json([
@@ -418,6 +420,7 @@ class WhatsAppHotelController extends Controller
             ], 500);
         }
     }
+
 
 
     public function storeTemporaryOffer(Request $request)

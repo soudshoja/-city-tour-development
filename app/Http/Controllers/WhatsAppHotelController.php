@@ -360,7 +360,7 @@ class WhatsAppHotelController extends Controller
                 'phone_number' => 'required|string',
             ]);
 
-            // Get the last inserted row for this phone number
+            // Last (newest) record for this phone_number
             $last = RequestBookingRoom::where('phone_number', $request->phone_number)
                 ->orderByDesc('id')
                 ->first();
@@ -373,8 +373,8 @@ class WhatsAppHotelController extends Controller
                 ], 400);
             }
 
-            $checkIn  = $last->check_in  ? date('Y-m-d', strtotime($last->check_in))   : null;
-            $checkOut = $last->check_out ? date('Y-m-d', strtotime($last->check_out))  : null;
+            $checkIn  = $last->check_in  ? date('Y-m-d', strtotime($last->check_in))  : null;
+            $checkOut = $last->check_out ? date('Y-m-d', strtotime($last->check_out)) : null;
 
             if (!$checkIn || !$checkOut) {
                 Log::channel('whatsapp')->warning('getHotelDetails: Check-in or check-out date not found', ['last_id' => $last->id]);
@@ -384,25 +384,17 @@ class WhatsAppHotelController extends Controller
                 ], 400);
             }
 
-            // Collect all rooms that belong to the same latest booking window
-            $rooms = RequestBookingRoom::where('phone_number', $request->phone_number)
-                ->whereDate('check_in',  $last->check_in)
-                ->whereDate('check_out', $last->check_out)
-                ->orderBy('id')
-                ->get()
-                ->map(function ($item) {
-                    return [
-                        'adults'        => (int) $item->adults,
-                        'childrenAges'  => $item->children_ages ? json_decode($item->children_ages, true) : [],
-                    ];
-                })
-                ->toArray();
+            // ONLY the last record
+            $rooms = [[
+                'adults'       => (int) $last->adults,
+                'childrenAges' => $last->children_ages ? json_decode($last->children_ages, true) : [],
+            ]];
 
             $response = [
                 'success' => true,
                 'booking' => [
-                    'hotel'           => $last->hotel,            // may be null if no exact match earlier
-                    'city_id'         => $last->city_id,          // may be null
+                    'hotel'           => $last->hotel,    // may be null
+                    'city_id'         => $last->city_id,  // may be null
                     'check_in'        => $checkIn,
                     'check_out'       => $checkOut,
                     'booking_request' => $rooms,
@@ -420,6 +412,7 @@ class WhatsAppHotelController extends Controller
             ], 500);
         }
     }
+
 
 
 

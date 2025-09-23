@@ -118,6 +118,7 @@ class WhatsAppHotelController extends Controller
 
         $topLevelErrors = $validator->errors();
 
+        // block only if essentials are missing
         $essentialFields = ['phone_number','checkIn','checkOut','occupancy','occupancy.rooms'];
         $missingEssentials = [];
         foreach ($essentialFields as $f) {
@@ -125,7 +126,6 @@ class WhatsAppHotelController extends Controller
                 $missingEssentials[$f] = $topLevelErrors->get($f);
             }
         }
-
         if (!empty($missingEssentials)) {
             return response()->json([
                 'success'       => false,
@@ -160,14 +160,20 @@ class WhatsAppHotelController extends Controller
             }
 
             try {
-                $row = RequestBookingRoom::create([
-                    'phone_number'  => $request->phone_number,
-                    'check_in'      => $request->checkIn,
-                    'check_out'     => $request->checkOut,
-                    'adults'        => $room['adults'],
-                    'children_ages' => isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null,
-                    'hotel'         => $request->hotel ?? null,
+                // avoid mass-assignment issues; set explicitly
+                $row = new RequestBookingRoom();
+                $row->phone_number  = $request->phone_number;
+                $row->check_in      = $request->checkIn;
+                $row->check_out     = $request->checkOut;
+                $row->adults        = $room['adults'];
+                $row->children_ages = isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null;
+                $row->hotel         = $request->hotel ?? null;
+
+                Log::channel('whatsapp')->info('saveBookingDetails: About to save row', [
+                    'hotel_value' => $row->hotel,
                 ]);
+
+                $row->save();
                 $savedIds[] = $row->id;
             } catch (Exception $e) {
                 Log::channel('whatsapp')->error('saveBookingDetails: Room save failed', [
@@ -189,6 +195,7 @@ class WhatsAppHotelController extends Controller
             'warnings'        => $warnings,
         ], count($savedIds) > 0 ? 200 : 422);
     }
+
 
 
 

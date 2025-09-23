@@ -32,11 +32,32 @@ class InvoiceTest extends TestCase
     //     $response->assertStatus(200);
     // }
 
+    protected function setUp() : void
+    {
+        parent::setUp();
+
+        $this->artisan('db:seed', ['--class' => 'PermissionSeeder']);
+    }
+
     public function test_admin_cannot_view_invoice_list()
     {
         $user = User::factory()->create([
             'role_id' => Role::ADMIN
         ]);
+
+        $userCompany = User::factory()->create([
+            'role_id' => Role::COMPANY
+        ]);
+
+        $company = Company::factory()->create([
+            'user_id' => $userCompany->id
+        ]);
+
+        $roleAdmin = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $company->id]);
+
+        $user->assignRole($roleAdmin);
+
+        $roleAdmin->givePermissionTo('view invoice');
 
         $response = $this->actingAs($user)->get(route('invoices.index'));
 
@@ -53,6 +74,11 @@ class InvoiceTest extends TestCase
         $company = Company::factory()->create([
             'user_id' => $user->id
         ]);
+
+        $roleCompany = Role::create(['name' => 'company', 'guard_name' => 'web', 'company_id' => $company->id]);
+        $user->assignRole($roleCompany);
+
+        $roleCompany->givePermissionTo('view invoice');
 
         Branch::factory()->create([
             'user_id' => $user->id,
@@ -85,6 +111,11 @@ class InvoiceTest extends TestCase
             'company_id' => $company->id
         ]);
 
+        $roleBranch = Role::create(['name' => 'branch', 'guard_name' => 'web', 'company_id' => $company->id]);
+        $userBranch->assignRole($roleBranch);
+
+        $roleBranch->givePermissionTo('view invoice');
+
         $response = $this
             ->actingAs($userBranch)
             ->get(route('invoices.index'));
@@ -116,6 +147,10 @@ class InvoiceTest extends TestCase
         ]);
 
         $agentType = AgentType::create(['name' => 'Salary']);
+
+        $roleAgent = Role::create(['name' => 'agent', 'guard_name' => 'web', 'company_id' => $company->id]);
+        $user->assignRole($roleAgent);
+        $roleAgent->givePermissionTo('view invoice');
 
         Agent::factory()->create([
             'user_id' => $user->id,

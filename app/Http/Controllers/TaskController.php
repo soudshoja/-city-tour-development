@@ -58,6 +58,8 @@ class TaskController extends Controller
 
     public function index(Request $request)
     {
+        Gate::authorize('viewAny', Task::class);
+
         $user = Auth::user();
 
         $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'info'];
@@ -331,6 +333,25 @@ class TaskController extends Controller
 
             $companyId = $user->agent->branch->company_id;
             $suppliers = $suppliers->whereHas('companies', fn($query) => $query->where('supplier_companies.is_active', 1));
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $company = $user->accountant->branch->company;
+
+            $agents = $company->branches->agents;
+
+            $agentsId = $agents->pluck('id');
+
+            $clients = Client::whereIn('agent_id', $agentsId)->get();
+
+            $fullClients = Client::where(function ($query) use ($agentsId) {
+                $query->whereIn('agent_id', $agentsId)
+                    ->orWhereHas('agents', function ($q) use ($agentsId) {
+                        $q->whereIn('agent_id', $agentsId);
+                    });
+            })->get();
+
+            $tasks = $tasks->where('company_id', $company->id);
+
+            $suppliers = $suppliers->activeForCompany($company->id);
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }

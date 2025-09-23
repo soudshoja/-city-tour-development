@@ -17,6 +17,7 @@ use App\Models\Supplier;
 use App\Models\SupplierCompany;
 use App\Models\SupplierCredential;
 use App\Models\User;
+use App\Models\Accountant;
 use Exception;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -210,6 +211,36 @@ class EntitySeeder extends Seeder
             'agent_id' => $agent->id,
         ]);
 
+        $name = 'Accountant City';
+        $email = 'haeyilee01@gmail.com';
+
+        $user = User::firstOrCreate([
+            'name' =>$name,
+            'email' => $email,
+        ], [
+            'password' => Hash::make(config('auth.accountant_password')),
+            'role_id' => Role::ACCOUNTANT,
+            'remember_token' => Str::random(10),
+            'first_login' => 1,
+        ]);
+
+        try {
+            $accountant = Accountant::firstOrCreate([
+                'user_id' => $user->id,
+                'name' => $name,
+                'email' => $email,
+                'country_code' => '+60',
+                'phone_number' => '126103085',
+                'branch_id' => $branch->id,
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+
+        $role = Role::firstOrCreate(['name' => 'accountant']);
+
+        $user->assignRole($role);
 
         // $name = 'ahmed ali';
         // $email = 'ahmedali@gmail.com';

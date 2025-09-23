@@ -84,9 +84,5 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view profit loss', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'view settlement', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'view creditors', 'group' => 'report']);
-
-        $role = Role::where('name', 'admin')->first();
-        $permissions = Permission::all();
-        $role->syncPermissions($permissions);
     }
 }

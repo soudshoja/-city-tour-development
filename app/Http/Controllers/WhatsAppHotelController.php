@@ -108,14 +108,13 @@ class WhatsAppHotelController extends Controller
     {
         Log::channel('whatsapp')->info('saveBookingDetails: Incoming request', ['request' => $request->all()]);
 
-        // 1) Validate top-level
         $validator = Validator::make($request->all(), [
             'phone_number'    => 'required|string',
             'checkIn'         => 'required|date',
             'checkOut'        => 'required|date|after_or_equal:checkIn',
             'occupancy'       => 'required|array',
             'occupancy.rooms' => 'required|array|min:1',
-            'hotel'           => 'required|string',
+            'hotel'           => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -129,27 +128,28 @@ class WhatsAppHotelController extends Controller
             ], 422);
         }
 
-        // 2) Look for exact match in hotels table
-        $inputHotelName = $request->hotel;
-        $matchedHotel = Hotel::where('name', $inputHotelName)->first();
-        // For case-sensitive exact match, you can use:
-        // $matchedHotel = Hotel::whereRaw('BINARY `name` = ?', [$inputHotelName])->first();
+        $matchedHotelName = null;
+        $warnings = [];
 
-        if (!$matchedHotel) {
-            Log::channel('whatsapp')->warning('saveBookingDetails: Hotel not found in DB', [
-                'requested_hotel' => $inputHotelName
-            ]);
-            return response()->json([
-                'success'       => false,
-                'message'       => 'Hotel not found with exact name match in hotels table.',
-                'errors'        => ['hotel' => ['The provided hotel must exactly match an existing hotel name.']],
-                'saved_count'   => 0,
-                'saved_ids'     => [],
-                'skipped_count' => 0,
-            ], 422);
+        if ($request->filled('hotel')) {
+            $inputHotelName = trim($request->hotel);
+            // case-insensitive exact match; switch to whereRaw('BINARY name = ?') for case-sensitive
+            $matched = \App\Models\Hotel::where('name', $inputHotelName)->first();
+            if ($matched) {
+                $matchedHotelName = $matched->name;
+            } else {
+                $warnings['hotel'][] = 'Hotel not found with exact name; saved without hotel.';
+                // (optional) provide close suggestions:
+                $suggestions = \App\Models\Hotel::where('name', 'like', $inputHotelName.'%')
+                    ->limit(5)->pluck('name')->toArray();
+                if (!empty($suggestions)) {
+                    $warnings['hotel_suggestions'] = $suggestions;
+                }
+            }
+        } else {
+            $warnings['hotel'][] = 'Hotel not provided; saved without hotel.';
         }
 
-        // 3) Validate and save rooms
         $savedIds = [];
         $errors   = [];
         $rooms    = $request->input('occupancy.rooms', []);
@@ -173,28 +173,26 @@ class WhatsAppHotelController extends Controller
                 $row->check_out     = $request->checkOut;
                 $row->adults        = $room['adults'];
                 $row->children_ages = isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null;
-                $row->hotel         = $matchedHotel->name; // save normalized name from DB
+                $row->hotel         = $matchedHotelName; // null if not matched/provided
                 $row->save();
-
                 $savedIds[] = $row->id;
             } catch (Exception $e) {
-                Log::channel('whatsapp')->error('saveBookingDetails: Room save failed', [
-                    'index' => $index,
-                    'error' => $e->getMessage(),
-                ]);
+                Log::channel('whatsapp')->error('saveBookingDetails: Room save failed', ['index' => $index, 'error' => $e->getMessage()]);
                 $errors['rooms'][$index]['save'][] = 'Failed to save this room.';
             }
         }
 
         return response()->json([
-            'success'       => count($savedIds) > 0,
-            'message'       => count($savedIds) > 0 ? 'Booking details saved.' : 'No rooms were saved.',
-            'saved_count'   => count($savedIds),
-            'saved_ids'     => $savedIds,
-            'skipped_count' => isset($errors['rooms']) ? count($errors['rooms']) : 0,
-            'errors'        => $errors,
+            'success'         => count($savedIds) > 0,
+            'message'         => count($savedIds) > 0 ? 'Booking details processed.' : 'No rooms were saved.',
+            'saved_count'     => count($savedIds),
+            'saved_ids'       => $savedIds,
+            'skipped_count'   => isset($errors['rooms']) ? count($errors['rooms']) : 0,
+            'errors'          => $errors,
+            'warnings'        => $warnings,
         ], count($savedIds) > 0 ? 200 : 422);
     }
+
 
 
 

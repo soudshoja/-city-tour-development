@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Company;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -85,10 +86,10 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasOne(Branch::class);
     }
 
-    public function company()
+/*     public function company()
     {
         return $this->hasOne(Company::class);
-    }
+    } */
 
     public function notification()
     {
@@ -99,4 +100,39 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->belongsTo(Role::class);
     }
+
+    public function accountant() 
+    {
+        return $this->hasOne(Accountant::class);
+    }
+
+// In User.php
+public function company(): Attribute
+{
+    return Attribute::get(function () {
+        // Case 1: user directly owns a company
+        if ($this->hasOne(\App\Models\Company::class)->exists()) {
+            return $this->hasOne(\App\Models\Company::class)->first();
+        }
+
+        // Case 2: accountant → branch → company
+        if ($this->accountant && $this->accountant->branch) {
+            return $this->accountant->branch->company;
+        }
+
+        // Case 3: agent → branch → company
+        if ($this->agent && $this->agent->branch) {
+            return $this->agent->branch->company;
+        }
+
+        // Case 4: branch → company
+        if ($this->branch) {
+            return $this->branch->company;
+        }
+
+        return null;
+    });
+}
+
+
 }

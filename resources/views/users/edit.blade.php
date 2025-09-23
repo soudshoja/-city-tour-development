@@ -20,6 +20,7 @@
             @csrf
             @method('PUT')
             <input type="hidden" name="user_id" value="{{ $user->id }}">
+            <input type="hidden" name="company_id" value="{{ auth()->user()->company->id ?? '' }}">
 
             <div class="flex gap-2 my-2 flex-wrap">
                 @foreach ($roles as $role)
@@ -40,26 +41,26 @@
 
         <!-- Info Update Form -->
         <form action="{{ route('users.updateInfo', $user) }}" method="POST" id="info-form"
-            class="bg-gray-50 p-4 rounded border hidden">
+            class="bg-gray-50 p-4 rounded border">
             @csrf
             @method('PUT')
 
             <input type="hidden" name="user_id" value="{{ $user->id }}">
-            <input type="hidden" name="source_role" id="source_role">
+            <input type="hidden" name="source_role" id="source_role" value="{{ strtolower($userRole) }}">
 
             <div class="mb-2">
                 <label class="block font-medium">Name:</label>
-                <input type="text" name="name" id="info-name" class="form-input w-full">
+                <input type="text" name="name" id="info-name" class="form-input w-full" value="{{ $user->name }}">
             </div>
 
             <div class="mb-2">
                 <label class="block font-medium">Email:</label>
-                <input type="text" name="email" id="info-email" class="form-input w-full">
+                <input type="text" name="email" id="info-email" class="form-input w-full" value="{{ $user->email }}">
             </div>
 
             <div class="mb-2">
                 <label class="block font-medium">Phone:</label>
-                <input type="text" name="phone" id="info-phone" class="form-input w-full">
+                <input type="text" name="phone" id="info-phone" class="form-input w-full" value="{{ $phone }}">
             </div>
 
             <div class="mb-2">
@@ -79,7 +80,7 @@
     </div>
 
     <!-- Inject role data -->
-    <script>
+    <!-- <script>
         const company = @json($user->company ?? null);
         const branch = @json($user->branch ?? null);
         const agent = @json($user->agent ?? null);
@@ -117,5 +118,5 @@
 
             if (radio.checked) radio.dispatchEvent(new Event('change'));
         });
-    </script>
+    </script> -->
 </x-app-layout>

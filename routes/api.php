@@ -92,7 +92,11 @@ Route::post('/webhook/resayil/media', [IncomingMediaController::class, 'handleRe
 Route::post('/chat/upload', [ChatController::class, 'handleFileUpload']);
 
 Route::prefix('/whatsapp/hotel')->group(function () {
-    Route::post('/list', [WhatsAppHotelController::class, 'getListOfHotels']);
+    // Route::post('/list', [WhatsAppHotelController::class, 'getListOfHotels']);
+    // routes/api.php
+    Route::post('/booking/save', [WhatsAppHotelController::class, 'saveBookingDetails']);
+    Route::post('/hotels/list', [WhatsAppHotelController::class, 'listHotels']);
+
     Route::post('/details', [WhatsAppHotelController::class, 'getHotelDetails']);
     Route::post('/offers', [WhatsAppHotelController::class, 'storeTemporaryOffer']);
     Route::post('/offers/find', [WhatsAppHotelController::class, 'findOffer']);

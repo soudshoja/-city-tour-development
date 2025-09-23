@@ -108,32 +108,33 @@ class WhatsAppHotelController extends Controller
         Log::channel('whatsapp')->info('saveBookingDetails: Incoming request', ['request' => $request->all()]);
 
         $topValidator = Validator::make($request->all(), [
-            'phone_number' => 'required|string',
-            'checkIn'      => 'required|date',
-            'checkOut'     => 'required|date|after_or_equal:checkIn',
-            'occupancy'    => 'required|array',
-            'occupancy.rooms' => 'required|array|min:1'
+            'phone_number'    => 'required|string',
+            'checkIn'         => 'required|date',
+            'checkOut'        => 'required|date|after_or_equal:checkIn',
+            'occupancy'       => 'required|array',
+            'occupancy.rooms' => 'required|array|min:1',
+            'hotel'           => 'required|string',
         ]);
 
         if ($topValidator->fails()) {
             return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors'  => $topValidator->errors(),
-                'saved_count' => 0,
-                'saved_ids'   => [],
+                'success'       => false,
+                'message'       => 'Validation failed',
+                'errors'        => $topValidator->errors(),
+                'saved_count'   => 0,
+                'saved_ids'     => [],
                 'skipped_count' => 0,
             ], 422);
         }
 
         $savedIds = [];
-        $errors = [];
-        $rooms = $request->input('occupancy.rooms', []);
+        $errors   = [];
+        $rooms    = $request->input('occupancy.rooms', []);
 
         foreach ($rooms as $index => $room) {
             $roomValidator = Validator::make($room, [
-                'adults' => 'required|integer|min:1',
-                'childrenAges' => 'nullable|array',
+                'adults'         => 'required|integer|min:1',
+                'childrenAges'   => 'nullable|array',
                 'childrenAges.*' => 'integer|min:0',
             ]);
 
@@ -149,6 +150,7 @@ class WhatsAppHotelController extends Controller
                     'check_out'     => $request->checkOut,
                     'adults'        => $room['adults'],
                     'children_ages' => isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null,
+                    'hotel'         => $request->hotel,
                 ]);
                 $savedIds[] = $row->id;
             } catch (Exception $e) {
@@ -169,6 +171,7 @@ class WhatsAppHotelController extends Controller
             'errors'        => $errors,
         ], count($savedIds) > 0 ? 200 : 422);
     }
+
 
 
     public function listHotels(Request $request)

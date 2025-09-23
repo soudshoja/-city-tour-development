@@ -35,6 +35,8 @@ class RefundController extends Controller
 
     public function index()
     {
+        Gate::authorize('viewAny', Refund::class);
+
         $user = Auth::user();
         if (Auth::user()->role->id == Role::COMPANY) {
             $agents = $user->company->branches->pluck('agents')->flatten();
@@ -53,6 +55,12 @@ class RefundController extends Controller
             $refundClients = $user->agent->refundClients;
             $refunds = Refund::with('task.client', 'task.agent')
                 ->where('agent_id', $user->agent->id)
+                ->orderBy('id', 'desc')
+                ->get();
+        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
+            $refundClients = $user->accountant->branch->agents->pluck('refundClients')->flatten();
+            $refunds = Refund::with('task.client', 'task.agent')
+                ->whereIn('agent_id', $refundClients->pluck('id'))
                 ->orderBy('id', 'desc')
                 ->get();
         } else {

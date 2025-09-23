@@ -45,13 +45,11 @@
         <menu>
             @can('viewAny', 'App\Models\CoaCategory')
             <menuitem><a href="{{ route('coa.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Chart
-                Of Account</a></menuitem>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Chart Of Account</a></menuitem>
             @endcan
             @can('viewAny', 'App\Models\CoaCategory')
             <menuitem><a href="{{ route('bank-payments.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment
-                Voucher</a>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment Voucher</a>
             </menuitem>
             @endcan
             @can('viewAny', 'App\Models\CoaCategory')
@@ -64,17 +62,12 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payable</a>
             </menuitem>
             @endcan
-            @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('accountant') || auth()->user()->hasRole('company'))
+            @can('viewAny', 'App\Models\Charge')
             <menuitem><a href="{{ route('charges.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage
                 Charges</a>
             </menuitem>
-            @endif
-            {{-- @can('viewAny', 'App\Models\CoaCategory')
-                <menuitem><a href="{{ route('coa.payment') }}"
-            class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment
-            Voucher</a></menuitem>
-            @endcan --}}
+            @endcan
             @can('viewAny', 'App\Models\Account')
             <menuitem><a href="{{ route('accounting.transaction') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Transactions</a>
@@ -85,12 +78,6 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Accounting</a>
             </menuitem>
             @endcan
-            {{-- @can('viewAny', 'App\Models\Credit') --}}
-            <menuitem><a href="{{ route('credits.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Client
-                Credit</a>
-            </menuitem>
-            {{-- @endcan --}}
         </menu>
         </menuitem>
 
@@ -112,20 +99,25 @@
             </svg>
         </a>
         <menu>
-            <menuitem><a href="{{ route('invoices.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices
-                List</a></menuitem>
+            @can('viewAny', 'App\Models\Invoice')
+            <menuitem>
+            <a href="{{ route('invoices.index') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices List</a>
+            </menuitem>
             <menuitem><a href="{{ route('invoices.link') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices
-                Link</a>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Invoices Link</a>
             </menuitem>
+            @endcan
+            @can('viewAny', 'App\Models\Payment')
             <menuitem><a href="{{ route('payment.link.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment
-                Link</a>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Payment Link</a>
             </menuitem>
+            @endcan
+            @can('viewAny', 'App\Models\Refund')
             <menuitem><a href="{{ route('refunds.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Refund</a>
             </menuitem>
+            @endcan
         </menu>
         </menuitem>
 
@@ -151,32 +143,27 @@
             @can('viewAny', 'App\Models\User')
             <menuitem>
             <a href="{{ route('users.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Users
-                List</a>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Users List</a>
             </menuitem>
             @endcan
             @can('viewAny', 'App\Models\Company')
             <menuitem>
             <a href="{{ route('companies.list') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Companies
-                List</a>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Companies List</a>
             </menuitem>
             @endcan
             @can('viewAny', App\Models\Branch::class)
             <menuitem><a href="{{ route('branches.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Branches
-                List</a></menuitem>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Branches List</a></menuitem>
             @endcan
             @can('viewAny', App\Models\Agent::class)
             <menuitem><a href="{{ route('agents.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Agents
-                List</a></menuitem>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Agents List</a></menuitem>
             @endcan
-
+            @can('viewAny', App\Models\Client::class)
             <menuitem><a href="{{ route('clients.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Clients
-                List</a></menuitem>
-
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Clients List</a></menuitem>
+            @endcan
 
         </menu>
         </menuitem>
@@ -241,40 +228,51 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Client
                 Reports</a>
             </menuitem> -->
-           <menuitem>
-                <a href="{{ route('reports.paid-report') }}"
+            @can('viewAny', 'App\Models\Report')
+            <menuitem>
+            <a href="{{ route('reports.paid-report') }}"
                 class="text-xs p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow w-full text-center break-words whitespace-normal">
-                    Paid Acc Pay/Receive
-                </a>
+                Paid Acc Pay/Receive
+            </a>
             </menuitem>
             <menuitem>
-                <a href="{{ route('reports.unpaid-report') }}"
+            <a href="{{ route('reports.unpaid-report') }}"
                 class="text-xs p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow w-full text-center break-words whitespace-normal">
-                    Unpaid Acc Pay/Receive
-                </a>
+                Unpaid Acc Pay/Receive
+            </a>
             </menuitem>
+            @endcan
+            @can('viewReconcile', 'App\Models\Report')
             <menuitem><a href="{{ route('reports.acc-reconcile') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Acc
                 Reconcile</a>
             </menuitem>
+            @endcan
+            @can('viewProfitLoss', 'App\Models\Report')
             <menuitem><a href="{{ route('reports.profit-loss') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Profit & Loss</a>
             </menuitem>
+            @endcan
+            @can('viewSettlement', 'App\Models\Report')
             <menuitem>
             <a href="{{ route('reports.settlements') }}"
                 class="block text-xs text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white shadow">
                 Bank Settlement
             </a>
             </menuitem>
+            @endcan
+            @can('viewAny', 'App\Models\CoaCategory')
             <menuitem>
             <a href="{{ route('coa.transaction') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Transaction List</a>
             </menuitem>
+            @endcan
+            @can('viewCreditors', 'App\Models\Report')
             <menuitem>
             <a href="{{ route('reports.creditors') }}"
-            class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Creditors Report</a>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Creditors Report</a>
             </menuitem>
-        </menuitem>
+            @endcan
         </menu>
         </menuitem>
 
@@ -309,11 +307,12 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Suppliers</a>
             </menuitem>
             @endcan
+            @can('viewAny', App\Models\Role::class)
             <menuitem>
             <a href="{{ route('role.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage
-                Roles</a>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage Roles</a>
             </menuitem>
+            @endcan
             <menuitem>
             <a href="#"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Documentations</a>
@@ -323,22 +322,22 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Help
             </a>
             </menuitem>
-    <!-- Main Menu Item -->
-    <menuitem>
-         <a href="{{ route('exchange.index') }}"
+            <!-- Main Menu Item -->
+            <menuitem>
+            <a href="{{ route('exchange.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Currency
                 Exchange</a>
             <menu class="flex space-x-2">
-        <menuitem>
-            <a href="{{ route('exchange.histories.all') }}"
-                class="text-xs justify-center text-center   px-4 py-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition">
-                Exchange History
-            </a>
-        </menuitem>
-    </menu>
-    </menuitem> 
+                <menuitem>
+                <a href="{{ route('exchange.histories.all') }}"
+                    class="text-xs justify-center text-center   px-4 py-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                    Exchange History
+                </a>
+                </menuitem>
+            </menu>
+            </menuitem>
 
-    <!-- Sub Menu -->
+            <!-- Sub Menu -->
 
 
         </menu>

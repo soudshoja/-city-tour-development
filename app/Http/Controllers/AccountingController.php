@@ -21,13 +21,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\LedgerExport;
+use App\Models\CoaCategory;
 use App\Services\EncryptionService;
-
+use Illuminate\Support\Facades\Gate;
 
 class AccountingController extends Controller
 {
     public function index()
     {
+        Gate::authorize('viewAny', Account::class);
+
         $user = Auth::user();
 
         if ($user->role_id != Role::ADMIN) {
@@ -221,6 +224,8 @@ class AccountingController extends Controller
 
     public function showCompanySummary()
     {
+        Gate::authorize('viewAny', Account::class);
+
         $user = Auth::user();
 
         if($user->role_id != Role::COMPANY && $user->company == null) {
@@ -451,6 +456,8 @@ class AccountingController extends Controller
 
     public function createPayableDetail()
     {
+        Gate::authorize('veiwAny', CoaCategory::class);
+
         $user = auth()->user();
 
         if ($user->role_id != Role::ADMIN) {
@@ -559,6 +566,8 @@ class AccountingController extends Controller
 
     public function createReceivableDetail()
     {
+        Gate::authorize('veiwAny', CoaCategory::class);
+
         $user = auth()->user();
 
         if ($user->role_id != Role::ADMIN) {

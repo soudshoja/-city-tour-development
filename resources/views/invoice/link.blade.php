@@ -569,7 +569,7 @@
         function openInvoiceModal(invoiceNumber) {
             const modal = document.getElementById("viewInvoiceModal");
             const contentDiv = document.getElementById("invoiceInvoiceContent");
-            const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
+            const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id ?? auth()->user()->accountant->branch->company->id}}";
 
             // Clear previous content
             contentDiv.innerHTML = "";

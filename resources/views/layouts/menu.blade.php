@@ -70,15 +70,14 @@
             @endcan
             @can('viewAny', 'App\Models\Charge')
             <menuitem><a href="{{ route('charges.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage
-                Charges</a>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage Charges</a>
             </menuitem>
             @endcan
-            @can('viewAny', 'App\Models\Account')
+            <!-- @can('viewAny', 'App\Models\Account')
             <menuitem><a href="{{ route('accounting.transaction') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Transactions</a>
             </menuitem>
-            @endcan
+            @endcan -->
             @can('viewCompanySummary', 'App\Models\Account')
             <menuitem><a href="{{ route('accounting.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Accounting</a>
@@ -250,8 +249,7 @@
             @endcan
             @can('viewReconcile', 'App\Models\Report')
             <menuitem><a href="{{ route('reports.acc-reconcile') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Acc
-                Reconcile</a>
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Acc Reconcile</a>
             </menuitem>
             @endcan
             @can('viewProfitLoss', 'App\Models\Report')
@@ -330,6 +328,7 @@
             </menuitem>
             <!-- Main Menu Item -->
             <menuitem>
+            @can('viewAny', App\Models\CurrencyExchange::class)
             <a href="{{ route('exchange.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Currency
                 Exchange</a>
@@ -341,6 +340,7 @@
                 </a>
                 </menuitem>
             </menu>
+            @endcan
             </menuitem>
 
             <!-- Sub Menu -->

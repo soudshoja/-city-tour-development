@@ -58,8 +58,7 @@
                         <x-search
                             :action="route('invoices.index')"
                             searchParam="search"
-                            placeholder="Quick search for invoices"
-                        />
+                            placeholder="Quick search for invoices" />
                         <!-- <button @click="openFilters = !openFilters" class="shrink-0 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-sm text-amber-800 ring-1 ring-amber-200 hover:bg-amber-200 transition dark:bg-amber-900/40 dark:text-amber-200 dark:ring-amber-800 dark:hover:bg-amber-900/60">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path d="M4 6h16M7 12h10M10 18h4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -141,7 +140,7 @@
                         <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 7h6M9 11h6m-8 4h10M5 21l1.5-1.5L8 21l1.5-1.5L11 21l1.5-1.5L14 21l1.5-1.5L17 21l1.5-1.5L20 21V3a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18z"/>
+                                    d="M9 7h6M9 11h6m-8 4h10M5 21l1.5-1.5L8 21l1.5-1.5L11 21l1.5-1.5L14 21l1.5-1.5L17 21l1.5-1.5L20 21V3a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18z" />
                             </svg>
                         </div>
                         <div>
@@ -175,7 +174,7 @@
                             </form>
                         </div>
                     </div>
-                </div>              
+                </div>
 
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
@@ -255,19 +254,19 @@
                                 // Retrieve the first invoice detail; adjust as needed if you want a different one.
                                 $invoiceDetail = $invoice->invoiceDetails->first();
                                 $tasksPayload = $invoice->invoiceDetails
-                                    ->map(function ($detail) use ($invoice) {
-                                        return [
-                                            'id'        => $detail->task_id,
-                                            'reference' => 'Task #'. $detail->task->reference,
-                                            'type'      => ucfirst($detail->task->type),
-                                            'client'    => $detail->task->client->full_name,
-                                            'supplier'  => $detail->task->supplier->name,
-                                            'amount'    => $detail->task_price,
-                                            'currency'  => $invoice->currency,
-                                        ];
-                                    })
-                                    ->values()
-                                    ->toArray();
+                                ->map(function ($detail) use ($invoice) {
+                                return [
+                                'id' => $detail->task_id,
+                                'reference' => 'Task #'. $detail->task->reference,
+                                'type' => ucfirst($detail->task->type),
+                                'client' => $detail->task->client->full_name,
+                                'supplier' => $detail->task->supplier->name,
+                                'amount' => $detail->task_price,
+                                'currency' => $invoice->currency,
+                                ];
+                                })
+                                ->values()
+                                ->toArray();
                                 @endphp
                                 <tr data-price="{{ $invoice->total }}"
                                     data-tasks='@json($tasksPayload)'
@@ -306,7 +305,7 @@
                                             </svg>
                                         </a>
                                         @elseif (in_array($invoice->status, ['unpaid', 'partial'], true) ||
-                                            ($invoice->status !== 'paid' ))
+                                        ($invoice->status !== 'paid' ))
                                         <a data-tooltip="View/Edit Invoice"
                                             href="{{ route('invoice.edit', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                             class="text-sm font-medium text-blue-600 hover:underline">
@@ -446,7 +445,7 @@
 
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         <a href="{{ route('invoice.details', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
-                                                class="text-sm font-medium text-blue-600 hover:underline" target="_blank"> {{ $invoice->invoice_number }}
+                                            class="text-sm font-medium text-blue-600 hover:underline" target="_blank"> {{ $invoice->invoice_number }}
                                         </a>
                                     </td>
 
@@ -458,36 +457,36 @@
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         @if ($invoice->refund)
-                                            <span class="relative inline-flex cursor-default" data-tooltip="Invoice Refund">
-                                                <span class="badge badge-outline-success">{{ $invoice->status }}</span>
-                                            </span>
-                                        @elseif (in_array($invoice->status, ['paid']))
-                                            <a href="{{ route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank">
-                                                <span class="badge badge-outline-success cursor-pointer">{{ $invoice->status }}</span>
-                                            </a>
-                                        @elseif ($invoice->status === 'paid by refund')
+                                        <span class="relative inline-flex cursor-default" data-tooltip="Invoice Refund">
                                             <span class="badge badge-outline-success">{{ $invoice->status }}</span>
+                                        </span>
+                                        @elseif (in_array($invoice->status, ['paid']))
+                                        <a href="{{ route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank">
+                                            <span class="badge badge-outline-success cursor-pointer">{{ $invoice->status }}</span>
+                                        </a>
+                                        @elseif ($invoice->status === 'paid by refund')
+                                        <span class="badge badge-outline-success">{{ $invoice->status }}</span>
                                         @else
-                                            <span class="badge badge-outline-danger">{{ $invoice->status }}</span>
+                                        <span class="badge badge-outline-danger">{{ $invoice->status }}</span>
                                         @endif
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         {{ $invoice->payment_type ? ucwords($invoice->payment_type) : 'N/A' }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        {{ number_format($invoice->invoicedetails->sum('supplier_price'), 2) }} {{ $invoice->currency }} 
+                                        {{ number_format($invoice->invoicedetails->sum('supplier_price'), 2) }} {{ $invoice->currency }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        {{ number_format($invoice->invoicedetails->sum('markup_price'), 2) }} {{ $invoice->currency }} 
+                                        {{ number_format($invoice->invoicedetails->sum('markup_price'), 2) }} {{ $invoice->currency }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid' && !$invoice->refund && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'))
                                         <button type="button" class="underline text-blue-600 hover:text-blue-800"
                                             data-number="{{ $invoice->invoice_number }}" data-amount="{{ $invoice->amount }}" onclick="openEditModal('amount', this)">
-                                                {{ $invoice->amount }} {{ $invoice->currency }} 
-                                            </button>
+                                            {{ $invoice->amount }} {{ $invoice->currency }}
+                                        </button>
                                         @else
-                                            {{ $invoice->amount }} {{ $invoice->currency }} 
+                                        {{ $invoice->amount }} {{ $invoice->currency }}
                                         @endif
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
@@ -496,12 +495,12 @@
 
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid')
-                                            <button type="button" class="underline text-blue-600 hover:text-blue-800" data-number="{{ $invoice->invoice_number }}"
-                                                data-date="{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') }}" onclick="openEditModal('date', this)">
-                                                {{ $invoice->invoice_date }}
-                                            </button>
-                                        @else
+                                        <button type="button" class="underline text-blue-600 hover:text-blue-800" data-number="{{ $invoice->invoice_number }}"
+                                            data-date="{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') }}" onclick="openEditModal('date', this)">
                                             {{ $invoice->invoice_date }}
+                                        </button>
+                                        @else
+                                        {{ $invoice->invoice_date }}
                                         @endif
                                     </td>
                                 </tr>
@@ -534,45 +533,50 @@
                             </form>
                         </div>
                     </div>
-                    
+
                     <x-pagination :data="$invoices" />
-                    
+
                     <!-- ./pagination -->
                 </div>
             </div>
         </div>
     </div>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script>
-    flatpickr("#date-range", {
-        mode: "range",
-        dateFormat: "Y-m-d",
-        defaultDate: [
-            "{{ request('from_date') }}",
-            "{{ request('to_date') }}"
-        ].filter(Boolean)
-    });
-
-    document.getElementById('invoice-filter-form').addEventListener('submit', function(e) {
-        const range = document.getElementById('date-range').value.split(' to ');
-        document.getElementById('from_date').value = range[0] ? range[0].trim() : '';
-        document.getElementById('to_date').value = range[1] ? range[1].trim() : range[0];
-    });
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script>
+        flatpickr("#date-range", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            defaultDate: [
+                "{{ request('from_date') }}",
+                "{{ request('to_date') }}"
+            ].filter(Boolean)
+        });
+
+        document.getElementById('invoice-filter-form').addEventListener('submit', function(e) {
+            const range = document.getElementById('date-range').value.split(' to ');
+            document.getElementById('from_date').value = range[0] ? range[0].trim() : '';
+            document.getElementById('to_date').value = range[1] ? range[1].trim() : range[0];
+        });
+    </script>
+    <script>
+<<<<<<< Updated upstream
         const companyId = "{{ auth()->user()->company_id ?? optional(auth()->user()->branch)->company_id ?? optional(auth()->user()->agent?->branch)->company_id ?? optional(auth()->user()->accountant?->branch)->company_id }}";
         const updateDateUrl   = "{{ route('invoice.updateDate',   ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM']) }}";
+=======
+        const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
+        const updateDateUrl = "{{ route('invoice.updateDate',   ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM']) }}";
+>>>>>>> Stashed changes
         const updateAmountUrl = "{{ route('invoice.updateAmount', ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM']) }}";
 
         function openEditModal(kind, btn) {
-            const modal     = document.getElementById('editModal');
-            const form      = document.getElementById('editForm');
-            const titleEl   = document.getElementById('editModalTitle');
-            const labelEl   = document.getElementById('editLabel');
+            const modal = document.getElementById('editModal');
+            const form = document.getElementById('editForm');
+            const titleEl = document.getElementById('editModalTitle');
+            const labelEl = document.getElementById('editLabel');
             const container = document.getElementById('taskAmountsContainer');
-            const totalRow  = document.getElementById('total-payment-display')?.closest('.flex');
-            const number    = btn.dataset.number;
+            const totalRow = document.getElementById('total-payment-display')?.closest('.flex');
+            const number = btn.dataset.number;
 
             if (kind === 'date') {
                 titleEl.textContent = 'Update Invoice Date';
@@ -625,7 +629,9 @@
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            modal.onclick = (e) => { if (e.target === modal) closeEditModal(); };
+            modal.onclick = (e) => {
+                if (e.target === modal) closeEditModal();
+            };
         }
 
         function closeEditModal() {

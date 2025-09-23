@@ -13,7 +13,7 @@ class COAPolicy
      */
     public function viewAny(User $user): bool
     {
-        if($user->roles('admin')) return true;
+        if($user->hasRole('admin')) return true;
         
         return $user->can('view coa');
     }
@@ -23,7 +23,7 @@ class COAPolicy
      */
     public function view(User $user, CoaCategory $coaCategory): bool
     {
-        if($user->roles('admin')){
+        if($user->hasRole('admin')){
             return true;
         }
         return $user->can('view coa');

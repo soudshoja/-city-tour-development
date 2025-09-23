@@ -14,13 +14,30 @@ use Tests\TestCase;
 class ProfileTest extends TestCase
 {
     use RefreshDatabase;
+    protected $companyUser;
+    protected $company;
 
     public function test_profile_page_is_displayed(): void
-    {
+    {   
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create the admin role first
         $adminRole = Role::create([
             'name' => 'admin',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         $user = User::factory()->create([
@@ -36,10 +53,25 @@ class ProfileTest extends TestCase
 
     public function test_profile_information_can_be_updated(): void
     {
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create the admin role first
         $adminRole = Role::create([
             'name' => 'admin',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         $user = User::factory()->create([
@@ -66,10 +98,25 @@ class ProfileTest extends TestCase
 
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
     {
+                // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create the admin role first
         $adminRole = Role::create([
             'name' => 'admin',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         $user = User::factory()->create([
@@ -92,10 +139,25 @@ class ProfileTest extends TestCase
 
     public function test_user_can_delete_their_account(): void
     {
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create the admin role first
         $adminRole = Role::create([
             'name' => 'admin',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         $user = User::factory()->create([
@@ -118,10 +180,25 @@ class ProfileTest extends TestCase
 
     public function test_correct_password_must_be_provided_to_delete_account(): void
     {
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create the admin role first
         $adminRole = Role::create([
             'name' => 'admin',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         $user = User::factory()->create([
@@ -146,10 +223,25 @@ class ProfileTest extends TestCase
 
     public function test_company_user_profile_update_also_updates_company_information(): void
     {
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create the company role
         $companyRole = Role::create([
             'name' => 'company',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         // Create a company user
@@ -196,9 +288,24 @@ class ProfileTest extends TestCase
 
     public function test_branch_user_profile_update_also_updates_branch_information(): void
     {
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         $companyRole = Role::create([
             'name' => 'company',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         $userCompany = User::factory()->create([
@@ -218,7 +325,8 @@ class ProfileTest extends TestCase
         // Create the branch role
         $branchRole = Role::create([
             'name' => 'branch',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $company->id
         ]);
 
         // Create a branch user
@@ -271,29 +379,32 @@ class ProfileTest extends TestCase
             'name' => 'salary',
         ]);
 
-        $companyRole = Role::create([
-            'name' => 'company',
-            'guard_name' => 'web'
-        ]);
-
-        // Create a company user
-        $userCompany = User::factory()->create([
+        // Create company user
+        $this->companyUser = User::factory()->create([
             'role_id' => Role::COMPANY,
             'name' => 'Company User',
-            'email' => 'company@gmail.com'
+            'email' => 'company@test.com'
         ]);
 
-        $userCompany->assignRole($companyRole);
-
-        $company = Company::factory()->create([
-            'user_id' => $userCompany->id,
-            'name' => 'Company Name',
-            'email' => 'company@gmail.com'
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
         ]);
+
+        $companyRole = Role::create([
+            'name' => 'company',
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
+        ]);
+
+        $this->companyUser->assignRole($companyRole);
 
         $branchRole = Role::create([
             'name' => 'branch',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         $userBranch = User::factory()->create([
@@ -306,7 +417,7 @@ class ProfileTest extends TestCase
 
         $branch = Branch::factory()->create([
             'user_id' => $userBranch->id,
-            'company_id' => $company->id,
+            'company_id' => $this->company->id,
             'name' => 'Branch Name',
             'email' => 'branch@gmail.com'
         ]);
@@ -314,7 +425,8 @@ class ProfileTest extends TestCase
         // Create the agent role
         $agentRole = Role::create([
             'name' => 'agent',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         // Create an agent user
@@ -361,10 +473,25 @@ class ProfileTest extends TestCase
 
     public function test_profile_update_handles_user_without_associated_role_entities(): void
     {
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create a company role
         $companyRole = Role::create([
             'name' => 'company',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         // Create a user with company role but no associated company entity
@@ -391,11 +518,26 @@ class ProfileTest extends TestCase
     }
 
     public function test_profile_update_only_updates_changed_fields(): void
-    {
+    {   
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create the company role
         $companyRole = Role::create([
             'name' => 'company',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         // Create a company user
@@ -437,11 +579,26 @@ class ProfileTest extends TestCase
     }
 
     public function test_company_profile_updates_when_user_data_changes(): void
-    {
+    {   
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create the company role
         $companyRole = Role::create([
             'name' => 'company',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         // Create a company user
@@ -489,10 +646,25 @@ class ProfileTest extends TestCase
 
     public function test_profile_validation_errors_are_handled_correctly(): void
     {
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create the admin role first
         $adminRole = Role::create([
             'name' => 'admin',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         $user = User::factory()->create([
@@ -521,11 +693,26 @@ class ProfileTest extends TestCase
     }
 
     public function test_email_verification_reset_when_email_changes_for_role_users(): void
-    {
+    {   
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create the company role
         $companyRole = Role::create([
             'name' => 'company',
-            'guard_name' => 'web'
+            'guard_name' => 'web',
+            'company_id' => $this->company->id
         ]);
 
         // Create a company user with verified email

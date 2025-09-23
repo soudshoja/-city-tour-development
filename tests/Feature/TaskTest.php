@@ -30,15 +30,35 @@ class TaskTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected $companyUser;
+    protected $company;
+
     protected function setUp(): void
     {
         parent::setUp();
         
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
+        // Update company user with company_id
+        $this->companyUser->update(['company_id' => $this->company->id]);
+
         // Create necessary roles
-        Role::create(['name' => 'admin', 'guard_name' => 'web']);
-        Role::create(['name' => 'company', 'guard_name' => 'web']);
-        Role::create(['name' => 'branch', 'guard_name' => 'web']);
-        Role::create(['name' => 'agent', 'guard_name' => 'web']);
+        Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::create(['name' => 'company', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::create(['name' => 'branch', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::create(['name' => 'agent', 'guard_name' => 'web', 'company_id' => $this->company->id]);
 
         AgentType::factory()->create([
             'id' => 1,

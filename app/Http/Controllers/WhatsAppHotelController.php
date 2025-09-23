@@ -13,6 +13,7 @@ use App\Models\UserStep;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class WhatsAppHotelController extends Controller
 {
@@ -106,56 +107,69 @@ class WhatsAppHotelController extends Controller
     {
         Log::channel('whatsapp')->info('saveBookingDetails: Incoming request', ['request' => $request->all()]);
 
-        $request->validate([
+        $topValidator = Validator::make($request->all(), [
             'phone_number' => 'required|string',
-            'checkIn' => 'required|date',
-            'checkOut' => 'required|date|after_or_equal:checkIn',
-            'hotel' => 'required|string',  // 👈 user must send hotel name
-            'occupancy' => 'required|array',
-            'occupancy.rooms' => 'required|array|min:1',
-            'occupancy.rooms.*.adults' => 'required|integer|min:1',
-            'occupancy.rooms.*.childrenAges' => 'nullable|array',
-            'occupancy.rooms.*.childrenAges.*' => 'integer|min:0',
+            'checkIn'      => 'required|date',
+            'checkOut'     => 'required|date|after_or_equal:checkIn',
+            'occupancy'    => 'required|array',
+            'occupancy.rooms' => 'required|array|min:1'
         ]);
 
-        try {
-            // 1) Check if hotel exists in DB
-            $hotel = MapHotel::where('name', $request->hotel)->first();
-            if (!$hotel) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Hotel not found in database.'
-                ], 404);
+        if ($topValidator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors'  => $topValidator->errors(),
+                'saved_count' => 0,
+                'saved_ids'   => [],
+                'skipped_count' => 0,
+            ], 422);
+        }
+
+        $savedIds = [];
+        $errors = [];
+        $rooms = $request->input('occupancy.rooms', []);
+
+        foreach ($rooms as $index => $room) {
+            $roomValidator = Validator::make($room, [
+                'adults' => 'required|integer|min:1',
+                'childrenAges' => 'nullable|array',
+                'childrenAges.*' => 'integer|min:0',
+            ]);
+
+            if ($roomValidator->fails()) {
+                $errors['rooms'][$index] = $roomValidator->errors();
+                continue;
             }
 
-            // 2) Save booking rows
-            $ids = DB::transaction(function () use ($request, $hotel) {
-                $savedIds = [];
-                foreach ($request->occupancy['rooms'] as $room) {
-                    $row = RequestBookingRoom::create([
-                        'phone_number'  => $request->phone_number,
-                        'check_in'      => $request->checkIn,
-                        'check_out'     => $request->checkOut,
-                        'adults'        => $room['adults'],
-                        'children_ages' => isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null,
-                        'hotel'         => $hotel->name,  // 👈 save verified hotel
-                    ]);
-                    $savedIds[] = $row->id;
-                }
-                return $savedIds;
-            });
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Booking details saved.',
-                'hotel'   => $hotel->name,
-                'request_booking_room_id' => $ids,
-            ]);
-        } catch (Exception $e) {
-            Log::channel('whatsapp')->error('saveBookingDetails: Exception', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'message' => 'Failed to save booking details.'], 500);
+            try {
+                $row = RequestBookingRoom::create([
+                    'phone_number'  => $request->phone_number,
+                    'check_in'      => $request->checkIn,
+                    'check_out'     => $request->checkOut,
+                    'adults'        => $room['adults'],
+                    'children_ages' => isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null,
+                ]);
+                $savedIds[] = $row->id;
+            } catch (Exception $e) {
+                Log::channel('whatsapp')->error('saveBookingDetails: Room save failed', [
+                    'index' => $index,
+                    'error' => $e->getMessage(),
+                ]);
+                $errors['rooms'][$index]['save'][] = 'Failed to save this room.';
+            }
         }
+
+        return response()->json([
+            'success'       => count($savedIds) > 0,
+            'message'       => count($savedIds) > 0 ? 'Booking details processed.' : 'No rooms were saved.',
+            'saved_count'   => count($savedIds),
+            'saved_ids'     => $savedIds,
+            'skipped_count' => isset($errors['rooms']) ? count($errors['rooms']) : 0,
+            'errors'        => $errors,
+        ], count($savedIds) > 0 ? 200 : 422);
     }
+
 
     public function listHotels(Request $request)
     {

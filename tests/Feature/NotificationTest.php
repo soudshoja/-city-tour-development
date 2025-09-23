@@ -19,6 +19,9 @@ class NotificationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected $companyUser;
+    protected $company;
+
     /**
      * Test class that uses NotificationTrait for testing
      */
@@ -86,9 +89,23 @@ class NotificationTest extends TestCase
     }
 
     public function test_agent_can_only_get_own_notifications()
-    {
+    {   
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create agent role
-        $agentRole = Role::create(['name' => 'agent', 'guard_name' => 'web']);
+        $agentRole = Role::create(['name' => 'agent', 'guard_name' => 'web', 'company_id' => $this->company->id ]);
         
         // Create agent user
         $agentUser = User::factory()->create(['role_id' => Role::AGENT]);
@@ -120,9 +137,23 @@ class NotificationTest extends TestCase
             'created_at' => now(),
             'updated_at' => now()
         ]);
+        
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
 
         // Create company role
-        $companyRole = Role::create(['name' => 'company', 'guard_name' => 'web']);
+        $companyRole = Role::create(['name' => 'company', 'guard_name' => 'web', 'company_id' => $this->company->id]);
         
         // Create company user
         $companyUser = User::factory()->create(['role_id' => Role::COMPANY]);
@@ -258,8 +289,22 @@ class NotificationTest extends TestCase
 
     public function test_livewire_notification_component_mounts_correctly()
     {
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create admin role and user
-        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
+        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
         $adminUser = User::factory()->create(['role_id' => $adminRole->id]);
         
         // Create some notifications for this user
@@ -277,8 +322,22 @@ class NotificationTest extends TestCase
 
     public function test_livewire_notification_filter_works()
     {
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create admin role and user
-        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
+        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
         $adminUser = User::factory()->create(['role_id' => $adminRole->id]);
         
         // Create notifications with different statuses for this user
@@ -303,9 +362,23 @@ class NotificationTest extends TestCase
     }
 
     public function test_livewire_notification_close_functionality()
-    {
+    {   
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create admin role and user
-        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
+        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
         $adminUser = User::factory()->create(['role_id' => $adminRole->id]);
         
         // Create a notification for this user
@@ -324,9 +397,23 @@ class NotificationTest extends TestCase
     }
 
     public function test_livewire_notification_mark_all_as_read()
-    {
+    {   
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create admin role and user
-        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
+        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
         $adminUser = User::factory()->create(['role_id' => $adminRole->id]);
         
         // Create unread notifications for this user
@@ -347,8 +434,22 @@ class NotificationTest extends TestCase
 
     public function test_livewire_notification_renders_correctly()
     {
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create admin role and user
-        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web']);
+        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
         $adminUser = User::factory()->create(['role_id' => $adminRole->id]);
         
         $this->actingAs($adminUser);
@@ -358,9 +459,23 @@ class NotificationTest extends TestCase
     }
 
     public function test_livewire_notification_with_agent_role()
-    {
+    {   
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create agent role and user
-        $agentRole = Role::create(['name' => 'agent', 'guard_name' => 'web']);
+        $agentRole = Role::create(['name' => 'agent', 'guard_name' => 'web', 'company_id' => $this->company->id]);
         $agentUser = User::factory()->create(['role_id' => Role::AGENT]);
         
         // Create notifications for agent and others
@@ -389,8 +504,22 @@ class NotificationTest extends TestCase
             'updated_at' => now()
         ]);
 
+        // Create company user
+        $this->companyUser = User::factory()->create([
+            'role_id' => Role::COMPANY,
+            'name' => 'Company User',
+            'email' => 'company@test.com'
+        ]);
+
+        // Create test company
+        $this->company = Company::factory()->create([
+            'name' => 'Test Company',
+            'status' => 1,
+            'user_id' => $this->companyUser->id
+        ]);
+
         // Create company role and user
-        $companyRole = Role::create(['name' => 'company', 'guard_name' => 'web']);
+        $companyRole = Role::create(['name' => 'company', 'guard_name' => 'web', 'company_id' => $this->company->id]);
         $companyUser = User::factory()->create(['role_id' => Role::COMPANY]);
         
         // Create company

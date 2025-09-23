@@ -114,7 +114,7 @@ class WhatsAppHotelController extends Controller
             'checkOut'        => 'required|date|after_or_equal:checkIn',
             'occupancy'       => 'required|array',
             'occupancy.rooms' => 'required|array|min:1',
-            'hotel'           => 'nullable|string'
+            'hotel'           => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -129,25 +129,41 @@ class WhatsAppHotelController extends Controller
         }
 
         $matchedHotelName = null;
-        $warnings = [];
+        $matchedCityId    = null;
+        $matchedCityName  = null;
+        $warnings         = [];
 
         if ($request->filled('hotel')) {
             $inputHotelName = trim($request->hotel);
-            // case-insensitive exact match; switch to whereRaw('BINARY name = ?') for case-sensitive
-            $matched = \App\Models\Hotel::where('name', $inputHotelName)->first();
+
+            // Load hotel with its city relation (table: hotels, column: name)
+            // Make sure your Hotel model has: public function city(){ return $this->belongsTo(City::class, 'city_id'); }
+            $matched = \App\Models\Hotel::with('city')
+                ->where('name', $inputHotelName)                           // exact match (case-insensitive in most collations)
+                // ->whereRaw('BINARY `name` = ?', [$inputHotelName])       // uncomment for case-sensitive exact match
+                ->first();
+
             if ($matched) {
                 $matchedHotelName = $matched->name;
+                if ($matched->city) {
+                    $matchedCityId   = $matched->city->id ?? null;
+                    $matchedCityName = $matched->city->name ?? null;
+                } else {
+                    $warnings['city'][] = 'Hotel matched but has no city associated.';
+                }
             } else {
-                $warnings['hotel'][] = 'Hotel not found with exact name; saved without hotel.';
-                // (optional) provide close suggestions:
-                $suggestions = \App\Models\Hotel::where('name', 'like', $inputHotelName.'%')
-                    ->limit(5)->pluck('name')->toArray();
+                $warnings['hotel'][] = 'Hotel not found with exact name; saved without hotel/city.';
+                // (optional) suggestions
+                $suggestions = \App\Models\Hotel::where('name', 'like', $inputHotelName . '%')
+                    ->limit(5)
+                    ->pluck('name')
+                    ->toArray();
                 if (!empty($suggestions)) {
                     $warnings['hotel_suggestions'] = $suggestions;
                 }
             }
         } else {
-            $warnings['hotel'][] = 'Hotel not provided; saved without hotel.';
+            $warnings['hotel'][] = 'Hotel not provided; saved without hotel/city.';
         }
 
         $savedIds = [];
@@ -173,11 +189,19 @@ class WhatsAppHotelController extends Controller
                 $row->check_out     = $request->checkOut;
                 $row->adults        = $room['adults'];
                 $row->children_ages = isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null;
-                $row->hotel         = $matchedHotelName; // null if not matched/provided
+
+                // Save hotel & city info only if we had an exact match
+                $row->hotel   = $matchedHotelName;   // e.g. "GRAND SINA HOTEL" or null
+                $row->city_id = $matchedCityId;      // e.g. 2 or null
+                $row->city    = $matchedCityName;    // e.g. "Dubai" or null
+
                 $row->save();
                 $savedIds[] = $row->id;
             } catch (Exception $e) {
-                Log::channel('whatsapp')->error('saveBookingDetails: Room save failed', ['index' => $index, 'error' => $e->getMessage()]);
+                Log::channel('whatsapp')->error('saveBookingDetails: Room save failed', [
+                    'index' => $index,
+                    'error' => $e->getMessage(),
+                ]);
                 $errors['rooms'][$index]['save'][] = 'Failed to save this room.';
             }
         }
@@ -192,6 +216,7 @@ class WhatsAppHotelController extends Controller
             'warnings'        => $warnings,
         ], count($savedIds) > 0 ? 200 : 422);
     }
+
 
 
 
@@ -241,26 +266,108 @@ class WhatsAppHotelController extends Controller
         }
     }
 
+    // public function getHotelDetails(Request $request)
+    // {
+    //     Log::channel('whatsapp')->info('getHotelDetails: Incoming request', ['request' => $request->all()]);
+    //     try {
+    //         $request->validate([
+    //             'hotel_name' => 'required|string',
+    //             'phone_number' => 'required|string',
+    //         ]);
+
+    //         $hotel = MapHotel::with(['city:id,name'])
+    //             ->where('name', 'like', '%' . $request->hotel_name . '%')
+    //             ->first();
+
+    //         if (!$hotel) {
+    //             Log::channel('whatsapp')->warning('getHotelDetails: Hotel not found', ['hotel_name' => $request->hotel_name]);
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Hotel not found.',
+    //             ], 404);
+    //         }
+
+    //         $bookingRequest = RequestBookingRoom::where('phone_number', $request->phone_number)
+    //             ->get()
+    //             ->map(function ($item) {
+    //                 return [
+    //                     'id' => $item->id,
+    //                     'phone_number' => $item->phone_number,
+    //                     'check_in' => $item->check_in ? date('Y-m-d', strtotime($item->check_in)) : null,
+    //                     'check_out' => $item->check_out ? date('Y-m-d', strtotime($item->check_out)) : null,
+    //                     'adults' => $item->adults,
+    //                     'children_ages' => $item->children_ages ? json_decode($item->children_ages, true) : [],
+    //                 ];
+    //             })
+    //             ->toArray();
+
+    //         if (!$bookingRequest) {
+    //             Log::channel('whatsapp')->warning('getHotelDetails: No booking request found', ['phone_number' => $request->phone_number]);
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'No booking request found for this phone number.',
+    //             ], 400);
+    //         }
+
+    //         $checkIn = $bookingRequest[0]['check_in'] ?? null;
+    //         $checkOut = $bookingRequest[0]['check_out'] ?? null;
+
+    //         if( !$checkIn || !$checkOut) {
+    //             Log::channel('whatsapp')->warning('getHotelDetails: Check-in or check-out date not found', ['booking_request' => $bookingRequest]);
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Check-in or check-out date not found.',
+    //             ], 400);
+    //         }
+
+    //         $bookingRequest = collect($bookingRequest)->map(function ($item) {
+    //             return [
+    //                 'adults' => $item['adults'],
+    //                 'childrenAges' => $item['children_ages'],
+    //             ];
+    //         })->toArray();
+
+    //         $cityId = $hotel->city->id ?? null;
+
+    //         if($cityId === null) {
+    //             Log::channel('whatsapp')->warning('getHotelDetails: City not found for hotel', ['hotel' => $hotel->name]);
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'City not found for this hotel.',
+    //             ], 404);
+    //         }
+
+    //         $cityName = $hotel->city->name;
+
+    //         $response = [
+    //             'success' => true,
+    //             'hotel' => [
+    //                 'hotel_name' => $hotel->name,
+    //                 'hotel_address' => $hotel->address,
+    //                 'city_id' => $cityId,
+    //                 'city_name' => $cityName,
+    //                 'check_in' => $checkIn,
+    //                 'check_out' => $checkOut,
+    //                 'booking_request' => $bookingRequest,
+    //             ],
+    //         ];
+    //         Log::channel('whatsapp')->info('getHotelDetails: Success response', ['response' => $response]);
+    //         return response()->json($response);
+    //     } catch (\Exception $e) {
+    //         Log::channel('whatsapp')->error('getHotelDetails: Exception', ['error' => $e->getMessage()]);
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'An error occurred.',
+    //         ], 500);
+    //     }
+    // }
     public function getHotelDetails(Request $request)
     {
         Log::channel('whatsapp')->info('getHotelDetails: Incoming request', ['request' => $request->all()]);
         try {
             $request->validate([
-                'hotel_name' => 'required|string',
                 'phone_number' => 'required|string',
             ]);
-
-            $hotel = MapHotel::with(['city:id,name'])
-                ->where('name', 'like', '%' . $request->hotel_name . '%')
-                ->first();
-
-            if (!$hotel) {
-                Log::channel('whatsapp')->warning('getHotelDetails: Hotel not found', ['hotel_name' => $request->hotel_name]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Hotel not found.',
-                ], 404);
-            }
 
             $bookingRequest = RequestBookingRoom::where('phone_number', $request->phone_number)
                 ->get()
@@ -302,25 +409,9 @@ class WhatsAppHotelController extends Controller
                 ];
             })->toArray();
 
-            $cityId = $hotel->city->id ?? null;
-
-            if($cityId === null) {
-                Log::channel('whatsapp')->warning('getHotelDetails: City not found for hotel', ['hotel' => $hotel->name]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'City not found for this hotel.',
-                ], 404);
-            }
-
-            $cityName = $hotel->city->name;
-
             $response = [
                 'success' => true,
-                'hotel' => [
-                    'hotel_name' => $hotel->name,
-                    'hotel_address' => $hotel->address,
-                    'city_id' => $cityId,
-                    'city_name' => $cityName,
+                'booking' => [
                     'check_in' => $checkIn,
                     'check_out' => $checkOut,
                     'booking_request' => $bookingRequest,
@@ -336,6 +427,7 @@ class WhatsAppHotelController extends Controller
             ], 500);
         }
     }
+
 
     public function storeTemporaryOffer(Request $request)
     {

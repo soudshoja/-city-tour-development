@@ -673,7 +673,7 @@ class PaymentController extends Controller
                 $payment->save();
 
                 $dateCreated = Carbon::createFromTimestampMs($response['transaction']['date']['created'])->format('Y-m-d H:i:s');
-                $dateCompleted = Carbon::createFromTimestampMs($response['transaction']['date']['completed'])->format('Y-m-d H:i:s');
+                $dateCompleted = isset($response['transaction']['date']['completed']) ? Carbon::createFromTimestampMs($response['transaction']['date']['completed'])->format('Y-m-d H:i:s') : now();
                 $dateTransaction = Carbon::createFromTimestampMs($response['transaction']['date']['transaction'])->format('Y-m-d H:i:s');
 
                 TapPayment::create([
@@ -992,7 +992,7 @@ class PaymentController extends Controller
 
     public function webhook(Request $request)
     {
-        Log::info('Webhook received: ' . $request->getContent());
+        Log::info('Tap Payment Webhook received: ' . $request->getContent());
     }
 
     public function paymentClientProcess(Request $request)
@@ -2649,7 +2649,7 @@ class PaymentController extends Controller
         
         if (strtolower($payment->payment_gateway) === 'tap') {
             $dateCreated = Carbon::createFromTimestampMs($response['transaction']['date']['created'])->format('Y-m-d H:i:s');
-            $dateCompleted = Carbon::createFromTimestampMs($response['transaction']['date']['completed'])->format('Y-m-d H:i:s');
+            $dateCompleted = isset($response['transaction']['date']['completed']) ? Carbon::createFromTimestampMs($response['transaction']['date']['completed'])->format('Y-m-d H:i:s') : now();
             $dateTransaction = Carbon::createFromTimestampMs($response['transaction']['date']['transaction'])->format('Y-m-d H:i:s');
 
             TapPayment::create([
@@ -2707,6 +2707,11 @@ class PaymentController extends Controller
         } else {
             return redirect()->route('payment.success');
         }
+    }
+
+    public function paymentLinkWebhook(Request $request)
+    {
+        Log::info('Tap Payment Webhook received: ' . $request->getContent());
     }
 
     public function handleMyFatoorahCallback(Request $request)

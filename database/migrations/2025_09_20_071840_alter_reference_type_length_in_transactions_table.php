@@ -6,24 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
+
     public function up(): void
     {
         Schema::table('transactions', function (Blueprint $table) {
-            //
-            $table->string('reference_type', 20)->change();
+            $table->enum('reference_type', ['Receipt', 'Invoice', 'Payment', 'Refund'])->change();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
+
     public function down(): void
     {
         Schema::table('transactions', function (Blueprint $table) {
-            //
+            $table->enum('reference_type', ['Invoice', 'Payment', 'Refund'])->change();
         });
     }
 };

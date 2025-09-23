@@ -147,7 +147,6 @@ class ReceiptVoucherController extends Controller
             'refundNumbers',
             'clients',
             'unpaidInvoices',
-            'topupCreditClientData',
             'oldItems'
 
         ));
@@ -224,11 +223,14 @@ class ReceiptVoucherController extends Controller
         foreach ($request->items as $i => $item) {
             $hasClient = !empty($item['client_id']);
             $hasAccount = !empty($item['account_id']);
+            $hasInvoice = !empty($item['invoice_id']);
+            // Only error if none of the three is present
+            if (!$hasClient && !$hasAccount && !$hasInvoice) {
+                return back()->with('error', "Row " . ($i + 1) . ": Please select either Client Credit, A/C, or Invoice Number.");
+            }
+            // Prevent selecting both client and account (but allow invoice with either)
             if ($hasClient && $hasAccount) {
                 return back()->with('error', "Row " . ($i + 1) . ": You cannot select both Client Credit and A/C. Please choose only one.");
-            }
-            if (!$hasClient && !$hasAccount) {
-                return back()->with('error', "Row " . ($i + 1) . ": Please select either Client Credit or A/C.");
             }
         }
         try {
@@ -323,24 +325,46 @@ class ReceiptVoucherController extends Controller
                 }
             }
             foreach ($request->items as $item) {
-                dump($item);
+                if (!empty($item['invoice_id'])) {
+                    $invoice = Invoice::find($item['invoice_id']);
+                    if ($invoice && $invoice->status === 'unpaid') {
+                        // Compare paid amount with invoice amount
+                        $paidAmount = floatval($item['debit'] ?? $item['amount'] ?? 0);
+                        if ($paidAmount >= floatval($invoice->amount)) {
+                            $invoice->status = 'paid';
+                            $invoice->paid_date = now();
+                            $invoice->save();
+                        } else {
+                            // Optionally, set status to 'partial' or leave as 'unpaid'
+                            $invoice->status = 'partial';
+                            $invoice->save();
+                        }
+                    }
+                }
+            }
+            foreach ($request->items as $item) {
                 if (!empty($item['client_id']) && floatval($item['debit']) > 0) {
+                    Log::info('Crediting client', ['client_id' => $item['client_id'], 'amount' => $item['amount']]);
+                }
+            }
+            foreach ($request->items as $item) {
+                if (!empty($item['client_id']) && floatval($item['amount']) > 0) {
+                    $client = \App\Models\Client::find($item['client_id']);
+                    $agentId = $client ? $client->agent_id : null;
 
                     $payment = new Payment([
                         'client_id' => $item['client_id'],
-                        'amount' => $item['debit'],
+                        'agent_id' => $agentId,
+                        'amount' => $item['amount'],
                         'voucher_number' => $request->receiptvoucherref,
                         'currency' => $item['currency'] ?? 'KWD',
-                        // Add other fields as needed
                     ]);
                     $addCreditResponse = app(ClientController::class)->addCredit($payment);
 
-                    Log::info('Add Credit Response: ' . $addCreditResponse);
-
-                    dd($addCreditResponse);
+                    Log::info('Add Credit Response: ' . json_encode($addCreditResponse));
+                    // Remove dd($addCreditResponse); for production
                 }
             }
-            dd('stop');
             DB::commit();
             return redirect()->route('receipt-voucher.index')->with('success', 'Receipt Voucher Successfully Recorded.');
         } catch (\Exception $e) {
@@ -444,14 +468,18 @@ class ReceiptVoucherController extends Controller
             //'items.*.account_id.exists' => 'The selected account code does not exist.', 
         ]);
 
+
         foreach ($request->items as $i => $item) {
             $hasClient = !empty($item['client_id']);
             $hasAccount = !empty($item['account_id']);
+            $hasInvoice = !empty($item['invoice_id']);
+            // Only error if none of the three is present
+            if (!$hasClient && !$hasAccount && !$hasInvoice) {
+                return back()->with('error', "Row " . ($i + 1) . ": Please select either Client Credit, A/C, or Invoice Number.");
+            }
+            // Prevent selecting both client and account (but allow invoice with either)
             if ($hasClient && $hasAccount) {
                 return back()->with('error', "Row " . ($i + 1) . ": You cannot select both Client Credit and A/C. Please choose only one.");
-            }
-            if (!$hasClient && !$hasAccount) {
-                return back()->with('error', "Row " . ($i + 1) . ": Please select either Client Credit or A/C.");
             }
         }
         try {

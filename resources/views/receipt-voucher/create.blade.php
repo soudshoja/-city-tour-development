@@ -216,8 +216,9 @@
                         <table class="table table-bordered bank-payment-table mt-10 w-full">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Invoice Number</th>
-                                    <th>A/C / Client Credit</th>
+                                    <th colspan="2">
+                                        A/C / Invoice Number / Client Credit
+                                    </th>
                                     <th>Remarks</th>
                                     <th>Currency</th>
                                     <th>Exchange Rate</th>
@@ -411,7 +412,7 @@
                     auth_no: "",
                     balance: 0,
                     type_reference_id: "",
-                    type_selector: "account",
+                    type_selector: "none",
                     client_id: "",
                 };
 
@@ -541,64 +542,75 @@
                     const selectedAccDisplay = selectedAcc ?
                         `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.code}] ${selectedAcc.name}` :
                         '';
-
-
                     row.innerHTML = `
-<td>
-    <input 
-        list="invoiceList_${index}" 
-        name="items[${index}][invoice_number_display]" 
-        class="form-input w-full" 
-        value="${item.invoice_number_display || ''}" 
-        oninput="handleInvoiceInput(this, ${index})" 
-        placeholder="Select invoice..." 
-    />
-    <input type="hidden" name="items[${index}][invoice_id]" id="invoice_id_${index}" value="${item.invoice_id || ''}">
-    <datalist id="invoiceList_${index}">
-        @foreach ($unpaidInvoices as $inv)
-            <option value="[{{ $inv->invoice_number }}] {{ $inv->client->full_name ?? '' }}" data-id="{{ $inv->id }}"></option>
-        @endforeach
-    </datalist>
-</td>
-<td>
-    <select class="form-control form-control-sm" name="items[${index}][type_selector]" onchange="toggleAccountClientInput(this, ${index})">
-        <option value="account" ${item.type_selector === 'account' ? 'selected' : ''}>Account</option>
-        <option value="client" ${item.type_selector === 'client' ? 'selected' : ''}>Client</option>
-    </select>
-    <div id="accountClientInput_${index}">
-        ${
-item.type_selector === 'client'
-    ? `<input required list="clientList_${index}"
-            class="form-control form-control-sm"
-            name="items[${index}][client_name]"
-            value="${item.client_name || ''}"
-            placeholder="client name..." 
-            oninput="updateField(${index}, 'client_name', this.value); setClientId(${index}, this.value)">
-        <input type="hidden" name="items[${index}][client_id]" id="client_id_${index}" value="${item.client_id || ''}">
-        <datalist id="clientList_${index}">
-            @foreach ($clients as $client)
-                <option value="{{ $client->full_name }}" data-id="{{ $client->id }}">
-                    {{ $client->email }}
-                </option>
-            @endforeach
-        </datalist>`
-    : `<input required list="accountList_${index}" 
-            class="form-control form-control-sm" 
-            name="items[${index}][ac_code]" 
-            value="${selectedAcc ? `[${selectedAcc.code}] ${selectedAcc.name}` : ''}" 
-            placeholder="Search..."
-            oninput="selectedAccName(this, ${index})">
-        <datalist id="accountList_${index}">
-            ${accountOptions}
-        </datalist>
-        <small id="selectedAccName_${index}" class="text-muted">
-            ${selectedAccDisplay}
-        </small>
-        <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="${selectedAcc ? selectedAcc.id : ''}">
-        <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id}">`
-        }
-    </div>
-</td>
+                    <td colspan="2" style="min-width:300px;">
+                        <div style="display: flex; gap: 8px;">
+                        
+                            <!-- Account/Invoice/Client Dropdown -->
+                                <select required class="form-control form-control-sm" name="items[${index}][type_selector]" onchange="toggleAccountClientInput(this, ${index})" style="flex: 0 0 120px;">
+                                    <option value="none" ${(item.type_selector === 'none') ? 'selected' : ''}>-- Select Type --</option>
+                                    <option value="invoice" ${item.type_selector === 'invoice' ? 'selected' : ''}>Invoice Number</option>
+                                    <option value="account" ${item.type_selector === 'account' ? 'selected' : ''}>Account Name</option>
+                                    <option value="client" ${item.type_selector === 'client' ? 'selected' : ''}>Client Credit</option>
+                                </select>
+                                        <!-- Account/Client Input -->
+                                <div id="accountClientInput_${index}" style="flex: 1 1 8%;">
+                                    ${
+                                        item.type_selector === 'none'
+                                            ? `<input required type="text" class="form-control form-control-sm"
+                                                name="items[${index}][manual_entry]"
+                                                value="${item.manual_entry || ''}"
+                                                placeholder="Select a Type First..."
+                                                readonly>`
+                                        : item.type_selector === 'invoice'
+                                        ? `<input required list="invoiceList_${index}" class="form-control form-control-sm"
+                                                name="items[${index}][invoice_number_display]"
+                                                value="${item.invoice_number_display || ''}"
+                                                placeholder="Select invoice..."
+                                                oninput="handleInvoiceInput(this, ${index})">
+                                                <input type="hidden" name="items[${index}][invoice_id]" id="invoice_id_${index}" value="${item.invoice_id || ''}">
+                                            <datalist id="invoiceList_${index}">
+                                                @foreach ($unpaidInvoices as $inv)
+                                                    <option value="[{{ $inv->invoice_number }}] {{ $inv->client->full_name ?? '' }}" data-id="{{ $inv->id }}"></option>
+                                                @endforeach
+                                            </datalist>`
+                                        
+                                        : item.type_selector === 'client'
+                                        ? `<input required list="clientList_${index}" class="form-control form-control-sm"
+                                                name="items[${index}][client_name]"
+                                                value="${item.client_name || ''}"
+                                                placeholder="Enter client name..."
+                                                oninput="updateField(${index}, 'client_name', this.value); setClientId(${index}, this.value)">
+                                                <input type="hidden" name="items[${index}][client_id]" id="client_id_${index}" value="${item.client_id || ''}">
+                                            
+                                            <datalist id="clientList_${index}">
+                                                @foreach ($clients as $client)
+                                                    <option value="{{ $client->full_name }}" data-id="{{ $client->id }}">
+                                                        {{ $client->email }}
+                                                    </option>
+                                                @endforeach
+                                            </datalist>`
+                                        
+                                        : `<input required list="accountList_${index}" class="form-control form-control-sm"
+                                                    name="items[${index}][ac_code]"
+                                                    value="${item.ac_code || ''}"
+                                                    placeholder="Search account..."
+                                                    oninput="selectedAccName(this, ${index})">
+                                                
+                                                <datalist id="accountList_${index}">
+                                                    ${accountOptions}
+                                                </datalist>
+                                        
+                                        <small id="selectedAccName_${index}" class="text-muted">
+                                            ${selectedAccDisplay}
+                                        </small>
+                                        
+                                        <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="${selectedAcc ? selectedAcc.id : ''}">
+                                        <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id}">`
+                                    }
+                                </div>
+                        </div>
+                    </td>
                     <td style="vertical-align: top;"><input required type="text" class="form-control form-control-sm" name="items[${index}][remarks]" value="${item.remarks}" oninput="updateField(${index}, 'remarks', this.value)"></td>
                     <td style="vertical-align: top;">
                         <select required class="form-control form-control-sm text-left" name="items[${index}][currency]" onchange="updateField(${index}, 'currency', this.value)">
@@ -609,8 +621,18 @@ item.type_selector === 'client'
                     </td>
                     <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm" name="items[${index}][exchange_rate]" value="${item.exchange_rate}" oninput="updateField(${index}, 'exchange_rate', this.value)"></td>
                     <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm" name="items[${index}][amount]" value="${item.amount}" oninput="updateField(${index}, 'amount', this.value)"></td>
-                    <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm debit-input" name="items[${index}][debit]" value="${item.debit}" oninput="updateField(${index}, 'debit', this.value)"></td>
-                    <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm credit-input" name="items[${index}][credit]" value="${item.credit}" oninput="updateField(${index}, 'credit', this.value)"></td>
+                    <td style="vertical-align: top;">
+                        <input required type="number" step="0.01" class="form-control form-control-sm debit-input"
+                            name="items[${index}][debit]" value="${item.debit}"
+                            oninput="updateField(${index}, 'debit', this.value)"
+                            ${item.type_selector === 'client' ? 'disabled' : ''}>
+                    </td>
+                    <td style="vertical-align: top;">
+                        <input required type="number" step="0.01" class="form-control form-control-sm credit-input"
+                            name="items[${index}][credit]" value="${item.credit}"
+                            oninput="updateField(${index}, 'credit', this.value)"
+                            ${item.type_selector === 'client' ? 'disabled' : ''}>
+                    </td>
                     <td style="vertical-align: top;"><input type="text" class="form-control form-control-sm" name="items[${index}][cheque_no]" value="${item.cheque_no}" oninput="updateField(${index}, 'cheque_no', this.value)"></td>
                     <td style="vertical-align: top;"><input type="date" class="form-control form-control-sm" name="items[${index}][cheque_date]" value="${item.cheque_date}" oninput="updateField(${index}, 'cheque_date', this.value)"></td>
                     <td style="vertical-align: top;"><input type="text" class="form-control form-control-sm" name="items[${index}][bank_name]" value="${item.bank_name}" oninput="updateField(${index}, 'bank_name', this.value)"></td>
@@ -1146,6 +1168,15 @@ item.type_selector === 'client'
                     if (option.value === value) {
                         clientId = option.getAttribute('data-id');
                         break;
+                    }
+                }
+                // If not found, try to match by name (case-insensitive)
+                if (!clientId) {
+                    for (const option of datalist.options) {
+                        if (option.value.toLowerCase() === value.toLowerCase()) {
+                            clientId = option.getAttribute('data-id');
+                            break;
+                        }
                     }
                 }
             }

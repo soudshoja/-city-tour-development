@@ -107,7 +107,6 @@ class WhatsAppHotelController extends Controller
     {
         Log::channel('whatsapp')->info('saveBookingDetails: Incoming request', ['request' => $request->all()]);
 
-        // Non-blocking validation (collect errors but don't immediately stop)
         $validator = Validator::make($request->all(), [
             'phone_number'    => 'required|string',
             'checkIn'         => 'required|date',
@@ -119,16 +118,19 @@ class WhatsAppHotelController extends Controller
 
         $topLevelErrors = $validator->errors();
 
-        // Block only if we miss essentials to save any row
-        $missingEssentials = $topLevelErrors->only([
-            'phone_number', 'checkIn', 'checkOut', 'occupancy', 'occupancy.rooms'
-        ]);
+        $essentialFields = ['phone_number','checkIn','checkOut','occupancy','occupancy.rooms'];
+        $missingEssentials = [];
+        foreach ($essentialFields as $f) {
+            if ($topLevelErrors->has($f)) {
+                $missingEssentials[$f] = $topLevelErrors->get($f);
+            }
+        }
 
-        if (!empty(array_filter($missingEssentials))) {
+        if (!empty($missingEssentials)) {
             return response()->json([
                 'success'       => false,
                 'message'       => 'Validation failed',
-                'errors'        => $topLevelErrors,
+                'errors'        => $missingEssentials,
                 'saved_count'   => 0,
                 'saved_ids'     => [],
                 'skipped_count' => 0,
@@ -139,7 +141,6 @@ class WhatsAppHotelController extends Controller
         $errors   = [];
         $warnings = [];
 
-        // Non-blocking error for missing optional hotel
         if (!$request->filled('hotel')) {
             $warnings['hotel'][] = 'Hotel was not provided; rows saved without hotel.';
         }
@@ -183,11 +184,12 @@ class WhatsAppHotelController extends Controller
             'saved_count'     => count($savedIds),
             'saved_ids'       => $savedIds,
             'skipped_count'   => isset($errors['rooms']) ? count($errors['rooms']) : 0,
-            'errors'          => $errors,        // per-room validation/save errors
-            'top_level_errors'=> $topLevelErrors, // non-blocking top-level errors (e.g., missing hotel)
+            'errors'          => $errors,
+            'top_level_errors'=> $topLevelErrors,
             'warnings'        => $warnings,
         ], count($savedIds) > 0 ? 200 : 422);
     }
+
 
 
 

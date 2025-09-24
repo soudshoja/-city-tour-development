@@ -399,7 +399,8 @@ class CompanyController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'dial_code' => 'required|string',
-            'phone' => 'nullable|string|max:15',
+            'phone' => 'required|string|max:15',
+            'password' => 'required|string|max:100',
         ]);
 
         $role = Role::where('name', 'accountant')
@@ -418,7 +419,7 @@ class CompanyController extends Controller
         $user = User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
-            'password' => bcrypt(Str::random(10)), 
+            'password' => $validatedData['password'], 
             'role_id' => Role::ACCOUNTANT,
             'remember_token' => Str::random(10),
             'first_login' => 1,

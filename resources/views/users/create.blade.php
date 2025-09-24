@@ -660,7 +660,16 @@
                                                 </span>
                                             </div>
                                         </div>
-
+                                        <div class="flex gap-2 items-center relative">
+                                                <input type="password" name="password" class="custom-input" required
+                                                    placeholder="Accountant Password *" autocomplete="on">
+                                                <span class="tooltip-container ml-2 cursor-pointer">
+                                                    <span class="tooltip-icon">!</span>
+                                                    <span class="tooltip">Password must be at least 8 characters long and
+                                                        include numbers.</span>
+                                                </span>
+                                        </div>
+                                        
                                         <!-- Submit Button -->
                                         <button type="submit"
                                             class="btn-success w-full text-white px-4 py-2 rounded-lg mt-4">

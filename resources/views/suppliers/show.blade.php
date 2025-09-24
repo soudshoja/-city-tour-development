@@ -1,3 +1,7 @@
+<?php
+
+use Barryvdh\DomPDF\Facade\Pdf;
+?>
 <x-app-layout>
     <!-- Add this in your <head> or before the closing </body> tag -->
     <style>
@@ -69,6 +73,7 @@
                         <div class="flex flex-row items-end gap-1 pt-5">
                             <a href="{{ route('suppliers.show', ['suppliersId' => $supplier->id]) }}" class="px-2 py-1 rounded bg-gray-100 text-gray-700 text-xs hover:bg-gray-200 border border-gray-300 flex items-center">Clear</a>
                             <button type="submit" class="px-2 py-1 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 border border-blue-700 flex items-center">Apply</button>
+                            <button type="button" id="export-pdf-btn" class="px-2 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700 border border-red-700 flex items-center">Export PDF</button>
                         </div>
                     </form>
                 </div>
@@ -85,8 +90,8 @@
                 </button> -->
             </div>
 
-                <!-- Debit/Credit Filter & Summary -->
-                <!-- <div class="flex flex-col md:flex-row gap-2 mb-4 justify-end">
+            <!-- Debit/Credit Filter & Summary -->
+            <!-- <div class="flex flex-col md:flex-row gap-2 mb-4 justify-end">
                     <div class="flex gap-2 items-center">
                         <label for="date-range" class="text-white font-semibold flex items-center">
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,7 +120,7 @@
                         </span>
                     </div>
                 </div> -->
-                <!-- <div class="grid grid-cols-2 mb-4">
+            <!-- <div class="grid grid-cols-2 mb-4">
                     <div class="text-center bg-gradient-to-r from-green-400 to-green-800 p-2 rounded-md text-white font-semibold">
                         <div>Debit:</div>
                         <div id="total-debit" class="text-2xl font-bold">0.00</div>
@@ -125,113 +130,164 @@
                         <div id="total-credit" class="text-2xl font-bold">0.00</div>
                     </div>
                 </div> -->
-                <!-- Filter Section (same style as invoice list) -->
-
-                    <!-- Ledger Table -->
-            <div id="debit-credit" class="bg-white rounded-md shadow-md w-full max-h-96 overflow-y-auto">
-                <div class="grid grid-cols-8 font-bold bg-gray-100 p-2 text-center rounded-t border-b border-gray-300 sticky top-0 z-10">
-                    <div>Created Date</div>
-                    <div>Task Ref</div>
-                    <div>Task Type</div>
-                    <div>Agent</div>
-                    <div>Status</div>
-                    <div>Issued Date</div>
-                    <div>Passenger Name</div>
-                    <div>Info</div>
+            <!-- Filter Section (same style as invoice list) -->
+            <div class="flex justify-end mb-2">
+                <button id="customize-columns-btn" class="px-2 py-1 rounded bg-gray-700 text-white text-xs hover:bg-gray-800 border border-gray-700">
+                    Customize Columns
+                </button>
+                <div id="columns-dropdown" class="absolute bg-white border rounded shadow-md p-2 mt-8 hidden z-20">
+                    <label><input type="checkbox" class="column-toggle" data-col="0" checked> Created Date</label><br>
+                    <label><input type="checkbox" class="column-toggle" data-col="1" checked> Task Ref</label><br>
+                    <label><input type="checkbox" class="column-toggle" data-col="2" checked> GDS Ref</label><br>
+                    <label><input type="checkbox" class="column-toggle" data-col="3" checked> Agent</label><br>
+                    <label><input type="checkbox" class="column-toggle" data-col="4" checked> Status</label><br>
+                    <label><input type="checkbox" class="column-toggle" data-col="5" checked> Issued Date</label><br>
+                    <label><input type="checkbox" class="column-toggle" data-col="6" checked> Passenger Name</label><br>
+                    <label><input type="checkbox" class="column-toggle" data-col="7" checked> Net Price</label><br>
+                    <label><input type="checkbox" class="column-toggle" data-col="8" checked> Departure</label><br>
+                    <label><input type="checkbox" class="column-toggle" data-col="9" checked> Arrival</label><br>
+                    <label><input type="checkbox" class="column-toggle" data-col="10" checked> Check-in</label><br>
+                    <label><input type="checkbox" class="column-toggle" data-col="11" checked> Check-out</label>
                 </div>
-            
-                    @php
-                        $dateField = request('date_field', 'created_at');
-                        $fromDate = request('from_date');
-                        $toDate = request('to_date');
-                        $filteredTasks = $supplier->tasks;
+            </div>
 
-                        if ($fromDate && $toDate) {
-                            $filteredTasks = $filteredTasks->filter(function($task) use ($dateField, $fromDate, $toDate) {
-                                $date = $task[$dateField];
-                                if (!$date) return false;
-                                $date = \Carbon\Carbon::parse($date)->format('Y-m-d');
-                                return $date >= $fromDate && $date <= $toDate;
-                            });
+            <!-- Ledger Table -->
+            <div id="debit-credit" class="bg-white rounded-md shadow-md w-full overflow-x-auto">
+                <div class="min-w-max">
+                    <div class="grid grid-cols-12 font-bold bg-gray-100 p-2 text-center rounded-t border-b border-gray-300 sticky top-0 z-10">
+                        <div class="w-[120px]">Created Date</div>
+                        <div class="w-[120px]">Task Ref</div>
+                        <div class="w-[120px]">GDS Ref</div>
+                        <div class="w-[140px]">Agent</div>
+                        <div class="w-[110px]">Status</div>
+                        <div class="w-[120px]">Issued Date</div>
+                        <div class="w-[150px]">Passenger Name</div>
+                        <div class="w-[110px]">Net Price</div>
+                        <div class="w-[180px]">Departure</div>
+                        <div class="w-[180px]">Arrival</div>
+                        <div class="w-[180px]">Check-in</div>
+                        <div class="w-[180px]">Check-out</div>
+                    </div>
+
+                    @php
+                    $dateField = request('date_field', 'created_at');
+                    $fromDate = request('from_date');
+                    $toDate = request('to_date');
+                    $filteredTasks = $supplier->tasks;
+
+                    if ($fromDate && $toDate) {
+                    $filteredTasks = $filteredTasks->filter(function($task) use ($dateField, $fromDate, $toDate) {
+                    $date = $task[$dateField];
+                    if (!$date) return false;
+                    $date = \Carbon\Carbon::parse($date)->format('Y-m-d');
+                    return $date >= $fromDate && $date <= $toDate;
+                        });
                         }
 
                         // Sort by selected date field, newest first
-                        $filteredTasks = $filteredTasks->sortByDesc(function($task) use ($dateField) {
-                            return $task[$dateField] ? \Carbon\Carbon::parse($task[$dateField])->timestamp : 0;
+                        $filteredTasks=$filteredTasks->sortByDesc(function($task) use ($dateField) {
+                        return $task[$dateField] ? \Carbon\Carbon::parse($task[$dateField])->timestamp : 0;
                         });
-                    @endphp
+                        @endphp
 
-                    @forelse($filteredTasks as $task)
-                    <div class="general-ledger-rows grid grid-cols-8 gap-2 p-2 text-center">
-                        <div>{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
-                        <div>{{ $task->reference }}</div>
-                        <div>{{ $task->type }}</div>
-                        <div>{{ $task->agent ? $task->agent->name : '-' }}</div>
-                        <div>
-                            @php
+                        @forelse($filteredTasks as $task)
+                        <div class="general-ledger-rows grid grid-cols-12 gap-2 p-2 text-center border-b">
+                            <div class="w-[120px]">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
+                            <div class="w-[120px]">{{ $task->reference }}</div>
+                            <div class="w-[120px]">{{ $task->gds_reference ?? '-' }}</div>
+                            <div class="w-[140px]">{{ $task->agent ? $task->agent->name : '-' }}</div>
+                            <div class="w-[110px]">
+                                @php
                                 $status = strtolower($task->status);
                                 $statusColors = [
-                                    'issued'    => 'bg-green-100 text-green-700 border-green-400',
-                                    'pending'   => 'bg-yellow-100 text-yellow-700 border-yellow-400',
-                                    'cancelled' => 'bg-red-100 text-red-700 border-red-400',
-                                    'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
-                                    'reissued'  => 'bg-purple-100 text-purple-700 border-purple-400',
-                                    'void'      => 'bg-gray-200 text-gray-700 border-gray-400',
-                                    'refund'    => 'bg-pink-100 text-pink-700 border-pink-400',
-                                    'emd'       => 'bg-indigo-100 text-indigo-700 border-indigo-400',
+                                'issued' => 'bg-green-100 text-green-700 border-green-400',
+                                'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
+                                'cancelled' => 'bg-red-100 text-red-700 border-red-400',
+                                'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
+                                'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
+                                'void' => 'bg-gray-200 text-gray-700 border-gray-400',
+                                'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
+                                'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
                                 ];
                                 $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
-                            @endphp
-                            <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
-                                {{ ucfirst($task->status) }}
-                            </span>
-                        </div>                     
-                        <div>{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
-                        <div>{{ $task->passenger_name ?? '-' }}</div>
-                        <div>
-                            @if ($task->type === 'flight' && $task->flightDetails)
-                                {{ $task->flightDetails->airport_from ?? '-' }} → {{ $task->flightDetails->airport_to ?? '-' }}<br>
-                                {{ $task->flightDetails->departure_time ?? '-' }} - {{ $task->flightDetails->arrival_time ?? '-' }}
-                            @elseif ($task->type === 'hotel' && $task->hotelDetails)
-                                {{ $task->hotelDetails->hotel->name ?? '-' }}<br>
-                                {{ $task->hotelDetails->check_in ?? '-' }} - {{ $task->hotelDetails->check_out ?? '-' }}
-                            @else
-                                {{ $task->additional_info ?? '-' }}
-                            @endif
+                                @endphp
+                                <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
+                                    {{ ucfirst($task->status) }}
+                                </span>
+                            </div>
+                            <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
+                            <div class="w-[150px]">{{ $task->passenger_name ?? '-' }}</div>
+                            <div class="w-[110px]">{{ $task->price ?? '-' }}</div>
+                            <div class="w-[180px]">
+                                @if ($task->type === 'flight' && $task->flightDetails)
+                                <strong>From:</strong> {{ $task->flightDetails->airport_from ?? '-' }}<br>
+                                {{ $task->flightDetails->departure_time ?? '-' }}
+                                @else
+                                -
+                                @endif
+                            </div>
+                            <!-- Flight Arrival -->
+                            <div class="w-[180px]">
+                                @if ($task->type === 'flight' && $task->flightDetails)
+                                <strong>To:</strong> {{ $task->flightDetails->airport_to ?? '-' }}<br>
+                                {{ $task->flightDetails->arrival_time ?? '-' }}
+                                @else
+                                -
+                                @endif
+                            </div>
+                            <!-- Hotel Check-in -->
+                            <div class="w-[180px]">
+                                @if ($task->type === 'hotel' && $task->hotelDetails)
+                                <strong>Hotel:</strong> {{ $task->hotelDetails->hotel->name ?? '-' }}<br>
+                                {{ $task->hotelDetails->check_in ?? '-' }}
+                                @else
+                                -
+                                @endif
+                            </div>
+                            <!-- Hotel Check-out -->
+                            <div class="w-[180px]">
+                                @if ($task->type === 'hotel' && $task->hotelDetails)
+                                <strong>Hotel:</strong> {{ $task->hotelDetails->hotel->name ?? '-' }}<br>
+                                {{ $task->hotelDetails->check_out ?? '-' }}
+
+                                @else
+                                -
+                                @endif
+                            </div>
                         </div>
-                    </div>
-                    @empty
-                    <div class="general-ledger-rows grid grid-cols-8 gap-2 p-2 text-center text-gray-500">
-                        <div colspan="8">No entries found for selected dates.</div>
-                    </div>
-                    @endforelse
+                        @empty
+                        <div class="general-ledger-rows grid grid-cols-12 gap-2 p-2 text-center text-gray-500">
+                            <div colspan="10">No entries found for selected dates.</div>
+                        </div>
+                        @endforelse
+                </div>
             </div>
         </div>
 
-            <!-- Supplier Tasks -->
-            <div class="flex flex-col rounded-md bg-white p-4 shadow-md">
-                <strong class="my-2">Task of this supplier</strong>
-                <div>
-                    <table>
-                        <thead class="text-left">
-                            <tr>
-                                <th>Reference</th>
-                                <th>Agent Name</th>
-                                <th>Type</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($supplier->tasks as $task)
-                            <tr>
-                                <td>{{ $task->reference }}</td>
-                                <td>{{ $task->agent ? $task->agent->name : 'Not Set' }}</td>
-                                <td>{{ $task->type }}</td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+        <!-- Supplier Tasks -->
+        <div class="flex flex-col rounded-md bg-white p-4 shadow-md">
+            <strong class="my-2">Task of this supplier</strong>
+            <div>
+                <table>
+                    <thead class="text-left">
+                        <tr>
+                            <th>Reference</th>
+                            <th>Agent Name</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($supplier->tasks as $task)
+                        <tr>
+                            <td>{{ $task->reference }}</td>
+                            <td>{{ $task->agent ? $task->agent->name : 'Not Set' }}</td>
+                            <td>{{ $task->type }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
+        </div>
     </div>
 
     <!-- Supplier Details -->
@@ -256,6 +312,59 @@
             </div>
         </div>
     </div>
+    <script>
+        // Toggle dropdown
+        document.getElementById('customize-columns-btn').addEventListener('click', function(e) {
+            const dropdown = document.getElementById('columns-dropdown');
+            dropdown.classList.toggle('hidden');
+            dropdown.style.left = (e.target.getBoundingClientRect().left) + 'px';
+        });
+
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('columns-dropdown');
+            if (!dropdown.contains(e.target) && e.target.id !== 'customize-columns-btn') {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Toggle columns (now for 12 columns)
+        document.querySelectorAll('.column-toggle').forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                const colIndex = parseInt(this.dataset.col);
+                const rows = document.querySelectorAll('#debit-credit .grid.grid-cols-12');
+                rows.forEach(row => {
+                    if (row.children[colIndex]) {
+                        row.children[colIndex].style.display = this.checked ? '' : 'none';
+                    }
+                });
+                const dataRows = document.querySelectorAll('#debit-credit .general-ledger-rows');
+                dataRows.forEach(row => {
+                    if (row.children[colIndex]) {
+                        row.children[colIndex].style.display = this.checked ? '' : 'none';
+                    }
+                });
+            });
+        });
+    </script>
+    <script>
+        document.getElementById('export-pdf-btn').addEventListener('click', function() {
+            const form = document.getElementById('task-filter-form');
+            const range = document.getElementById('task-date-range').value.split(' to ');
+            document.getElementById('task_from_date').value = range[0] ? range[0].trim() : '';
+            document.getElementById('task_to_date').value = range[1] ? range[1].trim() : range[0];
+
+            // Change form action to PDF export route
+            form.action = "{{ route('suppliers.suppliers.export.pdf', ['suppliersId' => $supplier->id]) }}";
+            form.method = "GET";
+            form.submit();
+
+            // Restore form action after submit (optional)
+            setTimeout(() => {
+                form.action = "{{ route('suppliers.show', ['suppliersId' => $supplier->id]) }}";
+            }, 1000);
+        });
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script>
@@ -276,7 +385,7 @@
     </script>
 
     <script>
-        let supplierId = @json($supplier->id);
+        let supplierId = "{{ json_encode($supplier->id) }}";
 
         const filterBtn = document.getElementById('filter-btn');
         const clearBtn = document.getElementById('clear-btn');
@@ -307,7 +416,7 @@
 
             if (!fromDate || !toDate) return;
 
-            let url = `{{ route('suppliers.suppliers.ledger-by-date', ['supplierId' => '__supplierId__']) }}?fromDate=${fromDate} 00:00:00&toDate=${toDate} 23:59:59`;    
+            let url = `{{ route('suppliers.suppliers.ledger-by-date', ['supplierId' => '__supplierId__']) }}?fromDate=${fromDate} 00:00:00&toDate=${toDate} 23:59:59`;
             url = url.replace('__supplierId__', supplierId);
 
             filterBtn.disabled = true;
@@ -317,38 +426,38 @@
             let ledgerBody = document.getElementById('debit-credit');
 
             fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                // Remove old rows except header
-                let rows = ledgerBody.querySelectorAll('.general-ledger-rows');
-                rows.forEach(row => row.remove());
+                .then(response => response.json())
+                .then(data => {
+                    // Remove old rows except header
+                    let rows = ledgerBody.querySelectorAll('.general-ledger-rows');
+                    rows.forEach(row => row.remove());
 
-                if (data.entries.length === 0) {
-                    let emptyRow = document.createElement('div');
-                    emptyRow.className = 'general-ledger-rows grid grid-cols-8 gap-2 p-2 text-center text-gray-500';
-                    emptyRow.innerHTML = `<div colspan="8">No entries found for selected dates.</div>`;
-                    ledgerBody.appendChild(emptyRow);
-                } else {
-                    data.entries.sort((a, b) => {
-                        const dateA = a.supplier_pay_date ? new Date(a.supplier_pay_date) : new Date(0);
-                        const dateB = b.supplier_pay_date ? new Date(b.supplier_pay_date) : new Date(0);
-                        return dateB - dateA;
-                    });
-                    data.entries.forEach(task => {
-                        let info = '-';
-                        if (task.type === 'flight' && task.flight_details) {
-                            const f = task.flight_details;
-                            info = `${f.airport_from ?? '-'} → ${f.airport_to ?? '-'}<br>${f.departure_time ?? '-'} - ${f.arrival_time ?? '-'}`;
-                        } else if (task.type === 'hotel' && task.hotel_details) {
-                            const h = task.hotel_details;
-                            info = `${h.hotel?.name ?? '-'}<br>${h.check_in ?? '-'} - ${h.check_out ?? '-'}`;
-                        } else if (task.additional_info) {
-                            info = task.additional_info;
-                        }
+                    if (data.entries.length === 0) {
+                        let emptyRow = document.createElement('div');
+                        emptyRow.className = 'general-ledger-rows grid grid-cols-8 gap-2 p-2 text-center text-gray-500';
+                        emptyRow.innerHTML = `<div colspan="8">No entries found for selected dates.</div>`;
+                        ledgerBody.appendChild(emptyRow);
+                    } else {
+                        data.entries.sort((a, b) => {
+                            const dateA = a.supplier_pay_date ? new Date(a.supplier_pay_date) : new Date(0);
+                            const dateB = b.supplier_pay_date ? new Date(b.supplier_pay_date) : new Date(0);
+                            return dateB - dateA;
+                        });
+                        data.entries.forEach(task => {
+                            let info = '-';
+                            if (task.type === 'flight' && task.flight_details) {
+                                const f = task.flight_details;
+                                info = `${f.airport_from ?? '-'} → ${f.airport_to ?? '-'}<br>${f.departure_time ?? '-'} - ${f.arrival_time ?? '-'}`;
+                            } else if (task.type === 'hotel' && task.hotel_details) {
+                                const h = task.hotel_details;
+                                info = `${h.hotel?.name ?? '-'}<br>${h.check_in ?? '-'} - ${h.check_out ?? '-'}`;
+                            } else if (task.additional_info) {
+                                info = task.additional_info;
+                            }
 
-                        let row = document.createElement('div');
-                        row.className = 'general-ledger-rows grid grid-cols-8 gap-2 p-2 text-center';
-                        row.innerHTML = `
+                            let row = document.createElement('div');
+                            row.className = 'general-ledger-rows grid grid-cols-8 gap-2 p-2 text-center';
+                            row.innerHTML = `
                             <div>${task.created_at.substring(0, 10)}</div>
                             <div>${task.reference ?? '-'}</div>
                             <div>${task.type ?? '-'}</div>
@@ -358,15 +467,15 @@
                             <div>${task.passenger_name ?? '-'}</div>
                             <div class="text-xs">${info}</div>
                         `;
-                        ledgerBody.appendChild(row);
-                    });
-                }
-            })
-            .finally(() => {
-                filterBtn.disabled = false;
-                clearBtn.disabled = false;
-                loadingSpinner.classList.add('hidden');
-            });
+                            ledgerBody.appendChild(row);
+                        });
+                    }
+                })
+                .finally(() => {
+                    filterBtn.disabled = false;
+                    clearBtn.disabled = false;
+                    loadingSpinner.classList.add('hidden');
+                });
         }
 
         // Initial load

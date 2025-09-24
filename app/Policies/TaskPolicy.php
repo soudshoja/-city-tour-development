@@ -17,7 +17,7 @@ class TaskPolicy
     public function viewAny(User $user): bool
     {
         if ($user->hasRole('accountant')) {
-            return false;
+            return $user->can('view task');
         }
         
         if($user->hasRole('admin')) return true;
@@ -29,6 +29,10 @@ class TaskPolicy
     {
         if($user->roles('admin')) return true;
 
+        if ($user->hasRole('accountant')) {
+            return $user->can('view task price');
+        }
+
         return $user->can('view task price');
     }
 
@@ -36,6 +40,10 @@ class TaskPolicy
     {
         if($user->roles('admin')) return true;
 
+        if ($user->hasRole('accountant')) {
+            return $user->can('create task');
+        }
+        
         return $user->can('create task');
     }
 

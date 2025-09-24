@@ -495,6 +495,8 @@ class TaskController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        Gate::authorize('store', Task::class);
+        
         Log::info('Store task request', ['request' => $request->all()]);
         $request->validate([
             'reference' => 'required|string',
@@ -1958,6 +1960,8 @@ class TaskController extends Controller
 
     public function update(Request $request, $id)
     {
+        Gate::authorize('update', Task::class);
+        
         $request->validate([
             'reference' => 'nullable|string',
             'status' => 'required',

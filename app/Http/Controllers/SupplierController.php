@@ -44,7 +44,6 @@ class SupplierController extends Controller
         $suppliers = Supplier::all();
 
         if ($user->role_id == Role::ADMIN) {
-
             // Only get SupplierCompany which is active
             $suppliers = Supplier::with(['companies' => function ($query) {
                 $query->where('is_active', true);
@@ -53,6 +52,10 @@ class SupplierController extends Controller
             $suppliers = Supplier::with(['credentials', 'companies'])
                 ->activeForCompany($user->company->id)
                 ->get();
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $suppliers = Supplier::with(['companies' => function ($query) {
+                $query->where('is_active', true);
+            }])->get();
         } else {
             return abort(403, 'Unauthorized action.');
         }
@@ -140,6 +143,7 @@ class SupplierController extends Controller
 
     public function create()
     {
+
         // Check if the user has an admin role
         if (Auth::user()->role_id !== Role::ADMIN) {
             abort(403, 'Unauthorized action.');
@@ -151,6 +155,7 @@ class SupplierController extends Controller
 
     public function store(Request $request)
     {
+        Gate::authorize('update', Supplier::class);
         if (Auth::user()->role_id != Role::ADMIN) {
             abort(403, 'Unauthorized action.');
         }
@@ -191,11 +196,11 @@ class SupplierController extends Controller
     }
 
     public function update($id)
-    {
+    {   
         if (Auth::user()->role_id != Role::ADMIN) {
             abort(403, 'Unauthorized action.');
         }
-
+        
         $request = request();
 
         $request->validate([

@@ -22,7 +22,7 @@
                     "airline": "QR",
                     "departure_time": "2025-07-30 04:35:00",
                     "arrival_time": "2025-07-30 06:05:00",
-                    "class": "economy"
+                    "class": "S"
                 },
                 {
                     "airport_from": "DOH",
@@ -31,7 +31,7 @@
                     "airline": "QR",
                     "departure_time": "2025-07-30 09:10:00",
                     "arrival_time": "2025-07-30 14:10:00", 
-                    "class": "economy"
+                    "class": "S"
                 },
                 {
                     "airport_from": "MUC",
@@ -40,7 +40,7 @@
                     "airline": "QR", 
                     "departure_time": "2025-08-07 16:10:00",
                     "arrival_time": "2025-08-07 22:45:00",
-                    "class": "economy"
+                    "class": "S"
                 },
                 {
                     "airport_from": "DOH", 
@@ -49,7 +49,7 @@
                     "airline": "QR",
                     "departure_time": "2025-08-08 01:30:00", 
                     "arrival_time": "2025-08-08 03:05:00",
-                    "class": "economy"
+                    "class": "S"
                 }
             ],
             "taxes_record": " KWD58.400   YQ AC; KWD13.600   YR VB; KWD1.000    GZ SE; KWD2.000    KW AE; KWD5.000    N4 CB; KWD0.250    YX AP; KWD10.200   G4 AF; KWD1.000    PZ AV; KWD10.200   QA AP; KWD1.700    R9 SE; KWD3.100    DE SE; KWD13.000   OY CB; KWD8.850    RA EB",
@@ -78,7 +78,7 @@
                     "airline": "QR",
                     "departure_time": "2025-07-30 04:35:00",
                     "arrival_time": "2025-07-30 06:05:00",
-                    "class": "economy"
+                    "class": "S"
                 },
                 {
                     "airport_from": "DOH",
@@ -87,7 +87,7 @@
                     "airline": "QR",
                     "departure_time": "2025-07-30 09:10:00",
                     "arrival_time": "2025-07-30 14:10:00", 
-                    "class": "economy"
+                    "class": "S"
                 },
                 {
                     "airport_from": "MUC",
@@ -96,7 +96,7 @@
                     "airline": "QR", 
                     "departure_time": "2025-08-07 16:10:00",
                     "arrival_time": "2025-08-07 22:45:00",
-                    "class": "economy"
+                    "class": "S"
                 },
                 {
                     "airport_from": "DOH", 
@@ -105,7 +105,7 @@
                     "airline": "QR",
                     "departure_time": "2025-08-08 01:30:00", 
                     "arrival_time": "2025-08-08 03:05:00",
-                    "class": "economy"
+                    "class": "S"
                 }
             ],
             "taxes_record": " KWD58.400   YQ AC; KWD13.600   YR VB; KWD1.000    GZ SE; KWD2.000    KW AE; KWD5.000    N4 CB; KWD0.250    YX AP; KWD10.200   G4 AF; KWD1.000    PZ AV; KWD10.200   QA AP; KWD1.700    R9 SE; KWD3.100    DE SE; KWD13.000   OY CB; KWD8.850    RA EB",

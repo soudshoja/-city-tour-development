@@ -1941,7 +1941,7 @@ class TaskController extends Controller
     }
 
     public function update(Request $request, $id)
-    {
+    {        
         $request->validate([
             'reference' => 'nullable|string',
             'status' => 'required',

@@ -1164,7 +1164,7 @@ class ReportController extends Controller
             Log::info('Creditors account not found under Accounts Payable for company ID: ' . $user->company->id);
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
-dd(Account::where('parent_id', 39)->get());
+        
         $childOfCreditors = Account::where('parent_id', $creditorsAccount->id)
             ->where('company_id', $user->company->id ?? $user->accountant->branch->company->id)
             ->get();

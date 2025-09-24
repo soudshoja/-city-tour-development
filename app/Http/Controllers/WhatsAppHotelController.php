@@ -252,14 +252,31 @@ class WhatsAppHotelController extends Controller
     {
         Log::channel('whatsapp')->info('listHotels: Incoming request', ['request' => $request->all()]);
 
-        $request->validate([
-            'first_name' => 'required|string',
+        $validator = Validator::make($request->all(), [
+            'first_name'  => 'required|string',
             'second_name' => 'required|string',
-            'city' => 'required|string',
-            // optional date filters if needed
-            'checkIn' => 'nullable|date',
-            'checkOut' => 'nullable|date|after_or_equal:checkIn',
+            'city'        => 'required|string',
         ]);
+
+        if ($validator->fails()) {
+            $errors = $validator->errors()->toArray();
+            $friendlyMessages = [];
+
+            if (isset($errors['first_name']) || isset($errors['second_name'])) {
+                $friendlyMessages[] = "hotel name";
+            }
+            if (isset($errors['city'])) {
+                $friendlyMessages[] = "city";
+            }
+
+            $msg = "Sorry, I didn’t get the " . implode(" and ", $friendlyMessages) . ". Please provide it.";
+
+            return response()->json([
+                'success' => false,
+                'message' => $msg,
+                'errors'  => $errors, // still keep raw errors for debugging/logging
+            ], 422);
+        }
 
         try {
             $hotels = MapHotel::query()
@@ -275,19 +292,20 @@ class WhatsAppHotelController extends Controller
                 ])->values()->toArray();
 
             if (empty($hotels)) {
-                return response()->json(['success' => false, 'message' => 'Hotel not found.'], 404);
+                return response()->json(['success' => false, 'message' => 'No hotels found with the given details.'], 404);
             }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Hotels found.',
-                'hotels' => $hotels,
+                'hotels'  => $hotels,
             ]);
         } catch (Exception $e) {
             Log::channel('whatsapp')->error('listHotels: Exception', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'An error occurred.'], 500);
         }
     }
+
 
     // public function getHotelDetails(Request $request)
     // {

@@ -137,7 +137,7 @@
                 <form id="bank-payment-form" method="POST" action="{{ route('bank-payments.store') }}">
                     @csrf
                     <input type="hidden" name="company_id" value="{{ auth()->user()->company->id }}">
-                    <input type="hidden" name="branch_id" value="{{ auth()->user()->branch->id }}">
+                    <input type="hidden" name="branch_id" value="{{ auth()->user()->branch->id ?? auth()->user()->accountant->branch_id }}">
                     <input type="hidden" name="docdate" value="{{ now()->format('Y-m-d') }}">
                     <input type="hidden" name="bankpaymentref" value="PV-{{ now()->timestamp }}">
                     <input type="hidden" name="bankpaymenttype" value="PaymentByDate">

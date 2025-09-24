@@ -14,6 +14,7 @@ use App\Models\Agent;
 use App\Models\AgentType;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Accountant;
 use Exception;
 use Carbon\Carbon;
 use Database\Seeders\CoaSeeder;
@@ -28,7 +29,7 @@ class AdminUsersController extends Controller
         if(auth()->user()->role_id == Role::ADMIN) {
             $users = User::with('roles')->get();
         } else if(auth()->user()->role_id == Role::COMPANY) {
-
+            
             $branches = Branch::where('company_id', auth()->user()->company->id)->pluck('id');
             $branchUsers = User::with('roles')
                 ->whereHas('branch', function($query) use ($branches) {
@@ -42,9 +43,42 @@ class AdminUsersController extends Controller
                     $query->whereIn('id', $agents->pluck('id'));
                 })
                 ->get();
+            
+            $accountant = Accountant::whereIn('branch_id', $branches)->get();
+            $accountantUsers = User::with('roles')
+                                    ->whereHas('accountant', function($query) use ($accountant) {
+                                        $query->whereIn('id', $accountant->pluck('id'));
+                                    })->get();
 
-            $users = $branchUsers->merge($agentUsers)->unique('id');
+            $users = $branchUsers
+                    ->merge($agentUsers)
+                    ->merge($accountantUsers)
+                    ->unique('id');
+        } elseif (auth()->user()->role_id == Role::ACCOUNTANT) {
+            $branches = Branch::where('company_id', auth()->user()->company->id)->pluck('id');
+            $branchUsers = User::with('roles')
+                ->whereHas('branch', function($query) use ($branches) {
+                    $query->whereIn('id', $branches);
+                })
+                ->get();
 
+            $agents = Agent::whereIn('branch_id', $branches)->get();
+            $agentUsers = User::with('roles')
+                ->whereHas('agent', function($query) use ($agents) {
+                    $query->whereIn('id', $agents->pluck('id'));
+                })
+                ->get();
+            
+            $accountant = Accountant::whereIn('branch_id', $branches)->get();
+            $accountantUsers = User::with('roles')
+                                    ->whereHas('accountant', function($query) use ($accountant) {
+                                        $query->whereIn('id', $accountant->pluck('id'));
+                                    })->get();
+
+            $users = $branchUsers
+                    ->merge($agentUsers)
+                    ->merge($accountantUsers)
+                    ->unique('id');
         } else {
             abort(403, 'Unauthorized action.');
         }

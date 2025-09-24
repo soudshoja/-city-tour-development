@@ -44,6 +44,20 @@ class BankPaymentController extends Controller
                 ->whereNotNull('name')
                 ->where('reference_number', 'like', 'PV-%')
                 ->count();
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companyId = $user->accountant->branch->company->id;
+
+            $bankPayments = Transaction::where('company_id', $companyId)
+                ->whereNotNull('name')
+                ->where('reference_number', 'like', 'PV-%')
+                ->latest()
+                ->paginate(10);
+
+            $totalRecords = Transaction::where('company_id', $companyId)
+                ->whereNotNull('name')
+                ->where('reference_number', 'like', 'PV-%')
+                ->count();
+
         } elseif ($user->role_id == Role::AGENT) {
             return abort(403, 'Unauthorized action.');
         } else {

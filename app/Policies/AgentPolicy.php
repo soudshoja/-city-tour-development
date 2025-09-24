@@ -14,6 +14,9 @@ class AgentPolicy
      */
     public function viewAny(User $user): bool
     {
+        if ($user->hasRole('accountant')) {
+            return false;
+        }
         return $user->can('view agent');
     }
 

@@ -306,6 +306,8 @@ class InvoiceController extends Controller
             $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
                 $query->where('company_id', $user->agent->branch->company_id)->where('is_active', true);
             })->with('companies')->get();
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $agentId = $user->accountant->branch->flatMap->agents->pluck('id');
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');
         }
@@ -1528,8 +1530,6 @@ class InvoiceController extends Controller
 
     public function link(Request $request)
     {
-        Gate::authorize('viewAny', Invoice::class);
-
         $user = Auth::user();
 
         $agents = Agent::with('branch');

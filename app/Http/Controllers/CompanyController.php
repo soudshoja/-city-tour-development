@@ -392,14 +392,15 @@ class CompanyController extends Controller
     {
         $auth = Auth()->user();
         $companyId = $auth->branch->company_id;
-
+        $branchId = $auth->branch->id;
         $company = Company::findOrFail($companyId);
 
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'dial_code' => 'required|string',
-            'phone' => 'nullable|string|max:15',
+            'phone' => 'required|string|max:15',
+            'password' => 'required|string|max:100',
         ]);
 
         $role = Role::where('name', 'accountant')
@@ -418,7 +419,7 @@ class CompanyController extends Controller
         $user = User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
-            'password' => bcrypt(Str::random(10)), 
+            'password' => $validatedData['password'], 
             'role_id' => Role::ACCOUNTANT,
             'remember_token' => Str::random(10),
             'first_login' => 1,
@@ -429,7 +430,7 @@ class CompanyController extends Controller
             'email'        => $validatedData['email'],
             'country_code' => $validatedData['dial_code'],
             'phone_number' => $validatedData['phone'],
-            'company_id'    => $companyId,
+            'branch_id'    => $branchId,
         ]);
 
         Log::info('Accountant role has succesfully created for company ' . $company->name, [

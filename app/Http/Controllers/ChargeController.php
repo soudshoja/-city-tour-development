@@ -29,6 +29,9 @@ class ChargeController extends Controller
             return redirect()->route('dashboard')->with('error', 'You do not have permission to view charges.');
             $totalCharges = Charge::where('branch_id', Auth::user()->branch->id)->count();
             $charges = Charge::where('branch_id', Auth::user()->branch->id)->get();
+        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
+            $totalCharges = Charge::where('company_id', Auth::user()->accountant->branch->company->id)->count();
+            $charges = Charge::where('company_id', Auth::user()->accountant->branch->company->id)->get();
         } else {
             return redirect()->route('dashboard')->with('error', 'You do not have permission to view charges.');
             // $totalCharges = 0;
@@ -108,6 +111,8 @@ class ChargeController extends Controller
     // Store new charge
     public function store(Request $request)
     {
+        Gate::authorize('create', Charge::class);
+
         // Fetch COA for Payment Gateway Fee (Expenses)   
         $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')->first();
 
@@ -287,6 +292,8 @@ class ChargeController extends Controller
 
     public function update(Request $request, $id)
     {
+        Gate::authorize('update', Charge::class);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:255',

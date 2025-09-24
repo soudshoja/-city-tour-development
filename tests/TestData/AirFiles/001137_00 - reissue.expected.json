@@ -5,11 +5,13 @@
         {
             "client_name": "SALAMA\/ATIF MR",
             "reference": "3070029150",
+            "original_reference": "3049940591",
             "status": "reissued",
             "price": 13894,
             "total": 0,
             "currency": "EGP",
             "ticket_number": "T-K229-3070029150",
+            "original_ticket_number": "FO229-3049940591",
             "agent_name": "",
             "agent_email": "ibrahim@citytravelers.co",
             "agent_amadeus_id": "4714IA",

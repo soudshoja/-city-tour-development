@@ -16,7 +16,8 @@
             "surcharge": 0.0,
             "penalty_fee": 2.0,
             "tax": 3.25,
-            "ticket_number": "T-E381-2833133114",
+            "ticket_number": "R-381-2833133114",
+            "original_ticket_number": "T-E381-2833133114",
             "agent_name": "",
             "agent_email": "",
             "agent_amadeus_id": "0002AB"

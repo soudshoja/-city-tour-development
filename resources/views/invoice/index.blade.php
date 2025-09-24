@@ -561,7 +561,7 @@
     </script>
     <script>
         const companyId = "{{ auth()->user()->company_id ?? optional(auth()->user()->branch)->company_id ?? optional(auth()->user()->agent?->branch)->company_id ?? optional(auth()->user()->accountant?->branch)->company_id }}";
-        const updateDateUrl   = "{{ route('invoice.updateDate',   ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM']) }}";
+        const updateDateUrl = "{{ route('invoice.updateDate',   ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM']) }}";
         const updateAmountUrl = "{{ route('invoice.updateAmount', ['companyId' => 'COMPANY_ID', 'invoiceNumber' => 'INVOICE_NUM']) }}";
 
         function openEditModal(kind, btn) {

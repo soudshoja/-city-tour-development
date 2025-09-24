@@ -13,9 +13,20 @@ class ReportPolicy
 
     public function viewAny(User $user)
     {
+        if ($user->hasRole('accountant')) {
+            return false;
+        }
        return $user->can('view report');
     }
 
+    public function viewPayableSupplier(User $user) 
+    {
+if ($user->hasRole('accountant')) {
+            return false;
+        }
+
+        return $user->can('view payable');
+    }
     public function viewReconcile(User $user)
     {
         return $user->can('view reconcile report');

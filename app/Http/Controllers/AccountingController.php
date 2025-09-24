@@ -456,15 +456,17 @@ class AccountingController extends Controller
 
     public function createPayableDetail()
     {
-        Gate::authorize('veiwAny', CoaCategory::class);
+        Gate::authorize('viewAny', CoaCategory::class);
 
         $user = auth()->user();
 
         if ($user->role_id != Role::ADMIN) {
-            if ($user->role_id != Role::COMPANY) {
+            if ($user->role_id != Role::COMPANY && $user->role_id != Role::ACCOUNTANT) {
                 return abort(403, 'Unauthorized action.');
-            } else {
+            } elseif ($user->role_id == Role::COMPANY)  {
                 $companies = Company::where('user_id', $user->id)->get();
+            } elseif ($user->role_id == Role::ACCOUNTANT) {
+                $companies = Company::where('id', $user->accountant->branch->company->id)->get();
             }
         } else {
             $companies = Company::all();
@@ -566,15 +568,17 @@ class AccountingController extends Controller
 
     public function createReceivableDetail()
     {
-        Gate::authorize('veiwAny', CoaCategory::class);
+        Gate::authorize('viewAny', CoaCategory::class);
 
         $user = auth()->user();
 
         if ($user->role_id != Role::ADMIN) {
-            if ($user->role_id != Role::COMPANY) {
+            if ($user->role_id != Role::COMPANY && $user->role_id != Role::ACCOUNTANT) {
                 return abort(403, 'Unauthorized action.');
-            } else {
+            } elseif ($user->role_id == Role::COMPANY) {
                 $companies = Company::where('user_id', $user->id)->get();
+            } elseif ($user->role_id == Role::ACCOUNTANT) {
+                $companies = Company::where('id', $user->accountant->branch->company->id)->get();
             }
         } else {
             $companies = Company::all();

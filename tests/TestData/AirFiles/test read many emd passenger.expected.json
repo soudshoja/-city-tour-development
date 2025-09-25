@@ -1,0 +1,75 @@
+{
+    "description": "test read many emd passenger",
+    "passenger_count": 3,
+    "passengers": [
+        {
+            "client_name": "ALJAIAN\/BADER MR",
+            "reference": "1813517151",
+            "status": "emd",
+            "price": 47,
+            "currency": "KWD",
+            "ticket_number": "TMCD229-1813517151",
+            "agent_name": null,
+            "agent_email": null,
+            "agent_amadeus_id": "0002AB",
+            "task_flight_details": [
+                {
+                    "flight_number": "KU0411",
+                    "airline": "KU",
+                    "departure_time": "2025-01-21 23:15:00"
+                },
+                {
+                    "flight_number": "KU0412",
+                    "airline": "KU",
+                    "departure_time": "2025-01-29 11:30:00"
+                }
+            ]
+        },
+        {
+            "client_name": "ALJAIAN\/FAHD MR",
+            "reference": "1813517152",
+            "status": "emd",
+            "price": 47,
+            "currency": "KWD",
+            "ticket_number": "TMCD229-1813517152",
+            "agent_name": null,
+            "agent_email": null,
+            "agent_amadeus_id": "0002AB",
+            "task_flight_details": [
+                {
+                    "flight_number": "KU0411",
+                    "airline": "KU",
+                    "departure_time": "2025-01-21 23:15:00"
+                },
+                {
+                    "flight_number": "KU0412",
+                    "airline": "KU",
+                    "departure_time": "2025-01-29 11:30:00"
+                }
+            ]
+        },
+        {
+            "client_name": "ALJAIAN\/NASER MR",
+            "reference": "1813517149",
+            "status": "emd",
+            "price": 52,
+            "currency": "KWD",
+            "ticket_number": "TMCD229-1813517149",
+            "agent_name": null,
+            "agent_email": null,
+            "agent_amadeus_id": "0002AB",
+            "task_flight_details": [
+                {
+                    "flight_number": "KU0411",
+                    "airline": "KU",
+                    "departure_time": "2025-01-21 23:15:00"
+                },
+                {
+                    "flight_number": "KU0412",
+                    "airline": "KU",
+                    "departure_time": "2025-01-29 11:30:00"
+                }
+            ]
+        }
+    ]
+}

@@ -359,7 +359,11 @@ class ClientController extends Controller
         }
 
         $client = Client::findOrFail($id);
-        $agents = Agent::with('branch')->get();
+
+        $branchId = $user->branch->id;
+        $agents = Agent::where('branch_id', $branchId) 
+               ->with('branch')               
+               ->get();
 
         $invoices = Invoice::with('invoiceDetails', 'agent')->where('client_id', $id)->get();
         $tasks = Task::where('client_id', $id)->get();

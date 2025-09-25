@@ -118,18 +118,23 @@ class WhatsAppHotelController extends Controller
             }
         }
 
-        // Upsert validation: only phone_number is required. Others are optional.
+        // Upsert validation: only phone_number is required. Others optional.
+        // Validate occupancy as array of room objects (when provided).
         $validator = Validator::make($request->all(), [
-            'phone_number'    => 'required|string',
-            'checkIn'         => 'nullable|date',
-            'checkOut'        => ['nullable','date', function ($attr, $value, $fail) use ($request) {
+            'phone_number' => 'required|string',
+            'checkIn'      => 'nullable|date',
+            'checkOut'     => ['nullable','date', function ($attr, $value, $fail) use ($request) {
                 if ($value && $request->filled('checkIn') && strtotime($value) < strtotime($request->checkIn)) {
                     $fail('The check out must be a date after or equal to check in.');
                 }
             }],
-            'hotel'           => 'nullable|string',
-            'occupancy'       => 'nullable|array',
-            'occupancy.rooms' => 'nullable|array|min:1',
+            'hotel'        => 'nullable|string',
+
+            // new JSON column format: occupancy is an array of rooms
+            'occupancy'                => 'nullable|array',
+            'occupancy.*.adults'       => 'required_with:occupancy|integer|min:1',
+            'occupancy.*.childrenAges' => 'nullable|array',
+            'occupancy.*.childrenAges.*' => 'integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -167,42 +172,25 @@ class WhatsAppHotelController extends Controller
             }
         }
 
-        // Get latest record for phone (if any)
+        // Latest record for this phone (if any)
         $existing = \App\Models\RequestBookingRoom::where('phone_number', $request->phone_number)
             ->orderByDesc('id')
             ->first();
 
-        // If a room was provided, validate only the first room (partial)
-        $adults = null; $childrenAgesJson = null;
-        if ($request->filled('occupancy.rooms.0')) {
-            $room = $request->input('occupancy.rooms.0');
-            $roomValid = Validator::make($room, [
-                'adults'         => 'required|integer|min:1',
-                'childrenAges'   => 'nullable|array',
-                'childrenAges.*' => 'integer|min:0',
-            ]);
-            if ($roomValid->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Room validation failed',
-                    'errors'  => ['rooms.0' => $roomValid->errors()],
-                ], 422);
-            }
-            $adults          = $room['adults'];
-            $childrenAgesJson= array_key_exists('childrenAges', $room) ? json_encode($room['childrenAges']) : null;
-
-            if (count($request->input('occupancy.rooms')) > 1) {
-                $warnings['rooms'][] = 'Multiple rooms were sent; only the first room was used.';
-            }
-        }
+        // Pull occupancy array if provided
+        $incomingOccupancy = $request->input('occupancy'); // should be an array of rooms or null
 
         try {
             if ($existing) {
                 // -------- UPDATE (partial) --------
                 if ($request->filled('checkIn'))  $existing->check_in  = $request->checkIn;
                 if ($request->filled('checkOut')) $existing->check_out = $request->checkOut;
-                if (!is_null($adults))            $existing->adults    = $adults;
-                if (!is_null($childrenAgesJson))  $existing->children_ages = $childrenAgesJson;
+
+                // Only set occupancy if it was provided (allow partial updates)
+                if ($request->exists('occupancy')) {
+                    // If you want to allow clearing, send occupancy: [] and this will set it to []
+                    $existing->occupancy = is_array($incomingOccupancy) ? array_values($incomingOccupancy) : null;
+                }
 
                 if ($request->exists('hotel')) {
                     if ($matchedHotelName !== null) {
@@ -210,7 +198,7 @@ class WhatsAppHotelController extends Controller
                         $existing->city_id = $matchedCityId;
                         $existing->city    = $matchedCityName;
                     }
-                    // else: warning already added
+                    // else leave as-is; warning added
                 }
 
                 $existing->save();
@@ -222,11 +210,12 @@ class WhatsAppHotelController extends Controller
                     'saved_ids'     => [$existing->id],
                     'warnings'      => $warnings,
                     'updated_snapshot' => [
-                        'hotel'    => $existing->hotel,
-                        'city_id'  => $existing->city_id,
-                        'city'     => $existing->city,
-                        'check_in' => $existing->check_in,
-                        'check_out'=> $existing->check_out,
+                        'hotel'      => $existing->hotel,
+                        'city_id'    => $existing->city_id,
+                        'city'       => $existing->city,
+                        'check_in'   => optional($existing->check_in)->format('Y-m-d'),
+                        'check_out'  => optional($existing->check_out)->format('Y-m-d'),
+                        'occupancy'  => $existing->occupancy, // array thanks to casts
                     ],
                 ]);
             } else {
@@ -236,10 +225,11 @@ class WhatsAppHotelController extends Controller
 
                 if ($request->filled('checkIn'))  $row->check_in  = $request->checkIn;
                 if ($request->filled('checkOut')) $row->check_out = $request->checkOut;
-                if (!is_null($adults))            $row->adults    = $adults;
-                if (!is_null($childrenAgesJson))  $row->children_ages = $childrenAgesJson;
 
-                // set matched hotel/city if we found one
+                if ($request->exists('occupancy')) {
+                    $row->occupancy = is_array($incomingOccupancy) ? array_values($incomingOccupancy) : null;
+                }
+
                 if ($matchedHotelName !== null) {
                     $row->hotel   = $matchedHotelName;
                     $row->city_id = $matchedCityId;
@@ -255,11 +245,12 @@ class WhatsAppHotelController extends Controller
                     'saved_ids'     => [$row->id],
                     'warnings'      => $warnings,
                     'updated_snapshot' => [
-                        'hotel'    => $row->hotel,
-                        'city_id'  => $row->city_id,
-                        'city'     => $row->city,
-                        'check_in' => $row->check_in,
-                        'check_out'=> $row->check_out,
+                        'hotel'      => $row->hotel,
+                        'city_id'    => $row->city_id,
+                        'city'       => $row->city,
+                        'check_in'   => $row->check_in ? date('Y-m-d', strtotime($row->check_in)) : null,
+                        'check_out'  => $row->check_out ? date('Y-m-d', strtotime($row->check_out)) : null,
+                        'occupancy'  => $row->occupancy, // array thanks to casts
                     ],
                 ]);
             }
@@ -271,6 +262,7 @@ class WhatsAppHotelController extends Controller
             ], 500);
         }
     }
+
 
 
 

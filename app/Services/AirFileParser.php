@@ -8,17 +8,17 @@ class AirFileParser
 {
     private $content;
     private $lines;
-    
+
     public function __construct($filePath)
     {
         if (!file_exists($filePath)) {
             throw new \Exception("File not found: {$filePath}");
         }
-        
+
         $this->content = file_get_contents($filePath);
         $this->lines = explode("\n", $this->content);
     }
-    
+
     /**
      * Parse the AIR file and extract task schema data
      * Now returns an array of tasks for multiple passengers
@@ -26,7 +26,7 @@ class AirFileParser
     public function parseTaskSchema()
     {
         $passengers = $this->extractAllPassengers();
-        
+
         // If no passengers found, return single task with default data
         if (empty($passengers)) {
             $data = [
@@ -37,6 +37,7 @@ class AirFileParser
                 'status' => $this->extractStatus(),
                 'supplier_status' => $this->extractStatus(), // Same as status
                 'refund_date' => $this->extractRefundDate(),
+                'void_date' => $this->extractVoidDate(),
                 'price' => $this->extractPrice(),
                 'currency' => $this->extractExchangeCurrency(), // Primary currency (same as exchange_currency)
                 'exchange_currency' => $this->extractExchangeCurrency(),
@@ -49,6 +50,8 @@ class AirFileParser
                 'taxes_record' => $this->extractTaxesRecord(),
                 'refund_charge' => $this->extractRefundCharge(),
                 'reference' => $this->extractReference(),
+                'original_ticket_number' => $this->extractOriginalTicketNumber(),
+                'original_reference' => $this->extractOriginalReference(),
                 'created_by' => $this->extractCreatedBy(),
                 'issued_by' => $this->extractIssuedBy(),
                 'type' => 'flight', // Always flight for AIR files
@@ -64,14 +67,15 @@ class AirFileParser
                 'is_exchanged' => true,
                 'task_flight_details' => $this->parseFlightDetails(),
             ];
-            
+
             return [$data];
         }
-        
+
         // Create a task for each passenger
         $tasks = [];
         foreach ($passengers as $passenger) {
-            $reference = substr($passenger['ticket_number'], -10); // Use last 10 digits of ticket number as reference
+            $paxIdx = (int)$passenger['passenger_number'];
+            $reference = substr($passenger['ticket_number'], -10);
             $data = [
                 'additional_info' => $this->extractAdditionalInfo(),
                 'ticket_number' => $passenger['ticket_number'],
@@ -80,6 +84,7 @@ class AirFileParser
                 'status' => $this->extractStatus(),
                 'supplier_status' => $this->extractStatus(), // Same as status
                 'refund_date' => $this->extractRefundDate(),
+                'void_date' => $this->extractVoidDate(),
                 'price' => $this->extractStatus() === 'emd' ? $passenger['price'] : $this->extractPrice(),
                 'currency' => $this->extractExchangeCurrency(), // Primary currency (same as exchange_currency)
                 'exchange_currency' => $this->extractExchangeCurrency(),
@@ -92,6 +97,8 @@ class AirFileParser
                 'taxes_record' => $this->extractTaxesRecord(),
                 'refund_charge' => $this->extractRefundCharge(),
                 'reference' => $reference,
+                'original_ticket_number' => $this->extractOriginalTicketNumber(),
+                'original_reference' => $this->extractOriginalReference(),
                 'created_by' => $this->extractCreatedBy(),
                 'issued_by' => $this->extractIssuedBy(),
                 'type' => 'flight', // Always flight for AIR files
@@ -105,54 +112,63 @@ class AirFileParser
                 'venue' => $this->extractVenue(),
                 'issued_date' => $this->extractIssuedDate(),
                 'is_exchanged' => true,
-                'task_flight_details' => $this->parseFlightDetails(),
+                'task_flight_details' => $this->parseFlightDetails($paxIdx),
             ];
-            
+
             $tasks[] = $data;
         }
-        
+
         return $tasks;
     }
-    
+
     /**
      * Parse flight details from the AIR file
      * Extract multiple flight segments from H-lines and return as array
      */
-    public function parseFlightDetails()
+    public function parseFlightDetails(?int $paxIdx = null)
     {
         $flightSegments = $this->extractFlightSegments();
-        
+
         // If we found H-lines with flight segments, return them
         if (!empty($flightSegments)) {
             $segmentDefaults = [
                 'farebase' => $this->extractFarebase(),
                 'duration_time' => $this->extractDurationTime(),
                 'airline_id' => $this->extractAirlineName(),
-                'baggage_allowed' => $this->extractBaggageAllowed(),
                 'equipment' => $this->extractEquipment(),
                 'ticket_number' => $this->extractTicketNumber(),
-                'seat_no' => $this->extractSeatNumber(),
-                'country_id_from' => $this->extractDepartureCountry(),
-                'country_id_to' => $this->extractArrivalCountry(),
             ];
-    
+
             $detailedSegments = array_map(function ($segment) use ($segmentDefaults) {
+                $segment['country_id_from'] = $this->countryFromIata($segment['airport_from']);
+                $segment['country_id_to'] = $this->countryFromIata($segment['airport_to']);
+
                 return array_merge($segment, $segmentDefaults);
             }, $flightSegments);
-    
+
+            if ($paxIdx !== null) {
+                $detailedSegments = array_map(function ($seg) use ($paxIdx) {
+                    $seg['seat_no'] = $this->extractSeatNumber($paxIdx);
+                    return $seg;
+                }, $detailedSegments);
+            }
+
             return $detailedSegments;
         }
-        
+
+        $from = $this->extractDepartureAirport();
+        $to = $this->extractArrivalAirport();
+
         // Fallback to single flight object for files without H-lines
         return [
             'farebase' => $this->extractFarebase(),
             'departure_time' => $this->extractDepartureTime(),
-            'country_id_from' => $this->extractDepartureCountry(),
+            'country_id_from' => $this->countryFromIata($from),
             'airport_from' => $this->extractDepartureAirport(),
             'terminal_from' => $this->extractDepartureTerminal(),
             'arrival_time' => $this->extractArrivalTime(),
             'duration_time' => $this->extractDurationTime(),
-            'country_id_to' => $this->extractArrivalCountry(),
+            'country_id_to' => $this->countryFromIata($to),
             'airport_to' => $this->extractArrivalAirport(),
             'terminal_to' => $this->extractArrivalTerminal(),
             'airline_id' => $this->extractAirlineName(),
@@ -162,10 +178,11 @@ class AirFileParser
             'equipment' => $this->extractEquipment(),
             'ticket_number' => $this->extractTicketNumber(),
             'flight_meal' => $this->extractFlightMeal(),
+            'number_of_stops' => $this->extractStopsCount(),
             'seat_no' => $this->extractSeatNumber(),
         ];
     }
-    
+
     /**
      * Extract flight segments from H-lines
      * Format: H-005;003OKWI;KUWAIT           ;DOH;DOHA             ;QR    1077 S S 30JUL0435 0605 30JUL;OK02;HK02;M ;0;77W;;;30K;1 ;;ET;0130 ;N;351;
@@ -173,11 +190,11 @@ class AirFileParser
     private function extractFlightSegments()
     {
         $segments = [];
-        $hLines = $this->findLines('/^[HU]-\d+[A-Z]?;(.+)/'); 
-        
+        $hLines = $this->findLines('/^[HU]-\d+[A-Z]?;(.+)/');
+
         foreach ($hLines as $hLine) {
-            $parts = explode(';', $hLine[1]);
-            
+            $parts = array_map(fn($s) => rtrim($s), explode(';', $hLine[1]));
+
             if (count($parts) >= 5) {
                 // Parse the flight information - corrected indexing
                 $fromAirport = trim($parts[0]); // 003OKWI
@@ -185,38 +202,33 @@ class AirFileParser
                 $toAirport = trim($parts[2]);   // DOH
                 $toCity = trim($parts[3]);      // DOHA
                 $flightInfo = trim($parts[4]);  // QR    1077 S S 30JUL0435 0605 30JUL
-                
+
                 // Extract airport codes (remove prefix numbers and letters)
                 $fromCode = preg_replace('/^\d+[A-Z]?/', '', $fromAirport); // Remove leading digits and optional letter -> KWI
                 $toCode = $toAirport; // DOH is already clean
 
-                $match = $this->findLine('/^(H-\d{3};.+)/');
-                if ($match) {
-                    $segmentParts = explode(';', $match[1]);
-                    if (isset($segmentParts[17])) {
-                        $terminalTo = trim($segmentParts[17]);
-                    }
-                    if (isset($segmentParts[14])) {
-                        $terminalFrom = trim($segmentParts[14]);
-                    }
-                    if (isset($segmentParts[8])) {
-                        $flightMeal = trim($segmentParts[8]);
-                    }
-                }
-                
+                $flightMeal = isset($parts[7])  ? trim($parts[7])  : ''; // "M"
+                $numberofStops = isset($parts[8]) ? trim($parts[8]) : ''; // "0"
+                $equipment = isset($parts[9]) ? trim($parts[9]) : ''; // "77W"
+                $baggage = isset($parts[12]) ? trim($parts[12]) : ''; // "30K"
+                $terminalFrom = isset($parts[13]) ? trim($parts[13]) : '';
+                $terminalTo = isset($parts[18]) ? trim($parts[18]) : '';
+
                 // Parse flight info: QR    1077 S S 30JUL0435 0605 30JUL
-                if (preg_match('/([A-Z]{2})\s+(\d+)\s+[A-Z]\s+[A-Z]\s+(\d{2}[A-Z]{3})(\d{4})\s+(\d{4})\s+(\d{2}[A-Z]{3})/', $flightInfo, $flightMatch)) {
-                    $airline = $flightMatch[1];           // QR
-                    $flightNumber = $flightMatch[2];      // 1077
-                    $departureDate = $flightMatch[3];     // 30JUL
-                    $departureTime = $flightMatch[4];     // 0435
-                    $arrivalTime = $flightMatch[5];       // 0605
-                    $arrivalDate = $flightMatch[6];       // 30JUL
-                    
+                if (preg_match('/([A-Z]{2})\s+(\d+[A-Z]?)\s+([A-Z])(?:\s+([A-Z]))?\s+(\d{2}[A-Z]{3})(\d{3,4})\s+(\d{3,4})\s+(\d{2}[A-Z]{3})/', $flightInfo, $flightMatch)) {
+                    $airline        = $flightMatch[1];    // e.g., QR
+                    $flightNumber   = $flightMatch[2];    // e.g., 1077 or 1077A
+                    $classService   = $flightMatch[3];    // e.g., S
+                    $bookingClass   = $flightMatch[4];    // e.g., S
+                    $departureDate  = $flightMatch[5];    // e.g., 30JUL
+                    $departureTime  = $flightMatch[6];    // e.g., 0435
+                    $arrivalTime    = $flightMatch[7];    // e.g., 0605
+                    $arrivalDate    = $flightMatch[8];    // e.g., 30JUL
+
                     // Convert date format from 30JUL to 2025-07-30 and combine with time
                     $departureDateTime = $this->combineDateTimeFormat($departureDate, $departureTime);
                     $arrivalDateTime = $this->combineDateTimeFormat($arrivalDate, $arrivalTime);
-                    
+
                     $segments[] = [
                         'airport_from' => $fromCode,
                         'airport_to' => $toCode,
@@ -224,40 +236,51 @@ class AirFileParser
                         'airline' => $airline,
                         'departure_time' => $departureDateTime,
                         'arrival_time' => $arrivalDateTime,
-                        'terminal_from' => $terminalFrom ?? '',
-                        'terminal_to' => $terminalTo ?? '',
-                        'flight_meal' => $flightMeal ?? '',
-                        'class_type' => 'economy', // Default, could be extracted from booking class if needed
+                        'terminal_from' => $terminalFrom,
+                        'terminal_to' => $terminalTo,
+                        'class_type' => $bookingClass ?? '',
+                        'flight_meal' => $flightMeal,
+                        'baggage_allowed' => $baggage,
+                        'number_of_stops' => $numberofStops
                     ];
                 }
             }
         }
-        
+
         return $segments;
     }
-    
+
     /**
      * Convert date format from 30JUL to 2025-07-30
      */
     private function convertDateFormat($dateStr)
     {
         $months = [
-            'JAN' => '01', 'FEB' => '02', 'MAR' => '03', 'APR' => '04',
-            'MAY' => '05', 'JUN' => '06', 'JUL' => '07', 'AUG' => '08',
-            'SEP' => '09', 'OCT' => '10', 'NOV' => '11', 'DEC' => '12'
+            'JAN' => '01',
+            'FEB' => '02',
+            'MAR' => '03',
+            'APR' => '04',
+            'MAY' => '05',
+            'JUN' => '06',
+            'JUL' => '07',
+            'AUG' => '08',
+            'SEP' => '09',
+            'OCT' => '10',
+            'NOV' => '11',
+            'DEC' => '12'
         ];
-        
+
         if (preg_match('/(\d{2})([A-Z]{3})/', $dateStr, $match)) {
             $day = $match[1];
             $month = $months[$match[2]] ?? '01';
             $year = '2025'; // Default to current year + 1, could be made smarter
-            
+
             return "{$year}-{$month}-{$day}";
         }
-        
+
         return $dateStr;
     }
-    
+
     /**
      * Convert time format from 0435 to 04:35
      */
@@ -266,10 +289,10 @@ class AirFileParser
         if (strlen($timeStr) === 4) {
             return substr($timeStr, 0, 2) . ':' . substr($timeStr, 2, 2);
         }
-        
+
         return $timeStr;
     }
-    
+
     /**
      * Find a line that matches a pattern
      */
@@ -282,7 +305,7 @@ class AirFileParser
         }
         return null;
     }
-    
+
     /**
      * Find all lines that match a pattern
      */
@@ -296,7 +319,7 @@ class AirFileParser
         }
         return $results;
     }
-    
+
     /**
      * Extract ticket number from T-K line
      * Format: T-K229-2833184683 -> take last 10 digits of ticket number part
@@ -304,21 +327,31 @@ class AirFileParser
      */
     private function extractTicketNumber()
     {
+        if ($m = $this->findLine('/^\s*(R-\d{3}-\d{10})(?:;|$)/')) {
+            return $m[1];
+        }
+
+        // Look for R- line with format: R-[airline_code]-[ticket_number]
+        $match = $this->findLine('/^R-(\d+)-(\d+)/');
+        if ($match) {
+            return $match[1];
+        }
+
         // Look for T-K line with format: T-K[airline_code]-[ticket_number]
         $match = $this->findLine('/^(T-[KE]\d+-\d+)/');
         if ($match) {
-            return $match[1];    
+            return $match[1];
         }
 
         // Look for TMCD line with format: TMCD[airline_code]-[ticket_number]
         $match = $this->findLine('/^TMCD(\d+)-(\d+)/');
         if ($match) {
-            return $match[1];    
+            return $match[1];
         }
-        
-        return '';
+
+        return null;
     }
-    
+
     /**
      * Extract GDS reference from MUC1A line
      * Format: MUC1A 7GS6BK020 -> take 6 characters after MUC1A
@@ -329,9 +362,9 @@ class AirFileParser
         if ($match) {
             return $match[1];
         }
-        return '';
+        return null;
     }
-    
+
     /**
      * Extract airline reference (last 6 characters from GDS line)
      */
@@ -342,9 +375,9 @@ class AirFileParser
         if ($match) {
             return $match[1];
         }
-        return '';
+        return null;
     }
-    
+
     /**
      * Extract status from AMD line or K line format
      * Look for VOID, RF (refund), FO (reissued), EMD indicators
@@ -373,7 +406,7 @@ class AirFileParser
         }
         return 'issued';
     }
-    
+
     /**
      * Extract refund date if status is refund
      */
@@ -391,11 +424,11 @@ class AirFileParser
                 // If parsing fails, return null
                 return null;
             }
-        }        
+        }
 
         return null;
     }
-    
+
     /**
      * Extract void date if status is void
      */
@@ -420,7 +453,7 @@ class AirFileParser
 
         return null;
     }
-    
+
     /**
      * Extract price from K line (fare line)
      * Format: 
@@ -459,10 +492,10 @@ class AirFileParser
             // 2-pair format: return the second amount
             return (float) $match[4];
         }
-        
+
         $match = $this->findLine('/^RFD[MFLAC]?\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)/');
         if ($match) {
-            
+
             return (float) $match[1];
         }
 
@@ -475,10 +508,10 @@ class AirFileParser
         $match = $this->findLine('/^EMD\d+;.+?;([A-Z]{3})\s*([\d.]+);N;;([A-Z]{3})\s*([\d.]+)/');
         if ($match) {
             return (float) $match[4];
-        }     
+        }
         return 0.0;
     }
-    
+
     /**
      * Extract exchange currency from K line
      * Supports both regular (K-F) and refund (KN-/KS-) formats
@@ -499,7 +532,7 @@ class AirFileParser
             if ($match) {
                 return $match[3]; // Second currency (KWD in refund example)
             }
-        
+
             // Regular format (K-F) with second currency
             $match = $this->findLine('/^K-[RF]([A-Z]{3})([\d.]+)\s*;{10,}([A-Z]{3})([\d.]+)/');
             if ($match) {
@@ -512,7 +545,7 @@ class AirFileParser
                 return $match[1]; // First currency (e.g., EGP)
             }
         }
-        
+
         // Fallback: Look for any currency on K line
         $match = $this->findLine('/^K[NS]?-[RFI]?([A-Z]{3})/');
         if ($match) {
@@ -522,10 +555,10 @@ class AirFileParser
         $match = $this->findLine('/^EMD\d+;.+?;([A-Z]{3})\s*([\d.]+);N;;([A-Z]{3})\s*([\d.]+)/');
         if ($match) {
             return $match[3];
-        }     
+        }
         return 'KWD'; // Default currency
     }
-    
+
     /**
      * Extract original price (base fare from K line)
      * Supports both regular and refund formats
@@ -544,10 +577,10 @@ class AirFileParser
         if ($match) {
             return (float) $match[2]; // First amount (base fare)
         }
-        
+
         $match = $this->findLine('/^RFD[MFLAC]?\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)/');
         if ($match) {
-            
+
             return (float) $match[1];
         }
 
@@ -557,7 +590,7 @@ class AirFileParser
         }
         return null;
     }
-    
+
     /**
      * Extract original currency from K line
      * Supports both regular and refund formats
@@ -583,7 +616,7 @@ class AirFileParser
         }
         return 'KWD'; // Default currency
     }
-    
+
     /**
      * Extract total amount from K line
      * The total is explicitly mentioned in the K line after multiple semicolons
@@ -628,7 +661,7 @@ class AirFileParser
                 return (float) $match[4]; // Total fare
             }
         }
-        
+
         $match = $this->findLine('/^RFD[MFLAC]?[;\s].*;([\d.]+)\s*$/');
         if ($match) {
             return (float) $match[1]; // Last value = total
@@ -644,10 +677,10 @@ class AirFileParser
         if ($match) {
             return (float) $match[6];
         }
-        
+
         return 0.0;
     }
-    
+
     /**
      * Extract surcharge
      */
@@ -659,7 +692,7 @@ class AirFileParser
         }
         return 0.0;
     }
-    
+
     /**
      * Extract penalty fee
      */
@@ -677,7 +710,7 @@ class AirFileParser
         }
         return 0.0;
     }
-    
+
     /**
      * Extract tax amount from KFTF line, KNTI/KSTI line, or TAX line
      * Supports both regular and refund formats
@@ -688,7 +721,7 @@ class AirFileParser
     private function extractTax()
     {
         $totalTax = 0.0;
-        
+
         // First try refund format (KNTI or KSTI line)
         $match = $this->findLine('/^K[NS]TI;(.+)/');
         if ($match) {
@@ -701,9 +734,9 @@ class AirFileParser
                 return $totalTax;
             }
         }
-        
+
         // Try regular format (KFTF line)
-        $match = $this->findLine('/^KFTF;(.+)/');
+        $match = $this->findLine('/^KFT[RF];(.+)/');
         if ($match) {
             $taxString = $match[1];
             // Parse individual tax components: KWD24.000   YQ AC; KWD4.000    YR VB;
@@ -714,7 +747,7 @@ class AirFileParser
                 return $totalTax;
             }
         }
-        
+
         // Try TAX line format
         $match = $this->findLine('/^TAX-(.+)/');
         if ($match) {
@@ -727,7 +760,7 @@ class AirFileParser
                 return $totalTax;
             }
         }
-        
+
         $match = $this->findLine('/^KRF\s*;(.*)/');
         if ($match) {
             $taxString = $match[1];
@@ -751,10 +784,10 @@ class AirFileParser
             }
             return $totalTax;
         }
-        
+
         return 0.0;
     }
-    
+
     /**
      * Extract taxes record from KFTF line, KNTI/KSTI line, or KRF line
      * Supports both regular and refund formats
@@ -770,19 +803,19 @@ class AirFileParser
         if ($match) {
             return rtrim($match[1], "; \r\n");
         }
-        
+
         // Try regular format (KFTF line)
         $match = $this->findLine('/^KFTF;(.+?)(;*)$/');
         if ($match) {
             return rtrim($match[1], "; \r\n");
         }
-        
+
         // Try TAX line
         $match = $this->findLine('/^TAX-(.+)/');
         if ($match) {
             return rtrim($match[1], "; \r\n");
         }
-        
+
         $match = $this->findLine('/^KRF\s*;(.*)/');
         if ($match) {
             $taxString = $match[1];
@@ -803,31 +836,39 @@ class AirFileParser
         if ($match) {
             return rtrim($match[1], "; \r\n");
         }
-        
-        return '';
+
+        return null;
     }
-    
+
     /**
-     * Extract refund charge (non-refundable taxes)
+     * Extract refund charge (non-refundable carrier surcharges YQ/YR/YX).
+     * Requires comparison with original ticket taxes.
+     * Refund AIR only → always 0.00. Refund AIR + Original AIR → calculate refund_charge = original YQ/YR/YX − refunded YQ/YR/YX.
      */
-    private function extractRefundCharge()
+    private function extractRefundCharge(): float
     {
-        $taxesRecord = $this->extractTaxesRecord();
-        if (empty($taxesRecord)) {
-            return 0.0;
-        }
-
-        $total = 0.0;
-        foreach (explode(';', $taxesRecord) as $seg) {
-            $seg = trim($seg);
-            if (preg_match('/^Q[A-Z]{3}([\d.]+)\s+(YQ|YR|YX)$/', $seg, $m)) {
-                $total += (float)$m[1];
-            }
-        }
-
-        return $total;
+        // Without original ticket data, we cannot determine withheld taxes.
+        return 0.0;
     }
-    
+
+    // private function extractRefundCharge()
+    // {
+    //     $taxesRecord = $this->extractTaxesRecord();
+    //     if (empty($taxesRecord)) {
+    //         return 0.0;
+    //     }
+
+    //     $total = 0.0;
+    //     foreach (explode(';', $taxesRecord) as $seg) {
+    //         $seg = trim($seg);
+    //         if (preg_match('/^Q[A-Z]{3}([\d.]+)\s+(YQ|YR|YX)$/', $seg, $m)) {
+    //             $total += (float)$m[1];
+    //         }
+    //     }
+
+    //     return $total;
+    // }
+
     /**
      * Extract reference (first ticket number for single passenger, or GDS reference for multiple)
      */
@@ -836,7 +877,43 @@ class AirFileParser
         $ticketNumber = $this->extractTicketNumber();
         return substr($ticketNumber, -10);
     }
-    
+
+    /**
+     * Extract original ticket number from FO line
+     * Format: FO229-2682811678...
+     * - FO prefix
+     * - airline code (3 digits)
+     * - ticket number (10 digits)
+     */
+    private function extractOriginalTicketNumber()
+    {
+        // Case 1: Look for FO line (reissued ticket reference)
+        if ($match = $this->findLine('/^(FO\d{3}-\d{10})/')) {
+            return $match[1]; // e.g., FO229-3049940591
+        }
+
+        // Case 2: Look for T- line (original refund issued ticket). Example: T-E229-2683006479
+        if ($match = $this->findLine('/^\s*(T-[A-Z]?\d{3}-\d{10})/')) {
+            return $match[1]; // e.g., T-E229-2683006479
+        }
+
+        // Case 3: Look for T- line (original emd issued ticket). Example: T-K229-5825640088
+        if ($match = $this->findLines('/^T-[KE](\d+)-(\d+)/')) {
+            return $match[1]; // e.g., T-K229-5825640088
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract original reference (last 10 digits from original ticket number)
+     */
+    private function extractOriginalReference()
+    {
+        $originalTicket = $this->extractOriginalTicketNumber();
+        return $originalTicket ? substr($originalTicket, -10) : null;
+    }
+
     /**
      * Extract created by (first GDS office ID)
      */
@@ -847,14 +924,14 @@ class AirFileParser
             return $match[1];
         }
 
-         $match = $this->findLine('/^MUC1A\s*;\s*\d+;\s*([A-Z0-9]+);/');
+        $match = $this->findLine('/^MUC1A\s*;\s*\d+;\s*([A-Z0-9]+);/');
         if ($match) {
             return $match[1];
         }
 
-        return '';
+        return null;
     }
-    
+
     /**
      * Extract issued by (last GDS office ID)
      */
@@ -863,10 +940,10 @@ class AirFileParser
         $match = $this->findLine('/^MUC1A\s+(.+?)(?:;+)?$/');
         if ($match) {
             // Split by semicolon and get all non-empty parts
-            $parts = array_filter(explode(';', $match[1]), function($part) {
+            $parts = array_filter(explode(';', $match[1]), function ($part) {
                 return trim($part) !== '';
             });
-            
+
             // Find the last part that contains 'KWIKT'
             $lastKwiktPart = null;
             foreach ($parts as $part) {
@@ -874,13 +951,13 @@ class AirFileParser
                     $lastKwiktPart = $part;
                 }
             }
-            
+
             return $lastKwiktPart ?: end($parts); // Return last KWIKT part or fallback to last part
         }
 
-        return '';
+        return null;
     }
-    
+
     /**
      * Extract agent name
      */
@@ -891,9 +968,9 @@ class AirFileParser
         if ($match) {
             return 'COMO TRAVEL AND TOURISM';
         }
-        return '';
+        return null;
     }
-    
+
     /**
      * Extract agent email
      */
@@ -908,16 +985,16 @@ class AirFileParser
         // Look for APE- prefix followed by email
         $match = $this->findLine('/APE-([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/');
         if ($match) return strtolower($match[1]);
-        
+
         // Fallback: Look for any email pattern without prefix
         $match = $this->findLine('/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/');
         if ($match) {
             return strtolower($match[1]);
         }
-        
-        return '';
+
+        return null;
     }
-    
+
     /**
      * Extract agent Amadeus ID from C line
      */
@@ -927,9 +1004,9 @@ class AirFileParser
         if ($match) {
             return $match[1];
         }
-        return '';
+        return null;
     }
-    
+
     /**
      * Extract client name from I line
      * For multiple passengers, returns the first client name
@@ -940,9 +1017,9 @@ class AirFileParser
         if ($match) {
             return trim($match[3]);
         }
-        return '';
+        return null;
     }
-    
+
     /**
      * Extract supplier name
      */
@@ -950,7 +1027,7 @@ class AirFileParser
     {
         return 'Amadeus'; // Default for AIR files
     }
-    
+
     /**
      * Extract supplier country
      */
@@ -958,7 +1035,7 @@ class AirFileParser
     {
         return 'Kuwait'; // Default based on office codes
     }
-    
+
     /**
      * Extract cancellation policy
      */
@@ -967,9 +1044,9 @@ class AirFileParser
         if ($this->extractStatus() === 'void') {
             return 'Non-refundable after issue';
         }
-        return '';
+        return null;
     }
-    
+
     /**
      * Extract venue (airports)
      */
@@ -977,14 +1054,14 @@ class AirFileParser
     {
         $departure = $this->extractDepartureAirport();
         $arrival = $this->extractArrivalAirport();
-        
+
         if ($departure && $arrival) {
             return "{$departure} to {$arrival}";
         }
-        
+
         return 'Kuwait International Airport'; // Default
     }
-    
+
     /**
      * Extract created at date
      */
@@ -1002,7 +1079,7 @@ class AirFileParser
                 // If parsing fails, return null
             }
         }
-        
+
         // For refund tasks, if no issued_date found, use refund_date as fallback
         if ($this->extractStatus() === 'refund') {
             $refundDate = $this->extractRefundDate();
@@ -1010,7 +1087,7 @@ class AirFileParser
                 return $refundDate;
             }
         }
-        
+
         // For void tasks, if no issued_date found, use void_date as fallback
         if ($this->extractStatus() === 'void') {
             $voidDate = $this->extractVoidDate();
@@ -1018,10 +1095,10 @@ class AirFileParser
                 return $voidDate;
             }
         }
-        
+
         return null;
     }
-    
+
     /**
      * Extract additional info
      */
@@ -1041,65 +1118,85 @@ class AirFileParser
                 return 'Flight ticket';
         }
     }
-    
+
     // Flight Details Extraction Methods
-    
+
     private function extractFarebase()
     {
         return $this->extractPrice();
     }
-    
+
     private function extractDepartureTime()
     {
-         // Match pattern like 02APR0435 (day + month + time), but avoid XX patterns
-    $match = $this->findLine('/\b(\d{2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(\d{4})\b/');
-    if ($match) {
-        $day = $match[1];      // "02"
-        $month = $match[2];    // "APR"
-        $time = $match[3];     // "0435"
+        // Match pattern like 02APR0435 (day + month + time), but avoid XX patterns
+        $match = $this->findLine('/\b(\d{2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(\d{4})\b/');
+        if ($match) {
+            $day = $match[1];      // "02"
+            $month = $match[2];    // "APR"
+            $time = $match[3];     // "0435"
 
-        $hour = substr($time, 0, 2);   // "04"
-        $minute = substr($time, 2, 2); // "35"
+            $hour = substr($time, 0, 2);   // "04"
+            $minute = substr($time, 2, 2); // "35"
 
-        try {
-            // Build a Carbon instance using day, month, and time (assumes current year)
-            $datetime = Carbon::createFromFormat('d-M-H:i', "{$day}-{$month}-{$hour}:{$minute}");
-            return $datetime->format('Y-m-d H:i:s');
-        } catch (\Exception $e) {
-            // If parsing fails, return null
-            return null;
+            try {
+                // Build a Carbon instance using day, month, and time (assumes current year)
+                $datetime = Carbon::createFromFormat('d-M-H:i', "{$day}-{$month}-{$hour}:{$minute}");
+                return $datetime->format('Y-m-d H:i:s');
+            } catch (\Exception $e) {
+                // If parsing fails, return null
+                return null;
+            }
         }
+
+        return null;
     }
 
-    return null;
-    }
-    
     private function extractDepartureCountry()
     {
         return 'Kuwait'; // Default based on KWI airport
     }
-    
+
     private function extractDepartureAirport()
     {
-        $match = $this->findLine('/^U-/');
-        if ($match) {
-            $parts = explode(';', $match[0]);
-            if (isset($parts[1])) {
-                return substr($parts[1], -3);
+        // 1) H-/U- segment
+        if ($match = $this->findLine('/^[HU]-\d+[A-Z]?;(.+)/')) {
+            $parts = array_map('trim', explode(';', $match[1]));
+            if (count($parts) >= 3) {
+                $from = preg_replace('/^\d+[A-Z]?/', '', $parts[0]); // e.g. 003OKWI → KWI
+                return $from !== '' ? $from : null;
             }
         }
-        return 'KWI'; // Default
+
+        // 2) G- line (e.g. KWICAI)
+        if ($match = $this->findLine('/^G-[^;]*;[^;]*;([A-Z]{6});/')) {
+            $pair = $match[1];
+            return substr($pair, 0, 3);
+        }
+
+        // 3) Q- line (pick first code that is a real IATA in your map)
+        if ($match = $this->findLine('/^Q-(.+)/')) {
+            $tokens = [];
+            preg_match_all('/\b([A-Z]{3})\b/', $match[1], $all);
+            foreach ($all[1] as $code) {
+                if (isset(self::$IATA_TO_COUNTRY[$code])) {
+                    $tokens[] = $code;
+                }
+            }
+            if (!empty($tokens)) return $tokens[0];
+        }
+
+        return null;
     }
-    
+
     private function extractDepartureTerminal()
     {
         $match = $this->findLine('/TERMINAL\s+(\d+)/i');
         if ($match) {
             return $match[1];
         }
-        return '';
+        return null;
     }
-    
+
     private function extractArrivalTime()
     {
         // Match pattern like 02APR0435 (day + month + time), but avoid XX patterns
@@ -1124,38 +1221,60 @@ class AirFileParser
 
         return null;
     }
-    
+
     private function extractDurationTime()
     {
         // Calculate from departure and arrival times
         $departure = $this->extractDepartureTime();
         $arrival = $this->extractArrivalTime();
-        
+
         if ($departure && $arrival) {
             $dep = Carbon::parse($departure);
             $arr = Carbon::parse($arrival);
             $diff = $dep->diff($arr);
             return $diff->format('%hh %im');
         }
-        
-        return '';
+
+        return null;
     }
-    
+
     private function extractArrivalCountry()
     {
         // Default based on common routes
         return 'United Arab Emirates';
     }
-    
+
     private function extractArrivalAirport()
     {
-        $match = $this->findLine('/([A-Z]{3})\s+([A-Z]{3})/');
-        if ($match) {
-            return $match[2]; // Second airport code
+        if ($match = $this->findLine('/^[HU]-\d+[A-Z]?;(.+)/')) {
+            $parts = array_map('trim', explode(';', $match[1]));
+            if (count($parts) >= 3) {
+                $to = preg_replace('/^\d+[A-Z]?/', '', $parts[2]);
+                return $to !== '' ? $to : null;
+            }
         }
-        return 'DXB'; // Default
+
+        // 2) G- line (e.g. KWICAI)
+        if ($match = $this->findLine('/^G-[^;]*;[^;]*;([A-Z]{6});/')) {
+            $pair = $match[1];
+            return substr($pair, 3, 3);
+        }
+
+        // 3) Q- line (pick last real IATA in your map)
+        if ($match = $this->findLine('/^Q-(.+)/')) {
+            $tokens = [];
+            preg_match_all('/\b([A-Z]{3})\b/', $match[1], $all);
+            foreach ($all[1] as $code) {
+                if (isset(self::$IATA_TO_COUNTRY[$code])) {
+                    $tokens[] = $code;
+                }
+            }
+            if (!empty($tokens)) return end($tokens);
+        }
+
+        return null;
     }
-    
+
     private function extractArrivalTerminal()
     {
         $match = $this->findLine('/^(U-\d{3}X;.+)/');
@@ -1165,78 +1284,150 @@ class AirFileParser
                 return trim($segments[17]);
             }
         }
-        return '';
+        return null;
     }
-    
+
     private function extractAirlineName()
     {
-        // Look for airline codes like KU
-        $match = $this->findLine('/([A-Z]{2})\s+\d+/');
+        $match = $this->findLine('/^A-([^;]+);([A-Z]{2})/');
         if ($match) {
-            $code = $match[1];
-            switch ($code) {
-                case 'KU':
-                    return 'Kuwait Airways';
-                case 'EK':
-                    return 'Emirates';
-                case 'QR':
-                    return 'Qatar Airways';
-                default:
-                    return $code . ' Airlines';
-            }
+            return trim($match[1]);
         }
-        return 'Kuwait Airways'; // Default
+
+        return null;
     }
-    
+
+    private static array $IATA_TO_COUNTRY = [
+        'KWI' => 'Kuwait',
+        'KFH' => 'Kuwait',
+        'DOH' => 'Qatar',
+        'DXB' => 'United Arab Emirates',
+        'DWC' => 'United Arab Emirates',
+        'AUH' => 'United Arab Emirates',
+        'SHJ' => 'United Arab Emirates',
+        'BAH' => 'Bahrain',
+        'MCT' => 'Oman',
+        'RUH' => 'Saudi Arabia',
+        'JED' => 'Saudi Arabia',
+        'DMM' => 'Saudi Arabia',
+        'MED' => 'Saudi Arabia',
+        'CAI' => 'Egypt',
+        'HBE' => 'Egypt',
+        'SSH' => 'Egypt',
+        'HRG' => 'Egypt',
+        'LXR' => 'Egypt',
+        'ASW' => 'Egypt',
+        'IST' => 'Türkiye',
+        'SAW' => 'Türkiye',
+        'AYT' => 'Türkiye',
+        'ESB' => 'Türkiye',
+        'AMM' => 'Jordan',
+        'BEY' => 'Lebanon',
+        'BER' => 'Germany',
+        'FRA' => 'Germany',
+        'MUC' => 'Germany',
+        'TXL' => 'Germany',
+        'SXF' => 'Germany',
+        'IST' => 'Türkiye',
+        'SAW' => 'Türkiye',
+        'LHR' => 'United Kingdom',
+        'LGW' => 'United Kingdom',
+        'MAN' => 'United Kingdom',
+        'CDG' => 'France',
+        'ORY' => 'France',
+        'AMS' => 'Netherlands',
+        'ZRH' => 'Switzerland',
+        'GVA' => 'Switzerland',
+        'DOH' => 'Qatar',
+    ];
+
+    private function countryFromIata(?string $code): ?string
+    {
+        if (!$code) return null;
+        $code = strtoupper(trim($code));
+        return self::$IATA_TO_COUNTRY[$code] ?? null;
+    }
+
     private function extractFlightNumber()
     {
         $match = $this->findLine('/([A-Z]{2})\s*(\d+)/');
         if ($match) {
             return $match[1] . '-' . $match[2];
         }
-        return '';
+        return null;
     }
-    
+
     private function extractClassType()
     {
-        // Look for class codes
-        $match = $this->findLine('/\s([YFCJ])\s/');
+        $match = $this->findLine('/^(H-\d{3}(?:[A-Z])?;.+)/');
         if ($match) {
-            $class = $match[1];
-            switch ($class) {
-                case 'Y':
-                    return 'economy';
-                case 'C':
-                    return 'business';
-                case 'F':
-                    return 'first';
-                case 'J':
-                    return 'business';
-                default:
-                    return 'economy';
+            $segments = explode(';', $match[1]);
+
+            if (isset($segments[5])) {
+                $flightInfo = trim($segments[5]);
+
+                if (preg_match('/\b([A-Z])\b/', $flightInfo, $classMatch)) {
+                    return $classMatch[1];  // e.g., "U"
+                }
             }
         }
-        return 'economy';
+
+        return null;
+
+        // Look for class codes
+        // $match = $this->findLine('/\s([YFCJ])\s/');
+        // if ($match) {
+        //     $class = $match[1];
+        //     switch ($class) {
+        //         case 'Y':
+        //             return 'economy';
+        //         case 'C':
+        //             return 'business';
+        //         case 'F':
+        //             return 'first';
+        //         case 'J':
+        //             return 'business';
+        //         default:
+        //             return 'economy';
+        //     }
+        // }
+        // return 'economy';
     }
-    
+
     private function extractBaggageAllowed()
     {
         $match = $this->findLine('/(\d+)KG/i');
         if ($match) {
             return $match[1] . 'kg';
         }
-        return '30kg'; // Default
+
+        $match = $this->findLine('/^(H-\d{3}(?:[A-Z])?;.+)/');
+        if ($match) {
+            $segments = explode(';', $match[1]);
+            if (isset($segments[13])) {
+                return trim($segments[13]);
+            }
+        }
+        return null;
     }
-    
+
     private function extractEquipment()
     {
+        $match = $this->findLine('/^(H-\d{3}(?:[A-Z])?;.+)/');
+        if ($match) {
+            $segments = explode(';', $match[1]);
+            if (isset($segments[10])) {
+                return trim($segments[10]);
+            }
+        }
+
         $match = $this->findLine('/(A\d{3}|B\d{3})/');
         if ($match) {
             return $match[1];
         }
-        return '';
+        return null;
     }
-    
+
     private function extractFlightMeal()
     {
         $match = $this->findLine('/MEAL\s*:\s*([A-Z]+)/i');
@@ -1244,25 +1435,77 @@ class AirFileParser
             return $match[1];
         }
 
-        $match = $this->findLine('/^(U-\d{3}X;.+)/');
+        $match = $this->findLine('/^(H-\d{3}(?:[A-Z])?;.+)/');
         if ($match) {
             $segments = explode(';', $match[1]);
             if (isset($segments[8])) {
                 return trim($segments[8]);
             }
         }
-        return '';
+        return null;
     }
-    
-    private function extractSeatNumber()
+
+    private function extractStopsCount()
     {
-        $match = $this->findLine('/SEAT\s*:\s*(\d+[A-Z])/i');
+        $match = $this->findLine('/^(H-\d{3}(?:[A-Z])?;.+)/');
         if ($match) {
-            return $match[1];
+            $segments = explode(';', $match[1]);
+            if (isset($segments[9])) {
+                return trim($segments[9]);
+            }
         }
-        return '';
+        return null;
     }
-    
+
+    private function extractSeatNumber(int $paxIndex = 1)
+    {
+        foreach ($this->lines as $line) {
+            $line = trim($line);
+
+            if (preg_match('/^S-(\d{2})(.*)$/', $line, $m)) {
+                if ((int)$m[1] !== $paxIndex) continue;
+
+                if (preg_match_all('/\/[A-Z]?(\d{1,3}[A-Z])\.[A-Z]/', $m[2], $seats) && !empty($seats[1])) {
+                    return $seats[1][0]; // e.g., "14H"
+                }
+            }
+        }
+        return null;
+    }
+
+    // private function extractSeatNumber()
+    // {
+    //     // Match lines like: S-01/B12F.N;/B11B.N
+    //     $match = $this->findLine('/^S-(\d{2})(?=\/).*/m');
+    //     if ($match) {
+    //         $line = $match[0];
+
+    //         // Passenger index (01, 02, ...)
+    //         preg_match('/^S-(\d{2})/', $line, $pm);
+    //         $paxIndex = (int)$pm[1];
+
+    //         // Capture every "/B12F.N" piece (coach optional)
+    //         preg_match_all('/\/([A-Z]?)(\d{1,2})([A-Z])\.([A-Z])/', $line, $all, PREG_SET_ORDER);
+
+    //         // seats by position index (0,1,2,...) so you can add status later
+    //         $seatsInfo = ['passenger_index' => $paxIndex, 'seats' => []];
+    //         foreach ($all as $i => $seg) {
+    //             $seatsInfo['seats'][$i] = [
+    //                 'seat'   => $seg[2] . $seg[3],   // e.g. "12F"
+    //                 'coach'  => $seg[1] ?: '',     // e.g. "B" (optional)
+    //                 'status' => $seg[4],           // e.g. "N"
+    //             ];
+    //         }
+    //         return $seatsInfo;
+    //     }
+
+    //     $match = $this->findLine('/SEAT\s*:\s*(\d+[A-Z])/i');
+    //     if ($match) {
+    //         return $match[1];
+    //     }
+    //     return null;
+    // }
+
     /**
      * Extract base fare specifically from K line
      * This is the fare before taxes and fees
@@ -1275,16 +1518,16 @@ class AirFileParser
         if ($match) {
             return (float) $match[2]; // Base fare amount
         }
-        
+
         // Check for regular format (K-F)
         $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)/');
         if ($match) {
             return (float) $match[2]; // Base fare amount
         }
-        
+
         return 0.0;
     }
-    
+
     /**
      * Extract total fare specifically from K line  
      * This is the fare including taxes and fees
@@ -1297,16 +1540,16 @@ class AirFileParser
         if ($match) {
             return (float) $match[4]; // Total fare amount
         }
-        
+
         // Check for regular format (K-F)
         $match = $this->findLine('/^K-F([A-Z]{3})([\d.]+)\s*;;;;;;;;;;;;([A-Z]{3})([\d.]+)/');
         if ($match) {
             return (float) $match[4]; // Total fare amount
         }
-        
+
         return $this->extractBaseFare(); // Fallback to base fare
     }
-    
+
     /**
      * Check if the K-line has currency exchange (3 currency/amount pairs vs 2)
      * Currency exchange format: K-FAED1300 ;KWD109.000 ;;;;;;;;;;;KWD150.900 ;
@@ -1320,10 +1563,10 @@ class AirFileParser
             // Check if first and second currencies are different (indicating exchange)
             return $threePairMatch[1] !== $threePairMatch[3];
         }
-        
+
         return false;
     }
-    
+
     /**
      * Extract all passengers from the AIR file
      * Returns an array of passenger data with ticket numbers and names
@@ -1331,29 +1574,30 @@ class AirFileParser
     private function extractAllPassengers()
     {
         $passengers = [];
-        
+
         // Find all I- lines (passenger lines)
         $passengerLines = $this->findLines('/^I-(\d+);(\d+)([^;]+);/');
-        
-        // Find all T-K lines (ticket lines)
-        $ticketLines = $this->findLines('/^T-[KE](\d+)-(\d+)/');
 
-        if (empty($ticketLines)) {
+        if ($this->extractStatus() === 'refund') {
+            $ticketLines = $this->findLines('/^R-(\d+)-(\d+)/');
+        } else if ($this->extractStatus() === 'emd') {
             $ticketLines = $this->findLines('/^TMCD(\d+)-(\d+)/');
+        } else {
+            $ticketLines = $this->findLines('/^T-[KE](\d+)-(\d+)/');
         }
-        
+
         // Match passengers with their tickets
         foreach ($passengerLines as $index => $passengerMatch) {
             $passengerNumber = $passengerMatch[1]; // e.g., "001", "002"
             $clientName = trim($passengerMatch[3]); // e.g., "ALZANKI/FAHAD MR"
-            
+
             // Find corresponding ticket (they should be in order)
             $ticketNumber = '';
             if (isset($ticketLines[$index])) {
                 $ticketMatch = $ticketLines[$index];
                 $ticketNumber = $ticketMatch[0];    // e.g., "T-K012-1234567890"
             }
-            
+
             $passengers[] = [
                 'passenger_number' => $passengerNumber,
                 'client_name' => $clientName,
@@ -1363,26 +1607,27 @@ class AirFileParser
         }
 
         foreach ($this->lines as $line) {
-            if (preg_match('/^\s*EMD\d+;.*?;N;;\s*([A-Z]{3})\s*([\d.]+).*?;P(\d+);/i', $line, $m)) {
-                $paxIndex = (int) $m[3];
-                $price    = (float) $m[2];
-        
-                if (isset($passengers[$paxIndex - 1])) {
-                    $passengers[$paxIndex - 1]['price'] = $price;
-                }
+            // Pattern where base & total are both present (…;KWD 58.000;N;;KWD 58.000…;P1;)
+            if (preg_match('/^EMD\d+;.*?;([A-Z]{3})\s*([\d.]+)\s*;N;;([A-Z]{3})\s*([\d.]+).*?;P(\d+)\b/i', $line, $m)) {
+                $paxIndex = (int)$m[5];
+                $cur      = $m[3];           // use the “total” currency
+                $amt      = (float)$m[4];    // use the “total” amount
+
+                // Fallback: at least one currency+amount before ;P#
+            } elseif (preg_match('/^EMD\d+;.*?([A-Z]{3})\s*([\d.]+).*?;P(\d+)\b/i', $line, $m)) {
+                $paxIndex = (int)$m[3];
+                $cur      = $m[1];
+                $amt      = (float)$m[2];
+            } else {
                 continue;
             }
 
-            if (preg_match('/^EMD\d+;.*?(KWD\s*([\d.]+)).*?;P(\d+);/i', $line, $match)) {
-                $price = (float) $match[2];
-                $paxIndex = (int) $match[3];
-        
-                if (isset($passengers[$paxIndex - 1])) {
-                    $passengers[$paxIndex - 1]['price'] = $price;
-                }
-            } 
-        }        
-        
+            if (isset($passengers[$paxIndex - 1])) {
+                $passengers[$paxIndex - 1]['price'] += $amt;                 // <= accumulate
+                $passengers[$paxIndex - 1]['emd_currency'] ??= $cur;         // <= set once
+            }
+        }
+
         return $passengers;
     }
 
@@ -1394,7 +1639,7 @@ class AirFileParser
     {
         $formattedDate = $this->convertDateFormat($dateStr);
         $formattedTime = $this->convertTimeFormat($timeStr);
-        
+
         return $formattedDate . ' ' . $formattedTime . ':00';
     }
 }

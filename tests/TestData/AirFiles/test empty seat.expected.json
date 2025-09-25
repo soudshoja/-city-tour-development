@@ -1,0 +1,42 @@
+{
+    "description": "test empty seat s01-",
+    "passenger_count": 2,
+    "passengers": [
+        {
+            "client_name": "ALKHALAF\/MONA MRS",
+            "reference": "3580583755",
+            "status": "issued",
+            "price": 68,
+            "currency": "KWD",
+            "ticket_number": "T-K235-3580583755",
+            "agent_name": "",
+            "agent_email": "",
+            "agent_amadeus_id": "9966SD",
+            "task_flight_details": [
+                {
+                    "flight_number": "TK0772",
+                    "airline": "TK",
+                    "departure_time": "2025-11-19 20:30:00"
+                }
+            ]
+        },
+        {
+            "client_name": "ALTERKAIT\/AHMAD MR",
+            "reference": "3580583756",
+            "status": "issued",
+            "price": 68,
+            "currency": "KWD",
+            "ticket_number": "T-K235-3580583756",
+            "agent_name": "",
+            "agent_email": "",
+            "agent_amadeus_id": "9966SD",
+            "task_flight_details": [
+                {
+                    "flight_number": "TK0772",
+                    "airline": "TK",
+                    "departure_time": "2025-11-19 20:30:00"
+                }
+            ]
+        }
+    ]
+}

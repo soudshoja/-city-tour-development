@@ -14,7 +14,8 @@
             "original_currency": "KWD",
             "total": 36.83,
             "tax": 9.83,
-            "ticket_number": "T-E065-3580651914",
+            "ticket_number": "R-065-3580651914",
+            "original_ticket_number": "T-E065-3580651914",
             "agent_name": "",
             "agent_email": "",
             "agent_amadeus_id": "0012MI"

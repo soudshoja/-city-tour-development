@@ -6,16 +6,21 @@ use Illuminate\Database\Eloquent\Model;
 
 class RequestBookingRoom extends Model
 {
+
     protected $fillable = [
         'phone_number',
         'check_in',
         'check_out',
-        'adults',
-        'children_ages',
+        'hotel',
+        'city',
+        'city_id',
+        'occupancy',   
     ];
 
-    // protected $casts = [
-    //     'check_in' => 'datetime',
-    //     'check_out' => 'datetime',
-    // ];
+    protected $casts = [
+        'check_in'  => 'date:Y-m-d',
+        'check_out' => 'date:Y-m-d',
+        'occupancy' => 'array',   
+    ];
+
 }

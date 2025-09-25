@@ -30,6 +30,7 @@ use Illuminate\Http\JsonResponse;
 class FixFlightDetails extends Command
 {
     protected $signature = 'fix:flight-details 
+                            {--companyId= : Company ID to fix the missing flight details}
                             {--batch : Use batch processing (upload all files first, then process together)[default]}
                             {--single : Use single file processing (process files one by one)}
                             {--batch-size=10 : Maximum number of files to process in a single batch}';
@@ -50,7 +51,25 @@ class FixFlightDetails extends Command
 
     public function handle()
     {
-        $this->companies = Company::all();
+        $companyFilter = $this->option('companyId');
+        $companyId = null;
+
+        if (!$companyFilter) {
+            $this->error('Company ID is required when using this command');
+            return COMMAND::FAILURE;
+        }
+
+        $company = Company::find($companyFilter);
+        if (!$companyFilter) {
+            $this->error('Company with ID : ' . $companyFilter . ' is not found in the system');
+            return COMMAND::FAILURE;
+        }
+        $companyId = $company->id;
+        $companyName = $company->name;
+        $this->companies = collect([$company]);
+
+        $this->info('Selected Company: ' . $companyName . ' with ID : ' . $companyId);
+
         $useBatch = $this->option('batch') || (!$this->option('single') && !$this->option('batch'));
         $batchSize = max(1, (int) $this->option('batch-size'));
 

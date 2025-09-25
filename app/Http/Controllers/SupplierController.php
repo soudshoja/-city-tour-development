@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Enums\SupplierAuthType;
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Account;
@@ -118,7 +119,11 @@ class SupplierController extends Controller
             ->whereIn('task_id', $taskIds)
             ->get();
         $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
-        return view('suppliers.show', compact('supplier', 'JournalEntry', 'currencies'));
+
+        // Add this line:
+        $filteredTasks = $supplier->tasks;
+
+        return view('suppliers.show', compact('supplier', 'JournalEntry', 'currencies', 'filteredTasks'));
     }
 
     public function ledgerByDateRange(Request $request, $supplierId)
@@ -688,5 +693,37 @@ class SupplierController extends Controller
     public function magicReserveWebhookDocs()
     {
         return  view('docs.webhook.magic-holiday');
+    }
+    public function exportPdf(Request $request, $suppliersId)
+    {
+        $supplier = Supplier::with([
+            'tasks.agent',
+            'tasks.flightDetails',
+            'tasks.hotelDetails.hotel',
+            'country'
+        ])->findOrFail($suppliersId);
+
+        $dateField = $request->input('date_field', 'created_at');
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+
+        $filteredTasks = $supplier->tasks;
+
+        if ($fromDate && $toDate) {
+            $filteredTasks = $filteredTasks->filter(function ($task) use ($dateField, $fromDate, $toDate) {
+                $date = $task[$dateField];
+                if (!$date) return false;
+                $date = \Carbon\Carbon::parse($date)->format('Y-m-d');
+                return $date >= $fromDate && $date <= $toDate;
+            });
+        }
+
+        // Sort by selected date field, newest first
+        $filteredTasks = $filteredTasks->sortByDesc(function ($task) use ($dateField) {
+            return $task[$dateField] ? \Carbon\Carbon::parse($task[$dateField])->timestamp : 0;
+        });
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('suppliers.pdf', compact('supplier', 'filteredTasks'));
+        return $pdf->download('supplier-tasks.pdf');
     }
 }

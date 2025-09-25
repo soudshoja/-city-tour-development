@@ -16,7 +16,8 @@
             "surcharge": 0.0,
             "penalty_fee": 40.0,
             "tax": 40.60,
-            "ticket_number": "T-E229-2682858786",
+            "ticket_number": "R-229-2682858786",
+            "original_ticket_number": "T-E229-2682858786",
             "agent_name": "",
             "agent_email": "",
             "agent_amadeus_id": "4714IA"

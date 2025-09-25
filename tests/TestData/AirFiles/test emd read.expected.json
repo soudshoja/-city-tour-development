@@ -1,0 +1,31 @@
+{
+    "description": "test read emd new",
+    "passenger_count": 1,
+    "passengers": [
+        {
+            "client_name": "ALYOUSEF\/ABDULRAHMAN MR",
+            "reference": "1813502975",
+            "original_reference": "5825640088",
+            "status": "emd",
+            "price": 116,
+            "currency": "KWD",
+            "ticket_number": "TMCD229-1813502975",
+            "original_ticket_number": "T-K229-5825640088",
+            "agent_name": "",
+            "agent_email": "",
+            "agent_amadeus_id": "9966SD",
+            "task_flight_details": [
+                {
+                    "flight_number": "KU0101",
+                    "airline": "KU",
+                    "departure_time": "2025-10-25 10:05:00"
+                },
+                {
+                    "flight_number": "KU0104",
+                    "airline": "KU",
+                    "departure_time": "2025-11-03 10:45:00"
+                }
+            ]
+        }
+    ]
+}

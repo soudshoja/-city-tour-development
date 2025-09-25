@@ -1,9 +1,9 @@
 <x-app-layout>
 
     <head>
-<!-- filepath: c:\laravel\city-tour\resources\views\tasks\index.blade.php -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+        <!-- filepath: c:\laravel\city-tour\resources\views\tasks\index.blade.php -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
         <meta name="csrf-token" content="{{ csrf_token() }}">
     </head>
     <style>
@@ -339,6 +339,14 @@
             background-color: #2d3748;
         }
 
+        .peer:checked+span {
+            background-color: #ffb958;
+        }
+
+        .peer:checked+span>span {
+            transform: translateX(20px);
+        }
+
         @media (max-width: 640px) {
             .filter-modal-content {
                 width: 95vw;
@@ -525,47 +533,58 @@
                         :action="route('tasks.index')"
                         searchParam="q"
                         placeholder="Quick search for tasks" />
-                        <button type="button" id="toggleFilters"
-                            class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
-                            <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 32 32">
-                                <path fill="#333333"
-                                    d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3-3-3-3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3-3-3-3s-3-1.3-3-3" />
-                            </svg>
-                            <span class="text-xs md:text-sm dark:text-black">Filters</span>
-                        </button>
+                    <!-- Place this beside the Filters button -->
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="showVoidCheckbox"
+                            class="sr-only peer"
+                            {{ request('show_void') == '1' ? 'checked' : '' }}
+                            onchange="window.location='{{ request()->fullUrlWithQuery(['show_void' => '1']) }}'; if(!this.checked) window.location='{{ request()->fullUrlWithQuery(['show_void' => null]) }}';">
+                        <span class="w-10 h-5 bg-gray-300 rounded-full relative transition peer-checked:bg-orange-400">
+                            <span class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition peer-checked:translate-x-5"></span>
+                        </span>
+                        <span class="ml-2 text-xs md:text-sm font-medium text-gray-700 dark:text-black">Show Void Tasks</span>
+                    </label>
+                    <button type="button" id="toggleFilters"
+                        class="flex px-3 py-2 gap-2 w-full h-10 md:w-auto justify-center city-light-yellow rounded-full shadow-sm items-center text-xs md:text-sm">
+                        <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 32 32">
+                            <path fill="#333333"
+                                d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3-3-3-3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3-3-3-3s-3-1.3-3-3" />
+                        </svg>
+                        <span class="text-xs md:text-sm dark:text-black">Filters</span>
+                    </button>
 
-                        <!-- Modal for Advanced Filters -->
-                        <div id="filterModal" class="filter-modal">
-                            <div class="filter-modal-content">
-                                <div class="filter-modal-header">
-                                    <div class="relative w-full">
-                                        <h3>Advanced Filters</h3>
-                                    </div>
-                                    <div class="flex customCenter justify-end">
-                                        <button id="closeFilterModal" class="close-modal-btn">&times;</button>
-                                    </div>
+                    <!-- Modal for Advanced Filters -->
+                    <div id="filterModal" class="filter-modal">
+                        <div class="filter-modal-content">
+                            <div class="filter-modal-header">
+                                <div class="relative w-full">
+                                    <h3>Advanced Filters</h3>
                                 </div>
-                                <div id="filterContainer">
-                                    <!-- Filter rows will be dynamically added here -->
+                                <div class="flex customCenter justify-end">
+                                    <button id="closeFilterModal" class="close-modal-btn">&times;</button>
                                 </div>
-                                <div class="filter-modal-footer">
-                                    <div class="flex gap-3">
-                                        <button id="addFilterRow" class="add-filter-btn">Add Filter</button>
-                                    </div>
-                                    <div class="flex gap-3">
-                                        <button id="applyFilters" class="apply-filters-btn">Apply Filters</button>
-                                    </div>
-                                    <div class="flex gap-3">
-                                    <button id="clearAllActiveFilters2" 
+                            </div>
+                            <div id="filterContainer">
+                                <!-- Filter rows will be dynamically added here -->
+                            </div>
+                            <div class="filter-modal-footer">
+                                <div class="flex gap-3">
+                                    <button id="addFilterRow" class="add-filter-btn">Add Filter</button>
+                                </div>
+                                <div class="flex gap-3">
+                                    <button id="applyFilters" class="apply-filters-btn">Apply Filters</button>
+                                </div>
+                                <div class="flex gap-3">
+                                    <button id="clearAllActiveFilters2"
                                         class="clear-all-filters-btn">
                                         Clear All
                                     </button>
-                                    </div>
-
                                 </div>
+
                             </div>
                         </div>
+                    </div>
                     <div class="relative">
                         <button type="button" id="customizeColumnsBtn"
                             class="flex px-3 py-2 w-full h-10 md:w-auto DarkBGcolor dark:!bg-blue-700 dark:!hover:bg-blue-600 rounded-full shadow-sm items-center text-xs text-white font-semibold md:text-sm">
@@ -667,71 +686,71 @@
                                 @endif
                             </div>
                         </div>
-                    </div>                    
+                    </div>
                 </div>
-                
+
                 <div id="activeFiltersContainer" class="active-filters">
                     <div class="bg-white shadow-lg rounded-2xl border border-gray-200 p-4 transition-all duration-300">
                         <!-- Header -->
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="text-base font-bold text-gray-800 flex items-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18m-9 5h9" />
-                                    </svg>
-                                    Active Filters
-                                </h4>
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18m-9 5h9" />
+                                </svg>
+                                Active Filters
+                            </h4>
 
-                                <div class="flex gap-3">
-                                    <button id="editActiveFilters" 
-                                        class="text-sm font-medium text-green-600 hover:bg-green-100 px-3 py-1 rounded-lg transition-all">
-                                        ✏️ Modify
-                                    </button>
-                                    <button id="clearAllActiveFilters" 
-                                        class="text-sm font-medium text-red-600 hover:bg-red-100 px-3 py-1 rounded-lg transition-all">
-                                        🗑️ Clear All
-                                    </button>
-                                </div>
+                            <div class="flex gap-3">
+                                <button id="editActiveFilters"
+                                    class="text-sm font-medium text-green-600 hover:bg-green-100 px-3 py-1 rounded-lg transition-all">
+                                    ✏️ Modify
+                                </button>
+                                <button id="clearAllActiveFilters"
+                                    class="text-sm font-medium text-red-600 hover:bg-red-100 px-3 py-1 rounded-lg transition-all">
+                                    🗑️ Clear All
+                                </button>
                             </div>
+                        </div>
 
-                            <!-- Active Filter Tags -->
-                            <div id="activeFiltersList" class="flex flex-wrap gap-2">
-                                
-                            </div>
+                        <!-- Active Filter Tags -->
+                        <div id="activeFiltersList" class="flex flex-wrap gap-2">
+
+                        </div>
                     </div>
                 </div>
-               
+
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
                     <div class="w-full flex m-2 ">
-                            @php
-                                $invoiced = request()->has('invoiced') ? request('invoiced') : '0';
-                                // Set viewType to 'invoice' ONLY for Un Invoiced tab, otherwise keep the current value
-                                $viewType = $invoiced == '0'
-                                    ? request()->input('view_type', 'invoice')
-                                    : request()->input('view_type', '');
-                            @endphp
-                            <form method="GET" action="{{ route('tasks.index') }}" class="flex gap-0 w-full">
-                                @foreach(request()->except(['invoiced', 'page', 'view_type']) as $key => $value)
-                                    @if(is_array($value))
-                                        @foreach($value as $v)
-                                            <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
-                                        @endforeach
-                                    @else
-                                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                                    @endif
-                                @endforeach
-                                <input type="hidden" name="view_type" value="{{ $viewType }}">
-                                <button type="submit" name="invoiced" value="0"
-                                    class="w-full text-center py-1 rounded-l-lg font-bold text-lg transition
+                        @php
+                        $invoiced = request()->has('invoiced') ? request('invoiced') : '0';
+                        // Set viewType to 'invoice' ONLY for Un Invoiced tab, otherwise keep the current value
+                        $viewType = $invoiced == '0'
+                        ? request()->input('view_type', 'invoice')
+                        : request()->input('view_type', '');
+                        @endphp
+                        <form method="GET" action="{{ route('tasks.index') }}" class="flex gap-0 w-full">
+                            @foreach(request()->except(['invoiced', 'page', 'view_type']) as $key => $value)
+                            @if(is_array($value))
+                            @foreach($value as $v)
+                            <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+                            @endforeach
+                            @else
+                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                            @endif
+                            @endforeach
+                            <input type="hidden" name="view_type" value="{{ $viewType }}">
+                            <button type="submit" name="invoiced" value="0"
+                                class="w-full text-center py-1 rounded-l-lg font-bold text-lg transition
                                     {{ $invoiced == '0' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-100' }}">
-                                    Un Invoiced
-                                </button>
-                                <button type="submit" name="invoiced" value="1"
-                                    class="w-full text-center py-1 rounded-r-lg font-bold text-lg transition
+                                Un Invoiced
+                            </button>
+                            <button type="submit" name="invoiced" value="1"
+                                class="w-full text-center py-1 rounded-r-lg font-bold text-lg transition
                                     {{ $invoiced == '1' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-100' }}">
-                                    Invoiced
-                                </button>
-                            </form>
+                                Invoiced
+                            </button>
+                        </form>
                     </div>
                     <div x-data="{ shown: 10 }">
                         <div class="dataTable-container h-max">
@@ -916,9 +935,9 @@
                                         this.updateFloatingActions();
                                     }
                                 }" x-init="window.selectedTasksGlobal = selectedTasks" x-cloak>
-                                
 
-                                <table id="myTable" class="whitespace-nowrap dataTable-table">
+
+                                    <table id="myTable" class="whitespace-nowrap dataTable-table">
                                         <thead>
                                             <tr>
                                                 <th data-column="actions">
@@ -1122,7 +1141,7 @@
                                                                 </div>
                                                             </template>
                                                             @php
-                                                                $isInvoiced = \App\Models\InvoiceDetail::where('task_id', $task->id)->exists();
+                                                            $isInvoiced = \App\Models\InvoiceDetail::where('task_id', $task->id)->exists();
                                                             @endphp
                                                             <template x-teleport="body">
                                                                 <div x-show="editOpen" x-cloak x-data="{ readOnly: {{ $isInvoiced ? 'true' : 'false' }} }" class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800 bg-opacity-50">
@@ -1144,181 +1163,181 @@
                                                                             @csrf
                                                                             @method('PUT')
                                                                             <fieldset :disabled="readOnly" :class="readOnly ? 'opacity-80' : ''">
-                                                                            <div class="flex flex-col gap-6">
-                                                                                <div class="flex flex-col sm:flex-row gap-4">
-                                                                                    <div class="flex-1">
-                                                                                        <label for="reference"
-                                                                                            class="block text-sm font-medium text-gray-700">Reference</label>
-                                                                                        <input type="text"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
-                                                                                            name="reference"
-                                                                                            value="{{ $task->reference }}">
-                                                                                    </div>
-                                                                                    <div class="flex-1">
-                                                                                        <label for="status"
-                                                                                            class="block text-sm font-medium text-gray-700">Status</label>
-                                                                                        @if ($task->status === 'refund')
-                                                                                        <select name="status"
-                                                                                            id="status"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
-                                                                                            disabled>
-                                                                                            <option value="refund"
-                                                                                                selected>Refund
-                                                                                            </option>
-                                                                                        </select>
-                                                                                        <input type="hidden"
-                                                                                            name="status" value="refund">
-                                                                                        @else
-                                                                                        <select name="status"
-                                                                                            id="status"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base">
-                                                                                            <option value="">Set
-                                                                                                Status
-                                                                                            </option>
-                                                                                            <option value="confirmed"
-                                                                                                {{ $task->status === 'confirmed' ? 'selected' : '' }}>
-                                                                                                Confirmed
-                                                                                            </option>
-                                                                                            <option value="issued"
-                                                                                                {{ $task->status === 'issued' ? 'selected' : '' }}>
-                                                                                                Issued
-                                                                                            </option>
-                                                                                            <option value="reissued"
-                                                                                                {{ $task->status === 'reissued' ? 'selected' : '' }}>
-                                                                                                Reissued
-                                                                                            </option>
-                                                                                            <option value="refund"
-                                                                                                {{ $task->status === 'refund' ? 'selected' : '' }}>
-                                                                                                Refund
-                                                                                            </option>
-                                                                                            <option value="void"
-                                                                                                {{ $task->status === 'void' ? 'selected' : '' }}>
-                                                                                                Void
-                                                                                            </option>
-                                                                                            <option value="emd"
-                                                                                                {{ $task->status === 'emd' ? 'selected' : '' }}>
-                                                                                                Emd
-                                                                                            </option>
-                                                                                        </select>
-                                                                                        @endif
+                                                                                <div class="flex flex-col gap-6">
+                                                                                    <div class="flex flex-col sm:flex-row gap-4">
+                                                                                        <div class="flex-1">
+                                                                                            <label for="reference"
+                                                                                                class="block text-sm font-medium text-gray-700">Reference</label>
+                                                                                            <input type="text"
+                                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
+                                                                                                name="reference"
+                                                                                                value="{{ $task->reference }}">
+                                                                                        </div>
+                                                                                        <div class="flex-1">
+                                                                                            <label for="status"
+                                                                                                class="block text-sm font-medium text-gray-700">Status</label>
+                                                                                            @if ($task->status === 'refund')
+                                                                                            <select name="status"
+                                                                                                id="status"
+                                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
+                                                                                                disabled>
+                                                                                                <option value="refund"
+                                                                                                    selected>Refund
+                                                                                                </option>
+                                                                                            </select>
+                                                                                            <input type="hidden"
+                                                                                                name="status" value="refund">
+                                                                                            @else
+                                                                                            <select name="status"
+                                                                                                id="status"
+                                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base">
+                                                                                                <option value="">Set
+                                                                                                    Status
+                                                                                                </option>
+                                                                                                <option value="confirmed"
+                                                                                                    {{ $task->status === 'confirmed' ? 'selected' : '' }}>
+                                                                                                    Confirmed
+                                                                                                </option>
+                                                                                                <option value="issued"
+                                                                                                    {{ $task->status === 'issued' ? 'selected' : '' }}>
+                                                                                                    Issued
+                                                                                                </option>
+                                                                                                <option value="reissued"
+                                                                                                    {{ $task->status === 'reissued' ? 'selected' : '' }}>
+                                                                                                    Reissued
+                                                                                                </option>
+                                                                                                <option value="refund"
+                                                                                                    {{ $task->status === 'refund' ? 'selected' : '' }}>
+                                                                                                    Refund
+                                                                                                </option>
+                                                                                                <option value="void"
+                                                                                                    {{ $task->status === 'void' ? 'selected' : '' }}>
+                                                                                                    Void
+                                                                                                </option>
+                                                                                                <option value="emd"
+                                                                                                    {{ $task->status === 'emd' ? 'selected' : '' }}>
+                                                                                                    Emd
+                                                                                                </option>
+                                                                                            </select>
+                                                                                            @endif
 
 
-                                                                                        @if ($task->status === 'refund')
-                                                                                        <input type="hidden"
-                                                                                            name="status" value="Refund">
-                                                                                        @endif
+                                                                                            @if ($task->status === 'refund')
+                                                                                            <input type="hidden"
+                                                                                                name="status" value="Refund">
+                                                                                            @endif
 
-                                                                                    </div>
-                                                                                </div>
-
-                                                                                @if (strtolower($task->status) !== 'issued' && strtolower($task->status) !== 'confirmed'|| $task->status == null)
-                                                                                <div class="flex flex-col sm:flex-row gap-4">
-                                                                                    <div class="flex-1">
-                                                                                        @php
-                                                                                        $originalTasks = \App\Models\Task::with('client')
-                                                                                        ->where('status', 'issued')
-                                                                                        ->where(function ($query) use ($task) {
-                                                                                            $query->where('reference', $task->reference)
-                                                                                                ->orWhere('passenger_name', $task->passenger_name);
-                                                                                        })
-                                                                                        ->get();
-                                                                                        $selectedOriginalTask = $originalTasks->firstWhere('id', $task->original_task_id);
-                                                                                        $taskPlaceholder = $selectedOriginalTask
-                                                                                        ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
-                                                                                        : 'Select Original Task';
-                                                                                        @endphp
-
-                                                                                        <label for="original_task_id" class="block text-sm font-medium text-gray-700">Original Task</label>
-                                                                                        <x-searchable-dropdown
-                                                                                            name="original_task_id"
-                                                                                            :items="$originalTasks->map(fn($t) => [
-                                                                                                'id' => $t->id,
-                                                                                                'name' => $t->reference . ' - ' . ($t->client->full_name ?? $t->client_name)
-                                                                                            ])->values()"
-                                                                                            :selectedId="$task->original_task_id"
-                                                                                            :selectedName="$selectedOriginalTask
-                                                                                                ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
-                                                                                                : null"
-                                                                                            :placeholder="$taskPlaceholder" />
-                                                                                    </div>
-                                                                                </div>
-                                                                                @endif
-
-                                                                                <div class="flex flex-col sm:flex-row gap-4">
-                                                                                    <!-- Supplier Name -->
-                                                                                    <div class="flex-1">
-                                                                                        <label for="supplier"
-                                                                                            class="block text-sm font-medium text-gray-700">Supplier</label>
-                                                                                        <input type="text"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full bg-gray-200"
-                                                                                            value="{{ $task->supplier ? $task->supplier->name : '' }}"
-                                                                                            readonly>
-                                                                                        <input type="hidden"
-                                                                                            name="supplier_id"
-                                                                                            id="supplier_id_{{ $task->id }}"
-                                                                                            value="{{ $task->supplier ? $task->supplier->id : '' }}">
-
-                                                                                    </div>
-
-                                                                                    <!-- Task Type -->
-                                                                                    <div class="flex-1">
-                                                                                        <label for="type"
-                                                                                            class="block text-sm font-medium text-gray-700">Task
-                                                                                            Type</label>
-                                                                                        <input type="text"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full bg-gray-200"
-                                                                                            value="{{ ucfirst($task->type) }}"
-                                                                                            readonly>
-                                                                                    </div>
-                                                                                </div>
-
-                                                                                <div class="flex flex-col sm:flex-row gap-4">
-                                                                                    @php
-                                                                                    $selectedClient = \App\Models\Client::find($task->client_id);
-                                                                                    $clientPlaceholder = $selectedClient
-                                                                                    ? $selectedClient->full_name . ' - ' . $selectedClient->phone
-                                                                                    : 'Select a Client';
-                                                                                    @endphp
-                                                                                    <div class="flex-1">
-                                                                                        <label for="client_id"
-                                                                                            class="block text-sm font-medium text-gray-700">Client</label>
-                                                                                        <div class="w-full">
-                                                                                            <x-searchable-dropdown
-                                                                                                name="client_id"
-                                                                                                :items="$fullClients->map(fn($c) => [
-                                                                                                    'id' => $c->id, 
-                                                                                                    'name' => $c->full_name . ' - ' . $c->phone
-                                                                                                ])"
-                                                                                                :selectedId="$task->client_id"
-                                                                                                :selectedName="$selectedClient ? $selectedClient->full_name . ' - ' . $selectedClient->phone : null"
-                                                                                                placeholder="Select Client" />
                                                                                         </div>
                                                                                     </div>
 
-                                                                                    <!-- Agent Selection (Role-based) -->
-                                                                                    <div class="flex-1">
-                                                                                        <label for="agent_id"
-                                                                                            class="block text-sm font-medium text-gray-700">Agent</label>
-                                                                                        <select
-                                                                                            id="agent_id_select_{{ $task->id }}"
-                                                                                            name="agent_id"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base">
-                                                                                            <option value=""> Choose
-                                                                                                Agent</option>
-                                                                                            @foreach ($agents as $agent)
-                                                                                            <option
-                                                                                                value="{{ $agent->id }}"
-                                                                                                {{ $task->agent && $task->agent->id === $agent->id ? 'selected' : '' }}>
-                                                                                                {{ $agent->name }}
-                                                                                            </option>
-                                                                                            @endforeach
-                                                                                        </select>
+                                                                                    @if (strtolower($task->status) !== 'issued' && strtolower($task->status) !== 'confirmed'|| $task->status == null)
+                                                                                    <div class="flex flex-col sm:flex-row gap-4">
+                                                                                        <div class="flex-1">
+                                                                                            @php
+                                                                                            $originalTasks = \App\Models\Task::with('client')
+                                                                                            ->where('status', 'issued')
+                                                                                            ->where(function ($query) use ($task) {
+                                                                                            $query->where('reference', $task->reference)
+                                                                                            ->orWhere('passenger_name', $task->passenger_name);
+                                                                                            })
+                                                                                            ->get();
+                                                                                            $selectedOriginalTask = $originalTasks->firstWhere('id', $task->original_task_id);
+                                                                                            $taskPlaceholder = $selectedOriginalTask
+                                                                                            ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
+                                                                                            : 'Select Original Task';
+                                                                                            @endphp
+
+                                                                                            <label for="original_task_id" class="block text-sm font-medium text-gray-700">Original Task</label>
+                                                                                            <x-searchable-dropdown
+                                                                                                name="original_task_id"
+                                                                                                :items="$originalTasks->map(fn($t) => [
+                                                                                                'id' => $t->id,
+                                                                                                'name' => $t->reference . ' - ' . ($t->client->full_name ?? $t->client_name)
+                                                                                            ])->values()"
+                                                                                                :selectedId="$task->original_task_id"
+                                                                                                :selectedName="$selectedOriginalTask
+                                                                                                ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
+                                                                                                : null"
+                                                                                                :placeholder="$taskPlaceholder" />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    @endif
+
+                                                                                    <div class="flex flex-col sm:flex-row gap-4">
+                                                                                        <!-- Supplier Name -->
+                                                                                        <div class="flex-1">
+                                                                                            <label for="supplier"
+                                                                                                class="block text-sm font-medium text-gray-700">Supplier</label>
+                                                                                            <input type="text"
+                                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full bg-gray-200"
+                                                                                                value="{{ $task->supplier ? $task->supplier->name : '' }}"
+                                                                                                readonly>
+                                                                                            <input type="hidden"
+                                                                                                name="supplier_id"
+                                                                                                id="supplier_id_{{ $task->id }}"
+                                                                                                value="{{ $task->supplier ? $task->supplier->id : '' }}">
+
+                                                                                        </div>
+
+                                                                                        <!-- Task Type -->
+                                                                                        <div class="flex-1">
+                                                                                            <label for="type"
+                                                                                                class="block text-sm font-medium text-gray-700">Task
+                                                                                                Type</label>
+                                                                                            <input type="text"
+                                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full bg-gray-200"
+                                                                                                value="{{ ucfirst($task->type) }}"
+                                                                                                readonly>
+                                                                                        </div>
                                                                                     </div>
 
-                                                                                </div>
+                                                                                    <div class="flex flex-col sm:flex-row gap-4">
+                                                                                        @php
+                                                                                        $selectedClient = \App\Models\Client::find($task->client_id);
+                                                                                        $clientPlaceholder = $selectedClient
+                                                                                        ? $selectedClient->full_name . ' - ' . $selectedClient->phone
+                                                                                        : 'Select a Client';
+                                                                                        @endphp
+                                                                                        <div class="flex-1">
+                                                                                            <label for="client_id"
+                                                                                                class="block text-sm font-medium text-gray-700">Client</label>
+                                                                                            <div class="w-full">
+                                                                                                <x-searchable-dropdown
+                                                                                                    name="client_id"
+                                                                                                    :items="$fullClients->map(fn($c) => [
+                                                                                                    'id' => $c->id, 
+                                                                                                    'name' => $c->full_name . ' - ' . $c->phone
+                                                                                                ])"
+                                                                                                    :selectedId="$task->client_id"
+                                                                                                    :selectedName="$selectedClient ? $selectedClient->full_name . ' - ' . $selectedClient->phone : null"
+                                                                                                    placeholder="Select Client" />
+                                                                                            </div>
+                                                                                        </div>
 
-                                                                                <div
-                                                                                    x-data="{
+                                                                                        <!-- Agent Selection (Role-based) -->
+                                                                                        <div class="flex-1">
+                                                                                            <label for="agent_id"
+                                                                                                class="block text-sm font-medium text-gray-700">Agent</label>
+                                                                                            <select
+                                                                                                id="agent_id_select_{{ $task->id }}"
+                                                                                                name="agent_id"
+                                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base">
+                                                                                                <option value=""> Choose
+                                                                                                    Agent</option>
+                                                                                                @foreach ($agents as $agent)
+                                                                                                <option
+                                                                                                    value="{{ $agent->id }}"
+                                                                                                    {{ $task->agent && $task->agent->id === $agent->id ? 'selected' : '' }}>
+                                                                                                    {{ $agent->name }}
+                                                                                                </option>
+                                                                                                @endforeach
+                                                                                            </select>
+                                                                                        </div>
+
+                                                                                    </div>
+
+                                                                                    <div
+                                                                                        x-data="{
                                                                                         rawPrice: '{{ $task->price ?? 0 }}',
                                                                                         rawTax: '{{ $task->tax ?? 0 }}',
                                                                                         rawSurcharge: '{{ $task->surcharge ?? 0 }}',
@@ -1329,61 +1348,61 @@
                                                                                         return isNaN(num) ? 0 : num;
                                                                                         }
                                                                                     }"
-                                                                                    x-effect="total = +(parseNum(rawPrice) + parseNum(rawTax) + parseNum(rawSurcharge)).toFixed(3)"
-                                                                                    class="flex flex-wrap gap-4">
-                                                                                    <!-- Price -->
-                                                                                    <div class="flex-1 min-w-[150px]">
-                                                                                        <label class="block text-sm font-medium text-gray-700">Price</label>
-                                                                                        <input type="text" name="price" x-model="rawPrice"
-                                                                                        class="border border-gray-300 p-2 rounded-md w-full">
-                                                                                    </div>
+                                                                                        x-effect="total = +(parseNum(rawPrice) + parseNum(rawTax) + parseNum(rawSurcharge)).toFixed(3)"
+                                                                                        class="flex flex-wrap gap-4">
+                                                                                        <!-- Price -->
+                                                                                        <div class="flex-1 min-w-[150px]">
+                                                                                            <label class="block text-sm font-medium text-gray-700">Price</label>
+                                                                                            <input type="text" name="price" x-model="rawPrice"
+                                                                                                class="border border-gray-300 p-2 rounded-md w-full">
+                                                                                        </div>
 
-                                                                                    <!-- Tax -->
-                                                                                    <div class="flex-1 min-w-[150px]">
-                                                                                        <label class="block text-sm font-medium text-gray-700">Tax</label>
-                                                                                        <input type="text" name="tax" x-model="rawTax"
-                                                                                        class="border border-gray-300 p-2 rounded-md w-full">
-                                                                                    </div>
+                                                                                        <!-- Tax -->
+                                                                                        <div class="flex-1 min-w-[150px]">
+                                                                                            <label class="block text-sm font-medium text-gray-700">Tax</label>
+                                                                                            <input type="text" name="tax" x-model="rawTax"
+                                                                                                class="border border-gray-300 p-2 rounded-md w-full">
+                                                                                        </div>
 
-                                                                                    <!-- Surcharge -->
-                                                                                    <div class="flex-1 min-w-[150px]">
-                                                                                        <label class="block text-sm font-medium text-gray-700">Surcharge</label>
-                                                                                        <input type="text" name="surcharge" x-model="rawSurcharge"
-                                                                                        class="border border-gray-300 p-2 rounded-md w-full">
-                                                                                    </div>
+                                                                                        <!-- Surcharge -->
+                                                                                        <div class="flex-1 min-w-[150px]">
+                                                                                            <label class="block text-sm font-medium text-gray-700">Surcharge</label>
+                                                                                            <input type="text" name="surcharge" x-model="rawSurcharge"
+                                                                                                class="border border-gray-300 p-2 rounded-md w-full">
+                                                                                        </div>
 
-                                                                                    <!-- Total -->
-                                                                                    <div class="flex-1 min-w-[150px]">
-                                                                                        <label class="block text-sm font-medium text-gray-700">Total</label>
-                                                                                        <input type="text" name="total" :value="total" readonly
-                                                                                        class="border border-gray-300 p-2 rounded-md w-full">
+                                                                                        <!-- Total -->
+                                                                                        <div class="flex-1 min-w-[150px]">
+                                                                                            <label class="block text-sm font-medium text-gray-700">Total</label>
+                                                                                            <input type="text" name="total" :value="total" readonly
+                                                                                                class="border border-gray-300 p-2 rounded-md w-full">
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <!-- Payment Method -->
+                                                                                    <div class="flex flex-col sm:flex-row gap-4">
+                                                                                        <div class="flex-1">
+                                                                                            <label for="payment_method" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                                                            <select name="payment_method_account_id" id="payment_method_account_id"
+                                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                                                <option value="">Select Payment Method</option>
+                                                                                                @foreach($paymentMethod as $method)
+                                                                                                <option value="{{ $method->id }}" {{ $task->payment_method_account_id == $method->id ? 'selected' : ''}}>{{ $method->name }}</option>
+                                                                                                @endforeach
+                                                                                            </select>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div class="flex flex-col sm:flex-row gap-4">
+                                                                                        <!-- Additional Info and Venue -->
+                                                                                        <div class="flex-1">
+                                                                                            <label for="additional_info"
+                                                                                                class="block text-sm font-medium text-gray-700">Additional
+                                                                                                Info</label>
+                                                                                            <textarea rows="3" readonly
+                                                                                                class="border border-gray-300 dark:border-gray-600 p-3 rounded-md bg-gray-200 w-full resize-none">{{ $task->additional_info }} - {{ $task->venue }}
+                                                                                            </textarea>
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
-                                                                                <!-- Payment Method -->
-                                                                                <div class="flex flex-col sm:flex-row gap-4">
-                                                                                    <div class="flex-1">
-                                                                                        <label for="payment_method" class="block text-sm font-medium text-gray-700">Payment Method</label>
-                                                                                        <select name="payment_method_account_id" id="payment_method_account_id"
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                                            <option value="">Select Payment Method</option>
-                                                                                            @foreach($paymentMethod as $method)
-                                                                                            <option value="{{ $method->id }}" {{ $task->payment_method_account_id == $method->id ? 'selected' : ''}}>{{ $method->name }}</option>
-                                                                                            @endforeach
-                                                                                        </select>
-                                                                                    </div>
-                                                                                </div>
-                                                                                <div class="flex flex-col sm:flex-row gap-4">
-                                                                                    <!-- Additional Info and Venue -->
-                                                                                    <div class="flex-1">
-                                                                                        <label for="additional_info"
-                                                                                            class="block text-sm font-medium text-gray-700">Additional
-                                                                                            Info</label>
-                                                                                        <textarea rows="3" readonly
-                                                                                            class="border border-gray-300 dark:border-gray-600 p-3 rounded-md bg-gray-200 w-full resize-none">{{ $task->additional_info }} - {{ $task->venue }}
-                                                                                        </textarea>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
                                                                             </fieldset>
                                                                             <div class="mt-6 flex flex-col sm:flex-row justify-between gap-4">
                                                                                 <button type="button" @click="editOpen = false"
@@ -1818,7 +1837,7 @@
                                                 </form>
                                             </div>
                                         </div>
-                                </table>
+                                    </table>
                                     <div x-show="showBulkEditModal" x-transition x-cloak
                                         class="fixed inset-0 z-30 flex items-center justify-center bg-gray-800" style="background-color: rgba(31, 41, 55, 0.7);">
                                         <div class="bg-white rounded-md border p-6 w-full max-w-md relative overflow-y-auto max-h-[90vh]">
@@ -1909,7 +1928,7 @@
                         </div>
 
                         <x-pagination :data="$tasks->appends(request()->query())" />
-                        
+
                         <div id="taskInvoicePlaceholder"
                             class="hidden fixed inset-0 z-30 bg-gray-800 bg-opacity-50 flex justify-center items-center">
                             <div id="invoiceModalContent">
@@ -1944,7 +1963,7 @@
 @vite('resources/js/tasks.js')
 
 <script>
-    window.companySuppliers = @json($suppliers->pluck('name')->all());
+    window.companySuppliers = "{{ json_encode($suppliers->pluck('name')->all()) }}";
     document.addEventListener('alpine:init', () => {
         Alpine.store('dropdown', {
             openId: null,
@@ -2768,27 +2787,74 @@
             'text-sm', 'transition', 'duration-150');
         button.disabled = false;
     }
-
 </script>
 
 <script>
     const filterConfig = {
         columns: {
-            reference:         { label: "Reference", type: "text" },
-            "bill-to":         { label: "Bill To", type: "text" },
-            "passenger-name":  { label: "Passenger Name", type: "text" },
-            agent_name:        { label: "Agent Name", type: "text" },
-            status:            { label: "Status", type: "select", options: ["-- Select --", "issued", "refund", "reissued", "void", "ticketed", "confirmed", "emd"] },
-            supplier:          { label: "Supplier", type: "searchable", options: window.companySuppliers || [] },
-            "created-at":      { label: "Created Date", type: "date-range" },
-            "supplier_pay_date": { label: "Issued Date", type: "date-range" },
-            "cancellation-deadline": { label: "Cancellation Deadline", type: "date" },
-            type:              { label: "Type", type: "select", options: ["hotel", "flight"] },
-            "amadeus-reference": { label: "Amadeus Reference", type: "text" },
-            "created-by":      { label: "Created By", type: "text" },
-            "issued-by":       { label: "Issued By", type: "text" },
-            "branch-name":     { label: "Branch Name", type: "text" },
-            invoice:           { label: "Invoice", type: "text" },
+            reference: {
+                label: "Reference",
+                type: "text"
+            },
+            "bill-to": {
+                label: "Bill To",
+                type: "text"
+            },
+            "passenger-name": {
+                label: "Passenger Name",
+                type: "text"
+            },
+            agent_name: {
+                label: "Agent Name",
+                type: "text"
+            },
+            status: {
+                label: "Status",
+                type: "select",
+                options: ["-- Select --", "issued", "refund", "reissued", "void", "ticketed", "confirmed", "emd"]
+            },
+            supplier: {
+                label: "Supplier",
+                type: "searchable",
+                options: window.companySuppliers || []
+            },
+            "created-at": {
+                label: "Created Date",
+                type: "date-range"
+            },
+            "supplier_pay_date": {
+                label: "Issued Date",
+                type: "date-range"
+            },
+            "cancellation-deadline": {
+                label: "Cancellation Deadline",
+                type: "date"
+            },
+            type: {
+                label: "Type",
+                type: "select",
+                options: ["hotel", "flight"]
+            },
+            "amadeus-reference": {
+                label: "Amadeus Reference",
+                type: "text"
+            },
+            "created-by": {
+                label: "Created By",
+                type: "text"
+            },
+            "issued-by": {
+                label: "Issued By",
+                type: "text"
+            },
+            "branch-name": {
+                label: "Branch Name",
+                type: "text"
+            },
+            invoice: {
+                label: "Invoice",
+                type: "text"
+            },
         }
     };
 
@@ -2840,14 +2906,14 @@
         const list = document.getElementById('activeFiltersList');
         list.innerHTML = '';
         if (filters.length === 0) {
-        list.innerHTML = `<span class="text-gray-400 text-sm">No active filters</span>`;
+            list.innerHTML = `<span class="text-gray-400 text-sm">No active filters</span>`;
             return;
         }
         container.style.display = '';
         filters.forEach(f => {
             const tag = document.createElement('div');
-        tag.className = 'active-filter-tag';
-        tag.innerHTML = `
+            tag.className = 'active-filter-tag';
+            tag.innerHTML = `
             <span>${f.label}: <b>${f.value}</b></span>
             <button class="remove-tag" data-key="${f.key}" data-value="${f.value}" title="Remove filter">&times;</button>
         `;
@@ -2858,7 +2924,10 @@
     document.getElementById('toggleFilters').onclick = () => {
         document.getElementById('filterModal').classList.add('active');
         if (filterRows.length === 0) {
-            filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
+            filterRows.push({
+                column: Object.keys(filterConfig.columns)[0],
+                value: ''
+            });
         }
         renderFilterRows();
     };
@@ -2868,7 +2937,10 @@
     };
     // Add filter row
     document.getElementById('addFilterRow').onclick = () => {
-        filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
+        filterRows.push({
+            column: Object.keys(filterConfig.columns)[0],
+            value: ''
+        });
         renderFilterRows();
     };
 
@@ -2882,22 +2954,31 @@
                 const from = params.get(`${key}_from`);
                 const to = params.get(`${key}_to`);
                 if (from || to) {
-                    filterRows.push({ column: key, value: { from: from || '', to: to || '' } });
+                    filterRows.push({
+                        column: key,
+                        value: {
+                            from: from || '',
+                            to: to || ''
+                        }
+                    });
                 }
             }
         });
 
         // Handle status[] and status (avoid duplicates)
-    const statusValues = [
-    ...params.getAll('status[]'),
-    ...params.getAll('status'),
-    ...Array.from(params.keys())
-        .filter(k => k.startsWith('status['))
-        .map(k => params.get(k))
-    ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
+        const statusValues = [
+            ...params.getAll('status[]'),
+            ...params.getAll('status'),
+            ...Array.from(params.keys())
+            .filter(k => k.startsWith('status['))
+            .map(k => params.get(k))
+        ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
 
         statusValues.forEach(val => {
-            filterRows.push({ column: 'status', value: val });
+            filterRows.push({
+                column: 'status',
+                value: val
+            });
         });
 
         // Handle other filters (skip status/status[])
@@ -2907,12 +2988,18 @@
                 filterConfig.columns[key].type !== 'date-range' &&
                 key !== 'status' && key !== 'status[]'
             ) {
-                filterRows.push({ column: key, value });
+                filterRows.push({
+                    column: key,
+                    value
+                });
             }
         }
 
         if (filterRows.length === 0) {
-            filterRows.push({ column: Object.keys(filterConfig.columns)[0], value: '' });
+            filterRows.push({
+                column: Object.keys(filterConfig.columns)[0],
+                value: ''
+            });
         }
         renderFilterRows();
         document.getElementById('filterModal').classList.add('active');
@@ -2923,7 +3010,10 @@
         const row = filterRows[idx];
         const col = filterConfig.columns[row.column];
         if (col && col.type === 'date-range') {
-            if (typeof row.value !== 'object' || !row.value) row.value = {from: '', to: ''};
+            if (typeof row.value !== 'object' || !row.value) row.value = {
+                from: '',
+                to: ''
+            };
             if (e.target.dataset.range === 'from') row.value.from = e.target.value;
             if (e.target.dataset.range === 'to') row.value.to = e.target.value;
         } else if (e.target.classList.contains('value-input')) {
@@ -2973,7 +3063,7 @@
             window.location = `{{ route('tasks.index') }}?${params.toString()}`;
         }
     });
-        // Apply filters
+    // Apply filters
     document.getElementById('applyFilters').onclick = () => {
         const params = new URLSearchParams(window.location.search);
         // Remove old filter params
@@ -3002,72 +3092,84 @@
         params.delete('page');
     }
 
-        function getActiveFiltersFromURL() {
-            const params = new URLSearchParams(window.location.search);
-            const filters = [];
-            // Handle date-range fields
-            Object.entries(filterConfig.columns).forEach(([key, col]) => {
-                if (col.type === 'date-range') {
-                    const from = params.get(`${key}_from`);
-                    const to = params.get(`${key}_to`);
-                    if (from || to) {
-                        let value = '';
-                        if (from && to) value = `${from} to ${to}`;
-                        else if (from) value = `from ${from}`;
-                        else if (to) value = `to ${to}`;
-                        filters.push({ key, label: col.label, value });
-                    }
-                }
-            });
-
-            // Collect all status values (avoid duplicates)
-            const statusValues = [
-                ...params.getAll('status[]'),
-                ...params.getAll('status'),
-                ...Array.from(params.keys())
-                    .filter(k => k.startsWith('status['))
-                    .map(k => params.get(k))
-            ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
-
-            statusValues.forEach(val => {
-                filters.push({ key: 'status', label: filterConfig.columns['status'].label, value: val });
-            });
-
-            // Handle other filters
-            for (const [key, value] of params.entries()) {
-                if (Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range' && key !== 'status' && key !== 'status[]') {
-                    const col = filterConfig.columns[key];
-                    filters.push({ key, label: col ? col.label : key, value });
+    function getActiveFiltersFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        const filters = [];
+        // Handle date-range fields
+        Object.entries(filterConfig.columns).forEach(([key, col]) => {
+            if (col.type === 'date-range') {
+                const from = params.get(`${key}_from`);
+                const to = params.get(`${key}_to`);
+                if (from || to) {
+                    let value = '';
+                    if (from && to) value = `${from} to ${to}`;
+                    else if (from) value = `from ${from}`;
+                    else if (to) value = `to ${to}`;
+                    filters.push({
+                        key,
+                        label: col.label,
+                        value
+                    });
                 }
             }
-            return filters;
-        }
+        });
 
-function renderFilterRows() {
-    const container = document.getElementById('filterContainer');
-    container.innerHTML = '';
-    filterRows.forEach((row, idx) => {
-        const col = filterConfig.columns[row.column];
-        let inputHtml = '';
-        if (col.type === 'text') {
-            inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter value" data-idx="${idx}">`;
-        } else if (col.type === 'select') {
-            inputHtml = `<select class="value-input" data-idx="${idx}">${col.options.map(opt =>
+        // Collect all status values (avoid duplicates)
+        const statusValues = [
+            ...params.getAll('status[]'),
+            ...params.getAll('status'),
+            ...Array.from(params.keys())
+            .filter(k => k.startsWith('status['))
+            .map(k => params.get(k))
+        ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
+
+        statusValues.forEach(val => {
+            filters.push({
+                key: 'status',
+                label: filterConfig.columns['status'].label,
+                value: val
+            });
+        });
+
+        // Handle other filters
+        for (const [key, value] of params.entries()) {
+            if (Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range' && key !== 'status' && key !== 'status[]') {
+                const col = filterConfig.columns[key];
+                filters.push({
+                    key,
+                    label: col ? col.label : key,
+                    value
+                });
+            }
+        }
+        return filters;
+    }
+
+    function renderFilterRows() {
+        const container = document.getElementById('filterContainer');
+        container.innerHTML = '';
+        filterRows.forEach((row, idx) => {
+            const col = filterConfig.columns[row.column];
+            let inputHtml = '';
+            if (col.type === 'text') {
+                inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter value" data-idx="${idx}">`;
+            } else if (col.type === 'select') {
+                inputHtml = `<select class="value-input" data-idx="${idx}">${col.options.map(opt =>
                 `<option value="${opt}" ${row.value === opt ? 'selected' : ''}>${opt}</option>`
             ).join('')}</select>`;
-        } else if (col.type === 'searchable') {
-            inputHtml = `<input type="text" class="value-input" list="datalist-${row.column}-${idx}" value="${row.value || ''}" placeholder="Search..." data-idx="${idx}">
+            } else if (col.type === 'searchable') {
+                inputHtml = `<input type="text" class="value-input" list="datalist-${row.column}-${idx}" value="${row.value || ''}" placeholder="Search..." data-idx="${idx}">
                 <datalist id="datalist-${row.column}-${idx}">
                     ${col.options.map(opt => `<option value="${opt}"></option>`).join('')}
                 </datalist>`;
-        } else if (col.type === 'date') {
-            inputHtml = `<input type="date" class="value-input" value="${row.value || ''}" data-idx="${idx}">`;
-        } else if (col.type === 'date-range') {
-            inputHtml = `
+            } else if (col.type === 'date') {
+                inputHtml = `<input type="date" class="value-input" value="${row.value || ''}" data-idx="${idx}">`;
+            } else if (col.type === 'date-range') {
+                inputHtml = `
                 <input type="text" id="tasks-date-range-${idx}" class="value-input" placeholder="Select date range" style="width: 90%;" data-idx="${idx}" />
             `;
-        }
-        container.innerHTML += `
+            }
+            container.innerHTML += `
             <div class="filter-row">
                 <select class="column-select" data-idx="${idx}">
                     ${Object.entries(filterConfig.columns).map(([key, c]) =>
@@ -3078,47 +3180,50 @@ function renderFilterRows() {
                 <button type="button" class="remove-filter-btn" data-idx="${idx}">&times;</button>
             </div>
         `;
-    });
-
-    // Initialize Flatpickr for all date-range inputs
-    filterRows.forEach((row, idx) => {
-        const col = filterConfig.columns[row.column];
-        if (col.type === 'date-range') {
-            const input = document.getElementById(`tasks-date-range-${idx}`);
-            if (input) {
-                flatpickr(input, {
-                    mode: "range",
-                    dateFormat: "Y-m-d",
-                    defaultDate: row.value && row.value.from ? [row.value.from, row.value.to] : undefined,
-                    onChange: function(selectedDates, dateStr) {
-                        // Save value as {from, to}
-                        const dates = dateStr.split(' to ');
-                        filterRows[idx].value = { from: dates[0] || '', to: dates[1] || '' };
-                    }
-                });
-            }
-        }
-    });
-}
-        document.addEventListener("DOMContentLoaded", function() {
-            flatpickr("#tasks-date-range", {
-                mode: "range",
-                dateFormat: "Y-m-d",
-                // Optionally set default dates or other options
-            });
         });
-        // Remove individual filter
-        document.getElementById('activeFiltersList').addEventListener('click', function(e) {
-            if (e.target.classList.contains('remove-tag')) {
-                const key = e.target.getAttribute('data-key');
-                const value = e.target.getAttribute('data-value');
-                const params = new URLSearchParams(window.location.search);
 
-                // Handle date-range fields
-                if (filterConfig.columns[key] && filterConfig.columns[key].type === 'date-range') {
-                    params.delete(`${key}_from`);
-                    params.delete(`${key}_to`);
-                } else if (key === 'status') {
+        // Initialize Flatpickr for all date-range inputs
+        filterRows.forEach((row, idx) => {
+            const col = filterConfig.columns[row.column];
+            if (col.type === 'date-range') {
+                const input = document.getElementById(`tasks-date-range-${idx}`);
+                if (input) {
+                    flatpickr(input, {
+                        mode: "range",
+                        dateFormat: "Y-m-d",
+                        defaultDate: row.value && row.value.from ? [row.value.from, row.value.to] : undefined,
+                        onChange: function(selectedDates, dateStr) {
+                            // Save value as {from, to}
+                            const dates = dateStr.split(' to ');
+                            filterRows[idx].value = {
+                                from: dates[0] || '',
+                                to: dates[1] || ''
+                            };
+                        }
+                    });
+                }
+            }
+        });
+    }
+    document.addEventListener("DOMContentLoaded", function() {
+        flatpickr("#tasks-date-range", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            // Optionally set default dates or other options
+        });
+    });
+    // Remove individual filter
+    document.getElementById('activeFiltersList').addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-tag')) {
+            const key = e.target.getAttribute('data-key');
+            const value = e.target.getAttribute('data-value');
+            const params = new URLSearchParams(window.location.search);
+
+            // Handle date-range fields
+            if (filterConfig.columns[key] && filterConfig.columns[key].type === 'date-range') {
+                params.delete(`${key}_from`);
+                params.delete(`${key}_to`);
+            } else if (key === 'status') {
                 // Remove all status[] and status[n] with this value
                 ['status[]', 'status'].forEach(k => {
                     const values = params.getAll(k);
@@ -3135,27 +3240,27 @@ function renderFilterRows() {
                             params.delete(k);
                         }
                     });
-                } else {
-                    params.delete(key);
-                }
-                resetPagination(params);
-                window.location = `{{ route('tasks.index') }}?${params.toString()}`;
+            } else {
+                params.delete(key);
             }
-        });
-        document.getElementById('clearAllActiveFilters').addEventListener('click', function() {
-            const params = new URLSearchParams(window.location.search);
-            Object.keys(filterConfig.columns).forEach(key => params.delete(key));
-            params.delete('status');
-            params.delete('status[]');
-            window.location = `{{ route('tasks.index') }}`;
-        });
-        document.getElementById('clearAllActiveFilters2').addEventListener('click', function() {
-            const params = new URLSearchParams(window.location.search);
-            Object.keys(filterConfig.columns).forEach(key => params.delete(key));
-            params.delete('status');
-            params.delete('status[]');
-            window.location = `{{ route('tasks.index') }}`;
-        });
+            resetPagination(params);
+            window.location = `{{ route('tasks.index') }}?${params.toString()}`;
+        }
+    });
+    document.getElementById('clearAllActiveFilters').addEventListener('click', function() {
+        const params = new URLSearchParams(window.location.search);
+        Object.keys(filterConfig.columns).forEach(key => params.delete(key));
+        params.delete('status');
+        params.delete('status[]');
+        window.location = `{{ route('tasks.index') }}`;
+    });
+    document.getElementById('clearAllActiveFilters2').addEventListener('click', function() {
+        const params = new URLSearchParams(window.location.search);
+        Object.keys(filterConfig.columns).forEach(key => params.delete(key));
+        params.delete('status');
+        params.delete('status[]');
+        window.location = `{{ route('tasks.index') }}`;
+    });
     // Render on page load
     renderActiveFilters();
 </script>

@@ -17,7 +17,8 @@
             "penalty_fee": 16.0,
             "tax": 49.55,
             "refund_charge": 25.65,
-            "ticket_number": "T-E076-2833115354",
+            "ticket_number": "R-076-2833115354",
+            "original_ticket_number": "T-E076-2833115354",
             "agent_name": "",
             "agent_email": "",
             "agent_amadeus_id": "2111WM"

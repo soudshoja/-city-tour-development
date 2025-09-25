@@ -10,8 +10,7 @@ class RequestBookingRoom extends Model
         'phone_number',
         'check_in',
         'check_out',
-        'adults',
-        'children_ages',
+        'occupancy' => 'array'
     ];
 
     // protected $casts = [

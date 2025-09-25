@@ -303,7 +303,7 @@ class TaskController extends Controller
                     });
             })->get();
             // Get tasks assigned to this agent OR unassigned tasks in the same company
-            $tasks = $tasks->where(function ($query) use ($user) {
+            $tasks = $query->where(function ($query) use ($user) {
                 $query->where('agent_id', $user->agent->id)
                     ->orWhere(function ($subQuery) use ($user) {
                         $subQuery->whereNull('agent_id')

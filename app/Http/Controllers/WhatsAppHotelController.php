@@ -105,139 +105,143 @@ class WhatsAppHotelController extends Controller
     //     }
     // }
     public function saveBookingDetails(Request $request)
-{
-    Log::channel('whatsapp')->info('saveBookingDetails: Incoming request', ['request' => $request->all()]);
+    {
+        Log::channel('whatsapp')->info('saveBookingDetails: Incoming request', ['request' => $request->all()]);
 
-    $validator = Validator::make($request->all(), [
-        'phone_number'    => 'required|string',
-        'checkIn'         => 'required|date',
-        'checkOut'        => 'required|date|after_or_equal:checkIn',
-        'occupancy'       => 'required|array',
-        'occupancy.rooms' => 'required|array|min:1',
-        'hotel'           => 'nullable|string', // optional, we still save without it
-    ]);
+        // Normalize common "null"/"undefined"/empty strings to actual null (only for the fields we care about)
+        foreach (['hotel','checkIn','checkOut'] as $k) {
+            if ($request->has($k)) {
+                $v = $request->input($k);
+                if (is_string($v) && in_array(strtolower(trim($v)), ['null','undefined',''])) {
+                    $request->merge([$k => null]);
+                }
+            }
+        }
 
-    if ($validator->fails()) {
-        return response()->json([
-            'success'       => false,
-            'message'       => 'Validation failed',
-            'errors'        => $validator->errors(),
-            'saved_count'   => 0,
-            'saved_ids'     => [],
-            'skipped_count' => 0,
-        ], 422);
-    }
+        // Validation for partial update: only phone_number is required.
+        $validator = Validator::make($request->all(), [
+            'phone_number'    => 'required|string',
+            'checkIn'         => 'nullable|date',
+            'checkOut'        => ['nullable','date', function ($attr, $value, $fail) use ($request) {
+                if ($value && $request->filled('checkIn')) {
+                    if (strtotime($value) < strtotime($request->checkIn)) {
+                        $fail('The check out must be a date after or equal to check in.');
+                    }
+                }
+            }],
+            'hotel'           => 'nullable|string',
+            // If you still want to allow room updates sometimes, keep these optional:
+            'occupancy'       => 'nullable|array',
+            'occupancy.rooms' => 'nullable|array|min:1',
+        ]);
 
-    // ---- Resolve hotel (exact match) and city (same pattern you used) ----
-    $matchedHotelName = null;
-    $matchedCityId    = null;
-    $matchedCityName  = null;
-    $warnings         = [];
+        if ($validator->fails()) {
+            return response()->json([
+                'success'       => false,
+                'message'       => 'Validation failed',
+                'errors'        => $validator->errors(),
+                'saved_count'   => 0,
+                'saved_ids'     => [],
+                'skipped_count' => 0,
+            ], 422);
+        }
 
-    if ($request->filled('hotel')) {
-        $inputHotelName = trim($request->hotel);
-
-        $matched = \App\Models\MapHotel::with(['city:id,name'])
-            ->where('name', $inputHotelName)   // exact match (use whereRaw BINARY for case-sensitive)
+        // Find latest record for this phone_number
+        $existing = \App\Models\RequestBookingRoom::where('phone_number', $request->phone_number)
+            ->orderByDesc('id')
             ->first();
 
-        if ($matched) {
-            $matchedHotelName = $matched->name;
-            if ($matched->city) {
-                $matchedCityId   = $matched->city->id ?? null;
-                $matchedCityName = $matched->city->name ?? null;
-            } else {
-                $warnings['city'][] = 'Hotel matched but has no city associated.';
-            }
-        } else {
-            $warnings['hotel'][] = 'Hotel not found with exact name; saved/updated without hotel/city.';
+        if (!$existing) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No existing booking record found for this phone number.',
+            ], 404);
         }
-    } else {
-        $warnings['hotel'][] = 'Hotel not provided; saved/updated without hotel/city.';
-    }
 
-    // ---- We will update the latest record for this phone_number ----
-    $existing = \App\Models\RequestBookingRoom::where('phone_number', $request->phone_number)
-        ->orderByDesc('id')
-        ->first();
+        $warnings = [];
 
-    // take the FIRST room only for update
-    $room      = $request->input('occupancy.rooms.0'); // guaranteed to exist due to validation
-    $roomValid = Validator::make($room, [
-        'adults'         => 'required|integer|min:1',
-        'childrenAges'   => 'nullable|array',
-        'childrenAges.*' => 'integer|min:0',
-    ]);
-    if ($roomValid->fails()) {
-        return response()->json([
-            'success'       => false,
-            'message'       => 'Room validation failed',
-            'errors'        => ['rooms.0' => $roomValid->errors()],
-            'saved_count'   => 0,
-            'saved_ids'     => [],
-            'skipped_count' => 0,
-        ], 422);
-    }
+        // === PARTIAL UPDATES ===
+        // Dates
+        if ($request->filled('checkIn')) {
+            $existing->check_in = $request->checkIn;
+        }
+        if ($request->filled('checkOut')) {
+            // If checkIn wasn't sent this time, we don't enforce after_or_equal here
+            $existing->check_out = $request->checkOut;
+        }
 
-    if (count($request->input('occupancy.rooms')) > 1) {
-        $warnings['rooms'][] = 'Multiple rooms were sent; only the first room was used to update the latest record.';
-    }
+        // Hotel (and derived city)
+        if ($request->exists('hotel')) { // exists() so we can intentionally clear by sending null if you ever want that
+            if ($request->filled('hotel')) {
+                $inputHotelName = trim($request->hotel);
 
-    try {
-        if ($existing) {
-            // ------- UPDATE existing latest record -------
-            $existing->check_in      = $request->checkIn;
-            $existing->check_out     = $request->checkOut;
+                $matched = \App\Models\MapHotel::with(['city:id,name'])
+                    ->where('name', $inputHotelName) // exact match; switch to whereRaw('BINARY name = ?') for case-sensitive
+                    ->first();
+
+                if ($matched) {
+                    $existing->hotel   = $matched->name;
+                    $existing->city_id = $matched->city->id   ?? null;
+                    $existing->city    = $matched->city->name ?? null;
+                } else {
+                    $warnings['hotel'][] = 'Hotel not found with exact name; hotel/city not changed.';
+                }
+            } else {
+                // You sent "hotel": null (after normalization) — we will NOT overwrite existing hotel/city
+                $warnings['hotel'][] = 'Hotel was null or empty; hotel/city not changed.';
+            }
+        }
+
+        // Optional: update rooms only if provided (still partial)
+        if ($request->filled('occupancy.rooms.0')) {
+            $room = $request->input('occupancy.rooms.0');
+            $roomValid = Validator::make($room, [
+                'adults'         => 'required|integer|min:1',
+                'childrenAges'   => 'nullable|array',
+                'childrenAges.*' => 'integer|min:0',
+            ]);
+            if ($roomValid->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Room validation failed',
+                    'errors'  => ['rooms.0' => $roomValid->errors()],
+                ], 422);
+            }
             $existing->adults        = $room['adults'];
             $existing->children_ages = isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null;
 
-            // set hotel/city only if matched
-            $existing->hotel   = $matchedHotelName;  // may be null
-            $existing->city_id = $matchedCityId;     // may be null
-            $existing->city    = $matchedCityName;   // may be null
+            if (count($request->input('occupancy.rooms')) > 1) {
+                $warnings['rooms'][] = 'Multiple rooms were sent; only the first room was used.';
+            }
+        }
 
+        try {
             $existing->save();
 
             return response()->json([
-                'success'         => true,
-                'message'         => 'Booking details updated.',
-                'saved_count'     => 1,
-                'saved_ids'       => [$existing->id],
-                'skipped_count'   => 0,
-                'warnings'        => $warnings,
+                'success'       => true,
+                'message'       => 'Booking details updated (partial).',
+                'saved_count'   => 1,
+                'saved_ids'     => [$existing->id],
+                'warnings'      => $warnings,
+                // small echo of what changed (best-effort)
+                'updated_snapshot' => [
+                    'hotel'    => $existing->hotel,
+                    'city_id'  => $existing->city_id,
+                    'city'     => $existing->city,
+                    'check_in' => $existing->check_in,
+                    'check_out'=> $existing->check_out,
+                ],
             ]);
-        } else {
-            // ------- If nothing exists yet, create one (change to 404 if you prefer strict update-only) -------
-            $row = new \App\Models\RequestBookingRoom();
-            $row->phone_number  = $request->phone_number;
-            $row->check_in      = $request->checkIn;
-            $row->check_out     = $request->checkOut;
-            $row->adults        = $room['adults'];
-            $row->children_ages = isset($room['childrenAges']) ? json_encode($room['childrenAges']) : null;
-            $row->hotel         = $matchedHotelName;  // may be null
-            $row->city_id       = $matchedCityId;     // may be null
-            $row->city          = $matchedCityName;   // may be null
-            $row->save();
-
+        } catch (\Exception $e) {
+            Log::channel('whatsapp')->error('saveBookingDetails: Partial update failed', ['error' => $e->getMessage()]);
             return response()->json([
-                'success'         => true,
-                'message'         => 'No existing record found; a new booking record was created.',
-                'saved_count'     => 1,
-                'saved_ids'       => [$row->id],
-                'skipped_count'   => 0,
-                'warnings'        => $warnings,
-            ]);
+                'success' => false,
+                'message' => 'Failed to save booking details.',
+            ], 500);
         }
-    } catch (\Exception $e) {
-        Log::channel('whatsapp')->error('saveBookingDetails: Update/create failed', [
-            'error' => $e->getMessage(),
-        ]);
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to save booking details.',
-        ], 500);
     }
-}
+
 
 
 

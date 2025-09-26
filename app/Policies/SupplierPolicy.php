@@ -27,7 +27,7 @@ class SupplierPolicy
         }
     }
 
-    public function update(User $user, Supplier $supplier): bool
+    public function update(User $user): bool
     {
         if ($user->hasRole('admin')) {
             return true;

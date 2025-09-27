@@ -69,7 +69,6 @@ class TaskController extends Controller
         }
 
         $visibleColumns = session('visible_task_columns', $defaultColumns);
-        $sortBy = $request->query('sortBy', 'supplier_pay_date');
         $sortBy = $request->query('sortBy', 'created_at');
         $sortOrder = $request->query('sortOrder', 'desc');
 
@@ -82,7 +81,7 @@ class TaskController extends Controller
         $paymentMethod = Account::where('parent_id', 39)->get();
         if ($search = $request->query('q')) {
             $searchTerm = '%' . strtolower($search) . '%';
-            $query->where(function ($q) use ($search, $searchTerm) {
+            $query->where(function ($q) use ($searchTerm) {
                 $q->where('reference', 'LIKE', $searchTerm)
                     ->orWhere('passenger_name', 'LIKE', $searchTerm)
                     ->orWhere('gds_reference', 'LIKE', $searchTerm)
@@ -125,9 +124,7 @@ class TaskController extends Controller
                 $query->whereDoesntHave('invoiceDetail');
             }
         }
-        if ($request->input('show_void') != '1' && !$request->has('status') && !$request->has('status[]')) {
-            $query->where('status', '!=', 'void');
-        }
+
         $filterable = [
             'reference',
             'bill-to',
@@ -146,35 +143,33 @@ class TaskController extends Controller
         ];
 
         foreach ($filterable as $field) {
-            $param = $field;
-            // Map frontend field names to DB columns/relations
             switch ($field) {
                 case 'bill-to':
                     $param = 'bill-to';
                     if ($request->filled($param)) {
-                        $tasks = $query->whereHas('client', function ($q) use ($request, $param) {
+                        $query->whereHas('client', function ($q) use ($request, $param) {
                             $q->where('first_name', 'like', '%' . $request->input($param) . '%')
-                                ->orWhere('last_name', 'like', '%' . $request->input($param) . '%')
-                                ->orWhere('phone', 'like', '%' . $request->input($param) . '%');
+                              ->orWhere('last_name', 'like', '%' . $request->input($param) . '%')
+                              ->orWhere('phone', 'like', '%' . $request->input($param) . '%');
                         });
                     }
                     break;
                 case 'passenger-name':
                     $param = 'passenger-name';
                     if ($request->filled($param)) {
-                        $tasks = $query->where('passenger_name', 'like', '%' . $request->input($param) . '%');
+                        $query->where('passenger_name', 'like', '%' . $request->input($param) . '%');
                     }
                     break;
                 case 'agent_name':
                     if ($request->filled('agent_name')) {
-                        $tasks = $query->whereHas('agent', function ($q) use ($request) {
+                        $query->whereHas('agent', function ($q) use ($request) {
                             $q->where('name', 'like', '%' . $request->input('agent_name') . '%');
                         });
                     }
                     break;
                 case 'supplier':
                     if ($request->filled('supplier')) {
-                        $tasks = $query->whereHas('supplier', function ($q) use ($request) {
+                        $query->whereHas('supplier', function ($q) use ($request) {
                             $q->where('name', 'like', '%' . $request->input('supplier') . '%');
                         });
                     }
@@ -182,72 +177,63 @@ class TaskController extends Controller
                 case 'created-at':
                     $from = $request->input('created-at_from');
                     $to = $request->input('created-at_to');
-                    if ($from) {
-                        $tasks = $query->whereDate('created_at', '>=', $from);
-                    }
-                    if ($to) {
-                        $tasks = $query->whereDate('created_at', '<=', $to);
-                    }
-                    // fallback for single date (old UI)
+                    if ($from) $query->whereDate('created_at', '>=', $from);
+                    if ($to)   $query->whereDate('created_at', '<=', $to);
                     if ($request->filled('created-at')) {
-                        $tasks = $query->whereDate('created_at', $request->input('created-at'));
+                        $query->whereDate('created_at', $request->input('created-at'));
                     }
                     break;
                 case 'supplier_pay_date':
                     $from = $request->input('supplier_pay_date_from');
                     $to = $request->input('supplier_pay_date_to');
-                    if ($from) {
-                        $tasks = $query->whereDate('supplier_pay_date', '>=', $from);
-                    }
-                    if ($to) {
-                        $tasks = $query->whereDate('supplier_pay_date', '<=', $to);
-                    }
+                    if ($from) $query->whereDate('supplier_pay_date', '>=', $from);
+                    if ($to)   $query->whereDate('supplier_pay_date', '<=', $to);
                     if ($request->filled('supplier_pay_date')) {
-                        $tasks = $query->whereDate('supplier_pay_date', $request->input('supplier_pay_date'));
+                        $query->whereDate('supplier_pay_date', $request->input('supplier_pay_date'));
                     }
                     break;
                 case 'cancellation-deadline':
                     if ($request->filled('cancellation-deadline')) {
-                        $tasks = $query->whereDate('cancellation_deadline', $request->input('cancellation-deadline'));
+                        $query->whereDate('cancellation_deadline', $request->input('cancellation-deadline'));
                     }
                     break;
                 case 'type':
                     if ($request->filled('type')) {
-                        $tasks = $query->where('type', $request->input('type'));
+                        $query->where('type', $request->input('type'));
                     }
                     break;
                 case 'amadeus-reference':
                     if ($request->filled('amadeus-reference')) {
-                        $tasks = $query->where('airline_reference', 'like', '%' . $request->input('amadeus-reference') . '%');
+                        $query->where('airline_reference', 'like', '%' . $request->input('amadeus-reference') . '%');
                     }
                     break;
                 case 'created-by':
                     if ($request->filled('created-by')) {
-                        $tasks = $query->where('created_by', 'like', '%' . $request->input('created-by') . '%');
+                        $query->where('created_by', 'like', '%' . $request->input('created-by') . '%');
                     }
                     break;
                 case 'issued-by':
                     if ($request->filled('issued-by')) {
-                        $tasks = $query->where('issued_by', 'like', '%' . $request->input('issued-by') . '%');
+                        $query->where('issued_by', 'like', '%' . $request->input('issued-by') . '%');
                     }
                     break;
                 case 'branch-name':
                     if ($request->filled('branch-name')) {
-                        $tasks = $query->whereHas('agent.branch', function ($q) use ($request) {
+                        $query->whereHas('agent.branch', function ($q) use ($request) {
                             $q->where('name', 'like', '%' . $request->input('branch-name') . '%');
                         });
                     }
                     break;
                 case 'invoice':
                     if ($request->filled('invoice')) {
-                        $tasks = $query->whereHas('invoiceDetail', function ($q) use ($request) {
+                        $query->whereHas('invoiceDetail', function ($q) use ($request) {
                             $q->where('invoice_number', 'like', '%' . $request->input('invoice') . '%');
                         });
                     }
                     break;
                 default:
                     if ($request->filled($field)) {
-                        $tasks = $query->where($field, 'like', '%' . $request->input($field) . '%');
+                        $query->where($field, 'like', '%' . $request->input($field) . '%');
                     }
             }
         }
@@ -256,12 +242,10 @@ class TaskController extends Controller
         $suppliers = Supplier::with('companies');
 
         if ($user->role_id == Role::ADMIN) {
-            $tasks = $tasks;
             $clients = Client::all();
             $agents = Agent::all();
             $fullClients = Client::all();
         } elseif ($user->role_id == Role::COMPANY) {
-
             $branches = Branch::where('company_id', $user->company->id)->get();
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
@@ -272,7 +256,7 @@ class TaskController extends Controller
                         $q->whereIn('agent_id', $agentsId);
                     });
             })->get();
-            $tasks = $query->where('company_id', $user->company->id);
+            $query->where('company_id', $user->company->id);
 
             // $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
             //     $query->where('company_id', $user->company->id)->where('is_active', true);
@@ -289,8 +273,7 @@ class TaskController extends Controller
                         $q->whereIn('agent_id', $agentsId);
                     });
             })->get();
-            $tasks = $tasks->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
-
+            $query->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
             $suppliers = $suppliers->activeForCompany($user->company_id);
         } elseif ($user->role_id == Role::AGENT) {
 
@@ -303,15 +286,13 @@ class TaskController extends Controller
                     });
             })->get();
             // Get tasks assigned to this agent OR unassigned tasks in the same company
-            $tasks = $query->where(function ($query) use ($user) {
-                $query->where('agent_id', $user->agent->id)
+            $query->where(function ($q) use ($user) {
+                $q->where('agent_id', $user->agent->id)
                     ->orWhere(function ($subQuery) use ($user) {
                         $subQuery->whereNull('agent_id')
                             ->where('company_id', $user->agent->branch->company_id);
                     });
             })->where('company_id', $user->agent->branch->company_id);
-
-            $companyId = $user->agent->branch->company_id;
             $suppliers = $suppliers->whereHas('companies', fn($query) => $query->where('supplier_companies.is_active', 1));
         } elseif ($user->role_id == Role::ACCOUNTANT) {
             $companyId = $user->accountant->branch->company->id;
@@ -334,9 +315,7 @@ class TaskController extends Controller
                         $q->whereIn('agent_id', $agentsId);
                     });
             })->get();
-
-            $tasks = $tasks->where('company_id', $company->id);
-
+            $query->where('company_id', $company->id);
             $suppliers = $suppliers->activeForCompany($company->id);
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
@@ -344,16 +323,14 @@ class TaskController extends Controller
 
         $suppliers = $suppliers->with('companies')->get();
 
-        $taskCount = $query->count();
+        $taskCount = (clone $query)->count();
         $tasks = $query->orderBy($sortBy, $sortOrder)
             ->orderBy('id', $sortOrder)
             ->paginate(20)
             ->withQueryString();
 
         $types = Task::distinct()->pluck('type');
-
         $importedTask = Cache::get('imported_task');
-
 
         return view('tasks.index', compact(
             'tasks',

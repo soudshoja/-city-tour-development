@@ -341,49 +341,41 @@ class ClientController extends Controller
         ]);
     }
 
-
-
     public function show($id)
     {
+        $client = Client::with(['agent.branch.company'])->findOrFail($id);
         $user = Auth::user();
+        $agentsQuery = Agent::query()->with('branch');
 
-        if ($user->role_id == Role::COMPANY) {
-            $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
-            $agent = Agent::whereIn('branch_id', $branch)->first();
-            $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
+        if ($user->role_id == Role::ADMIN) {
+            $branchId = $client->agent?->branch_id;
+            $agentsQuery->where('branch_id', $branchId);
+        } elseif ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company?->id;
+            $branchIds = Branch::where('company_id', $companyId)->pluck('id');
+            $agentsQuery->whereIn('branch_id', $branchIds);
+        } elseif ($user->role_id == Role::BRANCH) {
+            $branchId = $user->branch?->id;
+            $agentsQuery->where('branch_id', $branchId);
         } elseif ($user->role_id == Role::AGENT) {
-            $agent = Agent::where('user_id', $user->id)->first();
-            $agentIds = [$agent->id];
-        } else {
-            $agentIds = [];
+            $agentId = Agent::where('user_id', $user->id)->value('id');
+            $agentsQuery->where('id', $agentId);
         }
 
-        $client = Client::findOrFail($id);
-
-        $branchId = $user->branch->id;
-        $agents = Agent::where('branch_id', $branchId) 
-               ->with('branch')               
-               ->get();
-
+        $agents = $agentsQuery->get();
         $invoices = Invoice::with('invoiceDetails', 'agent')->where('client_id', $id)->get();
-        $tasks = Task::where('client_id', $id)->get();
 
+        $tasks = Task::where('client_id', $id)->get();
         foreach ($tasks as $task) {
             if (is_string($task->cancellation_policy) && $this->isValidJson($task->cancellation_policy)) {
                 $stringCancelPolicy = json_decode($task->cancellation_policy, true);
                 $arrayCancelPolicy = json_decode($stringCancelPolicy, true);
-
-                if (is_array($arrayCancelPolicy)) {
-                    $task->cancellation_policy = $arrayCancelPolicy;
-                } else {
-                    $task->cancellation_policy = [];
-                }
+                $task->cancellation_policy = is_array($arrayCancelPolicy) ? $arrayCancelPolicy : [];
             }
         }
 
         $paid   = 0.0;
         $unpaid = 0.0;
-
         $invoicesPart = Invoice::where('client_id', $id)->get(['id','amount','status']);
 
         foreach ($invoicesPart as $invoice) {
@@ -406,7 +398,6 @@ class ClientController extends Controller
         $balanceCredit = Credit::getTotalCreditsByClient($id);
 
         $countries = Country::all(); // Fetch all countries for the view
-
         $selectedDialingCode = $countries->where('dialing_code', $client->country_code)->pluck('id')->first();
 
         $payments = Payment::where('client_id', $id)
@@ -417,27 +408,6 @@ class ClientController extends Controller
             ->where('is_active', true)
             ->get();
         $paymentMethods  = PaymentMethod::where('is_active', true)->get();
-
-        // Fetch the client groups where this client is the parent (i.e., group of sub-clients)
-        // $childClients = ClientGroup::where('parent_client_id', $id)
-        //     ->with('childClient') // Load related child clients
-        //     ->get()
-        //     ->map(function ($group) {
-        //         return [
-        //             'client' => $group->childClient, // Extract child client details
-        //             'relation' => $group->relation, // Include relation column
-        //         ];
-        //     });
-
-        // $parentClients = ClientGroup::where('child_client_id', $id)
-        //     ->with('parentClient') // Load related child clients
-        //     ->get()
-        //     ->map(function ($group) {
-        //         return [
-        //             'client' => $group->parentClient, // Extract child client details
-        //             'relation' => $group->relation, // Include relation column
-        //         ];
-        //     });
 
         return view('clients.new-profile', compact(
             'client',
@@ -453,7 +423,7 @@ class ClientController extends Controller
             'balanceCredit',
             'countries',
             'selectedDialingCode',
-        )); // Ensure the view exists
+        ));
     }
 
     // Show the form for editing a client

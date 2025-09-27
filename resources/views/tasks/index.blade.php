@@ -1962,6 +1962,8 @@
 @vite('resources/js/tasks.js')
 
 <script>
+    window.allTaskTypes = @json($allTypes ?? []);
+
     window.companySuppliers = @json($suppliers->pluck('name')->all());
     document.addEventListener('alpine:init', () => {
         Alpine.store('dropdown', {
@@ -2832,7 +2834,9 @@
             type: {
                 label: "Type",
                 type: "select",
-                options: ["hotel", "flight"]
+                options: ["-- Select --"].concat(
+                    Object.entries(window.allTaskTypes || {}).map(([key, label]) => label)
+                )
             },
             "amadeus-reference": {
                 label: "Amadeus Reference",

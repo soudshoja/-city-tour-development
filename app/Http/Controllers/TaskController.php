@@ -322,6 +322,28 @@ class TaskController extends Controller
 
         $suppliers = $suppliers->with('companies')->get();
 
+        $possibleTypes = [
+            'hotel' => 'Hotel',
+            'flight' => 'Flight',
+            'visa' => 'Visa',
+            'insurance' => 'Insurance',
+            'tour' => 'Tour',
+            'cruise' => 'Cruise',
+            'car' => 'Car',
+            'rail' => 'Rail',
+            'esim' => 'Esim',
+            'event' => 'Event',
+            'lounge' => 'Lounge',
+            'ferry' => 'Ferry',
+        ];
+
+        $allTypes = [];
+        foreach ($possibleTypes as $key => $label) {
+            if ($suppliers->where("has_$key", 1)->count() > 0) {
+                $allTypes[$key] = $label;
+            }
+        }
+
         $taskCount = (clone $query)->count();
         $tasks = $query->orderBy($sortBy, $sortOrder)
             ->orderBy('id', $sortOrder)
@@ -342,6 +364,7 @@ class TaskController extends Controller
             'countries',
             'paymentMethod',
             'visibleColumns',
+            'allTypes',
             // 'searchTask'
         ));
     }

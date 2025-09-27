@@ -2132,6 +2132,7 @@
                             <div class="w-[140px]">
                                 <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="w-full border border-gray-300 p-2 rounded">
                                     <option value="Credit" id="credit_option_${i}" disabled>Credit (0.00)</option>
+                                    <option value="Cash">Cash</option>
                                     @foreach ($paymentGateways as $gateway)
                                         <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
                                     @endforeach
@@ -2246,10 +2247,12 @@
                         <select id="payment_gateway1_${i}" name="payment_gateway1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                             <option value="" selected>Select payment gateway</option>
                             <option value="Credit" id="credit_option1_${i}">Credit (${creditRemaining.toFixed(2)})</option>
+                            <option value="Cash">Cash</option>
                             @foreach ($paymentGateways as $gateway)
                             <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
                             @endforeach
                         </select>
+                        
 
                         <div id="method_wrapper_${i}" class="mt-2">
                             <label class="block text-sm font-medium mb-1">Payment Method</label>

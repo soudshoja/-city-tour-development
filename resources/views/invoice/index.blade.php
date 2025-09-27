@@ -251,32 +251,29 @@
                                 @else
                                 @foreach ($invoices as $invoice)
                                 @php
-                                // Retrieve the first invoice detail; adjust as needed if you want a different one.
-                                $invoiceDetail = $invoice->invoiceDetails->first();
-                                $tasksPayload = $invoice->invoiceDetails
-                                ->map(function ($detail) use ($invoice) {
-                                return [
-                                'id' => $detail->task_id,
-                                'reference' => 'Task #'. $detail->task->reference,
-                                'type' => ucfirst($detail->task->type),
-                                'client' => $detail->task->client->full_name,
-                                'supplier' => $detail->task->supplier->name,
-                                'amount' => $detail->task_price,
-                                'currency' => $invoice->currency,
-                                ];
-                                })
-                                ->values()
-                                ->toArray();
+                                    $invoiceDetail = ($invoice->invoiceDetails ?? collect())->first();
+                                    $tasksPayload = ($invoice->invoiceDetails ?? collect())->map(function ($detail) use ($invoice) {
+                                        $task = $detail->task;
+                                        return [
+                                            'id' => $task?->id,
+                                            'reference' => $task?->reference ? 'Task #'.$task->reference : '-',
+                                            'type' => $task?->type ? ucfirst($task->type) : '-',
+                                            'client' => $task?->client?->full_name ?? '-',
+                                            'supplier' => $task?->supplier?->name ?? '-',
+                                            'amount' => $detail->task_price ?? 0,
+                                            'currency' => $invoice->currency ?? '-',
+                                        ];
+                                    })->values()->toArray();
                                 @endphp
                                 <tr data-price="{{ $invoice->total }}"
                                     data-tasks='@json($tasksPayload)'
-                                    data-supplier-id="{{ $invoiceDetail->task->supplier->id }}"
-                                    data-branch-id="{{ $invoice->agent->branch->id }}"
-                                    data-agent-id="{{ $invoice->agent_id }}"
-                                    data-status="{{ $invoice->status }}"
-                                    data-type="{{ $invoiceDetail->task->type }}"
-                                    data-client-id="{{ $invoice->client ? $invoice->client->id : null }}"
-                                    data-task-id="{{ $invoice->id }}" class="taskRow">
+                                    data-supplier-id="{{ $invoiceDetail?->task?->supplier?->id ?? '' }}"
+                                    data-branch-id="{{ $invoice->agent?->branch?->id ?? '' }}"
+                                    data-agent-id="{{ $invoice->agent_id ?? '' }}"
+                                    data-status="{{ $invoice->status ?? '' }}"
+                                    data-type="{{ $invoiceDetail?->task?->type ?? '' }}"
+                                    data-client-id="{{ $invoice->client?->id ?? '' }}"
+                                    data-task-id="{{ $invoice->id ?? '' }}" class="taskRow">
                                     <td class="p-3 text-center text-sm flex gap-2">
                                         <a data-tooltip="View Invoice" target="_blank"
                                             href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
@@ -307,7 +304,7 @@
                                         @elseif (in_array($invoice->status, ['unpaid', 'partial'], true) ||
                                         ($invoice->status !== 'paid' ))
                                         <a data-tooltip="View/Edit Invoice"
-                                            href="{{ route('invoice.edit', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                            href="{{ route('invoice.edit', ['companyId' => $invoice->agent?->branch?->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                             class="text-sm font-medium text-blue-600 hover:underline">
 
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20"

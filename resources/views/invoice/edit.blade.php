@@ -775,7 +775,7 @@
                                                 required>
                                                 <option value="" selected disabled hidden>Select Payment Gateway</option>
                                                 @foreach($can_import as $gateway)
-                                                    <option value="{{ strtolower($gateway->name) }}">{{ $gateway->name }}</option>
+                                                <option value="{{ strtolower($gateway->name) }}">{{ $gateway->name }}</option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -912,7 +912,7 @@
                                             </template>
                                         </div>
                                         <input type="hidden" name="payment_method" :value="selectedMethod">
-                           
+
                                         <!-- Auto Payment Notification -->
                                         <div class="mt-4" id="auto_payment_notification" style="display: none;">
                                             <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -1483,7 +1483,7 @@
         const charges = @json($paymentGateways);
         const invoiceCharges = @json($invoiceCharges);
         const clients = @json($clients);
-        const partialCredit = Number(@json(\App\Models\Credit::getTotalCreditsByClient($invoice->client_id)) || 0);
+        const partialCredit = Number(@json(\App\ Models\ Credit::getTotalCreditsByClient($invoice - > client_id)) || 0);
         let creditRemaining = partialCredit;
         const creditUsed = {};
         // console.log(items);
@@ -1843,17 +1843,18 @@
             }
 
             const paymentGatewaySection = document.getElementById('payment_gateway_section');
-            const additionalActions      = document.getElementById('additional-actions');
-            const paymentGatewayDropdowns= document.getElementById('payment_gateway_dropdowns');
-            const paymentModal  = document.getElementById('paymentModal');
+            const additionalActions = document.getElementById('additional-actions');
+            const paymentGatewayDropdowns = document.getElementById('payment_gateway_dropdowns');
+            const paymentModal = document.getElementById('paymentModal');
             const paymentModal1 = document.getElementById('paymentModal1');
-            const creditModal   = document.getElementById('clientCreditModal');
+            const creditModal = document.getElementById('clientCreditModal');
 
             const show = (el) => el && (el.style.display = 'block');
             const hide = (el) => el && (el.style.display = 'none');
 
             if (paymentType === 'full' || paymentType === 'cash') {
-                show(paymentGatewaySection); show(additionalActions);
+                show(paymentGatewaySection);
+                show(additionalActions);
                 paymentGatewayDropdowns?.classList.remove('hidden');
                 hideModal();
             } else if (paymentType === 'partial') {
@@ -1872,7 +1873,8 @@
                 paymentGatewayDropdowns?.classList.add('hidden');
                 creditModal?.classList.add('hidden');
             } else {
-                hide(paymentGatewaySection); hide(additionalActions);
+                hide(paymentGatewaySection);
+                hide(additionalActions);
             }
         }
 
@@ -2026,8 +2028,8 @@
             }
         }
 
-        function gwKey(s){
-            return (s||'').toString().trim().toLowerCase().replace(/[\s_-]+/g,'');
+        function gwKey(s) {
+            return (s || '').toString().trim().toLowerCase().replace(/[\s_-]+/g, '');
         }
 
         const paymentMethods = @json($paymentMethods);
@@ -2037,7 +2039,8 @@
             (acc[key] ||= []).push(method);
             return acc;
         }, {});
-        function renderMethodOptions(selectEl, methods){
+
+        function renderMethodOptions(selectEl, methods) {
             selectEl.innerHTML = methods.map(method => `<option value="${method.id}">${method.english_name}</option>`).join('');
         }
 
@@ -2107,12 +2110,12 @@
                         </td>
                         <td class="border-b px-4 py-2">
                             <div class="w-[140px]">
-                                <select id="payment_gateway_${i}" class="w-full border border-gray-300 p-2 rounded">
-                                <option value="Credit" id="credit_option_${i}" disabled>Credit (0.00)</option>
-                                <option value="Cash">Cash</option>
-                                @foreach ($paymentGateways as $gateway)
-                                    <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
-                                @endforeach
+                                <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="w-full border border-gray-300 p-2 rounded">
+                                    <option value="Credit" id="credit_option_${i}" disabled>Credit (0.00)</option>
+                                    <option value="Cash">Cash</option>
+                                    @foreach ($paymentGateways as $gateway)
+                                        <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                         </td>
@@ -2132,7 +2135,7 @@
                 const methodText = row.querySelector(`#payment_method_text_${i}`);
                 const methodSelect = row.querySelector(`#payment_method_${i}`);
 
-                function updateMethodVisibility(){
+                function updateMethodVisibility() {
                     const key = gwKey(gatewaySelect.value);
                     const methods = methodsByGateway[key] || [];
 
@@ -2185,14 +2188,14 @@
 
         function updateCreditUI(splitCount) {
             for (let i = 1; i <= splitCount; i++) {
-            const opt = document.getElementById(`credit_option1_${i}`);
-            const amt = Number(document.getElementById(`amount_${i}`)?.value || 0);
-            const usesCredit = Number(creditUsed[i] || 0) > 0;
+                const opt = document.getElementById(`credit_option1_${i}`);
+                const amt = Number(document.getElementById(`amount_${i}`)?.value || 0);
+                const usesCredit = Number(creditUsed[i] || 0) > 0;
 
-            // disable credit if this row doesn't already use it and amount > remaining
-            opt.disabled = !usesCredit && (amt <= 0 || amt > creditRemaining);
-            opt.textContent = `Credit (${creditRemaining.toFixed(2)})`;
-            opt.style.color = opt.disabled ? '#9ca3af' : '#000';
+                // disable credit if this row doesn't already use it and amount > remaining
+                opt.disabled = !usesCredit && (amt <= 0 || amt > creditRemaining);
+                opt.textContent = `Credit (${creditRemaining.toFixed(2)})`;
+                opt.style.color = opt.disabled ? '#9ca3af' : '#000';
             }
         }
 
@@ -2227,6 +2230,7 @@
                                 <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
                             @endforeach
                         </select>
+                        
 
                         <div id="method_wrapper_${i}" class="mt-2">
                             <label class="block text-sm font-medium mb-1">Payment Method</label>
@@ -2245,7 +2249,7 @@
                 const methodSelect = row.querySelector(`#payment_method1_${i}`);
                 const amountEl = row.querySelector(`#amount_${i}`);
 
-                function updateMethodVisibility(){
+                function updateMethodVisibility() {
                     const key = gwKey(gatewaySelect.value);
                     const methods = methodsByGateway[key] || [];
                     const isCashOrCredit = key === gwKey('cash') || key === gwKey('credit');
@@ -2270,7 +2274,10 @@
                     const prevUsed = Number(creditUsed[i] || 0);
 
                     if (key === gwKey('credit')) {
-                        if (prevUsed > 0) { creditRemaining += prevUsed; creditUsed[i] = 0; }
+                        if (prevUsed > 0) {
+                            creditRemaining += prevUsed;
+                            creditUsed[i] = 0;
+                        }
                         if (amt > 0 && amt <= creditRemaining) {
                             creditUsed[i] = amt;
                             creditRemaining -= amt;
@@ -2292,7 +2299,7 @@
                     const using = Number(creditUsed[i] || 0);
                     if (using > 0) {
                         const newAmt = Number(amountEl.value || 0);
-                        const delta  = newAmt - using;
+                        const delta = newAmt - using;
                         if (delta > 0) {
                             if (delta <= creditRemaining) {
                                 creditUsed[i] += delta;
@@ -3455,7 +3462,12 @@
                 const externalUrl = document.getElementById('external_url')?.value;
                 const paymentGateway = mode === 'cash' ? 'Cash' : mode === 'credit' ? 'Credit' : gateway;
 
-                requests.push(save(mode, { date, amount, gateway: paymentGateway, external_url: externalUrl }));
+                requests.push(save(mode, {
+                    date,
+                    amount,
+                    gateway: paymentGateway,
+                    external_url: externalUrl
+                }));
 
                 const button = document.getElementById('update-invoice-btn');
                 const icon = document.getElementById('button-icon-full');
@@ -3503,7 +3515,14 @@
                     const methodSelect = row.querySelector(`#payment_method_${index + 1}`);
                     const method = methodSelect ? methodSelect.value : null;
 
-                    requests.push(save('split', { clientId, clientName, date, amount, gateway, method }));
+                    requests.push(save('split', {
+                        clientId,
+                        clientName,
+                        date,
+                        amount,
+                        gateway,
+                        method
+                    }));
                 });
 
                 const buttonSplit = document.getElementById('splitbutton');
@@ -3547,7 +3566,12 @@
 
                     const gateway = gatewayEl ? gatewayEl.value : null;
                     const method = (methodBox && !methodBox.classList.contains('hidden')) ? (methodEl?.value || null) : null;
-                    requests.push(save('partial', { date, amount, gateway, method }));
+                    requests.push(save('partial', {
+                        date,
+                        amount,
+                        gateway,
+                        method
+                    }));
 
                     console.log(`row ${i}`, {
                         date,
@@ -3663,17 +3687,26 @@
                     const errorData = await response.json().catch(() => ({}));
                     const msg = errorData.message || `Failed to process ${type} payment.`;
                     displayErrorMessage(msg);
-                    return { ok: false, error: msg };
+                    return {
+                        ok: false,
+                        error: msg
+                    };
                 }
 
                 const result = await response.json();
                 displaySuccessMessage(result.message || `${type} payment processed successfully!`);
-                return { ok: true, data: result };
+                return {
+                    ok: true,
+                    data: result
+                };
 
             } catch (error) {
                 console.error(`Error processing ${type} payment for item:`, item, error);
                 displayErrorMessage(error.message || `Something went wrong with ${type} payment.`);
-                return { ok: false, error };
+                return {
+                    ok: false,
+                    error
+                };
             }
         }
 
@@ -4072,8 +4105,8 @@
             const cancelBtn = document.getElementById('cancelImport');
             const form = document.getElementById('importForm');
             const gateway = document.getElementById('gateway');
-                const fatoorah = document.getElementById('import_invoice_id');
-                const hesabe = document.getElementById('import_order_reference');
+            const fatoorah = document.getElementById('import_invoice_id');
+            const hesabe = document.getElementById('import_order_reference');
 
             const successBox = document.getElementById('successBox');
             const errorBox = document.getElementById('errorBox');
@@ -4084,8 +4117,8 @@
             // Show modal
             openBtn.addEventListener('click', () => {
                 gateway.value = '';
-                    fatoorah.value = '';
-                    hesabe.value = '';
+                fatoorah.value = '';
+                hesabe.value = '';
                 errorBox.classList.add('hidden');
                 successBox.classList.add('hidden');
                 loadingBox.classList.add('hidden');
@@ -4151,7 +4184,9 @@
                     try {
                         const res = await fetch(`{{ route('payment.link.import.invoice') }}`, {
                             method: 'POST',
-                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
                             body: formData,
                         });
 

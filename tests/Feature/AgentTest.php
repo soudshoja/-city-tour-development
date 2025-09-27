@@ -599,4 +599,25 @@ class AgentTest extends TestCase
         $this->assertEquals(20, $agents->perPage());
         $this->assertTrue($agents->hasPages());
     }
+
+    public function test_company_agent_index_is_isolated()
+    {
+        $companyBUser = User::factory()->create(['role_id' => Role::COMPANY]);
+        $companyB     = Company::factory()->create(['user_id' => $companyBUser->id]);
+        $branchB      = Branch::factory()->create(['user_id' => $companyBUser->id, 'company_id' => $companyB->id]);
+        Agent::factory()->count(2)->create([
+            'user_id'   => User::factory()->create(['role_id' => Role::AGENT])->id,
+            'branch_id' => $branchB->id,
+            'type_id'   => $this->agentType->id,
+        ]);
+
+        $this->actingAs($this->companyUser);
+        $response = $this->get(route('agents.index'));
+        $response->assertOk();
+
+        $agents = $response->viewData('agents');
+        foreach ($agents as $agent) {
+            $this->assertEquals($this->company->id, $agent->branch->company_id);
+        }
+    }
 }

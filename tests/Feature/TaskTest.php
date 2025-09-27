@@ -25,6 +25,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
+use Spatie\Permission\Models\Role as SpatieRole;
 
 class TaskTest extends TestCase
 {
@@ -36,6 +37,8 @@ class TaskTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->artisan('db:seed', ['--class' => 'PermissionSeeder']);
         
         // Create company user
         $this->companyUser = User::factory()->create([
@@ -55,10 +58,10 @@ class TaskTest extends TestCase
         $this->companyUser->update(['company_id' => $this->company->id]);
 
         // Create necessary roles
-        Role::create(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
-        Role::create(['name' => 'company', 'guard_name' => 'web', 'company_id' => $this->company->id]);
-        Role::create(['name' => 'branch', 'guard_name' => 'web', 'company_id' => $this->company->id]);
-        Role::create(['name' => 'agent', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::firstOrCreate(['name' => 'company', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::firstOrCreate(['name' => 'branch', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        Role::firstOrCreate(['name' => 'agent', 'guard_name' => 'web', 'company_id' => $this->company->id]);
 
         AgentType::factory()->create([
             'id' => 1,
@@ -548,5 +551,152 @@ class TaskTest extends TestCase
         $this->assertDatabaseHas('companies', ['id' => $company->id]);
         $this->assertDatabaseHas('countries', ['id' => $country->id]);
         $this->assertDatabaseHas('suppliers', ['id' => $supplier->id]);
+    }
+
+    public function test_company_tasks_index_is_isolated_per_company()
+    {
+        $country   = Country::factory()->create();
+        $supplierA = Supplier::factory()->create(['country_id' => $country->id]);
+        $supplierB = Supplier::factory()->create(['country_id' => $country->id]);
+
+        $branchA = Branch::factory()->create([
+            'user_id'    => $this->companyUser->id,
+            'company_id' => $this->company->id,
+        ]);
+        $agentAUser = User::factory()->create(['role_id' => Role::AGENT]);
+        $agentA = Agent::factory()->create([
+            'user_id'   => $agentAUser->id,
+            'branch_id' => $branchA->id,
+            'type_id'   => 1,
+        ]);
+        $clientA = Client::factory()->create(['agent_id' => $agentA->id]);
+
+        Task::factory()->count(3)->create([
+            'company_id' => $this->company->id,
+            'agent_id'   => $agentA->id,
+            'client_id'  => $clientA->id,
+            'supplier_id' => $supplierA->id,
+        ]);
+
+        $companyBUser = User::factory()->create(['role_id' => Role::COMPANY]);
+        $companyB = Company::factory()->create(['user_id' => $companyBUser->id]);
+        $branchB = Branch::factory()->create([
+            'user_id'    => $companyBUser->id,
+            'company_id' => $companyB->id,
+        ]);
+        $agentBUser = User::factory()->create(['role_id' => Role::AGENT]);
+        $agentB = Agent::factory()->create([
+            'user_id'   => $agentBUser->id,
+            'branch_id' => $branchB->id,
+            'type_id'   => 1,
+        ]);
+        $clientB = Client::factory()->create(['agent_id' => $agentB->id]);
+
+        Task::factory()->count(2)->create([
+            'company_id' => $companyB->id,
+            'agent_id'   => $agentB->id,
+            'client_id'  => $clientB->id,
+            'supplier_id' => $supplierB->id,
+        ]);
+
+        
+        $roleCompany = SpatieRole::firstOrCreate(['name' => 'company', 'guard_name' => 'web']);
+        $roleCompany->givePermissionTo('view task');
+        $this->companyUser->assignRole($roleCompany);
+        $this->actingAs($this->companyUser);
+
+        $response = $this->get(route('tasks.index', ['invoiced' => 0, 'view_type' => 'invoice']));
+        $response->assertOk()->assertViewIs('tasks.index')->assertViewHas('tasks');
+        $tasks = $response->viewData('tasks');
+
+        foreach (($tasks instanceof \Illuminate\Pagination\LengthAwarePaginator ? $tasks->items() : $tasks) as $task) {
+            $this->assertEquals($this->company->id, $task->company_id);
+        }
+    }
+
+    public function test_agent_sees_only_own_and_unassigned_tasks_in_same_company()
+    {
+        $country   = Country::factory()->create();
+        $supplierA = Supplier::factory()->create(['country_id' => $country->id]);
+        $supplierB = Supplier::factory()->create(['country_id' => $country->id]);
+
+        $companyAUser = User::factory()->create(['role_id' => Role::COMPANY]);
+        $companyA = Company::factory()->create(['user_id' => $companyAUser->id]);
+        $branchA  = Branch::factory()->create(['company_id' => $companyA->id, 'user_id' => $companyAUser->id]);
+
+        $agentUserA = User::factory()->create(['role_id' => Role::AGENT]);
+        $agentA = Agent::factory()->create(['user_id' => $agentUserA->id, 'branch_id' => $branchA->id, 'type_id' => 1]);
+        Task::factory()->create(['company_id' => $companyA->id, 'agent_id' => null, 'supplier_id' => $supplierA->id]);
+
+        $companyBUser = User::factory()->create(['role_id' => Role::COMPANY]);
+        $companyB = Company::factory()->create(['user_id' => $companyBUser->id]);
+        Task::factory()->create(['company_id' => $companyB->id, 'agent_id' => null, 'supplier_id' => $supplierB->id]);
+
+        $roleAgent = SpatieRole::firstOrCreate(['name' => 'agent', 'guard_name' => 'web']);
+        $roleAgent->givePermissionTo('view task');
+        $agentUserA->assignRole($roleAgent);
+        $this->actingAs($agentUserA);
+
+        $response = $this->followingRedirects()->get(route('tasks.index', ['invoiced' => 0, 'view_type' => 'invoice']));
+        $response->assertOk()->assertViewIs('tasks.index')->assertViewHas('tasks');
+        $tasks = $response->viewData('tasks');
+
+        foreach (($tasks instanceof \Illuminate\Pagination\LengthAwarePaginator ? $tasks->items() : $tasks) as $task) {
+            $this->assertEquals($companyA->id, $task->company_id);
+            $this->assertTrue($task->agent_id === $agentA->id || is_null($task->agent_id));
+        }
+    }
+
+    public function test_task_search_is_company_scoped()
+    {
+        $country   = Country::factory()->create();
+        $supplierA = Supplier::factory()->create(['country_id' => $country->id]);
+        $supplierB = Supplier::factory()->create(['country_id' => $country->id]);
+
+        $this->actingAs($this->companyUser);
+        Task::factory()->create(['company_id' => $this->company->id, 'passenger_name' => 'Unique Zed', 'supplier_id' => $supplierA->id]);
+
+        $companyUser = User::factory()->create(['role_id' => Role::COMPANY]);
+        $company = Company::factory()->create(['user_id' => $companyUser->id]);
+        Task::factory()->create(['company_id' => $company->id, 'passenger_name' => 'Unique Zed', 'supplier_id' => $supplierB->id]);
+
+        $roleCompany = SpatieRole::firstOrCreate(['name' => 'company', 'guard_name' => 'web']);
+        $roleCompany->givePermissionTo('view task');
+        $this->companyUser->assignRole($roleCompany);
+        $this->actingAs($this->companyUser);
+
+        $response = $this->followingRedirects()->get(route('tasks.index', ['invoiced'=>0,'view_type'=>'invoice','q'=>'Unique Zed']));
+        $response->assertOk()->assertViewIs('tasks.index')->assertViewHas('tasks');
+        $tasks = $response->viewData('tasks');
+
+        foreach (($tasks instanceof \Illuminate\Pagination\LengthAwarePaginator ? $tasks->items() : $tasks) as $task) {
+            $this->assertEquals($this->company->id, $task->company_id);
+        }
+    }
+
+    public function test_pagination_does_not_leak_cross_company_tasks()
+    {
+        $country   = Country::factory()->create();
+        $supplierA = Supplier::factory()->create(['country_id' => $country->id]);
+        $supplierB = Supplier::factory()->create(['country_id' => $country->id]);
+
+        $this->actingAs($this->companyUser);
+        Task::factory()->count(35)->create(['company_id' => $this->company->id, 'supplier_id' => $supplierA->id]);
+        $company = Company::factory()->create(['user_id' => User::factory()->create(['role_id'=>Role::COMPANY])->id]);
+        Task::factory()->count(5)->create(['company_id' => $company->id, 'supplier_id' => $supplierB->id]);
+
+        $roleCompany = SpatieRole::firstOrCreate(['name' => 'company', 'guard_name' => 'web']);
+        $roleCompany->givePermissionTo('view task');
+        $this->companyUser->assignRole($roleCompany);
+        $this->actingAs($this->companyUser);
+
+        foreach ([1,2] as $page) {
+            $response = $this->followingRedirects()->get(route('tasks.index', ['invoiced'=>0,'view_type'=>'invoice','page'=>$page]));
+            $response->assertOk()->assertViewIs('tasks.index')->assertViewHas('tasks');
+            $tasks = $response->viewData('tasks');
+            foreach ($tasks as $task) {
+                $this->assertEquals($this->company->id, $task->company_id);
+            }
+        }
     }
 }

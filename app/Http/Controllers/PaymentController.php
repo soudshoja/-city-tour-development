@@ -2353,6 +2353,84 @@ class PaymentController extends Controller
                 ]);
                 return redirect()->back()->with('error', 'Hesabe response missing token for PaymentURL');
             }
+        } elseif (strtolower($paymentGateway) === 'upayment') {
+            if ($payment->status === 'initiate') {
+                if ($payment->payment_url && $payment->expiry_date && now()->lt($payment->expiry_date)) {
+                    Log::info('Reusing existing payment URL', [
+                        'invoice_id' => $payment->payment_reference,
+                        'url' => $payment->payment_url,
+                        'expires_at' => $payment->expiry_date,
+                    ]);
+
+                    return redirect($payment->payment_url);
+                }
+                Log::info('Old payment URL expired, reinitiating new payment');
+                return $this->paymentLinkReinitiate($payment->payment_reference);
+            }
+
+
+            $payment->load(['agent.branch.company', 'client']);
+            $company = $payment->agent?->branch?->company;
+            $client = $payment->client;
+
+            $clientPhone = $client->phone ?? null;
+            if ($clientPhone && str_starts_with($clientPhone, '+')) {
+                $clientPhone = preg_replace('/^\+\d{1,3}/', '', $clientPhone);
+                $clientPhone = ltrim($clientPhone, '0');
+            }
+
+            $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $company->id);
+            $finalAmount  = $chargeResult['finalAmount'] ?? $payment->amount;
+
+            $requestUPayment = new Request([
+                'final_amount'      => $finalAmount,
+                'client_id'         => $client->id,
+                'client_name'       => $client->full_name,
+                'client_email'      => $client->email ?? $company?->email,
+                'client_phone'      => $clientPhone ?? '50000000',
+                'company_email'     => $company?->email,
+                'payment_id'        => $payment->id,
+                'payment_number'    => $payment->voucher_number,
+                'payment_method_id' => $payment->payment_method_id,
+                'invoice_id'        => optional($payment->invoice)->id,
+                'invoice_number'    => optional($payment->invoice)->invoice_number,
+                'currency'          => $payment->currency ?? 'KWD',
+            ]);
+
+            $uPayment = new UPayment();
+            $response = $uPayment->makeCharge($requestUPayment);
+
+            if (!is_array($response)) {
+                Log::error('UPayments: Unexpected response', ['raw' => $response]);
+                return redirect()->back()->with('error', 'UPayments: unexpected response');
+            }
+        
+            if (isset($response['status']) && $response['status'] === 'error') {
+                return redirect()->back()->with('error', $response['message'] ?? 'UPayments error');
+            }
+        
+            $paymentReference = $response['data']['trackId'] ?? null;
+            $paymentUrl = $response['data']['link'] ?? null;
+            $expiryDate = $response['transaction']['expiryDate'] ?? $response['data']['expiryDate'] ?? null;
+
+            if ($paymentUrl && $paymentReference) {
+                $payment->payment_reference = $paymentReference;
+                $payment->payment_url = $paymentUrl;
+                $payment->expiry_date = $expiryDate ? Carbon::parse($expiryDate) : now()->addDays(2);
+                $payment->status = 'initiate';
+                $payment->save();
+        
+                Log::info('UPayments payment initiated', [
+                    'payment_id'  => $payment->id,
+                    'track_id'    => $paymentReference,
+                    'payment_url' => $paymentUrl,
+                    'expires_at'  => $payment->expiry_date,
+                ]);
+        
+                return redirect($paymentUrl);
+            }
+            Log::error('UPayments: Missing link or trackId', ['response' => $response]);
+            return redirect()->back()->with('error', 'UPayments response missing link or trackId.');
         }
 
         return redirect()->route('payment.link.index')->with('success', 'Payment initiated successfully!');
@@ -2364,13 +2442,12 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'Missing payment reference for reinitiation.');
         }
 
-        Log::info('Reinitiating MyFatoorah payment', ['payment_reference' => $paymentReference]);
-
-        $payment = Payment::with('client', 'agent.branch')->where('payment_reference', $paymentReference)->first();
-
+        $payment = Payment::with(['client', 'agent.branch.company', 'paymentMethod'])->where('payment_reference', $paymentReference)->first();
         if (!$payment || $payment->status !== 'initiate') {
             return redirect()->back()->with('error', 'Invalid or already processed payment.');
         }
+
+        Log::info('Reinitiating payment link', ['payment_reference' => $paymentReference]);
 
         $configService = new GatewayConfigService();
         $myfatoorahConfig = $configService->getMyFatoorahConfig();
@@ -2379,33 +2456,48 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive');
         }
 
-        $myfatoorahConfig = $myfatoorahConfig['data'];
+        $gateway = strtolower($payment->payment_gateway);
+        $company = $payment->agent?->branch?->company;
+        $client  = $payment->client;
 
-        $apiKey  = $myfatoorahConfig['api_key'];
-        $baseUrl = $myfatoorahConfig['base_url'];
-
-        $companyId = optional($payment->agent->branch)->company_id;
-
-        $firstName = $payment->client->first_name;
-        $middleName = $payment->client->middle_name ?? '';
-        $lastName = $payment->client->last_name ?? '';
-
-        $customerName = trim("$firstName $middleName $lastName");
-
-        $client = $payment->client;
         $clientPhone = $client->phone ?? '50000000';
-        if (isset($clientPhone) && strpos($clientPhone, '+') === 0) {
+        if (str_starts_with($clientPhone, '+')) {
             $clientPhone = preg_replace('/^\+\d{1,3}/', '', $clientPhone);
             $clientPhone = ltrim($clientPhone, '0');
         }
 
-        $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+        switch ($gateway) {
+            case 'myfatoorah':
+                return $this->reinitiateMyFatoorah($payment, $company, $client, $clientPhone);
+
+            case 'upayment':
+                return $this->reinitiateUPayment($payment, $company, $client, $clientPhone);
+
+            default:
+                return redirect()->back()->with('error', "Reinitiation not supported for gateway: {$payment->payment_gateway}");
+        }
+    }
+
+    protected function reinitiateMyFatoorah($payment, $company, $client, $clientPhone)
+    {
+        $configService = new GatewayConfigService();
+        $config = $configService->getMyFatoorahConfig();
+
+        if(!$config['status'] || !$config['data']) {
+            return redirect()->back()->with('error', $config['message'] ?? 'MyFatoorah config missing or inactive.');
+        }
+
+        $cfg = $config['data'];
+        $apiKey = $cfg['api_key'];
+        $baseUrl = $cfg['base_url'];
+
+        $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $company->id);
         $finalAmount = $chargeResult['finalAmount'];
 
         $executePayload = [
             "PaymentMethodId"     => $payment->paymentMethod?->myfatoorah_id,
             "InvoiceValue"        => $finalAmount,
-            "CustomerName"        => $customerName,
+            "CustomerName"        => $client->full_name,
             "CustomerEmail"       => $client->email ?? 'email@example.com',
             "MobileCountryCode"   => $client->country_code ?? '+965',
             "CustomerMobile"      => $clientPhone,
@@ -2435,12 +2527,11 @@ class PaymentController extends Controller
         ])->post("$baseUrl/ExecutePayment", $executePayload);
 
         if (!$executeResponse->successful()) {
-            Log::error('Reinitiate MyFatoorah ExecutePayment failed', ['response' => $executeResponse->body()]);
-            
-            return auth()->user() ? redirect()->route('invoices.index')->with('error', 'Failed to reinitiate payment.') : abort(500);
+            Log::error('MyFatoorah reinitiate failed', ['response' => $executeResponse->body()]);
+            return auth()->user() ? redirect()->route('invoices.index')->with('error', 'Failed to reinitiate MyFatoorah payment.') : abort(500);
         }
 
-        $resData = $executeResponse->json();
+        $resData = $executeResponse->json() ?? [];
         $invoiceUrl = $resData['Data']['PaymentURL'] ?? null;
         $mfInvoiceId = $resData['Data']['InvoiceId'] ?? null;
 
@@ -2452,7 +2543,53 @@ class PaymentController extends Controller
             return redirect($invoiceUrl);
         }
 
-        return auth()->user() ? redirect()->route('invoices.index')->with('error', 'Failed to retrieve reinitiation URL.') : abort(500);
+        return auth()->user() ? redirect()->route('invoices.index')->with('error', 'Failed to retrieve MyFatoorah reinitiation URL.') : abort(500);
+    }
+
+    protected function reinitiateUPayment($payment, $company, $client, $clientPhone)
+    {
+        $charge = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $company->id);
+        $finalAmount = $charge['finalAmount'] ?? $payment->amount;
+
+        $request = new Request([
+            'final_amount'      => $finalAmount,
+            'client_id'         => $client->id,
+            'client_name'       => $client->full_name,
+            'client_email'      => $client->email ?? $company?->email,
+            'client_phone'      => $clientPhone,
+            'company_email'     => $company?->email,
+            'payment_id'        => $payment->id,
+            'payment_number'    => $payment->voucher_number,
+            'payment_method_id' => $payment->payment_method_id,
+            'invoice_id'        => optional($payment->invoice)->id,
+            'invoice_number'    => optional($payment->invoice)->invoice_number,
+            'currency'          => $payment->currency ?? 'KWD',
+        ]);
+
+        $upayment = new UPayment();
+        $response = $upayment->makeCharge($request);
+
+        if (!is_array($response)) {
+            Log::error('UPayment reinitiate unexpected response', ['raw' => $response]);
+            return redirect()->back()->with('error', 'UPayment: unexpected response.');
+        }
+
+        if (isset($response['status']) && $response['status'] === 'error') {
+            return redirect()->back()->with('error', $response['message'] ?? 'UPayment error.');
+        }
+
+        $trackId = $response['data']['trackId'] ?? null;
+        $link = $response['data']['link'] ?? null;
+
+        if ($trackId && $link) {
+            $payment->status = 'initiate';
+            $payment->save();
+
+            return redirect($link);
+        }
+
+        Log::error('UPayment reinitiate missing link/trackId', ['response' => $response]);
+        return redirect()->back()->with('error', 'UPayment reinitiate failed: Missing link or trackId.');
     }
 
     public function paymentLinkProcess(Request $request)
@@ -3399,9 +3536,6 @@ class PaymentController extends Controller
                 return redirect()->to('/invoices')->with('error', 'Payment was not completed successfully.');
             }
 
-
-
-
             // Determine if this is a topup or invoice payment
             $process = $payment->invoice ? 'invoice' : 'topup';
 
@@ -3683,14 +3817,30 @@ class PaymentController extends Controller
         }
     }
 
-    public function handleUPaymentError(Request $request) {
+    public function handleUPaymentError(Request $request)
+    {
         Log::error('UPayment error callback', [
             'request' => $request->all(),
             'query' => $request->query(),
             'input' => $request->input(),
         ]);
 
-        return Auth::user() ? redirect()->route('invoices.index')->with('error', 'Payment was not completed or was cancelled.') : redirect()->route('payment.failed');
+        $payment = null;
+        $paymentId = $request->input('payment_id') ?? $request->input('order_id') ?? null;
+        $trackId = $request->input('track_id') ?? null;
+
+        if ($paymentId || $trackId) {
+            $payment = Payment::where('payment_reference', $trackId)->first();
+        }
+
+        if (Auth::check()) {
+            if ($payment && !$payment->invoice_id) {
+                return redirect()->route('payment.link.index')->with('error', 'Payment was not completed or was cancelled.');
+            }
+            return redirect()->route('invoices.index')->with('error', 'Payment was not completed or was cancelled.');
+        }
+
+        return redirect()->route('payment.failed');
     }
 
     public function handleUPaymentNoti()

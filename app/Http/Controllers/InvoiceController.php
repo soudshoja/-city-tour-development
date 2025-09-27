@@ -48,25 +48,25 @@ class InvoiceController extends Controller
 
         $user = Auth::user();
         $companiesId = [];
+        $agents = collect();
 
-        // Gate::authorize('viewAny', Invoice::class);
-
-        // Get all agents under the company
         if ($user->role_id == Role::ADMIN) {
             return abort(403, 'Unauthorized action.');
-            $agents = Agent::with(['branch'])->get();
-            $companiesId = Company::all()->pluck('id')->toArray();
         } else if ($user->role_id == Role::COMPANY) {
-            $agents = Agent::with(['branch' => function ($query) use ($user) {
-                $query->where('company_id', $user->company->id);
-            }])->get();
             $companiesId[] = $user->company->id;
+            $agents = Agent::whereHas('branch', fn($query) => $query->where('company_id', $user->company->id))
+                ->with(['branch:id,company_id', 'branch.company:id'])
+                ->get();
         } else if ($user->role_id == Role::BRANCH) {
-            $agents = Agent::where('branch_id', $user->branch->id)->get();
             $companiesId[] = $user->branch->company_id;
+            $agents = Agent::where('branch_id', $user->branch->id)
+                ->with(['branch:id,company_id', 'branch.company:id'])
+                ->get();
         } else if ($user->role_id == Role::AGENT) {
-            $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $companiesId[] = $user->agent->branch->company_id;
+            $agents = Agent::where('id', $user->agent->id)
+                ->with(['branch:id,company_id', 'branch.company:id'])
+                ->get();
         } elseif ($user->role_id == Role::ACCOUNTANT) {
             $companyId = $user->accountant->branch->company_id;                
 
@@ -75,8 +75,6 @@ class InvoiceController extends Controller
                             ->with(['branch:id,company_id', 'branch.company:id,name'])
                             ->get();
                 $companiesId[] = $companyId;
-            } else {
-                $agents = collect();
             }
         } else {
             return redirect()->back()->with('error', 'Unauthorized access.');

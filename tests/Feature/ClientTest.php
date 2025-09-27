@@ -1066,4 +1066,32 @@ class ClientTest extends TestCase
             'error' => 'Client not found'
         ]);
     }
+
+    public function test_company_user_cannot_view_other_company_client()
+    {
+        $companyBUser = User::factory()->create(['role_id' => Role::COMPANY]);
+        $companyB = Company::factory()->create(['user_id' => $companyBUser->id]);
+
+        $branchBUser = User::factory()->create(['role_id' => Role::BRANCH]);
+        $branchB = Branch::factory()->create([
+            'company_id' => $companyB->id,
+            'user_id'    => $branchBUser->id,
+        ]);
+
+        $agentBUser = User::factory()->create(['role_id' => Role::AGENT]);
+        $agentB = Agent::factory()->create([
+            'branch_id'  => $branchB->id,
+            'user_id'    => $agentBUser->id,
+            'account_id' => 1,
+            'type_id'    => 1,
+        ]);
+
+        $clientB = Client::factory()->create([
+            'agent_id'   => $agentB->id,
+            'first_name' => 'Test Client B',
+        ]);
+
+        $response = $this->actingAs($this->companyUser)->get(route('clients.show', $clientB->id));
+        $response->assertStatus(403);
+    }
 }

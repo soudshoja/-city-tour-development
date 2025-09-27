@@ -27,12 +27,17 @@ class ClientPolicy
 
     public function view(User $user, Client $client): bool
     {
-        if($user->can('view client')) return true;
+        if ($user->role_id == Role::ADMIN) {
+            return true;
+        } elseif ($user->role_id == Role::COMPANY) {
+            return optional($client->agent?->branch)->company_id === optional($user->company)->id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            return $client->agent?->branch_id === optional($user->branch)->id;
+        } elseif ($user->role_id == Role::AGENT) {
+            return $client->agent?->user_id === $user->id;
+        }
 
-        return ($user->role_id == Role::ADMIN ||
-            ($user->role_id == Role::COMPANY && $user->company->id === $client->agent->branch->company_id) ||
-            ($user->role_id == Role::BRANCH && $user->branch->id === $client->agent->branch_id) ||
-            ($user->role_id == Role::AGENT && $user->id === $client->agent->user_id));
+        return false;
     }
 
     public function create(User $user): bool

@@ -344,6 +344,7 @@ class ClientController extends Controller
     public function show($id)
     {
         $client = Client::with(['agent.branch.company'])->findOrFail($id);
+        Gate::authorize('view', $client);
         $user = Auth::user();
         $agentsQuery = Agent::query()->with('branch');
 

@@ -27,7 +27,7 @@ class TaskPolicy
 
     public function viewPrice(User $user): bool
     {
-        if($user->roles('admin')) return true;
+        if($user->hasRole('admin')) return true;
 
         if ($user->hasRole('accountant')) {
             return $user->can('view task price');
@@ -38,7 +38,7 @@ class TaskPolicy
 
     public function store(User $user): bool
     {
-        if($user->roles('admin')) return true;
+        if($user->hasRole('admin')) return true;
 
         if ($user->hasRole('accountant')) {
             return $user->can('create task');

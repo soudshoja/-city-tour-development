@@ -41,32 +41,21 @@
                 </li>
                 @endif
 
-                {{-- Pagination Elements --}}
+                {{-- Pagination Elements: Show only 2 page numbers at a time --}}
                 @php
-                $start = max(1, $data->currentPage() - 2);
-                $end = min($data->lastPage(), $data->currentPage() + 2);
+                $window = 2;
+                $current = $data->currentPage();
+                $last = $data->lastPage();
+                $start = max(1, $current - ($current % $window == 0 ? $window - 1 : ($current - 1) % $window));
+                $end = min($last, $start + $window - 1);
                 @endphp
 
-                @if ($start > 1)
-                <li class="pager">
-                    <a href="{{ $data->appends(request()->query())->url(1) }}"
-                        class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
-                        1
-                    </a>
-                </li>
-                @if ($start > 2)
-                <li class="pager">
-                    <span class="flex items-center justify-center w-10 h-10 text-gray-500">...</span>
-                </li>
-                @endif
-                @endif
-
                 @for ($page = $start; $page <= $end; $page++)
-                    @if ($page==$data->currentPage())
+                    @if ($page==$current)
                     <li class="pager active">
-                        <span class="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full font-semibold border border-blue-600">
-                            {{ $page }}
-                        </span>
+                    <span class="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full font-semibold border border-blue-600">
+                        {{ $page }}
+                    </span>
                     </li>
                     @else
                     <li class="pager">
@@ -78,49 +67,35 @@
                     @endif
                     @endfor
 
-                    @if ($end < $data->lastPage())
-                        @if ($end < $data->lastPage() - 1)
-                            <li class="pager">
-                                <span class="flex items-center justify-center w-10 h-10 text-gray-500">...</span>
-                            </li>
-                            @endif
-                            <li class="pager">
-                                <a href="{{ $data->appends(request()->query())->url($data->lastPage()) }}"
-                                    class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200 font-medium">
-                                    {{ $data->lastPage() }}
-                                </a>
-                            </li>
-                            @endif
-
-                            {{-- Next Page Link --}}
-                            @if ($data->hasMorePages())
-                            <li class="pager">
-                                <a href="{{ $data->appends(request()->query())->nextPageUrl() }}"
-                                    class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
-                                        <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
-                                            stroke-linecap="round" stroke-linejoin="round"></path>
-                                        <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
-                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                            stroke-linejoin="round"></path>
-                                    </svg>
-                                </a>
-                            </li>
-                            @else
-                            <li class="pager disabled">
-                                <span class="flex items-center justify-center w-10 h-10 text-gray-400 cursor-not-allowed bg-gray-200 dark:bg-gray-600 rounded-full">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                        xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
-                                        <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
-                                            stroke-linecap="round" stroke-linejoin="round"></path>
-                                        <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
-                                            stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                            stroke-linejoin="round"></path>
-                                    </svg>
-                                </span>
-                            </li>
-                            @endif
+                    {{-- Next Page Link --}}
+                    @if ($data->hasMorePages())
+                    <li class="pager">
+                        <a href="{{ $data->appends(request()->query())->nextPageUrl() }}"
+                            class="flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full transition-colors duration-200">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round"></path>
+                                <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
+                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                    stroke-linejoin="round"></path>
+                            </svg>
+                        </a>
+                    </li>
+                    @else
+                    <li class="pager disabled">
+                        <span class="flex items-center justify-center w-10 h-10 text-gray-400 cursor-not-allowed bg-gray-200 dark:bg-gray-600 rounded-full">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                xmlns="http://www.w3.org/2000/svg" class="w-4 h-4">
+                                <path d="M11 19L17 12L11 5" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round"></path>
+                                <path opacity="0.5" d="M6.99976 19L12.9998 12L6.99976 5"
+                                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                    stroke-linejoin="round"></path>
+                            </svg>
+                        </span>
+                    </li>
+                    @endif
             </ul>
         </nav>
         @endif

@@ -31,7 +31,8 @@ use Illuminate\Support\Str;
 use League\OAuth2\Client\Provider\GenericProvider;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-
+use App\Exports\SupplierTasksExport;
+use Maatwebsite\Excel\Facades\Excel;
 class SupplierController extends Controller
 {
     use AuthorizesRequests, HttpRequestTrait;
@@ -725,5 +726,36 @@ class SupplierController extends Controller
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('suppliers.pdf', compact('supplier', 'filteredTasks'));
         return $pdf->download('supplier-tasks.pdf');
+    }
+    public function exportExcel(Request $request, $suppliersId)
+    {
+        $supplier = Supplier::with([
+            'tasks.agent',
+            'tasks.flightDetails',
+            'tasks.hotelDetails.hotel',
+            'country'
+        ])->findOrFail($suppliersId);
+
+        $dateField = $request->input('date_field', 'created_at');
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+
+        $filteredTasks = $supplier->tasks;
+
+        if ($fromDate && $toDate) {
+            $filteredTasks = $filteredTasks->filter(function ($task) use ($dateField, $fromDate, $toDate) {
+                $date = $task[$dateField];
+                if (!$date) return false;
+                $date = \Carbon\Carbon::parse($date)->format('Y-m-d');
+                return $date >= $fromDate && $date <= $toDate;
+            });
+        }
+
+        // Sort by selected date field, newest first
+        $filteredTasks = $filteredTasks->sortByDesc(function ($task) use ($dateField) {
+            return $task[$dateField] ? \Carbon\Carbon::parse($task[$dateField])->timestamp : 0;
+        });
+
+        return Excel::download(new SupplierTasksExport($supplier, $filteredTasks), 'supplier-tasks.xlsx');
     }
 }

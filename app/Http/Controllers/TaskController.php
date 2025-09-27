@@ -50,7 +50,6 @@ use iio\libmergepdf\Driver\Fpdi2Driver;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
-// use Carbon\Carbon;
 
 class TaskController extends Controller
 {
@@ -437,9 +436,7 @@ class TaskController extends Controller
         return response()->json(['success' => true]);
     }
 
-    /**
-     * Save the user’s task-list column visibility settings in session
-     */
+
     public function saveColumnPrefs(Request $request)
     {
         $validated = $request->validate([
@@ -932,9 +929,7 @@ class TaskController extends Controller
         ]);
     }
 
-    /**
-     * Get or create a currency-specific child account for the supplier
-     */
+
     private function getOrCreateCurrencySpecificAccount(Task $task, $supplierPayableAccount, $currency, $branchId)
     {
         $supplier = Supplier::find($task->supplier_id);
@@ -1000,10 +995,7 @@ class TaskController extends Controller
         return $currencySpecificAccount;
     }
 
-    /**
-     * Get branch ID for task financial processing
-     * Returns agent's branch_id if agent exists, otherwise returns company's main branch_id
-     */
+
     private function getTaskBranchId(Task $task)
     {
         if ($task->agent && $task->agent->branch_id) {
@@ -1020,9 +1012,6 @@ class TaskController extends Controller
         return $mainBranch->id;
     }
 
-    /**
-     * Process all financial transactions for a task
-     */
     public function processTaskFinancial(Task $task)
     {
         if (!in_array($task->status, ['issued', 'reissued', 'void', 'refund', 'emd'], true)) {
@@ -1258,9 +1247,7 @@ class TaskController extends Controller
         }
     }
 
-    /**
-     * Get missing required fields with custom error messages
-     */
+
     private function getMissingFields(Task $task): string
     {
         $missingFields = [];
@@ -1288,9 +1275,6 @@ class TaskController extends Controller
         return implode(', ', $missingFields);
     }
 
-    /**
-     * Process issued task financials
-     */
     private function processIssuedTask(Task $task, $supplierCost, $supplierPayable, $issuedByAccount, $supplierCompany, $branchId, $currencySpecificAccount = null)
     {
         // Use task's issued_date as transaction_date
@@ -1411,9 +1395,7 @@ class TaskController extends Controller
         ]);
     }
 
-    /**
-     * Process void task financials
-     */
+
     private function processVoidTask(Task $task, $branchId)
     {
         Log::info('Check for invoice created for this task.');
@@ -1440,9 +1422,7 @@ class TaskController extends Controller
         }
     }
 
-    /**
-     * Process refund task financials
-     */
+
     private function processRefundTask(Task $task, $branchId)
     {
         // Get the same accounts as in processTaskFinancial for consistency
@@ -1682,10 +1662,7 @@ class TaskController extends Controller
         ]);
     }
 
-    /**
-     * Delete financial records when task status changes.
-     * Removes this task’s journal entries and linked transactions.
-     */
+
     private function revertFinancialsForTask(Task $task): void
     {
         Log::info('Reverting financials for task: ' . $task->reference);
@@ -1700,10 +1677,7 @@ class TaskController extends Controller
             ->delete();
     }
 
-    /**
-     * Delete financial records when task status changes from void to different status.
-     * Removes this task’s journal entries and linked transactions.
-     */
+
     private function revertFinancialsForVoid(Task $voidTask): void
     {
         if (!$voidTask->original_task_id) {
@@ -1918,7 +1892,7 @@ class TaskController extends Controller
     }
 
     public function update(Request $request, $id)
-    {        
+    {
         $request->validate([
             'reference' => 'nullable|string',
             'status' => 'required',

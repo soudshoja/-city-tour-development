@@ -179,6 +179,7 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'suppliers',
         'as' => 'suppliers.',
     ], function () {
+        Route::get('/{suppliersId}/export-excel', [SupplierController::class, 'exportExcel'])->name('suppliers.export.excel');        
         Route::get('/{suppliersId}/export-pdf', [SupplierController::class, 'exportPdf'])->name('suppliers.export.pdf');
         Route::post('/store', [SupplierController::class, 'store'])->name('store');
         Route::put('/update/{id}', [SupplierController::class, 'update'])->name('update');

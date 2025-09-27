@@ -1096,7 +1096,7 @@
                                                         onchange="updateRowSplit()">
                                                         <option value="" disabled selected>Select a value
                                                         </option>
-                                                        <option value="1">1</option>
+                                                        <!-- <option value="1">1</option> -->
                                                         <option value="2">2</option>
                                                         <option value="3">3</option>
                                                         <option value="4">4</option>
@@ -1176,7 +1176,7 @@
                                                     <select id="split-into1" class="w-full p-2 border-gray-300 rounded-md shadow-sm"
                                                         onchange="updateRowPartial()">
                                                         <option value="" disabled selected>Select a value</option>
-                                                        <option value="1">1</option>
+                                                        <!-- <option value="1">1</option> -->
                                                         <option value="2">2</option>
                                                         <option value="3">3</option>
                                                         <option value="4">4</option>
@@ -1835,79 +1835,45 @@
 
         let clientCredits = [];
 
-        function checkInvoiceId() {
-            const tabs = document.querySelectorAll('input[name="payment_type"]');
-            const paymentType = invoice.payment_type;
-            // console.log('paymenttype', paymentType);
-            const paymentGatewaySection = document.getElementById('payment_gateway_section');
-            const additionalActions = document.getElementById('additional-actions');
-            const paymentModal = document.getElementById('paymentModal');
-            const paymentModal1 = document.getElementById('paymentModal1');
-            const creditModal = document.getElementById('clientCreditModal');
-
-            const paymentGatewayDropdowns = document.getElementById('payment_gateway_dropdowns');
-
-            if (paymentType === 'full' || paymentType === 'cash') {
-                paymentGatewaySection.style.display = 'block'; // Show the section
-                additionalActions.style.display = 'block';
-                updateInvoiceBtn.disabled = true;
-                paymentTypeFull.disabled = true;
-                paymentTypePartial.disabled = true;
-                paymentTypeSplit.disabled = true;
-                paymentTypeCash.disabled = true;
-                paymentTypeImport.disabled = true;
-                paymentTypeCredit.disabled = true;
-                paymentGatewayDropdowns.classList.remove('hidden');
-            } else if (paymentType === 'partial') {
-                paymentGatewaySection.style.display = 'block'; // Show the section
-                additionalActions.style.display = 'block';
-                updateInvoiceBtn.disabled = true;
-                paymentTypeFull.disabled = true;
-                paymentTypePartial.disabled = true;
-                paymentTypeSplit.disabled = true;
-                paymentTypeCash.disabled = true;
-                paymentTypeImport.disabled = true;
-                paymentTypeCredit.disabled = true;
-                paymentGatewayDropdowns.classList.add('hidden');
-                paymentModal1.classList.add('hidden');
-            } else if (paymentType === 'split') {
-                paymentGatewaySection.style.display = 'block'; // Show the section
-                additionalActions.style.display = 'block';
-                updateInvoiceBtn.disabled = true;
-                paymentTypeFull.disabled = true;
-                paymentTypePartial.disabled = true;
-                paymentTypeSplit.disabled = true;
-                paymentTypeCash.disabled = true;
-                paymentTypeImport.disabled = true;
-                paymentTypeCredit.disabled = true;
-                paymentGatewayDropdowns.classList.add('hidden');
-                paymentModal.classList.add('hidden');
-            } else if (paymentType === 'credit') {
-                paymentGatewaySection.style.display = 'block'; // Show the section
-                additionalActions.style.display = 'block';
-                updateInvoiceBtn.disabled = true;
-                paymentTypeFull.disabled = true;
-                paymentTypePartial.disabled = true;
-                paymentTypeSplit.disabled = true;
-                paymentTypeCash.disabled = true;
-                paymentTypeImport.disabled = true;
-                paymentTypeCredit.disabled = true;
-                paymentGatewayDropdowns.classList.add('hidden');
-                creditModal.classList.add('hidden');
-            } else {
-                paymentGatewaySection.style.display = 'none'; // Hide the section
-                additionalActions.style.display = 'none';
-                updateInvoiceBtn.disabled = false;
-                paymentTypeFull.disabled = false;
-                paymentTypePartial.disabled = false;
-                paymentTypeSplit.disabled = false;
-                paymentTypeCash.disabled = false;
-                paymentTypeImport.disabled = false;
-                if (paymentTypeCredit) {
-                    paymentTypeCredit.disabled = false;
-                }
+        function checkInvoiceId(forcedType) {
+            let paymentType = forcedType;
+            if (!paymentType) {
+                const checked = document.querySelector('input[name="payment_type"]:checked');
+                paymentType = checked ? checked.value : undefined;
             }
 
+            const paymentGatewaySection = document.getElementById('payment_gateway_section');
+            const additionalActions      = document.getElementById('additional-actions');
+            const paymentGatewayDropdowns= document.getElementById('payment_gateway_dropdowns');
+            const paymentModal  = document.getElementById('paymentModal');
+            const paymentModal1 = document.getElementById('paymentModal1');
+            const creditModal   = document.getElementById('clientCreditModal');
+
+            const show = (el) => el && (el.style.display = 'block');
+            const hide = (el) => el && (el.style.display = 'none');
+
+            if (paymentType === 'full' || paymentType === 'cash') {
+                show(paymentGatewaySection); show(additionalActions);
+                paymentGatewayDropdowns?.classList.remove('hidden');
+                hideModal();
+            } else if (paymentType === 'partial') {
+                show(paymentGatewaySection);
+                show(additionalActions);
+                paymentGatewayDropdowns?.classList.add('hidden');
+                paymentModal1?.classList.add('hidden');
+            } else if (paymentType === 'split') {
+                show(paymentGatewaySection);
+                show(additionalActions);
+                paymentGatewayDropdowns?.classList.add('hidden');
+                paymentModal?.classList.add('hidden');
+            } else if (paymentType === 'credit') {
+                show(paymentGatewaySection);
+                show(additionalActions);
+                paymentGatewayDropdowns?.classList.add('hidden');
+                creditModal?.classList.add('hidden');
+            } else {
+                hide(paymentGatewaySection); hide(additionalActions);
+            }
         }
 
         // Setup save button click handler - will be called in main DOMContentLoaded
@@ -1971,6 +1937,7 @@
         let isSaved = false;
 
         function showModal(type) {
+            hideModal();
             if (type == 'split') {
                 document.getElementById('paymentModal').classList.remove('hidden');
             } else if (type == 'partial') {
@@ -1978,17 +1945,13 @@
             } else if (type == 'credit') {
                 document.getElementById('clientCreditModal')?.classList.remove('hidden');
             }
-
-            checkInvoiceId();
         }
 
         function hideModal() {
-            document.getElementById('paymentModal').classList.add('hidden');
-            document.getElementById('paymentModal1').classList.add('hidden');
+            document.getElementById('paymentModal')?.classList.add('hidden');
+            document.getElementById('paymentModal1')?.classList.add('hidden');
             document.getElementById('clientCreditModal')?.classList.add('hidden');
-            checkInvoiceId();
         }
-
 
         function showClientModal() {
             // Create the modal container
@@ -2063,11 +2026,25 @@
             }
         }
 
+        function gwKey(s){
+            return (s||'').toString().trim().toLowerCase().replace(/[\s_-]+/g,'');
+        }
+
+        const paymentMethods = @json($paymentMethods);
+        const methodsByGateway = paymentMethods.reduce((acc, method) => {
+            const key = gwKey(method.type ?? method.gateway ?? method.provider ?? '');
+            if (!key) return acc;
+            (acc[key] ||= []).push(method);
+            return acc;
+        }, {});
+        function renderMethodOptions(selectEl, methods){
+            selectEl.innerHTML = methods.map(method => `<option value="${method.id}">${method.english_name}</option>`).join('');
+        }
+
         function updateRowSplit() { //split payment
             const splitInto = parseInt(document.getElementById('split-into').value) || 0;
             const totalAmount = parseFloat(document.getElementById('total-amount').value) || 0;
             const perRowAmount = splitInto > 0 ? (totalAmount / splitInto).toFixed(2) : 0;
-            const paymentMethods = @json($paymentMethods);
             const tbody = document.getElementById('split-rows');
             tbody.innerHTML = ''; // Clear existing rows
 
@@ -2130,20 +2107,19 @@
                         </td>
                         <td class="border-b px-4 py-2">
                             <div class="w-[140px]">
-                                <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="w-full border border-gray-300 p-2 rounded">
-                                    <option value="Credit" id="credit_option_${i}" disabled>Credit (0.00)</option>
-                                    @foreach ($paymentGateways as $gateway)
-                                        <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
-                                    @endforeach
+                                <select id="payment_gateway_${i}" class="w-full border border-gray-300 p-2 rounded">
+                                <option value="Credit" id="credit_option_${i}" disabled>Credit (0.00)</option>
+                                <option value="Cash">Cash</option>
+                                @foreach ($paymentGateways as $gateway)
+                                    <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
+                                @endforeach
                                 </select>
                             </div>
                         </td>
                         <td class="border-b px-4 py-2">
                             <div class="w-[220px]">
                                 <div id="payment_method_container_${i}" class="hidden">
-                                    <select id="payment_method_${i}" name="payment_method_${i}" class="w-full border border-gray-300 p-2 rounded">
-                                        ${paymentMethods.map(method => `<option value="${method.id}">${method.english_name}</option>`).join('')}
-                                    </select>
+                                    <select id="payment_method_${i}" name="payment_method_${i}" class="w-full border border-gray-300 p-2 rounded"></select>
                                 </div>
                                 <div id="payment_method_text_${i}" class="text-gray-500 p-2">No specific method required</div>
                             </div>
@@ -2154,11 +2130,14 @@
                 const gatewaySelect = row.querySelector(`#payment_gateway_${i}`);
                 const methodContainer = row.querySelector(`#payment_method_container_${i}`);
                 const methodText = row.querySelector(`#payment_method_text_${i}`);
+                const methodSelect = row.querySelector(`#payment_method_${i}`);
 
-                const updateMethodVisibility = () => {
-                    const selectedValue = gatewaySelect.value.toLowerCase();
+                function updateMethodVisibility(){
+                    const key = gwKey(gatewaySelect.value);
+                    const methods = methodsByGateway[key] || [];
 
-                    if (selectedValue === 'myfatoorah') {
+                    if (methods.length > 0) {
+                        renderMethodOptions(methodSelect, methods);
                         methodContainer.classList.remove('hidden');
                         methodText.classList.add('hidden');
                     } else {
@@ -2166,14 +2145,12 @@
                         methodText.classList.remove('hidden');
                     }
 
-                    // Handle credit payment selection
-                    if (selectedValue === 'credit') {
+                    if (key === gwKey('credit')) {
                         handleCreditPaymentSelection(i);
                     }
-                };
+                }
 
                 updateMethodVisibility();
-
                 gatewaySelect.addEventListener('change', updateMethodVisibility);
             }
         }
@@ -2223,7 +2200,6 @@
             const splitInto1 = parseInt(document.getElementById('split-into1').value) || 0;
             const totalAmount1 = parseFloat(document.getElementById('total-amount').value) || 0;
             const perRowAmount1 = splitInto1 > 0 ? (totalAmount1 / splitInto1).toFixed(2) : 0;
-            const paymentMethods = @json($paymentMethods);
             const tbody = document.getElementById('split-rows1');
             tbody.innerHTML = '';
 
@@ -2243,20 +2219,19 @@
                         onblur="checkInputAmount('partial', ${i})" oninput="checkInputAmount('partial', ${i})" />
                     </td>
                     <td class="border-b px-4 py-2 text-left">
-                        <select id="payment_gateway1_${i}" name="payment_gateway1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
+                        <select id="payment_gateway1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
                             <option value="" selected>Select payment gateway</option>
                             <option value="Credit" id="credit_option1_${i}">Credit (${creditRemaining.toFixed(2)})</option>
+                            <option value="Cash">Cash</option>
                             @foreach ($paymentGateways as $gateway)
-                            <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
+                                <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
                             @endforeach
                         </select>
 
                         <div id="method_wrapper_${i}" class="mt-2">
                             <label class="block text-sm font-medium mb-1">Payment Method</label>
                             <div id="payment_method_container1_${i}" class="hidden">
-                                <select id="payment_method1_${i}" name="payment_method1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm">
-                                ${paymentMethods.map(m => `<option value="${m.id}">${m.english_name}</option>`).join('')}
-                                </select>
+                                <select id="payment_method1_${i}" name="payment_method1_${i}" class="w-full p-2 border-gray-300 rounded-md shadow-sm"></select>
                             </div>
                             <div id="payment_method_text1_${i}" class="text-gray-500 p-2">No specific method required</div>
                         </div>
@@ -2265,38 +2240,45 @@
                 tbody.appendChild(row);
 
                 const gatewaySelect = row.querySelector(`#payment_gateway1_${i}`);
-                const methodWrapper = row.querySelector(`#method_wrapper_${i}`);
                 const methodContainer = row.querySelector(`#payment_method_container1_${i}`);
                 const methodText = row.querySelector(`#payment_method_text1_${i}`);
+                const methodSelect = row.querySelector(`#payment_method1_${i}`);
                 const amountEl = row.querySelector(`#amount_${i}`);
 
-                const updateMethodVisibility = () => {
-                    const isMF = (gatewaySelect.value || '').toLowerCase() === 'myfatoorah';
-                    methodContainer.classList.toggle('hidden', !isMF);
-                    methodText.classList.toggle('hidden', isMF);
-                    methodWrapper.style.display = ''; // keep wrapper visible; we toggle inner parts instead
-                };
+                function updateMethodVisibility(){
+                    const key = gwKey(gatewaySelect.value);
+                    const methods = methodsByGateway[key] || [];
+                    const isCashOrCredit = key === gwKey('cash') || key === gwKey('credit');
 
-                // credit selection logic (simple + strict)
+                    if (methods.length > 0) {
+                        renderMethodOptions(methodSelect, methods);
+                        methodContainer.classList.remove('hidden');
+                        methodText.classList.add('hidden');
+                    } else {
+                        methodContainer.classList.add('hidden');
+                        methodText.classList.remove('hidden');
+                    }
+
+                    if (key === gwKey('credit')) {
+                        handleCreditPaymentSelection(i);
+                    }
+                }
+
                 const onGatewayChange = () => {
-                    const val = (gatewaySelect.value || '').toLowerCase();
+                    const key = gwKey(gatewaySelect.value);
                     const amt = Number(amountEl.value || 0);
                     const prevUsed = Number(creditUsed[i] || 0);
 
-                    if (val === 'credit') {
-                        // release any previous usage for this row before checking
+                    if (key === gwKey('credit')) {
                         if (prevUsed > 0) { creditRemaining += prevUsed; creditUsed[i] = 0; }
-
                         if (amt > 0 && amt <= creditRemaining) {
                             creditUsed[i] = amt;
                             creditRemaining -= amt;
                         } else {
-                            // not enough credit → revert and keep things consistent
                             alert(`Not enough credit. Remaining: ${creditRemaining.toFixed(2)}; Row ${i} needs: ${amt.toFixed(2)}.`);
                             gatewaySelect.value = '';
                         }
                     } else {
-                        // switching away from credit → give back
                         if (prevUsed > 0) {
                             creditRemaining += prevUsed;
                             creditUsed[i] = 0;
@@ -2306,33 +2288,27 @@
                     updateCreditUI(splitInto1);
                 };
 
-                // if user edits amount while using credit, adjust usage and remaining
                 const onAmountInput = () => {
                     const using = Number(creditUsed[i] || 0);
                     if (using > 0) {
                         const newAmt = Number(amountEl.value || 0);
                         const delta  = newAmt - using;
-
                         if (delta > 0) {
-                            // need more credit
                             if (delta <= creditRemaining) {
-                            creditUsed[i] += delta;
-                            creditRemaining -= delta;
+                                creditUsed[i] += delta;
+                                creditRemaining -= delta;
                             } else {
-                            // cap to max possible
-                            const maxPossible = using + creditRemaining;
-                            amountEl.value = maxPossible.toFixed(2);
-                            creditUsed[i] = maxPossible;
-                            creditRemaining = 0;
+                                const maxPossible = using + creditRemaining;
+                                amountEl.value = maxPossible.toFixed(2);
+                                creditUsed[i] = maxPossible;
+                                creditRemaining = 0;
                             }
                         } else if (delta < 0) {
                             creditUsed[i] = newAmt;
                             creditRemaining += (using - newAmt);
                         }
-                        updateCreditUI(splitInto1);
-                    } else {
-                        updateCreditUI(splitInto1);
                     }
+                    updateCreditUI(splitInto1);
                 };
 
                 updateMethodVisibility();
@@ -3445,7 +3421,7 @@
             }, 3000);
         }
 
-        function savePartial(mode) {
+        async function savePartial(mode) {
             const gateway = document.getElementById('payment_gateway_option')?.value;
             const validation = checkPaymentAmount(mode);
 
@@ -3453,8 +3429,6 @@
                 showErrorAlert(validation.errorMessage);
                 return;
             }
-
-
             clearErrorAlert();
 
             // Validation for "full" mode: payment gateway and method selection
@@ -3473,38 +3447,21 @@
                 }
             }
 
+            const requests = [];
+
             if (mode === 'full' || mode === 'cash' || mode === 'credit') {
                 const date = document.getElementById('duedate').value;
                 const amount = document.getElementById('subTotal').value;
                 const externalUrl = document.getElementById('external_url')?.value;
-                const fullData = [];
+                const paymentGateway = mode === 'cash' ? 'Cash' : mode === 'credit' ? 'Credit' : gateway;
 
-                // Set appropriate gateway based on mode
-                let paymentGateway = gateway;
-                if (mode === 'cash') {
-                    paymentGateway = 'Cash';
-                } else if (mode === 'credit') {
-                    paymentGateway = 'Credit';
-                }
-
-                fullData.push({
-                    date,
-                    amount,
-                    gateway: paymentGateway,
-                    external_url: externalUrl
-                });
-
-                for (const item of fullData) {
-                    save(mode, item); // Use the actual mode (full or cash)
-                }
+                requests.push(save(mode, { date, amount, gateway: paymentGateway, external_url: externalUrl }));
 
                 const button = document.getElementById('update-invoice-btn');
                 const icon = document.getElementById('button-icon-full');
                 const text = document.getElementById('button-text-full');
 
                 button.disabled = true;
-
-                // Replace icon with spinner
                 icon.innerHTML = `
                     <svg class="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -3513,18 +3470,14 @@
                     </svg>
                 `;
                 text.textContent = 'Saving...';
-
                 setTimeout(() => {
                     icon.innerHTML = '';
                     text.textContent = 'Saved ✅';
                     location.reload();
                 }, 500);
 
-
             } else if (mode === 'split') {
-                // Collect Split Payment Data
                 const rows = document.querySelectorAll('#split-rows tr');
-                const splitData = [];
                 rows.forEach((row, index) => {
                     const clientSelectElement = row.querySelector(`#customer_name_${index + 1}`);
 
@@ -3550,21 +3503,8 @@
                     const methodSelect = row.querySelector(`#payment_method_${index + 1}`);
                     const method = methodSelect ? methodSelect.value : null;
 
-
-                    splitData.push({
-                        clientId,
-                        clientName,
-                        date,
-                        amount,
-                        gateway,
-                        method
-                    });
+                    requests.push(save('split', { clientId, clientName, date, amount, gateway, method }));
                 });
-
-                for (const item of splitData) {
-                    save('split', item);
-                }
-
 
                 const buttonSplit = document.getElementById('splitbutton');
                 const iconSplit = document.getElementById('button-icon-split');
@@ -3592,11 +3532,8 @@
                     console.error('Split button or icon/text elements not found in the DOM.');
                 }
 
-
             } else if (mode === 'partial') {
                 const partialRows = document.querySelectorAll('#split-rows1 tr');
-                const partialData = [];
-
                 console.log('--- Collecting PARTIAL rows ---');
 
                 partialRows.forEach((row, index) => {
@@ -3610,8 +3547,8 @@
 
                     const gateway = gatewayEl ? gatewayEl.value : null;
                     const method = (methodBox && !methodBox.classList.contains('hidden')) ? (methodEl?.value || null) : null;
+                    requests.push(save('partial', { date, amount, gateway, method }));
 
-                    // 🔎 Per-row log
                     console.log(`row ${i}`, {
                         date,
                         amount,
@@ -3621,23 +3558,7 @@
                         methodVisible: methodBox && !methodBox.classList.contains('hidden'),
                         method
                     });
-
-                    partialData.push({
-                        date,
-                        amount,
-                        gateway,
-                        method
-                    });
                 });
-
-                // 🔎 Table of what will be sent
-                console.table(partialData);
-
-                for (const item of partialData) {
-                    // 🔎 Log payload before each call
-                    console.log('[save][partial] sending', item);
-                    save('partial', item);
-                }
 
                 // UI feedback (unchanged)
                 const buttonPartial = document.getElementById('partialbutton');
@@ -3659,6 +3580,18 @@
                 } else {
                     console.error('One or more elements (button, icon, text) not found in the DOM');
                 }
+            }
+
+            if (requests.length === 0) {
+                showErrorAlert('Nothing to save. Please add at least one row.');
+                return;
+            }
+
+            const results = await Promise.all(requests);
+            const allOk = results.length > 0 && results.every(r => r && r.ok !== false);
+            if (allOk) {
+                hideModal();
+                checkInvoiceId(mode);
             }
         }
 
@@ -3726,20 +3659,21 @@
                     body: JSON.stringify(payload),
                 });
 
-                // console.log("Response status:", response.status);
-
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || `Failed to process ${type} payment.`);
+                    const errorData = await response.json().catch(() => ({}));
+                    const msg = errorData.message || `Failed to process ${type} payment.`;
+                    displayErrorMessage(msg);
+                    return { ok: false, error: msg };
                 }
 
                 const result = await response.json();
-                // console.log("Backend response for single item:", result);
                 displaySuccessMessage(result.message || `${type} payment processed successfully!`);
+                return { ok: true, data: result };
 
             } catch (error) {
                 console.error(`Error processing ${type} payment for item:`, item, error);
                 displayErrorMessage(error.message || `Something went wrong with ${type} payment.`);
+                return { ok: false, error };
             }
         }
 
@@ -3974,6 +3908,8 @@
                         showModal('partial');
                     } else if (paymentTypeSaved === 'split') {
                         showModal('split');
+                    } else if (paymentTypeSaved === 'credit') {
+                        showModal('credit');
                     } else {
                         hideModal();
                     }

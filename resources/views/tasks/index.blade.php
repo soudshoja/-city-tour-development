@@ -752,7 +752,7 @@
                             </button>
                         </form>
                     </div>
-                    <div x-data="{ shown: 10 }">
+                    <div x-data="{ shown: 15 }">
                         <div class="dataTable-container h-max">
                             <div class="table-container">
                                 <div x-data="{
@@ -1816,8 +1816,7 @@
 
                                                     <!-- Agent Name -->
                                                     <div>
-                                                        <label class="block text-sm font-medium text-gray-700 mb-1">Agent's
-                                                            Name</label>
+                                                        <label class="block text-sm font-medium text-gray-700 mb-1">Agent's Name</label>
                                                         <x-searchable-dropdown name="agent_id"
                                                             :items="$agents" placeholder="Search Agent"
                                                             :showAllOnOpen="true" />
@@ -1918,13 +1917,13 @@
                                     </div>
                                 </div>
                             </div>
-                            <div id="loadMoreWrapper" class="text-center my-4"
+                            <!-- <div id="loadMoreWrapper" class="text-center my-4"
                                 x-show="shown < {{ count($tasks) }}" x-cloak>
                                 <button @click="shown += 10"
                                     class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                                     Load More
                                 </button>
-                            </div>
+                            </div> -->
                         </div>
 
                         <x-pagination :data="$tasks->appends(request()->query())" />
@@ -1963,7 +1962,7 @@
 @vite('resources/js/tasks.js')
 
 <script>
-    window.companySuppliers = "{{ json_encode($suppliers->pluck('name')->all()) }}";
+    window.companySuppliers = @json($suppliers->pluck('name')->all());
     document.addEventListener('alpine:init', () => {
         Alpine.store('dropdown', {
             openId: null,

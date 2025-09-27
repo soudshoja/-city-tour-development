@@ -243,70 +243,8 @@
         </table>
         @endif
 
-        @php
-        $typeIsPartial = strcasecmp(trim($invoice->payment_type ?? ''), 'partial') === 0;
-
-        // true when there are 2+ different gateways among partials
-        $hasMismatch = collect($invoicePartials)
-        ->pluck('payment_gateway')
-        ->filter(fn ($g) => filled($g))
-        ->unique()
-        ->count() > 1;
-        @endphp
-
-        @if ($invoice->payment_type === 'partial' && !$hasMismatch)
-        <!-- Partial Payment Table -->
-        <h3 class="text-lg font-bold text-gray-800 mb-4">Partial Payment ({{ $invoice->currency }})</h3>
-
-        <div class="mb-4">
-            <h4 class="text-lg font-bold text-gray-800">Task Descriptions</h4>
-            <ul class="list-disc pl-6">
-                @foreach ($invoiceDetails as $detail)
-                <li class="text-sm text-gray-700">
-                    <strong>{{ $detail->task_description ?? 'N/A' }}</strong>:
-                    {{ $detail->quantity ?? 0 }} (Note: {{ $detail->client_notes ?? 'N/A' }})
-                </li>
-                @endforeach
-            </ul>
-        </div>
-
-        <table class="min-w-full mb-8 border border-gray-200">
-            <thead>
-                <tr class="bg-gray-200 text-gray-600 text-sm font-bold">
-                    <th class="px-4 py-2 border">Select</th>
-                    <th class="px-4 py-2 border">Expiry Date</th>
-                    <th class="px-4 py-2 border">Status</th>
-                    <th class="px-4 py-2 border">Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($invoicePartials as $partial)
-                <tr class="text-sm text-gray-700 @if ($partial->status === 'paid') disabled-row @endif">
-                    <td class="px-4 py-2 border">
-                        <input type="checkbox" class="partial-checkbox" name="selected_partials[]"
-                            value="{{ $partial->id }}" data-amount="{{ $partial->amount }}" data-final-amount="{{ $partial->final_amount }}"
-                            @if ($partial->status == 'paid') disabled @endif>
-                    </td>
-                    <td class="px-4 py-2 border">
-                        {{ \Carbon\Carbon::parse($partial->expiry_date)->format('d M, Y') ?? 'N/A' }}
-                    </td>
-                    <td class="px-4 py-2 border">{{ $partial->status }}</td>
-                    <td class="px-4 py-2 border">
-                        @if ($partial->status !== 'paid')
-                        {{ number_format($partial->final_amount ?? $partial->amount, 2) }}
-                        @else
-                        {{ number_format($partial->amount, 2) }}
-                        @endif
-                    </td>
-                    <!-- <td class="px-4 py-2 border">{{ number_format($partial->amount ?? 0, 2) }}</td> -->
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-        @endif
-
         <!-- Partial Payment of Different Gateway -->
-        @if ($invoice->payment_type === 'partial' && $hasMismatch)
+        @if ($invoice->payment_type === 'partial')
         <h3 class="text-lg font-bold text-gray-800 mb-4">Partial Payment ({{ $invoice->currency }})</h3>
 
         <div class="mb-4">
@@ -416,12 +354,12 @@
                     <td class="px-4 py-2 border">
                         {{ $partial->client->full_name }}
 
-                        @if ($creditBalance > 0 && $partial->status === 'unpaid')
+                        <!-- @if ($creditBalance > 0 && $partial->status === 'unpaid')
                         <br>Credit Balance: {{ number_format($creditBalance, 2) }} |
                         <button @click="open = true" type="button" class="text-blue-600 underline text">
                             Use now to pay this payment split?
                         </button>
-                        @endif
+                        @endif -->
 
                         <!-- Modal -->
                         <div x-show="open" x-cloak
@@ -544,7 +482,7 @@
 
         <!-- Payment Details -->
         <div class="mb-8 inline-flex gap-2">
-            @if ($invoice->status === 'unpaid' || $invoice->status === 'partial' || ($invoice->payment_type === 'partial' && !$hasMismatch))
+            @if ($invoice->status === 'unpaid' || $invoice->status === 'partial' || $invoice->payment_type === 'partial')
             @if (auth()->check())
 
             <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}" method="POST" onsubmit="showSpinner()">
@@ -580,7 +518,7 @@
 
                 @if($canGenerateLink)
                 <div class="flex items-center gap-2">
-                    @if ($invoice->payment_type !== 'split' && !($invoice->payment_type === 'partial' && $hasMismatch))
+                    @if ($invoice->payment_type !== 'split' && !$invoice->payment_type === 'partial')
                     <button type="submit" id="payNowBtn"
                         class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
                         Pay Now

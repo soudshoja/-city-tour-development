@@ -120,7 +120,26 @@ class TaskController extends Controller
             if ($request->input('invoiced') == '1') {
                 $query->whereHas('invoiceDetail');
             } elseif ($request->input('invoiced') == '0') {
+                $amadeusId = \App\Models\Supplier::where('name', 'Amadeus')->value('id');
                 $query->whereDoesntHave('invoiceDetail');
+
+                $query->where(function ($q) use ($amadeusId) {
+                    $q->where('supplier_id', '!=', $amadeusId)
+                        ->orWhere(function ($q2) use ($amadeusId) {
+                            $q2->where('supplier_id', $amadeusId)
+                                ->where(function ($q3) use ($amadeusId) {
+                                    $q3->where('status', '!=', 'issued')
+                                        ->orWhereRaw("
+                                    NOT EXISTS (
+                                        SELECT 1 FROM tasks t2
+                                        WHERE t2.reference = tasks.reference
+                                          AND t2.supplier_id = ?
+                                          AND t2.status = 'void'
+                                    )
+                                ", [$amadeusId]);
+                                });
+                        });
+                });
             }
         }
 

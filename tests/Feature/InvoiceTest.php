@@ -163,6 +163,65 @@ class InvoiceTest extends TestCase
         $response->assertStatus(200);
     }
 
+    public function test_company_invoice_list_is_isolated()
+    {
+        $userA    = User::factory()->create(['role_id' => Role::COMPANY]);
+        $companyA = Company::factory()->create(['user_id' => $userA->id]);
+        $branchA  = Branch::factory()->create(['user_id' => $userA->id, 'company_id' => $companyA->id]);
+        $agentA   = Agent::factory()->create([
+            'user_id'   => User::factory()->create(['role_id' => Role::AGENT])->id,
+            'branch_id' => $branchA->id,
+            'type_id'   => AgentType::create(['name' => 'Salary'])->id,
+        ]);
+        $clientA  = Client::factory()->create(['agent_id' => $agentA->id]);
+
+        $invoiceA = Invoice::factory()->count(2)->create([
+            'agent_id'  => $agentA->id,
+            'client_id' => $clientA->id,
+        ]);
+
+        $taskA = Task::factory()->create([
+            'company_id' => $companyA->id,
+            'agent_id'   => $agentA->id,
+            'client_id'  => $clientA->id,
+        ]);
+        
+        foreach ($invoiceA as $invoice) {
+            InvoiceDetail::factory()->create([
+                'invoice_id' => $invoice->id,
+                'task_id' => $taskA->id,
+                'invoice_number'  => $invoice->invoice_number,
+            ]);
+        }        
+
+        $userB    = User::factory()->create(['role_id' => Role::COMPANY]);
+        $companyB = Company::factory()->create(['user_id' => $userB->id]);
+        $branchB  = Branch::factory()->create(['user_id' => $userB->id, 'company_id' => $companyB->id]);
+        $agentB   = Agent::factory()->create([
+            'user_id'   => User::factory()->create(['role_id' => Role::AGENT])->id,
+            'branch_id' => $branchB->id,
+            'type_id'   => AgentType::first()->id,
+        ]);
+        $clientB  = Client::factory()->create(['agent_id' => $agentB->id]);
+
+        $invoiceB = Invoice::factory()->count(2)->create([
+            'agent_id'  => $agentB->id,
+            'client_id' => $clientB->id,
+        ]);
+
+        $roleCompanyA = Role::create(['name' => 'company', 'guard_name' => 'web', 'company_id' => $companyA->id]);
+        $userA->assignRole($roleCompanyA);
+        $roleCompanyA->givePermissionTo('view invoice');
+
+        $response = $this->actingAs($userA)->get(route('invoices.index'));
+        $response->assertOk();
+
+        $invoices = $response->viewData('invoices') ?? collect();
+        foreach (($invoices instanceof \Illuminate\Pagination\LengthAwarePaginator ? $invoices->items() : $invoices) as $invoice) {
+            $this->assertEquals($companyA->id, $invoice->agent->branch->company_id);
+        }
+    }
+
     // public function test_admin_view_on_list_of_invoice()
     // {
     //     $user = User::factory()->create([

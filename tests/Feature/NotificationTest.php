@@ -488,7 +488,7 @@ class NotificationTest extends TestCase
         
         // Agent should only see their own notifications
         // The component should properly filter notifications based on role
-        $component->assertSet('totalCount', 5); // Total in database
+        $component->assertSet('totalCount', 3); // Only agent’s notifications
         
         // But when getting notifications, should only get their own
         // This tests the role-based filtering in the trait

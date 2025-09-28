@@ -68,12 +68,12 @@ class InvoiceController extends Controller
                 ->with(['branch:id,company_id', 'branch.company:id'])
                 ->get();
         } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $companyId = $user->accountant->branch->company_id;                
+            $companyId = $user->accountant->branch->company_id;
 
             if ($companyId) {
-                $agents = Agent::whereHas('branch', fn ($q) => $q->where('company_id', $companyId))
-                            ->with(['branch:id,company_id', 'branch.company:id,name'])
-                            ->get();
+                $agents = Agent::whereHas('branch', fn($q) => $q->where('company_id', $companyId))
+                    ->with(['branch:id,company_id', 'branch.company:id,name'])
+                    ->get();
                 $companiesId[] = $companyId;
             }
         } else {
@@ -89,30 +89,30 @@ class InvoiceController extends Controller
             'invoiceDetails.task.supplier',
             'client'
         ])->whereIn('agent_id', $agentIds)
-          ->whereHas('agent.branch', fn($q) => $q->whereIn('company_id', $companiesId));
+            ->whereHas('agent.branch', fn($q) => $q->whereIn('company_id', $companiesId));
 
-        if($request->has('search')){
+        if ($request->has('search')) {
             $search = $request->input('search');
-            $invoices = $invoices->where(function($query) use ($search) {
+            $invoices = $invoices->where(function ($query) use ($search) {
                 $query->where('invoice_number', 'like', "%{$search}%")
-                      ->orWhere('status', "$search")
-                      ->orWhere('currency', 'like', "%{$search}%")
-                      ->orWhere('payment_type', 'like', "%{$search}%")
-                      ->orWhere('amount', 'like', "%{$search}%")
-                      ->orWhere('sub_amount', 'like', "%{$search}%")
-                      ->orWhere('tax', 'like', "%{$search}%")
-                      ->orWhere('invoice_date', 'like', "%{$search}%")
-                      ->orWhere('due_date', 'like', "%{$search}%")
-                      ->orWhere('paid_date', 'like', "%{$search}%")
-                      ->orWhereHas('client', function($q) use ($search) {
-                          $q->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('middle_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('agent', function($q) use ($search) {
-                          $q->where('name', 'like', "%{$search}%");
-                      });
+                    ->orWhere('status', "$search")
+                    ->orWhere('currency', 'like', "%{$search}%")
+                    ->orWhere('payment_type', 'like', "%{$search}%")
+                    ->orWhere('amount', 'like', "%{$search}%")
+                    ->orWhere('sub_amount', 'like', "%{$search}%")
+                    ->orWhere('tax', 'like', "%{$search}%")
+                    ->orWhere('invoice_date', 'like', "%{$search}%")
+                    ->orWhere('due_date', 'like', "%{$search}%")
+                    ->orWhere('paid_date', 'like', "%{$search}%")
+                    ->orWhereHas('client', function ($q) use ($search) {
+                        $q->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('middle_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('agent', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -120,12 +120,12 @@ class InvoiceController extends Controller
             $from = Carbon::parse($request->input('from_date'))->startOfDay();
             $to = Carbon::parse($request->input('to_date'))->endOfDay();
             $dateField = $request->input('date_field', 'created_at');
-    
+
             if (in_array($dateField, ['created_at', 'invoice_date'])) {
                 $invoices->whereBetween($dateField, [$from, $to]);
             }
         }
-    
+
         $filteredInvoices = $invoices->get();
         $totalNet = $filteredInvoices->flatMap->invoiceDetails->sum('supplier_price');
         $totalSales = $filteredInvoices->sum('amount');
@@ -134,7 +134,7 @@ class InvoiceController extends Controller
         $invoices = $invoices->orderBy($sortBy, $sortOrder) // 👈 Use dynamic sorting
             ->paginate(20)
             ->withQueryString();
-           
+
         return view('invoice.index', compact('invoices', 'totalInvoices', 'totalNet', 'totalSales'));
     }
 
@@ -235,37 +235,37 @@ class InvoiceController extends Controller
         $agents = collect();
         $clients = collect();
         $agentsId = [];
-            if ($user->role_id == Role::ADMIN) {
-                $agents = Agent::all();
-                $clients = Client::all();
-                $branches = Branch::all();
-                $companies = Company::all();
-            } else {
-                // Get all agent IDs for the current user context
-                if ($user->role_id == Role::COMPANY) {
-                    $company = Company::with('branches.agents')->find($user->company->id);
-                    $agents = $company->branches->flatMap->agents;
-                    $branches = $company->branches;
-                    $selectedCompany = $company;
-                } elseif ($user->role_id == Role::BRANCH) {
-                    $agents = Agent::where('branch_id', $user->branch->id)->get();
-                    $agentsId = $agents->pluck('id')->toArray();
-                    $branches = Branch::where('company_id', $user->branch->company_id)->get();
-                    $selectedCompany = $user->branch->company;
-                } elseif ($user->role_id == Role::AGENT) {
-                    $agent = $user->agent;
-                    $agents = Agent::where('id', $agent->id)->get();
-                    $agentsId = [$agent->id];
-                    $branches = Branch::where('company_id', $agent->branch->company_id)->get();
-                    $selectedCompany = $agent->branch->company;
-                }
+        if ($user->role_id == Role::ADMIN) {
+            $agents = Agent::all();
+            $clients = Client::all();
+            $branches = Branch::all();
+            $companies = Company::all();
+        } else {
+            // Get all agent IDs for the current user context
+            if ($user->role_id == Role::COMPANY) {
+                $company = Company::with('branches.agents')->find($user->company->id);
+                $agents = $company->branches->flatMap->agents;
+                $branches = $company->branches;
+                $selectedCompany = $company;
+            } elseif ($user->role_id == Role::BRANCH) {
+                $agents = Agent::where('branch_id', $user->branch->id)->get();
+                $agentsId = $agents->pluck('id')->toArray();
+                $branches = Branch::where('company_id', $user->branch->company_id)->get();
+                $selectedCompany = $user->branch->company;
+            } elseif ($user->role_id == Role::AGENT) {
+                $agent = $user->agent;
+                $agents = Agent::where('id', $agent->id)->get();
+                $agentsId = [$agent->id];
+                $branches = Branch::where('company_id', $agent->branch->company_id)->get();
+                $selectedCompany = $agent->branch->company;
             }
-             $clients = Client::where(function ($query) use ($agentsId) {
-                        $query->whereIn('agent_id', $agentsId)
-                            ->orWhereHas('agents', function ($q) use ($agentsId) {
-                                $q->whereIn('agent_id', $agentsId);
-                            });
-                    })->get();
+        }
+        $clients = Client::where(function ($query) use ($agentsId) {
+            $query->whereIn('agent_id', $agentsId)
+                ->orWhereHas('agents', function ($q) use ($agentsId) {
+                    $q->whereIn('agent_id', $agentsId);
+                });
+        })->get();
         if ($selectedTasks->count() > 0) {
             $clientIds = $selectedTasks->pluck('client_id')->unique();
             $agentIds =  $selectedTasks->pluck('agent_id')->unique();
@@ -280,9 +280,9 @@ class InvoiceController extends Controller
 
         if ($user->role_id == Role::ADMIN) {
             $agentId = Agent::pluck('id');
-            $suppliers = Supplier::with(['companies' => function($query) {
+            $suppliers = Supplier::with(['companies' => function ($query) {
                 $query->where('is_active', true);
-                }])->get();
+            }])->get();
         } elseif ($user->role_id == Role::COMPANY) {
             $agentId = $user->company->branches->flatMap->agents->pluck('id');
             $companyId = $user->company->id;
@@ -314,7 +314,7 @@ class InvoiceController extends Controller
                     $q->whereIn('agent_id', $agentsId);
                 });
         })->get();
-        
+
         $agentId = $selectedAgent ? $selectedAgent->id : $agentId;
         $agentId = Arr::flatten((array) $agentId);
         $clientId = $selectedClient ? $selectedClient->id : null;
@@ -342,7 +342,7 @@ class InvoiceController extends Controller
         $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
 
         $countries = Country::all();
-        
+
         return view('invoice.create', compact(
             'clients',
             'agents',
@@ -378,7 +378,6 @@ class InvoiceController extends Controller
             $branches = $company->branches;
             $agents = $branches->pluck('agents')->flatten();
             $agentsId = $agents->pluck('id');
-            
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
@@ -394,7 +393,7 @@ class InvoiceController extends Controller
                 })->get();
         })->get();
 
-        foreach($clients as $client){
+        foreach ($clients as $client) {
             $credit = Credit::getTotalCreditsByClient($client->id);
             $client->total_credit = $credit;
         }
@@ -405,16 +404,16 @@ class InvoiceController extends Controller
             })
             ->with('agent.branch.company', 'client', 'invoiceDetails.task')
             ->first();
-        
+
         if (!$invoice) {
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
-        if($invoice->status === 'paid') return redirect()->route('invoices.index')->with(['success' => 'Invoice Paid']);
+        if ($invoice->status === 'paid') return redirect()->route('invoices.index')->with(['success' => 'Invoice Paid']);
 
-        if($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
+        if ($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
 
-        if($invoice->refund) return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
+        if ($invoice->refund) return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
 
         $invoiceDetails = $invoice->invoiceDetails;
         $agentId = $invoice->agent_id;
@@ -467,8 +466,8 @@ class InvoiceController extends Controller
             // Only set self_charge to amount if both are null or self_charge is explicitly null
             // but don't override self_charge if it has a value (including 0)
             if (strtolower($gateway->name) === 'myfatoorah') {
-                foreach($myFatoorahMethods as $method){
-                    if($method->company_id == $invoice->agent->branch->company_id && $method->type == 'myfatoorah'){
+                foreach ($myFatoorahMethods as $method) {
+                    if ($method->company_id == $invoice->agent->branch->company_id && $method->type == 'myfatoorah') {
                         try {
                             $method->gateway_fee = ChargeService::FatoorahCharge($invprice, $method->id, $invoice->agent->branch->company_id)['fee'] ?? 0;
                         } catch (Exception $e) {
@@ -482,7 +481,7 @@ class InvoiceController extends Controller
                     }
                 }
             } elseif (strtolower($gateway->name) === 'hesabe') {
-                foreach ($hesabeMethods as$method) {
+                foreach ($hesabeMethods as $method) {
                     if ($method->company == $invoice->agent->branch->company && $method->type == 'hesabe') {
                         try {
                             $method->gateway_fee = ChargeService::HesabeCharge($invprice, $method->id, $invoice->agent->branch->company_id)['fee'] ?? 0;
@@ -491,23 +490,23 @@ class InvoiceController extends Controller
                                 'message' => $e->getMessage(),
                                 'paymentMethod' => $method->id,
                                 'company_id' => $invoice->agent->branch->company_id,
-                            ]); 
+                            ]);
                             $method->gateway_fee = 0;
                         }
                     }
                 }
-            } else if(strtolower($gateway->name) === 'tap') {
+            } else if (strtolower($gateway->name) === 'tap') {
                 $gateway->gateway_fee = ChargeService::TapCharge([
                     'amount' => $invprice,
                     'client_id' => $invoice->client_id,
                     'agent_id' => $invoice->agent_id,
                     'currency' => $invoice->currency
                 ], $gateway->name)['fee'] ?? 0;
-            } else if(strtolower($gateway->name) === 'upayment') {
+            } else if (strtolower($gateway->name) === 'upayment') {
                 $uPaymentmethods = PaymentMethod::where('is_active', true)
-                                    ->where('company_id', $invoice->agent->branch->company_id)
-                                    ->where('type', 'upayment')
-                                    ->get();
+                    ->where('company_id', $invoice->agent->branch->company_id)
+                    ->where('type', 'upayment')
+                    ->get();
 
                 foreach ($uPaymentmethods as $method) {
                     $gateway->gateway_fee = ChargeService::UPaymentCharge(
@@ -522,7 +521,7 @@ class InvoiceController extends Controller
         }
 
         $appUrl = config('app.url');
-        
+
         // Check if the credit has been used for this invoice
         $creditUsed = Credit::where('client_id', $invoice->client_id)
             ->where('invoice_id', $invoice->id)
@@ -531,7 +530,7 @@ class InvoiceController extends Controller
         $invoiceExpireDefault = Setting::where('key', 'invoice_expiry_days')->first();
 
         $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
-    
+
         if ($user->role_id == Role::AGENT) {
             $companyId = $user->agent->branch->company_id;
         } elseif ($user->role_id == Role::BRANCH) {
@@ -541,10 +540,10 @@ class InvoiceController extends Controller
         } else {
             $companyId = null;
         }
-        
+
         $can_import = Charge::where('company_id', $companyId)
-                    ->where('can_import', true)
-                    ->get();
+            ->where('can_import', true)
+            ->get();
         return view('invoice.edit', compact(
             'clients',
             'invoice',
@@ -575,7 +574,7 @@ class InvoiceController extends Controller
         ));
     }
 
-    public function updatePaymentGateway(Request $request) : JsonResponse
+    public function updatePaymentGateway(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'invoiceId' => 'required',
@@ -614,18 +613,18 @@ class InvoiceController extends Controller
                 ]);
                 $gatewayFee = null;
             }
-        } else if(strtolower($validated['gateway']) === 'tap') {
+        } else if (strtolower($validated['gateway']) === 'tap') {
             $gatewayFee = ChargeService::TapCharge([
                 'amount' => $validated['amount'],
                 'client_id' => $invoice->client_id,
                 'agent_id' => $invoice->agent_id,
                 'currency' => $invoice->currency
             ], $validated['gateway']);
-        } else if(strtolower($validated['gateway']) === 'upayment') {
+        } else if (strtolower($validated['gateway']) === 'upayment') {
             $uPaymentmethods = PaymentMethod::where('is_active', true)
-                                ->where('company_id', $companyId)
-                                ->where('type', 'upayment')
-                                ->get();
+                ->where('company_id', $companyId)
+                ->where('type', 'upayment')
+                ->get();
 
             if ($uPaymentmethods) {
                 foreach ($uPaymentmethods as $method) {
@@ -636,9 +635,9 @@ class InvoiceController extends Controller
                     )['fee'] ?? 0;
                 }
             }
-        } 
+        }
 
-        if($invoice){
+        if ($invoice) {
             Log::info('Updating payment gateway for invoice', [
                 'invoice_id' => $invoice->id,
                 'invoice_number' => $invoice->invoice_number,
@@ -672,7 +671,7 @@ class InvoiceController extends Controller
         return response()->json(['message' => 'Payment method updated successfully!', 'invoice' => $invoicePartial]);
     }
 
-    public function savePartial(Request $request) : JsonResponse
+    public function savePartial(Request $request): JsonResponse
     {
         $request->validate([
             'invoiceId' => 'required',
@@ -704,7 +703,6 @@ class InvoiceController extends Controller
 
         $client = Client::find($clientId);
         $balanceCredit = Credit::getTotalCreditsByClient($client->id);
-        //dd($credit, $balanceCredit);
         if ($credit) {
             if ($amount > $balanceCredit) {
                 return response()->json([
@@ -721,11 +719,11 @@ class InvoiceController extends Controller
             ->with('agent.branch.company', 'client', 'invoiceDetails.task')
             ->first();
 
-            Log::info('Invoice query result', [
-                'invoiceNumber' => $invoiceNumber,
-                'companyId'     => $companyId,
-                'invoice'       => $invoice ? $invoice->toArray() : null,
-            ]);
+        Log::info('Invoice query result', [
+            'invoiceNumber' => $invoiceNumber,
+            'companyId'     => $companyId,
+            'invoice'       => $invoice ? $invoice->toArray() : null,
+        ]);
 
         // Get the charge settings for the selected gateway
         $charge = Charge::where('name', $gateway)->first();
@@ -766,18 +764,18 @@ class InvoiceController extends Controller
                 ]);
                 $gatewayFee = null;
             }
-        } else if(strtolower($gateway) === 'tap') {
+        } else if (strtolower($gateway) === 'tap') {
             $gatewayFee = ChargeService::TapCharge([
                 'amount' => $amount,
                 'client_id' => $invoice->client_id,
                 'agent_id' => $invoice->agent_id,
                 'currency' => $invoice->currency
             ], $gateway);
-        } else if(strtolower($gateway) === 'upayment') {
+        } else if (strtolower($gateway) === 'upayment') {
             $uPaymentmethods = PaymentMethod::where('is_active', true)
-                                ->where('company_id', $companyId)
-                                ->where('type', 'upayment')
-                                ->get();
+                ->where('company_id', $companyId)
+                ->where('type', 'upayment')
+                ->get();
 
             if ($uPaymentmethods) {
                 foreach ($uPaymentmethods as $methods) {
@@ -788,17 +786,16 @@ class InvoiceController extends Controller
                     )['fee'] ?? 0;
                 }
             }
-        } 
+        }
 
         DB::beginTransaction();
 
         $status = 'unpaid';
 
         try {
-            
             // $isTabby = ($gateway === 'Tabby');
 
-            switch($gateway){
+            switch ($gateway) {
                 case 'Tabby':
                     $status = 'paid';
                     break;
@@ -823,7 +820,7 @@ class InvoiceController extends Controller
                 'payment_method' => $method,
                 'charge_id' => Charge::where('name', $gateway)->value('id'),
             ]);
-            
+
             //if ($credit && $type == 'full') {
             if ($credit) {
                 //insert credit record to reduce client's existing credit balance
@@ -853,14 +850,13 @@ class InvoiceController extends Controller
                     // For cash payment, do NOT mark invoice as paid - stays unpaid until receipt voucher
                     $invoicePartial->status = 'unpaid';
                     $invoicePartial->save();
-                    
+
                     // Create journal entries for cash payment
                     $journalResponse = $this->createPaymentJournalEntries($invoice, $invoicePartial, $amount, $type);
-                    
+
                     if ($journalResponse['status'] == 'error') {
                         throw new Exception($journalResponse['message']);
                     }
-                    
                 } catch (Exception $e) {
                     Log::error('Failed to create payment journal entries: ' . $e->getMessage());
                     DB::rollBack();
@@ -872,7 +868,7 @@ class InvoiceController extends Controller
             }
 
             $invoice->payment_type = $type;
-            
+
             // Auto-payment logic: if charge has is_auto_paid = true, automatically mark as paid
             if ($charge && $charge->is_auto_paid) {
                 $invoice->status = 'paid';
@@ -889,15 +885,15 @@ class InvoiceController extends Controller
             }
 
             $invoice->is_client_credit = $type === 'credit' ? true : false;
-            
+
             $invoiceStatus = 'unpaid';
 
-            foreach ($invoice->invoicePartials as $partial){
+            foreach ($invoice->invoicePartials as $partial) {
                 // invoice is marked unpaid if any of its partials is unpaid
-                if($partial->status == 'unpaid'){
+                if ($partial->status == 'unpaid') {
                     $invoiceStatus = 'unpaid';
                     break;
-                } elseif($partial->status == 'paid'){
+                } elseif ($partial->status == 'paid') {
                     $invoiceStatus = 'paid';
                 }
             }
@@ -910,8 +906,8 @@ class InvoiceController extends Controller
             if (!$transaction) {
                 $tasksId = $invoice->invoiceDetails->pluck('task_id')->toArray();
                 $tasks = Task::with(['invoiceDetail' => function ($q) use ($invoice) {
-                        $q->where('invoice_id', $invoice->id);
-                    },'agent'])
+                    $q->where('invoice_id', $invoice->id);
+                }, 'agent'])
                     ->whereIn('id', $tasksId)
                     ->get();
 
@@ -1031,7 +1027,7 @@ class InvoiceController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request) : JsonResponse
+    public function store(Request $request): JsonResponse
     {
         $request->validate([
             'tasks' => 'required|array',
@@ -1414,7 +1410,7 @@ class InvoiceController extends Controller
             $companyId = $invoice->agent->branch->company_id;
             $branchId = $invoice->agent->branch_id;
             $clientName = $invoice->client->full_name;
-            
+
             // Create transaction for the payment
             $transaction = Transaction::create([
                 'company_id' => $companyId,
@@ -1447,7 +1443,7 @@ class InvoiceController extends Controller
                 // For cash payment:
                 // Only debit the client (client owes us money)
                 // Invoice remains unpaid until receipt voucher is processed
-                
+
                 // Debit client receivable (client owes money for cash payment)
                 JournalEntry::create([
                     'transaction_id' => $transaction->id,
@@ -1472,7 +1468,6 @@ class InvoiceController extends Controller
             }
 
             return ['status' => 'success'];
-
         } catch (Exception $e) {
             Log::error('Error creating payment journal entries: ' . $e->getMessage());
             return [
@@ -1559,19 +1554,19 @@ class InvoiceController extends Controller
             ->whereHas('invoiceDetails.task.supplier'); // Only invoices with suppliers
 
 
-        if($request->has('search')){
+        if ($request->has('search')) {
             $search = $request->input('search');
             $invoices = $invoices->where(function ($query) use ($search) {
                 $searchTerm = '%' . $search . '%';
-                
+
                 $query->where('invoice_number', 'like', $searchTerm)
                     ->orWhere('payment_type', 'like', $searchTerm)
                     ->orWhere('status', $search)
                     ->orWhereHas('client', function ($q) use ($searchTerm) {
                         $q->where('first_name', 'like', $searchTerm)
-                        ->orWhere('middle_name', 'like', $searchTerm)
-                        ->orWhere('last_name', 'like', $searchTerm)
-                          ->orWhere('email', 'like', $searchTerm);
+                            ->orWhere('middle_name', 'like', $searchTerm)
+                            ->orWhere('last_name', 'like', $searchTerm)
+                            ->orWhere('email', 'like', $searchTerm);
                     });
             });
         }
@@ -1608,13 +1603,13 @@ class InvoiceController extends Controller
     public function proforma(int $companyId, string $invoiceNumber)
     {
         $user = Auth::user();
-        
+
         $invoice = Invoice::where('invoice_number', $invoiceNumber)
             ->with('agent.branch.company', 'client', 'invoiceDetails.task.supplier')
             ->first();
 
         if (!$invoice) {
-            if(auth()->user()){
+            if (auth()->user()) {
                 return redirect()->route('invoices.index')->with('error', 'Invoice not found!');
             }
             return abort(404);
@@ -1633,7 +1628,7 @@ class InvoiceController extends Controller
         }
 
         if (!$hasAccess) {
-            if(auth()->user()){
+            if (auth()->user()) {
                 return redirect()->route('invoices.index')->with('error', 'Unauthorized access.');
             }
             return abort(403);
@@ -1656,7 +1651,7 @@ class InvoiceController extends Controller
             ->first();
 
         if (!$invoice) {
-            if(auth()->user()){
+            if (auth()->user()) {
                 return redirect()->route('invoices.index')->with('error', 'Invoice not found!');
             }
             return abort(404);
@@ -1680,20 +1675,20 @@ class InvoiceController extends Controller
             ->first();
 
         if (!$invoice) {
-            if(auth()->user()){
+            if (auth()->user()) {
                 return redirect()->route('invoices.index')->with('error', 'Invoice not found!');
             }
             return abort(404);
         }
 
-        if($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'This invoice has already been settled through a refund']);
+        if ($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'This invoice has already been settled through a refund']);
 
         $invoicePartials = InvoicePartial::where('invoice_number', $invoiceNumber)
             ->with('client', 'invoice', 'payment')
             ->get();
-        
-        if($invoicePartials->isEmpty()){
-            if(auth()->user()){
+
+        if ($invoicePartials->isEmpty()) {
+            if (auth()->user()) {
                 return redirect()->route('invoices.index')->with('error', 'No invoice partials found for this invoice!');
             }
 
@@ -1706,14 +1701,14 @@ class InvoiceController extends Controller
         $totalGatewayFee['fee'] += $paidServiceCharge;
 
         $canGenerateLink = false;
-        foreach($invoice->invoicePartials as $partial) {
+        foreach ($invoice->invoicePartials as $partial) {
             if ($partial->charge_id) {
                 $canGenerateLink = $partial->charge ? $partial->charge->can_generate_link : false;
                 break;
             }
         }
 
-        if($canGenerateLink) {
+        if ($canGenerateLink) {
             foreach ($invoicePartials as $partial) {
                 if ($partial->status !== 'paid') {
                     $gatewayFee = [];
@@ -1734,7 +1729,6 @@ class InvoiceController extends Controller
                         } elseif (strtolower($partial->payment_gateway) === 'upayment') {
                             $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
                         }
-
                     } catch (\Exception $e) {
                         Log::error('ChargeService exception', [
                             'message' => $e->getMessage(),
@@ -1746,7 +1740,7 @@ class InvoiceController extends Controller
                     $partial->save();
                     $partial->final_amount = $partial->amount + $partial->service_charge;
                     $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
-    
+
                     if ($chargePayer !== 'Company') {
                         $totalGatewayFee['fee'] += $partial->service_charge;
                         $totalGatewayFee['paid_by'] = $chargePayer;
@@ -1768,7 +1762,7 @@ class InvoiceController extends Controller
             ->where('type', 'Invoice')
             ->orderBy('id', 'asc')
             ->get();
-        
+
         return view('invoice.show', compact(
             'invoice',
             'invoiceDetails',
@@ -1932,7 +1926,7 @@ class InvoiceController extends Controller
 
                 if (strtolower($paymentGateway) === 'myfatoorah' && $paymentMethod) {
                     $gatewayFee = ChargeService::FatoorahCharge($invoicePartial->amount, $paymentMethod, $companyId);
-                } else if(strtolower($paymentGateway) === 'tap') {
+                } else if (strtolower($paymentGateway) === 'tap') {
                     $gatewayFee = ChargeService::TapCharge([
                         'amount'    => $invoicePartial->amount,
                         'client_id' => $invoice->client_id,
@@ -1944,7 +1938,6 @@ class InvoiceController extends Controller
                 } else if (strtolower($paymentGateway) === 'hesabe') {
                     $gatewayFee = ChargeService::HesabeCharge($invoicePartial->amount, $paymentMethod, $companyId);
                 }
-
             } catch (\Exception $e) {
                 Log::error('ChargeService exception on split page', [
                     'message' => $e->getMessage(),
@@ -2009,7 +2002,7 @@ class InvoiceController extends Controller
 
                 if (strtolower($paymentGateway) === 'myfatoorah' && $paymentMethod) {
                     $gatewayFee = ChargeService::FatoorahCharge($invoicePartial->amount, $paymentMethod, $companyId);
-                } else if(strtolower($paymentGateway) === 'tap') {
+                } else if (strtolower($paymentGateway) === 'tap') {
                     $gatewayFee = ChargeService::TapCharge([
                         'amount'    => $invoicePartial->amount,
                         'client_id' => $invoice->client_id,
@@ -2021,7 +2014,6 @@ class InvoiceController extends Controller
                 } else if (strtolower($paymentGateway) === 'hesabe') {
                     $gatewayFee = ChargeService::HesabeCharge($invoicePartial->amount, $paymentMethod, $companyId);
                 }
-
             } catch (\Exception $e) {
                 Log::error('ChargeService exception on split page', [
                     'message' => $e->getMessage(),
@@ -2114,19 +2106,16 @@ class InvoiceController extends Controller
                     $entry->debit = $newPrice;
                     $entry->credit = 0;
                     $entry->amount = $newPrice;
-                }
-                elseif (str_contains($entry->description, 'Invoice created for (Income)')) {
+                } elseif (str_contains($entry->description, 'Invoice created for (Income)')) {
                     $entry->debit = 0;
                     $entry->credit = $newPrice;
                     $entry->amount = $newPrice;
-                }
-                elseif (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
+                } elseif (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
                     $commission = ($agent->commission ?? 0.15) * max(0, $newPrice - $invoiceDetail->supplier_price);
                     $entry->debit = $commission;
                     $entry->credit = 0;
                     $entry->amount = $commission;
-                }
-                elseif (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
+                } elseif (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
                     $commission = ($agent->commission ?? 0.15) * max(0, $newPrice - $invoiceDetail->supplier_price);
                     $entry->debit = 0;
                     $entry->credit = $commission;
@@ -2159,7 +2148,7 @@ class InvoiceController extends Controller
             $cashEntry = JournalEntry::where('invoice_id', $invoiceDetail->invoice->id)
                 ->where('description', 'like', '%Cash payment obligation for client%')
                 ->first();
-    
+
             if ($cashEntry) {
                 $cashEntry->debit  = $newTotal;
                 $cashEntry->credit = 0;
@@ -2196,9 +2185,9 @@ class InvoiceController extends Controller
     public function updateAmount(Request $request, $companyId, $invoiceNumber)
     {
         $request->validate([
-            'tasks' => ['required','array','min:1'],
-            'tasks.*' => ['required','numeric','min:0'],
-        ]);        
+            'tasks' => ['required', 'array', 'min:1'],
+            'tasks.*' => ['required', 'numeric', 'min:0'],
+        ]);
 
         return DB::transaction(function () use ($request, $companyId, $invoiceNumber) {
             $invoice = Invoice::with(['invoiceDetails.task', 'agent', 'agent.branch', 'transactions.journalEntries'])
@@ -2583,7 +2572,7 @@ class InvoiceController extends Controller
             })
             ->with('agent', 'client', 'invoiceDetails', 'invoiceDetails.task', 'invoicePartials')
             ->first();
-        
+
         $company = Company::find($companyId);
 
         $journalEntries = JournalEntry::where('invoice_id', $invoice->id)->get();
@@ -2975,13 +2964,13 @@ class InvoiceController extends Controller
                 Log::info('Processing credit deduction for client: ' . $invoice->client_id . ' for invoice ' . $invoice->id);
 
                 $clientCredit = Credit::where('client_id', $invoice->client_id)->first();
- 
-                if($clientCredit) {
+
+                if ($clientCredit) {
                     $currentCredit = $clientCredit->amount;
                     $creditUsed = min($currentCredit, $invoice->amount);
                     $creditApplied = -$creditUsed;
                     $remainingDue = $invoice->amount - $creditUsed;
-                    
+
                     $insuffientCredit = Credit::create([
                         'company_id' => $invoice->client->agent->branch->company_id,
                         'client_id' => $invoice->client->id,
@@ -2997,7 +2986,6 @@ class InvoiceController extends Controller
                         'credit_amount' => $clientCredit->amount,
                         'credit_applied' => $creditApplied,
                     ]);
-                    
                 } else {
                     Log::error('Client credit failed to deduct', [
                         'client_id' => $invoice->client_id,

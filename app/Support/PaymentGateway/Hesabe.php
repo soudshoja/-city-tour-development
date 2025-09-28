@@ -71,7 +71,7 @@ class Hesabe
             'paymentType' => '1',
             'orderReferenceNumber' => $orderReference,
             'name' => $request->client_name,
-            'mobile_number' => $client->country_code . $client->phone,
+            'mobile_number' => $clientPhone,
             'email' => 'shoja@citytravelers.co',
             /* 'saveCard' => 'boolean',
             'cardId' => 'required|string',

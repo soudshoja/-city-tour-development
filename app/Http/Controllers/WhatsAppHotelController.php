@@ -493,16 +493,24 @@ class WhatsAppHotelController extends Controller
         // Determine occupancy data — prefer JSON column, fallback to legacy fields
         $occupancy = [];
 
-        if (!empty($last->occupancy)) {
-            // Already JSON format
-            $occupancy = json_decode($last->occupancy, true);
+        // If you have `$casts = ['occupancy' => 'array']`, it will already be an array.
+        if (!is_null($last->occupancy)) {
+            if (is_array($last->occupancy)) {
+                $occupancy = $last->occupancy;
+            } elseif (is_string($last->occupancy) && $last->occupancy !== '') {
+                $decoded = json_decode($last->occupancy, true);
+                $occupancy = is_array($decoded) ? $decoded : [];
+            } else {
+                $occupancy = [];
+            }
         } else {
-            // Fallback legacy structure
+            // Fallback to legacy columns if occupancy is null
             $occupancy = [[
                 'adults'       => (int) ($last->adults ?? 0),
-                'childrenAges' => $last->children_ages ? json_decode($last->children_ages, true) : [],
+                'childrenAges' => $last->children_ages ? (json_decode($last->children_ages, true) ?: []) : [],
             ]];
         }
+
 
         $response = [
             'success' => true,

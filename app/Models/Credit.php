@@ -15,6 +15,7 @@ class Credit extends Model
         'client_id',
         'invoice_id',
         'invoice_partial_id',
+        'payment_id',
         'type',
         'description',
         'amount',
@@ -53,5 +54,9 @@ class Credit extends Model
         return self::where('client_id', $clientId)
             ->where('invoice_partial_id', $partialId)
             ->sum('amount');
+    }
+
+    public function payment() {
+        return $this->belongsTo(Payment::class);
     }
 }

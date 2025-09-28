@@ -10,6 +10,8 @@ use App\Models\ClientAssignmentRequest;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Livewire\Component;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 
 class Notification extends Component
 {
@@ -27,14 +29,20 @@ class Notification extends Component
         $this->getNotification();
     }
 
+    private function baseScope(): Builder
+    {
+        return ModelsNotification::query()->where('user_id', Auth::id());
+    }
+
     /**
-     * Update notification counts
+     * Update notification counts (scoped to current user)
      */
     public function updateCounts()
     {
-        $this->totalCount = ModelsNotification::count();
-        $this->readCount = ModelsNotification::where('status', 'read')->count();
-        $this->unreadCount = ModelsNotification::where('status', 'unread')->count();
+        $base = $this->baseScope();
+        $this->totalCount = (clone $base)->count();
+        $this->readCount = (clone $base)->where('status','read')->count();
+        $this->unreadCount = (clone $base)->where('status','unread')->count();
     }
 
     /**
@@ -44,13 +52,13 @@ class Notification extends Component
      */
     public function getNotification()
     {
-        if ($this->filter == 'read') {
-            $this->notifications = $this->getReadNotifications();
-        } elseif ($this->filter == 'unread') {
-            $this->notifications = $this->getUnreadNotifications();
-        } else {
-            $this->notifications = $this->getLimitNotifications(10);
+        $q = $this->baseScope()->latest();
+        if ($this->filter === 'read') {
+            $q->where('status','read');
+        } elseif ($this->filter === 'unread') {
+            $q->where('status','unread');
         }
+        $this->notifications = $q->limit(10)->get();
     }
 
     public function close($id)
@@ -69,7 +77,7 @@ class Notification extends Component
 
     public function markAllAsRead()
     {
-        ModelsNotification::where('status', 'unread')->update(['status' => 'read']);
+        $this->baseScope()->where('status','unread')->update(['status' => 'read']);
         $this->updateCounts();
         $this->getNotification();
         session()->flash('message', 'All notifications marked as read.');
@@ -77,13 +85,9 @@ class Notification extends Component
 
     public function markAsRead($id)
     {
-        $notification = ModelsNotification::find($id);
-        if ($notification) {
-            $notification->status = 'read';
-            $notification->save();
-            $this->updateCounts();
-            $this->getNotification();
-        }
+        $this->baseScope()->whereKey($id)->update(['status' => 'read']);
+        $this->updateCounts();
+        $this->getNotification();
     }
 
     /**

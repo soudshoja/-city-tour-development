@@ -27,14 +27,16 @@ class ClientPolicy
 
     public function view(User $user, Client $client): bool
     {
-        if ($user->role_id == Role::ADMIN) {
+        if ($user->hasRole('admin') || $user->role_id == Role::ADMIN) {
             return true;
         } elseif ($user->role_id == Role::COMPANY) {
-            return optional($client->agent?->branch)->company_id === optional($user->company)->id;
+            $agentsId = $user->company->branches->flatMap->agents->pluck('id')->toArray();
+            return in_array($client->agent_id, $agentsId) || !empty(array_intersect($client->agents->pluck('id')->toArray(), $agentsId));
         } elseif ($user->role_id == Role::BRANCH) {
             return $client->agent?->branch_id === optional($user->branch)->id;
         } elseif ($user->role_id == Role::AGENT) {
-            return $client->agent?->user_id === $user->id;
+            $agentId = $user->agent->id;
+            return $client->agent_id === $agentId || $client->agents()->whereKey($agentId)->exists();
         }
 
         return false;

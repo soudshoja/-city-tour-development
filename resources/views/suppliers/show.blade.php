@@ -171,7 +171,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
                         <div class="w-[110px]">Status</div>
                         <div class="w-[120px]">Issued Date</div>
                         <div class="w-[150px]">Passenger Name</div>
-                        <div class="w-[110px]">Net Price</div>
+                        <div class="w-[90px]">Net Price</div>
                         <div class="w-[180px]">Departure</div>
                         <div class="w-[180px]">Arrival</div>
                     </div>
@@ -183,7 +183,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
                         <div class="w-[110px]">Status</div>
                         <div class="w-[120px]">Issued Date</div>
                         <div class="w-[150px]">Passenger Name</div>
-                        <div class="w-[110px]">Net Price</div>
+                        <div class="w-[90px]">Net Price</div>
                         <div class="w-[180px]">Check-in</div>
                         <div class="w-[180px]">Check-out</div>
                     </div>
@@ -195,7 +195,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
                         <div class="w-[110px]">Status</div>
                         <div class="w-[120px]">Issued Date</div>
                         <div class="w-[150px]">Passenger Name</div>
-                        <div class="w-[110px]">Net Price</div>
+                        <div class="w-[90px]">Net Price</div>
 
                     </div>
                     @endif
@@ -248,13 +248,13 @@ use Barryvdh\DomPDF\Facade\Pdf;
                                         {{ ucfirst($task->status) }}
                                     </span>
                                 </div>
-                                <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
+                                <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : '-' }}</div>
                                 <div class="w-[150px]">{{ $task->passenger_name ?? '-' }}</div>
                                 <div class="w-[110px]">{{ $task->price ?? '-' }}</div>
                                 <div class="w-[180px]">
                                     @if ($task->type === 'flight' && $task->flightDetails)
                                     <strong>From:</strong> {{ $task->flightDetails->airport_from ?? '-' }}<br>
-                                    {{ $task->flightDetails->departure_time ?? '-' }}
+                                    {{ optional($task->flightDetails->departure_time)->format('d-m-Y H:i') ?? '-' }}
                                     @else
                                     -
                                     @endif
@@ -262,7 +262,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
                                 <div class="w-[180px]">
                                     @if ($task->type === 'flight' && $task->flightDetails)
                                     <strong>To:</strong> {{ $task->flightDetails->airport_to ?? '-' }}<br>
-                                    {{ $task->flightDetails->arrival_time ?? '-' }}
+                                    {{ optional($task->flightDetails->arrival_time)->format('d-m-Y H:i') ?? '-' }}
                                     @else
                                     -
                                     @endif
@@ -276,6 +276,16 @@ use Barryvdh\DomPDF\Facade\Pdf;
                                 <div class="w-[110px]">
                                     @php
                                     $status = strtolower($task->status);
+                                    $statusColors = [
+                                    'issued' => 'bg-green-100 text-green-700 border-green-400',
+                                    'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
+                                    'cancelled' => 'bg-red-100 text-red-700 border-red-400',
+                                    'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
+                                    'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
+                                    'void' => 'bg-gray-200 text-gray-700 border-gray-400',
+                                    'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
+                                    'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
+                                    ];
                                     $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
                                     @endphp
                                     <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
@@ -284,7 +294,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
                                 </div>
                                 <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
                                 <div class="w-[150px]">{{ $task->passenger_name ?? '-' }}</div>
-                                <div class="w-[110px]">{{ $task->price ?? '-' }}</div>
+                                <div class="w-[90px]">{{ $task->price ?? '-' }}</div>
                                 <div class="w-[180px]">
                                     @if ($task->type === 'hotel' && $task->hotelDetails)
                                     <strong>Hotel:</strong> {{ $task->hotelDetails->hotel->name ?? '-' }}<br>
@@ -304,21 +314,31 @@ use Barryvdh\DomPDF\Facade\Pdf;
                             </div>
                             @else
                             <div class="general-ledger-rows grid grid-cols-12 gap-2 p-2 text-center border-b">
-                                <div class="w-[140px]">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
-                                <div class="w-[140px]">{{ $task->reference }}</div>
+                                <div class="w-[120px]">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
+                                <div class="w-[120px]">{{ $task->reference }}</div>
                                 <div class="w-[140px]">{{ $task->agent ? $task->agent->name : '-' }}</div>
-                                <div class="w-[140px]">
+                                <div class="w-[110px]">
                                     @php
                                     $status = strtolower($task->status);
+                                    $statusColors = [
+                                    'issued' => 'bg-green-100 text-green-700 border-green-400',
+                                    'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
+                                    'cancelled' => 'bg-red-100 text-red-700 border-red-400',
+                                    'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
+                                    'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
+                                    'void' => 'bg-gray-200 text-gray-700 border-gray-400',
+                                    'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
+                                    'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
+                                    ];
                                     $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
                                     @endphp
                                     <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
                                         {{ ucfirst($task->status) }}
                                     </span>
                                 </div>
-                                <div class="w-[140px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
+                                <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
                                 <div class="w-[150px]">{{ $task->passenger_name ?? '-' }}</div>
-                                <div class="w-[140px]">{{ $task->price ?? '-' }}</div>
+                                <div class="w-[110px]">{{ $task->price ?? '-' }}</div>
 
                             </div>
                             @endif
@@ -331,34 +351,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
                 </div>
             </div>
         </div>
-
-        <!-- Supplier Tasks -->
-        <div class="flex flex-col rounded-md bg-white p-4 shadow-md">
-            <strong class="my-2">Task of this supplier</strong>
-            <div>
-                <table>
-                    <thead class="text-left">
-                        <tr>
-                            <th>Reference</th>
-                            <th>Agent Name</th>
-                            <th>Type</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($supplier->tasks as $task)
-                        <tr>
-                            <td>{{ $task->reference }}</td>
-                            <td>{{ $task->agent ? $task->agent->name : 'Not Set' }}</td>
-                            <td>{{ $task->type }}</td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
     </div>
 
-    <!-- Supplier Details -->
     <div class="body p-6 bg-white border-b border-gray-200 rounded-md shadow-md my-2">
         <div class="font-semibold text-lg">
             Supplier Details

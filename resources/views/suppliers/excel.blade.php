@@ -151,7 +151,6 @@ use Barryvdh\DomPDF\Facade\Pdf;
             @forelse($filteredTasks as $task)
             <tr>
                 <td>{{ $task->reference }}</td>
-                <td>{{ $task->gds_reference ?? '-' }}</td>
                 <td>{{ $task->agent ? $task->agent->name : '-' }}</td>
                 <td>{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</td>
                 <td>{{ $task->passenger_name ?? '-' }}</td>

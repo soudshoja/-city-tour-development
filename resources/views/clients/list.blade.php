@@ -87,14 +87,10 @@
                                 </td>
 
                                 <td class="p-3 text-sm font-semibold text-center">
-                                    @php
-                                    $totalCredit = \App\Models\Credit::getTotalCreditsByClient($client->id);
-                                    $creditColor = $totalCredit >= 0 ? 'text-green-600' : 'text-red-600';
-                                    @endphp
                                     <a href="javascript:void(0);"
-                                        class="clientCreditLink font-bold {{ $creditColor }}"
+                                        class="clientCreditLink font-bold {{ ($client->totalCredit ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}"
                                         data-client-id="{{ $client->id }}">
-                                        {{ number_format($totalCredit, 2) }}
+                                        {{ number_format($client->totalCredit ?? 0, 2) }}
                                     </a>
                                 </td>
 
@@ -128,17 +124,17 @@
                                                     d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
                                             </svg>
                                         </button>
-                                        
+
                                         <!-- Dropdown positioned relative to viewport to avoid table container clipping -->
-                                        <div x-show="open" 
-                                             x-transition:enter="transition ease-out duration-100"
-                                             x-transition:enter-start="transform opacity-0 scale-95"
-                                             x-transition:enter-end="transform opacity-100 scale-100"
-                                             x-transition:leave="transition ease-in duration-75"
-                                             x-transition:leave-start="transform opacity-100 scale-100"
-                                             x-transition:leave-end="transform opacity-0 scale-95"
-                                             @click.away="open = false"
-                                             x-init="$watch('open', value => {
+                                        <div x-show="open"
+                                            x-transition:enter="transition ease-out duration-100"
+                                            x-transition:enter-start="transform opacity-0 scale-95"
+                                            x-transition:enter-end="transform opacity-100 scale-100"
+                                            x-transition:leave="transition ease-in duration-75"
+                                            x-transition:leave-start="transform opacity-100 scale-100"
+                                            x-transition:leave-end="transform opacity-0 scale-95"
+                                            @click.away="open = false"
+                                            x-init="$watch('open', value => {
                                                  if (value) {
                                                      $nextTick(() => {
                                                          const rect = $refs.button.getBoundingClientRect();
@@ -149,7 +145,7 @@
                                                      });
                                                  }
                                              })"
-                                             class="dropdown-menu bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg min-w-max">
+                                            class="dropdown-menu bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded shadow-lg min-w-max">
                                             <ul class="text-gray-700 dark:text-gray-300 pt-1">
                                                 @foreach($client->agents as $agent)
                                                 <li>

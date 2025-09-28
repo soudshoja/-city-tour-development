@@ -31,7 +31,7 @@ class ClientPolicy
             return true;
         } elseif ($user->role_id == Role::COMPANY) {
             $agentsId = $user->company->branches->flatMap->agents->pluck('id')->toArray();
-            return in_array($client->agent_id, $agentsId) || in_array($client->agents->pluck('id')->toArray(), $agentsId);
+            return in_array($client->agent_id, $agentsId) || !empty(array_intersect($client->agents->pluck('id')->toArray(), $agentsId));
         } elseif ($user->role_id == Role::BRANCH) {
             return $client->agent?->branch_id === optional($user->branch)->id;
         } elseif ($user->role_id == Role::AGENT) {

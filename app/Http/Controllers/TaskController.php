@@ -2071,7 +2071,7 @@ class TaskController extends Controller
             }
 
             // Update enabled status: task must be complete AND have an agent assigned
-            $shouldBeEnabled = $task->is_complete && $task->agent_id;
+            $shouldBeEnabled = $task->is_complete && $task->agent_id && $task->client;
             if ($shouldBeEnabled) {
                 if ($task->status !== 'issued' && $task->status !== 'confirmed' && !$task->original_task_id) {
                     DB::rollBack();

@@ -516,20 +516,19 @@
                 <input type="hidden" name="payment_gateway" value="{{ $invoice->invoicePartials->first()->payment_gateway }}">
                 <input type="hidden" name="payment_method" value="{{ $invoice->invoicePartials->first()->payment_method }}">
 
-                @if($canGenerateLink)
-                <div class="flex items-center gap-2">
-                    @if ($invoice->payment_type !== 'split' && !$invoice->payment_type === 'partial')
-                    <button type="submit" id="payNowBtn"
-                        class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
-                        Pay Now
-                    </button>
-                    @endif
-                </div>
-                @else
-                    @if(!in_array($invoice->payment_type, ['split', 'partial'], true))
-                    <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
-                        This invoice is {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} payment. Please contact your agent for assistance.
-                    </div>
+                @if (!in_array($invoice->payment_type, ['split', 'partial'], true))
+                    @if ($canGenerateLink)
+                        <div class="flex items-center gap-2">
+                            <button type="submit" id="payNowBtn"
+                                class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                                Pay Now
+                            </button>
+                        </div>
+                    @else
+                        <div class="p-2 rounded-lg border border-gray-300 text-gray-700 flex items-center gap-2 text-xs sm:text-sm">
+                            This invoice is {{ strtolower($invoice->invoicePartials->first()->payment_gateway) }} payment.
+                            Please contact your agent for assistance.
+                        </div>
                     @endif
                 @endif
 

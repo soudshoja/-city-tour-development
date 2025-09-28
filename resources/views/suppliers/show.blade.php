@@ -248,13 +248,13 @@ use Barryvdh\DomPDF\Facade\Pdf;
                                         {{ ucfirst($task->status) }}
                                     </span>
                                 </div>
-                                <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
+                                <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : '-' }}</div>
                                 <div class="w-[150px]">{{ $task->passenger_name ?? '-' }}</div>
                                 <div class="w-[110px]">{{ $task->price ?? '-' }}</div>
                                 <div class="w-[180px]">
                                     @if ($task->type === 'flight' && $task->flightDetails)
                                     <strong>From:</strong> {{ $task->flightDetails->airport_from ?? '-' }}<br>
-                                    {{ $task->flightDetails->departure_time ?? '-' }}
+                                    {{ optional($task->flightDetails->departure_time)->format('d-m-Y H:i') ?? '-' }}
                                     @else
                                     -
                                     @endif
@@ -262,7 +262,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
                                 <div class="w-[180px]">
                                     @if ($task->type === 'flight' && $task->flightDetails)
                                     <strong>To:</strong> {{ $task->flightDetails->airport_to ?? '-' }}<br>
-                                    {{ $task->flightDetails->arrival_time ?? '-' }}
+                                    {{ optional($task->flightDetails->arrival_time)->format('d-m-Y H:i') ?? '-' }}
                                     @else
                                     -
                                     @endif

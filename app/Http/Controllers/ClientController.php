@@ -126,7 +126,6 @@ class ClientController extends Controller
 
         }
 
-
         $clientsCount = $clients->count();
 
         $clients = $clients->orderByDesc('created_at')->paginate(20);
@@ -396,14 +395,28 @@ class ClientController extends Controller
         }
 
         $clients = Client::with('agent.branch')->get();
-        $balanceCredit = Credit::getTotalCreditsByClient($id);
+       
+        $balanceCredit = Credit::whereHas('payment', function ($q) use ($user) {
+            $q->where('agent_id', $user->agent->id ?? 0);
+        })
+        ->where('client_id', $id)
+        ->sum('amount');
 
         $countries = Country::all(); // Fetch all countries for the view
         $selectedDialingCode = $countries->where('dialing_code', $client->country_code)->pluck('id')->first();
 
-        $payments = Payment::where('client_id', $id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+       $payment = Payment::where('client_id', $id)->first();
+
+        if ($payment && $user->id != $payment->agent_id) {
+            $payments = Payment::where('client_id', $id)
+                ->where('agent_id', Auth::user()->agent->id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+        } elseif ($payment && $user->id == $payment->agent_id) {
+            $payments = Payment::where('client_id', $id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+        }
 
         $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
             ->where('is_active', true)
@@ -785,6 +798,7 @@ class ClientController extends Controller
                 'company_id'  => $agent->branch->company->id,
                 'client_id'   => $client->id,
                 'type'        => 'Topup',
+                'payment_id'  => $payment->id,
                 'description' => 'Topup Credit via ' . $payment->voucher_number,
                 'amount'      => $payment->amount,
             ];
@@ -970,7 +984,7 @@ class ClientController extends Controller
             $client = Client::findOrFail($id);
             // $client->credit = $amount;
             // $client->save();
-
+            
             $balanceCredit = Credit::getTotalCreditsByClient($client->id);
             $difference = $amount - $balanceCredit;
 

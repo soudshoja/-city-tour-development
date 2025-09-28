@@ -923,6 +923,9 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • Ancillary services (e.g., EXCESS BAGGAGE) must be treated as separate tasks with their own ticket_number = the 'Transaction ID' shown. Do NOT include them inside 'Additional info' or 'surcharge'.\n";
         $prompt .= "  • If the service is Ancillary (e.g., contains 'Ancillary:' in Service Name), then set is_ancillary in table task_flight_details = true (1).\n";
         $prompt .= "  • Transaction Status mapping: if 'confirmed' → task status = 'Issued'; if 'on hold' → task status = 'Confirmed'.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Salam Air):\n";
+        $prompt .= "  • Set the reference, ticket_number using the 'Booking Reference'.\n";
+        $prompt .= "  • Set the terminal_from and terminal_to using the numeric value that found under the text Departure and Arrival. Respectively, terminal_from will using the value under the Departure and terminal_to will use the value under the Arrival. If none, only then make it null.\n";
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

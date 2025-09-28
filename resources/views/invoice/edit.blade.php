@@ -1483,7 +1483,7 @@
         const charges = @json($paymentGateways);
         const invoiceCharges = @json($invoiceCharges);
         const clients = @json($clients);
-        const partialCredit = Number(@json(\App\ Models\ Credit::getTotalCreditsByClient($invoice - > client_id)) || 0);
+        const partialCredit = Number(@json(\App\Models\Credit::getTotalCreditsByClient($invoice->client_id)) || 0);
         let creditRemaining = partialCredit;
         const creditUsed = {};
         // console.log(items);

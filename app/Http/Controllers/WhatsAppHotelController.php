@@ -452,65 +452,83 @@ class WhatsAppHotelController extends Controller
     //     }
     // }
     public function getHotelDetails(Request $request)
-    {
-        Log::channel('whatsapp')->info('getHotelDetails: Incoming request', ['request' => $request->all()]);
-        try {
-            $request->validate([
-                'phone_number' => 'required|string',
+{
+    Log::channel('whatsapp')->info('getHotelDetails: Incoming request', ['request' => $request->all()]);
+
+    try {
+        $request->validate([
+            'phone_number' => 'required|string',
+        ]);
+
+        // Fetch latest record for phone_number
+        $last = RequestBookingRoom::where('phone_number', $request->phone_number)
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$last) {
+            Log::channel('whatsapp')->warning('getHotelDetails: No booking request found', [
+                'phone_number' => $request->phone_number
             ]);
 
-            // Last (newest) record for this phone_number
-            $last = RequestBookingRoom::where('phone_number', $request->phone_number)
-                ->orderByDesc('id')
-                ->first();
-
-            if (!$last) {
-                Log::channel('whatsapp')->warning('getHotelDetails: No booking request found', ['phone_number' => $request->phone_number]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No booking request found for this phone number.',
-                ], 400);
-            }
-
-            $checkIn  = $last->check_in  ? date('Y-m-d', strtotime($last->check_in))  : null;
-            $checkOut = $last->check_out ? date('Y-m-d', strtotime($last->check_out)) : null;
-
-            if (!$checkIn || !$checkOut) {
-                Log::channel('whatsapp')->warning('getHotelDetails: Check-in or check-out date not found', ['last_id' => $last->id]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Check-in or check-out date not found.',
-                ], 400);
-            }
-
-            // ONLY the last record
-            $rooms = [[
-                'adults'       => (int) $last->adults,
-                'childrenAges' => $last->children_ages ? json_decode($last->children_ages, true) : [],
-            ]];
-
-            $response = [
-                'success' => true,
-                'booking' => [
-                    'hotel'           => $last->hotel,    // may be null
-                    'city_id'         => $last->city_id,  // may be null
-                    'check_in'        => $checkIn,
-                    'check_out'       => $checkOut,
-                    'booking_request' => $rooms,
-                ],
-            ];
-
-            Log::channel('whatsapp')->info('getHotelDetails: Success response', ['response' => $response]);
-            return response()->json($response);
-
-        } catch (\Exception $e) {
-            Log::channel('whatsapp')->error('getHotelDetails: Exception', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred.',
-            ], 500);
+                'message' => 'No booking request found for this phone number.',
+            ], 400);
         }
+
+        $checkIn  = $last->check_in  ? date('Y-m-d', strtotime($last->check_in))  : null;
+        $checkOut = $last->check_out ? date('Y-m-d', strtotime($last->check_out)) : null;
+
+        if (!$checkIn || !$checkOut) {
+            Log::channel('whatsapp')->warning('getHotelDetails: Check-in or check-out date not found', [
+                'last_id' => $last->id
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Check-in or check-out date not found.',
+            ], 400);
+        }
+
+        // Determine occupancy data — prefer JSON column, fallback to legacy fields
+        $occupancy = [];
+
+        if (!empty($last->occupancy)) {
+            // Already JSON format
+            $occupancy = json_decode($last->occupancy, true);
+        } else {
+            // Fallback legacy structure
+            $occupancy = [[
+                'adults'       => (int) ($last->adults ?? 0),
+                'childrenAges' => $last->children_ages ? json_decode($last->children_ages, true) : [],
+            ]];
+        }
+
+        $response = [
+            'success' => true,
+            'booking' => [
+                'hotel'      => $last->hotel,
+                'city_id'    => $last->city_id,
+                'check_in'   => $checkIn,
+                'check_out'  => $checkOut,
+                'occupancy'  => $occupancy, // renamed from booking_request
+            ],
+        ];
+
+        Log::channel('whatsapp')->info('getHotelDetails: Success response', ['response' => $response]);
+
+        return response()->json($response);
+
+    } catch (\Exception $e) {
+        Log::channel('whatsapp')->error('getHotelDetails: Exception', ['error' => $e->getMessage()]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred.',
+        ], 500);
     }
+}
+
 
 
 

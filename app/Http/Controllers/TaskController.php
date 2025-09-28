@@ -116,32 +116,53 @@ class TaskController extends Controller
                 'view_type' => 'invoice',
             ]));
         }
+
         if ($request->has('invoiced')) {
             if ($request->input('invoiced') == '1') {
                 $query->whereHas('invoiceDetail');
             } elseif ($request->input('invoiced') == '0') {
-                $amadeusId = \App\Models\Supplier::where('name', 'Amadeus')->value('id');
+                $amadeusId = Supplier::where('name', 'Amadeus')->value('id');
+                $jazeeraId = Supplier::where('name', 'Jazeera Airways')->value('id'); 
+
                 $query->whereDoesntHave('invoiceDetail');
 
-                $query->where(function ($q) use ($amadeusId) {
-                    $q->where('supplier_id', '!=', $amadeusId)
+                $query->where(function ($q) use ($amadeusId, $jazeeraId) {
+                    $q->whereNotIn('supplier_id', [$amadeusId, $jazeeraId])
+
+                        // Amadeus logic
                         ->orWhere(function ($q2) use ($amadeusId) {
                             $q2->where('supplier_id', $amadeusId)
                                 ->where(function ($q3) use ($amadeusId) {
                                     $q3->where('status', '!=', 'issued')
                                         ->orWhereRaw("
-                                    NOT EXISTS (
-                                        SELECT 1 FROM tasks t2
-                                        WHERE t2.reference = tasks.reference
-                                          AND t2.supplier_id = ?
-                                          AND t2.status = 'void'
-                                    )
-                                ", [$amadeusId]);
+                                            NOT EXISTS (
+                                                SELECT 1 FROM tasks t2
+                                                WHERE t2.reference = tasks.reference
+                                                AND t2.supplier_id = ?
+                                                AND t2.status = 'void'
+                                            )
+                                        ", [$amadeusId]);
+                                });
+                        })
+
+                        // Jazeera logic
+                        ->orWhere(function ($q2) use ($jazeeraId) {
+                            $q2->where('supplier_id', $jazeeraId)
+                                ->where(function ($q3) use ($jazeeraId) {
+                                    $q3->where('status', '!=', 'confirmed')
+                                        ->orWhereRaw("
+                                            NOT EXISTS (
+                                                SELECT 1 FROM tasks t2
+                                                WHERE t2.reference = tasks.reference
+                                                AND t2.supplier_id = ?
+                                                AND t2.status = 'issued'
+                                            )
+                                        ", [$jazeeraId]);
                                 });
                         });
                 });
             }
-        }
+        }  
 
         $filterable = [
             'reference',

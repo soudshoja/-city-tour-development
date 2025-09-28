@@ -81,7 +81,7 @@ class TaskFlightSchema
             ],
             'class_type' => [
                 'type' => 'string',
-                'description' => 'Travel class or cabin class of the booking. Look for class information like "Economy", "Business", "First Class", "Premium Economy", or class codes like "Y", "C", "F".',
+                'description' => 'Travel class or cabin class of the booking. Look for class information like "Economy", "Business", "First Class", "Premium Economy", or class codes like "Y", "C", "F". Other than that, do not use and set it null.',
                 'example' => 'economy',
                 'default' => '',
             ],

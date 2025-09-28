@@ -126,11 +126,26 @@ class ClientController extends Controller
 
         }
 
-
         $clientsCount = $clients->count();
 
         $clients = $clients->orderByDesc('created_at')->paginate(20);
         $fullClients = $fullClients->orderByDesc('created_at')->get();
+
+        if ($user->role_id == Role::AGENT) {
+            $clients->getCollection()->transform(function ($client) use ($user) {
+                $client->totalCredit = Credit::whereHas('payment', function ($q) use ($user) {
+                    $q->where('agent_id', $user->agent->id ?? 0);
+                })
+                    ->where('client_id', $client->id)
+                    ->sum('amount');
+                return $client;
+            });
+        } else if ($user->role_id != Role::AGENT) {
+            $clients->getCollection()->transform(function ($client) {
+                $client->totalCredit = Credit::getTotalCreditsByClient($client->id);
+                return $client;
+            });
+        }
 
         return view('clients.index', compact(
             'agent',
@@ -347,21 +362,57 @@ class ClientController extends Controller
         Gate::authorize('view', $client);
         $user = Auth::user();
         $agentsQuery = Agent::query()->with('branch');
+        $payment = Payment::where('client_id', $id)->first();
 
         if ($user->role_id == Role::ADMIN) {
             $branchId = $client->agent?->branch_id;
             $agentsQuery->where('branch_id', $branchId);
+
+            $payments = Payment::where('client_id', $id)
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+
+            $balanceCredit = Credit::getTotalCreditsByClient($id);
+
         } elseif ($user->role_id == Role::COMPANY) {
             $companyId = $user->company?->id;
             $branchIds = Branch::where('company_id', $companyId)->pluck('id');
-            $agentsQuery->whereIn('branch_id', $branchIds);
+            $agentIds = $agentsQuery->whereIn('branch_id', $branchIds)->pluck('id');
+            
+            $payments = Payment::where('client_id', $id)
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+            $balanceCredit = Credit::getTotalCreditsByClient($id);
+
         } elseif ($user->role_id == Role::BRANCH) {
             $branchId = $user->branch?->id;
             $agentsQuery->where('branch_id', $branchId);
+
+            $payments = Payment::where('client_id', $id)
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+            $balanceCredit = Credit::getTotalCreditsByClient($id);  
+
         } elseif ($user->role_id == Role::AGENT) {
             $agentId = Agent::where('user_id', $user->id)->value('id');
             $agentsQuery->where('id', $agentId);
+
+            if ($payment) {
+                $payments = Payment::where('client_id', $id)
+                    ->where('agent_id', $user->agent->id)
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+            } else {
+                $payments = collect();
+            }
+
+            $balanceCredit = Credit::whereHas('payment', function ($q) use ($user) {
+                $q->where('agent_id', $user->agent->id ?? 0);
+            })
+                ->where('client_id', $id)
+                ->sum('amount');
         }
+
 
         $agents = $agentsQuery->get();
         $invoices = Invoice::with('invoiceDetails', 'agent')->where('client_id', $id)->get();
@@ -396,14 +447,9 @@ class ClientController extends Controller
         }
 
         $clients = Client::with('agent.branch')->get();
-        $balanceCredit = Credit::getTotalCreditsByClient($id);
-
+       
         $countries = Country::all(); // Fetch all countries for the view
         $selectedDialingCode = $countries->where('dialing_code', $client->country_code)->pluck('id')->first();
-
-        $payments = Payment::where('client_id', $id)
-            ->orderBy('created_at', 'desc')
-            ->get();
 
         $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
             ->where('is_active', true)
@@ -785,6 +831,7 @@ class ClientController extends Controller
                 'company_id'  => $agent->branch->company->id,
                 'client_id'   => $client->id,
                 'type'        => 'Topup',
+                'payment_id'  => $payment->id,
                 'description' => 'Topup Credit via ' . $payment->voucher_number,
                 'amount'      => $payment->amount,
             ];
@@ -970,7 +1017,7 @@ class ClientController extends Controller
             $client = Client::findOrFail($id);
             // $client->credit = $amount;
             // $client->save();
-
+            
             $balanceCredit = Credit::getTotalCreditsByClient($client->id);
             $difference = $amount - $balanceCredit;
 

@@ -397,17 +397,13 @@ class ClientController extends Controller
             $agentId = Agent::where('user_id', $user->id)->value('id');
             $agentsQuery->where('id', $agentId);
 
-            if ($payment && $user->id != $payment->agent_id) {
+            if ($payment) {
                 $payments = Payment::where('client_id', $id)
                     ->where('agent_id', $user->agent->id)
                     ->orderBy('created_at', 'desc')
                     ->get();
-            } elseif ($payment && $user->id == $payment->agent_id) {
-                $payments = Payment::where('client_id', $id)
-                    ->orderBy('created_at', 'desc')
-                    ->get();
             } else {
-                $payments = collect(); 
+                $payments = collect();
             }
 
             $balanceCredit = Credit::whereHas('payment', function ($q) use ($user) {

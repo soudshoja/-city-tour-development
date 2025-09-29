@@ -57,6 +57,7 @@ class ApplicationLogo extends Component
             Role::COMPANY => $user->company,
             Role::BRANCH => $user->branch?->company,
             Role::AGENT => $user->agent?->branch?->company,
+            Role::ACCOUNTANT => $user->accountant?->branch?->company,
             default => null,
         };
     }

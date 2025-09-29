@@ -54,12 +54,10 @@ class ClientController extends Controller
             $agentIds = Agent::all()->pluck('id')->toArray();
             $branch = Branch::pluck('id')->toArray();
             $agent = Agent::whereIn('branch_id', $branch)->first();
-
         } elseif ($user->role_id == Role::COMPANY) {
             $branch = Branch::where('company_id', $user->company->id)->pluck('id')->toArray();
             $agent = Agent::whereIn('branch_id', $branch)->first();
             $agentIds = Agent::whereIn('branch_id', $branch)->pluck('id')->toArray();
-
         } elseif ($user->role_id == Role::AGENT) {
             $agent = Agent::where('user_id', $user->id)->first();
             $agentIds = [$agent->id];
@@ -76,12 +74,12 @@ class ClientController extends Controller
                 });
         });
 
-            
+
         $fullClients = (clone $clients);
 
-        if($request->has('search') && $request->search != '') {
+        if ($request->has('search') && $request->search != '') {
             $search = $request->search;
-            $clients = $clients->where(function($query) use ($search) {
+            $clients = $clients->where(function ($query) use ($search) {
                 $searchTerm = '%' . strtolower($search) . '%';
                 $query->where('first_name', 'LIKE', $searchTerm)
                     ->orWhere('middle_name', 'LIKE', $searchTerm)
@@ -92,28 +90,28 @@ class ClientController extends Controller
                     ->orWhereHas('agent', function ($q) use ($searchTerm) {
                         $q->where('name', 'LIKE', $searchTerm);
                     });
-                
+
                 // Handle multi-word search for name combinations
                 if (str_word_count($search) > 1) {
                     $searchWords = explode(' ', trim($search));
-                    $query->orWhere(function($nameQuery) use ($searchWords) {
+                    $query->orWhere(function ($nameQuery) use ($searchWords) {
                         $firstWord = $searchWords[0];
                         $lastWord = end($searchWords);
                         $middleWords = array_slice($searchWords, 1, -1);
-                        
+
                         // For 2 words: first_name + last_name
                         if (count($searchWords) == 2) {
-                            $nameQuery->where(function($q) use ($firstWord, $lastWord) {
+                            $nameQuery->where(function ($q) use ($firstWord, $lastWord) {
                                 $q->where('first_name', 'LIKE', '%' . $firstWord . '%')
-                                  ->where('last_name', 'LIKE', '%' . $lastWord . '%');
+                                    ->where('last_name', 'LIKE', '%' . $lastWord . '%');
                             });
                         }
                         // For 3+ words: first_name + middle_name(s) + last_name
                         else if (count($searchWords) >= 3) {
-                            $nameQuery->where(function($q) use ($firstWord, $middleWords, $lastWord) {
+                            $nameQuery->where(function ($q) use ($firstWord, $middleWords, $lastWord) {
                                 $q->where('first_name', 'LIKE', '%' . $firstWord . '%')
-                                  ->where('last_name', 'LIKE', '%' . $lastWord . '%');
-                                
+                                    ->where('last_name', 'LIKE', '%' . $lastWord . '%');
+
                                 // Add middle name conditions
                                 foreach ($middleWords as $middleWord) {
                                     $q->where('middle_name', 'LIKE', '%' . $middleWord . '%');
@@ -123,7 +121,6 @@ class ClientController extends Controller
                     });
                 }
             });
-
         }
 
         $clientsCount = $clients->count();
@@ -160,7 +157,7 @@ class ClientController extends Controller
         $request->validate([
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
-            'last_name' => 'nullable|string|max:255', 
+            'last_name' => 'nullable|string|max:255',
             'dial_code' => 'required|string|max:30',
             'email' => 'nullable|email',
             'civil_no' => 'nullable|string|max:100|unique:clients,civil_no',
@@ -172,7 +169,7 @@ class ClientController extends Controller
         ]);
 
 
-        if(!$request->company_id){ //this fallback is temporary until company_id is added in the form
+        if (!$request->company_id) { //this fallback is temporary until company_id is added in the form
             $companyId = Agent::find($request->agent_id)->branch->company_id;
 
             $request->merge(['company_id' => $companyId]);
@@ -250,7 +247,7 @@ class ClientController extends Controller
             'date_of_birth' => 'nullable|date',
         ]);
 
-        if(!$request->company_id){ //this fallback is temporary until company_id is added in the form
+        if (!$request->company_id) { //this fallback is temporary until company_id is added in the form
             $companyId = Agent::find($request->agent_id)->branch->company_id;
 
             $request->merge(['company_id' => $companyId]);
@@ -258,7 +255,7 @@ class ClientController extends Controller
 
         $existingClient = null;
 
-        if($request->civil_no){
+        if ($request->civil_no) {
             $existingClient = Client::where('company_id', $request->company_id)
                 ->where('civil_no', $request->civil_no)
                 ->with('agent') // Load the owner agent
@@ -316,20 +313,22 @@ class ClientController extends Controller
         $currentAgent = Agent::find($request->agent_id);
         $ownerAgent = $existingClient->agent;
         $assignedAgents = $existingClient->agents;
-        
+
         // If the same agent is trying to create the client, or the client is already assigned to them, show error/info
         if ($currentAgent->id === $ownerAgent->id || $assignedAgents->contains($currentAgent->id)) {
-            $message = $duplicateType === 'civil_no' 
-                ? 'You already have a client with this Civil No.' 
+            $message = $duplicateType === 'civil_no'
+                ? 'You already have a client with this Civil No.'
                 : 'You already have a client with this name and phone number.';
-            
+
             return redirect()->back()->withInput()->with('error', $message);
         }
 
         // Check if the current agent is already assigned to this client
         if ($existingClient->agents()->where('agent_id', $currentAgent->id)->exists()) {
-            return redirect()->back()->withInput()->with('info', 
-                "You are already assigned to this client. You can find them in your client list under the name: {$existingClient->first_name} {$existingClient->last_name}");
+            return redirect()->back()->withInput()->with(
+                'info',
+                "You are already assigned to this client. You can find them in your client list under the name: {$existingClient->first_name} {$existingClient->last_name}"
+            );
         }
 
         // Show assignment request form instead of allowing duplicate creation
@@ -341,7 +340,7 @@ class ClientController extends Controller
      */
     private function showAssignmentRequestForm($existingClient, $currentAgent, $ownerAgent, $duplicateType, $request)
     {
-        $duplicateMessage = $duplicateType === 'civil_no' 
+        $duplicateMessage = $duplicateType === 'civil_no'
             ? "A client with Civil No '{$existingClient->civil_no}' already exists"
             : "A client with name '{$existingClient->first_name}' and phone '{$existingClient->phone}' already exists";
 
@@ -369,30 +368,27 @@ class ClientController extends Controller
             $agentsQuery->where('branch_id', $branchId);
 
             $payments = Payment::where('client_id', $id)
-                        ->orderBy('created_at', 'desc')
-                        ->get();
+                ->orderBy('created_at', 'desc')
+                ->get();
 
             $balanceCredit = Credit::getTotalCreditsByClient($id);
-
         } elseif ($user->role_id == Role::COMPANY) {
             $companyId = $user->company?->id;
             $branchIds = Branch::where('company_id', $companyId)->pluck('id');
             $agentIds = $agentsQuery->whereIn('branch_id', $branchIds)->pluck('id');
-            
-            $payments = Payment::where('client_id', $id)
-                        ->orderBy('created_at', 'desc')
-                        ->get();
-            $balanceCredit = Credit::getTotalCreditsByClient($id);
 
+            $payments = Payment::where('client_id', $id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $balanceCredit = Credit::getTotalCreditsByClient($id);
         } elseif ($user->role_id == Role::BRANCH) {
             $branchId = $user->branch?->id;
             $agentsQuery->where('branch_id', $branchId);
 
             $payments = Payment::where('client_id', $id)
-                        ->orderBy('created_at', 'desc')
-                        ->get();
-            $balanceCredit = Credit::getTotalCreditsByClient($id);  
-
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $balanceCredit = Credit::getTotalCreditsByClient($id);
         } elseif ($user->role_id == Role::AGENT) {
             $agentId = Agent::where('user_id', $user->id)->value('id');
             $agentsQuery->where('id', $agentId);
@@ -428,7 +424,7 @@ class ClientController extends Controller
 
         $paid   = 0.0;
         $unpaid = 0.0;
-        $invoicesPart = Invoice::where('client_id', $id)->get(['id','amount','status']);
+        $invoicesPart = Invoice::where('client_id', $id)->get(['id', 'amount', 'status']);
 
         foreach ($invoicesPart as $invoice) {
             $total = $invoice->amount;
@@ -447,7 +443,7 @@ class ClientController extends Controller
         }
 
         $clients = Client::with('agent.branch')->get();
-       
+
         $countries = Country::all(); // Fetch all countries for the view
         $selectedDialingCode = $countries->where('dialing_code', $client->country_code)->pluck('id')->first();
 
@@ -521,7 +517,7 @@ class ClientController extends Controller
                 'address',
             ]));
 
-            if($request->has('agent_id')) {
+            if ($request->has('agent_id')) {
                 $response = Gate::inspect('assignOwnerAgent', Client::class);
 
                 if ($response->denied()) {
@@ -532,7 +528,7 @@ class ClientController extends Controller
                 $client->save();
             }
 
-            if($request->has('agent_ids')) {
+            if ($request->has('agent_ids')) {
                 $response = Gate::inspect('assignAgents', $client);
 
                 if ($response->denied()) {
@@ -824,6 +820,7 @@ class ClientController extends Controller
             ];
         }
 
+
         DB::beginTransaction();
         try {
             // Insert credit table
@@ -860,7 +857,7 @@ class ClientController extends Controller
                 ->first();
             $paymentMethod = $payment->paymentMethod;
             $paidBy = $paymentMethod?->paid_by ?? $chargeRecord?->paid_by ?? 'Company';
-            
+
             if ($chargeRecord) {
                 $coaBankIdRec = $chargeRecord->acc_bank_id; //COA (Assets) for Debited Bank Account
                 $coaFeeIdRec = $chargeRecord->acc_fee_id; //COA (Expenses) for Payment Gateway Fee
@@ -1017,7 +1014,7 @@ class ClientController extends Controller
             $client = Client::findOrFail($id);
             // $client->credit = $amount;
             // $client->save();
-            
+
             $balanceCredit = Credit::getTotalCreditsByClient($client->id);
             $difference = $amount - $balanceCredit;
 
@@ -1266,7 +1263,7 @@ class ClientController extends Controller
     public function showCredit($id)
     {
         $client = Client::with('agent')->findOrFail($id);
-        $base = Credit::with(['client','invoice'])->where('client_id', $client->id);
+        $base = Credit::with(['client', 'invoice'])->where('client_id', $client->id);
 
         $totals = (clone $base)
             ->selectRaw('SUM(GREATEST(amount,0)) total_in, SUM(LEAST(amount,0)) total_out')
@@ -1277,16 +1274,16 @@ class ClientController extends Controller
         $netBalance = $totalIn + $totalOut;
 
         $credits = (clone $base)
-            ->orderBy('id','asc')
+            ->orderBy('id', 'asc')
             ->paginate(25)
             ->withQueryString();
-        
-        return view('clients.credit', compact('client','credits','totalIn','totalOut','netBalance'));
+
+        return view('clients.credit', compact('client', 'credits', 'totalIn', 'totalOut', 'netBalance'));
     }
 
-    public function assignAgents(Request $request, $id) : JsonResponse
+    public function assignAgents(Request $request, $id): JsonResponse
     {
-       $client = Client::findOrFail($id);
+        $client = Client::findOrFail($id);
 
         $response = Gate::inspect('assignAgents', $client);
 
@@ -1330,8 +1327,10 @@ class ClientController extends Controller
 
         // Check if already assigned
         if ($existingClient->agents()->where('agent_id', $requestingAgent->id)->exists()) {
-            return redirect()->back()->with('info', 
-                "You are already assigned to this client: {$existingClient->first_name} {$existingClient->last_name}");
+            return redirect()->back()->with(
+                'info',
+                "You are already assigned to this client: {$existingClient->first_name} {$existingClient->last_name}"
+            );
         }
 
         // Log the assignment request
@@ -1349,8 +1348,10 @@ class ClientController extends Controller
         // Send notification to owner agent
         $this->sendAssignmentRequest($ownerAgent, $requestingAgent, $existingClient, $request->request_reason);
 
-        return redirect()->back()->with('success', 
-            "Assignment request sent to {$ownerAgent->name}. You will be notified once they review your request.");
+        return redirect()->back()->with(
+            'success',
+            "Assignment request sent to {$ownerAgent->name}. You will be notified once they review your request."
+        );
     }
 
     /**
@@ -1441,7 +1442,7 @@ class ClientController extends Controller
 
             // Mark the original notification as read - Using Eloquent model method
             $notification = Notification::findByUserAndToken(Auth::id(), 'client_assignment_request', $token);
-           
+
             if ($notification) {
                 $notification->update(['status' => 'read']);
             }
@@ -1475,7 +1476,6 @@ class ClientController extends Controller
 
             return redirect()->route('clients.show', $client->id)
                 ->with('success', "Successfully assigned {$requestingAgent->name} to client {$client->first_name} {$client->last_name}.");
-
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Failed to approve assignment request', [
@@ -1545,7 +1545,6 @@ class ClientController extends Controller
 
             return redirect()->route('dashboard')
                 ->with('success', "Assignment request denied for {$requestingAgent->name}.");
-
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Failed to deny assignment request', [

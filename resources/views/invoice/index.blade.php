@@ -301,8 +301,7 @@
                                                     opacity=".5" />
                                             </svg>
                                         </a>
-                                        @elseif (in_array($invoice->status, ['unpaid', 'partial'], true) ||
-                                        ($invoice->status !== 'paid' ))
+                                        @elseif (in_array($invoice->status, ['unpaid', 'partial'], true))
                                         <a data-tooltip="View/Edit Invoice"
                                             href="{{ route('invoice.edit', ['companyId' => $invoice->agent?->branch?->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                             class="text-sm font-medium text-blue-600 hover:underline">

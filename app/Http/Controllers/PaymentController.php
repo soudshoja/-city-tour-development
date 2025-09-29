@@ -2933,6 +2933,7 @@ class PaymentController extends Controller
                 }
 
                 $receiptInfo = $this->publicReceiptNotice($payment, $process);
+                $route = $this->publicReceiptRoute($payment, $process);
 
                 if ($process === 'topup') {
                     $clientController = new ClientController;
@@ -2943,14 +2944,14 @@ class PaymentController extends Controller
                             'message' => $addCreditResponse['error'],
                             'payment_id' => $paymentId,
                         ]);
-                        return redirect()->to($receiptInfo['url'])->with('error', $addCreditResponse['error']);
+                        return redirect()->route($route['name'], $route['params'])->with('error', $addCreditResponse['error']);
                     }
 
                     $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
                         ->where('company_id', $payment->agent->branch->company->id)
                         ->first();
                     if (!$liabilitiesAccount) {
-                        return redirect()->to($receiptInfo['url'])->with('error', 'Liabilities account not found');
+                        return redirect()->route($route['name'], $route['params'])->with('error', 'Liabilities account not found');
                     }
 
                     $clientAdvance = Account::where('name', 'Client')
@@ -2958,7 +2959,7 @@ class PaymentController extends Controller
                         ->where('root_id', $liabilitiesAccount->id)
                         ->first();
                     if (!$clientAdvance) {
-                        return redirect()->to($receiptInfo['url'])->with('error', 'Client advance account not found');
+                        return redirect()->route($route['name'], $route['params'])->with('error', 'Client advance account not found');
                     }
 
                     DB::beginTransaction();
@@ -3000,7 +3001,7 @@ class PaymentController extends Controller
                             'message' => $e->getMessage(),
                             'trace' => $e->getTraceAsString(),
                         ]);
-                        return redirect()->to($receiptInfo['url'])->with('error', 'Payment cannot be updated');
+                        return redirect()->route($route['name'], $route['params'])->with('error', 'Payment cannot be updated');
                     }
                     DB::commit();
                 }
@@ -3061,7 +3062,7 @@ class PaymentController extends Controller
                             ->first();
 
                         if (!$chargeRecord) {
-                            return redirect()->to($receiptInfo['url'])->with('error', 'Charge account not configured');
+                            return redirect()->route($route['name'], $route['params'])->with('error', 'Charge account not configured');
                         }
 
                         $bankPaymentFee = Account::find($chargeRecord->acc_fee_bank_id);
@@ -3194,7 +3195,7 @@ class PaymentController extends Controller
                     } catch (Exception $e) {
                         DB::rollBack();
                         Log::error('Payment processing failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-                        return redirect()->to($receiptInfo['url'])->with('error', 'Error: ' . $e->getMessage());
+                        return redirect()->route($route['name'], $route['params'])->with('error', 'Error: ' . $e->getMessage());
                     }
                 }
 
@@ -3211,7 +3212,7 @@ class PaymentController extends Controller
                     $agent->country_code,
                     $receiptInfo['message']
                 );
-                return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
+                return redirect()->route($route['name'], $route['params'])->with('success', 'Payment successful!');
             } finally {
                 optional($lock)->release();
             }
@@ -3297,7 +3298,13 @@ class PaymentController extends Controller
             ]);
         }
 
-        return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('error', 'Payment was not completed or was cancelled.');
+        if (!isset($payment) || !$payment) {
+            return redirect()->route('payment.failed')->with('error', 'Payment was not completed or was cancelled.');
+        }
+
+        $process = $payment->invoice ? 'invoice' : 'topup';
+        $route = $this->publicReceiptRoute($payment, $process);
+        return redirect()->route($route['name'], $route['params'])->with('error', 'Payment was not completed or was cancelled.');
     }
 
     public function paymentUpdateLink($paymentId, Request $request)
@@ -3475,7 +3482,7 @@ class PaymentController extends Controller
             if ($payment->status === 'completed') {
                 Log::info('Callback ignored: payment already completed', ['payment_id' => $payment->id]);
                 $route = $this->publicReceiptRoute($payment, $process);
-                return redirect()->route($route['name'], $route['params'])->with('success','Payment was not completed.');
+                return redirect()->route($route['name'], $route['params'])->with('success', 'Payment already completed.');
             }
 
             $uPayment = new UPayment();
@@ -3642,6 +3649,7 @@ class PaymentController extends Controller
                 }
             });
             $receiptInfo = $this->publicReceiptNotice($payment, $process);
+            $route = $this->publicReceiptRoute($payment, $process);
             $agent = $payment->agent;
 
             $this->storeNotification([
@@ -3656,7 +3664,7 @@ class PaymentController extends Controller
                 $receiptInfo['message']
             );
 
-            return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
+            return redirect()->route($route['name'], $route['params'])->with('success', 'Payment successful!');
         } catch (\Exception $e) {
             Log::error('UPayment callback exception', [
                 'message' => $e->getMessage(),
@@ -3840,8 +3848,8 @@ class PaymentController extends Controller
 
         if ($payment) {
             $process = $payment->invoice ? 'invoice' : 'topup';
-            $url = $this->publicReceiptRoute($payment, $process);
-            return redirect()->to($url)->with('error', 'Payment was not completed or was cancelled.');
+            $route = $this->publicReceiptRoute($payment, $process);
+            return redirect()->route($route['name'], $route['params'])->with('error', 'Payment was not completed or was cancelled.');
         }
 
         return redirect()->route('payment.failed');
@@ -3897,6 +3905,7 @@ class PaymentController extends Controller
 
             // Generate public receipt data (URL, title, message) for redirect and notifications
             $receiptInfo = $this->publicReceiptNotice($payment, $process);
+            $route = $this->publicReceiptRoute($payment, $process);
         } else {
             Log::error('Response from Hesabe failed');
             return redirect()->route('payment.failed')->with('error', 'Something went wrong. Please contact support team.');
@@ -3904,19 +3913,23 @@ class PaymentController extends Controller
 
         DB::beginTransaction();
 
-            HesabePayment::updateOrCreate([
+        HesabePayment::updateOrCreate(
+            [
                 'payment_int_id' => $payment->id,
-                'status' => $data['resultCode'],
-                'payment_token' => $data['paymentToken'],
-                'payment_id' => $data['paymentId'],
-                'order_reference_number' => $data['orderReferenceNumber'],
-                'auth_code' => $data['auth'],
-                'track_id' => $data['trackID'],
-                'transaction_id' => $data['transactionId'],
-                'invoice_id' => $data['Id'],
-                'paid_on' => $data['paidOn'],
+            ],
+            [
+                'status' => $data['resultCode'] ?? null,
+                'payment_token' => $data['paymentToken'] ?? null,
+                'payment_id' => $data['paymentId'] ?? null,
+                'order_reference_number' => $data['orderReferenceNumber'] ?? null,
+                'auth_code' => $data['auth'] ?? null,
+                'track_id' => $data['trackID'] ?? null,
+                'transaction_id' => $data['transactionId'] ?? null,
+                'invoice_id' => $data['Id'] ?? null,
+                'paid_on' => $data['paidOn'] ?? null,
                 'payload' => $responseData,
-            ]);
+            ]
+        );
 
         DB::commit();
 
@@ -3935,7 +3948,7 @@ class PaymentController extends Controller
                     Log::error('Failed to add credit to client', [
                         'payment_reference' => $data['transactionId'],
                     ]);
-                    return redirect()->to($receiptInfo['url'])->with('error', $addCreditResponse['error']);
+                    return redirect()->route($route['name'], $route['params'])->with('error', $addCreditResponse['error']);
                 }
 
                 $creditCoa = $this->creditCOA($payment);
@@ -3943,7 +3956,7 @@ class PaymentController extends Controller
                     Log::error('Failed to create journal entry for failed payment', [
                         'message' => $creditCoa['message'],
                     ]);
-                    return redirect()->to($receiptInfo['url'])->with('error', $creditCoa['message']);
+                    return redirect()->route($route['name'], $route['params'])->with('error', $creditCoa['message']);
                 }
             } elseif ($process === 'invoice') {
                 Log::info('Starting to process the invoice for successfull callback from Hesabe'); 
@@ -3964,7 +3977,7 @@ class PaymentController extends Controller
                 $invoiceCoa = $this->invoiceCOA($payment, $selectedPartialIds, $finalPaidAmount);
                 if (!$invoiceCoa['success']) {
                     Log::error('Failed to create journal entry for invoice payment', ['message' => $invoiceCoa['message']]);
-                    return redirect()->to($receiptInfo['url'])->with('error', $invoiceCoa['message']);
+                    return redirect()->route($route['name'], $route['params'])->with('error', $invoiceCoa['message']);
                 }
             }
 
@@ -3988,10 +4001,10 @@ class PaymentController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->to($receiptInfo['url'])->with('error', 'Payment to Hesabe failed');
+            return redirect()->route($route['name'], $route['params'])->with('error', 'Payment to Hesabe failed');
         }
 
-        return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
+        return redirect()->route($route['name'], $route['params'])->with('success', 'Payment successful!');
     }
 
     public function handleHesabeFailure(Request $request)
@@ -4046,19 +4059,23 @@ class PaymentController extends Controller
                 $payment->save();
             }
 
-            HesabePayment::create([
-                'payment_int_id' => $payment->id,
-                'status' => $data['resultCode'],
-                'payment_token' => $data['paymentToken'],
-                'payment_id' => $data['paymentId'],
-                'order_reference_number' => $data['orderReferenceNumber'],
-                'auth_code' => $data['auth'],
-                'track_id' => $data['trackID'],
-                'transaction_id' => $data['transactionId'],
-                'invoice_id' => $data['Id'],
-                'paid_on' => $data['paidOn'],
-                'payload' => $responseData,
-            ]);
+            HesabePayment::updateOrCreate(
+                [
+                    'payment_int_id' => $payment->id,
+                ],
+                [
+                    'status' => $data['resultCode'] ?? null,
+                    'payment_token' => $data['paymentToken'] ?? null,
+                    'payment_id' => $data['paymentId'] ?? null,
+                    'order_reference_number' => $data['orderReferenceNumber'] ?? null,
+                    'auth_code' => $data['auth'] ?? null,
+                    'track_id' => $data['trackID'] ?? null,
+                    'transaction_id' => $data['transactionId'] ?? null,
+                    'invoice_id' => $data['Id'] ?? null,
+                    'paid_on' => $data['paidOn'] ?? null,
+                    'payload' => $responseData,
+                ]
+            );            
 
             $creditCoa = $this->creditCOA($payment);
             if (!$creditCoa['success']) {
@@ -4097,7 +4114,7 @@ class PaymentController extends Controller
             return ['success' => false, 'message' => 'Payment record not found in gateway table'];
         }
 
-        if ($hesabePayment->status === 'ACCEPT' ) {
+        if (in_array($hesabePayment->status, ['ACCEPT', 'CAPTURED'])) {
             Log::info('Credit payment success, creating credit COA');
 
             try {
@@ -4171,7 +4188,7 @@ class PaymentController extends Controller
 
                 return ['success' => false, 'message' => 'Error creating journal entry'];
             }
-        } elseif ($hesabePayment->status === 'ERROR') {
+        } elseif (in_array($hesabePayment->status, ['ERROR', 'CANCEL'])) {
             Log::info('Credit payment failed, creating credit COA');
             try {
                 $payment = Payment::with('client', 'agent.branch')->find($payment->id);
@@ -4190,7 +4207,7 @@ class PaymentController extends Controller
                     'reference_type' => 'Payment',
                     'transaction_date' => now(),
                 ]);
-                return ['success' => false, 'message' => 'Topup failed — COA recorded'];
+                return ['success' => false, 'message' => 'Topup transaction failed'];
             } catch (Exception $e) {
                 logger('Error creating journal entry for a failed credit payment', [
                     'message' => $e->getMessage(),
@@ -4729,23 +4746,17 @@ class PaymentController extends Controller
     private function publicReceiptRoute(Payment $payment, ?string $process = null): array
     {
         $isInvoice = $process === 'invoice' || (!empty($payment->invoice_id) && $process !== 'topup');
-
+    
         return $isInvoice
-            ? [
-                'name'   => 'invoice.show',
-                'params' => [
+            ? ['name' => 'invoice.show', 'params' => [
                     'companyId'     => $payment->agent->branch->company_id,
                     'invoiceNumber' => $payment->invoice->invoice_number,
-                ],
-            ]
-            : [
-                'name'   => 'payment.link.show',
-                'params' => [
+            ]]
+            : ['name' => 'payment.link.show', 'params' => [
                     'companyId'     => $payment->agent->branch->company_id,
                     'voucherNumber' => $payment->voucher_number,
-                ],
-            ];
-    }
+            ]];
+    }    
 
     private function publicReceiptNotice(Payment $payment, ?string $process = null): array
     {
@@ -4757,13 +4768,11 @@ class PaymentController extends Controller
             ? [
                 'title'   => $payment->invoice->invoice_number . ' paid successfully',
                 'message' => 'Your client ' . $payment->client->full_name . ' has paid invoice ' . $payment->invoice->invoice_number . ".\n\nCheck the link : " . $url,
-                'url'     => $url,
             ]
             : [
                 'title'   => 'Client ' . $payment->client->full_name . ' Topup Successful',
                 'message' => 'Your client ' . $payment->client->full_name . ' has successfully topped up ' . number_format($payment->amount, 3) .
                              ' ' . $payment->currency . ' using voucher ' . $payment->voucher_number . ".\n\nCheck the link : " . $url,
-                'url'     => $url,
             ];
     }
 }

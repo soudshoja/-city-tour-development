@@ -717,77 +717,80 @@ class FixFlightDetails extends Command
                 'reason' => 'Task type is hotel',
                 'message' => 'Task type is hotel. Cannot proceed extracting task flight details',
             ];
-
-        } elseif (($taskData['type'] ?? null) === 'flight') {
-
+       } elseif (($taskData['type'] ?? null) === 'flight') {
             try {
                 $task = Task::where('reference', $taskData['reference'] ?? null)->first();
+
                 if ($task) {
                     $this->info('Existing task with reference existed');
-                    foreach ($taskData['task_flight_details'] as $newFlightDetail) {
-                        $oldFlightDetail = TaskFlightDetail::firstOrNew(['task_id' => $task->id]);
-                        
+
+                    $existingFlightDetails = TaskFlightDetail::where('task_id', $task->id)
+                        ->orderBy('id', 'asc')
+                        ->get();
+
+                    foreach ($taskData['task_flight_details'] as $index => $newFlightDetail) {
+                        $oldFlightDetail = $existingFlightDetails->get($index);
+
+                        if (!$oldFlightDetail) {
+                            $oldFlightDetail = new TaskFlightDetail([
+                                'task_id' => $task->id,
+                            ]);
+                        }
+
                         $countryFrom = Country::where('name', $newFlightDetail['country_id_from'])->first();
-                        $countryTo = Country::where('name', $newFlightDetail['country_id_to'])->first();
+                        $countryTo   = Country::where('name', $newFlightDetail['country_id_to'])->first();
 
                         $oldFlightDetail->fill([
-                            'farebase' => $newFlightDetail['farebase'] ?? null,
-                            'departure_time' => $newFlightDetail['departure_time'] ?? null,
+                            'farebase'        => $newFlightDetail['farebase'] ?? null,
+                            'departure_time'  => $newFlightDetail['departure_time'] ?? null,
                             'country_id_from' => $countryFrom->id ?? null,
-                            'airport_from' => $newFlightDetail['airport_from'] ?? null,
-                            'terminal_from' => $newFlightDetail['terminal_from'] ?? null,
-                            'arrival_time' => $newFlightDetail['arrival_time'] ?? null,
-                            'duration_time' => $newFlightDetail['duration_time'] ?? null,
-                            'country_id_to' => $countryTo->id ?? null,
-                            'airport_to' => $newFlightDetail['airport_to'] ?? null,
-                            'terminal_to' => $newFlightDetail['terminal_to'] ?? null,
-                            'airline_id' => $newFlightDetail['airline_id'] ?? null,
-                            'flight_number' => $newFlightDetail['flight_number'] ?? null,
-                            'ticket_number' => $newFlightDetail['ticket_number'] ?? null,
-                            'class_type' => $newFlightDetail['class_type'] ?? null,
+                            'airport_from'    => $newFlightDetail['airport_from'] ?? null,
+                            'terminal_from'   => $newFlightDetail['terminal_from'] ?? null,
+                            'arrival_time'    => $newFlightDetail['arrival_time'] ?? null,
+                            'duration_time'   => $newFlightDetail['duration_time'] ?? null,
+                            'country_id_to'   => $countryTo->id ?? null,
+                            'airport_to'      => $newFlightDetail['airport_to'] ?? null,
+                            'terminal_to'     => $newFlightDetail['terminal_to'] ?? null,
+                            'airline_id'      => $newFlightDetail['airline_id'] ?? null,
+                            'flight_number'   => $newFlightDetail['flight_number'] ?? null,
+                            'ticket_number'   => $newFlightDetail['ticket_number'] ?? null,
+                            'class_type'      => $newFlightDetail['class_type'] ?? null,
                             'baggage_allowed' => $newFlightDetail['baggage_allowed'] ?? null,
-                            'equipment' => $newFlightDetail['equipment'] ?? null,
-                            'flight_meal' => $newFlightDetail['flight_meal'] ?? null,
-                            'seat_no' => $newFlightDetail['seat_no'] ?? null,
+                            'equipment'       => $newFlightDetail['equipment'] ?? null,
+                            'flight_meal'     => $newFlightDetail['flight_meal'] ?? null,
+                            'seat_no'         => $newFlightDetail['seat_no'] ?? null,
                         ]);
-                    
+
                         $oldFlightDetail->updated_at = now();
                         $oldFlightDetail->save();
                     }
 
                     return [
                         'success' => true,
-                        'reason' => 'All missing data is filled',
-                        'message' => 'Flight details saved successfully ah moment',
+                        'reason'  => 'All missing data is filled',
+                        'message' => 'Flight details saved successfully',
                     ];
-                } elseif (!$task) {
-                    $this->logger->error('Task not found in the system for reference: ');
-
+                } else {
                     return [
                         'success' => false,
-                        'reason' => 'Existing task did not found in the system',
+                        'reason'  => 'Task not found',
                         'message' => 'No such task found in the system',
                     ];
-
                 }
 
             } catch (Exception $e) {
-                $this->logger->error('Exception during task processing for file ' . $fileName . ', item ' . $index . ': ' . $e->getmessage()); 
+                $this->logger->error("Exception during task processing for file {$fileName}, item {$index}: " . $e->getMessage());
 
                 return [
                     'success' => false,
-                    'index' => $index,
-                    'reason' => 'Exception during extraction of task flight details',
+                    'index'   => $index,
+                    'reason'  => 'Exception during extraction of task flight details',
                     'message' => $e->getMessage(),
                 ];
             } finally {
-                FileUpload::where('file_name', $fileName)->update([
-                    'status' => 'completed'
-                ]);
-
-                $this->logger->info('Marked file_upload as completed for ' . $fileName);
+                FileUpload::where('file_name', $fileName)->update(['status' => 'completed']);
+                $this->logger->info("Marked file_upload as completed for {$fileName}");
             }
-
         }
 
         return [

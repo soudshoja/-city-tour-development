@@ -384,6 +384,10 @@ class InvoiceController extends Controller
             $branches = $company->branches;
             $agents   = $branches->pluck('agents')->flatten();
             $agentsId = $agents->pluck('id')->toArray();
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            return $this->accountantEdit($companyId, $invoiceNumber);
+        } else {
+            return redirect()->back()->with('error', 'Unauthorized access.');
         }
 
         $clients = Client::where(function ($query) use ($agentsId) {
@@ -571,6 +575,21 @@ class InvoiceController extends Controller
             'uPaymentMethods',
             'hesabeMethods',
             'can_import',
+        ));
+    }
+
+    public function accountantEdit($companyId,$invoiceNumber)
+    {
+        Gate::authorize('accountantEdit', Invoice::class);
+
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
+            ->first();
+
+        return view('invoice.accountant.edit', compact(
+            'invoice'
         ));
     }
 
@@ -824,6 +843,7 @@ class InvoiceController extends Controller
             //if ($credit && $type == 'full') {
             if ($credit) {
                 //insert credit record to reduce client's existing credit balance
+                dd($client);
                 try {
                     Credit::create([
                         'company_id'  => $invoicePartial->client->agent->branch->company_id,

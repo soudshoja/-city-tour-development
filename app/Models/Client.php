@@ -76,4 +76,8 @@ class Client extends Model
         return $this->hasMany(RefundClient::class);
     }
 
+    public function getTotalCreditAttribute()
+    {
+        return Credit::getTotalCreditsByClient($this->id);
+    }
 }

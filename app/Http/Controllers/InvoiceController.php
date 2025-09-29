@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvoicePaymentType;
 use App\Http\Traits\NotificationTrait;
 use App\Models\Account;
 use App\Models\Agent;
@@ -586,10 +587,26 @@ class InvoiceController extends Controller
             ->whereHas('agent.branch.company', function ($q) use ($companyId) {
                 $q->where('id', $companyId);
             })
+            ->with('client', 'agent')
             ->first();
 
+        // Get all clients, agents, and countries for dropdowns
+        $clients = Client::all();
+        $agents = Agent::with('branch.company')->get();
+        $countries = Country::all();
+        $charges = Charge::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->get();
+
+        $invoicePaymentTypes = InvoicePaymentType::labels();
+
         return view('invoice.accountant.edit', compact(
-            'invoice'
+            'invoice',
+            'clients',
+            'agents',
+            'countries',
+            'charges',
+            'invoicePaymentTypes'
         ));
     }
 
@@ -843,7 +860,6 @@ class InvoiceController extends Controller
             //if ($credit && $type == 'full') {
             if ($credit) {
                 //insert credit record to reduce client's existing credit balance
-                dd($client);
                 try {
                     Credit::create([
                         'company_id'  => $invoicePartial->client->agent->branch->company_id,

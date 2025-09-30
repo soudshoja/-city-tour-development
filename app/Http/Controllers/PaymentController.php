@@ -556,6 +556,25 @@ class PaymentController extends Controller
             //     'message' => 'Payment failed: ' . $response['status'],
             // ]);
 
+            $agent = $invoice->agent;
+            $client = $invoice->client;
+            $message = 'Your client ' . $client->full_name . ' attempted to pay invoice ' . $invoice->invoice_number . ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.';
+
+            $this->storeNotification([
+                'user_id' => $agent->user_id,
+                'title' => 'Client '. $client->full_name . "'s Payment Failed",
+                'message' => $message,
+            ]);
+
+            $resayilController = new ResayilController();
+
+            $resayilController->message(
+                $agent->phone_number,
+                $agent->country_code,
+                $message,
+            );
+
+
             Log::error('Payment failed', [
                 'status' => $response['status'],
                 'response' => $response,
@@ -840,6 +859,20 @@ class PaymentController extends Controller
         //     // Handle payment failure
         //     return redirect()->back()->with('error', 'Payment failed: ' . $e->getMessage());
         // }
+
+        $agent = $payment->invoice->agent;
+        $client = $payment->invoice->client;
+        $message = 'Your client ' . $client->full_name . ' has paid invoice ' . $payment->invoice->invoice_number . '.\n\nCheck the link : ' . route('invoice.show', ['companyId' => $payment->agent->branch->company_id, 'invoiceNumber' => $payment->invoice->invoice_number]);
+
+        $resayilController = new ResayilController();
+
+        $resayilController->message(
+            $agent->phone_number,
+            $agent->country_code,
+            $message,
+        );
+
+
         return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])
             ->with('status', 'Payment successful! Thank you for your payment.');
     }

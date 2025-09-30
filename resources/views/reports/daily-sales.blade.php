@@ -201,6 +201,9 @@
                                                         @if(($row['agent']->type_id ?? null) == 3)
                                                             <span class="text-[11px] text-gray-500">rate part</span>
                                                         @endif
+                                                        @if(($row['agent']->type_id ?? null) == 4)
+                                                            <span class="text-[11px] text-gray-500">prorated</span>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             </div>

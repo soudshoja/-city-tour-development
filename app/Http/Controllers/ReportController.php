@@ -1538,10 +1538,11 @@ class ReportController extends Controller
 
     public function dailySalesPdf(Request $request)
     {
-        if (Auth::user()->role->id == Role::COMPANY) {
-            $companyId = Auth::user()->company->id;
-        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
-            $companyId = Auth::user()->accountant->branch->company_id;
+        $user = Auth::user();
+        if ($user->role->id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } elseif ($user->role->id == Role::ACCOUNTANT) {
+            $companyId = $user->accountant->branch->company_id;
         }
 
         $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
@@ -1556,6 +1557,7 @@ class ReportController extends Controller
             'agents' => $agents,
             'suppliers' => $suppliers,
             'refunds' => $refunds,
+            'company' => $user->company,
         ])->setPaper('a4', 'portrait')->setOptions(['defaultFont' => 'sans-serif']);
 
         $filename = 'daily-sales-' . Carbon::parse($date)->format('Y-m-d') . '.pdf';
@@ -1618,7 +1620,6 @@ class ReportController extends Controller
             ->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId));
 
         $totalPaid = (clone $partialsToday)->sum('invoice_partials.amount');
-
         $cashSum = (clone $partialsToday)->where('invoice_partials.payment_gateway', 'cash')->sum('invoice_partials.amount');
         $creditSum = (clone $partialsToday)->where('invoice_partials.payment_gateway', 'credit')->sum('invoice_partials.amount');
         $gatewaySum = (clone $partialsToday)->whereNotIn('invoice_partials.payment_gateway', ['cash', 'credit'])->sum('invoice_partials.amount');
@@ -1799,57 +1800,73 @@ class ReportController extends Controller
         $salary = $agent->salary ?? 0.0;
         $target = $agent->target ?? 0.0;
         $profitTotal   = 0.0;
-        $perInvoiceCom = [];
+        $perInvoiceRate = [];
+        $invoiceProfit = [];
 
-        // ----- accumulate daily profit + per-invoice commissions (rate part only)
         foreach ($invoices as $invoice) {
             $invProfit = $invoice->invoiceDetails->sum('markup_price');
-
+            $invoiceProfit[$invoice->id] = $invProfit;
             $profitTotal += $invProfit;
 
-            // pre-compute the "rate" portion for this invoice (used by types 2 & 3)
-            $perInvoiceCom[$invoice->id] = round($invProfit * $rate, 3);
+            $perInvoiceRate[$invoice->id] = round($invProfit * $rate, 3);
             $invoice->computed_profit = round($invProfit, 3);
         }
 
         $commissionTotal = 0.0;
 
-        switch ($agent->type_id) {
-            case 1:
+        switch ((int) $agent->type_id) {
+            case 1: // Salary only -> no commission on sales
                 $commissionTotal = 0.0;
+                foreach ($invoices as $invoice) {
+                    $invoice->computed_commission = 0.0;
+                }
                 break;
 
-            case 2: // COMMISSION ONLY
-                // sum of per-invoice rate portions
-                $commissionTotal = array_sum($perInvoiceCom);
+            case 2: // Commission only
+                $commissionTotal = array_sum($perInvoiceRate);
+                foreach ($invoices as $invoice) {
+                    $invoice->computed_commission = $perInvoiceRate[$invoice->id];
+                }
                 break;
 
-            case 3: // BOTH-A: rate on EACH invoice + salary ONCE
-                $commissionTotal = array_sum($perInvoiceCom) + $salary;
+            case 3: // Both-A: sum of (profit*rate) per invoice + salary once
+                $commissionTotal = array_sum($perInvoiceRate) + $salary;
+                foreach ($invoices as $invoice) {
+                    // show the rate portion only at invoice level
+                    $invoice->computed_commission = $perInvoiceRate[$invoice->id];
+                }
                 break;
 
-            case 4: // BOTH-B: only if profit > target, then (profit - salary) * rate + salary
+            case 4: // Both-B: only if total profit > target, then (profit - salary)*rate + salary
                 if ($profitTotal > $target) {
                     $base = max($profitTotal - $salary, 0.0);
-                    $commissionTotal = ($base * $rate) + $salary;
+                    $ratePool = $base * $rate;
+                    $commissionTotal = $salary + $ratePool;
+
+                    // Per-invoice display (proportional allocation of the rate pool)
+                    foreach ($invoices as $invoice) {
+                        $p = $invoiceProfit[$invoice->id];
+                        $share = ($profitTotal > 0) ? ($p / $profitTotal) : 0;
+                        $invoice->computed_commission = round($ratePool * $share, 3);
+                    }
                 } else {
                     $commissionTotal = 0.0;
+                    foreach ($invoices as $invoice) {
+                        $invoice->computed_commission = 0.0;
+                    }
                 }
                 break;
 
             default:
-                $commissionTotal = 0.0;
-        }
-
-        foreach ($invoices as $invoice) {
-            // For types 2 & 3, show the rate part here; for 4 we don’t split because it’s target-based.
-            $invoice->computed_commission = in_array((int)$agent->type_id, [2, 3], true) ? $perInvoiceCom[$invoice->id] : 0.0;
+                foreach ($invoices as $invoice) {
+                    $invoice->computed_commission = 0.0;
+                }
         }
 
         return [
             'profit' => round($profitTotal, 3),
             'commission' => round($commissionTotal, 3),
-            'per_invoice' => $perInvoiceCom,
+            'per_invoice' => $perInvoiceRate,
         ];
     }
 }

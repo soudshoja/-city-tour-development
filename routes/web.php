@@ -356,6 +356,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
         Route::get('/creditors', [ReportController::class, 'creditors'])->name('creditors');
         Route::get('/creditors/pdf', [ReportController::class, 'creditorsPdf'])->name('creditors.pdf');
+        Route::get('/daily-sales', [ReportController::class, 'dailySalesReport'])->name('daily-sales');
+        Route::get('/daily-sales/pdf', [ReportController::class, 'dailySalesPdf'])->name('daily-sales.pdf');
+        Route::get('/daily-sales/pdf/download', [ReportController::class, 'dailySalesPdfDownload'])->name('daily-sales.pdf.download');
     });
 
     // INVOICE

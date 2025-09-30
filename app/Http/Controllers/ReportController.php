@@ -21,6 +21,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\Invoice;
+use App\Models\InvoicePartial;
+use App\Models\Refund;
 
 class ReportController extends Controller
 {
@@ -314,7 +317,7 @@ class ReportController extends Controller
             'expenseAccounts',
         ));
     }
-    
+
     private function getAllDescendants($parentId, $allAccounts)
     {
         $children = $allAccounts->where('parent_id', $parentId);
@@ -792,33 +795,33 @@ class ReportController extends Controller
     {
         // Get all accounts that don't have any children (leaf accounts)
         $leafAccounts = Account::whereDoesntHave('children')->get();
-        
+
         // Filter to only include those that are descendants of the parent
         $descendants = collect();
-        
+
         foreach ($leafAccounts as $account) {
             if ($this->isDescendantOf($account->id, $parentId)) {
                 $descendants->push($account);
             }
         }
-        
+
         return $descendants;
     }
-    
+
     /**
      * Check if an account is a descendant of a parent account
      */
     private function isDescendantOf($accountId, $parentId)
     {
         $account = Account::find($accountId);
-        
+
         while ($account && $account->parent_id) {
             if ($account->parent_id == $parentId) {
                 return true;
             }
             $account = Account::find($account->parent_id);
         }
-        
+
         return false;
     }
 
@@ -1131,7 +1134,7 @@ class ReportController extends Controller
         $endDate = $request->input('end_date');
         $groupBySupplier = $request->input('group_by_supplier', false);
 
-        if($user->role_id != Role::COMPANY && $user->role_id != Role::ACCOUNTANT){
+        if ($user->role_id != Role::COMPANY && $user->role_id != Role::ACCOUNTANT) {
             return abort(403, 'Unauthorized action.');
         }
 
@@ -1149,11 +1152,11 @@ class ReportController extends Controller
             ->where('parent_id', $liabilitiesAccount->id)
             ->first();
 
-        if(!$payableAccounts) {
+        if (!$payableAccounts) {
             Log::info('Accounts Payable account not found under Liabilities for company ID: ' . $user->company->id);
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
-        
+
         $creditorsAccount = Account::where('name', 'Creditors')
             ->where('company_id', $user->company->id  ?? $user->accountant->branch->company->id)
             ->where('parent_id', $payableAccounts->id)
@@ -1164,27 +1167,27 @@ class ReportController extends Controller
             Log::info('Creditors account not found under Accounts Payable for company ID: ' . $user->company->id);
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
-        
+
         $childOfCreditors = Account::where('parent_id', $creditorsAccount->id)
             ->where('company_id', $user->company->id ?? $user->accountant->branch->company->id)
             ->get();
 
-        $accountForReport = null; 
+        $accountForReport = null;
 
         if ($childOfCreditors->isNotEmpty()) {
             $accountForReport = $childOfCreditors->first();
         } else {
             Log::info('null do');
         }
-        
-        if($accountId){
+
+        if ($accountId) {
             $accountForReport = Account::find($accountId);
         }
 
         if (!$accountForReport) {
-        Log::info('No valid account found for the report. AccountId: ' . $accountId . ', ChildOfCreditors empty: ' . $childOfCreditors->isEmpty());
-        return redirect()->back()->with('error', 'No valid account found for the report.');
-    }
+            Log::info('No valid account found for the report. AccountId: ' . $accountId . ', ChildOfCreditors empty: ' . $childOfCreditors->isEmpty());
+            return redirect()->back()->with('error', 'No valid account found for the report.');
+        }
 
         // Build query with date filtering
         $journalQuery = JournalEntry::where('account_id', $accountForReport->id)
@@ -1222,7 +1225,7 @@ class ReportController extends Controller
                 if ($entry->task && $entry->task->supplier_id) {
                     $supplierName = $entry->task->supplier->name;
                     $supplierId = $entry->task->supplier_id;
-                    
+
                     if (!isset($supplierGroups[$supplierId])) {
                         $supplierGroups[$supplierId] = [
                             'supplier_id' => $supplierId,
@@ -1234,7 +1237,7 @@ class ReportController extends Controller
                             'entries_count' => 0
                         ];
                     }
-                    
+
                     $supplierGroups[$supplierId]['entries'][] = $entry;
                     $supplierGroups[$supplierId]['total_credit'] += $entry->credit;
                     $supplierGroups[$supplierId]['total_debit'] += $entry->debit;
@@ -1253,7 +1256,7 @@ class ReportController extends Controller
                             'entries_count' => 0
                         ];
                     }
-                    
+
                     $supplierGroups[0]['entries'][] = $entry;
                     $supplierGroups[0]['total_credit'] += $entry->credit;
                     $supplierGroups[0]['total_debit'] += $entry->debit;
@@ -1261,9 +1264,9 @@ class ReportController extends Controller
                     $supplierGroups[0]['entries_count']++;
                 }
             }
-            
+
             // Sort supplier groups by balance descending
-            uasort($supplierGroups, function($a, $b) {
+            uasort($supplierGroups, function ($a, $b) {
                 return $b['balance'] <=> $a['balance'];
             });
         }
@@ -1296,7 +1299,7 @@ class ReportController extends Controller
         }
 
         // Sort by balance descending
-        usort($creditorsSummary, function($a, $b) {
+        usort($creditorsSummary, function ($a, $b) {
             return $b['balance'] <=> $a['balance'];
         });
 
@@ -1316,7 +1319,7 @@ class ReportController extends Controller
     {
         $user = Auth::user();
 
-        if($user->role_id != Role::COMPANY){
+        if ($user->role_id != Role::COMPANY) {
             return abort(403, 'Unauthorized action.');
         }
 
@@ -1329,7 +1332,7 @@ class ReportController extends Controller
         if ($supplierName) {
             $supplierName = urldecode($supplierName);
         }
-        
+
         // Auto-determine report type based on request parameters
         if ($supplierName) {
             $reportType = 'single_supplier';
@@ -1343,7 +1346,7 @@ class ReportController extends Controller
         $liabilitiesAccount = Account::where('name', 'Liabilities')
             ->where('company_id', $user->company->id)
             ->first();
-        
+
         if (!$liabilitiesAccount) {
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
@@ -1352,17 +1355,17 @@ class ReportController extends Controller
             ->where('company_id', $user->company->id)
             ->where('parent_id', $liabilitiesAccount->id)
             ->first();
-        
-        if(!$payableAccounts) {
+
+        if (!$payableAccounts) {
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
-        
+
         $creditorsAccount = Account::where('name', 'Creditors')
             ->where('company_id', $user->company->id)
             ->where('parent_id', $payableAccounts->id)
             ->where('root_id', $liabilitiesAccount->id)
             ->first();
-        
+
         if (!$creditorsAccount) {
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
@@ -1373,7 +1376,7 @@ class ReportController extends Controller
 
         $accountForReport = $childOfCreditors->first();
 
-        if($accountId){
+        if ($accountId) {
             $accountForReport = Account::find($accountId);
         }
 
@@ -1410,7 +1413,7 @@ class ReportController extends Controller
         if ($reportType === 'single_supplier' && $supplierName) {
             $filteredEntries = collect();
             $filteredBalance = 0.0;
-            
+
             foreach ($journalEntries as $entry) {
                 if ($entry->task && $entry->task->supplier_id && $entry->task->supplier->name === $supplierName) {
                     $filteredBalance += $entry->credit - $entry->debit;
@@ -1418,7 +1421,7 @@ class ReportController extends Controller
                     $filteredEntries->push($entry);
                 }
             }
-            
+
             $journalEntries = $filteredEntries;
             $balance = $filteredBalance;
             $accountForReport->journalEntries = $journalEntries;
@@ -1432,7 +1435,7 @@ class ReportController extends Controller
                 if ($entry->task && $entry->task->supplier_id) {
                     $entrySupplierName = $entry->task->supplier->name ?? 'Supplier #' . $entry->task->supplier_id;
                     $supplierIdFromTask = $entry->task->supplier_id;
-                    
+
                     if (!isset($supplierGroups[$supplierIdFromTask])) {
                         $supplierGroups[$supplierIdFromTask] = [
                             'supplier_id' => $supplierIdFromTask,
@@ -1444,7 +1447,7 @@ class ReportController extends Controller
                             'entries_count' => 0
                         ];
                     }
-                    
+
                     $supplierGroups[$supplierIdFromTask]['entries'][] = $entry;
                     $supplierGroups[$supplierIdFromTask]['total_credit'] += $entry->credit;
                     $supplierGroups[$supplierIdFromTask]['total_debit'] += $entry->debit;
@@ -1462,7 +1465,7 @@ class ReportController extends Controller
                             'entries_count' => 0
                         ];
                     }
-                    
+
                     $supplierGroups[0]['entries'][] = $entry;
                     $supplierGroups[0]['total_credit'] += $entry->credit;
                     $supplierGroups[0]['total_debit'] += $entry->debit;
@@ -1470,12 +1473,12 @@ class ReportController extends Controller
                     $supplierGroups[0]['entries_count']++;
                 }
             }
-            
-            uasort($supplierGroups, function($a, $b) {
+
+            uasort($supplierGroups, function ($a, $b) {
                 return $b['balance'] <=> $a['balance'];
             });
         }
-        
+
         $data = [
             'journalEntries' => $accountForReport->journalEntries,
             'accountForReport' => $accountForReport,
@@ -1504,7 +1507,7 @@ class ReportController extends Controller
                             break;
                         }
                     }
-                    
+
                     if ($selectedSupplier) {
                         $data['selectedSupplier'] = $selectedSupplier;
                         $pdfView = 'reports.pdf.creditors-single-supplier';
@@ -1531,5 +1534,322 @@ class ReportController extends Controller
             ->setOptions(['defaultFont' => 'sans-serif']);
 
         return $pdf->download($filename);
+    }
+
+    public function dailySalesPdf(Request $request)
+    {
+        if (Auth::user()->role->id == Role::COMPANY) {
+            $companyId = Auth::user()->company->id;
+        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
+            $companyId = Auth::user()->accountant->branch->company_id;
+        }
+
+        $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
+        $summary = $this->dailySalesSummary($companyId, $date);
+        $agents = $this->dailySalesAgents($companyId, $date);
+        $suppliers = $this->dailySalesSuppliers($companyId, $date);
+        $refunds = $this->dailySalesRefunds($companyId, $date);
+
+        $pdf = Pdf::loadView('reports.pdf.daily-sales', [
+            'date' => $date,
+            'summary' => $summary,
+            'agents' => $agents,
+            'suppliers' => $suppliers,
+            'refunds' => $refunds,
+        ])->setPaper('a4', 'portrait')->setOptions(['defaultFont' => 'sans-serif']);
+
+        $filename = 'daily-sales-' . Carbon::parse($date)->format('Y-m-d') . '.pdf';
+        return $pdf->stream($filename);
+    }
+
+    public function dailySalesPdfDownload(Request $request)
+    {
+        if (Auth::user()->role->id == Role::COMPANY) {
+            $companyId = Auth::user()->company->id;
+        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
+            $companyId = Auth::user()->accountant->branch->company_id;
+        }
+
+        $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
+        $summary = $this->dailySalesSummary($companyId, $date);
+        $agents = $this->dailySalesAgents($companyId, $date);
+        $suppliers = $this->dailySalesSuppliers($companyId, $date);
+        $refunds = $this->dailySalesRefunds($companyId, $date);
+
+        $pdf = Pdf::loadView('reports.pdf.daily-sales', compact('summary', 'agents', 'suppliers', 'refunds', 'date'))
+            ->setPaper('a4', 'portrait')
+            ->setOptions(['defaultFont' => 'sans-serif']);
+
+        $filename = 'daily-sales-' . Carbon::parse($date)->format('Y-m-d') . '.pdf';
+        return $pdf->download($filename);
+    }
+
+    public function dailySalesReport(Request $request)
+    {
+        if (Auth::user()->role->id == Role::COMPANY) {
+            $companyId = Auth::user()->company->id;
+        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
+            $companyId = Auth::user()->accountant->branch->company_id;
+        } else {
+            return abort(403, 'Unauthorized action.');
+        }
+
+        $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
+        $summary = $this->dailySalesSummary($companyId, $date);
+        $agents = $this->dailySalesAgents($companyId, $date);
+        $suppliers = $this->dailySalesSuppliers($companyId, $date);
+        $refunds = $this->dailySalesRefunds($companyId, $date);
+
+        return view('reports.daily-sales', compact('summary', 'agents', 'suppliers', 'refunds', 'date'));
+    }
+
+    private function dailySalesSummary($companyId, $date)
+    {
+        $invoices = Invoice::with('invoiceDetails')
+            ->whereDate('invoice_date', $date)
+            ->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId))
+            ->get();
+
+        $totalInvoices = $invoices->count();
+        $totalInvoiced = $invoices->sum('amount');
+
+        $partialsToday = InvoicePartial::query()
+            ->whereDate('invoice_partials.created_at', $date)
+            ->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId));
+
+        $totalPaid = (clone $partialsToday)->sum('invoice_partials.amount');
+
+        $cashSum = (clone $partialsToday)->where('invoice_partials.payment_gateway', 'cash')->sum('invoice_partials.amount');
+        $creditSum = (clone $partialsToday)->where('invoice_partials.payment_gateway', 'credit')->sum('invoice_partials.amount');
+        $gatewaySum = (clone $partialsToday)->whereNotIn('invoice_partials.payment_gateway', ['cash', 'credit'])->sum('invoice_partials.amount');
+
+        $refunds = Refund::whereDate('created_at', $date)
+            ->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId))
+            ->sum('total_nett_refund');
+
+        $profit = 0;
+        foreach ($invoices as $invoice) {
+            $profit += $invoice->invoiceDetails->sum('markup_price');
+        }
+
+        $topAgentRow = (clone $partialsToday)
+            ->join('invoices as inv', 'invoice_partials.invoice_id', '=', 'inv.id')
+            ->selectRaw('inv.agent_id as agent_id, SUM(invoice_partials.amount) as total_paid')
+            ->groupBy('inv.agent_id')
+            ->orderByDesc('total_paid')
+            ->first();
+
+        $topAgent = '-';
+        $topAgentAmount = 0.0;
+        if ($topAgentRow) {
+            $agent = Agent::find($topAgentRow->agent_id);
+            $topAgent = $agent->name ?? '-';
+            $topAgentAmount = (float) $topAgentRow->total_paid;
+        }
+
+        $topSupplierRow = DB::table('invoice_details as idt')
+            ->join('invoices as inv', 'idt.invoice_id', '=', 'inv.id')
+            ->join('tasks as t', 'idt.task_id', '=', 't.id')
+            ->whereDate('inv.invoice_date', $date)
+            ->whereExists(function ($qq) use ($companyId) {
+                $qq->select(DB::raw(1))
+                    ->from('agents as a')
+                    ->join('branches as b', 'a.branch_id', '=', 'b.id')
+                    ->join('companies as c', 'b.company_id', '=', 'c.id')
+                    ->whereColumn('inv.agent_id', 'a.id')
+                    ->where('c.id', $companyId);
+            })
+            ->selectRaw('t.supplier_id, SUM(idt.task_price) as total_revenue')
+            ->groupBy('t.supplier_id')
+            ->orderByDesc('total_revenue')
+            ->first();
+
+        $topSupplier = '-';
+        $topSupplierAmount = 0.0;
+        if ($topSupplierRow && $topSupplierRow->supplier_id) {
+            $supplier = Supplier::find($topSupplierRow->supplier_id);
+            $topSupplier = $supplier->name ?? '-';
+            $topSupplierAmount = (float) $topSupplierRow->total_revenue;
+        }
+
+        return [
+            'totalInvoices' => $totalInvoices,
+            'totalInvoiced' => $totalInvoiced,
+            'totalPaid' => $totalPaid,
+            'gatewaySum' => $gatewaySum,
+            'cashSum' => $cashSum,
+            'creditSum' => $creditSum,
+            'refunds' => $refunds,
+            'profit' => $profit,
+            'topAgent' => $topAgent,
+            'topAgentAmount' => $topAgentAmount,
+            'topSupplier' => $topSupplier,
+            'topSupplierAmount' => $topSupplierAmount,
+        ];
+    }
+
+    private function dailySalesAgents(int $companyId, string $date)
+    {
+        $agents = Agent::whereHas('branch.company', fn($q) => $q->where('id', $companyId))
+            ->with([
+                'invoices' => fn($q) => $q->whereDate('invoice_date', $date)
+                    ->with(['client', 'invoiceDetails.task']),
+            ])->get();
+
+        $data = [];
+
+        foreach ($agents as $agent) {
+            $invoices = $agent->invoices;
+            $totalInvoices = $invoices->count();
+            $totalInvoiced = $invoices->sum('amount');
+            $paid = $invoices->where('status', 'paid')->sum('amount');
+            $unpaid = $invoices->where('status', '<>', 'paid')->sum('amount');
+
+            $summary = $this->calculateAgentCommission($agent, $invoices);
+            $profit = $summary['profit'];
+            $commission = $summary['commission'];
+
+            $topupCollected = Payment::whereNull('invoice_id')
+                ->where('agent_id', $agent->id)
+                ->whereDate('created_at', $date)
+                ->sum('amount');
+
+            $data[] = [
+                'agent' => $agent,
+                'totalInvoices' => $totalInvoices,
+                'totalInvoiced' => $totalInvoiced,
+                'paid' => $paid,
+                'unpaid'  => $unpaid,
+                'profit' => $profit,
+                'commission' => $commission,
+                'topupCollected' => $topupCollected,
+                'invoices' => $invoices,
+            ];
+        }
+
+        return $data;
+    }
+
+    private function dailySalesSuppliers($companyId, $date)
+    {
+        $suppliers = Supplier::whereHas('companies', function ($q) use ($companyId) {
+            $q->where('companies.id', $companyId);
+        })->with([
+            'tasks' => function ($q) use ($date) {
+                $q->whereDate('created_at', $date)
+                    ->with(['invoiceDetail.invoice']);
+            },
+        ])->get();
+
+        $data = [];
+
+        foreach ($suppliers as $supplier) {
+            $tasksToday = $supplier->tasks;
+            $totalTasks = $tasksToday->count();
+            $totalTaskPrice = $tasksToday->sum('task_price');
+
+            $invoiceIds = $tasksToday->pluck('invoiceDetail.invoice_id')->filter()->unique();
+            $invoices = $invoiceIds->isNotEmpty() ? Invoice::whereIn('id', $invoiceIds)->get() : collect();
+            $paid = $invoices->where('status', 'paid')->sum('amount');
+            $accountPayable = $totalTaskPrice - $paid;
+
+            $data[] = compact('supplier', 'totalTasks', 'totalTaskPrice', 'paid', 'accountPayable');
+        }
+
+        return $data;
+    }
+
+    private function dailySalesRefunds($companyId, $date)
+    {
+        return Refund::with([
+            'invoice.agent',
+            'invoice.client',
+            'task.agent.branch.company',
+            'task.originalTask.invoiceDetail.invoice',
+        ])
+            ->whereDate('created_at', $date)
+            ->where(function ($q) use ($companyId) {
+                $q->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId))
+                    ->orWhereHas('task.agent.branch.company', fn($q) => $q->where('id', $companyId));
+            })
+            ->get()
+            ->map(function ($refund) {
+                $original  = $refund->task?->originalTask?->invoiceDetail?->invoice;
+                $refundInv = $refund->invoice;
+
+                $refund->refund_type = $original?->status === 'paid' ? 'Credit to Client' : 'Client Owes';
+                $refund->original_invoice_number = $original?->invoice_number;
+                $refund->original_invoice_status = $original?->status;
+                $refund->refund_invoice_number = $refundInv?->invoice_number;
+                $refund->refund_invoice_status = $refundInv?->status;
+
+                $refund->links = [
+                    'view_refund' => route('refunds.edit', ['task' => $refund->task->id, 'refund' => $refund->id]),
+                    'view_original' => $original ? route('invoice.details', ['companyId' => $original->agent->branch->company_id, 'invoiceNumber' => $original->invoice_number]) : null,
+                    'view_refund_inv' => $refundInv ? route('invoice.show', ['companyId' => $refundInv->agent->branch->company_id, 'invoiceNumber' => $refundInv->invoice_number]) : null,
+                ];
+
+                return $refund;
+            });
+    }
+
+    private function calculateAgentCommission(Agent $agent, $invoices): array
+    {
+        $rate = $agent->commission ?? 0.15;
+        $salary = $agent->salary ?? 0.0;
+        $target = $agent->target ?? 0.0;
+        $profitTotal   = 0.0;
+        $perInvoiceCom = [];
+
+        // ----- accumulate daily profit + per-invoice commissions (rate part only)
+        foreach ($invoices as $invoice) {
+            $invProfit = $invoice->invoiceDetails->sum('markup_price');
+
+            $profitTotal += $invProfit;
+
+            // pre-compute the "rate" portion for this invoice (used by types 2 & 3)
+            $perInvoiceCom[$invoice->id] = round($invProfit * $rate, 3);
+            $invoice->computed_profit = round($invProfit, 3);
+        }
+
+        $commissionTotal = 0.0;
+
+        switch ($agent->type_id) {
+            case 1:
+                $commissionTotal = 0.0;
+                break;
+
+            case 2: // COMMISSION ONLY
+                // sum of per-invoice rate portions
+                $commissionTotal = array_sum($perInvoiceCom);
+                break;
+
+            case 3: // BOTH-A: rate on EACH invoice + salary ONCE
+                $commissionTotal = array_sum($perInvoiceCom) + $salary;
+                break;
+
+            case 4: // BOTH-B: only if profit > target, then (profit - salary) * rate + salary
+                if ($profitTotal > $target) {
+                    $base = max($profitTotal - $salary, 0.0);
+                    $commissionTotal = ($base * $rate) + $salary;
+                } else {
+                    $commissionTotal = 0.0;
+                }
+                break;
+
+            default:
+                $commissionTotal = 0.0;
+        }
+
+        foreach ($invoices as $invoice) {
+            // For types 2 & 3, show the rate part here; for 4 we don’t split because it’s target-based.
+            $invoice->computed_commission = in_array((int)$agent->type_id, [2, 3], true) ? $perInvoiceCom[$invoice->id] : 0.0;
+        }
+
+        return [
+            'profit' => round($profitTotal, 3),
+            'commission' => round($commissionTotal, 3),
+            'per_invoice' => $perInvoiceCom,
+        ];
     }
 }

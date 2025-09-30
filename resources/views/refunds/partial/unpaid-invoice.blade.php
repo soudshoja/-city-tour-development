@@ -140,7 +140,7 @@ $isLocked = $isEditing && in_array(strtolower(optional($refund->invoice)->status
         <div class="text-right bg-gray-50 rounded-2xl p-4 lg:p-8 min-w-0">
             <div class="font-bold text-gray-700 mb-2">Original Task Profit</div>
             <div class="text-2xl text-blue-600 font-bold mb-4" id="originalProfit">
-                {{ number_format($invoiceDetail->markup_price, 2, '.', '') }}
+                {{ number_format($refund->original_task_profit ?? $invoiceDetail->markup_price, 2, '.', '') }}
             </div>
             <hr class="my-4">
             <div class="font-bold text-gray-700 mb-2">Supplier Charge</div>

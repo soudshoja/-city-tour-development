@@ -74,7 +74,6 @@ class ClientController extends Controller
                 });
         });
 
-
         $fullClients = (clone $clients);
 
         if ($request->has('search') && $request->search != '') {
@@ -130,19 +129,24 @@ class ClientController extends Controller
 
         if ($user->role_id == Role::AGENT) {
             $clients->getCollection()->transform(function ($client) use ($user) {
-                $client->totalCredit = Credit::whereHas('payment', function ($q) use ($user) {
-                    $q->where('agent_id', $user->agent->id ?? 0);
-                })
-                    ->where('client_id', $client->id)
-                    ->sum('amount');
+                if ($client->agent_id != $user->id) {
+                    $client->totalCredit = Credit::getTotalCreditsByClient($client->id);
+                } else {
+                    $client->totalCredit = Credit::whereHas('payment', function ($q) use ($user) {
+                        $q->where('agent_id', $user->agent->id);
+                    })
+                        ->where('client_id', $client->id)
+                        ->sum('amount');
+                }
                 return $client;
             });
-        } else if ($user->role_id != Role::AGENT) {
+        } else {
             $clients->getCollection()->transform(function ($client) {
                 $client->totalCredit = Credit::getTotalCreditsByClient($client->id);
                 return $client;
             });
         }
+
 
         return view('clients.index', compact(
             'agent',
@@ -392,24 +396,30 @@ class ClientController extends Controller
         } elseif ($user->role_id == Role::AGENT) {
             $agentId = Agent::where('user_id', $user->id)->value('id');
             $agentsQuery->where('id', $agentId);
-
+            
             if ($payment) {
-                $payments = Payment::where('client_id', $id)
-                    ->where('agent_id', $user->agent->id)
-                    ->orderBy('created_at', 'desc')
-                    ->get();
+                if ($payment->agent_id === $user->id) { //Assigned agent to the client
+                  $payments = Payment::where('client_id', $id)
+                        ->where('agent_id', $user->agent->id)
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+                    
+                    $balanceCredit = Credit::whereHas('payment', function ($q) use ($user) {
+                        $q->where('agent_id', $user->agent->id ?? 0);
+                    })
+                        ->where('client_id', $id)
+                        ->sum('amount');
+                } else { //Owner agent of the client
+                    $payments = Payment::where('client_id', $id)
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+
+                    $balanceCredit = Credit::getTotalCreditsByClient($client->id);
+                }
             } else {
                 $payments = collect();
             }
-
-            $balanceCredit = Credit::whereHas('payment', function ($q) use ($user) {
-                $q->where('agent_id', $user->agent->id ?? 0);
-            })
-                ->where('client_id', $id)
-                ->sum('amount');
         }
-
-
         $agents = $agentsQuery->get();
         $invoices = Invoice::with('invoiceDetails', 'agent')->where('client_id', $id)->get();
 

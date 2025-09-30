@@ -2145,9 +2145,9 @@
             console.log('Selected Supplier:', supplier);
             if (supplier.name == 'Magic Holiday') {
                 let p = document.createElement('p');
-                p.classList.add('text-blue-400', 'text-sm', 'mb-2');
-                p.innerHTML = "You don't need to choose the agent for Magic Holiday, it will be automatically assigned.";
-                formTaskContainer.appendChild(p);
+                // p.classList.add('text-blue-400', 'text-sm', 'mb-2');
+                // p.innerHTML = "You don't need to choose the agent for Magic Holiday, it will be automatically assigned.";
+                // formTaskContainer.appendChild(p);
 
                 let input = document.createElement('input');
                 input.type = 'text';
@@ -2155,9 +2155,11 @@
                 input.placeholder = 'Reference';
                 input.classList.add('input', 'w-full', 'mt-1', 'rounded-lg', 'border',
                     'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
-                    'dark:text-gray-300', 'p-3', 'mb-1');
+                    'dark:text-gray-300', 'p-3', 'mb-3');
                 formTaskContainer.appendChild(input);
-            } else if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air' || isHotel) {
+            }
+
+            if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air' || isHotel) {
                 const batches = [];
                 let active = 0;
 

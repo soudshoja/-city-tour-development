@@ -124,8 +124,8 @@ $d = \Carbon\Carbon::parse($date)->format('d-m-Y');
                 </div>
                 <div class="grid" style="margin-top:6px;">
                     <div class="col">
-                        <div class="muted">Collected</div>
-                        <div class="kpi">{{ $fmt($summary['totalCollected']) }} KWD</div>
+                        <div class="muted">Total Paid</div>
+                        <div class="kpi">{{ $fmt($summary['totalPaid']) }} KWD</div>
                     </div>
                     <div class="col">
                         <div class="muted">Profit</div>
@@ -151,7 +151,6 @@ $d = \Carbon\Carbon::parse($date)->format('d-m-Y');
         </div>
     </div>
 
-    {{-- Agent Performance (flat, no collapses) --}}
     <div class="section">
         <h2>Agent Performance</h2>
         <table>
@@ -160,7 +159,7 @@ $d = \Carbon\Carbon::parse($date)->format('d-m-Y');
                     <th>Agent</th>
                     <th class="tcenter">Total Invoices</th>
                     <th class="tright">Total Invoiced</th>
-                    <th class="tright">Collected</th>
+                    <th class="tright">Paid</th>
                     <th class="tright">Unpaid</th>
                     <th class="tright">Profit</th>
                     <th class="tright">Commission</th>
@@ -173,7 +172,7 @@ $d = \Carbon\Carbon::parse($date)->format('d-m-Y');
                     <td><strong>{{ $row['agent']->name }}</strong></td>
                     <td class="tcenter">{{ $row['totalInvoices'] }}</td>
                     <td class="tright">{{ $fmt($row['totalInvoiced']) }}</td>
-                    <td class="tright">{{ $fmt($row['collected']) }}</td>
+                    <td class="tright">{{ $fmt($row['paid']) }}</td>
                     <td class="tright">{{ $fmt($row['unpaid']) }}</td>
                     <td class="tright">{{ $fmt($row['profit']) }}</td>
                     <td class="tright">{{ $fmt($row['commission']) }}</td>
@@ -187,7 +186,7 @@ $d = \Carbon\Carbon::parse($date)->format('d-m-Y');
                         <div><strong>Invoice:</strong> {{ $inv->invoice_number ?? ('#'.$inv->id) }} • {{ \Carbon\Carbon::parse($inv->invoice_date)->format('d-m-Y') }} • {{ ucfirst($inv->status) }}</div>
                         <div class="grid">
                             <div class="col">Amount: <strong>{{ $fmt($inv->amount) }} KWD</strong></div>
-                            <div class="col">Collected: <strong>{{ $inv->status === 'paid' ? $fmt($inv->amount) : $fmt($inv->paid_amount ?? 0) }} KWD</strong></div>
+                            <div class="col">Paid: <strong>{{ $inv->status === 'paid' ? $fmt($inv->amount) : $fmt($inv->paid_amount ?? 0) }} KWD</strong></div>
                             <div class="col">Profit: <strong>{{ $fmt($inv->computed_profit ?? 0) }} KWD</strong></div>
                         </div>
 
@@ -343,7 +342,7 @@ $d = \Carbon\Carbon::parse($date)->format('d-m-Y');
                     <th>Supplier</th>
                     <th class="tcenter">Total Tasks</th>
                     <th class="tright">Total Task Price</th>
-                    <th class="tright">Collected</th>
+                    <th class="tright">Total Paid</th>
                     <th class="tright">Account Payable</th>
                 </tr>
             </thead>
@@ -353,7 +352,7 @@ $d = \Carbon\Carbon::parse($date)->format('d-m-Y');
                     <td>{{ $row['supplier']->name }}</td>
                     <td class="tcenter">{{ $row['totalTasks'] }}</td>
                     <td class="tright">{{ $fmt($row['totalTaskPrice']) }}</td>
-                    <td class="tright">{{ $fmt($row['collected']) }}</td>
+                    <td class="tright">{{ $fmt($row['paid']) }}</td>
                     <td class="tright">{{ $fmt($row['accountPayable']) }}</td>
                 </tr>
                 @endforeach

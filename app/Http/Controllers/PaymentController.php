@@ -2161,7 +2161,11 @@ class PaymentController extends Controller
                 }
                 Log::info('Old payment URL expired, reinitiating new payment');
                 return $this->paymentLinkReinitiate($payment->payment_reference);
-            } 
+            } elseif (in_array(strtolower($payment->status), ['completed', 'paid'])) {
+                Log::info('Initiate payment ignored: payment already completed', ['payment_id' => $payment->id]);
+                $route = $this->publicReceiptRoute($payment, $process);
+                return redirect()->route($route['name'], $route['params'])->with('success', 'Payment already completed.');
+            }
 
             //filter record
             $firstName = $payment->client->first_name;
@@ -3425,7 +3429,7 @@ class PaymentController extends Controller
         if ($payment) {
             if ($payment->status === 'initiate') {
                 if ($invoiceStatus === 'PAID') {
-                    $payment->status = $invoiceStatus;
+                    $payment->status = 'completed';
                     $payment->save();
                     Log::info('MF Webhook: payment status updated', [
                         'payment_id' => $payment->id,
@@ -3440,7 +3444,7 @@ class PaymentController extends Controller
                     ]);
                 }
             } else {
-                $payment->status = $invoiceStatus;
+                $payment->status = 'completed';
                 $payment->save();
                 Log::info('MF Webhook: payment status updated', [
                     'payment_id' => $payment->id,

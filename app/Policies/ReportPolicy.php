@@ -46,4 +46,9 @@ if ($user->hasRole('accountant')) {
     {
         return $user->can('view creditors');
     }
+
+    public function viewDailySales(User $user)
+    {
+        return $user->can('view daily sales');
+    }
 }

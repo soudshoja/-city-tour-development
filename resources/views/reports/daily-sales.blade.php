@@ -54,8 +54,8 @@
         $cards = [
             ['label' => 'Total Invoices', 'value' => $summary['totalInvoices'], 'suffix' => null],
             ['label' => 'Total Invoiced', 'value' => number_format($summary['totalInvoiced'], 3), 'suffix' => 'KWD'],
-            ['label' => 'Collected', 'value' => number_format($summary['totalPaid'], 3), 'suffix' => 'KWD'],
-            ['label' => 'Profit', 'value' => number_format($summary['profit'], 3), 'suffix' => 'KWD'],
+            ['label' => 'Total Paid', 'value' => number_format($summary['totalPaid'], 3), 'suffix' => 'KWD'],
+            ['label' => 'Total Profit', 'value' => number_format($summary['profit'], 3), 'suffix' => 'KWD'],
         ];
         @endphp
 
@@ -94,7 +94,7 @@
                 {{ $summary['topAgent'] ?? '-' }}
             </div>
             <div class="text-sm text-gray-600 dark:text-gray-300">
-                Collected today: <span class="font-semibold">{{ number_format($summary['topAgentAmount'] ?? 0, 3) }}</span> KWD
+                Paid today: <span class="font-semibold">{{ number_format($summary['topAgentAmount'] ?? 0, 3) }}</span> KWD
             </div>
         </div>
 
@@ -118,7 +118,7 @@
                         <th>Agent</th>
                         <th>Total Invoices</th>
                         <th>Total Invoiced (KWD)</th>
-                        <th>Collected (KWD)</th>
+                        <th>Total Paid (KWD)</th>
                         <th>Unpaid (KWD)</th>
                         <th>Profit (KWD)</th>
                         <th>Commission (KWD)</th>
@@ -132,7 +132,7 @@
                         <td class="font-semibold">{{ $row['agent']->name }}</td>
                         <td>{{ $row['totalInvoices'] }}</td>
                         <td>{{ number_format($row['totalInvoiced'], 3) }}</td>
-                        <td>{{ number_format($row['collected'], 3) }}</td>
+                        <td>{{ number_format($row['paid'], 3) }}</td>
                         <td>{{ number_format($row['unpaid'], 3) }}</td>
                         <td>{{ number_format($row['profit'], 3) }}</td>
                         <td>{{ number_format($row['commission'], 3) }}</td>
@@ -524,7 +524,7 @@
                         <td class="px-3 py-2 font-medium">{{ $row['supplier']->name }}</td>
                         <td class="px-3 py-2 text-center">{{ $row['totalTasks'] }}</td>
                         <td class="px-3 py-2 text-right">{{ number_format($row['totalTaskPrice'], 3) }}</td>
-                        <td class="px-3 py-2 text-right">{{ number_format($row['collected'], 3) }}</td>
+                        <td class="px-3 py-2 text-right">{{ number_format($row['paid'], 3) }}</td>
                         <td class="px-3 py-2 text-right">{{ number_format($row['accountPayable'], 3) }}</td>
                     </tr>
                     @endforeach

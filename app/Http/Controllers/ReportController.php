@@ -1538,9 +1538,7 @@ class ReportController extends Controller
 
     public function dailySalesPdf(Request $request)
     {
-        if (Auth::user()->role->id == Role::ADMIN) {
-            $companyId = Auth::user()->company->id;
-        } elseif (Auth::user()->role->id == Role::COMPANY) {
+        if (Auth::user()->role->id == Role::COMPANY) {
             $companyId = Auth::user()->company->id;
         } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
             $companyId = Auth::user()->accountant->branch->company_id;
@@ -1566,9 +1564,13 @@ class ReportController extends Controller
 
     public function dailySalesPdfDownload(Request $request)
     {
-        $companyId = Auth::user()->company->id;
-        $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
+        if (Auth::user()->role->id == Role::COMPANY) {
+            $companyId = Auth::user()->company->id;
+        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
+            $companyId = Auth::user()->accountant->branch->company_id;
+        }
 
+        $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
         $summary = $this->dailySalesSummary($companyId, $date);
         $agents = $this->dailySalesAgents($companyId, $date);
         $suppliers = $this->dailySalesSuppliers($companyId, $date);
@@ -1584,9 +1586,7 @@ class ReportController extends Controller
 
     public function dailySalesReport(Request $request)
     {
-        if (Auth::user()->role->id == Role::ADMIN) {
-            $companyId = Auth::user()->company->id;
-        } elseif (Auth::user()->role->id == Role::COMPANY) {
+        if (Auth::user()->role->id == Role::COMPANY) {
             $companyId = Auth::user()->company->id;
         } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
             $companyId = Auth::user()->accountant->branch->company_id;
@@ -1634,9 +1634,9 @@ class ReportController extends Controller
 
         $topAgentRow = (clone $partialsToday)
             ->join('invoices as inv', 'invoice_partials.invoice_id', '=', 'inv.id')
-            ->selectRaw('inv.agent_id as agent_id, SUM(invoice_partials.amount) as total_collected')
+            ->selectRaw('inv.agent_id as agent_id, SUM(invoice_partials.amount) as total_paid')
             ->groupBy('inv.agent_id')
-            ->orderByDesc('total_collected')
+            ->orderByDesc('total_paid')
             ->first();
 
         $topAgent = '-';
@@ -1644,7 +1644,7 @@ class ReportController extends Controller
         if ($topAgentRow) {
             $agent = Agent::find($topAgentRow->agent_id);
             $topAgent = $agent->name ?? '-';
-            $topAgentAmount = (float) $topAgentRow->total_collected;
+            $topAgentAmount = (float) $topAgentRow->total_paid;
         }
 
         $topSupplierRow = DB::table('invoice_details as idt')
@@ -1702,7 +1702,7 @@ class ReportController extends Controller
             $invoices = $agent->invoices;
             $totalInvoices = $invoices->count();
             $totalInvoiced = $invoices->sum('amount');
-            $collected = $invoices->where('status', 'paid')->sum('amount');
+            $paid = $invoices->where('status', 'paid')->sum('amount');
             $unpaid = $invoices->where('status', '<>', 'paid')->sum('amount');
 
             $summary = $this->calculateAgentCommission($agent, $invoices);
@@ -1718,7 +1718,7 @@ class ReportController extends Controller
                 'agent' => $agent,
                 'totalInvoices' => $totalInvoices,
                 'totalInvoiced' => $totalInvoiced,
-                'collected' => $collected,
+                'paid' => $paid,
                 'unpaid'  => $unpaid,
                 'profit' => $profit,
                 'commission' => $commission,
@@ -1750,10 +1750,10 @@ class ReportController extends Controller
 
             $invoiceIds = $tasksToday->pluck('invoiceDetail.invoice_id')->filter()->unique();
             $invoices = $invoiceIds->isNotEmpty() ? Invoice::whereIn('id', $invoiceIds)->get() : collect();
-            $collected = $invoices->where('status', 'paid')->sum('amount');
-            $accountPayable = $totalTaskPrice - $collected;
+            $paid = $invoices->where('status', 'paid')->sum('amount');
+            $accountPayable = $totalTaskPrice - $paid;
 
-            $data[] = compact('supplier', 'totalTasks', 'totalTaskPrice', 'collected', 'accountPayable');
+            $data[] = compact('supplier', 'totalTasks', 'totalTaskPrice', 'paid', 'accountPayable');
         }
 
         return $data;

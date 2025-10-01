@@ -41,7 +41,10 @@ class Supplier extends Model
     protected $casts = [
         'is_online' => 'bool',
     ];
-    
+    public function payableAccount()
+    {
+        return $this->hasOne(Account::class, 'supplier_id');
+    }
     public function country()
     {
         return $this->belongsTo(Country::class);

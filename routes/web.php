@@ -356,6 +356,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
         Route::get('/creditors', [ReportController::class, 'creditors'])->name('creditors');
         Route::get('/creditors/pdf', [ReportController::class, 'creditorsPdf'])->name('creditors.pdf');
+        Route::get('/daily-sales', [ReportController::class, 'dailySalesReport'])->name('daily-sales');
+        Route::get('/daily-sales/pdf', [ReportController::class, 'dailySalesPdf'])->name('daily-sales.pdf');
+        Route::get('/daily-sales/pdf/download', [ReportController::class, 'dailySalesPdfDownload'])->name('daily-sales.pdf.download');
     });
 
     // INVOICE
@@ -389,9 +392,18 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split')->withoutMiddleware(['auth']);
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}/arabic', [InvoiceController::class, 'splitarabic'])->name('split-arabic')->withoutMiddleware(['auth']);
         Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
+
         Route::get('/{invoiceNumber}', function () {
             return redirect()->route('invoice.show', ['companyId' => 1, 'invoiceNumber' => request()->invoiceNumber]);
         })->withoutMiddleware(['auth']);
+
+        Route::group([ // make sure to put this route before the route with {companyId}/{invoiceNumber} route as it may conflict because of the dynamic parameters
+            'prefix' => 'accountant',
+            'as' => 'accountant.',
+        ], function () {
+            Route::get('{companyId}/edit/{invoiceNumber}', [InvoiceController::class, 'accountantEdit'])->name('edit');
+        });
+
         Route::get('/{companyId}/{invoiceNumber}', [InvoiceController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
         Route::get('/{companyId}/{invoiceNumber}/pdf', [InvoiceController::class, 'generatePdf'])->name('pdf')->withoutMiddleware(['auth']);
         Route::get('/{companyId}/{invoiceNumber}/proforma', [InvoiceController::class, 'proforma'])->name('proforma')->withoutMiddleware(['auth']);
@@ -400,6 +412,8 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{companyId}/{invoiceNumber}/amount', [InvoiceController::class, 'updateAmount'])->name('updateAmount');
         Route::post('/update-task-price', [InvoiceController::class, 'updateTaskPrice'])->name('updateTaskPrice');
         Route::get('/details/{companyId}/{invoiceNumber}', [InvoiceController::class, 'showDetails'])->name('details')->withoutMiddleware(['auth']);
+
+     
     });
 
 

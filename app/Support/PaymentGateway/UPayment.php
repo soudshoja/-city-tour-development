@@ -123,6 +123,17 @@ class UPayment
 
         Log::info('UPayment Charge Response', ['response' => $response->json()]);
 
+        if (!$response->successful()) {
+            return [
+                'status'  => 'error',
+                'message' => 'HTTP ' . $response->status(),
+                'data'    => [
+                    'body'    => $response->body(),
+                    'headers' => $response->headers(),
+                ],
+            ];
+        }
+
        return $response->json();
     }
 

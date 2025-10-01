@@ -50,8 +50,8 @@ class AirFileParser
                 'taxes_record' => $this->extractTaxesRecord(),
                 'refund_charge' => $this->extractRefundCharge(),
                 'reference' => $this->extractReference(),
-                'original_ticket_number' => $this->extractOriginalTicketNumber(),
-                'original_reference' => $this->extractOriginalReference(),
+                'original_ticket_number' => $this->extractStatus() === 'void' ? $this->extractTicketNumber() : $this->extractOriginalTicketNumber(),
+                'original_reference' => $this->extractStatus() === 'void' ? $this->extractReference() : $this->extractOriginalReference(),
                 'created_by' => $this->extractCreatedBy(),
                 'issued_by' => $this->extractIssuedBy(),
                 'type' => 'flight', // Always flight for AIR files
@@ -97,8 +97,8 @@ class AirFileParser
                 'taxes_record' => $this->extractTaxesRecord(),
                 'refund_charge' => $this->extractRefundCharge(),
                 'reference' => $reference,
-                'original_ticket_number' => $this->extractOriginalTicketNumber(),
-                'original_reference' => $this->extractOriginalReference(),
+                'original_ticket_number' => $this->extractStatus() === 'void' ? $passenger['ticket_number'] : $this->extractOriginalTicketNumber(),
+                'original_reference' => $this->extractStatus() === 'void' ? $reference : $this->extractOriginalReference(),
                 'created_by' => $this->extractCreatedBy(),
                 'issued_by' => $this->extractIssuedBy(),
                 'type' => 'flight', // Always flight for AIR files

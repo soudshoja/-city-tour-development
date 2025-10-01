@@ -458,12 +458,14 @@ class RefundController extends Controller
             'original_task_profit' => ['required', 'numeric'],
             'supplier_charge' => ['required', 'numeric'],
             'new_agent_markup' => ['required', 'numeric'],
+            'refund_airline_charge' => ['nullable', 'numeric'],
+            'tax_refund' => ['nullable', 'numeric'],
             'date' => ['required', 'date'],
             'reference' => ['nullable', 'string'],
             'reason' => ['nullable', 'string'],
             'payment_gateway_option' => ['nullable', 'string'],
             'payment_method' => ['nullable', 'numeric'],
-            'service_charge' => ['required', 'numeric', 'min:0']
+            'service_charge' => ['required', 'numeric'],
         ]);
 
         $task = Task::findOrFail($request->input('task_id'));
@@ -496,7 +498,7 @@ class RefundController extends Controller
                 'refund_airline_charge' => $request->input('refund_airline_charge'),
                 'original_task_profit' => $request->input('original_task_profit'),
                 'new_task_profit' => $request->input('new_agent_markup'),
-                'total_nett_refund' => $calculatedTotalNetRefund,
+                'total_nett_refund' => $refundInvoicePrice,
                 'service_charge' => $request->input('service_charge'),
                 'method' => $request->input('method', 'Bank'),
                 'payment_gateway' => $request->input('payment_gateway_option'),
@@ -756,7 +758,7 @@ class RefundController extends Controller
                 foreach($paymentMethods as $method){
                     if($method->company_id == $task->agent->branch->company_id && $method->type == 'myfatoorah'){
                         try {
-                            $method->gateway_fee = ChargeService::FatoorahCharge($refund->airline_nett_fare - $refund->total_nett_refund, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
+                            $method->gateway_fee = ChargeService::FatoorahCharge($refund->total_nett_refund, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
                         } catch (Exception $e) {
                             Log::error('FatoorahCharge exception in refund edit', [
                                 'message' => $e->getMessage(),
@@ -772,7 +774,7 @@ class RefundController extends Controller
                 foreach ($paymentMethods as $method) {
                     if ($method->company_id == $task->agent->branch->company_id && $method->type == 'upayment') {
                         try {
-                            $method->gateway_fee = ChargeService::UPaymentCharge($refund->airline_nett_fare - $refund->total_nett_refund, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
+                            $method->gateway_fee = ChargeService::UPaymentCharge($refund->total_nett_refund, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
                         } catch (Exception $e) {
                             Log::error('UPaymentCharge exception in refund edit', [
                                 'message' => $e->getMessage(),
@@ -787,7 +789,7 @@ class RefundController extends Controller
                 foreach ($paymentMethods as $method) {
                     if ($method->company_id == $task->agent->branch->company_id && $method->type == 'hesabe') {
                         try {
-                            $method->gateway_fee = ChargeService::HesabeCharge($refund->airline_nett_fare - $refund->total_nett_refund, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
+                            $method->gateway_fee = ChargeService::HesabeCharge($refund->total_nett_refund, $method->id, $task->agent->branch->company_id)['fee'] ?? 0;
                         } catch (Exception $e) {
                             Log::error('HesabeCharge exception in refund edit', [
                                 'message' => $e->getMessage(),
@@ -800,7 +802,7 @@ class RefundController extends Controller
                 }
             } else {
                 $gateway->gateway_fee = ChargeService::TapCharge([
-                    'amount' => $refund->airline_nett_fare - $refund->total_nett_refund,
+                    'amount' => $refund->total_nett_refund,
                     'client_id' => $task->client_id,
                     'agent_id' => $task->agent_id,
                     'currency' => $invoice->currency ?? 'USD'

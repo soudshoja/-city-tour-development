@@ -132,7 +132,6 @@ class CreateClientCredit extends Command
         DB::beginTransaction();
 
           try {
-            // Insert credit table
             $topupCreditClientData = [
                 'company_id'  => $agent->branch->company->id,
                 'client_id'   => $client->id,
@@ -140,6 +139,9 @@ class CreateClientCredit extends Command
                 'payment_id'  => $creditPayment->id,
                 'description' => 'Topup Credit via ' . $creditPayment->voucher_number,
                 'amount'      => $creditPayment->amount,
+                'created_at'  => $creditPayment->created_at,
+                'updated_at'  => $creditPayment->updated_at,
+
             ];
 
             Log::info('Creating Credit record:', $topupCreditClientData);

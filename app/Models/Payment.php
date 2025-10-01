@@ -99,4 +99,8 @@ class Payment extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function credit() 
+    {
+        return $this->hasMany(Credit::class, 'payment_id');
+    }
 }

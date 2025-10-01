@@ -1757,7 +1757,7 @@ class PaymentController extends Controller
             return $payment;
         });
 
-        $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
+        $paymentGateways = Charge::where('can_generate_link', true)
             ->where('is_active', true)->get();
         $paymentMethods = PaymentMethod::where('is_active', true)->get();
 
@@ -1833,8 +1833,7 @@ class PaymentController extends Controller
         $invoices = Invoice::all();
         $payments = Payment::all();
         $currencies = Currency::all();
-        $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
-            ->where('company_id', $companyId)
+        $paymentGateways = Charge::where('can_generate_link', true)
             ->where('is_active', true)->get();
 
         $myFatoorahMethods = PaymentMethod::where('is_active', true)

@@ -2855,7 +2855,6 @@ class PaymentController extends Controller
         }
 
         try {
-            $payment->amount = $finalPaidAmount;
             $payment->service_charge = $serviceFeePaid;
             $payment->status = 'completed';
             $payment->completed = 1;
@@ -3045,7 +3044,6 @@ class PaymentController extends Controller
                 $finalPaidAmount = $statusData['Data']['InvoiceValue'];
 
                 $payment->status = 'completed';
-                $payment->amount = $finalPaidAmount;
                 $payment->save();
 
                 $transaction = $statusData['Data']['InvoiceTransactions'][0] ?? [];
@@ -3573,7 +3571,6 @@ class PaymentController extends Controller
             DB::transaction(function () use ($payment, $process, $totalPaidAmount, $trackId, $statusResponse, $transaction, $selectedPartialIds) {
                 // Mark payment as completed
                 $payment->status = 'completed';
-                $payment->amount = $totalPaidAmount;
                 $payment->completed = 1;
                 $payment->save();
 

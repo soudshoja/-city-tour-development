@@ -54,7 +54,7 @@ class UpdateOldTaskToTransaction extends Command
             
             // Display summary
             $this->table(
-                ['ID', 'Reference', 'Status', 'Total', 'Supplier Pay Date', 'Supplier'],
+                ['ID', 'Reference', 'Status', 'Total', 'Supplier Pay Date','Type', 'Issued By','Supplier', 'File name'],
                 $tasksToProcess->map(function ($task) {
                     return [
                         $task->id,
@@ -62,7 +62,10 @@ class UpdateOldTaskToTransaction extends Command
                         $task->status,
                         $task->total ?? 'N/A',
                         $task->supplier_pay_date ? $task->supplier_pay_date->format('Y-m-d') : 'N/A',
-                        $task->supplier->name ?? 'N/A'
+                        $task->type,
+                        $task->issued_by ?? 'N/A',
+                        $task->supplier->name ?? 'N/A',
+                        $task->file_name ?? 'N/A'
                     ];
                 })->toArray()
             );
@@ -233,21 +236,83 @@ class UpdateOldTaskToTransaction extends Command
         }
         
         // For flight tasks, try to get issued_by account
-        $issuedByAccount = null;
-        if ($task->type == 'flight' && $task->issued_by) {
-            $issuedByAccount = Account::where('name', $task->issued_by)
+        $account = null;
+        $issuedBy = $task->issued_by == null || $task->issued_by == '' ? 'Not Issued' : $task->issued_by;
+        
+        if ($task->type == 'flight') {
+
+            $account = Account::where('name', $issuedBy)
                 ->where('company_id', $task->company_id)
                 ->where('root_id', $liabilities->id)
                 ->where('parent_id', $supplierPayable->id)
                 ->first();
+
+            if (!$account) {
+
+                // Create the account if it doesn't exist
+                $account = Account::create([
+                    'name' => $issuedBy,
+                    'parent_id' => $supplierPayable->id,
+                    'company_id' => $task->company_id,
+                    'branch_id' => $this->getTaskBranchId($task),
+                    'root_id' => $liabilities->id,
+                    'code' => $supplierPayable->code + 1, // Simple increment, adjust as needed
+                    'account_type' => 'liability',
+                    'report_type' => 'balance sheet',
+                    'level' => $supplierPayable->level + 1,
+                    'is_group' => 0,
+                    'disabled' => 0,
+                    'actual_balance' => 0.00,
+                    'budget_balance' => 0.00,
+                    'variance' => 0.00,
+                    'currency' => $task->currency,
+                ]);
+            }
         }
         
+        $currency = $task->currency ?? 'KWD';
+    
+        if ($task->type == 'hotel'){
+
+            if ($supplierPayable) {
+                $account = Account::where('name', $supplier->name . ' ('. $currency .')')
+                    ->where('company_id', $task->company_id)
+                    ->where('root_id', $liabilities->id)
+                    ->where('parent_id', $supplierPayable->id)
+                    ->first();
+
+                if (!$account) {
+                    // Create the account if it doesn't exist
+                    $account = Account::create([
+                        'name' => $supplier->name . ' ('. $currency .')',
+                        'parent_id' => $supplierPayable->id,
+                        'company_id' => $task->company_id,
+                        'branch_id' => $this->getTaskBranchId($task),
+                        'root_id' => $liabilities->id,
+                        'code' => $supplierPayable->code + 1, // Simple increment, adjust as needed
+                        'account_type' => 'liability',
+                        'report_type' => 'balance sheet',
+                        'level' => $supplierPayable->level + 1,
+                        'is_group' => 0,
+                        'disabled' => 0,
+                        'actual_balance' => 0.00,
+                        'budget_balance' => 0.00,
+                        'variance' => 0.00,
+                        'currency' => $task->currency,
+                    ]);
+                    
+                }
+            }
+        }
+        
+        $this->info("Account used: " . ($account ? $account->name : 'None'));
+
         return [
             'liabilities' => $liabilities,
             'expenses' => $expenses,
             'supplierPayable' => $supplierPayable,
             'supplierCost' => $supplierCost,
-            'issuedByAccount' => $issuedByAccount
+            'issuedByAccount' => $account
         ];
     }
     

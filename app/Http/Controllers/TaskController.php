@@ -954,12 +954,14 @@ class TaskController extends Controller
             // Process financial transactions immediately if task is complete (regardless of agent assignment)
             // This ensures company liability to supplier is tracked immediately
             // Special case: Void tasks should ALWAYS process financials if they have an original_task_id
-            $shouldProcessFinancials = $offline && $task->is_complete || ($task->status === 'void' && $task->original_task_id);
+            $shouldProcessFinancials = $offline && $task->is_complete || $task->status !== 'confirmed'|| ($task->status == 'void' && $task->original_task_id);
 
             if ($shouldProcessFinancials) {
                 $reason = $task->is_complete ? 'complete task' : 'void task with original_task_id';
                 Log::info("Processing financial transactions for {$reason}: " . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
                 $this->processTaskFinancial($task);
+            } else {
+                Log::warning('Financial processing skipped for task: ' . $task->reference . ' - reason: ' . ($offline ? 'incomplete' : 'not offline supplier') . ' - status: ' . $task->status);
             }
 
             DB::commit();
@@ -3167,6 +3169,7 @@ class TaskController extends Controller
             'task_file' => 'nullable|array',
             'task_file.*' => 'mimes:pdf,txt',
             'supplier_id' => 'required|exists:suppliers,id',
+            'batches.*'     => ['array'],
         ]);
 
         $supplier = Supplier::findOrFail($request->supplier_id);
@@ -3205,54 +3208,73 @@ class TaskController extends Controller
         switch ($supplier->name) {
             case 'Magic Holiday':
 
-                if (!$request->supplier_ref) {
-                    return redirect()->back()->with('error', 'Supplier reference is required for Magic Holiday');
+                if (!$request->supplier_ref && !$request->has('batches')){
+                    return redirect()->back()->with('error', 'Please provide either a supplier reference or upload a task file.');
                 }
 
-                $response = $supplierController->getMagicHoliday($request->supplier_ref);
+                if ($request->supplier_ref) {
+                    $response = $supplierController->getMagicHoliday($request->supplier_ref);
 
-                if (!$response instanceof \Illuminate\Http\JsonResponse) {
-                    Log::channel('magic_holidays')->error('Invalid response from Magic Holiday API', [
-                        'supplier_ref' => $request->supplier_ref,
-                        'expected_type' => 'Illuminate\Http\JsonResponse',
-                        'actual_type' => get_class($response)
-                    ]);
+                    if (!$response instanceof \Illuminate\Http\JsonResponse) {
+                        Log::channel('magic_holidays')->error('Invalid response from Magic Holiday API', [
+                            'supplier_ref' => $request->supplier_ref,
+                            'expected_type' => 'Illuminate\Http\JsonResponse',
+                            'actual_type' => get_class($response)
+                        ]);
 
-                    return redirect()->back()->with('error', 'Something went wrong in fetching data from Magic Holiday API');
-                }
+                        return redirect()->back()->with('error', 'Something went wrong in fetching data from Magic Holiday API');
+                    }
 
-                $responseData = $response->getData(true);
+                    $responseData = $response->getData(true);
 
-                Log::channel('magic_holidays')->info('Magic Holiday response: ', $responseData);
+                    Log::channel('magic_holidays')->info('Magic Holiday response: ', $responseData);
 
-                if (isset($responseData['status']) && $responseData['status'] == 'error') {
-                    return redirect()->back()->with('error', $responseData['message']);
-                }
+                    if (isset($responseData['status']) && $responseData['status'] == 'error') {
+                        return redirect()->back()->with('error', $responseData['message']);
+                    }
 
-                $data = $responseData['data'];
+                    $data = $responseData['data'];
 
-                if (isset($data['_embedded'])) { // Check if it's a list
-                    foreach ($data['_embedded']['reservation'] as $reservation) {
-                        $response = $this->processSingleReservation($reservation, $agentId, $companyId);
+                    if (isset($data['_embedded'])) { // Check if it's a list
+                        foreach ($data['_embedded']['reservation'] as $reservation) {
+                            $response = $this->processSingleReservation($reservation, $agentId, $companyId);
+
+                            if ($response['status'] == 'error') {
+                                return redirect()->back()->with('error', $response['message']);
+                            }
+
+                            $supplierController->magicReserveWebhook($reservation['id']);
+                        }
+                    } else {
+                        $response = $this->processSingleReservation($data, $agentId, $companyId);
 
                         if ($response['status'] == 'error') {
                             return redirect()->back()->with('error', $response['message']);
                         }
 
-                        $supplierController->magicReserveWebhook($reservation['id']);
-                    }
-                } else {
-                    $response = $this->processSingleReservation($data, $agentId, $companyId);
-
-                    if ($response['status'] == 'error') {
-                        return redirect()->back()->with('error', $response['message']);
+                        $supplierController->magicReserveWebhook($data['id']);
                     }
 
-                    $supplierController->magicReserveWebhook($data['id']);
+                    return redirect()->back()->with('success', 'Magic Holiday task received successfully');
                 }
 
-                return redirect()->back()->with('success', 'Magic Holiday task received successfully');
+                if ($request->has('batches')) {
+                    $responses = $this->upload($request, $agentId, $companyId);
+                    // Artisan::call('app:process-files', [], null, true);
+                    $redirectResponse = redirect()->back();
 
+                    foreach ($responses as $response) {
+                        if ($response['status'] == 'success') {
+                            $redirectResponse = $redirectResponse->with('success', $response['message']);
+                        }
+
+                        if ($response['status'] == 'error') {
+                            $redirectResponse = $redirectResponse->with('error', $response['message'])->with('data', $response['data']);
+                        }
+                    }
+
+                    return $redirectResponse;
+                }
             default:
                 $responses = $this->upload($request);
                 // Artisan::call('app:process-files', [], null, true);
@@ -3568,7 +3590,7 @@ class TaskController extends Controller
         $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
 
         $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
-
+        dd($originalTask->agent->branch_id);
         $transaction = Transaction::create([
             'branch_id' => $originalTask->agent->branch_id,
             'company_id' => $originalTask->company_id,

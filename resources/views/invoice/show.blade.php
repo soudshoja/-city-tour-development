@@ -179,16 +179,17 @@
                 @foreach ($invoiceDetails as $detail)
                 <tr class="text-sm text-gray-700">
                     <td class="px-4 py-2 border">
-                        @if(!empty($detail->task->reference))
-                            Reference: {{ $detail->task->reference }}
-                        @endif
                         @if ($detail->task->type === 'hotel')
                             @php
                                 $roomDetails = json_decode($detail->task->hotelDetails->room_details, true);
                                 $passengerCount = count($roomDetails['passengers'] ?? []);
                             @endphp
                         <p>
+                            @if(!empty($detail->task->reference))
+                                Reference: {{ $detail->task->reference }}
+                            @endif
                             <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}
+                            <br>Passenger Name: {{ $detail->task->passenger_name ?? 'N/A' }}
                             <br>Hotel Name: {{ $detail->task->hotelDetails->hotel->name ?? 'N/A' }}
                             <br>Check In: {{ $detail->task->hotelDetails->check_in ?? 'N/A' }}
                             <br>Check Out: {{ $detail->task->hotelDetails->check_out ?? 'N/A' }}
@@ -200,7 +201,8 @@
                             @if(!empty($detail->task->gds_reference))
                                 GDS Reference: {{ $detail->task->gds_reference }}<br>
                             @endif
-                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}
+                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}<br>
+                            Passenger Name: {{ $detail->task->passenger_name ?? 'N/A' }}
                             <br>Route:
                             {{ $detail->task->flightDetails->countryFrom->name ?? '' }}
                             ({{ $detail->task->flightDetails->airport_from ?? '' }})
@@ -211,7 +213,8 @@
                         </p>
                         @elseif ($detail->task->type === 'visa')
                         <p>
-                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}
+                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}<br>
+                            Passenger Name: {{ $detail->task->passenger_name ?? 'N/A' }}
                             <br>Visa Type: {{ $detail->task->visaDetails->visa_type ?? 'N/A' }}
                             <br>Application #: {{ $detail->task->visaDetails->application_number ?? 'N/A' }}
                             <br>Expiry Date: {{ !empty($visa?->expiry_date) ? \Carbon\Carbon::parse($visa->expiry_date)->format('d M Y') : 'N/A' }}
@@ -221,7 +224,8 @@
                         </p>
                         @elseif ($detail->task->type === 'insurance')
                         <p>
-                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}
+                            Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}<br>
+                            Passenger Name: {{ $detail->task->passenger_name ?? 'N/A' }}
                             <br>Insurance Type: {{ $detail->task->insuranceDetails->insurance_type ?? 'N/A' }}
                             <br>Destination: {{ $detail->task->insuranceDetails->destination ?? 'N/A' }}
                             <br>Plan Type: {{ $detail->task->insuranceDetails->plan_type ?? 'N/A' }}

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvoicePaymentType;
 use App\Http\Traits\NotificationTrait;
 use App\Models\Account;
 use App\Models\Agent;
@@ -386,6 +387,10 @@ class InvoiceController extends Controller
             $branches = $company->branches;
             $agents   = $branches->pluck('agents')->flatten();
             $agentsId = $agents->pluck('id')->toArray();
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            return $this->accountantEdit($companyId, $invoiceNumber);
+        } else {
+            return redirect()->back()->with('error', 'Unauthorized access.');
         }
 
         $clients = Client::where(function ($query) use ($agentsId) {
@@ -573,6 +578,37 @@ class InvoiceController extends Controller
             'uPaymentMethods',
             'hesabeMethods',
             'can_import',
+        ));
+    }
+
+    public function accountantEdit($companyId,$invoiceNumber)
+    {
+        Gate::authorize('accountantEdit', Invoice::class);
+
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->whereHas('agent.branch.company', function ($q) use ($companyId) {
+                $q->where('id', $companyId);
+            })
+            ->with('client', 'agent')
+            ->first();
+
+        // Get all clients, agents, and countries for dropdowns
+        $clients = Client::all();
+        $agents = Agent::with('branch.company')->get();
+        $countries = Country::all();
+        $charges = Charge::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->get();
+
+        $invoicePaymentTypes = InvoicePaymentType::labels();
+
+        return view('invoice.accountant.edit', compact(
+            'invoice',
+            'clients',
+            'agents',
+            'countries',
+            'charges',
+            'invoicePaymentTypes'
         ));
     }
 

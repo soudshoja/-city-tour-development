@@ -259,7 +259,7 @@ class AdminUsersController extends Controller
             'name' => 'required|string',
             'email' => 'required|email',
             'phone' => 'required|string',
-            'source_role' => 'required|in:company,branch,agent',
+            'source_role' => 'required|in:company,branch,agent,accountant',
             'info-new-password' => 'nullable|string|min:6', // optional password field
         ]);
 
@@ -269,7 +269,7 @@ class AdminUsersController extends Controller
         $fields = [
             'name' => $request->name,
             'email' => $request->email,
-            $roleType === 'agent' ? 'phone_number' : 'phone' => $request->phone,
+            $roleType === 'agent' || $roleType === 'accountant' ? 'phone_number' : 'phone' => $request->phone,
         ];
 
         // Update related model (company, branch, or agent)
@@ -279,6 +279,8 @@ class AdminUsersController extends Controller
             $user->branch->update($fields);
         } elseif ($roleType === 'agent' && $user->agent) {
             $user->agent->update($fields);
+        } elseif ($roleType === 'accountant' && $user->accountant) {
+            $user->accountant->update($fields);
         }
 
         // Update password if provided

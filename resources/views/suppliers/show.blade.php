@@ -151,205 +151,237 @@ use Barryvdh\DomPDF\Facade\Pdf;
                     <label><input type="checkbox" class="column-toggle" data-col="11" checked> Check-out</label>
                 </div>
             </div> -->
+            @php
+            $dateField = request('date_field', 'created_at');
+            $fromDate = request('from_date');
+            $toDate = request('to_date');
+            $filteredTasks = $supplier->tasks;
 
-            <!-- Ledger Table -->
-            <div id="debit-credit" class="bg-white rounded-md shadow-md w-full overflow-x-auto">
-                @php
-                // Determine supplier type based on tasks (assuming all tasks are same type for this supplier)
-                $firstTask = $supplier->tasks->first();
-                $filteredTasks = $filteredTasks->take(20);
-                $supplierType = $firstTask ? $firstTask->type : null;
+            // Apply date filter
+            if ($fromDate && $toDate) {
+            $filteredTasks = $filteredTasks->filter(function($task) use ($dateField, $fromDate, $toDate) {
+            $date = $task[$dateField];
+            if (!$date) return false;
+            $date = \Carbon\Carbon::parse($date)->format('Y-m-d');
+            return $date >= $fromDate && $date <= $toDate;
+                });
+                }
+
+                // Only "issued" status
+                $filteredTasks=$filteredTasks->filter(function($task) {
+                return strtolower($task->status) === 'issued';
+                });
+
+                // Calculate totals for filtered "issued" tasks
+                $totalDebit = $filteredTasks->flatMap->journalEntries->sum('debit');
+                $totalCredit = $filteredTasks->flatMap->journalEntries->sum('credit');
                 @endphp
-
-                <div class="min-w-max">
-                    @if($supplierType === 'flight')
-                    <div class="grid grid-cols-10 font-bold bg-gray-100 p-2 text-center rounded-t border-b border-gray-300 sticky top-0 z-10">
-                        <div class="w-[120px]">Created Date</div>
-                        <div class="w-[120px]">Task Ref</div>
-                        <div class="w-[120px]">GDS Ref</div>
-                        <div class="w-[140px]">Agent</div>
-                        <div class="w-[110px]">Status</div>
-                        <div class="w-[120px]">Issued Date</div>
-                        <div class="w-[150px]">Passenger Name</div>
-                        <div class="w-[90px]">Net Price</div>
-                        <div class="w-[180px]">Departure</div>
-                        <div class="w-[180px]">Arrival</div>
-                    </div>
-                    @elseif($supplierType === 'hotel')
-                    <div class="grid grid-cols-9 font-bold bg-gray-100 p-2 text-center rounded-t border-b border-gray-300 sticky top-0 z-10">
-                        <div class="w-[120px]">Created Date</div>
-                        <div class="w-[120px]">Task Ref</div>
-                        <div class="w-[140px]">Agent</div>
-                        <div class="w-[110px]">Status</div>
-                        <div class="w-[120px]">Issued Date</div>
-                        <div class="w-[150px]">Passenger Name</div>
-                        <div class="w-[90px]">Net Price</div>
-                        <div class="w-[180px]">Check-in</div>
-                        <div class="w-[180px]">Check-out</div>
-                    </div>
-                    @else
-                    <div class="grid grid-cols-12 font-bold bg-gray-100 p-2 text-center rounded-t border-b border-gray-300 sticky top-0 z-10">
-                        <div class="w-[120px]">Created Date</div>
-                        <div class="w-[120px]">Task Ref</div>
-                        <div class="w-[140px]">Agent</div>
-                        <div class="w-[110px]">Status</div>
-                        <div class="w-[120px]">Issued Date</div>
-                        <div class="w-[150px]">Passenger Name</div>
-                        <div class="w-[90px]">Net Price</div>
-
-                    </div>
-                    @endif
-
-                    @php
-                    $dateField = request('date_field', 'created_at');
-                    $fromDate = request('from_date');
-                    $toDate = request('to_date');
-                    $filteredTasks = $supplier->tasks;
-
-                    if ($fromDate && $toDate) {
-                    $filteredTasks = $filteredTasks->filter(function($task) use ($dateField, $fromDate, $toDate) {
-                    $date = $task[$dateField];
-                    if (!$date) return false;
-                    $date = \Carbon\Carbon::parse($date)->format('Y-m-d');
-                    return $date >= $fromDate && $date <= $toDate;
-                        });
-                        }
-
-                        // Sort by selected date field, newest first
-                        $filteredTasks=$filteredTasks->sortByDesc(function($task) use ($dateField) {
-                        return $task[$dateField] ? \Carbon\Carbon::parse($task[$dateField])->timestamp : 0;
-                        });
-                        @endphp
-                        <div style="max-height: 550px; overflow-y: auto;">
-
-                            @forelse($filteredTasks as $task)
-                            @if($supplierType === 'flight')
-                            <div class="general-ledger-rows grid grid-cols-10 gap-2 p-2 text-center border-b">
-                                <div class="w-[120px]">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
-                                <div class="w-[120px]">{{ $task->reference }}</div>
-                                <div class="w-[120px]">{{ $task->gds_reference ?? '-' }}</div>
-                                <div class="w-[140px]">{{ $task->agent ? $task->agent->name : '-' }}</div>
-                                <div class="w-[110px]">
-                                    @php
-                                    $status = strtolower($task->status);
-                                    $statusColors = [
-                                    'issued' => 'bg-green-100 text-green-700 border-green-400',
-                                    'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
-                                    'cancelled' => 'bg-red-100 text-red-700 border-red-400',
-                                    'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
-                                    'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
-                                    'void' => 'bg-gray-200 text-gray-700 border-gray-400',
-                                    'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
-                                    'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
-                                    ];
-                                    $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
-                                    @endphp
-                                    <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
-                                        {{ ucfirst($task->status) }}
-                                    </span>
-                                </div>
-                                <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : '-' }}</div>
-                                <div class="w-[150px]">{{ $task->passenger_name ?? '-' }}</div>
-                                <div class="w-[110px]">{{ $task->price ?? '-' }}</div>
-                                <div class="w-[180px]">
-                                    @if ($task->type === 'flight' && $task->flightDetails)
-                                    <strong>From:</strong> {{ $task->flightDetails->airport_from ?? '-' }}<br>
-                                    {{ optional($task->flightDetails->departure_time)->format('d-m-Y H:i') ?? '-' }}
-                                    @else
-                                    -
-                                    @endif
-                                </div>
-                                <div class="w-[180px]">
-                                    @if ($task->type === 'flight' && $task->flightDetails)
-                                    <strong>To:</strong> {{ $task->flightDetails->airport_to ?? '-' }}<br>
-                                    {{ optional($task->flightDetails->arrival_time)->format('d-m-Y H:i') ?? '-' }}
-                                    @else
-                                    -
-                                    @endif
-                                </div>
-                            </div>
-                            @elseif($supplierType === 'hotel')
-                            <div class="general-ledger-rows grid grid-cols-9 gap-2 p-2 text-center border-b">
-                                <div class="w-[120px]">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
-                                <div class="w-[120px]">{{ $task->reference }}</div>
-                                <div class="w-[140px]">{{ $task->agent ? $task->agent->name : '-' }}</div>
-                                <div class="w-[110px]">
-                                    @php
-                                    $status = strtolower($task->status);
-                                    $statusColors = [
-                                    'issued' => 'bg-green-100 text-green-700 border-green-400',
-                                    'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
-                                    'cancelled' => 'bg-red-100 text-red-700 border-red-400',
-                                    'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
-                                    'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
-                                    'void' => 'bg-gray-200 text-gray-700 border-gray-400',
-                                    'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
-                                    'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
-                                    ];
-                                    $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
-                                    @endphp
-                                    <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
-                                        {{ ucfirst($task->status) }}
-                                    </span>
-                                </div>
-                                <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
-                                <div class="w-[150px]">{{ $task->passenger_name ?? '-' }}</div>
-                                <div class="w-[90px]">{{ $task->price ?? '-' }}</div>
-                                <div class="w-[180px]">
-                                    @if ($task->type === 'hotel' && $task->hotelDetails)
-                                    <strong>Hotel:</strong> {{ $task->hotelDetails->hotel->name ?? '-' }}<br>
-                                    {{ $task->hotelDetails->check_in ?? '-' }}
-                                    @else
-                                    -
-                                    @endif
-                                </div>
-                                <div class="w-[180px]">
-                                    @if ($task->type === 'hotel' && $task->hotelDetails)
-                                    <strong>Hotel:</strong> {{ $task->hotelDetails->hotel->name ?? '-' }}<br>
-                                    {{ $task->hotelDetails->check_out ?? '-' }}
-                                    @else
-                                    -
-                                    @endif
-                                </div>
-                            </div>
-                            @else
-                            <div class="general-ledger-rows grid grid-cols-12 gap-2 p-2 text-center border-b">
-                                <div class="w-[120px]">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
-                                <div class="w-[120px]">{{ $task->reference }}</div>
-                                <div class="w-[140px]">{{ $task->agent ? $task->agent->name : '-' }}</div>
-                                <div class="w-[110px]">
-                                    @php
-                                    $status = strtolower($task->status);
-                                    $statusColors = [
-                                    'issued' => 'bg-green-100 text-green-700 border-green-400',
-                                    'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
-                                    'cancelled' => 'bg-red-100 text-red-700 border-red-400',
-                                    'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
-                                    'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
-                                    'void' => 'bg-gray-200 text-gray-700 border-gray-400',
-                                    'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
-                                    'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
-                                    ];
-                                    $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
-                                    @endphp
-                                    <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
-                                        {{ ucfirst($task->status) }}
-                                    </span>
-                                </div>
-                                <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
-                                <div class="w-[150px]">{{ $task->passenger_name ?? '-' }}</div>
-                                <div class="w-[110px]">{{ $task->price ?? '-' }}</div>
-
-                            </div>
-                            @endif
-                            @empty
-                            <div class="general-ledger-rows grid grid-cols-12 gap-2 p-2 text-center text-gray-500">
-                                <div colspan="10">No entries found for selected dates.</div>
-                            </div>
-                            @endforelse
-                        </div>
+                <div class="flex gap-4 mb-2">
+                    <div class="bg-green-100 text-green-800 px-4 py-2 rounded">Total Debit: {{ $totalDebit }}</div>
+                    <div class="bg-red-100 text-red-800 px-4 py-2 rounded">Total Credit: {{ $totalCredit }}</div>
+                    <div class="bg-blue-100 text-blue-800 px-4 py-2 rounded">Balance: {{ $totalDebit - $totalCredit }}</div>
                 </div>
-            </div>
+
+                <!-- Ledger Table -->
+                <div id="debit-credit" class="bg-white rounded-md shadow-md w-full overflow-x-auto">
+                    @php
+                    // Determine supplier type based on tasks (assuming all tasks are same type for this supplier)
+                    $firstTask = $supplier->tasks->first();
+                    $filteredTasks = $filteredTasks->take(20);
+                    $supplierType = $firstTask ? $firstTask->type : null;
+                    @endphp
+
+                    <div class="min-w-max">
+                        @if($supplierType === 'flight')
+                        <div class="grid grid-cols-10 font-bold bg-gray-100 p-2 text-center rounded-t border-b border-gray-300 sticky top-0 z-10">
+                            <div class="w-[120px]">Created Date</div>
+                            <div class="w-[120px]">Task Ref</div>
+                            <div class="w-[120px]">GDS Ref</div>
+                            <div class="w-[140px]">Agent</div>
+                            <div class="w-[110px]">Status</div>
+                            <div class="w-[120px]">Issued Date</div>
+                            <div class="w-[150px]">Passenger Name</div>
+                            <div class="w-[90px]">Price</div>
+                            <div class="w-[180px]">Departure</div>
+                            <div class="w-[180px]">Arrival</div>
+                        </div>
+                        @elseif($supplierType === 'hotel')
+                        <div class="grid grid-cols-10 font-bold bg-gray-100 p-2 text-center rounded-t border-b border-gray-300 sticky top-0 z-10">
+                            <div class="w-[120px]">Created Date</div>
+                            <div class="w-[120px]">Task Ref</div>
+                            <div class="w-[140px]">Agent</div>
+                            <div class="w-[110px]">Status</div>
+                            <div class="w-[120px]">Issued Date</div>
+                            <div class="w-[150px]">Info</div>
+                            <div class="w-[50px]">Price</div>
+                            <div class="w-[50px]">Debit</div>
+                            <div class="w-[50px]">Credit</div>
+                            <div class="w-[50px]">Balance</div>
+                        </div>
+                        @else
+                        <div class="grid grid-cols-12 font-bold bg-gray-100 p-2 text-center rounded-t border-b border-gray-300 sticky top-0 z-10">
+                            <div class="w-[120px]">Created Date</div>
+                            <div class="w-[120px]">Task Ref</div>
+                            <div class="w-[140px]">Agent</div>
+                            <div class="w-[110px]">Status</div>
+                            <div class="w-[120px]">Issued Date</div>
+                            <div class="w-[150px]">Passenger Name</div>
+                            <div class="w-[90px]">Price</div>
+
+                        </div>
+                        @endif
+
+                        @php
+                        $dateField = request('date_field', 'created_at');
+                        $fromDate = request('from_date');
+                        $toDate = request('to_date');
+                        $filteredTasks = $supplier->tasks;
+
+                        if ($fromDate && $toDate) {
+                        $filteredTasks = $filteredTasks->filter(function($task) use ($dateField, $fromDate, $toDate) {
+                        $date = $task[$dateField];
+                        if (!$date) return false;
+                        $date = \Carbon\Carbon::parse($date)->format('Y-m-d');
+                        return $date >= $fromDate && $date <= $toDate;
+                            });
+                            }
+
+                            // Sort by selected date field, newest first
+                            $filteredTasks=$filteredTasks->sortByDesc(function($task) use ($dateField) {
+                            return $task[$dateField] ? \Carbon\Carbon::parse($task[$dateField])->timestamp : 0;
+                            });
+                            @endphp
+                            <div style="max-height: 550px; overflow-y: auto;">
+
+                                @forelse($filteredTasks as $task)
+                                @if($supplierType === 'flight')
+                                <div class="general-ledger-rows grid grid-cols-10 gap-2 p-2 text-center border-b">
+                                    <div class="w-[120px]">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
+                                    <div class="w-[120px]">{{ $task->reference }}</div>
+                                    <div class="w-[120px]">{{ $task->gds_reference ?? '-' }}</div>
+                                    <div class="w-[140px]">{{ $task->agent ? $task->agent->name : '-' }}</div>
+                                    <div class="w-[110px]">
+                                        @php
+                                        $status = strtolower($task->status);
+                                        $statusColors = [
+                                        'issued' => 'bg-green-100 text-green-700 border-green-400',
+                                        'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
+                                        'cancelled' => 'bg-red-100 text-red-700 border-red-400',
+                                        'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
+                                        'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
+                                        'void' => 'bg-gray-200 text-gray-700 border-gray-400',
+                                        'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
+                                        'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
+                                        ];
+                                        $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
+                                        @endphp
+                                        <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
+                                            {{ ucfirst($task->status) }}
+                                        </span>
+                                    </div>
+                                    <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : '-' }}</div>
+                                    <div class="w-[150px]">{{ $task->passenger_name ?? '-' }}</div>
+                                    <div class="w-[110px]">{{ $task->price ?? '-' }}</div>
+                                    <div class="w-[180px]">
+                                        @if ($task->type === 'flight' && $task->flightDetails)
+                                        <strong>From:</strong> {{ $task->flightDetails->airport_from ?? '-' }}<br>
+                                        {{ optional($task->flightDetails->departure_time)->format('d-m-Y H:i') ?? '-' }}
+                                        @else
+                                        -
+                                        @endif
+                                    </div>
+                                    <div class="w-[180px]">
+                                        @if ($task->type === 'flight' && $task->flightDetails)
+                                        <strong>To:</strong> {{ $task->flightDetails->airport_to ?? '-' }}<br>
+                                        {{ optional($task->flightDetails->arrival_time)->format('d-m-Y H:i') ?? '-' }}
+                                        @else
+                                        -
+                                        @endif
+                                    </div>
+                                </div>
+                                @elseif($supplierType === 'hotel')
+                                @php
+                                $balance = 0;
+                                $hotelTasks = $filteredTasks->take(20);
+                                @endphp
+                                @foreach($hotelTasks as $task)
+                                @php
+                                $debit = $task->journalEntries->first()->debit ?? 0;
+                                $credit = $task->journalEntries->first()->credit ?? 0;
+                                $balance += $debit - $credit;
+                                @endphp
+                                <div class="general-ledger-rows grid grid-cols-10 gap-2 p-2 text-center border-b">
+                                    <div class="w-[120px]">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
+                                    <div class="w-[120px]">{{ $task->reference }}</div>
+                                    <div class="w-[140px]">{{ $task->agent ? $task->agent->name : '-' }}</div>
+                                    <div class="w-[110px]">
+                                        @php
+                                        $status = strtolower($task->status);
+                                        $statusColors = [
+                                        'issued' => 'bg-green-100 text-green-700 border-green-400',
+                                        'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
+                                        'cancelled' => 'bg-red-100 text-red-700 border-red-400',
+                                        'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
+                                        'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
+                                        'void' => 'bg-gray-200 text-gray-700 border-gray-400',
+                                        'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
+                                        'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
+                                        ];
+                                        $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
+                                        @endphp
+                                        <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
+                                            {{ ucfirst($task->status) }}
+                                        </span>
+                                    </div>
+                                    <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
+                                    <div class="w-[150px]">{{ $task->passenger_name ?? '-' }} <br>
+                                        {{ $task->hotelDetails->hotel->name ?? '-' }}<br>
+                                        {{ $task->hotelDetails->check_in ?? '-' }} to {{ $task->hotelDetails->check_out ?? '-' }}
+                                    </div>
+                                    <div class="w-[50px]">{{ $task->price ?? '-' }}</div>
+                                    <div class="w-[50px]">{{ $debit ?: '-' }}</div>
+                                    <div class="w-[50px]">{{ $credit ?: '-' }}</div>
+                                    <div class="w-[50px]">{{ $balance }}</div>
+                                </div>
+                                @endforeach
+                                @else
+                                <div class="general-ledger-rows grid grid-cols-7 gap-2 p-2 text-center border-b">
+                                    <div class="w-[120px]">{{ $task->created_at ? \Carbon\Carbon::parse($task->created_at)->format('Y-m-d') : '-' }}</div>
+                                    <div class="w-[120px]">{{ $task->reference }}</div>
+                                    <div class="w-[140px]">{{ $task->agent ? $task->agent->name : '-' }}</div>
+                                    <div class="w-[110px]">
+                                        @php
+                                        $status = strtolower($task->status);
+                                        $statusColors = [
+                                        'issued' => 'bg-green-100 text-green-700 border-green-400',
+                                        'pending' => 'bg-yellow-100 text-yellow-700 border-yellow-400',
+                                        'cancelled' => 'bg-red-100 text-red-700 border-red-400',
+                                        'confirmed' => 'bg-blue-100 text-blue-700 border-blue-400',
+                                        'reissued' => 'bg-purple-100 text-purple-700 border-purple-400',
+                                        'void' => 'bg-gray-200 text-gray-700 border-gray-400',
+                                        'refund' => 'bg-pink-100 text-pink-700 border-pink-400',
+                                        'emd' => 'bg-indigo-100 text-indigo-700 border-indigo-400',
+                                        ];
+                                        $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-700 border-gray-300';
+                                        @endphp
+                                        <span class="inline-block px-2 py-1 rounded border font-bold text-xs {{ $colorClass }}">
+                                            {{ ucfirst($task->status) }}
+                                        </span>
+                                    </div>
+                                    <div class="w-[120px]">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</div>
+                                    <div class="w-[150px]">{{ $task->passenger_name ?? '-' }}</div>
+                                    <div class="w-[110px]">{{ $task->price ?? '-' }}</div>
+
+                                </div>
+                                @endif
+                                @empty
+                                <div class="general-ledger-rows grid grid-cols-12 gap-2 p-2 text-center text-gray-500">
+                                    <div colspan="10">No entries found for selected dates.</div>
+                                </div>
+                                @endforelse
+                            </div>
+                    </div>
+                </div>
         </div>
     </div>
 

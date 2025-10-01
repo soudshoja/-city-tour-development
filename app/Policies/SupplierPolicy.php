@@ -12,6 +12,11 @@ class SupplierPolicy
         if ($user->hasRole('accountant')) {
             return $user->can('view supplier');
         }
+
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+        
         return $user->can('view supplier');
     }
 

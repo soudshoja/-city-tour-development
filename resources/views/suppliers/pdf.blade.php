@@ -98,10 +98,12 @@ use Barryvdh\DomPDF\Facade\Pdf;
                 <th>Task Ref</th>
                 <th>Agent</th>
                 <th>Issued Date</th>
-                <th>Passenger Name</th>
-                <th>Net Price</th>
-                <th>Check-in</th>
-                <th>Check-out</th>
+                <th>Status</th>
+                <th>Info</th>
+                <th>Price Debit Credit Balance</th>
+                <th>Debit</th>
+                <th>Credit</th>
+                <th>Balance</th>
             </tr>
         </thead>
         <tbody>
@@ -110,11 +112,21 @@ use Barryvdh\DomPDF\Facade\Pdf;
                 <td>{{ $task->reference }}</td>
                 <td>{{ $task->agent ? $task->agent->name : '-' }}</td>
                 <td>{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '-' }}</td>
-                <td>{{ $task->passenger_name ?? '-' }}</td>
-                <td>{{ $task->price ?? '-' }}</td>
-                <td>
+                <td>{{ $task->status }}</td>
+                <td>{{ $task->passenger_name ?? '-' }}
                     @if ($task->hotelDetails)
                     {{ $task->hotelDetails->hotel->name ?? '-' }}<br>
+                    {{ $task->hotelDetails->check_in ?? '-' }} to {{ $task->hotelDetails->check_out ?? '-' }}
+                </td>
+                <td>{{ $task->price ?? '-' }}</td>
+                <td>
+                    
+                    @else
+                    -
+                    @endif
+                </td>
+                <td>
+                    @if ($task->hotelDetails)
                     {{ $task->hotelDetails->check_in ?? '-' }}
                     @else
                     -
@@ -122,7 +134,6 @@ use Barryvdh\DomPDF\Facade\Pdf;
                 </td>
                 <td>
                     @if ($task->hotelDetails)
-                    {{ $task->hotelDetails->hotel->name ?? '-' }}<br>
                     {{ $task->hotelDetails->check_out ?? '-' }}
                     @else
                     -

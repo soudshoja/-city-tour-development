@@ -9,45 +9,30 @@ use Illuminate\Auth\Access\Response;
 
 class InvoicePolicy
 {
-    /**
-     * Determine whether the user can view any models.
-     */
     public function viewAny(User $user): bool
     {
        return $user->can('view invoice');
     }
 
-    /**
-     * Determine whether the user can view the model.
-     */
     public function view(User $user, Invoice $invoice): bool
     {
         return $user->can('view invoice') || $user->id == $invoice->user_id;
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
     public function create(User $user): bool
     {
-        if($user->roles('admin')) return true;
+        if($user->role_id == Role::COMPANY) return true;
 
         return $user->can('create invoice');
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, Invoice $invoice): bool
     {
-        // if($user->roles('admin')) return true;
+        if($user->roles('admin')) return true;
 
         return $user->can('update invoice');
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
     public function delete(User $user, Invoice $invoice): bool
     {
         //
@@ -61,9 +46,6 @@ class InvoicePolicy
         //
     }
 
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
     public function forceDelete(User $user, Invoice $invoice): bool
     {
         //
@@ -72,5 +54,14 @@ class InvoicePolicy
     public function pickAgent(User $user): bool
     {
         return $user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY;
+    }
+
+    public function accountantEdit(User $user): bool
+    {
+        if($user->role_id == Role::ACCOUNTANT) return true;
+
+        if($user->hasPermissionTo('edit full invoice')) return true;
+
+        return false;
     }
 }

@@ -251,19 +251,19 @@
                                 @else
                                 @foreach ($invoices as $invoice)
                                 @php
-                                    $invoiceDetail = ($invoice->invoiceDetails ?? collect())->first();
-                                    $tasksPayload = ($invoice->invoiceDetails ?? collect())->map(function ($detail) use ($invoice) {
-                                        $task = $detail->task;
-                                        return [
-                                            'id' => $task?->id,
-                                            'reference' => $task?->reference ? 'Task #'.$task->reference : '-',
-                                            'type' => $task?->type ? ucfirst($task->type) : '-',
-                                            'client' => $task?->client?->full_name ?? '-',
-                                            'supplier' => $task?->supplier?->name ?? '-',
-                                            'amount' => $detail->task_price ?? 0,
-                                            'currency' => $invoice->currency ?? '-',
-                                        ];
-                                    })->values()->toArray();
+                                $invoiceDetail = ($invoice->invoiceDetails ?? collect())->first();
+                                $tasksPayload = ($invoice->invoiceDetails ?? collect())->map(function ($detail) use ($invoice) {
+                                $task = $detail->task;
+                                return [
+                                'id' => $task?->id,
+                                'reference' => $task?->reference ? 'Task #'.$task->reference : '-',
+                                'type' => $task?->type ? ucfirst($task->type) : '-',
+                                'client' => $task?->client?->full_name ?? '-',
+                                'supplier' => $task?->supplier?->name ?? '-',
+                                'amount' => $detail->task_price ?? 0,
+                                'currency' => $invoice->currency ?? '-',
+                                ];
+                                })->values()->toArray();
                                 @endphp
                                 <tr data-price="{{ $invoice->total }}"
                                     data-tasks='@json($tasksPayload)'
@@ -301,8 +301,7 @@
                                                     opacity=".5" />
                                             </svg>
                                         </a>
-                                        @elseif (in_array($invoice->status, ['unpaid', 'partial'], true) ||
-                                        ($invoice->status !== 'paid' ))
+                                        @elseif (in_array($invoice->status, ['unpaid', 'partial'], true))
                                         <a data-tooltip="View/Edit Invoice"
                                             href="{{ route('invoice.edit', ['companyId' => $invoice->agent?->branch?->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                             class="text-sm font-medium text-blue-600 hover:underline">
@@ -447,10 +446,14 @@
                                     </td>
 
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        {{ $invoice->agent->name }}
+                                        <a href="{{ route('agents.show', $invoice->agent->id) }}" class="text-sm font-medium text-blue-600 hover:underline" target="_blank">
+                                            {{ $invoice->agent->name }}
+                                        </a>
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        {{ $invoice->client->full_name }}
+                                        <a href="{{ route('clients.show',  $invoice->client->id) }}" class="text-sm font-medium text-blue-600 hover:underline" target="_blank">
+                                            {{ $invoice->client->full_name }}
+                                        </a>
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         @if ($invoice->refund)

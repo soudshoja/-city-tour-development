@@ -108,24 +108,34 @@ class SupplierController extends Controller
     }
 
     public function show($suppliersId)
-    {
-        Gate::authorize('view', Supplier::class);
+{
+    Gate::authorize('view', Supplier::class);
 
-        $supplier = SupplierCompany::with('supplier.tasks.agent')->findOrFail($suppliersId)->supplier;
-        $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
-        $invoicesId = array_values(array_filter($invoicesId));
-        $taskIds = $supplier->tasks->pluck('id')->toArray();
-        $JournalEntry = JournalEntry::select('id', 'debit', 'credit', 'created_at', 'task_id', 'account_id')
-            ->with(['task.agent', 'account'])
-            ->whereIn('task_id', $taskIds)
-            ->get();
-        $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
+$supplier = SupplierCompany::with([
+    'supplier.tasks.agent',
+    'supplier.tasks.journalEntries',
+    'supplier.payableAccount.childAccounts.journalEntries'
+])->findOrFail($suppliersId)->supplier;
 
-        // Add this line:
-        $filteredTasks = $supplier->tasks;
+    $taskIds = $supplier->tasks->pluck('id')->toArray();
 
-        return view('suppliers.show', compact('supplier', 'JournalEntry', 'currencies', 'filteredTasks'));
-    }
+    $JournalEntry = JournalEntry::select('id', 'debit', 'credit', 'created_at', 'task_id', 'account_id')
+        ->with(['task.agent', 'account'])
+        ->whereIn('task_id', $taskIds)
+        ->get();
+
+    $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
+    $filteredTasks = $supplier->tasks;
+    $payableAccount = $supplier->payableAccount ?? null;
+
+    return view('suppliers.show', compact(
+        'supplier',
+        'JournalEntry',
+        'currencies',
+        'filteredTasks',
+        'payableAccount'
+    ));
+}
 
     public function ledgerByDateRange(Request $request, $supplierId)
     {
@@ -249,20 +259,24 @@ class SupplierController extends Controller
         return redirect()->back()->with('success', 'Supplier updated successfully.');
     }
 
-    public function getTotalDebitCredit($supplierId, $endDate)
-    {
-        $endDate = new DateTime($endDate);
-        $supplier = Supplier::with('tasks.invoiceDetail.invoice')->findOrFail($supplierId);
-        $invoicesId = $supplier->tasks->pluck('invoiceDetail.invoice_id')->toArray();
-        $invoicesId = array_values(array_filter($invoicesId));
-        $totalDebit = JournalEntry::whereIn('invoice_id', $invoicesId)->where('created_at', '<=', $endDate)->sum('debit');
-        $totalCredit = JournalEntry::whereIn('invoice_id', $invoicesId)->where('created_at', '<=', $endDate)->sum('credit');
+public function getTotalDebitCredit($supplierId, $endDate)
+{
+    $endDate = new DateTime($endDate);
+    $supplier = Supplier::with('tasks')->findOrFail($supplierId);
+    $taskIds = $supplier->tasks->pluck('id')->toArray();
 
-        return response()->json([
-            'totalDebit' => $totalDebit,
-            'totalCredit' => $totalCredit,
-        ]);
-    }
+    $totalDebit = JournalEntry::whereIn('task_id', $taskIds)
+        ->where('created_at', '<=', $endDate)
+        ->sum('debit');
+    $totalCredit = JournalEntry::whereIn('task_id', $taskIds)
+        ->where('created_at', '<=', $endDate)
+        ->sum('credit');
+
+    return response()->json([
+        'totalDebit' => $totalDebit,
+        'totalCredit' => $totalCredit,
+    ]);
+}
 
     public function redirectToAuthorization()
     {

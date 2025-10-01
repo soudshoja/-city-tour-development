@@ -1144,7 +1144,7 @@
                                                             $isInvoiced = \App\Models\InvoiceDetail::where('task_id', $task->id)->exists();
                                                             @endphp
                                                             <template x-teleport="body">
-                                                                <div x-show="editOpen" x-cloak x-data="{ readOnly: {{ $isInvoiced ? 'true' : 'false' }} }" class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800 bg-opacity-50">
+                                                                <div x-show="editOpen" x-cloak x-data="{ readOnly: false }" class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800 bg-opacity-50">
                                                                     <form id="edit-task-form-{{ $task->id }}"
                                                                         action="{{ route('tasks.update', $task->id) }}"
                                                                         method="post"

@@ -128,8 +128,11 @@ $isLocked = $isEditing && in_array(strtolower(optional($refund->invoice)->status
                 <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
                     <label class="block font-semibold text-gray-700 mb-2">Supplier Charge</label>
                     <div class="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-red-700 font-semibold">
-                        {{ $task->calculated_refund_charge }}
+                        {{ old('refund_airline_charge', $isEditing && $refund ?
+                            number_format($refund->refund_airline_charge, 2, '.', '') : number_format($task->calculated_refund_charge, 2, '.', '')) }}
                     </div>
+                    <input type="hidden" name="refund_airline_charge" value="{{ old('refund_airline_charge', $isEditing && $refund ?
+                        $refund->refund_airline_charge : $task->calculated_refund_charge) }}">
                 </div>
             </div>
         </div>
@@ -137,23 +140,25 @@ $isLocked = $isEditing && in_array(strtolower(optional($refund->invoice)->status
         <div class="text-right bg-gray-50 rounded-2xl p-4 lg:p-8 min-w-0">
             <div class="font-bold text-gray-700 mb-2">Original Task Profit</div>
             <div class="text-2xl text-blue-600 font-bold mb-4" id="originalProfit">
-                {{ number_format($invoiceDetail->markup_price, 2, '.', '') }}
+                {{ number_format($refund->original_task_profit ?? $invoiceDetail->markup_price, 2, '.', '') }}
             </div>
             <hr class="my-4">
             <div class="font-bold text-gray-700 mb-2">Supplier Charge</div>
             <div class="text-2xl text-red-500 font-bold mb-4" id="supplierCharge">
-                {{ number_format($task->calculated_refund_charge, 2, '.', '') }}
+                {{ old('refund_airline_charge', $isEditing && $refund ?
+                    number_format($refund->refund_airline_charge, 2, '.', '') : number_format($task->calculated_refund_charge, 2, '.', '')) }}
             </div>
             <hr class="my-4">
             <div class="font-bold text-gray-700 mb-2">New Agent Markup</div>
             <div class="text-2xl text-green-600 font-bold mb-4" id="newAgentMarkup">
-                {{ number_format($isEditing && $refund ? $refund->new_task_profit : ($task->total - $invoiceDetail->markup_price - $task->calculated_refund_charge), 2, '.', '') }}
+                {{ old('new_agent_markup', $isEditing && $refund ?
+                    $refund->new_task_profit : number_format($task->total - $invoiceDetail->markup_price - $task->calculated_refund_charge, 2, '.', '')) }}
             </div>
             <hr class="my-4">
             <div class="font-bold text-gray-700 mb-2">Total Profit (Invoice Price)</div>
             <input type="number" step="0.01" name="invoice_price" id="invoicePriceInput"
                 value="{{ old('invoice_price', $isEditing && $refund ?
-                    number_format($refund->airline_nett_fare - $refund->total_nett_refund, 2, '.', '') : (isset($refundInvoiceDetail) ? number_format($refundInvoiceDetail->amount, 2, '.', '') : number_format($invoiceDetail->markup_price + $task->calculated_refund_charge, 2, '.', ''))) }}"
+                    number_format($refund->total_nett_refund, 2, '.', '') : (isset($refundInvoiceDetail) ? number_format($refundInvoiceDetail->amount, 2, '.', '') : number_format($invoiceDetail->markup_price + $task->calculated_refund_charge, 2, '.', ''))) }}"
                 class="w-full px-4 py-2 border border-indigo-300 rounded-lg bg-white text-right font-bold text-lg" />
 
             <!-- Hidden inputs to send calculated values to backend -->
@@ -225,7 +230,6 @@ $isLocked = $isEditing && in_array(strtolower(optional($refund->invoice)->status
             newAgentMarkupInput.value = markup.toFixed(2);
         }
         invoiceInput.addEventListener('input', updateMarkup);
-        updateMarkup();
     });
 
     function toggleCalculation() {

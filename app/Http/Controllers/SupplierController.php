@@ -33,6 +33,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Exports\SupplierTasksExport;
 use Maatwebsite\Excel\Facades\Excel;
+
 class SupplierController extends Controller
 {
     use AuthorizesRequests, HttpRequestTrait;
@@ -108,34 +109,47 @@ class SupplierController extends Controller
     }
 
     public function show($suppliersId)
-{
-    Gate::authorize('view', Supplier::class);
+    {
+        Gate::authorize('view', Supplier::class);
 
-$supplier = SupplierCompany::with([
-    'supplier.tasks.agent',
-    'supplier.tasks.journalEntries',
-    'supplier.payableAccount.childAccounts.journalEntries'
-])->findOrFail($suppliersId)->supplier;
+        $user = Auth::user();
+        if ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
+        } elseif ($user->role_id == Role::BRANCH || $user->role_id == Role::ACCOUNTANT) {
+            $companyId = $user->branch->company_id;
+        } else {
+            abort(403, 'Unauthorized action.');
+        }
 
-    $taskIds = $supplier->tasks->pluck('id')->toArray();
+        $supplier = Supplier::with([
+            'tasks' => fn($q) => $q->where('company_id', $companyId)->with(['agent', 'journalEntries']),
+            'payableAccount.childAccounts.journalEntries',
+            'country',
+        ])
+            ->whereHas('companies', function ($q) use ($companyId) {
+                $q->where('companies.id', $companyId);
+            })
+            ->findOrFail($suppliersId);
 
-    $JournalEntry = JournalEntry::select('id', 'debit', 'credit', 'created_at', 'task_id', 'account_id')
-        ->with(['task.agent', 'account'])
-        ->whereIn('task_id', $taskIds)
-        ->get();
+        $taskIds = $supplier->tasks->pluck('id');
 
-    $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
-    $filteredTasks = $supplier->tasks;
-    $payableAccount = $supplier->payableAccount ?? null;
+        $JournalEntry = JournalEntry::select('id', 'debit', 'credit', 'created_at', 'task_id', 'account_id')
+            ->with(['task.agent', 'account'])
+            ->whereIn('task_id', $taskIds)
+            ->get();
 
-    return view('suppliers.show', compact(
-        'supplier',
-        'JournalEntry',
-        'currencies',
-        'filteredTasks',
-        'payableAccount'
-    ));
-}
+        $currencies = ['USD', 'GBP', 'AED', 'EUR', 'EGP', 'SAR', 'BUD', 'QAR'];
+        $filteredTasks = $supplier->tasks;
+        $payableAccount = $supplier->payableAccount ?? null;
+
+        return view('suppliers.show', compact(
+            'supplier',
+            'JournalEntry',
+            'currencies',
+            'filteredTasks',
+            'payableAccount'
+        ));
+    }
 
     public function ledgerByDateRange(Request $request, $supplierId)
     {
@@ -207,11 +221,11 @@ $supplier = SupplierCompany::with([
     }
 
     public function update($id)
-    {   
+    {
         if (Auth::user()->role_id != Role::ADMIN) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         $request = request();
 
         $request->validate([
@@ -259,24 +273,24 @@ $supplier = SupplierCompany::with([
         return redirect()->back()->with('success', 'Supplier updated successfully.');
     }
 
-public function getTotalDebitCredit($supplierId, $endDate)
-{
-    $endDate = new DateTime($endDate);
-    $supplier = Supplier::with('tasks')->findOrFail($supplierId);
-    $taskIds = $supplier->tasks->pluck('id')->toArray();
+    public function getTotalDebitCredit($supplierId, $endDate)
+    {
+        $endDate = new DateTime($endDate);
+        $supplier = Supplier::with('tasks')->findOrFail($supplierId);
+        $taskIds = $supplier->tasks->pluck('id')->toArray();
 
-    $totalDebit = JournalEntry::whereIn('task_id', $taskIds)
-        ->where('created_at', '<=', $endDate)
-        ->sum('debit');
-    $totalCredit = JournalEntry::whereIn('task_id', $taskIds)
-        ->where('created_at', '<=', $endDate)
-        ->sum('credit');
+        $totalDebit = JournalEntry::whereIn('task_id', $taskIds)
+            ->where('created_at', '<=', $endDate)
+            ->sum('debit');
+        $totalCredit = JournalEntry::whereIn('task_id', $taskIds)
+            ->where('created_at', '<=', $endDate)
+            ->sum('credit');
 
-    return response()->json([
-        'totalDebit' => $totalDebit,
-        'totalCredit' => $totalCredit,
-    ]);
-}
+        return response()->json([
+            'totalDebit' => $totalDebit,
+            'totalCredit' => $totalCredit,
+        ]);
+    }
 
     public function redirectToAuthorization()
     {

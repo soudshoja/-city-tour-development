@@ -3464,12 +3464,53 @@ class PaymentController extends Controller
                 if ($invoiceStatus === 'PAID') {
                     $payment->status = 'completed';
                     $payment->save();
+
+                    $receiptInfo = $this->publicReceiptNotice($payment, $payment->invoice ? 'invoice' : 'topup');
+                    $agent = $receiptInfo['agent'];
+
+                    $this->storeNotification([
+                        'user_id' => $agent->user_id,
+                        'title'   => $receiptInfo['title'],
+                        'message' => $receiptInfo['message'],
+                    ]);
+
+                    $resayilController = new ResayilController();
+
+                    $resayilController->message(
+                        $agent->phone_number,
+                        $agent->country_code,
+                        $receiptInfo['message']
+                    );
+
                     Log::info('MF Webhook: payment status updated', [
                         'payment_id' => $payment->id,
                         'payment_reference' => $invoiceId,
                         'new_status' => $invoiceStatus
                     ]);
                 } else {
+
+                    $paymentType = $payment->invoice ? 'invoice' : 'topup';
+
+                    if($paymentType === 'invoice' ){
+                        $agent = $payment->invoice->agent;
+                        $client = $payment->invoice->client;
+                        $message = 'Your client ' . $client->full_name . ' attempted to pay invoice ' . $payment->invoice->invoice_number . ' but the payment status is ' . $invoiceStatus . '. Please follow up with your client to resolve the issue.';
+
+                        $this->storeNotification([
+                            'user_id' => $agent->user_id,
+                            'title' => 'Client '. $client->full_name . "'s Payment Issue",
+                            'message' => $message,
+                        ]);
+
+                        $resayilController = new ResayilController();
+
+                        $resayilController->message(
+                            $agent->phone_number,
+                            $agent->country_code,
+                            $message,
+                        );
+                    }
+
                     Log::info('MF Webhook: ignoring downgrade from initiate', [
                         'payment_id' => $payment->id,
                         'current_status' => $payment->status,
@@ -4803,10 +4844,12 @@ class PaymentController extends Controller
 
         return $isInvoice
             ? [
+                'agent'  => $payment->invoice->agent,
                 'title'   => $payment->invoice->invoice_number . ' paid successfully',
                 'message' => 'Your client ' . $payment->client->full_name . ' has paid invoice ' . $payment->invoice->invoice_number . ".\n\nCheck the link : " . $url,
             ]
             : [
+                'agent'  => $payment->agent,
                 'title'   => 'Client ' . $payment->client->full_name . ' Topup Successful',
                 'message' => 'Your client ' . $payment->client->full_name . ' has successfully topped up ' . number_format($payment->amount, 3) .
                              ' ' . $payment->currency . ' using voucher ' . $payment->voucher_number . ".\n\nCheck the link : " . $url,

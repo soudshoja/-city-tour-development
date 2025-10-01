@@ -954,7 +954,7 @@ class TaskController extends Controller
             // Process financial transactions immediately if task is complete (regardless of agent assignment)
             // This ensures company liability to supplier is tracked immediately
             // Special case: Void tasks should ALWAYS process financials if they have an original_task_id
-            $shouldProcessFinancials = $offline && $task->is_complete || ($task->status === 'void' && $task->original_task_id);
+            $shouldProcessFinancials = $offline && $task->is_complete || $task->status !== 'confirmed'|| ($task->status == 'void' && $task->original_task_id);
 
             if ($shouldProcessFinancials) {
                 $reason = $task->is_complete ? 'complete task' : 'void task with original_task_id';
@@ -3590,7 +3590,7 @@ class TaskController extends Controller
         $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
 
         $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
-
+        dd($originalTask->agent->branch_id);
         $transaction = Transaction::create([
             'branch_id' => $originalTask->agent->branch_id,
             'company_id' => $originalTask->company_id,

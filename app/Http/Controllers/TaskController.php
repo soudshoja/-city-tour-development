@@ -960,6 +960,8 @@ class TaskController extends Controller
                 $reason = $task->is_complete ? 'complete task' : 'void task with original_task_id';
                 Log::info("Processing financial transactions for {$reason}: " . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
                 $this->processTaskFinancial($task);
+            } else {
+                Log::warning('Financial processing skipped for task: ' . $task->reference . ' - reason: ' . ($offline ? 'incomplete' : 'not offline supplier') . ' - status: ' . $task->status);
             }
 
             DB::commit();

@@ -110,7 +110,7 @@ class RefundController extends Controller
         $invoicePaid = $task->originalTask->invoiceDetail->invoice->status === 'paid';
 
         // Get payment gateways and methods for the agent's company
-        $paymentGateways = Charge::where('company_id', $task->agent->branch->company_id)
+        $paymentGateways = Charge::where('can_generate_link', true)
             ->where('is_active', true)
             ->get();
         

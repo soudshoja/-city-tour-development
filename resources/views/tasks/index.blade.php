@@ -968,7 +968,7 @@
                                                 <th data-column="supplier">
                                                     <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
                                                 </th>
-                                                <th data-column="supplier-pay-date" class="text-center" class="column-hidden">
+                                                <th data-column="supplier-pay-date">
                                                     <a href="{{ request()->fullUrlWithQuery([
                                                                 'sortBy' => 'supplier_pay_date',
                                                                 'sortOrder' => (request('sortBy') === 'supplier_pay_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
@@ -1489,7 +1489,7 @@
                                                 <td data-column="supplier" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->supplier->name }}
                                                 </td>
-                                                <td data-column="supplier-pay-date" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
+                                                <td data-column="supplier-pay-date" class="p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
                                                     {{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') : 'Not Set' }}
                                                 </td>
                                                 <td data-column="created-at" class="column-hidden p-3 text-sm text-center font-semibold text-gray-900 dark:text-gray-300">
@@ -1959,7 +1959,6 @@
         </div>
     </div>
 </x-app-layout>
-@vite('resources/js/tasks.js')
 
 <script>
     window.allTaskTypes = @json($allTypes ?? []);
@@ -1980,6 +1979,30 @@
             }
         });
 
+        Alpine.nextTick(() => {
+            const createInvoiceBtn = document.getElementById('createInvoiceBtn');
+            if (!createInvoiceBtn) return;
+
+            createInvoiceBtn.onclick = null;
+
+            createInvoiceBtn.addEventListener('click', function () {
+                const selectedTasks = window.selectedTasksGlobal ?? [];
+                console.log('Selected tasks:', selectedTasks);
+
+                if (!selectedTasks.length) {
+                    alert('No task selected.');
+                    return;
+                }
+
+                const taskStatus = this.getAttribute('data-task-status');
+                if (taskStatus === 'refund') {
+                    window.location.href = this.getAttribute('data-route');
+                } else {
+                    const url = `/invoices/create?task_ids=${selectedTasks.join(',')}`;
+                    window.location.href = url;
+                }
+            });
+        });
     });
 
     document.addEventListener("DOMContentLoaded", function() {
@@ -2074,30 +2097,6 @@
                 }
             });
             saveColumnPreferences();
-        });
-
-        const createInvoiceBtn = document.getElementById('createInvoiceBtn');
-        if (createInvoiceBtn) {
-            createInvoiceBtn.replaceWith(createInvoiceBtn.cloneNode(true)); // Remove all previous listeners
-        }
-
-        document.getElementById('createInvoiceBtn')?.addEventListener('click', function() {
-            const selectedTasks = window.selectedTasksGlobal ?? [];
-
-            console.log('Selected tasks:', selectedTasks);
-
-            if (selectedTasks.length > 0) {
-                const taskStatus = this.getAttribute('data-task-status');
-
-                if (taskStatus === 'refund') {
-                    window.location.href = this.getAttribute('data-route');
-                } else {
-                    const url = `/invoices/create?task_ids=${selectedTasks.join(',')}`;
-                    window.location.href = url;
-                }
-            } else {
-                alert('No task selected.');
-            }
         });
 
         // Add event listeners to close modals when clicked outside or on close buttons

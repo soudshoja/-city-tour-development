@@ -1550,7 +1550,7 @@ class ReportController extends Controller
         $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
         $summary = $this->dailySalesSummary($companyId, $date);
         $agents = $this->dailySalesAgents($companyId, $date);
-        $suppliers = $this->dailySalesSuppliers($companyId, $date);
+        $suppliers = $this->dailySalesSuppliers($date);
         $refunds = $this->dailySalesRefunds($companyId, $date);
 
         $pdf = Pdf::loadView('reports.pdf.daily-sales', [
@@ -1577,7 +1577,7 @@ class ReportController extends Controller
         $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
         $summary = $this->dailySalesSummary($companyId, $date);
         $agents = $this->dailySalesAgents($companyId, $date);
-        $suppliers = $this->dailySalesSuppliers($companyId, $date);
+        $suppliers = $this->dailySalesSuppliers($date);
         $refunds = $this->dailySalesRefunds($companyId, $date);
 
         $pdf = Pdf::loadView('reports.pdf.daily-sales', compact('summary', 'agents', 'suppliers', 'refunds', 'date'))
@@ -1603,10 +1603,10 @@ class ReportController extends Controller
 
         $summary = $this->dailySalesSummary($companyId, $date);
         $agents = $this->dailySalesAgents($companyId, $date);
-        $suppliers = $this->dailySalesSuppliers($date);
+        $groups = $this->dailySalesSuppliers($date);
         $refunds = $this->dailySalesRefunds($companyId, $date);
 
-        return view('reports.daily-sales', compact('summary', 'agents', 'suppliers', 'refunds', 'date'));
+        return view('reports.daily-sales', compact('summary', 'agents', 'groups', 'refunds', 'date'));
     }
 
     private function dailySalesSummary($companyId, $date)

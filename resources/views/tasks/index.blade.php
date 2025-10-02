@@ -2023,18 +2023,17 @@
             const modeWrap = document.createElement('div');
             modeWrap.className = 'mb-2';
             modeWrap.innerHTML = `
-            <label class="block text-sm font-medium text-gray-800 mb-1">Mode</label>
+            <label class="block text-sm font-medium text-gray-800 mb-1">Upload Method</label>
             <div class="inline-flex gap-3">
                 <label class="inline-flex items-center gap-2">
-                <input type="radio" name="mh_mode" value="ref" checked>
-                <span class="text-sm">By reference</span>
+                    <input type="radio" name="mh_mode" value="ref" checked>
+                    <span class="text-sm">By reference</span>
                 </label>
                 <label class="inline-flex items-center gap-2">
-                <input type="radio" name="mh_mode" value="batch">
-                <span class="text-sm">Upload by batches</span>
+                    <input type="radio" name="mh_mode" value="batch">
+                    <span class="text-sm">From file</span>
                 </label>
-            </div>
-            `;
+            </div>`;
             formTaskContainer.appendChild(modeWrap);
 
             const content = document.createElement('div');
@@ -2049,15 +2048,15 @@
                 toolbar.className = 'sticky top-0 bg-white -mx-4 px-4 pt-1 pb-2';
                 toolbar.innerHTML = `
                 <div class="flex items-center justify-between">
-                <div>
-                    <p class="font-medium text-gray-800 leading-5">Upload by batches</p>
-                    <p class="text-xs text-gray-500">Select your files. Each batch will be merged.</p>
-                </div>
-                <div class="flex items-center">
-                    <button type="button" id="add-batch" class="p-2 inline-flex items-center rounded-md border border-gray-300 text-xs font-medium hover:bg-gray-50">
-                    Add Batch
-                    </button>
-                </div>
+                    <div>
+                        <p class="font-medium text-gray-800 leading-5">Upload by batches</p>
+                        <p class="text-xs text-gray-500">Select your files. Each batch will be merged.</p>
+                    </div>
+                    <div class="flex items-center">
+                        <button type="button" id="add-batch" class="p-2 inline-flex items-center rounded-md border border-gray-300 text-xs font-medium hover:bg-gray-50">
+                        Add Batch
+                        </button>
+                    </div>
                 </div>`;
                 formTaskContainer.appendChild(toolbar);
 
@@ -2065,14 +2064,14 @@
                 carousel.className = 'relative';
                 carousel.innerHTML = `
                 <div id="batch-viewport" class="overflow-hidden">
-                <div id="batch-track" class="flex transition-transform duration-300 ease-out"></div>
+                    <div id="batch-track" class="flex transition-transform duration-300 ease-out"></div>
                 </div>
                 <div class="mt-2 flex items-center justify-between">
-                <div class="inline-flex gap-1">
-                    <button type="button" id="prev" class="rounded-md border px-2 py-1 text-xs hover:bg-gray-50">‹ Prev</button>
-                    <button type="button" id="next" class="rounded-md border px-2 py-1 text-xs hover:bg-gray-50">Next ›</button>
-                </div>
-                <div id="dots" class="flex items-center gap-1"></div>
+                    <div class="inline-flex gap-1">
+                        <button type="button" id="prev" class="rounded-md border px-2 py-1 text-xs hover:bg-gray-50">‹ Prev</button>
+                        <button type="button" id="next" class="rounded-md border px-2 py-1 text-xs hover:bg-gray-50">Next ›</button>
+                    </div>
+                    <div id="dots" class="flex items-center gap-1"></div>
                 </div>`;
                 formTaskContainer.appendChild(carousel);
 
@@ -2111,32 +2110,32 @@
                     const slide = document.createElement('div');
                     slide.className = 'w-full shrink-0';
                     slide.innerHTML = `
-                <div class="border rounded-md p-3 bg-white">
-                    <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm font-semibold">Batch #${batchIndex+1}</span>
-                        <span class="text-xs text-gray-500"><span class="count">0</span> files</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <button type="button" class="clear text-xs text-red-500 hover:text-red-600">Clear</button>
-                        <button type="button" class="remove text-xs text-gray-500 hover:text-gray-700">Remove</button>
-                    </div>
-                    </div>
-                    <label class="block text-xs text-gray-600 mb-1 name-label">Merged file name (optional)</label>
-                    <input type="text" class="name-input w-full border rounded px-2 py-1 text-sm mb-2" placeholder="e.g. TBO_0001.pdf (only for 2+ files)" />
-                    <div class="drop flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md text-center cursor-pointer bg-white hover:bg-gray-50 transition text-sm text-gray-500 mb-2 p-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 64 64" fill="none" stroke="#5d5d5d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 48H16C9.37258 48 4 42.6274 4 36C4 29.7926 8.79161 24.6465 14.9268 24.0438C17.3056 16.5436 24.2807 11 32.5 11C42.165 11 50 18.835 50 28.5C50 29.6813 49.8904 30.8323 49.6816 31.9425C55.0597 33.3639 59 38.2443 59 44C59 50.6274 53.6274 56 47 56H44"/>
-                        <path d="M32 38V20" />
-                        <path d="M24 28L32 20L40 28" />
-                    </svg>
-                    <p class="font-medium text-gray-700 mt-1">Click or drag PDF(s) here to upload</p>
-                    <p class="text-xs text-gray-500">Multiple PDFs supported</p>
-                    </div>
-                    <input type="file" class="file hidden" accept="application/pdf" multiple />
-                    <div class="files hidden text-sm text-gray-700 border border-gray-200 rounded p-2 bg-white max-h-[160px] overflow-y-auto"></div>
-                    <p class="hint text-xs mt-2"></p>
-                </div>`;
+                    <div class="border rounded-md p-3 bg-white">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-semibold">Batch #${batchIndex+1}</span>
+                                <span class="text-xs text-gray-500"><span class="count">0</span> files</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button type="button" class="clear text-xs text-red-500 hover:text-red-600">Clear</button>
+                                <button type="button" class="remove text-xs text-gray-500 hover:text-gray-700">Remove</button>
+                            </div>
+                        </div>
+                        <label class="block text-xs text-gray-600 mb-1 name-label">Merged file name (optional)</label>
+                        <input type="text" class="name-input w-full border rounded px-2 py-1 text-sm mb-2" placeholder="e.g. TBO_0001.pdf (only for 2+ files)" />
+                        <div class="drop flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md text-center cursor-pointer bg-white hover:bg-gray-50 transition text-sm text-gray-500 mb-2 p-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 64 64" fill="none" stroke="#5d5d5d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 48H16C9.37258 48 4 42.6274 4 36C4 29.7926 8.79161 24.6465 14.9268 24.0438C17.3056 16.5436 24.2807 11 32.5 11C42.165 11 50 18.835 50 28.5C50 29.6813 49.8904 30.8323 49.6816 31.9425C55.0597 33.3639 59 38.2443 59 44C59 50.6274 53.6274 56 47 56H44"/>
+                                <path d="M32 38V20" />
+                                <path d="M24 28L32 20L40 28" />
+                            </svg>
+                            <p class="font-medium text-gray-700 mt-1">Click or drag PDF(s) here to upload</p>
+                            <p class="text-xs text-gray-500">Multiple PDFs supported</p>
+                        </div>
+                        <input type="file" class="file hidden" accept="application/pdf" multiple />
+                        <div class="files hidden text-sm text-gray-700 border border-gray-200 rounded p-2 bg-white max-h-[160px] overflow-y-auto"></div>
+                        <p class="hint text-xs mt-2"></p>
+                    </div>`;
                     const drop = slide.querySelector('.drop');
                     const fileInput = slide.querySelector('.file');
                     const filesBox = slide.querySelector('.files');
@@ -2351,9 +2350,9 @@
         dropZone.className = 'flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md text-center cursor-pointer bg-white hover:bg-gray-50 transition text-sm text-gray-500 mb-2 p-3 sm:p-4';
         dropZone.innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 64 64" fill="none" stroke="#5d5d5d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 48H16C9.37258 48 4 42.6274 4 36C4 29.7926 8.79161 24.6465 14.9268 24.0438C17.3056 16.5436 24.2807 11 32.5 11C42.165 11 50 18.835 50 28.5C50 29.6813 49.8904 30.8323 49.6816 31.9425C55.0597 33.3639 59 38.2443 59 44C59 50.6274 53.6274 56 47 56H44"/>
-            <path d="M32 38V20" />
-            <path d="M24 28L32 20L40 28" />
+                <path d="M20 48H16C9.37258 48 4 42.6274 4 36C4 29.7926 8.79161 24.6465 14.9268 24.0438C17.3056 16.5436 24.2807 11 32.5 11C42.165 11 50 18.835 50 28.5C50 29.6813 49.8904 30.8323 49.6816 31.9425C55.0597 33.3639 59 38.2443 59 44C59 50.6274 53.6274 56 47 56H44"/>
+                <path d="M32 38V20" />
+                <path d="M24 28L32 20L40 28" />
             </svg>
             <p class="font-medium text-gray-700 mt-1">Click or drag files here to upload</p>
             <p class="text-xs text-gray-500">Multiple files supported</p>

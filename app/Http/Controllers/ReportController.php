@@ -24,6 +24,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Invoice;
 use App\Models\InvoicePartial;
 use App\Models\Refund;
+use App\Http\Controllers\CoaController;
+use Illuminate\Support\Str;
 
 class ReportController extends Controller
 {
@@ -1597,9 +1599,11 @@ class ReportController extends Controller
         }
 
         $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
+        $dateField = 'issued_date'; // or 'supplier_pay_date'
+
         $summary = $this->dailySalesSummary($companyId, $date);
         $agents = $this->dailySalesAgents($companyId, $date);
-        $suppliers = $this->dailySalesSuppliers($companyId, $date);
+        $suppliers = $this->dailySalesSuppliers($date);
         $refunds = $this->dailySalesRefunds($companyId, $date);
 
         return view('reports.daily-sales', compact('summary', 'agents', 'suppliers', 'refunds', 'date'));
@@ -1731,33 +1735,262 @@ class ReportController extends Controller
         return $data;
     }
 
-    private function dailySalesSuppliers($companyId, $date)
+    private function dailySalesSuppliers(string $date): array
     {
-        $suppliers = Supplier::whereHas('companies', function ($q) use ($companyId) {
-            $q->where('companies.id', $companyId);
-        })->with([
-            'tasks' => function ($q) use ($date) {
-                $q->whereDate('created_at', $date)
-                    ->with(['invoiceDetail.invoice']);
-            },
-        ])->get();
+        Log::info('DailySuppliers: start', ['date' => $date]);
 
-        $data = [];
+        $liabilities = Account::where('name', 'Liabilities')->first();
+        if (!$liabilities) {
+            Log::warning('DailySuppliers: Liabilities root not found');
+            return [];
+        }
+        Log::info('DailySuppliers: Liabilities found', ['id' => $liabilities->id]);
 
-        foreach ($suppliers as $supplier) {
-            $tasksToday = $supplier->tasks;
-            $totalTasks = $tasksToday->count();
-            $totalTaskPrice = $tasksToday->sum('task_price');
+        $accountPayable = Account::where('root_id', $liabilities->id)
+            ->where(function ($q) {
+                $q->where('name', 'Accounts Payable')
+                ->orWhere('name', 'like', '%account%payable%')
+                ->orWhere('name', 'like', '%accounts%payable%');
+            })
+            ->first();
 
-            $invoiceIds = $tasksToday->pluck('invoiceDetail.invoice_id')->filter()->unique();
-            $invoices = $invoiceIds->isNotEmpty() ? Invoice::whereIn('id', $invoiceIds)->get() : collect();
-            $paid = $invoices->where('status', 'paid')->sum('amount');
-            $accountPayable = $totalTaskPrice - $paid;
+        if (!$accountPayable) {
+            Log::info('DailySuppliers: Accounts Payable node not found under Liabilities', [
+                'root_id' => $liabilities->id,
+            ]);
+            return [];
+        }
+        Log::info('DailySuppliers: Accounts Payable found', ['ap_id' => $accountPayable->id, 'ap_name' => $accountPayable->name]);
 
-            $data[] = compact('supplier', 'totalTasks', 'totalTaskPrice', 'paid', 'accountPayable');
+        // 3) Supplier TYPES (children of A/P that include supplier/suppliers in the name)
+        $supplierTypes = Account::where('root_id', $liabilities->id)
+            ->where('parent_id', $accountPayable->id)
+            ->where(function ($q) {
+                $q->where('name', 'like', '%supplier%')
+                ->orWhere('name', 'like', '%suppliers%');
+            })
+            ->orderBy('id')
+            ->get(['id','name','parent_id']);
+
+        Log::info('DailySuppliers: supplier types under A/P', [
+            'count' => $supplierTypes->count(),
+            'ids' => $supplierTypes->pluck('id')->take(30),
+            'names' => $supplierTypes->pluck('name')->take(30),
+        ]);
+
+        if ($supplierTypes->isEmpty()) {
+            Log::info('DailySuppliers: no supplier types found under A/P', [
+                'ap_id' => $accountPayable->id,
+                'root_id' => $liabilities->id,
+            ]);
+            return [];
         }
 
-        return $data;
+        $groups = [];
+
+        foreach ($supplierTypes as $typeNode) {
+
+            // 4a) Fetch SUPPLIERS under this type (L4)
+            $suppliers = Account::where('parent_id', $typeNode->id)
+                ->orderBy('id')
+                ->get(['id','name','parent_id']);
+
+            if ($suppliers->isEmpty()) {
+                // Some charts post straight to the type node (rare). Treat type as the only supplier.
+                $suppliers = collect([$typeNode]);
+                Log::info('DailySuppliers: type has no supplier children; will treat TYPE as supplier', [
+                    'type_id'   => $typeNode->id,
+                    'type_name' => $typeNode->name,
+                ]);
+            } else {
+                Log::info('DailySuppliers: suppliers under type', [
+                    'type_id' => $typeNode->id,
+                    'type_name' => $typeNode->name,
+                    'supplier_count' => $suppliers->count(),
+                    'supplier_ids' => $suppliers->pluck('id')->take(30),
+                    'supplier_names' => $suppliers->pluck('name')->take(30),
+                ]);
+            }
+
+            // 4b) For each supplier, get POSTING accounts (L5). If none, supplier itself is posting.
+            $leafIds = collect();               // all posting ids for this TYPE
+            $leafToSupplier = [];                      // map posting_id -> supplier_id
+            $supplierById = $suppliers->keyBy('id'); // for easy lookup later
+
+            foreach ($suppliers as $sup) {
+                $children = Account::where('parent_id', $sup->id)->get(['id','name','parent_id']);
+                $postings = $children->isNotEmpty() ? $children : collect([$sup]);
+
+                Log::info('DailySuppliers: postings for supplier', [
+                    'type_id' => $typeNode->id,
+                    'type_name' => $typeNode->name,
+                    'supplier_id' => $sup->id,
+                    'supplier_name'=> $sup->name,
+                    'posting_ids' => $postings->pluck('id')->take(50),
+                    'posting_names'=> $postings->pluck('name')->take(50),
+                    'posting_count'=> $postings->count(),
+                    'used_supplier_as_posting' => $children->isEmpty(),
+                ]);
+
+                foreach ($postings as $p) {
+                    $leafIds->push($p->id);
+                    $leafToSupplier[$p->id] = $sup->id;
+                }
+            }
+
+            $leafIds = $leafIds->unique()->values();
+            if ($leafIds->isEmpty()) {
+                Log::info('DailySuppliers: no posting ids resolved for type', [
+                    'type_id' => $typeNode->id, 'type_name' => $typeNode->name,
+                ]);
+                continue;
+            }
+
+            // 4c) Pull JE for the selected TRANSACTION DATE on those posting accounts
+            $jeToday = JournalEntry::with([
+                'account:id,name,parent_id',
+                'transaction:id,transaction_date',
+                'task:id,reference,client_id,supplier_pay_date,issued_date',
+                'task.client:id,name',
+            ])
+            ->whereIn('account_id', $leafIds)
+            ->whereDate('transaction_date', $date)
+            ->orderBy('transaction_date')
+            ->get();
+
+            Log::info('DailySuppliers: JEs for TYPE on date', [
+                'type_id' => $typeNode->id,
+                'type_name' => $typeNode->name,
+                'date' => $date,
+                'leaf_count'=> $leafIds->count(),
+                'je_count' => $jeToday->count(),
+                'je_by_account' => $jeToday->groupBy('account_id')->map->count()->toArray(),
+            ]);
+
+            if ($jeToday->isEmpty()) {
+                continue;
+            }
+
+            // 4d) Aggregate by SUPPLIER using reverse map posting_id -> supplier_id
+            $rows = [];
+            $groupTotals = [
+                'totalTasks' => 0,
+                'totalTaskPrice' => 0.0,
+                'paid' => 0.0,
+                'unpaid' => 0.0,
+            ];
+
+            // supplier_id => entries
+            $entriesBySupplier = [];
+            foreach ($jeToday as $e) {
+                $postingId  = $e->account_id;
+                $supplierId = $leafToSupplier[$postingId] ?? null;
+                if ($supplierId) {
+                    $entriesBySupplier[$supplierId][] = $e;
+                }
+            }
+
+            foreach ($entriesBySupplier as $supplierId => $entries) {
+                $supplierNode = $supplierById->get($supplierId); // L4 node (e.g., Amadeus, Wethaq Insurance)
+                if (!$supplierNode) continue;
+
+                // Split entries by posting account (so details table shows each account)
+                $byAccount = collect($entries)->groupBy('account_id');
+
+                $accountRows    = [];
+                $supplierTaskIds = [];
+                $supplierCredit = 0.0;
+                $supplierPaid = 0.0;
+
+                foreach ($byAccount as $accId => $accEntries) {
+                    $accObj = optional($accEntries->first())->account;
+                    $debit  = $accEntries->sum('debit');
+                    $credit = $accEntries->sum('credit');
+
+                    $supplierCredit += $credit;
+                    $supplierPaid += $debit;
+
+                    foreach ($accEntries as $je) {
+                        $tid = $je->task_id ?? optional($je->task)->id;
+                        if ($tid) $supplierTaskIds[$tid] = true;
+                    }
+
+                    $entryRows = [];
+                    foreach ($accEntries as $row) {
+                        $entryRows[] = [
+                            'transaction_date' => $row->transaction?->transaction_date,
+                            'supplier_pay_date' => $row->task?->supplier_pay_date ?? $row->task?->issued_date,
+                            'reference' => $row->task?->reference,
+                            'client_name' => $row->task?->client?->name,
+                            'account_name' => $accObj?->name,
+                            'debit' => $row->debit,
+                            'credit' => $row->credit,
+                            'running_balance'=> $row->balance,
+                        ];
+                    }
+
+                    $accountRows[] = [
+                        'account' => $accObj ? $accObj->only(['id','name','parent_id']) : ['id'=>$accId,'name'=>'—','parent_id'=>null],
+                        'debit' => $debit,
+                        'credit' => $credit,
+                        'entries' => $entryRows,
+                    ];
+                }
+
+                if ($supplierCredit > 0) {
+                    $totalTasks = count($supplierTaskIds);
+                    $supplierUnpaid = max(0, $supplierCredit - $supplierPaid);
+                    $rows[] = [
+                        'supplier_account_name' => $supplierNode->name, // row name = supplier (L4)
+                        'accounts' => $accountRows,        // details per posting account (L5)
+                        'creditedToday' => $supplierCredit,
+                        'totalTasks' => $totalTasks,
+                        'totalTaskPrice' => $supplierCredit,
+                        'paid' => $supplierPaid,
+                        'unpaid' => $supplierUnpaid,
+                    ];
+                    $groupTotals['totalTasks'] += $totalTasks;
+                    $groupTotals['totalTaskPrice'] += $supplierCredit;
+                    $groupTotals['paid'] += $supplierPaid;
+                    $groupTotals['unpaid'] += $supplierUnpaid;
+                }
+            }
+
+            if (!empty($rows)) {
+                $rows = collect($rows)->sortByDesc('creditedToday')->values()->all();
+                // group header = TYPE name (e.g., Suppliers (Flights))
+                $groups[$typeNode->name] = [
+                    'totals' => [
+                        'totalTasks' => $groupTotals['totalTasks'],
+                        'totalTaskPrice' => $groupTotals['totalTaskPrice'],
+                        'paid' => $groupTotals['paid'],
+                        'unpaid' => $groupTotals['unpaid'],
+                    ],
+                    'rows' => $rows,
+                ];
+
+                Log::info('DailySuppliers: group built', [
+                    'type_id' => $typeNode->id,
+                    'type_name' => $typeNode->name,
+                    'row_count' => count($rows),
+                    'total_tasks' => $groupTotals['totalTasks'],
+                    'total_task_price' => $groupTotals['totalTaskPrice'],
+                    'total_paid' => $groupTotals['paid'],
+                ]);
+            } else {
+                Log::info('DailySuppliers: no rows after supplier aggregation', [
+                    'type_id'   => $typeNode->id,
+                    'type_name' => $typeNode->name,
+                ]);
+            }
+        }
+
+        Log::info('DailySuppliers: finished', [
+            'group_count' => count($groups),
+            'group_names' => array_keys($groups),
+        ]);
+
+        return $groups;
     }
 
     private function dailySalesRefunds($companyId, $date)
@@ -1808,8 +2041,8 @@ class ReportController extends Controller
             $invoiceProfit[$invoice->id] = $invProfit;
             $profitTotal += $invProfit;
 
-            $perInvoiceRate[$invoice->id] = round($invProfit * $rate, 3);
-            $invoice->computed_profit = round($invProfit, 3);
+            $perInvoiceRate[$invoice->id] = $invProfit * $rate;
+            $invoice->computed_profit = $invProfit;
         }
 
         $commissionTotal = 0.0;
@@ -1847,7 +2080,7 @@ class ReportController extends Controller
                     foreach ($invoices as $invoice) {
                         $p = $invoiceProfit[$invoice->id];
                         $share = ($profitTotal > 0) ? ($p / $profitTotal) : 0;
-                        $invoice->computed_commission = round($ratePool * $share, 3);
+                        $invoice->computed_commission = $ratePool * $share;
                     }
                 } else {
                     $commissionTotal = 0.0;
@@ -1864,8 +2097,8 @@ class ReportController extends Controller
         }
 
         return [
-            'profit' => round($profitTotal, 3),
-            'commission' => round($commissionTotal, 3),
+            'profit' => $profitTotal,
+            'commission' => $commissionTotal,
             'per_invoice' => $perInvoiceRate,
         ];
     }

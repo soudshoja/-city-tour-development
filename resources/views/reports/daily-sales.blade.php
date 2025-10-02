@@ -52,10 +52,10 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 print:grid-cols-4">
         @php
         $cards = [
-            ['label' => 'Total Invoices', 'value' => $summary['totalInvoices'], 'suffix' => null],
-            ['label' => 'Total Invoiced', 'value' => number_format($summary['totalInvoiced'], 3), 'suffix' => 'KWD'],
-            ['label' => 'Total Paid', 'value' => number_format($summary['totalPaid'], 3), 'suffix' => 'KWD'],
-            ['label' => 'Total Profit', 'value' => number_format($summary['profit'], 3), 'suffix' => 'KWD'],
+        ['label' => 'Total Invoices', 'value' => $summary['totalInvoices'], 'suffix' => null],
+        ['label' => 'Total Invoiced', 'value' => number_format($summary['totalInvoiced'], 3), 'suffix' => 'KWD'],
+        ['label' => 'Total Paid', 'value' => number_format($summary['totalPaid'], 3), 'suffix' => 'KWD'],
+        ['label' => 'Total Profit', 'value' => number_format($summary['profit'], 3), 'suffix' => 'KWD'],
         ];
         @endphp
 
@@ -118,7 +118,7 @@
                         <th>Agent</th>
                         <th>Total Invoices</th>
                         <th>Total Invoiced (KWD)</th>
-                        <th>Total Paid (KWD)</th>
+                        <th>Paid (KWD)</th>
                         <th>Unpaid (KWD)</th>
                         <th>Profit (KWD)</th>
                         <th>Commission (KWD)</th>
@@ -199,10 +199,10 @@
                                                     <div class="font-semibold text-blue-600">
                                                         {{ number_format($invoice->computed_commission ?? 0, 3) }} KWD
                                                         @if(($row['agent']->type_id ?? null) == 3)
-                                                            <span class="text-[11px] text-gray-500">rate part</span>
+                                                        <span class="text-[11px] text-gray-500">rate part</span>
                                                         @endif
                                                         @if(($row['agent']->type_id ?? null) == 4)
-                                                            <span class="text-[11px] text-gray-500">prorated</span>
+                                                        <span class="text-[11px] text-gray-500">prorated</span>
                                                         @endif
                                                     </div>
                                                 </div>
@@ -259,40 +259,40 @@
                                                             </div>
                                                             @endif
                                                             @if($flightDetail->airport_from)
-                                                                <div><span class="font-semibold">Airport From:</span> {{ $flightDetail->airport_from }}</div>
+                                                            <div><span class="font-semibold">Airport From:</span> {{ $flightDetail->airport_from }}</div>
                                                             @endif
                                                             @if($flightDetail->terminal_from)
-                                                                <div><span class="font-semibold">Terminal From:</span> (T{{ $flightDetail->terminal_from }})</div>
+                                                            <div><span class="font-semibold">Terminal From:</span> (T{{ $flightDetail->terminal_from }})</div>
                                                             @endif
                                                             @if($flightDetail->arrival_time)
-                                                                <div><span class="font-semibold">Arrival:</span> {{ \Carbon\Carbon::parse($flightDetail->arrival_time)->format('d-m-Y H:i') }}</div>
+                                                            <div><span class="font-semibold">Arrival:</span> {{ \Carbon\Carbon::parse($flightDetail->arrival_time)->format('d-m-Y H:i') }}</div>
                                                             @endif
                                                             @if($flightDetail->airport_to)
-                                                                <div><span class="font-semibold">Airport To:</span> {{ $flightDetail->airport_to }}</div>
+                                                            <div><span class="font-semibold">Airport To:</span> {{ $flightDetail->airport_to }}</div>
                                                             @endif
                                                             @if($flightDetail->terminal_to)
-                                                                <div><span class="font-semibold">Terminal To:</span> (T{{ $flightDetail->terminal_to }})</div>
+                                                            <div><span class="font-semibold">Terminal To:</span> (T{{ $flightDetail->terminal_to }})</div>
                                                             @endif
                                                             @if($flightDetail->duration_time)
-                                                                <div><span class="font-semibold">Duration:</span> {{ $flightDetail->duration_time }}</div>
+                                                            <div><span class="font-semibold">Duration:</span> {{ $flightDetail->duration_time }}</div>
                                                             @endif
                                                             @if($flightDetail->flight_number)
-                                                                <div><span class="font-semibold">Flight No:</span> {{ $flightDetail->flight_number }}</div>
+                                                            <div><span class="font-semibold">Flight No:</span> {{ $flightDetail->flight_number }}</div>
                                                             @endif
                                                             @if($flightDetail->class_type)
-                                                                <div><span class="font-semibold">Class:</span> {{ ucfirst($flightDetail->class_type) }}</div>
+                                                            <div><span class="font-semibold">Class:</span> {{ ucfirst($flightDetail->class_type) }}</div>
                                                             @endif
                                                             @if($flightDetail->baggage_allowed)
-                                                                <div><span class="font-semibold">Baggage:</span> {{ $flightDetail->baggage_allowed }}</div>
+                                                            <div><span class="font-semibold">Baggage:</span> {{ $flightDetail->baggage_allowed }}</div>
                                                             @endif
                                                             @if($flightDetail->equipment)
-                                                                <div><span class="font-semibold">Equipment:</span> {{ $flightDetail->equipment }}</div>
+                                                            <div><span class="font-semibold">Equipment:</span> {{ $flightDetail->equipment }}</div>
                                                             @endif
                                                             @if($flightDetail->flight_meal)
-                                                                <div><span class="font-semibold">Meal:</span> {{ $flightDetail->flight_meal }}</div>
+                                                            <div><span class="font-semibold">Meal:</span> {{ $flightDetail->flight_meal }}</div>
                                                             @endif
                                                             @if($flightDetail->seat_no)
-                                                                <div><span class="font-semibold">Seat:</span> {{ $flightDetail->seat_no }}</div>
+                                                            <div><span class="font-semibold">Seat:</span> {{ $flightDetail->seat_no }}</div>
                                                             @endif
                                                         </div>
                                                     </div>
@@ -301,14 +301,14 @@
                                                 @endif
 
                                                 @php
-                                                    $hotelDetails = $detail->task->hotelDetails ?? null;
-                                                    $room = null;
-                                                    if (!empty($detail->task->hotelDetails->room_details)) {
-                                                        $decoded = json_decode($detail->task->hotelDetails->room_details, true);
-                                                        if (is_array($decoded)) {
-                                                            $room = isset($decoded[0]) ? $decoded[0] : $decoded;
-                                                        }
-                                                    }
+                                                $hotelDetails = $detail->task->hotelDetails ?? null;
+                                                $room = null;
+                                                if (!empty($detail->task->hotelDetails->room_details)) {
+                                                $decoded = json_decode($detail->task->hotelDetails->room_details, true);
+                                                if (is_array($decoded)) {
+                                                $room = isset($decoded[0]) ? $decoded[0] : $decoded;
+                                                }
+                                                }
                                                 @endphp
                                                 @if($hotelDetails)
                                                 <div class="mt-3 p-3 rounded-md bg-amber-50 dark:bg-amber-900/20">
@@ -319,17 +319,17 @@
                                                         @if($hotelDetails?->check_out)<div>Check-out: {{ $hotelDetails->check_out }}</div>@endif
                                                         @if($hotelDetails?->booking_time)<div>Booking Time: {{ $hotelDetails->booking_time }}</div>@endif
                                                         @if(!empty($room))
-                                                            @if(!empty($room['name']))<div>Room: {{ $room['name'] }}</div>@endif
-                                                            @if(!empty($room['board']))<div>Board: {{ $room['board'] }}</div>@endif
-                                                            @if(!empty($room['passengers']))
-                                                                <div>Passengers:
-                                                                    @if(is_array($room['passengers']))
-                                                                        {{ implode(', ', $room['passengers']) }}
-                                                                    @else
-                                                                        {{ $room['passengers'] }}
-                                                                    @endif
-                                                                </div>
+                                                        @if(!empty($room['name']))<div>Room: {{ $room['name'] }}</div>@endif
+                                                        @if(!empty($room['board']))<div>Board: {{ $room['board'] }}</div>@endif
+                                                        @if(!empty($room['passengers']))
+                                                        <div>Passengers:
+                                                            @if(is_array($room['passengers']))
+                                                            {{ implode(', ', $room['passengers']) }}
+                                                            @else
+                                                            {{ $room['passengers'] }}
                                                             @endif
+                                                        </div>
+                                                        @endif
                                                         @endif
                                                     </div>
                                                 </div>
@@ -342,11 +342,11 @@
                                                         @if($detail->task->visaDetails->issuing_country)<div>Issuing Country: {{ $detail->task->visaDetails->issuing_country }}</div>@endif
                                                         @if($detail->task->visaDetails->stay_duration)<div>Duration of Stay: {{ $detail->task->visaDetails->stay_duration }} days</div>@endif
                                                         @if($detail->task->visaDetails->number_of_entries)
-                                                            <div>Number of Entries: {{ $detail->task->visaDetails->number_of_entries }}</div>
+                                                        <div>Number of Entries: {{ $detail->task->visaDetails->number_of_entries }}</div>
                                                         @endif
                                                         @if($detail->task->visaDetails->expiry_date)<div>Expiry Date: {{ $detail->task->visaDetails->expiry_date }}</div>@endif
                                                         @if($detail->task->visaDetails->application_number)
-                                                            <div>Application Number: {{ $detail->task->visaDetails->application_number }}</div>
+                                                        <div>Application Number: {{ $detail->task->visaDetails->application_number }}</div>
                                                         @endif
                                                         @if($detail->task->visaDetails->visa_type)<div>Type: {{ $detail->task->visaDetails->visa_type }}</div>@endif
                                                     </div>
@@ -359,7 +359,7 @@
                                                     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-2 text-sm">
                                                         @if($detail->task->insuranceDetails->paid_leaves)<div>Paid Leaves: {{ $detail->task->insuranceDetails->paid_leaves }}</div>@endif
                                                         @if($detail->task->insuranceDetails->document_reference)
-                                                            <div>Document Reference: {{ $detail->task->insuranceDetails->document_reference }}</div>
+                                                        <div>Document Reference: {{ $detail->task->insuranceDetails->document_reference }}</div>
                                                         @endif
                                                         @if($detail->task->insuranceDetails->insurance_type)<div>Type: {{ $detail->task->insuranceDetails->insurance_type }}</div>@endif
                                                         @if($detail->task->insuranceDetails->destination)<div>Destination: {{ $detail->task->insuranceDetails->destination }}</div>@endif
@@ -414,15 +414,15 @@
                         </td>
                         <td>
                             @if($refund->original_invoice_number)
-                                <a href="{{ $refund->links['view_original'] }}" class="text-blue-500 font-medium hover:text-blue-600 hover:underline" target="_blank"
-                                    onclick="event.stopPropagation()">{{ $refund->original_invoice_number }}</a>
-                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold
+                            <a href="{{ $refund->links['view_original'] }}" class="text-blue-500 font-medium hover:text-blue-600 hover:underline" target="_blank"
+                                onclick="event.stopPropagation()">{{ $refund->original_invoice_number }}</a>
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold
                                     {{ $refund->original_invoice_status === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
                                         : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200' }}">
-                                    {{ $refund->original_invoice_status ?? 'N/A' }}
-                                </span>
+                                {{ $refund->original_invoice_status ?? 'N/A' }}
+                            </span>
                             @else
-                                <span class="text-gray-500">N/A</span>
+                            <span class="text-gray-500">N/A</span>
                             @endif
                         </td>
                         <td>{{ $refund->invoice?->client?->full_name ?? $refund->task?->client?->full_name ?? 'N/A' }}</td>
@@ -431,17 +431,17 @@
                         <td>{{ number_format($refund->total_nett_refund, 3) }}</td>
                         <td>
                             @if($refund->refund_invoice_number)
-                                <a href="{{ $refund->links['view_refund_inv'] }}" class="text-blue-500 font-medium hover:text-blue-600 hover:underline" target="_blank"
-                                    onclick="event.stopPropagation()">{{ $refund->refund_invoice_number }}</a>
-                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold
+                            <a href="{{ $refund->links['view_refund_inv'] }}" class="text-blue-500 font-medium hover:text-blue-600 hover:underline" target="_blank"
+                                onclick="event.stopPropagation()">{{ $refund->refund_invoice_number }}</a>
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold
                                     {{ $refund->original_invoice_status === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
                                         : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200' }}">
-                                    {{ ucfirst($refund->refund_invoice_status) }}
-                                </span>
+                                {{ ucfirst($refund->refund_invoice_status) }}
+                            </span>
                             @else
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200">
-                                    Not Applicable
-                                </span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200">
+                                Not Applicable
+                            </span>
                             @endif
                         </td>
                     </tr>
@@ -451,46 +451,46 @@
                                 <div class="grid gap-4 lg:grid-cols-12 text-sm">
                                     <div class="lg:col-span-3 space-y-2">
 
-                                    <div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">Method</div>
-                                        <div class="font-medium">{{ $refund->method }}</div>
-                                    </div>
-                                    <div>
-                                        <div class="text-xs text-gray-500 dark:text-gray-400">Reference</div>
-                                        <div class="font-medium">{{ $refund->reference }}</div>
-                                    </div>
+                                        <div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">Method</div>
+                                            <div class="font-medium">{{ $refund->method }}</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">Reference</div>
+                                            <div class="font-medium">{{ $refund->reference }}</div>
+                                        </div>
                                     </div>
                                     <div class="lg:col-span-5 grid sm:grid-cols-2 gap-3">
-                                    <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
-                                        <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Original Invoice Price</div>
-                                        <div class="font-semibold">{{ number_format($refund->airline_nett_fare, 3) }}</div>
-                                    </div>
-                                    <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
-                                        <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Original Task Cost</div>
-                                        <div class="font-semibold">{{ number_format($refund->task->originalTask->total, 3) }}</div>
-                                    </div>
-                                    <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
-                                        <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Original Profit</div>
-                                        <div class="font-semibold text-blue-600">{{ number_format($refund->original_task_profit, 3) }}</div>
-                                    </div>
-                                    <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
-                                        <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Refund Fee to Client</div>
-                                        <div class="font-semibold">{{ number_format($refund->service_charge, 3) }}</div>
-                                    </div>
+                                        <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
+                                            <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Original Invoice Price</div>
+                                            <div class="font-semibold">{{ number_format($refund->airline_nett_fare, 3) }}</div>
+                                        </div>
+                                        <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
+                                            <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Original Task Cost</div>
+                                            <div class="font-semibold">{{ number_format($refund->task->originalTask->total, 3) }}</div>
+                                        </div>
+                                        <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
+                                            <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Original Profit</div>
+                                            <div class="font-semibold text-blue-600">{{ number_format($refund->original_task_profit, 3) }}</div>
+                                        </div>
+                                        <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
+                                            <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Refund Fee to Client</div>
+                                            <div class="font-semibold">{{ number_format($refund->service_charge, 3) }}</div>
+                                        </div>
                                     </div>
                                     <div class="lg:col-span-4 grid sm:grid-cols-2 gap-3">
-                                    <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
-                                        <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Supplier Charge</div>
-                                        <div class="font-semibold text-rose-600">{{ number_format($refund->refund_airline_charge, 3) }}</div>
-                                    </div>
-                                    <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
-                                        <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">New Profit</div>
-                                        <div class="font-semibold text-emerald-600">{{ number_format($refund->new_task_profit, 3) }}</div>
-                                    </div>
-                                    <div class="sm:col-span-2 rounded-md border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-900/20 p-3">
-                                        <div class="text-[11px] tracking-wide uppercase text-gray-600 dark:text-gray-300">Total Refund</div>
-                                        <div class="text-lg font-bold">{{ number_format($refund->total_nett_refund, 3) }}</div>
-                                    </div>
+                                        <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
+                                            <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Supplier Charge</div>
+                                            <div class="font-semibold text-rose-600">{{ number_format($refund->refund_airline_charge, 3) }}</div>
+                                        </div>
+                                        <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
+                                            <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">New Profit</div>
+                                            <div class="font-semibold text-emerald-600">{{ number_format($refund->new_task_profit, 3) }}</div>
+                                        </div>
+                                        <div class="sm:col-span-2 rounded-md border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-900/20 p-3">
+                                            <div class="text-[11px] tracking-wide uppercase text-gray-600 dark:text-gray-300">Total Refund</div>
+                                            <div class="text-lg font-bold">{{ number_format($refund->total_nett_refund, 3) }}</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -508,32 +508,154 @@
         </div>
     </div>
 
-    <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-        <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-3">Supplier Performance</h2>
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm text-gray-900 dark:text-gray-100">
-                <thead class="bg-gray-50 dark:bg-gray-900/40 text-gray-700 dark:text-gray-200">
-                    <tr>
-                        <th class="px-3 py-2 text-left">Supplier</th>
-                        <th class="px-3 py-2 text-center">Total Tasks</th>
-                        <th class="px-3 py-2 text-right">Total Task Price</th>
-                        <th class="px-3 py-2 text-right">Paid Invoice</th>
-                        <th class="px-3 py-2 text-right">Account Payable</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200/80 dark:divide-gray-700">
-                    @foreach($suppliers as $row)
-                    <tr class="bg-white/70 dark:bg-gray-800/70">
-                        <td class="px-3 py-2 font-medium">{{ $row['supplier']->name }}</td>
-                        <td class="px-3 py-2 text-center">{{ $row['totalTasks'] }}</td>
-                        <td class="px-3 py-2 text-right">{{ number_format($row['totalTaskPrice'], 3) }}</td>
-                        <td class="px-3 py-2 text-right">{{ number_format($row['paid'], 3) }}</td>
-                        <td class="px-3 py-2 text-right">{{ number_format($row['accountPayable'], 3) }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
+    <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100">Supplier Performance</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Grouped by supplier type</p>
         </div>
+        @if(empty($groups) || collect($groups)->flatten()->isEmpty())
+        <div class="p-6 text-sm text-gray-500 dark:text-gray-400">No data for the selected date.</div>
+        @else
+        <div class="divide-y divide-gray-200/80 dark:divide-gray-700">
+            @foreach($groups as $type => $group)
+            <div x-data="{ openGroup: false }" class="bg-white/60 dark:bg-gray-800/60">
+                <button type="button" @click="openGroup = !openGroup" class="w-full flex items-center px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-900/40">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex items-center justify-center rounded-md h-6 w-6 text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-100">
+                            {{ count($group['rows'] ?? []) }}
+                        </span>
+                        <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                            {{ $type ?? 'Uncategorized' }}
+                        </span>
+                    </div>
+                    <div class="ml-auto hidden sm:flex items-center gap-6 text-right text-sm md:text-base text-gray-700 dark:text-gray-200">
+                        <div><span class="font-medium">Tasks:</span> {{ number_format($group['totals']['totalTasks'] ?? 0) }}</div>
+                        <div>
+                            <span class="font-medium">Paid:</span>
+                            <span class="text-emerald-600 dark:text-emerald-400 font-semibold">
+                                {{ number_format($group['totals']['paid'] ?? 0, 3) }}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="font-medium">Unpaid:</span>
+                            <span class="text-rose-600 dark:text-rose-400 font-semibold">
+                                {{ number_format($group['totals']['unpaid'] ?? 0, 3) }}
+                            </span>
+                        </div>
+                        <div><span class="font-medium">Supplier Cost:</span> {{ number_format($group['totals']['totalTaskPrice'] ?? 0, 3) }}</div>
+                    </div>
+                    <svg class="h-5 w-5 ml-3 text-gray-400" :class="openGroup ? 'rotate-180' : ''" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <div x-show="openGroup" x-collapse class="px-4 pb-4">
+                    <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                        <table class="min-w-full text-sm text-gray-900 dark:text-gray-100">
+                            <thead class="bg-gray-50 dark:bg-gray-900/40 text-gray-700 dark:text-gray-200">
+                                <tr class="px-3 py-2">
+                                    <th class="text-left">Supplier</th>
+                                    <!-- <th class="text-left">Account</th> -->
+                                    <th class="text-center">Total Tasks</th>
+                                    <th class="text-right">Total Task Price</th>
+                                    <th class="text-right">Paid</th>
+                                    <th class="text-right">Today Credit</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            @foreach($group['rows'] as $row)
+                            <tbody x-data="{ openSupplier: false }" class="divide-y divide-gray-200/80 dark:divide-gray-700">
+                                <tr class="bg-white/70 dark:bg-gray-800/70">
+                                    <td class="px-3 py-2 font-medium">
+                                        {{ $row['supplier']->name ?? ($row['supplier_account_name'] ?? '—') }}
+                                    </td>
+                                    <!-- <td class="px-3 py-2">{{ $row['accounts'][0]['account']['name'] ?? ($row['supplier_account_name'] ?? '—') }}</td> -->
+                                    <td class="px-3 py-2 text-center">{{ $row['totalTasks'] }}</td>
+                                    <td class="px-3 py-2 text-right">{{ number_format($row['totalTaskPrice'], 3) }}</td>
+                                    <td class="px-3 py-2 text-right">{{ number_format($row['paid'], 3) }}</td>
+                                    <td class="px-3 py-2 text-right">
+                                        <span class="@if(($row['creditedToday'] ?? 0) > 0) text-emerald-600 dark:text-emerald-400 @endif">
+                                            {{ number_format($row['creditedToday'] ?? 0, 3) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-3 py-2 text-center">
+                                        <button type="button" @click="openSupplier = !openSupplier"
+                                            class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                                            <svg class="h-4 w-4" :class="openSupplier ? 'rotate-180' : ''" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
+                                            </svg>
+                                            Details
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr x-show="openSupplier" x-collapse x-cloak class="bg-gray-50/60 dark:bg-gray-900/30">
+                                    <td colspan="6" class="px-3 py-3">
+                                        <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-md">
+                                            <table class="min-w-full text-sm leading-6">
+                                                <thead class="bg-gray-100 dark:bg-gray-900/60 text-gray-700 dark:text-gray-200 text-left">
+                                                    <tr>
+                                                        <th class="px-3 py-2">Transaction Date</th>
+                                                        <th class="px-3 py-2">Task Date</th>
+                                                        <th class="px-3 py-2">Reference</th>
+                                                        <th class="px-3 py-2">Client</th>
+                                                        <!-- <th class="px-3 py-2">Account</th> -->
+                                                        <th class="px-3 py-2">Debit</th>
+                                                        <th class="px-3 py-2">Credit</th>
+                                                        <!-- <th class="px-3 py-2">Running Balance</th> -->
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-200/80 dark:divide-gray-700">
+                                                    @forelse($row['accounts'] ?? [] as $acc)
+                                                        <tr class="bg-gray-100 dark:bg-gray-900/50">
+                                                            <td colspan="6" class="px-3 py-2 font-semibold text-base text-gray-600 dark:text-gray-200">
+                                                                Account: {{ $acc['account']['name'] ?? '—' }}
+                                                                <span class="ml-3 text-xs text-gray-600 dark:text-gray-400">
+                                                                    Credit Today: {{ number_format($acc['credit'] ?? 0, 3) }}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                        @forelse($acc['entries'] ?? [] as $entry)
+                                                            <tr class="bg-white/70 dark:bg-gray-800/70 px-3 py-2">
+                                                                <td class="px-3 py-1">
+                                                                    {{ $entry['transaction_date'] ? \Carbon\Carbon::parse($entry['transaction_date'])->format('d-m-Y') : '—' }}
+                                                                </td>
+                                                                <td class="px-3 py-1">
+                                                                    {{ $entry['supplier_pay_date'] ? \Carbon\Carbon::parse($entry['supplier_pay_date'])->format('d-m-Y') : '—' }}
+                                                                </td>
+                                                                <td class="px-3 py-1">{{ $entry['reference'] ?? '—' }}</td>
+                                                                <td class="px-3 py-1">{{ $entry['client_name'] ?? 'Not Set' }}</td>
+                                                                <!-- <td class="px-3 py-1">{{ $entry['account_name'] ?? ($acc['account']['name'] ?? '—') }}</td> -->
+                                                                <td class="px-3 py-1">{{ number_format($entry['debit'] ?? 0, 3) }}</td>
+                                                                <td class="px-3 py-1">{{ number_format($entry['credit'] ?? 0, 3) }}</td>
+                                                                <!-- <td class="px-3 py-1">{{ number_format($entry['running_balance'] ?? 0, 3) }}</td> -->
+                                                            </tr>
+                                                        @empty
+                                                            <tr>
+                                                                <td colspan="6" class="px-3 py-2 text-center text-gray-500 dark:text-gray-400">
+                                                                    No ledger entries for this account today.
+                                                                </td>
+                                                            </tr>
+                                                        @endforelse
+                                                    @empty
+                                                        <tr>
+                                                            <td colspan="6" class="px-3 py-2 text-center text-gray-500 dark:text-gray-400">
+                                                                No accounts with entries today for this supplier.
+                                                            </td>
+                                                        </tr>
+                                                    @endforelse
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            @endforeach
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @endif
     </div>
 
     <style>

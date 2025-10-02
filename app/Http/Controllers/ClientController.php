@@ -408,16 +408,17 @@ class ClientController extends Controller
                         $q->where('agent_id', $user->agent->id ?? 0);
                     })
                         ->where('client_id', $id)
-                        ->sum('amount');
+                        ->sum('amount') ?? 0;
                 } else { //Owner agent of the client
                     $payments = Payment::where('client_id', $id)
                         ->orderBy('created_at', 'desc')
                         ->get();
 
-                    $balanceCredit = Credit::getTotalCreditsByClient($client->id);
+                    $balanceCredit = Credit::getTotalCreditsByClient($client->id) ?? 0;
                 }
             } else {
                 $payments = collect();
+                $balanceCredit = 0;
             }
         }
         $agents = $agentsQuery->get();

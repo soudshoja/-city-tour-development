@@ -2262,10 +2262,6 @@
                         methodContainer.classList.add('hidden');
                         methodText.classList.remove('hidden');
                     }
-
-                    if (key === gwKey('credit')) {
-                        handleCreditPaymentSelection(i);
-                    }
                 }
 
                 const onGatewayChange = () => {

@@ -405,6 +405,7 @@ class TaskController extends Controller
             'paymentMethod',
             'visibleColumns',
             'allTypes',
+            'defaultColumns'
             // 'searchTask'
         ));
     }

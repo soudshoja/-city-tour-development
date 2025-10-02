@@ -1,6 +1,6 @@
 {
   "resources/css/app.css": {
-    "file": "assets/app-Cd_5HQQK.css",
+    "file": "assets/app-DEvvu-kJ.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -24,12 +24,6 @@
     "file": "assets/jsbyNisma-B3Pv2v3g.js",
     "name": "jsbyNisma",
     "src": "resources/js/jsbyNisma.js",
-    "isEntry": true
-  },
-  "resources/js/tasks.js": {
-    "file": "assets/tasks-D-WXrRkh.js",
-    "name": "tasks",
-    "src": "resources/js/tasks.js",
     "isEntry": true
   },
   "resources/js/tools.js": {

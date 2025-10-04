@@ -64,10 +64,11 @@ class TaskController extends Controller
         $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'info'];
 
         if ($user->role_id === Role::AGENT) {
-            $defaultColumns = array_filter($defaultColumns, fn($col) => $col !== 'agent-name');
+            $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'price', 'status', 'info'];
         }
 
         $visibleColumns = session('visible_task_columns', $defaultColumns);
+
         $sortBy = $request->query('sortBy', 'created_at');
         $sortOrder = $request->query('sortOrder', 'desc');
 

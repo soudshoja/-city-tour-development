@@ -39,6 +39,10 @@
                        class="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400 transition w-28 text-center">
                         Reset
                     </a>
+                    <button type="button" id="export-pdf-btn"
+                        class="px-4 py-2 rounded bg-red-600 text-white text-s hover:bg-red-700 flex items-center">
+                        Export PDF
+                    </button>
                 </div>
             </form>
         </div>
@@ -157,3 +161,14 @@
         </div>
     </div>
 </x-app-layout>
+<script>
+    document.getElementById('export-pdf-btn').addEventListener('click', function() {
+        const form = this.closest('form');
+        const originalAction = form.action;
+        form.action = "{{ route('journal-entries.export.pdf', ['accountId' => $accountId]) }}";        form.method = "GET";
+        form.submit();
+        setTimeout(() => {
+            form.action = originalAction;
+        }, 1000);
+    });
+</script>

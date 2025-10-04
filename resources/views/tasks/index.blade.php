@@ -3567,7 +3567,7 @@
                     if (row.value.from) params.append(`${row.column}_from`, row.value.from);
                     if (row.value.to) params.append(`${row.column}_to`, row.value.to);
                 } else {
-                    params.append(row.column, row.value);
+                    params.append(`${row.column}[]`, row.value);
                 }
             });
             resetPagination(params);
@@ -3592,7 +3592,7 @@
                 if (row.value.from) params.append(`${row.column}_from`, row.value.from);
                 if (row.value.to) params.append(`${row.column}_to`, row.value.to);
             } else {
-                params.append(row.column, row.value);
+                params.append(`${row.column}[]`, row.value);
             }
         });
         resetPagination(params);
@@ -3632,7 +3632,7 @@
             ...Array.from(params.keys())
             .filter(k => k.startsWith('status['))
             .map(k => params.get(k))
-        ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
+        ].filter((v, i, arr) => arr.indexOf(v) === i);
 
         statusValues.forEach(val => {
             filters.push({
@@ -3642,17 +3642,27 @@
             });
         });
 
-        // Handle other filters
-        for (const [key, value] of params.entries()) {
-            if (Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range' && key !== 'status' && key !== 'status[]') {
-                const col = filterConfig.columns[key];
-                filters.push({
-                    key,
-                    label: col ? col.label : key,
-                    value
+        // Handle other filters (including array filters)
+        Object.entries(filterConfig.columns).forEach(([key, col]) => {
+            if (col.type !== 'date-range' && key !== 'status') {
+                // Get all values for this key (array or single)
+                const values = [
+                    ...params.getAll(`${key}[]`),
+                    ...params.getAll(key)
+                ].filter((v, i, arr) => arr.indexOf(v) === i);
+
+                values.forEach(val => {
+                    if (val !== '') {
+                        filters.push({
+                            key,
+                            label: col.label,
+                            value: val
+                        });
+                    }
                 });
             }
-        }
+        });
+
         return filters;
     }
 
@@ -3679,6 +3689,8 @@
                 inputHtml = `
                 <input type="text" id="tasks-date-range-${idx}" class="value-input" placeholder="Select date range" style="width: 90%;" data-idx="${idx}" />
             `;
+            } else if (col.type === 'multi-text') {
+                inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter a Ref" data-idx="${idx}">`;
             }
             container.innerHTML += `
             <div class="filter-row">
@@ -3752,7 +3764,14 @@
                         }
                     });
             } else {
+                // Remove only the selected value for array filters
+                const arrKey = `${key}[]`;
+                const values = params.getAll(arrKey).length ? params.getAll(arrKey) : params.getAll(key);
+                params.delete(arrKey);
                 params.delete(key);
+                values.forEach(v => {
+                    if (v !== value) params.append(arrKey, v);
+                });
             }
             resetPagination(params);
             window.location = `{{ route('tasks.index') }}?${params.toString()}`;

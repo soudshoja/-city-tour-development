@@ -183,33 +183,57 @@ class TaskController extends Controller
 
         foreach ($filterable as $field) {
             switch ($field) {
+                case 'reference':
+                    if ($request->filled('reference')) {
+                        $references = (array) $request->input('reference');
+                        $query->where(function ($q) use ($references) {
+                            foreach ($references as $ref) {
+                                $q->orWhere('reference', 'like', '%' . $ref . '%');
+                            }
+                        });
+                    }
+                    break;
                 case 'bill-to':
                     $param = 'bill-to';
                     if ($request->filled($param)) {
-                        $query->whereHas('client', function ($q) use ($request, $param) {
-                            $q->where('first_name', 'like', '%' . $request->input($param) . '%')
-                              ->orWhere('last_name', 'like', '%' . $request->input($param) . '%')
-                              ->orWhere('phone', 'like', '%' . $request->input($param) . '%');
+                        $billTos = (array) $request->input($param);
+                        $query->whereHas('client', function ($q) use ($billTos) {
+                            foreach ($billTos as $billTo) {
+                                $q->orWhere('first_name', 'like', '%' . $billTo . '%')
+                                ->orWhere('last_name', 'like', '%' . $billTo . '%')
+                                ->orWhere('phone', 'like', '%' . $billTo . '%');
+                            }
                         });
                     }
                     break;
                 case 'passenger-name':
                     $param = 'passenger-name';
                     if ($request->filled($param)) {
-                        $query->where('passenger_name', 'like', '%' . $request->input($param) . '%');
+                        $names = (array) $request->input($param);
+                        $query->where(function ($q) use ($names) {
+                            foreach ($names as $name) {
+                                $q->orWhere('passenger_name', 'like', '%' . $name . '%');
+                            }
+                        });
                     }
                     break;
                 case 'agent_name':
                     if ($request->filled('agent_name')) {
-                        $query->whereHas('agent', function ($q) use ($request) {
-                            $q->where('name', 'like', '%' . $request->input('agent_name') . '%');
+                        $agents = (array) $request->input('agent_name');
+                        $query->whereHas('agent', function ($q) use ($agents) {
+                            foreach ($agents as $agent) {
+                                $q->orWhere('name', 'like', '%' . $agent . '%');
+                            }
                         });
                     }
                     break;
                 case 'supplier':
                     if ($request->filled('supplier')) {
-                        $query->whereHas('supplier', function ($q) use ($request) {
-                            $q->where('name', 'like', '%' . $request->input('supplier') . '%');
+                        $suppliers = (array) $request->input('supplier');
+                        $query->whereHas('supplier', function ($q) use ($suppliers) {
+                            foreach ($suppliers as $supplier) {
+                                $q->orWhere('name', 'like', '%' . $supplier . '%');
+                            }
                         });
                     }
                     break;
@@ -243,36 +267,62 @@ class TaskController extends Controller
                     break;
                 case 'amadeus-reference':
                     if ($request->filled('amadeus-reference')) {
-                        $query->where('airline_reference', 'like', '%' . $request->input('amadeus-reference') . '%');
+                        $refs = (array) $request->input('amadeus-reference');
+                        $query->where(function ($q) use ($refs) {
+                            foreach ($refs as $ref) {
+                                $q->orWhere('airline_reference', 'like', '%' . $ref . '%');
+                            }
+                        });
                     }
                     break;
                 case 'created-by':
                     if ($request->filled('created-by')) {
-                        $query->where('created_by', 'like', '%' . $request->input('created-by') . '%');
+                        $createdBys = (array) $request->input('created-by');
+                        $query->where(function ($q) use ($createdBys) {
+                            foreach ($createdBys as $createdBy) {
+                                $q->orWhere('created_by', 'like', '%' . $createdBy . '%');
+                            }
+                        });
                     }
                     break;
                 case 'issued-by':
                     if ($request->filled('issued-by')) {
-                        $query->where('issued_by', 'like', '%' . $request->input('issued-by') . '%');
+                        $issuedBys = (array) $request->input('issued-by');
+                        $query->where(function ($q) use ($issuedBys) {
+                            foreach ($issuedBys as $issuedBy) {
+                                $q->orWhere('issued_by', 'like', '%' . $issuedBy . '%');
+                            }
+                        });
                     }
                     break;
                 case 'branch-name':
                     if ($request->filled('branch-name')) {
-                        $query->whereHas('agent.branch', function ($q) use ($request) {
-                            $q->where('name', 'like', '%' . $request->input('branch-name') . '%');
+                        $branches = (array) $request->input('branch-name');
+                        $query->whereHas('agent.branch', function ($q) use ($branches) {
+                            foreach ($branches as $branch) {
+                                $q->orWhere('name', 'like', '%' . $branch . '%');
+                            }
                         });
                     }
                     break;
                 case 'invoice':
                     if ($request->filled('invoice')) {
-                        $query->whereHas('invoiceDetail', function ($q) use ($request) {
-                            $q->where('invoice_number', 'like', '%' . $request->input('invoice') . '%');
+                        $invoices = (array) $request->input('invoice');
+                        $query->whereHas('invoiceDetail', function ($q) use ($invoices) {
+                            foreach ($invoices as $invoice) {
+                                $q->orWhere('invoice_number', 'like', '%' . $invoice . '%');
+                            }
                         });
                     }
                     break;
                 default:
                     if ($request->filled($field)) {
-                        $query->where($field, 'like', '%' . $request->input($field) . '%');
+                        $values = (array) $request->input($field);
+                        $query->where(function ($q) use ($field, $values) {
+                            foreach ($values as $value) {
+                                $q->orWhere($field, 'like', '%' . $value . '%');
+                            }
+                        });
                     }
             }
         }

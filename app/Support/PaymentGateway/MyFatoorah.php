@@ -5,17 +5,25 @@ namespace App\Support\PaymentGateway;
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
+use App\Models\User;
+use App\Models\Role;
+use App\Models\Company;
+use App\Models\Agent;
+use App\Models\Accountant;
 use App\Services\GatewayConfigService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class MyFatoorah
 {
     use HttpRequestTrait;
 
     public function createCharge(Request $request)
-    {
+    {   
+        $auth = Auth::user();
+
         $request->validate([
             'final_amount' => 'required|numeric|min:1',
             'client_name' => 'required|string|max:255',
@@ -69,11 +77,28 @@ class MyFatoorah
             'invoice_partial_id' => array_values($request->input('invoice_partial_id', [])),
         ]);
 
+        $companyId = null;
+
+        if ($auth->role_id == Role::COMPANY) {
+            $companyId = Company::where('user_id', $auth->id)->value('id');
+        } elseif ($auth->role_id == Role::AGENT) {
+            $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
+            $companyId = $agent->branch->company->id;
+        } elseif ($auth->role_id == Role::ACCOUNTANT) {
+            $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
+            $companyId = $accountant->branch->company->id;
+        } else {
+            $companyId = Company::value('id');
+        }
+
+        $company = $companyId ? Company::find($companyId) : null;
+        $companyEmail = $company?->email ?? 'admin@citytravelers.co';
+
         $executePayload = [
             "PaymentMethodId"     => $paymentMethod->myfatoorah_id,
             "InvoiceValue"        => $request->input('final_amount'),
             "CustomerName"        => $customerName,
-            "CustomerEmail"       => 'shoja@citytravelers.co',
+            "CustomerEmail"       => $companyEmail,
             "MobileCountryCode"   => $client->country_code ?? '+965',
             "CustomerMobile"      => $clientPhone,
             "DisplayCurrencyIso"  => "KWD",

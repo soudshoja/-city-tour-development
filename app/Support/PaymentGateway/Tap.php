@@ -6,13 +6,19 @@ use App\Http\Traits\HttpRequestTrait;
 use App\Models\Payment;
 use App\Services\GatewayConfigService;
 use Illuminate\Http\Request;
+use App\Models\User;
+use App\Models\Role;
+use App\Models\Company;
+use App\Models\Agent;
+use App\Models\Accountant;
+use Illuminate\Support\Facades\Auth;
 
 class Tap
 {
     use HttpRequestTrait;
 
     public function createCharge(Request $request)
-    {
+    { 
         $request->validate([
             'finalAmount' => 'required|numeric|min:1',
             'client_name' => 'required|string|max:255',
@@ -27,6 +33,25 @@ class Tap
             'process' => 'nullable|string',
         ]);
 
+        $auth = Auth::user();
+
+        $companyId = null;
+
+        if ($auth->role_id == Role::COMPANY) {
+            $companyId = Company::where('user_id', $auth->id)->value('id');
+        } elseif ($auth->role_id == Role::AGENT) {
+            $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
+            $companyId = $agent->branch->company->id;
+        } elseif ($auth->role_id == Role::ACCOUNTANT) {
+            $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
+            $companyId = $accountant->branch->company->id;
+        } else {
+            $companyId = Company::value('id');
+        }
+
+        $company = $companyId ? Company::find($companyId) : null;
+        $companyEmail = $company?->email ?? 'admin@citytravelers.co';
+        
         $isPaymentLink  = trim($request->input('voucher_number', ''));
 
         $data = [
@@ -35,7 +60,7 @@ class Tap
             'save_card' => false,
             'customer' => [
                 'first_name' => $request->input('client_name'),
-                'email' => $request->input('client_email') ?? 'link@citycommerce.group',
+                'email' => $request->input('client_email') ?? $companyEmail,
             ],
             'source' => [
                 'id' => 'src_all',

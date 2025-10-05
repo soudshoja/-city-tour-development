@@ -4,11 +4,17 @@ namespace App\Support\PaymentGateway;
 
 use App\Http\Traits\HttpRequestTrait;
 use App\Models\Payment;
+use App\Models\Company;
+use App\Models\Agent;
+use App\Models\Accountant;
+use App\Models\User;
+use App\Models\Role;
 use App\Services\GatewayConfigService;
 use App\Services\HesabeCrypt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class Hesabe 
 {
@@ -28,7 +34,8 @@ class Hesabe
             'invoice_partial_id' => 'nullable|array',
             'client_phone' => 'nullable|string|max:20',
         ]);
-
+         
+        $auth = Auth::user();
         $configService = new GatewayConfigService();
         $hesabeConfig = $configService->getHesabeConfig();
 
@@ -64,6 +71,23 @@ class Hesabe
             $clientPhone = ltrim($clientPhone, '0');
         }
 
+        $companyId = null;
+
+        if ($auth->role_id == Role::COMPANY) {
+            $companyId = Company::where('user_id', $auth->id)->value('id');
+        } elseif ($auth->role_id == Role::AGENT) {
+            $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
+            $companyId = $agent->branch->company->id;
+        } elseif ($auth->role_id == Role::ACCOUNTANT) {
+            $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
+            $companyId = $accountant->branch->company->id;
+        } else {
+            $companyId = Company::value('id');
+        }
+
+        $company = $companyId ? Company::find($companyId) : null;
+        $companyEmail = $company?->email ?? 'admin@citytravelers.co';
+
         $requestData = [
             'amount'        => $request->final_amount,
             'currency'      => 'KWD',
@@ -72,7 +96,7 @@ class Hesabe
             'orderReferenceNumber' => $orderReference,
             'name' => $request->client_name,
             'mobile_number' => $clientPhone,
-            'email' => 'shoja@citytravelers.co',
+            'email' => $companyEmail,
             /* 'saveCard' => 'boolean',
             'cardId' => 'required|string',
             'authorize' => 'boolean', */            

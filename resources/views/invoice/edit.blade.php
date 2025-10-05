@@ -2113,7 +2113,7 @@
                                 <select id="payment_gateway_${i}" name="payment_gateway_${i}" class="w-full border border-gray-300 p-2 rounded">
                                     <option value="Credit" id="credit_option_${i}" disabled>Credit (0.00)</option>
                                     <option value="Cash">Cash</option>
-                                    @foreach ($paymentGateways as $gateway)
+                                    @foreach ($invoiceGateways as $gateway)
                                         <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
                                     @endforeach
                                 </select>
@@ -2226,7 +2226,7 @@
                             <option value="" selected>Select payment gateway</option>
                             <option value="Credit" id="credit_option1_${i}">Credit (${creditRemaining.toFixed(2)})</option>
                             <option value="Cash">Cash</option>
-                            @foreach ($paymentGateways as $gateway)
+                            @foreach ($invoiceGateways as $gateway)
                                 <option value="{{ $gateway->name }}">{{ $gateway->name }}</option>
                             @endforeach
                         </select>
@@ -2261,10 +2261,6 @@
                     } else {
                         methodContainer.classList.add('hidden');
                         methodText.classList.remove('hidden');
-                    }
-
-                    if (key === gwKey('credit')) {
-                        handleCreditPaymentSelection(i);
                     }
                 }
 

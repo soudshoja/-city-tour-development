@@ -1757,7 +1757,7 @@ class PaymentController extends Controller
             return $payment;
         });
 
-        $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
+        $paymentGateways = Charge::where('can_generate_link', true)
             ->where('is_active', true)->get();
         $paymentMethods = PaymentMethod::where('is_active', true)->get();
 
@@ -1833,8 +1833,7 @@ class PaymentController extends Controller
         $invoices = Invoice::all();
         $payments = Payment::all();
         $currencies = Currency::all();
-        $paymentGateways = Charge::where('type', ChargeType::PAYMENT_GATEWAY)
-            ->where('company_id', $companyId)
+        $paymentGateways = Charge::where('can_generate_link', true)
             ->where('is_active', true)->get();
 
         $myFatoorahMethods = PaymentMethod::where('is_active', true)
@@ -2856,7 +2855,6 @@ class PaymentController extends Controller
         }
 
         try {
-            $payment->amount = $finalPaidAmount;
             $payment->service_charge = $serviceFeePaid;
             $payment->status = 'completed';
             $payment->completed = 1;
@@ -3046,7 +3044,6 @@ class PaymentController extends Controller
                 $finalPaidAmount = $statusData['Data']['InvoiceValue'];
 
                 $payment->status = 'completed';
-                $payment->amount = $finalPaidAmount;
                 $payment->save();
 
                 $transaction = $statusData['Data']['InvoiceTransactions'][0] ?? [];
@@ -3615,7 +3612,6 @@ class PaymentController extends Controller
             DB::transaction(function () use ($payment, $process, $totalPaidAmount, $trackId, $statusResponse, $transaction, $selectedPartialIds) {
                 // Mark payment as completed
                 $payment->status = 'completed';
-                $payment->amount = $totalPaidAmount;
                 $payment->completed = 1;
                 $payment->save();
 

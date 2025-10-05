@@ -26,7 +26,7 @@ class RefundClientPolicy
     public function delete(User $user, RefundClient $refundClient): bool
     {
         if ($user->role_id == Role::AGENT) {
-            return $refundClient->agent == $user->agent->id;
+            return $refundClient->agent->id == $user->agent->id;
         }
 
         return $user->role_id == Role::ADMIN

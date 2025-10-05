@@ -328,6 +328,7 @@ Route::middleware(['auth'])->group(function () {
     ], function () {
         Route::get('/{transactionId}', [JournalEntryController::class, 'index'])->name('index');
         Route::get('/{accountId}/account', [JournalEntryController::class, 'show'])->name('show');
+        Route::get('/{accountId}/export/pdf', [JournalEntryController::class, 'exportPdf'])->name('export.pdf');
     });
 
     Route::group([

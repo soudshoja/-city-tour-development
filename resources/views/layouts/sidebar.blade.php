@@ -54,6 +54,7 @@
             </div>
             @endcan
 
+            @can('create', App\Models\Invoice::class)
             <div class="flex flex-col items-center ">
                 <a
                     href="{{ route('invoices.create') }}">
@@ -71,6 +72,7 @@
                     </div>
                 </a>
             </div>
+            @endcan
 
             <div class="flex flex-col items-center"
                 x-data="currencyConverter({ companyId: window.APP_COMPANY_ID, convertUrl: '{{ route('exchange.convert') }}'})">

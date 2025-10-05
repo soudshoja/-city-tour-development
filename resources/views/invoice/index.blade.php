@@ -37,6 +37,7 @@
             </div>
 
             <!-- add new invoice -->
+            @can('create', App\Models\Invoice::class)
             <a href="{{ route('invoices.create') }}">
                 <div data-tooltip-left="Create new Invoice"
                     class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm">
@@ -46,6 +47,7 @@
                     </svg>
                 </div>
             </a>
+            @endcan
         </div>
     </div>
 
@@ -440,20 +442,32 @@
                                     </td>
 
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        <a href="{{ route('invoice.details', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
-                                            class="text-sm font-medium text-blue-600 hover:underline" target="_blank"> {{ $invoice->invoice_number }}
-                                        </a>
+                                        @if (auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::COMPANY, \App\Models\Role::ACCOUNTANT]))
+                                            <a href="{{ route('invoice.details', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                                class="text-sm font-medium text-blue-600 hover:underline" target="_blank"> {{ $invoice->invoice_number }}
+                                            </a>
+                                        @else
+                                            {{ $invoice->invoice_number }}
+                                        @endif
                                     </td>
 
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        <a href="{{ route('agents.show', $invoice->agent->id) }}" class="text-sm font-medium text-blue-600 hover:underline" target="_blank">
+                                        @if (auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::COMPANY, \App\Models\Role::AGENT]))
+                                            <a href="{{ route('agents.show', $invoice->agent->id) }}" class="text-sm font-medium text-blue-600 hover:underline" target="_blank">
+                                                {{ $invoice->agent->name }}
+                                            </a>
+                                        @else
                                             {{ $invoice->agent->name }}
-                                        </a>
+                                        @endif
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        <a href="{{ route('clients.show',  $invoice->client->id) }}" class="text-sm font-medium text-blue-600 hover:underline" target="_blank">
+                                        @if (auth()->check() && in_array(auth()->user()->role_id, [\App\Models\Role::COMPANY, \App\Models\Role::AGENT]))
+                                            <a href="{{ route('clients.show', $invoice->client->id) }}" class="text-sm font-medium text-blue-600 hover:underline" target="_blank">
+                                                {{ $invoice->client->full_name }}
+                                            </a>
+                                        @else
                                             {{ $invoice->client->full_name }}
-                                        </a>
+                                        @endif
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         @if ($invoice->refund)
@@ -474,10 +488,10 @@
                                         {{ $invoice->payment_type ? ucwords($invoice->payment_type) : 'N/A' }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        {{ number_format($invoice->invoicedetails->sum('supplier_price'), 2) }} {{ $invoice->currency }}
+                                        {{ number_format($invoice->invoicedetails->sum('supplier_price'), 3) }} {{ $invoice->currency }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        {{ number_format($invoice->invoicedetails->sum('markup_price'), 2) }} {{ $invoice->currency }}
+                                        {{ number_format($invoice->invoicedetails->sum('markup_price'), 3) }} {{ $invoice->currency }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         @if ($invoice->status === 'paid' && !$invoice->refund && ($invoice->payment_type === 'full' || $invoice->payment_type === 'cash'))
@@ -486,7 +500,7 @@
                                             {{ $invoice->amount }} {{ $invoice->currency }}
                                         </button>
                                         @else
-                                        {{ $invoice->amount }} {{ $invoice->currency }}
+                                            {{ number_format($invoice->amount, 3) }} {{ $invoice->currency }}
                                         @endif
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">

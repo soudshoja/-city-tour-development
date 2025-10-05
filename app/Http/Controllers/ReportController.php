@@ -1607,7 +1607,6 @@ class ReportController extends Controller
         }
 
         $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
-        $dateField = 'issued_date'; // or 'supplier_pay_date'
 
         $summary = $this->dailySalesSummary($companyId, $date);
         $agents = $this->dailySalesAgents($companyId, $date);
@@ -1628,15 +1627,17 @@ class ReportController extends Controller
         $totalInvoiced = $invoices->sum('amount');
 
         $partialsToday = InvoicePartial::query()
-            ->whereDate('invoice_partials.created_at', $date)
-            ->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId));
+            ->whereHas('invoice', function ($q) use ($companyId, $date) {
+                $q->whereDate('invoice_date', $date)
+                    ->whereHas('agent.branch.company', fn($q2) => $q2->where('id', $companyId));
+            });
 
         $totalPaid = (clone $partialsToday)->sum('invoice_partials.amount');
         $cashSum = (clone $partialsToday)->where('invoice_partials.payment_gateway', 'cash')->sum('invoice_partials.amount');
         $creditSum = (clone $partialsToday)->where('invoice_partials.payment_gateway', 'credit')->sum('invoice_partials.amount');
         $gatewaySum = (clone $partialsToday)->whereNotIn('invoice_partials.payment_gateway', ['cash', 'credit'])->sum('invoice_partials.amount');
 
-        $refunds = Refund::whereDate('created_at', $date)
+        $refunds = Refund::whereDate('date', $date)
             ->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId))
             ->sum('total_nett_refund');
 
@@ -1724,7 +1725,7 @@ class ReportController extends Controller
 
             $topupCollected = Payment::whereNull('invoice_id')
                 ->where('agent_id', $agent->id)
-                ->whereDate('created_at', $date)
+                ->whereDate('payment_date', $date)
                 ->sum('amount');
 
             $data[] = [
@@ -1757,8 +1758,7 @@ class ReportController extends Controller
         $accountPayable = Account::where('root_id', $liabilities->id)
             ->where(function ($q) {
                 $q->where('name', 'Accounts Payable')
-                ->orWhere('name', 'like', '%account%payable%')
-                ->orWhere('name', 'like', '%accounts%payable%');
+                    ->whereRaw("LOWER(name) LIKE '%accounts payable%'");
             })
             ->first();
 
@@ -1775,10 +1775,10 @@ class ReportController extends Controller
             ->where('parent_id', $accountPayable->id)
             ->where(function ($q) {
                 $q->where('name', 'like', '%supplier%')
-                ->orWhere('name', 'like', '%suppliers%');
+                    ->orWhere('name', 'like', '%suppliers%');
             })
             ->orderBy('id')
-            ->get(['id','name','parent_id']);
+            ->get(['id', 'name', 'parent_id']);
 
         Log::info('DailySuppliers: supplier types under A/P', [
             'count' => $supplierTypes->count(),
@@ -1801,7 +1801,7 @@ class ReportController extends Controller
             // 4a) Fetch SUPPLIERS under this type (L4)
             $suppliers = Account::where('parent_id', $typeNode->id)
                 ->orderBy('id')
-                ->get(['id','name','parent_id']);
+                ->get(['id', 'name', 'parent_id']);
 
             if ($suppliers->isEmpty()) {
                 // Some charts post straight to the type node (rare). Treat type as the only supplier.
@@ -1826,17 +1826,17 @@ class ReportController extends Controller
             $supplierById = $suppliers->keyBy('id'); // for easy lookup later
 
             foreach ($suppliers as $sup) {
-                $children = Account::where('parent_id', $sup->id)->get(['id','name','parent_id']);
+                $children = Account::where('parent_id', $sup->id)->get(['id', 'name', 'parent_id']);
                 $postings = $children->isNotEmpty() ? $children : collect([$sup]);
 
                 Log::info('DailySuppliers: postings for supplier', [
                     'type_id' => $typeNode->id,
                     'type_name' => $typeNode->name,
                     'supplier_id' => $sup->id,
-                    'supplier_name'=> $sup->name,
+                    'supplier_name' => $sup->name,
                     'posting_ids' => $postings->pluck('id')->take(50),
-                    'posting_names'=> $postings->pluck('name')->take(50),
-                    'posting_count'=> $postings->count(),
+                    'posting_names' => $postings->pluck('name')->take(50),
+                    'posting_count' => $postings->count(),
                     'used_supplier_as_posting' => $children->isEmpty(),
                 ]);
 
@@ -1849,7 +1849,8 @@ class ReportController extends Controller
             $leafIds = $leafIds->unique()->values();
             if ($leafIds->isEmpty()) {
                 Log::info('DailySuppliers: no posting ids resolved for type', [
-                    'type_id' => $typeNode->id, 'type_name' => $typeNode->name,
+                    'type_id' => $typeNode->id,
+                    'type_name' => $typeNode->name,
                 ]);
                 continue;
             }
@@ -1861,16 +1862,16 @@ class ReportController extends Controller
                 'task:id,reference,client_id,supplier_pay_date,issued_date',
                 'task.client:id,name',
             ])
-            ->whereIn('account_id', $leafIds)
-            ->whereDate('transaction_date', $date)
-            ->orderBy('transaction_date')
-            ->get();
+                ->whereIn('account_id', $leafIds)
+                ->whereDate('transaction_date', $date)
+                ->orderBy('transaction_date')
+                ->get();
 
             Log::info('DailySuppliers: JEs for TYPE on date', [
                 'type_id' => $typeNode->id,
                 'type_name' => $typeNode->name,
                 'date' => $date,
-                'leaf_count'=> $leafIds->count(),
+                'leaf_count' => $leafIds->count(),
                 'je_count' => $jeToday->count(),
                 'je_by_account' => $jeToday->groupBy('account_id')->map->count()->toArray(),
             ]);
@@ -1933,12 +1934,12 @@ class ReportController extends Controller
                             'account_name' => $accObj?->name,
                             'debit' => $row->debit,
                             'credit' => $row->credit,
-                            'running_balance'=> $row->balance,
+                            'running_balance' => $row->balance,
                         ];
                     }
 
                     $accountRows[] = [
-                        'account' => $accObj ? $accObj->only(['id','name','parent_id']) : ['id'=>$accId,'name'=>'—','parent_id'=>null],
+                        'account' => $accObj ? $accObj->only(['id', 'name', 'parent_id']) : ['id' => $accId, 'name' => '—', 'parent_id' => null],
                         'debit' => $debit,
                         'credit' => $credit,
                         'entries' => $entryRows,
@@ -2009,7 +2010,7 @@ class ReportController extends Controller
             'task.agent.branch.company',
             'task.originalTask.invoiceDetail.invoice',
         ])
-            ->whereDate('created_at', $date)
+            ->whereDate('date', $date)
             ->where(function ($q) use ($companyId) {
                 $q->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId))
                     ->orWhereHas('task.agent.branch.company', fn($q) => $q->where('id', $companyId));

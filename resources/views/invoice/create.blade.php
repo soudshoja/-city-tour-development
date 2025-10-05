@@ -1605,7 +1605,6 @@
 
         // Generate invoice
         async function generateInvoice() {
-
             isSaving = true;
             updateButtonState();
 
@@ -1626,16 +1625,19 @@
             const invdate = invdateElement ? invdateElement.value : null;
             const duedate = duedateElement ? duedateElement.value : null;
             const subTotal = subTotalElement ? subTotalElement.value : null;
-            const clientId = clientIdElement ? clientIdElement.value : null;
+            const firstTask = (Array.isArray(items) && items.length) ? items[0] : null;
+            let clientId = clientIdElement?.value || firstTask?.client_id || firstTask?.client?.id || null;
+            if (clientIdElement && !clientIdElement.value && clientId) clientIdElement.value = clientId;
             const agentId = agentIdElement ? agentIdElement.value : null;
             const selectedBranchValue = selectedBranch ? selectedBranch.value : null;
             const tasks = items;
+
+            console.log('DEBUG -> clientId:', clientId, 'agentId:', agentId, 'items_count:', Array.isArray(items) ? items.length : 0);
 
             buttonText.style.display = "none";
             buttonLoading.style.display = "inline";
 
             let errorMessages = [];
-
             const companyId = "{{ auth()->user()->company_id ?? auth()->user()->branch->company_id ?? auth()->user()->agent->branch->company_id }}";
 
             // Validate all inputs and add specific messages

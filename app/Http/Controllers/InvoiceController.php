@@ -414,7 +414,7 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
-        if ($invoice->status === 'paid') return redirect()->route('invoices.index')->with(['success' => 'Invoice Paid']);
+        if ($invoice->status === 'paid') return redirect()->route('invoices.index')->with(['success' => 'Invoice paid successfully!']);
 
         if ($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
 

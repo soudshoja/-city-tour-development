@@ -1568,6 +1568,7 @@ class ReportController extends Controller
 
     public function dailySalesPdfDownload(Request $request)
     {
+        $user = Auth::user();
         if (Auth::user()->role->id == Role::COMPANY) {
             $companyId = Auth::user()->company->id;
         } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
@@ -1580,7 +1581,14 @@ class ReportController extends Controller
         $suppliers = $this->dailySalesSuppliers($date);
         $refunds = $this->dailySalesRefunds($companyId, $date);
 
-        $pdf = Pdf::loadView('reports.pdf.daily-sales', compact('summary', 'agents', 'suppliers', 'refunds', 'date'))
+        $pdf = Pdf::loadView('reports.pdf.daily-sales', [
+            'date' => $date,
+            'summary' => $summary,
+            'agents' => $agents,
+            'suppliers' => $suppliers,
+            'refunds' => $refunds,
+            'company' => $user->company,
+        ])
             ->setPaper('a4', 'portrait')
             ->setOptions(['defaultFont' => 'sans-serif']);
 

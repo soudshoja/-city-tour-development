@@ -416,7 +416,7 @@ class InvoiceController extends Controller
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
-        if ($invoice->status === 'paid') return redirect()->route('invoices.index')->with(['success' => 'Invoice Paid']);
+        if ($invoice->status === 'paid') return redirect()->route('invoices.index')->with(['success' => 'Invoice paid successfully!']);
 
         if ($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
 
@@ -444,8 +444,9 @@ class InvoiceController extends Controller
         $selectedAgent = $invoice->agent;
         $selectedClient = $invoice->client;
 
-        $paymentGateways = Charge::where('company_id', $invoice->agent->branch->company_id)
-            ->where('is_active', true)
+        $paymentGateways = Charge::where('is_active', true)->get();
+        $invoiceGateways = Charge::where('is_active', true)
+            ->where('can_generate_link', true)
             ->get();
         $invoiceCharges = Charge::where('company_id', $invoice->agent->branch->company_id)
             ->where('is_active', true)
@@ -565,6 +566,7 @@ class InvoiceController extends Controller
             'selectedAgent',
             'selectedClient',
             'paymentGateways',
+            'invoiceGateways',
             'invoiceCharges',
             'paymentMethods',
             'invoiceDate',

@@ -44,6 +44,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Models\Invoice;
 use App\Models\Account;
+use App\Models\Accountant;
 use App\Models\Branch;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
@@ -80,10 +81,10 @@ class PaymentController extends Controller
     }
 
     public function create($companyId, $invoiceNumber, Request $request)
-    {
+    {   
         $request->validate([
             'client_name' => 'required|string|max:255',
-            'client_email' => 'required|email',
+            'client_email' => 'nullable|email',
             'client_phone' => 'required|string|max:15',
             'total_amount' => 'required|numeric',
             'payment_gateway' => 'required|string',
@@ -92,6 +93,8 @@ class PaymentController extends Controller
         ]);
        
         Log::info('Received payment request', $request->all());
+
+        $auth = Auth::user();
 
         $invoice = Invoice::with(['agent.branch', 'client'])
             ->where('invoice_number', $invoiceNumber)
@@ -108,11 +111,28 @@ class PaymentController extends Controller
 
         $client = $invoice->client;
 
+        $companyId = null;
+
+        if ($auth->role_id == Role::COMPANY) {
+            $companyId = Company::where('user_id', $auth->id)->value('id');
+        } elseif ($auth->role_id == Role::AGENT) {
+            $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
+            $companyId = $agent->branch->company->id;
+        } elseif ($auth->role_id == Role::ACCOUNTANT) {
+            $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
+            $companyId = $accountant->branch->company->id;
+        } else {
+            $companyId = Company::value('id');
+        }
+
+        $company = $companyId ? Company::find($companyId) : null;
+        $companyEmail = $company?->email ?? 'admin@citytravelers.co';
+
         $data = [
             'invoice' => $invoice,
             'client_id' => $client->id,
             'client_name' => $client->full_name,
-            'client_email' => $client->email,
+            'client_email' => $companyEmail,
             'client_phone' => $client->phone,
             'total_amount' => $request->total_amount,
             'payment_gateway' => $request->payment_gateway,
@@ -1915,6 +1935,9 @@ class PaymentController extends Controller
             $companyId = $user->agent->branch->company->id;
         }
 
+        $company = $companyId ? Company::find($companyId) : null;
+        $companyEmail = $company?->email ?? 'admin@citytravelers.co';
+
         $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
         $client = Client::find($request->client_id);
         $agent = Agent::find($request->agent_id);
@@ -1974,7 +1997,7 @@ class PaymentController extends Controller
         return [
             'status' => 'success',
             'message' => 'Payment Link Created',
-            'clientEmail' => $client->email,
+            'clientEmail' => $companyEmail,
             'data' => $payment
         ];
     }
@@ -2114,6 +2137,8 @@ class PaymentController extends Controller
         $request->validate([
             'payment_id' => 'required|exists:payments,id',
         ]);
+        
+        $auth = Auth::user();
 
         $payment = Payment::with('invoice')->find($request->payment_id);
 
@@ -2218,12 +2243,29 @@ class PaymentController extends Controller
             $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
 
             $finalAmount = $chargeResult['finalAmount'];
+            
+            $companyId = null;
+
+            if ($auth->role_id == Role::COMPANY) {
+                $companyId = Company::where('user_id', $auth->id)->value('id');
+            } elseif ($auth->role_id == Role::AGENT) {
+                $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
+                $companyId = $agent->branch->company->id;
+            } elseif ($auth->role_id == Role::ACCOUNTANT) {
+                $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
+                $companyId = $accountant->branch->company->id;
+            } else {
+                $companyId = Company::value('id');
+            }
+
+            $company = $companyId ? Company::find($companyId) : null;
+            $companyEmail = $company?->email ?? 'admin@citytravelers.co';
 
             $executePayload = [
                 "PaymentMethodId"     => $paymentMethod,
                 "InvoiceValue"        => $finalAmount,
                 "CustomerName"       => $customerName ?? 'Customer',
-                "CustomerEmail"       => 'shoja@citytravelers.co',
+                "CustomerEmail"       => $companyEmail,
                 "MobileCountryCode"   => $client->country_code ?? '+965',
                 "CustomerMobile"      => $clientPhone ?? '50000000',
                 "DisplayCurrencyIso"  => $payment->currency ?? 'KWD',
@@ -2530,6 +2572,24 @@ class PaymentController extends Controller
         $configService = new GatewayConfigService();
         $config = $configService->getMyFatoorahConfig();
 
+        $auth = Auth::user();
+        $companyId = null;
+
+        if ($auth->role_id == Role::COMPANY) {
+            $companyId = Company::where('user_id', $auth->id)->value('id');
+        } elseif ($auth->role_id == Role::AGENT) {
+            $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
+            $companyId = $agent->branch->company->id;
+        } elseif ($auth->role_id == Role::ACCOUNTANT) {
+            $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
+            $companyId = $accountant->branch->company->id;
+        } else {
+            $companyId = Company::value('id');
+        }
+
+        $company = $companyId ? Company::find($companyId) : null;
+        $companyEmail = $company?->email ?? 'admin@citytravelers.co';
+
         if(!$config['status'] || !$config['data']) {
             return redirect()->back()->with('error', $config['message'] ?? 'MyFatoorah config missing or inactive.');
         }
@@ -2545,7 +2605,7 @@ class PaymentController extends Controller
             "PaymentMethodId"     => $payment->paymentMethod?->myfatoorah_id,
             "InvoiceValue"        => $finalAmount,
             "CustomerName"        => $client->full_name,
-            "CustomerEmail"       => $client->email ?? 'email@example.com',
+            "CustomerEmail"       => $companyEmail,
             "MobileCountryCode"   => $client->country_code ?? '+965',
             "CustomerMobile"      => $clientPhone,
             "DisplayCurrencyIso"  => $payment->currency ?? 'KWD',

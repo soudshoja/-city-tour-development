@@ -926,6 +926,18 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Salam Air):\n";
         $prompt .= "  • Set the reference, ticket_number using the 'Booking Reference'.\n";
         $prompt .= "  • Set the terminal_from and terminal_to using the numeric value that found under the text Departure and Arrival. Respectively, terminal_from will using the value under the Departure and terminal_to will use the value under the Arrival. If none, only then make it null.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Wizz Air):\n";
+        $prompt .= "  • Create ONE task per passenger listed in the Passenger info table (top-to-bottom order = task order).\n";
+        $prompt .= "  • Set baggage_allowed = value from the “Checked-in bag” column for that passenger (e.g., '1/32kg'). Put value from the “Cabin baggage” in additional_info\n";
+        $prompt .= "  • PRICE MAPPING (per passenger): under 'Payment summary' there are multiple 'Fare price' lines. Map the FIRST 'Fare price' to the FIRST passenger task, the SECOND to the SECOND passenger task, etc. Store these as original_price (currency as shown). Do NOT sum them; do NOT use the page 'Grand total' as a task total.\n";
+        $prompt .= "  • SURCHARGE/TAX SPLIT: 'Administration fee' and 'Plus Fare fee' are booking-level surcharges. If they appear once for the whole booking, split them EQUALLY across all passenger tasks and store in tasks.original_surcharge (and tasks.surcharge = 0 when no KWD). If explicit per-passenger allocation is shown, use that instead. If any Tax/VAT lines exist, split them the same way across tasks and store in tasks.original_tax (not surcharge).\n";
+        $prompt .= "  • PER-PASSENGER TOTAL: For each passenger task, compute original_total = original_price + original_surcharge + original_tax.\n";
+        $prompt .= "  • CURRENCY RULES: Wizz docs are usually in non-KWD (e.g., BAM/USD). When no KWD is shown: set price/tax/surcharge/total = 0.0; fill original_price/original_tax/original_surcharge/original_total + original_currency; set exchange_currency = 'KWD'; is_exchanged = false. If both KWD and a foreign currency exist, put KWD amounts into price/tax/surcharge/total and foreign amounts into the original_* fields.\n";
+        $prompt .= "  • PAYMENT LINES: If a 'Payment in selected currency' is shown (e.g., 421.64 USD), copy it into additional_info as plain text (e.g., 'Payment: 421.64 USD').\n";
+        $prompt .= "  • STATUS: If payment status is 'confirmed' and a payment exists, set tasks.status = 'issued' and supplier_status = 'confirmed'.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Pilot Tours/Pailot Tours):\n";
+        $prompt .= "  • ROOM DETAILS JSON: – passengers = array with ONLY the guest name BEFORE any parentheses (e.g., 'Mr Abdulrahman Alazemi').\n";
+        $prompt .= "    – info = pax text INSIDE the parentheses as 'Pax: ...' (e.g., '(2 Adult + 2 Child)' → 'Pax: 2 Adult + 2 Child').\n";
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

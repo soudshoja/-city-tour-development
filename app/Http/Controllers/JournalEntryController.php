@@ -10,8 +10,9 @@ class JournalEntryController extends Controller
 {
     public function index($transactionId)
     {
-        $journalEntries = JournalEntry::where('transaction_id', $transactionId)->get();
-
+        $journalEntries = JournalEntry::with(['agent', 'account', 'task', 'transaction'])
+            ->where('transaction_id', $transactionId)
+            ->paginate(15);
         if (!$journalEntries) {
             return response()->json(['message' => 'Journal entry not found'], 404);
         }
@@ -33,7 +34,7 @@ class JournalEntryController extends Controller
             ->whereDate('transaction_date', '>=', $dateFrom)
             ->whereDate('transaction_date', '<=', $dateTo)
             ->orderBy('transaction_date', 'asc')
-            ->get();
+            ->paginate(15);
 
         // Optional: apply custom transformation (like calculating running balance)
         $journalEntries = $this->getJournalEntries($journalEntries);

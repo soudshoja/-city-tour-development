@@ -25,12 +25,17 @@ class CreateClientCredit extends Command
 {
     protected $signature = 'create:client-credit
                             {--dry-run : Show expected process without making changes}
+                            {--proceed : Skip dry run and make changes onto database}
                            ';
     protected $description = 'Create the missing client credit for existing paid payment';
 
     public function handle()
     {
-        $dryRun = $this->option('dry-run');
+        $dryRun   = $this->option('dry-run');
+        $proceed  = $this->option('proceed'); // <-- use your flag
+        $nonInteractive = method_exists($this->input, 'isInteractive')
+            ? !$this->input->isInteractive()
+            : true; // safe default for cron
 
         if ($dryRun) {
             $this->info('Running in DRY RUN mode - no changes will be made');
@@ -49,13 +54,7 @@ class CreateClientCredit extends Command
             $this->info("Found {$payments->count()} payments to process");
 
             $this->table(
-                [
-                    'ID',
-                    'Voucher Number',
-                    'Payment Gateway',
-                    'Payment Method ID',
-                    'Status'
-                ],
+                ['ID','Voucher Number','Payment Gateway','Payment Method ID','Status'],
                 $payments->map(function ($payment) {
                     return [
                         $payment->id,
@@ -72,10 +71,16 @@ class CreateClientCredit extends Command
                 return 0;
             }
 
-            if (!$this->confirm('Do you want to proceed with creating credits for client with existing paid payment?')) {
-                $this->info('Operation cancelled');
-                return 0;
+            // ---------- PROCEED / CONFIRM LOGIC ----------
+            // If --proceed is passed OR the process is non-interactive (cron),
+            // skip the confirmation prompt. Otherwise, ask.
+            if (!($proceed || $nonInteractive)) {
+                if (!$this->confirm('Do you want to proceed with creating credits for client with existing paid payment?')) {
+                    $this->info('Operation cancelled');
+                    return 0;
+                }
             }
+            // ---------------------------------------------
 
             $processed = 0;
             $errors = 0;

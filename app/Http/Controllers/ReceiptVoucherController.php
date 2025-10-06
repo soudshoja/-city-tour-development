@@ -154,7 +154,6 @@ class ReceiptVoucherController extends Controller
 
     public function store(Request $request)
     {
-        //dd($request);
 
         if ($request->receiptvouchertype === 'PaymentByDate') {
             $receiptvoucherType = 'Receipt';
@@ -261,7 +260,6 @@ class ReceiptVoucherController extends Controller
 
             ]);
 
-            //dd($request->items);
             // Store JournalEntries
             foreach ($request->items as $item) {
 
@@ -295,7 +293,6 @@ class ReceiptVoucherController extends Controller
                     ]);
 
                     // Update selected journal entries 
-                    //dd($request->items);
 
                     if (!empty($item['transaction_id'])) {
                         $ids = array_filter(array_map('trim', explode(',', $item['transaction_id'])));
@@ -362,7 +359,6 @@ class ReceiptVoucherController extends Controller
                     $addCreditResponse = app(ClientController::class)->addCredit($payment);
 
                     Log::info('Add Credit Response: ' . json_encode($addCreditResponse));
-                    // Remove dd($addCreditResponse); for production
                 }
             }
             DB::commit();
@@ -378,11 +374,6 @@ class ReceiptVoucherController extends Controller
         // $user = auth()->user();
         $receiptvoucher = Transaction::with('invoiceReceipts')->findOrFail($id);
 
-        $sfdsfd = $receiptvoucher->invoiceReceipts()->get();
-
-        // foreach ($sfdsfd as $receipt) {
-        //     dd($receipt->invoice_number);
-        // }
         $JournalEntrys = JournalEntry::where('transaction_id', $receiptvoucher->id)->get();
 
         $user = auth()->user();
@@ -431,8 +422,6 @@ class ReceiptVoucherController extends Controller
 
     public function update(Request $request, $id)
     {
-
-        //dd($request->all());
         $request->validate([
             'receiptvoucherref' => 'required|string',
             'docdate' => 'required|date',

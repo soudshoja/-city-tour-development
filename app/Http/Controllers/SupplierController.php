@@ -439,8 +439,6 @@ class SupplierController extends Controller
         //     'Content-Type' => 'application/json',
         // ])->post($url, $data);
 
-        // dd($response->json());
-
         //end test
 
 

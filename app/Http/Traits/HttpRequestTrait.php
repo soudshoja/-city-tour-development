@@ -40,7 +40,6 @@ trait HttpRequestTrait
 
     public function postRequest($url, $header, $data)
     {
-        // dd($url, $header, $data);
         $curl = curl_init();
 
         curl_setopt_array($curl, array(

@@ -1530,7 +1530,6 @@ class ReportController extends Controller
         //     dump($group['supplier_name'] . ' - ' . $group['balance']);
         // }
 
-        // dd($data);
         $pdf = Pdf::loadView($pdfView, $data)
             ->setPaper('a4', 'portrait')
             ->setOptions(['defaultFont' => 'sans-serif']);

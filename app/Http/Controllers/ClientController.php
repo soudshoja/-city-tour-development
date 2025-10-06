@@ -1075,7 +1075,6 @@ class ClientController extends Controller
 
     public function refundProcess($id, Request $request)
     {
-        //dd($id, $request->all());
         $request->validate([
             'amount' => 'required|numeric|min:0',
             'agent_id' => 'required|exists:agents,id',
@@ -1098,8 +1097,6 @@ class ClientController extends Controller
         }
 
         $agent = Agent::find($request->agent_id);
-
-        //dd($balanceCredit);
 
         DB::beginTransaction();
 

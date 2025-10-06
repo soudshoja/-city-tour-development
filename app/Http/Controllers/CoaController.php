@@ -86,7 +86,7 @@ class CoaController extends Controller
 
         $assets = $this->childAccount($assetsAccount, 'normal');
         $liabilities = $this->childAccount($liabilitiesAccount, 'reverse');
-        // dd($liabilities);
+        
         $incomes = $this->childAccount($incomesAccount, 'reverse');
         $expenses = $this->childAccount($expensesAccount, 'normal');
         $equities = $this->childAccount($equitiesAccount, 'reverse');
@@ -647,7 +647,6 @@ class CoaController extends Controller
             $currentPage,
             ['path' => request()->url(), 'query' => request()->query()]
         );
-        // dd($paginated);
     
         return view('coa.transaction', [
             'companies' => $companies,
@@ -968,7 +967,6 @@ class CoaController extends Controller
             });
 
         // Debug: show the grouped sums
-        // dd($taskSummary);
 
         $notIssuedTask = $tasks->whereNull('issued_by')
             ->values();
@@ -1080,7 +1078,7 @@ class CoaController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Error creating account: contact you support ');
         }
-        // dd($cumulativeTaskTotal, $totalAmount);
+        
         if(number_format($cumulativeTaskTotal, 2) !== number_format($totalAmount, 2)){
             Log::error('Cumulative task price does not match account balance', [
                 'cumulative_task_total' => $cumulativeTaskTotal,

@@ -2205,7 +2205,7 @@ class PaymentController extends Controller
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
             $companyId = $payment->agent->branch->company_id;
 
-            if($companyId){
+            if(!$companyId){
                 Log::error('Company ID not found for the payment.', ['payment_id' => $payment->id]);
                 return auth()->user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
             }

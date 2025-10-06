@@ -69,15 +69,24 @@
                                     </a>
                                 </td>
 
-                                <td
-                                    class=" p-3 text-sm font-semibold text-blue-600 dark:text-gray-300 text-center">
-                                    <a href="{{ route('clients.show', ['id' => $client->id]) }}"
-                                        class="block">
-                                        <p>{{ $client->first_name }}</p>
-                                        <p> {{ $client->middle_name ? $client->middle_name : '' }}
-                                            {{ $client->last_name ? $client->last_name : '' }}
-                                        </p>
-                                    </a>
+                                <td class="text-center">
+                                    <div class="w-full p-3 text-sm font-semibold text-blue-600 dark:text-gray-300 flex justify-between items-center">
+                                        <a href="{{ route('clients.show', ['id' => $client->id]) }}">
+                                            <p>{{ $client->fullname }}</p>
+                                        </a>
+                                        <a href="javascript:void(0);"
+                                            id="copyNameButton"
+                                            class="mx-auto text-green-600 dark:text-green-300 ml-2"
+                                            data-name="{{ $client->full_name }}"
+                                            data-tooltip="Copy Name">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                                                <g fill="none" stroke="currentColor" stroke-width="1">
+                                                    <rect width="13" height="13" x="9" y="9" rx="2" ry="2" />
+                                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                                </g>
+                                            </svg>
+                                        </a>
+                                    </div>
                                 </td>
                                 <td class="p-3 text-sm font-semibold text-center">
                                     {{ $client->civil_no ?? 'N/A' }}
@@ -803,5 +812,22 @@
 
     document.getElementById('closeModal').addEventListener('click', () => {
         document.getElementById('creditDetailsModal').classList.add('hidden');
+    });
+
+    // Copy name functionality
+    document.querySelectorAll('#copyNameButton').forEach(button => {
+        button.addEventListener('click', function() {
+            const name = this.getAttribute('data-name');
+            navigator.clipboard.writeText(name).then(() => {
+                // Show success feedback
+                const originalTooltip = this.getAttribute('data-tooltip');
+                this.setAttribute('data-tooltip', 'Copied!');
+                setTimeout(() => {
+                    this.setAttribute('data-tooltip', originalTooltip);
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        });
     });
 </script>

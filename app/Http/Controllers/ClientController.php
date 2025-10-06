@@ -528,7 +528,7 @@ class ClientController extends Controller
                 'address',
             ]));
 
-            if ($request->has('agent_id')) {
+            if ($request->filled('agent_id')) {
                 $response = Gate::inspect('assignOwnerAgent', Client::class);
 
                 if ($response->denied()) {

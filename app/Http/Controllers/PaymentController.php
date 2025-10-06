@@ -3001,6 +3001,7 @@ class PaymentController extends Controller
                 }
 
                 $statusData = $statusResponse->json();
+                dd($statusData);
                 Log::info('MyFatoorah payment status', $statusData);
 
                 $userDefinedField   = !empty($statusData['Data']['UserDefinedField']) ? json_decode($statusData['Data']['UserDefinedField'], true) : [];
@@ -3509,6 +3510,7 @@ class PaymentController extends Controller
 
         $invoiceId = data_get($payload, 'Data.Invoice.Id');
         $invoiceStatus = data_get($payload, 'Data.Invoice.Status');
+        $process = data_get(json_decode(data_get($payload, 'Data.Invoice.UserDefinedField', '{}'), true), 'process');
 
         if (!$invoiceId || !$invoiceStatus) {
             Log::warning('MF Webhook: missing invoice fields', compact('invoiceId', 'invoiceStatus'));
@@ -3517,10 +3519,33 @@ class PaymentController extends Controller
 
         $payment = Payment::where('payment_reference', $invoiceId)->first();
         if ($payment) {
+            Log::info('Found the payment record in the system with ID: ' .$payment->id);
             if ($payment->status === 'initiate') {
                 if ($invoiceStatus === 'PAID') {
                     $payment->status = 'completed';
                     $payment->save();
+
+                    $paidPayment = Payment::where('status', 'completed')
+                                    ->whereDoesntHave('credit')
+                                    ->get();
+                    
+                    if ($paidPayment) {
+                        if ($process === 'topup') {
+                            Log::info('Payment has been paid, no client credit created yet');
+
+                            $clientController = new ClientController;
+                            $addCredit = $clientController->addCredit($payment);
+                            
+                            if (isset($addCredit['error'])) {
+                                Log::info('Failed to add credit to client', [
+                                    'message' => $addCredit['error'],
+                                    'payment_id' => $payment->id,
+                                ]);
+                            }
+                            
+                            Log::info('Client credit for payment ' . $payment->id . ' has been successfully credited');
+                        }
+                    }
 
                     $receiptInfo = $this->publicReceiptNotice($payment, $payment->invoice ? 'invoice' : 'topup');
                     $agent = $receiptInfo['agent'];

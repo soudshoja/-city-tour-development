@@ -26,6 +26,7 @@ use App\Models\Transaction;
 use App\Models\Credit;
 use App\Enums\ChargeType;
 use App\Http\Traits\NotificationTrait;
+use App\Models\Company;
 use App\Models\InvoicePartial;
 use App\Models\Notification;
 use App\Models\PaymentMethod;
@@ -368,14 +369,18 @@ class ClientController extends Controller
         $payment = Payment::where('client_id', $id)->first();
 
         if ($user->role_id == Role::ADMIN) {
-            $branchId = $client->agent?->branch_id;
-            $agentsQuery->where('branch_id', $branchId);
+            $companyId = Company::pluck('id');
+            $agentsQuery->where('branch_id', function ($query) use ($companyId) {
+                $branchIds = Branch::whereIn('company_id', $companyId)->pluck('id');
+                $query->whereIn('id', $branchIds);
+            });
 
             $payments = Payment::where('client_id', $id)
                 ->orderBy('created_at', 'desc')
                 ->get();
 
             $balanceCredit = Credit::getTotalCreditsByClient($id);
+            $clients = Client::all();
         } elseif ($user->role_id == Role::COMPANY) {
             $companyId = $user->company?->id;
             $branchIds = Branch::where('company_id', $companyId)->pluck('id');
@@ -385,17 +390,50 @@ class ClientController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
             $balanceCredit = Credit::getTotalCreditsByClient($id);
+
+            $clients = Client::where(function ($query) use ($agentIds) {
+                $query->whereIn('agent_id', $agentIds)
+                    ->orWhereHas('agents', function ($q) use ($agentIds) {
+                        $q->whereIn('agent_id', $agentIds);
+                    });
+            })->get();
+
         } elseif ($user->role_id == Role::BRANCH) {
-            $branchId = $user->branch?->id;
-            $agentsQuery->where('branch_id', $branchId);
+            $companyId = $user->branch->company->id;
+            $agentsQuery->where('branch_id', function ($query) use ($companyId) {
+                $branchIds = Branch::where('company_id', $companyId)->pluck('id');
+                $query->whereIn('id', $branchIds);
+            });
 
             $payments = Payment::where('client_id', $id)
                 ->orderBy('created_at', 'desc')
                 ->get();
             $balanceCredit = Credit::getTotalCreditsByClient($id);
+
+            $clients = Client::where(function ($query) use ($companyId) {
+                $branchIds = Branch::where('company_id', $companyId)->pluck('id');
+                $agentIds = Agent::whereIn('branch_id', $branchIds)->pluck('id');
+
+                $query->whereIn('agent_id', $agentIds)
+                    ->orWhereHas('agents', function ($q) use ($agentIds) {
+                        $q->whereIn('agent_id', $agentIds);
+                    });
+            })->get();
+
         } elseif ($user->role_id == Role::AGENT) {
-            $agentId = Agent::where('user_id', $user->id)->value('id');
-            $agentsQuery->where('id', $agentId);
+            $companyId = Agent::where('user_id', $user->id)->first()->branch->company_id;
+            $agentsQuery->where('branch_id', $user->agent->branch_id)
+                ->orWhere(function ($query) use ($companyId) {
+                    $branchIds = Branch::where('company_id', $companyId)->pluck('id');
+                    $query->whereIn('branch_id', $branchIds);
+                });
+
+            $clients = Client::where(function ($query) use ($user) {
+                $query->where('agent_id', $user->agent->id)
+                    ->orWhereHas('agents', function ($q) use ($user) {
+                        $q->where('agent_id', $user->agent->id);
+                    });
+            })->get();
             
             if ($payment) {
                 if ($payment->agent_id === $user->id) { //Assigned agent to the client
@@ -422,6 +460,7 @@ class ClientController extends Controller
             }
         }
         $agents = $agentsQuery->get();
+        $agentsId = $agents->pluck('id')->toArray();
         $invoices = Invoice::with('invoiceDetails', 'agent')->where('client_id', $id)->get();
 
         $tasks = Task::where('client_id', $id)->get();
@@ -453,7 +492,6 @@ class ClientController extends Controller
             $unpaid += $outstanding;
         }
 
-        $clients = Client::with('agent.branch')->get();
 
         $countries = Country::all(); // Fetch all countries for the view
         $selectedDialingCode = $countries->where('dialing_code', $client->country_code)->pluck('id')->first();
@@ -480,7 +518,6 @@ class ClientController extends Controller
         ));
     }
 
-    // Show the form for editing a client
     public function edit($id)
     {
         Gate::authorize('edit', [Client::class, Client::findOrFail($id)]);
@@ -494,7 +531,6 @@ class ClientController extends Controller
         return view('clients.edit', compact('client', 'agents')); // Ensure the view exists
     }
 
-    // Update the client in the database
     public function update(Request $request, $id)
     {
         Gate::authorize('update', [Client::class, $client = Client::findOrFail($id)]);

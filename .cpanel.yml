@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/citycomm/tour.citycommerce.group/
+    - export DEPLOYPATH=/home/citycomm/staging.citycommerce.group/
     - /bin/cp -R * $DEPLOYPATH
 
     # Navigate to the deployment directory for Laravel commands

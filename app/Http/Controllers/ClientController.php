@@ -369,12 +369,6 @@ class ClientController extends Controller
         $payment = Payment::where('client_id', $id)->first();
 
         if ($user->role_id == Role::ADMIN) {
-            $companyId = Company::pluck('id');
-            $agentsQuery->where('branch_id', function ($query) use ($companyId) {
-                $branchIds = Branch::whereIn('company_id', $companyId)->pluck('id');
-                $query->whereIn('id', $branchIds);
-            });
-
             $payments = Payment::where('client_id', $id)
                 ->orderBy('created_at', 'desc')
                 ->get();

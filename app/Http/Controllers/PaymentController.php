@@ -3001,7 +3001,7 @@ class PaymentController extends Controller
                 }
 
                 $statusData = $statusResponse->json();
-                dd($statusData);
+                
                 Log::info('MyFatoorah payment status', $statusData);
 
                 $userDefinedField   = !empty($statusData['Data']['UserDefinedField']) ? json_decode($statusData['Data']['UserDefinedField'], true) : [];

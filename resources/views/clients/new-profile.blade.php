@@ -864,6 +864,7 @@
                                     <x-searchable-dropdown
                                         name="agent_id"
                                         :items="isset($agents) ? $agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name]) : []"
+                                        :selectedId="$client->agent_id"
                                         :placeholder="$client->agent ? $client->agent->name : 'Select Owner Agent'"
                                         :selectedName="$client->agent ? $client->agent->name : null"
                                         label="Client Owner (Agent)" />

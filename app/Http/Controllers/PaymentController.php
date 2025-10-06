@@ -2137,7 +2137,7 @@ class PaymentController extends Controller
             'payment_id' => 'required|exists:payments,id',
         ]);
         
-        $auth = Auth::user();
+        // $auth = Auth::user();
 
         $payment = Payment::with('invoice')->find($request->payment_id);
 
@@ -2203,7 +2203,12 @@ class PaymentController extends Controller
             $baseUrl = $myfatoorahConfig['base_url'];
 
             $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
-            $companyId = optional($payment->agent->branch)->company_id;
+            $companyId = $payment->agent->branch->company_id;
+
+            if($companyId){
+                Log::error('Company ID not found for the payment.', ['payment_id' => $payment->id]);
+                return auth()->user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
+            }
 
             if ($payment->status === 'initiate') {
                 if ($payment->payment_url && $payment->expiry_date && now()->lt($payment->expiry_date)) {
@@ -2243,19 +2248,19 @@ class PaymentController extends Controller
 
             $finalAmount = $chargeResult['finalAmount'];
             
-            $companyId = null;
+            // $companyId = null;
 
-            if ($auth->role_id == Role::COMPANY) {
-                $companyId = Company::where('user_id', $auth->id)->value('id');
-            } elseif ($auth->role_id == Role::AGENT) {
-                $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
-                $companyId = $agent->branch->company->id;
-            } elseif ($auth->role_id == Role::ACCOUNTANT) {
-                $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
-                $companyId = $accountant->branch->company->id;
-            } else {
-                $companyId = Company::value('id');
-            }
+            // if ($auth->role_id == Role::COMPANY) {
+            //     $companyId = Company::where('user_id', $auth->id)->value('id');
+            // } elseif ($auth->role_id == Role::AGENT) {
+            //     $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
+            //     $companyId = $agent->branch->company->id;
+            // } elseif ($auth->role_id == Role::ACCOUNTANT) {
+            //     $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
+            //     $companyId = $accountant->branch->company->id;
+            // } else {
+            //     $companyId = Company::value('id');
+            // }
 
             $company = $companyId ? Company::find($companyId) : null;
             $companyEmail = $company?->email ?? 'admin@citytravelers.co';

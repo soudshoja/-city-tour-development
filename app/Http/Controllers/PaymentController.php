@@ -2576,20 +2576,24 @@ class PaymentController extends Controller
         $configService = new GatewayConfigService();
         $config = $configService->getMyFatoorahConfig();
 
-        $auth = Auth::user();
-        $companyId = null;
+        $companyId = $payment->agent->branch->company_id;
 
-        if ($auth->role_id == Role::COMPANY) {
-            $companyId = Company::where('user_id', $auth->id)->value('id');
-        } elseif ($auth->role_id == Role::AGENT) {
-            $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
-            $companyId = $agent->branch->company->id;
-        } elseif ($auth->role_id == Role::ACCOUNTANT) {
-            $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
-            $companyId = $accountant->branch->company->id;
-        } else {
-            $companyId = Company::value('id');
+        if(!$companyId){
+            Log::error('reinitiateMyFatoorah: Company ID not found for the payment.', ['payment_id' => $payment->id]);
+            return auth()->user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
         }
+
+        // if ($auth->role_id == Role::COMPANY) {
+        //     $companyId = Company::where('user_id', $auth->id)->value('id');
+        // } elseif ($auth->role_id == Role::AGENT) {
+        //     $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
+        //     $companyId = $agent->branch->company->id;
+        // } elseif ($auth->role_id == Role::ACCOUNTANT) {
+        //     $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
+        //     $companyId = $accountant->branch->company->id;
+        // } else {
+        //     $companyId = Company::value('id');
+        // }
 
         $company = $companyId ? Company::find($companyId) : null;
         $companyEmail = $company?->email ?? 'admin@citytravelers.co';

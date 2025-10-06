@@ -76,4 +76,21 @@ class JournalEntryController extends Controller
 
         return $journalEntries;
     }
+    
+    public function exportPdf(Request $request, $accountId)
+    {
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        // Fetch filtered entries
+        $journalEntries = JournalEntry::where('account_id', $accountId)
+            ->whereBetween('transaction_date', [$dateFrom, $dateTo])
+            ->get();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('journal_entries.pdf', [
+            'journalEntries' => $journalEntries,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+        ]);
+        return $pdf->download('journal-entries-ledger.pdf');
+    }
 }

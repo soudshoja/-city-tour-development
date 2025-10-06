@@ -968,7 +968,7 @@
                                                 <th data-column="supplier">
                                                     <span class="text-left text-md font-bold text-gray-900 dark:text-gray-300">Supplier</span>
                                                 </th>
-                                                <th data-column="supplier-pay-date">
+                                                <th data-column="supplier-pay-date" class="column-hidden">
                                                     <a href="{{ request()->fullUrlWithQuery([
                                                                 'sortBy' => 'supplier_pay_date',
                                                                 'sortOrder' => (request('sortBy') === 'supplier_pay_date' && request('sortOrder') === 'asc') ? 'desc' : 'asc'
@@ -1189,7 +1189,7 @@
                                                                                                 name="status" value="refund">
                                                                                             @else
                                                                                             <select name="status"
-                                                                                                id="status"
+                                                                                                id="status_{{ $task->id }}"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base">
                                                                                                 <option value="">Set
                                                                                                     Status
@@ -1382,11 +1382,11 @@
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                                                         <div class="flex-1">
                                                                                             <label for="payment_method" class="block text-sm font-medium text-gray-700">Payment Method</label>
-                                                                                            <select name="payment_method_account_id" id="payment_method_account_id"
+                                                                                            <select name="payment_method_account_id" id="payment_method_account_id_{{ $task->id }}"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
                                                                                                 <option value="">Select Payment Method</option>
                                                                                                 @foreach($paymentMethod as $method)
-                                                                                                <option value="{{ $method->id }}" {{ $task->payment_method_account_id == $method->id ? 'selected' : ''}}>{{ $method->name }}</option>
+                                                                                                    <option value="{{ $method->id }}" {{ $task->payment_method_account_id == $method->id ? 'selected' : ''}}>{{ $method->name }}</option>
                                                                                                 @endforeach
                                                                                             </select>
                                                                                         </div>
@@ -1964,6 +1964,10 @@
     window.allTaskTypes = @json($allTypes ?? []);
 
     window.companySuppliers = @json($suppliers->pluck('name')->all());
+    window.SUPPLIERS = @json(
+        $suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name, 'has_hotel' => $s->has_hotel])
+    );
+
     document.addEventListener('alpine:init', () => {
         Alpine.store('dropdown', {
             openId: null,
@@ -1978,31 +1982,6 @@
                 this.openId = null;
             }
         });
-
-        Alpine.nextTick(() => {
-            const createInvoiceBtn = document.getElementById('createInvoiceBtn');
-            if (!createInvoiceBtn) return;
-
-            createInvoiceBtn.onclick = null;
-
-            createInvoiceBtn.addEventListener('click', function () {
-                const selectedTasks = window.selectedTasksGlobal ?? [];
-                console.log('Selected tasks:', selectedTasks);
-
-                if (!selectedTasks.length) {
-                    alert('No task selected.');
-                    return;
-                }
-
-                const taskStatus = this.getAttribute('data-task-status');
-                if (taskStatus === 'refund') {
-                    window.location.href = this.getAttribute('data-route');
-                } else {
-                    const url = `/invoices/create?task_ids=${selectedTasks.join(',')}`;
-                    window.location.href = url;
-                }
-            });
-        });
     });
 
     document.addEventListener("DOMContentLoaded", function() {
@@ -2011,21 +1990,35 @@
         const clearBtn = document.getElementById('clearAllColumns');
         const checkboxes = dropdown.querySelectorAll('.column-checkbox');
 
-        // An array of column names from the session, passed from the controller
-        const visibleColumns = @json($visibleColumns ?? []);
+        const defaultColumns = @json($defaultColumns ?? []);
+        let visibleColumns = JSON.parse(localStorage.getItem("visibleColumns"));
+
+        if (!Array.isArray(visibleColumns) || visibleColumns.length === 0) {
+            visibleColumns = @json($visibleColumns ?? $defaultColumns);
+            localStorage.setItem("visibleColumns", JSON.stringify(visibleColumns));
+        }
+
+        console.log("Default columns from backend:", defaultColumns);
+        console.log("Visible columns being applied:", visibleColumns);
 
         function updateColumnVisibility() {
+            const checkboxes = document.querySelectorAll('.column-checkbox');
             checkboxes.forEach(checkbox => {
                 const columnName = checkbox.id.replace('col-', '');
                 const isVisible = visibleColumns.includes(columnName);
+
                 checkbox.checked = isVisible;
 
-                const columns = document.querySelectorAll(`[data-column="${columnName}"]`);
-                columns.forEach(column => {
-                    column.classList.toggle('column-hidden', !isVisible);
-                });
+                document.querySelectorAll(`[data-column="${columnName}"]`)
+                    .forEach(column => {
+                        column.classList.toggle('column-hidden', !isVisible);
+                    });
             });
         }
+
+        updateColumnVisibility();
+
+        localStorage.setItem("visibleColumns", JSON.stringify(visibleColumns));
 
         function saveColumnPreferences() {
             const currentlyVisible = Array.from(checkboxes)
@@ -2051,8 +2044,6 @@
                 })
                 .catch(error => console.error('Error saving column preferences:', error));
         }
-
-        updateColumnVisibility();
 
         customizeBtn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -2099,6 +2090,29 @@
             saveColumnPreferences();
         });
 
+        const createInvoiceBtn = document.getElementById('createInvoiceBtn');
+        if (createInvoiceBtn) {
+            createInvoiceBtn.replaceWith(createInvoiceBtn.cloneNode(true)); // Remove all previous listeners
+        }
+
+        document.getElementById('createInvoiceBtn')?.addEventListener('click', function() {
+            const selectedTasks = window.selectedTasksGlobal ?? [];
+
+            console.log('Selected tasks:', selectedTasks);
+
+            if (selectedTasks.length > 0) {
+                const taskStatus = this.getAttribute('data-task-status');
+                if (taskStatus === 'refund') {
+                    window.location.href = this.getAttribute('data-route');
+                } else {
+                    const url = `/invoices/create?task_ids=${selectedTasks.join(',')}`;
+                    window.location.href = url;
+                }
+            } else {
+                alert('No task selected.');
+            }
+        });
+
         // Add event listeners to close modals when clicked outside or on close buttons
         document.getElementById('taskInvoicePlaceholder').addEventListener('click', function(event) {
             if (event.target === this) {
@@ -2111,8 +2125,6 @@
                 this.classList.add('hidden');
             }
         });
-
-
 
         // Close modals when clicking outside
         document.addEventListener('click', function(event) {
@@ -2137,28 +2149,320 @@
             let supplier = JSON.parse(selectedSupplier);
             let formTaskContainer = document.getElementById('form-task-container');
             const form = document.getElementById('agent-supplier-task');
-
             formTaskContainer.innerHTML = '';
             const isHotel = (supplier?.has_hotel == 1 || supplier?.has_hotel == '1') && supplier.name != 'Amadeus';
 
-            console.log('Selected Supplier:', supplier);
-            if (supplier.name == 'Magic Holiday') {
-                let p = document.createElement('p');
-                // p.classList.add('text-blue-400', 'text-sm', 'mb-2');
-                // p.innerHTML = "You don't need to choose the agent for Magic Holiday, it will be automatically assigned.";
-                // formTaskContainer.appendChild(p);
-
-                let input = document.createElement('input');
-                input.type = 'text';
-                input.name = 'supplier_ref';
-                input.placeholder = 'Reference';
-                input.classList.add('input', 'w-full', 'mt-1', 'rounded-lg', 'border',
-                    'border-gray-300', 'dark:border-gray-700', 'dark:bg-gray-800',
-                    'dark:text-gray-300', 'p-3', 'mb-3');
-                formTaskContainer.appendChild(input);
+            function clearSynthInputs() {
+                Array.from(form.querySelectorAll('input[data-synth="1"]')).forEach(el => el.remove());
             }
 
-            if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air' || isHotel) {
+            function setFormSubmitHandler(handler) {
+                // remove any previous handler
+                if (form._currentSubmitHandler) {
+                    form.removeEventListener('submit', form._currentSubmitHandler);
+                }
+                form._currentSubmitHandler = handler || null;
+                if (handler) form.addEventListener('submit', handler);
+            }
+
+            console.log('Selected Supplier:', supplier);
+            if (supplier.name === 'Magic Holiday') {
+                const modeWrap = document.createElement('div');
+                modeWrap.className = 'mb-2';
+                modeWrap.innerHTML = `
+                <label class="block text-sm font-medium text-gray-800 mb-1">Upload Method</label>
+                <div class="inline-flex gap-3">
+                    <label class="inline-flex items-center gap-2">
+                        <input type="radio" name="mh_mode" value="ref" checked>
+                        <span class="text-sm">By reference</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2">
+                        <input type="radio" name="mh_mode" value="batch">
+                        <span class="text-sm">From file</span>
+                    </label>
+                </div>`;
+                formTaskContainer.appendChild(modeWrap);
+
+                const content = document.createElement('div');
+                formTaskContainer.appendChild(content);
+
+                function buildBatchesUI(formTaskContainer) {
+                    const batches = [];
+                    let active = 0;
+
+                    const toolbar = document.createElement('div');
+                    toolbar.className = 'sticky top-0 bg-white -mx-4 px-4 pt-1 pb-2';
+                    toolbar.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-medium text-gray-800 leading-5">Upload by batches</p>
+                            <p class="text-xs text-gray-500">Select your files. Each batch will be merged.</p>
+                        </div>
+                        <div class="flex items-center">
+                            <button type="button" id="add-batch" class="p-2 inline-flex items-center rounded-md border border-gray-300 text-xs font-medium hover:bg-gray-50">
+                            Add Batch
+                            </button>
+                        </div>
+                    </div>`;
+                    formTaskContainer.appendChild(toolbar);
+
+                    const carousel = document.createElement('div');
+                    carousel.className = 'relative';
+                    carousel.innerHTML = `
+                    <div id="batch-viewport" class="overflow-hidden">
+                        <div id="batch-track" class="flex transition-transform duration-300 ease-out"></div>
+                    </div>
+                    <div class="mt-2 flex items-center justify-between">
+                        <div class="inline-flex gap-1">
+                            <button type="button" id="prev" class="rounded-md border px-2 py-1 text-xs hover:bg-gray-50">‹ Prev</button>
+                            <button type="button" id="next" class="rounded-md border px-2 py-1 text-xs hover:bg-gray-50">Next ›</button>
+                        </div>
+                        <div id="dots" class="flex items-center gap-1"></div>
+                    </div>`;
+                    formTaskContainer.appendChild(carousel);
+
+                    const track = carousel.querySelector('#batch-track');
+                    const dots = carousel.querySelector('#dots');
+                    const addBtn = toolbar.querySelector('#add-batch');
+                    const prevBtn = carousel.querySelector('#prev');
+                    const nextBtn = carousel.querySelector('#next');
+
+                    function goTo(i) {
+                        if (!batches.length) return;
+                        active = Math.max(0, Math.min(i, batches.length - 1));
+                        track.style.transform = `translateX(-${active*100}%)`;
+                        renderDots();
+                    }
+
+                    function renderDots() {
+                        dots.innerHTML = '';
+                        batches.forEach((_, i) => {
+                            const dot = document.createElement('button');
+                            dot.type = 'button';
+                            dot.className = `w-2.5 h-2.5 rounded-full ${i===active?'bg-gray-900':'bg-gray-300'}`;
+                            dot.addEventListener('click', () => goTo(i));
+                            dots.appendChild(dot);
+                        });
+                        prevBtn.disabled = active === 0;
+                        nextBtn.disabled = active === batches.length - 1;
+                        prevBtn.classList.toggle('opacity-50', prevBtn.disabled);
+                        nextBtn.classList.toggle('opacity-50', nextBtn.disabled);
+                    }
+
+                    function addBatch() {
+                        const batchIndex = batches.length;
+                        batches.push([]);
+
+                        const slide = document.createElement('div');
+                        slide.className = 'w-full shrink-0';
+                        slide.innerHTML = `
+                        <div class="border rounded-md p-3 bg-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-semibold">Batch #${batchIndex+1}</span>
+                                    <span class="text-xs text-gray-500"><span class="count">0</span> files</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button type="button" class="clear text-xs text-red-500 hover:text-red-600">Clear</button>
+                                    <button type="button" class="remove text-xs text-gray-500 hover:text-gray-700">Remove</button>
+                                </div>
+                            </div>
+                            <label class="block text-xs text-gray-600 mb-1 name-label">Merged file name (optional)</label>
+                            <input type="text" class="name-input w-full border rounded px-2 py-1 text-sm mb-2" placeholder="e.g. TBO_0001.pdf (only for 2+ files)" />
+                            <div class="drop flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md text-center cursor-pointer bg-white hover:bg-gray-50 transition text-sm text-gray-500 mb-2 p-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 64 64" fill="none" stroke="#5d5d5d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 48H16C9.37258 48 4 42.6274 4 36C4 29.7926 8.79161 24.6465 14.9268 24.0438C17.3056 16.5436 24.2807 11 32.5 11C42.165 11 50 18.835 50 28.5C50 29.6813 49.8904 30.8323 49.6816 31.9425C55.0597 33.3639 59 38.2443 59 44C59 50.6274 53.6274 56 47 56H44"/>
+                                    <path d="M32 38V20" />
+                                    <path d="M24 28L32 20L40 28" />
+                                </svg>
+                                <p class="font-medium text-gray-700 mt-1">Click or drag PDF(s) here to upload</p>
+                                <p class="text-xs text-gray-500">Multiple PDFs supported</p>
+                            </div>
+                            <input type="file" class="file hidden" accept="application/pdf" multiple />
+                            <div class="files hidden text-sm text-gray-700 border border-gray-200 rounded p-2 bg-white max-h-[160px] overflow-y-auto"></div>
+                            <p class="hint text-xs mt-2"></p>
+                        </div>`;
+                        const drop = slide.querySelector('.drop');
+                        const fileInput = slide.querySelector('.file');
+                        const filesBox = slide.querySelector('.files');
+                        const countEl = slide.querySelector('.count');
+                        const hint = slide.querySelector('.hint');
+                        const nameInput = slide.querySelector('.name-input');
+                        const nameLabel = slide.querySelector('.name-label');
+
+                        function updateUI() {
+                            const count = batches[batchIndex].length;
+                            countEl.textContent = count;
+                            filesBox.innerHTML = '';
+                            if (!count) {
+                                filesBox.classList.add('hidden');
+                            } else {
+                                filesBox.classList.remove('hidden');
+                                batches[batchIndex].forEach((f, i) => {
+                                    const row = document.createElement('div');
+                                    row.className = 'bg-gray-100 rounded px-3 py-1 mb-1 flex items-center justify-between';
+                                    row.innerHTML = `<span class="truncate text-xs max-w-[220px]">${f.name}</span><button type="button" class="rm text-xs text-red-500 hover:text-red-600">✕</button>`;
+                                    row.querySelector('.rm').addEventListener('click', () => {
+                                        batches[batchIndex].splice(i, 1);
+                                        updateUI();
+                                    });
+                                    filesBox.appendChild(row);
+                                });
+                            }
+                            if (count >= 2) {
+                                hint.textContent = 'Ready to merge';
+                                hint.className = 'hint text-xs mt-2 text-green-600';
+                            } else if (count === 1) {
+                                hint.textContent = 'Ready: single file (original name will be used)';
+                                hint.className = 'hint text-xs mt-2 text-green-600';
+                            } else {
+                                hint.textContent = 'Add at least 1 PDF to this batch';
+                                hint.className = 'hint text-xs mt-2 text-amber-600';
+                            }
+                            const showName = count >= 2;
+                            nameInput.classList.toggle('hidden', !showName);
+                            nameLabel.classList.toggle('hidden', !showName);
+                            nameInput.disabled = !showName;
+                        }
+
+                        ['dragenter', 'dragover'].forEach(evt => drop.addEventListener(evt, e => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            drop.classList.add('border-blue-400', 'bg-blue-50');
+                        }));
+                        ['dragleave', 'drop'].forEach(evt => drop.addEventListener(evt, e => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            drop.classList.remove('border-blue-400', 'bg-blue-50');
+                        }));
+
+                        drop.addEventListener('click', () => fileInput.click());
+                        drop.addEventListener('drop', e => {
+                            const newFiles = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+                            batches[batchIndex].push(...newFiles);
+                            updateUI();
+                        });
+                        fileInput.addEventListener('change', function() {
+                            const picked = Array.from(this.files).filter(f => f.type === 'application/pdf');
+                            batches[batchIndex].push(...picked);
+                            this.value = '';
+                            updateUI();
+                        });
+
+                        slide.querySelector('.clear').addEventListener('click', () => {
+                            batches[batchIndex] = [];
+                            updateUI();
+                        });
+                        slide.querySelector('.remove').addEventListener('click', () => {
+                            const wasActive = active === batchIndex;
+                            batches.splice(batchIndex, 1);
+                            slide.remove();
+                            Array.from(track.children).forEach((c, i) => {
+                                const label = c.querySelector('span.font-semibold');
+                                if (label) label.textContent = `Batch #${i+1}`;
+                            });
+                            if (!batches.length) active = 0;
+                            else if (wasActive && active > 0) active -= 1;
+                            goTo(active);
+                        });
+
+                        track.appendChild(slide);
+                        const syncWidths = () => {
+                            const vw = carousel.querySelector('#batch-viewport').clientWidth;
+                            slide.style.width = vw + 'px';
+                            Array.from(track.children).forEach(s => s.style.width = vw + 'px');
+                        };
+                        syncWidths();
+                        window.addEventListener('resize', syncWidths);
+                        goTo(batches.length - 1);
+                        updateUI();
+                    }
+
+                    addBtn.addEventListener('click', addBatch);
+                    prevBtn.addEventListener('click', () => goTo(active - 1));
+                    nextBtn.addEventListener('click', () => goTo(active + 1));
+                    addBatch();
+
+                    // submit handler for batches
+                    const onSubmit = (e) => {
+                        // ensure NO supplier_ref is sent in batch mode
+                        Array.from(form.querySelectorAll('input[name="supplier_ref"]')).forEach(el => el.remove());
+                        Array.from(form.querySelectorAll('input[data-synth="1"]')).forEach(el => el.remove());
+                        const invalid = [];
+                        const slides = Array.from(track.children);
+
+                        batches.forEach((files, i) => {
+                            if (files.length < 1) invalid.push(i + 1);
+                            const dt = new DataTransfer();
+                            files.forEach(f => dt.items.add(f));
+
+                            const hidden = document.createElement('input');
+                            hidden.type = 'file';
+                            hidden.multiple = true;
+                            hidden.name = `batches[${i}][]`;
+                            hidden.files = dt.files;
+                            hidden.setAttribute('data-synth', '1');
+                            hidden.style.display = 'none';
+                            form.appendChild(hidden);
+
+                            const nameHidden = document.createElement('input');
+                            nameHidden.type = 'hidden';
+                            nameHidden.name = `batch_names[${i}]`;
+                            nameHidden.value = (slides[i]?.querySelector('.name-input')?.value || '').trim();
+                            nameHidden.setAttribute('data-synth', '1');
+                            form.appendChild(nameHidden);
+                        });
+
+                        if (!batches.length || invalid.length) {
+                            e.preventDefault();
+                            alert(!batches.length ?
+                                'Please add at least one batch (min 1 PDF).' :
+                                `Each batch must have at least 1 PDF.\nCheck batch(es): ${invalid.join(', ')}.`);
+                        }
+                    };
+
+                    return {
+                        attach() {
+                            form.removeEventListener('submit', form._mhBatchHandler || (() => {}));
+                            form._mhBatchHandler = onSubmit;
+                            form.addEventListener('submit', onSubmit);
+                        },
+                        detach() {
+                            form.removeEventListener('submit', form._mhBatchHandler || (() => {}));
+                            Array.from(form.querySelectorAll('input[data-synth="1"]')).forEach(el => el.remove());
+                        }
+                    };
+                }
+
+                let batchesApi = null;
+
+                function renderRef() {
+                    content.innerHTML = '';
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.name = 'supplier_ref';
+                    input.placeholder = 'Reference';
+                    input.className = 'input w-full mt-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 p-3';
+                    content.appendChild(input);
+                    if (batchesApi) {
+                        batchesApi.detach();
+                        batchesApi = null;
+                    }
+                }
+
+                function renderBatch() {
+                    content.innerHTML = '';
+                    batchesApi = buildBatchesUI(content);
+                    batchesApi.attach();
+                }
+
+                renderRef();
+                modeWrap.querySelectorAll('input[name="mh_mode"]').forEach(r => {
+                    r.addEventListener('change', (e) => e.target.value === 'ref' ? renderRef() : renderBatch());
+                });
+
+                return;
+            } else if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air' || isHotel) {
                 const batches = [];
                 let active = 0;
 
@@ -3060,7 +3364,7 @@
                     if (row.value.from) params.append(`${row.column}_from`, row.value.from);
                     if (row.value.to) params.append(`${row.column}_to`, row.value.to);
                 } else {
-                    params.append(row.column, row.value);
+                    params.append(`${row.column}[]`, row.value);
                 }
             });
             resetPagination(params);
@@ -3085,7 +3389,7 @@
                 if (row.value.from) params.append(`${row.column}_from`, row.value.from);
                 if (row.value.to) params.append(`${row.column}_to`, row.value.to);
             } else {
-                params.append(row.column, row.value);
+                params.append(`${row.column}[]`, row.value);
             }
         });
         resetPagination(params);
@@ -3125,7 +3429,7 @@
             ...Array.from(params.keys())
             .filter(k => k.startsWith('status['))
             .map(k => params.get(k))
-        ].filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
+        ].filter((v, i, arr) => arr.indexOf(v) === i);
 
         statusValues.forEach(val => {
             filters.push({
@@ -3135,17 +3439,27 @@
             });
         });
 
-        // Handle other filters
-        for (const [key, value] of params.entries()) {
-            if (Object.keys(filterConfig.columns).includes(key) && filterConfig.columns[key].type !== 'date-range' && key !== 'status' && key !== 'status[]') {
-                const col = filterConfig.columns[key];
-                filters.push({
-                    key,
-                    label: col ? col.label : key,
-                    value
+        // Handle other filters (including array filters)
+        Object.entries(filterConfig.columns).forEach(([key, col]) => {
+            if (col.type !== 'date-range' && key !== 'status') {
+                // Get all values for this key (array or single)
+                const values = [
+                    ...params.getAll(`${key}[]`),
+                    ...params.getAll(key)
+                ].filter((v, i, arr) => arr.indexOf(v) === i);
+
+                values.forEach(val => {
+                    if (val !== '') {
+                        filters.push({
+                            key,
+                            label: col.label,
+                            value: val
+                        });
+                    }
                 });
             }
-        }
+        });
+
         return filters;
     }
 
@@ -3172,6 +3486,8 @@
                 inputHtml = `
                 <input type="text" id="tasks-date-range-${idx}" class="value-input" placeholder="Select date range" style="width: 90%;" data-idx="${idx}" />
             `;
+            } else if (col.type === 'multi-text') {
+                inputHtml = `<input type="text" class="value-input" value="${row.value || ''}" placeholder="Enter a Ref" data-idx="${idx}">`;
             }
             container.innerHTML += `
             <div class="filter-row">
@@ -3245,7 +3561,14 @@
                         }
                     });
             } else {
+                // Remove only the selected value for array filters
+                const arrKey = `${key}[]`;
+                const values = params.getAll(arrKey).length ? params.getAll(arrKey) : params.getAll(key);
+                params.delete(arrKey);
                 params.delete(key);
+                values.forEach(v => {
+                    if (v !== value) params.append(arrKey, v);
+                });
             }
             resetPagination(params);
             window.location = `{{ route('tasks.index') }}?${params.toString()}`;

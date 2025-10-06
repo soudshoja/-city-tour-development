@@ -115,29 +115,133 @@
                                 <button @click="clientCreditRefund = true" class="bg-white hover:bg-gray-200 text-black p-2 rounded-full cursor-pointer">
                                     {{ $balanceCredit }} KWD
                                 </button>
-                                <div class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-10" x-show="clientCreditRefund" x-cloak>
-                                    <div @click.away="clientCreditRefund = false" class="bg-white rounded-md p-4 w-96 h-auto">
-                                        <div class="header bg-gray-400 text-white rounded-sm shadow-md my-2 p-2">
-                                            <h3 class="">Refund Client Credit</h3>
+                                <div
+                                    class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-10"
+                                    x-show="clientCreditRefund"
+                                    x-cloak>
+                                    <div
+                                        @click.away="clientCreditRefund = false"
+                                        class="bg-white rounded-md p-4 w-96 h-auto"
+                                        x-data="{ activeTab: 'assign' }">
+                                        <!-- Header -->
+                                        <div class="flex items-center justify-between mb-6">
+                                            <div class="text-xl">
+                                                <h2 class="text-xl font-bold text-gray-800">Client Credit</h2>
+                                                <p class="text-gray-600 italic text-xs mt-1">Manage client credit in one place</p>
+                                            </div>
+                                            <button
+                                                @click="clientCreditRefund = false"
+                                                class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">
+                                                &times;
+                                            </button>
                                         </div>
-                                        <form action="{{ route('clients.refund', $client->id) }}" method="POST" class="grid gap-4">
-                                            @csrf
-                                            @if ($agents->count() > 1)
-                                            <select name="agent_id" id="agent_id" class="border border-gray-200 dark:border-gray-600 p-2 rounded-md">
-                                                @foreach ($agents as $agent)
-                                                <option value="{{ $agent->id }}">{{ $agent->name }}</option>
-                                                @endforeach
-                                            </select>
-                                            @else
-                                            <input type="hidden" name="agent_id" value="{{ $agents[0]->id }}">
-                                            @endif
-                                            <input type="number" name="amount" min="0" step="0.01" max="{{ $balanceCredit }}" placeholder="Enter refund amount"
-                                                class="border border-gray-200 dark:border-gray-600 p-2 rounded-md text-black">
-                                            <button type="submit" class="p-2 rounded-md bg-black text-white"
-                                                {{ $balanceCredit == 0 ? 'disabled' : '' }}>
+
+                                        <!-- Tabs -->
+                                        <div class="flex border-b border-gray-200 mb-4">
+                                            <button
+                                                class="flex-1 py-2 text-sm font-semibold text-center"
+                                                :class="activeTab === 'assign' ? 'border-b-2 border-black text-black' : 'text-gray-500'"
+                                                @click="activeTab = 'assign'">
+                                                Assign
+                                            </button>
+                                            <button
+                                                class="flex-1 py-2 text-sm font-semibold text-center"
+                                                :class="activeTab === 'refund' ? 'border-b-2 border-black text-black' : 'text-gray-500'"
+                                                @click="activeTab = 'refund'">
                                                 Refund
                                             </button>
-                                        </form>
+                                        </div>
+                                        <!-- Assign Tab -->
+                                        <div x-show="activeTab === 'assign'">
+                                            <div>
+                                                <label for="gateway" class="block text-sm font-medium text-gray-700 mb-1">
+                                                    Assigned Agent
+                                                </label>
+                                                <select name="agent" id="agent" x-model="agent"
+                                                    class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                    required aria-placeholder="Select Assigned Agent">
+                                                    <option value="Select Assigned Agent" selected disabled hidden>Select Assigned Agent</option>
+                                                    <option value="Soud Shoja">Soud Shoja</option>
+                                                </select>
+                                            </div>
+                                            <!-- Amount Input -->
+                                            <div class="mt-5">
+                                                <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">
+                                                    Amount to Assign
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="amount"
+                                                    min="0"
+                                                    step="0.01"
+                                                    max="{{ $balanceCredit }}"
+                                                    placeholder="Enter assign amount"
+                                                    class="border border-gray-200 dark:border-gray-600 p-2 rounded-md text-black w-full">
+                                            </div>
+                                            <!-- Action Buttons -->
+                                            <div class="flex justify-between mt-5">
+                                                <button type="button"
+                                                    @click="clientCreditRefund = false"
+                                                    class="w-32 shadow-md border border-gray-200 hover:bg-gray-200 font-semibold py-2 rounded-full text-sm text-black transition duration-150">
+                                                    Cancel
+                                                </button>
+
+                                                <button type="submit"
+                                                    class="w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-full text-sm shadow-md transition duration-150"
+                                                    {{ $balanceCredit == 0 ? 'disabled' : '' }}>
+                                                    Assign
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Refund Tab -->
+                                        <div x-show="activeTab === 'refund'">
+                                            <form action="{{ route('clients.refund', $client->id) }}" method="POST" class="grid gap-4">
+                                                @csrf
+
+                                                <!-- Agent Select -->
+                                                @if ($agents->count() > 1)
+                                                <select name="agent_id" id="agent_id"
+                                                    class="border border-gray-200 dark:border-gray-600 p-2 rounded-md w-full">
+                                                    @foreach ($agents as $agent)
+                                                    <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @else
+                                                <input type="hidden" name="agent_id" value="{{ $agents[0]->id }}">
+                                                @endif
+
+                                                <!-- Amount Input -->
+                                                <div class="mt-5">
+                                                    <label for="amount" class="block text-sm font-medium text-gray-700 mb-1">
+                                                        Refund to Client
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        name="amount"
+                                                        min="0"
+                                                        step="0.01"
+                                                        max="{{ $balanceCredit }}"
+                                                        placeholder="Enter refund amount"
+                                                        class="border border-gray-200 dark:border-gray-600 p-2 rounded-md text-black w-full">
+                                                </div>
+
+                                                <!-- Action Buttons -->
+                                                <div class="flex justify-between mt-5">
+                                                    <button type="button"
+                                                        @click="clientCreditRefund = false"
+                                                        class="w-32 shadow-md border border-gray-200 hover:bg-gray-200 font-semibold py-2 rounded-full text-sm text-black transition duration-150">
+                                                        Cancel
+                                                    </button>
+
+                                                    <button type="submit"
+                                                        class="w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-full text-sm shadow-md transition duration-150"
+                                                        {{ $balanceCredit == 0 ? 'disabled' : '' }}>
+                                                        Refund
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -184,29 +288,29 @@
                             </h5>
                         </div>
                         @if($client->agents->isEmpty())
-                            <div class="mt-2 flex items-center justify-between text-white">
-                                <p class="text-lg">Agent Assigned</p>
-                                <div class="px-3 py-1 bg-gray-400 text-white text-sm rounded-full">No Agent Assigned</div>
-                            </div>
+                        <div class="mt-2 flex items-center justify-between text-white">
+                            <p class="text-lg">Agent Assigned</p>
+                            <div class="px-3 py-1 bg-gray-400 text-white text-sm rounded-full">No Agent Assigned</div>
+                        </div>
                         @else
-                            <div class="mt-2 text-white">
-                                <div class="flex flex-wrap items-center gap-y-2">
-                                    <p class="text-lg">Agents Assigned</p>
-                                    @if($client->agents->count() > 1)
-                                    <span class="ml-auto px-2 py-0.5 text-xs rounded-full bg-white/10 backdrop-blur">
-                                        {{ $client->agents->count() }} agents assigned
+                        <div class="mt-2 text-white">
+                            <div class="flex flex-wrap items-center gap-y-2">
+                                <p class="text-lg">Agents Assigned</p>
+                                @if($client->agents->count() > 1)
+                                <span class="ml-auto px-2 py-0.5 text-xs rounded-full bg-white/10 backdrop-blur">
+                                    {{ $client->agents->count() }} agents assigned
+                                </span>
+                                @endif
+                                <div class="ml-auto flex flex-wrap justify-end gap-2 w-full sm:w-auto">
+                                    @foreach($client->agents as $agent)
+                                    <span class="px-3 py-1 rounded-full text-sm bg-white/20 ring-1 ring-white/20 shadow-sm inline-flex items-center gap-2">
+                                        <span class="w-2 h-2 rounded-full {{ ['bg-emerald-400','bg-sky-400','bg-amber-400','bg-rose-400','bg-violet-400'][$loop->index % 5] }}"></span>
+                                        <span class="font-semibold truncate max-w-[140px]" title="{{ $agent->name }}">{{ $agent->name }}</span>
                                     </span>
-                                    @endif
-                                    <div class="ml-auto flex flex-wrap justify-end gap-2 w-full sm:w-auto">
-                                        @foreach($client->agents as $agent)
-                                            <span class="px-3 py-1 rounded-full text-sm bg-white/20 ring-1 ring-white/20 shadow-sm inline-flex items-center gap-2">
-                                                <span class="w-2 h-2 rounded-full {{ ['bg-emerald-400','bg-sky-400','bg-amber-400','bg-rose-400','bg-violet-400'][$loop->index % 5] }}"></span>
-                                                <span class="font-semibold truncate max-w-[140px]" title="{{ $agent->name }}">{{ $agent->name }}</span>
-                                            </span>
-                                        @endforeach
-                                    </div>
+                                    @endforeach
                                 </div>
                             </div>
+                        </div>
                         @endif
                     </div>
                     <div class="invoice-status flex gap-2 mt-2">
@@ -357,12 +461,12 @@
                             @if ($payments->count() > 0)
                             @foreach ($payments as $payment)
                             @php
-                                $paymentUrl = route('payment.link.show', [
-                                    'companyId' => $payment->agent->branch->company_id,
-                                    'voucherNumber' => $payment->voucher_number,
-                                ]);
-                                $gateway = $payment->payment_gateway ?? 'N/A';
-                                $method = $payment->paymentMethod->english_name ?? null;
+                            $paymentUrl = route('payment.link.show', [
+                            'companyId' => $payment->agent->branch->company_id,
+                            'voucherNumber' => $payment->voucher_number,
+                            ]);
+                            $gateway = $payment->payment_gateway ?? 'N/A';
+                            $method = $payment->paymentMethod->english_name ?? null;
                             @endphp
                             <tr class="border-b hover:bg-gray-50">
                                 <td class="px-3 py-2 whitespace-nowrap">
@@ -395,9 +499,9 @@
                                 </td>
                                 <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
                                     @php
-                                        $payment_reference = $payment->payment_reference ? ($payment->invoice_ref ? $payment->payment_reference . '/' . $payment->invoice_ref : $payment->payment_reference) : 'N/A';
-                                        $isTrimmed = strlen($payment_reference) > 15;
-                                        $trimmedValue = \Illuminate\Support\Str::limit($payment_reference, 15);
+                                    $payment_reference = $payment->payment_reference ? ($payment->invoice_ref ? $payment->payment_reference . '/' . $payment->invoice_ref : $payment->payment_reference) : 'N/A';
+                                    $isTrimmed = strlen($payment_reference) > 15;
+                                    $trimmedValue = \Illuminate\Support\Str::limit($payment_reference, 15);
                                     @endphp
 
                                     @if ($isTrimmed)
@@ -416,14 +520,14 @@
                                 </td>
                                 <td class="px-3 py-2 whitespace-nowrap text-sm">
                                     @php
-                                        $statusColors = [
-                                            'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-600',
-                                            'completed' => 'bg-green-100 text-green-800 border-green-600',
-                                            'failed' => 'bg-red-100 text-red-800 border-red-600',
-                                            'cancelled' => 'bg-gray-100 text-gray-600 border-gray-600',
-                                        ];
-                                        $status = strtolower($payment->status);
-                                        $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-800 border-gray-600';
+                                    $statusColors = [
+                                    'pending' => 'bg-yellow-100 text-yellow-800 border-yellow-600',
+                                    'completed' => 'bg-green-100 text-green-800 border-green-600',
+                                    'failed' => 'bg-red-100 text-red-800 border-red-600',
+                                    'cancelled' => 'bg-gray-100 text-gray-600 border-gray-600',
+                                    ];
+                                    $status = strtolower($payment->status);
+                                    $colorClass = $statusColors[$status] ?? 'bg-gray-100 text-gray-800 border-gray-600';
                                     @endphp
                                     <span
                                         class="inline-block px-3 py-1.5 rounded-full font-semibold text-center {{ $colorClass }} border-2 transition-all duration-200 ease-in-out transform hover:scale-105 hover:shadow-lg">
@@ -545,8 +649,8 @@
                                                     @method('PUT')
                                                     @unlessrole('agent')
                                                     @php
-                                                        $selectedAgent = \App\Models\Agent::find($payment->agent_id);
-                                                        $agentPlaceholder = $selectedAgent ? $selectedAgent->name : 'Select an Agent';
+                                                    $selectedAgent = \App\Models\Agent::find($payment->agent_id);
+                                                    $agentPlaceholder = $selectedAgent ? $selectedAgent->name : 'Select an Agent';
                                                     @endphp
 
                                                     <div class="mb-4">

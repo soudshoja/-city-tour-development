@@ -39,7 +39,7 @@ class BranchController extends Controller
             }
 
             $branchesCount = $branches->count();
-            // dd($branches);
+
             return view('branches.list', compact('branches', 'branchesCount'));
         }
     }

@@ -3642,7 +3642,7 @@ class TaskController extends Controller
         $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
 
         $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
-        dd($originalTask->agent->branch_id);
+        
         $transaction = Transaction::create([
             'branch_id' => $originalTask->agent->branch_id,
             'company_id' => $originalTask->company_id,

@@ -103,7 +103,7 @@ class ChargeController extends Controller
         // if ($coaPaymentGateway->isEmpty() || $coaPaymentGatewayBankAcc->isEmpty() || $coaBankAccount->isEmpty()) {
         //     return redirect()->route('charges.index')->with('error', 'Some required COA records are missing.');
         // }
-        //dd($coaPaymentGateway,$coaPaymentGatewayBankAcc,$coaBankAccount);
+        
         return view('charges.create', compact('coaPaymentGateway', 'coaPaymentGatewayBankAcc', 'coaBankAccount'));
     }
 
@@ -159,7 +159,6 @@ class ChargeController extends Controller
         try {
             DB::beginTransaction();
 
-            //dd($coaPaymentGatewayBankAcc->id);
             // Create Account for Payment Gateway Bank Fee (if it doesn't exist)
             $newAccountBankFee = Account::create([
                 'name' => $request->name,

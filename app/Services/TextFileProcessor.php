@@ -9,9 +9,6 @@ class TextFileProcessor
 {
     public function readAndExtractData(string $filePath)
     {
-
-        // dd(Storage::exists($filePath));
-        // dd($filePath);
         // Check if the file exists
         if (!File::exists($filePath)) {
             throw new \Exception("File not found at path: $filePath");
@@ -20,7 +17,6 @@ class TextFileProcessor
         // Read file contents
         $fileContent = File::get($filePath);
         // $fileContent = mb_convert_encoding($fileContent, 'UTF-8', 'auto');
-        // dd($fileContent);
 
         // Process each line if the file contains multiple lines
         $data = $this->extractData($fileContent);

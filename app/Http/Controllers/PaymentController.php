@@ -2009,7 +2009,6 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', $response['message']);
         }
 
-        // dd($response['data']);
         $voucherNumber = $response['data']['voucher_number'];
         $paymentUrl = url('/payment/link/show/' . $voucherNumber);
         // Mail::to($response['clientEmail'])->send(new PaymentLinkEmail($paymentUrl));
@@ -2288,7 +2287,7 @@ class PaymentController extends Controller
                     ]
                 ],
             ];
-            // dd($executePayload);
+
             $executeResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
                 'Content-Type' => 'application/json',

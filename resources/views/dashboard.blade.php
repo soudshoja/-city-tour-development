@@ -13,7 +13,6 @@
     <div class="">
         @php
         
-            //dd(auth()->user()->hasRole('company'));
             if (auth()->user()->hasRole('admin')) {
                 $gridCols = 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3';
             } elseif (auth()->user()->hasRole('company')) {

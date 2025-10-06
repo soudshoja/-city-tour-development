@@ -145,7 +145,6 @@ class BankPaymentController extends Controller
      */
     public function store(Request $request)
     {
-        //dd($request);
 
         if ($request->bankpaymenttype === 'PaymentByDate') {
             $bankPaymentType = 'Payment';
@@ -222,7 +221,6 @@ class BankPaymentController extends Controller
 
             ]);
 
-            //dd($request->items);
             // Store JournalEntries
             foreach ($request->items as $item) {
                 $accname = Account::where('id', $item['account_id'])->first();
@@ -253,7 +251,6 @@ class BankPaymentController extends Controller
                 ]);
 
                 // Update selected journal entries 
-                //dd($request->items);
 
                 if (!empty($item['transaction_id'])) {
                     $ids = array_filter(array_map('trim', explode(',', $item['transaction_id'])));
@@ -334,8 +331,6 @@ class BankPaymentController extends Controller
 
     public function update(Request $request, $id)
     {
-
-        //dd($request->all());
         $request->validate([
             'bankpaymentref' => 'required|string',
             'docdate' => 'required|date',

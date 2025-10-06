@@ -35,11 +35,6 @@ class TaskSchema
         }
     }
 
-    // dump('VFS Supplier:', $vfsSupplier); 
-    // dump('VFS Account:', $vfsAccount);
-    // dump('VFS Child Accounts:', $vfsChildAccount);
-    // dd($vfsChildAccount);
-
         $taskTypes = ['hotel', 'flight', 'visa', 'insurance', 'tour' , 'curise' , 'car' , 'rail' , 'esim', 'event', 'lounge', 'ferry'];
         $taskTypes = json_encode($taskTypes);
 

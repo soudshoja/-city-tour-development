@@ -742,7 +742,8 @@ class WhatsAppHotelController extends Controller
                 // 'room_name' => 'required|string',
                 'board_basis' => 'nullable|string',
                 'non_refundable' => 'nullable|boolean',
-                'price' => 'nullable|numeric',
+                'price_min' => 'nullable|numeric',
+                'price_max' => 'nullable|numeric',
                 'occupancy' => 'nullable|array',
             ]);
 
@@ -770,9 +771,13 @@ class WhatsAppHotelController extends Controller
                 $roomQuery->where('non_refundable', $request->non_refundable);
             }
 
-            if ($request->has('price')) {
-                $roomQuery->where('price', $request->price);
+            if ($request->has('price_min')) {
+                $roomQuery->where('price', '>=', $request->price_min);
             }
+            if ($request->has('price_max')) {
+                $roomQuery->where('price', '<=', $request->price_max);
+            }
+
 
             if ($request->has('occupancy')) {
                 $roomQuery->where('occupancy', 'like', '%' . json_encode($request->occupancy) . '%');

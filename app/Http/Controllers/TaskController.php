@@ -1407,6 +1407,7 @@ class TaskController extends Controller
             'description' => 'Task created: ' . $task->reference,
             'reference_type' => 'Payment',
             'transaction_date' => $transactionDate,
+            
         ]);
 
         if (!$transaction) {
@@ -1420,6 +1421,7 @@ class TaskController extends Controller
             'branch_id' => $branchId,
             'account_id' => $supplierCost->id,
             'task_id' => $task->id,
+            'agent_id' => $task->agent_id,
             'transaction_date' => $transactionDate,
             'description' => 'Task from supplier (Expenses): ' . $supplierCompany->supplier->name,
             'name' => $supplierCompany->supplier->name,
@@ -1500,6 +1502,7 @@ class TaskController extends Controller
             'branch_id' => $branchId,
             'account_id' => $liabilityAccountId,
             'task_id' => $task->id,
+            'agent_id' => $task->agent_id,
             'transaction_date' => $transactionDate,
             'description' => $liabilityDescription,
             'name' => $supplierCompany->supplier->name,
@@ -1755,6 +1758,7 @@ class TaskController extends Controller
             'branch_id' => $branchId,
             'account_id' => $payableAccountToUse->id,
             'task_id' => $task->id,
+            'agent_id' => $task->agent_id,
             'description' => 'Refund Task - Supplier refunds us (Liabilities): ' . $payableAccountToUse->name,
             'debit' => $refundAmount, // Now always uses converted amount
             'credit' => 0,
@@ -1771,6 +1775,7 @@ class TaskController extends Controller
             'branch_id' => $branchId,
             'account_id' => $supplierCost->id,
             'task_id' => $task->id,
+            'agent_id' => $task->agent_id,
             'description' => 'Refund Task - Supplier cost return (Expenses): ' . $supplierCost->name,
             'debit' => 0,
             'credit' => $task->total, // Always use converted amount for expense account

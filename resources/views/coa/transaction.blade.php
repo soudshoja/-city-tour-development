@@ -34,7 +34,7 @@
             <!-- Filter + Export -->
             <div class="flex items-center space-x-4 mb-6">
                 <!-- Filter Button & Modal -->
-                <div class="relative" @click.outside="showFilter = false">
+                <!-- <div class="relative" @click.outside="showFilter = false">
                     <button @click="showFilter = !showFilter"
                         class="dark:text-white flex px-5 py-3 gap-2 city-light-yellow rounded-lg BoxShadow items-center text-xs md:text-sm">
                         <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
@@ -63,7 +63,7 @@
                             </div>
                         </form>
                     </div>
-                </div>
+                </div> -->
 
                 <!-- Export Button -->
                 <button class="dark:text-white flex px-5 py-3 gap-2 city-light-yellow rounded-lg BoxShadow items-center text-xs md:text-sm">
@@ -77,7 +77,7 @@
         </div>
 
         <!-- Transaction List -->
-        <div class="panel overflow-y-auto max-h-screen mt-4">
+        <!-- <div class="panel overflow-y-auto max-h-screen mt-4">
             @php
             $hasData = false;
             foreach ($transactionsByDate->items() as $group) {
@@ -150,83 +150,75 @@
                                     @endif
                                 </div>
                             </div>
-                           <div 
-    x-data="{ showMenu: null, showDeleteModal: false }" 
-    class="relative" 
-    @click.outside="showMenu = null"
->
-    <!-- Toggle button -->
-    <button 
-        @click="showMenu = (showMenu === {{ $transaction->id }} ? null : {{ $transaction->id }})"
-        class="text-black hover:text-gray-700 pl-4"
-    >
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" 
-             viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" 
-                  d="M12 6h.01M12 12h.01M12 18h.01" />
-        </svg>
-    </button>
+                            <div
+                                x-data="{ showMenu: null, showDeleteModal: false }"
+                                class="relative"
+                                @click.outside="showMenu = null">
+                                <button
+                                    @click="showMenu = (showMenu === {{ $transaction->id }} ? null : {{ $transaction->id }})"
+                                    class="text-black hover:text-gray-700 pl-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4"
+                                            d="M12 6h.01M12 12h.01M12 18h.01" />
+                                    </svg>
+                                </button>
 
-    <!-- Dropdown Menu -->
-    <div 
-        x-show="showMenu === {{ $transaction->id }}" 
-        x-transition 
-        class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border border-gray-200 z-10"
-    >
-        @unless($transaction->journalEntries->isEmpty())
-            <a href="{{ route('journal-entries.index', $transaction->id) }}"
-                class="text-center block px-4 py-2 text-gray-700 hover:bg-blue-200">
-                View Ledger
-            </a>
-        @endunless
+                                <div
+                                    x-show="showMenu === {{ $transaction->id }}"
+                                    x-transition
+                                    class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border border-gray-200 z-10">
+                                    @unless($transaction->journalEntries->isEmpty())
+                                    <a href="{{ route('journal-entries.index', $transaction->id) }}"
+                                        class="text-center block px-4 py-2 text-gray-700 hover:bg-blue-200">
+                                        View Ledger
+                                    </a>
+                                    @endunless
 
-        @if(auth()->user()->role_id == \App\Models\Role::ADMIN)
-            <button 
-                @click="showMenu = null; showDeleteModal = true"
-                class="text-center block w-full px-4 py-2 text-gray-700 hover:bg-red-200">
-                Delete Transaction
-            </button>
-        @endif
-    </div>
+                                    @if(auth()->user()->role_id == \App\Models\Role::ADMIN)
+                                    <button
+                                        @click="showMenu = null; showDeleteModal = true"
+                                        class="text-center block w-full px-4 py-2 text-gray-700 hover:bg-red-200">
+                                        Delete Transaction
+                                    </button>
+                                    @endif
+                                </div>
 
-    <!-- Delete Modal -->
-    <div 
-    x-show="showDeleteModal" 
-    x-cloak 
-    class="fixed inset-0 flex items-center justify-center backdrop-blur-sm backdrop-brightness-75 z-50"
-    @keydown.escape.window="showDeleteModal = false"
-    @click.self="showDeleteModal = false"
->
-    <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Confirm Delete</h2>
-        <p class="text-gray-700 mb-6">
-            Are you sure you want to delete this transaction? This action cannot be undone.
-        </p>
+                                <div
+                                    x-show="showDeleteModal"
+                                    x-cloak
+                                    class="fixed inset-0 flex items-center justify-center backdrop-blur-sm backdrop-brightness-75 z-50"
+                                    @keydown.escape.window="showDeleteModal = false"
+                                    @click.self="showDeleteModal = false">
+                                    <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+                                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Confirm Delete</h2>
+                                        <p class="text-gray-700 mb-6">
+                                            Are you sure you want to delete this transaction? This action cannot be undone.
+                                        </p>
 
-        <div class="flex justify-end space-x-4">
-            <button 
-                @click="showDeleteModal = false"
-                class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                Cancel
-            </button>
+                                        <div class="flex justify-end space-x-4">
+                                            <button
+                                                @click="showDeleteModal = false"
+                                                class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+                                                Cancel
+                                            </button>
 
-            <form 
-                action="{{ route('coa.deleteTransaction', $transaction->id) }}" 
-                method="POST"
-            >
-                @csrf
-                @method('DELETE')
-                <button 
-                    type="submit"
-                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-                    Delete
-                </button>
-            </form>
-        </div>
-    </div>
-</div>
+                                            <form
+                                                action="{{ route('coa.deleteTransaction', $transaction->id) }}"
+                                                method="POST">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button
+                                                    type="submit"
+                                                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
 
-</div>
+                            </div>
 
                         </li>
                         @endforeach
@@ -241,6 +233,95 @@
             </div>
             @endif
 
+            @endif
+        </div> -->
+        <div class="panel overflow-x-auto max-h-screen mt-4">
+            @php
+            $hasData = false;
+            foreach ($transactionsByDate->items() as $group) {
+            if (!$group->isEmpty()) {
+            $hasData = true;
+            break;
+            }
+            }
+            @endphp
+
+            @if (!$hasData)
+            <div class="text-center text-gray-600 py-20">
+                <!-- ...existing empty state code... -->
+            </div>
+            @else
+            <table class="min-w-full bg-white rounded-lg shadow-md">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-2 border-b text-left w-32" style="width: 160px;">Date</th>
+                        <th class="px-2 py-1 border-b text-left w-40" style="width: 160px;">Agent Name</th>
+                        <th class="px-4 py-2 border-b text-left w-64" style="width: 230px;">Description</th>
+                        <th class="px-2 py-1 border-b text-left w-40" style="width: 140px;">Account</th>
+                        <th class="px-2 py-1 border-b text-right w-28" style="width: 100px;">Debit</th>
+                        <th class="px-2 py-1 border-b text-right w-28" style="width: 100px;">Credit</th>
+                        <th class="px-2 py-1 border-b text-right w-36" style="width: 140px;">Running Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($transactionsByDate->items() as $date => $transactions)
+                    @foreach ($transactions as $transaction)
+                    @if($transaction->journalEntries && $transaction->journalEntries->count())
+                    @foreach($transaction->journalEntries as $entry)
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 border-b">{{ \Carbon\Carbon::parse($date)->format('d F Y') }}</td>
+                        <td class="px-2 py-1 border-b">
+                            {{
+                                    $entry->task && $entry->task->agent
+                                        ? $entry->task->agent->name
+                                        : (
+                                            $entry->invoice && $entry->invoice->agent
+                                                ? $entry->invoice->agent->name
+                                                : 'N/A'
+                                        )
+                                }}
+                        </td>
+                        <td class="px-4 py-2 border-b">{{ $transaction->description ?? 'N/A' }}</td>
+                        <td class="px-2 py-1 border-b">{{ $entry->account->name ?? 'N/A' }}</td>
+                        <td class="px-2 py-1 border-b text-right">{{ number_format($entry->debit, 2) }}</td>
+                        <td class="px-2 py-1 border-b text-right">{{ number_format($entry->credit, 2) }}</td>
+                        <td class="px-2 py-1 border-b text-right">{{ number_format($entry->running_balance ?? 0, 2) }}</td>
+                    </tr>
+                    @endforeach
+                    @else
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 border-b">{{ \Carbon\Carbon::parse($date)->format('d F Y') }}</td>
+                        <td class="px-2 py-1 border-b">
+                            {{
+                                $entry->task && $entry->task->agent
+                                    ? $entry->task->agent->name
+                                    : (
+                                        $entry->invoice && $entry->invoice->agent
+                                            ? $entry->invoice->agent->name
+                                            : 'N/A'
+                                    )
+                            }}
+                        </td>
+                        <td class="px-4 py-2 border-b">{{ $transaction->description ?? 'N/A' }}</td>
+                        <td class="px-4 py-2 border-b">{{ ucwords($transaction->transaction_type ?? 'N/A') }}</td>
+                        <td class="px-4 py-2 border-b text-right text-green-600">
+                            {{ $transaction->credit > 0 ? number_format($transaction->credit, 2) : '-' }}
+                        </td>
+                        <td class="px-4 py-2 border-b text-right text-red-600">
+                            {{ $transaction->debit > 0 ? number_format($transaction->debit, 2) : '-' }}
+                        </td>
+                        <td colspan="6" class="px-2 py-1 border-b text-gray-400">No journal entries</td>
+                    </tr>
+                    @endif
+                    @endforeach
+                    @endforeach
+                </tbody>
+            </table>
+            @if ($transactionsByDate->total() > $transactionsByDate->perPage())
+            <div class="mt-6">
+                <x-pagination :data="$transactionsByDate" />
+            </div>
+            @endif
             @endif
         </div>
     </div>

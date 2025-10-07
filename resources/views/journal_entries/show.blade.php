@@ -88,10 +88,10 @@
                             </td>
                             @endif
                             <td class="py-2 px-4 text-left">
-                                {{ $entry->task ? $entry->task->reference ?? '-' : '-' }}
+                                {{ $entry->task?->reference ?? $entry->transaction?->reference_number ?? $entry->voucher_number ?? '-' }}
                             </td>
                             <td class="py-2 px-4 text-left">
-                                {{ $entry->task ? $entry->task->client_name ?? '-' : '-' }}
+                                {{ $entry->task?->client_name ?? $entry->transaction?->name ?? $entry->name ?? '-' }}
                             </td>
                             <td class="py-2 px-4 text-left">
                                 @if ($entry->task && $entry->task->type === 'flight')
@@ -131,7 +131,7 @@
                                     </div>
                                 </div>
                                 @else
-                                <div>{{ $entry->task->additional_info ?? '-' }}</div>
+                                <div>{{ $entry->task?->additional_info ?? $entry->transaction?->description ?? '-' }}</div>
                                 @endif
                             </td>
                             <td class="py-2 px-4 text-center">

@@ -61,6 +61,7 @@
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Registered</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Amount (KWD)</th>
+                                    <th class="p-3 text-left text-md font-bold text-gray-500">Status</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Action</th>
                                 </tr>
                             </thead>
@@ -85,7 +86,7 @@
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         {{ \Carbon\Carbon::parse($receiptvoucher->date)->format('Y-m-d') }}
                                     </td>
-                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                    <td class="p-3 text-sm text-gray-500 align-top whitespace-normal break-words w-[28rem]">
                                         {{ $receiptvoucher->description }}
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
@@ -96,6 +97,20 @@
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         <div class="flex items-center gap-2">
+                                            @if($receiptvoucher->reference_type === 'Receipt')
+                                                <span class="inline-flex items-center rounded-full border border-green-600/30 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                                                    Paid
+                                                </span>                                            
+                                            @else
+                                            <form method="POST" action="{{ route('receipt-voucher.approve', $receiptvoucher->id) }}" style="display:inline;">
+                                                @csrf
+                                                <button type="submit" class="btn btn-success btn-sm ml-2">Approve</button>
+                                            </form>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex">
                                             <a data-tooltip="View Receipt Voucher"
                                                 href="{{ route('receipt-voucher.edit', $receiptvoucher->id) }}"
                                                 class="text-blue-500 hover:underline">
@@ -109,13 +124,8 @@
                                                     </g>
                                                 </svg>
                                             </a>
-                                            <form method="POST" action="{{ route('receipt-voucher.approve', $receiptvoucher->id) }}" style="display:inline;">
-                                                @csrf
-                                                <button type="submit" class="btn btn-success btn-sm ml-2">Approve</button>
-                                            </form>
                                         </div>
                                     </td>
-
                                 </tr>
                                 @endforeach
                                 @endif

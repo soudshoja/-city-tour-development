@@ -1732,4 +1732,190 @@ class ClientController extends Controller
             return redirect()->route('dashboard')->with('error', 'Failed to deny assignment request.');
         }
     }
+
+    public function receiptVoucherCredit(Payment $payment, $data)
+    {
+        $user = Auth::user();
+        $client = Client::findOrFail($payment->client_id);
+        $agent = Agent::find($payment->agent_id);
+
+        if (!$client) {
+            return [
+                'status' => 'error',
+                'message' => 'Client not found',
+            ];
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $topupCreditClientData = [
+                'company_id'  => $agent->branch->company->id,
+                'branch_id'   => $agent->branch->id,
+                'client_id'   => $client->id,
+                'type'        => 'Topup',
+                'payment_id'  => $payment->id,
+                'description' => 'Topup Credit via ' . $payment->voucher_number . '. Additional Remarks of ' . $data['remarks_create'],
+                'amount'      => $payment->amount,
+                'topup_by'    => $user->id,
+            ];
+
+            Log::info('Creating Credit record:', $topupCreditClientData);
+
+            Credit::create($topupCreditClientData);
+            
+            Log::info('Credit record created successfully for client ID: ' . $client->id);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to create Credit record', [
+                'data'  => $topupCreditClientData,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+        DB::commit();
+
+        DB::beginTransaction();
+        try {
+            $transaction = Transaction::create([
+                'branch_id'        => $agent->branch->id,
+                'company_id'       => $agent->branch->company->id,
+                'name'             => $client->full_name,
+                'entity_id'        => $agent->branch->company->id,
+                'entity_type'      => 'client',
+                'transaction_type' => 'debit',
+                'amount'           => $payment->amount,
+                'description'      => 'Credit for Client ' . $client->full_name . '. Additional Remarks of ' . $data['remarks_create'],
+                'invoice_id'       => null,
+                'reference_type'   => 'Receipt',
+                'reference_number' => $payment->voucher_number,
+                'transaction_date' => now(),
+            ]);
+
+            if (!$transaction) {
+                Log::error('Transaction failed to create');
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to create transaction',
+                ];
+            }
+
+            $companyId = $payment->agent->branch->company->id;
+
+            $assets = Account::where('name', 'like', '%Assets%')
+                ->where('company_id', $companyId)
+                ->value('id');
+
+            if (!$assets) {
+                Log::error('Assets root account not found');
+                return [
+                    'status' => 'error',
+                    'message' => 'Assets root account not found',
+                ];
+            }
+
+            $liabilities = Account::where('name', 'like', '%Liabilities%')
+                ->where('company_id', $companyId)
+                ->value('id');
+
+            if (!$liabilities) {
+                Log::error('Liabilities root account not found');
+                return [
+                    'status' => 'error',
+                    'message' => 'Liabilities root account not found',
+                ];
+            }
+
+            $receiptVoucherCash = Account::where('name', 'Receipt Voucher Cash')
+                ->where('company_id', $companyId)
+                ->where('root_id', $assets)
+                ->first();
+
+            if (!$receiptVoucherCash) {
+                Log::error('Cash in Hand (Receipt Voucher Cash) account not found');
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to add journal entry to Cash in Hand (Receipt Voucher Cash) account',
+                ];
+
+            }
+
+            JournalEntry::create([
+                'transaction_id'   => $transaction->id,
+                'company_id'       => $agent->branch->company->id,
+                'branch_id'        => $agent->branch->id,
+                'account_id'       => $receiptVoucherCash->id,
+                'transaction_date' => Carbon::now(),
+                'description'      => 'Client ' . $client->full_name . ' Pays Cash via (Assets): ' . $receiptVoucherCash->name,
+                'debit'            => $payment->amount,
+                'credit'           => 0,
+                'name'             => $receiptVoucherCash->name,
+                'type'             => 'cash',
+                'voucher_number'   => $payment->voucher_number,
+                'type_reference_id'=> $receiptVoucherCash->id,
+            ]);
+
+            $receiptVoucherCash->actual_balance = ($receiptVoucherCash->actual_balance ?? 0) + $payment->amount;
+            $receiptVoucherCash->save();
+
+            $advancesParent = Account::where('name', 'Advances')
+                ->where('company_id', $companyId)
+                ->where('root_id', $liabilities)
+                ->first();
+
+            $clientAdvance = Account::where('name', 'Client')
+                ->where('company_id', $companyId)
+                ->where('parent_id', $advancesParent->id)
+                ->first();
+
+            $cash= Account::where('name', 'Cash')
+                ->where('company_id', $companyId)
+                ->where('parent_id', $clientAdvance->id)
+                ->first();
+                
+            if (!$cash) {
+                Log::error('Advances (Client -> Cash) account not found');
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to add journal entry to Advances (Client -> Cash) account',
+                ];
+            }
+
+            JournalEntry::create([
+                'transaction_id'   => $transaction->id,
+                'company_id'       => $agent->branch->company->id,
+                'branch_id'        => $agent->branch->id,
+                'account_id'       => $cash->id,
+                'voucher_number'   => $payment->voucher_number,
+                'transaction_date' => Carbon::now(),
+                'description'      => 'Client Pays Credit via (Advances): ' . $cash->name,
+                'debit'            => 0, // liability increase → credit
+                'credit'           => $payment->amount,
+                'balance'          => ($cash->actual_balance ?? 0) + $payment->amount,
+                'name'             => $cash->name,
+                'type'             => 'credit',
+                'type_reference_id'=> $cash->id,
+            ]);
+
+            $cash->actual_balance = ($cash->actual_balance ?? 0) + $payment->amount;
+            $cash->save();
+        } catch (Exception $e) {
+            DB::rollBack();
+            logger('Error adding JournalEntry: ' . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => 'Failed to add JournalEntry',
+            ];
+        }
+
+        DB::commit();
+        return [
+            'status' => 'success',
+            'message' => 'Credit added successfully',
+            'data' => [
+                'client_id' => $client->id,
+                'credit' => $payment->amount,
+            ],
+        ];
+    }
 }

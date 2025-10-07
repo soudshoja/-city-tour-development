@@ -1009,9 +1009,16 @@ class TaskController extends Controller
             $shouldProcessFinancials = $offline && $task->is_complete || $task->status !== 'confirmed'|| ($task->status == 'void' && $task->original_task_id);
 
             if ($shouldProcessFinancials) {
-                $reason = $task->is_complete ? 'complete task' : 'void task with original_task_id';
-                Log::info("Processing financial transactions for {$reason}: " . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
-                $this->processTaskFinancial($task);
+                $supplierName = strtolower(optional($task->supplier)->name ?? '');
+                $isZeroTotalSupplier = (str_contains($supplierName, 'trendy travel') || str_contains($supplierName, 'alam al raya travel')) && empty((float) $task->total);
+
+                if ($isZeroTotalSupplier) {
+                    Log::info("Skipping financial processing for zero-total supplier: {$task->supplier->name} | ref: {$task->reference}");
+                } else {
+                    $reason = $task->is_complete ? 'complete task' : 'void task with original_task_id';
+                    Log::info("Processing financial transactions for {$reason}: " . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
+                    $this->processTaskFinancial($task);
+                }
             } else {
                 Log::warning('Financial processing skipped for task: ' . $task->reference . ' - reason: ' . ($offline ? 'incomplete' : 'not offline supplier') . ' - status: ' . $task->status);
             }
@@ -1789,14 +1796,23 @@ class TaskController extends Controller
     {
         Log::info('Reverting financials for task: ' . $task->reference);
 
-        JournalEntry::where('task_id', $task->id)
+        $journalEntries = JournalEntry::where('task_id', $task->id)
             ->whereHas('transaction', function ($q) use ($task) {
-                $q->whereRaw('LOWER(description) LIKE ?', ['%' . $task->reference . '%']);
+                $q->where('description', 'like', '%' . $task->reference . '%');
             })
-            ->delete();
+            ->get();
 
-        Transaction::whereRaw('LOWER(description) LIKE ?', ['%' . $task->reference . '%'])
-            ->delete();
+        if ($journalEntries->isNotEmpty()) {
+            $transactionIds = $journalEntries->pluck('transaction_id')->filter()->unique();
+            JournalEntry::whereIn('id', $journalEntries->pluck('id'))->delete();
+
+            if ($transactionIds->isNotEmpty()) {
+                Transaction::whereIn('id', $transactionIds)
+                    ->where('description', 'like', '%' . $task->reference . '%')
+                    ->delete();
+            }
+            Log::info("Reverted {$journalEntries->count()} journal entries and {$transactionIds->count()} transactions for task: {$task->reference}");
+        }
     }
 
 
@@ -1819,14 +1835,26 @@ class TaskController extends Controller
         ]);
 
         // Delete journal entries on the original that belong to void transactions
-        JournalEntry::where('task_id', $originalTask->id)
+        $journalEntries = JournalEntry::where('task_id', $originalTask->id)
             ->whereHas('transaction', function ($q) use ($originalTask) {
-                $q->whereRaw('LOWER(description) LIKE ?', "%void%{$originalTask->reference}%");
+                $q->where('description', 'like', '%void%' . $originalTask->reference . '%');
             })
-            ->delete();
+            ->get();
 
-        Transaction::whereRaw('LOWER(description) LIKE ?', "%void%{$originalTask->reference}%")
-            ->delete();
+        if ($journalEntries->isNotEmpty()) {
+            $transactionIds = $journalEntries->pluck('transaction_id')->filter()->unique();
+            JournalEntry::whereIn('id', $journalEntries->pluck('id'))->delete();
+
+            if ($transactionIds->isNotEmpty()) {
+                Transaction::whereIn('id', $transactionIds)
+                    ->where('description', 'like', '%void%' . $originalTask->reference . '%')
+                    ->delete();
+            }
+
+            Log::info("Reverted {$journalEntries->count()} void journal entries and {$transactionIds->count()} transactions for original task: {$originalTask->reference}");
+        } else {
+            Log::info("No void financials found to revert for task: {$originalTask->reference}");
+        }
     }
 
     public function toggleStatus(Request $request, Task $task)
@@ -2171,20 +2199,28 @@ class TaskController extends Controller
                 $this->updateJournalEntriesBranch($task);
             }
 
-            $transaction = Transaction::with('journalEntries')
-                ->where('description', 'like', '%' . $task->reference . '%')
-                ->first();
+            $journalEntries = JournalEntry::with('transaction')
+                ->where('task_id', $id)
+                ->whereHas('transaction', function ($q) use ($task) {
+                    $q->where('description', 'like', '%' . $task->reference . '%');
+                })
+                ->get();
 
-            if ($transaction) {
-                $transaction->amount = $task->total;
-                $transaction->save();
+            $transaction = null;
 
-                foreach ($transaction->journalEntries as $entry) {
+            if ($journalEntries->isNotEmpty()) {
+                foreach ($journalEntries as $entry) {
+                    if ($entry->transaction) {
+                        $transaction = $entry->transaction;
+                        $transaction->amount = $task->total;
+                        $transaction->save();
+                    }
+
                     if ($entry->debit > 0) {
-                        $entry->debit   = $task->total;
+                        $entry->debit = $task->total;
                         $entry->balance = $task->total;
                     } else {
-                        $entry->credit  = $task->total;
+                        $entry->credit = $task->total;
                         $entry->balance = $task->total;
                     }
                     if (isset($entry->amount)) {

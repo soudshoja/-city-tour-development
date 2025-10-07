@@ -476,7 +476,6 @@
                                 </svg>
                             </button>
                         </div>
-
                         <hr>
                         <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
                             class="p-4 flex flex-col" method="POST" enctype="multipart/form-data">
@@ -494,6 +493,12 @@
                                 </option>
                                 @endforeach
                             </select>
+                            <div id="template-hotel-dropdown" class="hidden">
+                                <x-searchable-dropdown
+                                    name="task_hotel_details[0][hotel_id]" 
+                                    :items="$hotels->map(fn($h) => ['id' => $h->id, 'name' => $h->name])" 
+                                    placeholder="Select Hotel" />
+                            </div>
                             <div id="form-task-container" class="mb-3"></div>
 
                             @unlessrole('agent')
@@ -505,7 +510,6 @@
                             <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
                             @endunlessrole
                         </form>
-
                         <hr>
                         <div class="p-4 flex justify-between items-center">
                             <button @click="addTaskModal = false"
@@ -517,7 +521,6 @@
                                 class="rounded-full shadow-md px-6 py-2 text-white bg-black hover:bg-gray-800 transition">
                                 Submit
                             </x-primary-button>
-
                         </div>
                     </div>
                 </div>
@@ -1141,10 +1144,13 @@
                                                                 </div>
                                                             </template>
                                                             @php
-                                                            $isInvoiced = \App\Models\InvoiceDetail::where('task_id', $task->id)->exists();
+                                                            $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
+                                                                ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
+                                                                ->exists();
                                                             @endphp
                                                             <template x-teleport="body">
-                                                                <div x-show="editOpen" x-cloak x-data="{ readOnly: false }" class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800 bg-opacity-50">
+                                                                <div x-show="editOpen" x-cloak x-data="{ readOnly: {{ $isInvoicedAndPaid ? 'true' : 'false' }} }"
+                                                                    class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800 bg-opacity-50">
                                                                     <form id="edit-task-form-{{ $task->id }}"
                                                                         action="{{ route('tasks.update', $task->id) }}"
                                                                         method="post"
@@ -1166,27 +1172,23 @@
                                                                                 <div class="flex flex-col gap-6">
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                                                         <div class="flex-1">
-                                                                                            <label for="reference"
-                                                                                                class="block text-sm font-medium text-gray-700">Reference</label>
+                                                                                            <label for="reference" class="block text-sm font-medium text-gray-700">Reference</label>
                                                                                             <input type="text"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
                                                                                                 name="reference"
                                                                                                 value="{{ $task->reference }}">
                                                                                         </div>
                                                                                         <div class="flex-1">
-                                                                                            <label for="status"
-                                                                                                class="block text-sm font-medium text-gray-700">Status</label>
+                                                                                            <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
                                                                                             @if ($task->status === 'refund')
-                                                                                            <select name="status"
-                                                                                                id="status"
+                                                                                            <select name="status" id="status"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
                                                                                                 disabled>
                                                                                                 <option value="refund"
                                                                                                     selected>Refund
                                                                                                 </option>
                                                                                             </select>
-                                                                                            <input type="hidden"
-                                                                                                name="status" value="refund">
+                                                                                            <input type="hidden" name="status" value="refund">
                                                                                             @else
                                                                                             <select name="status"
                                                                                                 id="status_{{ $task->id }}"
@@ -1220,13 +1222,6 @@
                                                                                                 </option>
                                                                                             </select>
                                                                                             @endif
-
-
-                                                                                            @if ($task->status === 'refund')
-                                                                                            <input type="hidden"
-                                                                                                name="status" value="Refund">
-                                                                                            @endif
-
                                                                                         </div>
                                                                                     </div>
 
@@ -1249,11 +1244,11 @@
 
                                                                                             <label for="original_task_id" class="block text-sm font-medium text-gray-700">Original Task</label>
                                                                                             <x-searchable-dropdown
-                                                                                                name="original_task_id"
-                                                                                                :items="$originalTasks->map(fn($t) => [
-                                                                                                'id' => $t->id,
-                                                                                                'name' => $t->reference . ' - ' . ($t->client->full_name ?? $t->client_name)
-                                                                                            ])->values()"
+                                                                                                    name="original_task_id"
+                                                                                                    :items="$originalTasks->map(fn($t) => [
+                                                                                                    'id' => $t->id,
+                                                                                                    'name' => $t->reference . ' - ' . ($t->client->full_name ?? $t->client_name)
+                                                                                                ])->values()"
                                                                                                 :selectedId="$task->original_task_id"
                                                                                                 :selectedName="$selectedOriginalTask
                                                                                                 ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
@@ -1264,10 +1259,8 @@
                                                                                     @endif
 
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                                        <!-- Supplier Name -->
                                                                                         <div class="flex-1">
-                                                                                            <label for="supplier"
-                                                                                                class="block text-sm font-medium text-gray-700">Supplier</label>
+                                                                                            <label for="supplier" class="block text-sm font-medium text-gray-700">Supplier</label>
                                                                                             <input type="text"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full bg-gray-200"
                                                                                                 value="{{ $task->supplier ? $task->supplier->name : '' }}"
@@ -1278,12 +1271,8 @@
                                                                                                 value="{{ $task->supplier ? $task->supplier->id : '' }}">
 
                                                                                         </div>
-
-                                                                                        <!-- Task Type -->
                                                                                         <div class="flex-1">
-                                                                                            <label for="type"
-                                                                                                class="block text-sm font-medium text-gray-700">Task
-                                                                                                Type</label>
+                                                                                            <label for="type" class="block text-sm font-medium text-gray-700">Task Type</label>
                                                                                             <input type="text"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full bg-gray-200"
                                                                                                 value="{{ ucfirst($task->type) }}"
@@ -1298,16 +1287,15 @@
                                                                                         ? $selectedClient->full_name . ' - ' . $selectedClient->phone
                                                                                         : 'Select a Client';
                                                                                         @endphp
-                                                                                        <div class="flex-1">
-                                                                                            <label for="client_id"
-                                                                                                class="block text-sm font-medium text-gray-700">Client</label>
+                                                                                        <div class="flex-1 min-w-0">
+                                                                                            <label for="client_id" class="block text-sm font-medium text-gray-700">Client</label>
                                                                                             <div class="w-full">
                                                                                                 <x-searchable-dropdown
-                                                                                                    name="client_id"
-                                                                                                    :items="$fullClients->map(fn($c) => [
-                                                                                                    'id' => $c->id, 
-                                                                                                    'name' => $c->full_name . ' - ' . $c->phone
-                                                                                                ])"
+                                                                                                        name="client_id"
+                                                                                                        :items="$fullClients->map(fn($c) => [
+                                                                                                        'id' => $c->id, 
+                                                                                                        'name' => $c->full_name . ' - ' . $c->phone
+                                                                                                    ])"
                                                                                                     :selectedId="$task->client_id"
                                                                                                     :selectedName="$selectedClient ? $selectedClient->full_name . ' - ' . $selectedClient->phone : null"
                                                                                                     placeholder="Select Client" />
@@ -1316,62 +1304,50 @@
 
                                                                                         <!-- Agent Selection (Role-based) -->
                                                                                         <div class="flex-1">
-                                                                                            <label for="agent_id"
-                                                                                                class="block text-sm font-medium text-gray-700">Agent</label>
+                                                                                            <label for="agent_id" class="block text-sm font-medium text-gray-700">Agent</label>
                                                                                             <select
                                                                                                 id="agent_id_select_{{ $task->id }}"
                                                                                                 name="agent_id"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base">
-                                                                                                <option value=""> Choose
-                                                                                                    Agent</option>
+                                                                                                <option value=""> Choose Agent</option>
                                                                                                 @foreach ($agents as $agent)
-                                                                                                <option
-                                                                                                    value="{{ $agent->id }}"
+                                                                                                <option value="{{ $agent->id }}"
                                                                                                     {{ $task->agent && $task->agent->id === $agent->id ? 'selected' : '' }}>
                                                                                                     {{ $agent->name }}
                                                                                                 </option>
                                                                                                 @endforeach
                                                                                             </select>
                                                                                         </div>
-
                                                                                     </div>
 
-                                                                                    <div
-                                                                                        x-data="{
-                                                                                        rawPrice: '{{ $task->price ?? 0 }}',
-                                                                                        rawTax: '{{ $task->tax ?? 0 }}',
-                                                                                        rawSurcharge: '{{ $task->surcharge ?? 0 }}',
-                                                                                        total: 0,
-                                                                                        parseNum(v) {
-                                                                                        if (!v) return 0;
-                                                                                        const num = parseFloat(String(v).replace(/,/g,'').trim());
-                                                                                        return isNaN(num) ? 0 : num;
-                                                                                        }
-                                                                                    }"
+                                                                                    <div x-data="{
+                                                                                            rawPrice: '{{ $task->price ?? 0 }}',
+                                                                                            rawTax: '{{ $task->tax ?? 0 }}',
+                                                                                            rawSurcharge: '{{ $task->surcharge ?? 0 }}',
+                                                                                            total: 0,
+                                                                                            parseNum(v) {
+                                                                                            if (!v) return 0;
+                                                                                            const num = parseFloat(String(v).replace(/,/g,'').trim());
+                                                                                            return isNaN(num) ? 0 : num;
+                                                                                            }
+                                                                                        }"
                                                                                         x-effect="total = +(parseNum(rawPrice) + parseNum(rawTax) + parseNum(rawSurcharge)).toFixed(3)"
                                                                                         class="flex flex-wrap gap-4">
-                                                                                        <!-- Price -->
                                                                                         <div class="flex-1 min-w-[150px]">
                                                                                             <label class="block text-sm font-medium text-gray-700">Price</label>
                                                                                             <input type="text" name="price" x-model="rawPrice"
                                                                                                 class="border border-gray-300 p-2 rounded-md w-full">
                                                                                         </div>
-
-                                                                                        <!-- Tax -->
                                                                                         <div class="flex-1 min-w-[150px]">
                                                                                             <label class="block text-sm font-medium text-gray-700">Tax</label>
                                                                                             <input type="text" name="tax" x-model="rawTax"
                                                                                                 class="border border-gray-300 p-2 rounded-md w-full">
                                                                                         </div>
-
-                                                                                        <!-- Surcharge -->
                                                                                         <div class="flex-1 min-w-[150px]">
                                                                                             <label class="block text-sm font-medium text-gray-700">Surcharge</label>
                                                                                             <input type="text" name="surcharge" x-model="rawSurcharge"
                                                                                                 class="border border-gray-300 p-2 rounded-md w-full">
                                                                                         </div>
-
-                                                                                        <!-- Total -->
                                                                                         <div class="flex-1 min-w-[150px]">
                                                                                             <label class="block text-sm font-medium text-gray-700">Total</label>
                                                                                             <input type="text" name="total" :value="total" readonly
@@ -1392,11 +1368,9 @@
                                                                                         </div>
                                                                                     </div>
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                                        <!-- Additional Info and Venue -->
                                                                                         <div class="flex-1">
                                                                                             <label for="additional_info"
-                                                                                                class="block text-sm font-medium text-gray-700">Additional
-                                                                                                Info</label>
+                                                                                                class="block text-sm font-medium text-gray-700">Additional Info</label>
                                                                                             <textarea rows="3" readonly
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-3 rounded-md bg-gray-200 w-full resize-none">{{ $task->additional_info }} - {{ $task->venue }}
                                                                                             </textarea>
@@ -1418,7 +1392,6 @@
                                                                                 </button>
                                                                             </div>
                                                                         </div>
-
                                                                     </form>
                                                                 </div>
                                                             </template>
@@ -2166,7 +2139,174 @@
             }
 
             console.log('Selected Supplier:', supplier);
-            if (supplier.name === 'Magic Holiday') {
+            if (supplier.is_manual == true && supplier.has_hotel == true) {
+                const dropdownTemplate = document.getElementById('template-hotel-dropdown').innerHTML;
+                const html = `
+                    <div class="border rounded-md p-3 bg-white space-y-3">
+                        <p class="font-medium text-gray-800">Manual hotel booking</p>
+                        <input type="hidden" name="type" value="hotel">
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">Hotel name</label>
+                            ${dropdownTemplate}
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Check-in</label>
+                                <input id="mh-checkin" name="task_hotel_details[0][check_in]" type="date" class="w-full border rounded px-2 py-1">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Check-out</label>
+                                <input id="mh-checkout" name="task_hotel_details[0][check_out]" type="date" class="w-full border rounded px-2 py-1">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Price per night</label>
+                                <input id="mh-price" type="number" step="0.001" class="w-full border rounded px-2 py-1" placeholder="0.000">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Currency</label>
+                                <select id="mh-currency" class="w-full border rounded px-2 py-1">
+                                <option value="KWD">KWD</option>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="SAR">SAR</option>
+                                <option value="AED">AED</option>
+                                <!-- add what you support -->
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Converted (KWD)</label>
+                                <input id="mh-price-kwd" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Total nights</label>
+                                <input id="mh-nights" type="number" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Total (original)</label>
+                                <input id="mh-total-orig" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Total (KWD)</label>
+                                <input id="mh-total-kwd" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">Passengers</label>
+                            <div id="mh-passengers" class="space-y-2">
+                                <div class="flex gap-2">
+                                    <input type="text" class="w-full border rounded px-2 py-1" placeholder="Passenger name">
+                                    <button type="button" class="px-2 border rounded add">+ Add</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">Reference number</label>
+                            <input id="mh-ref" name="reference" type="text" class="w-full border rounded px-2 py-1">
+                        </div>
+                    </div>
+                `;
+
+                formTaskContainer.innerHTML = html;
+                window.Alpine?.initTree?.(formTaskContainer);
+
+                const price  = document.getElementById('mh-price');
+                const currency = document.getElementById('mh-currency');
+                const priceKwd = document.getElementById('mh-price-kwd');
+                const checkIn = document.getElementById('mh-checkin');
+                const checkOut = document.getElementById('mh-checkout');
+                const nights = document.getElementById('mh-nights');
+                const totalOrig = document.getElementById('mh-total-orig');
+                const totalKwd = document.getElementById('mh-total-kwd');
+                const paxWrap = document.getElementById('mh-passengers');
+
+                paxWrap.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('add')) {
+                        const row = document.createElement('div');
+                        row.className = 'flex gap-2';
+                        row.innerHTML = `<input type="text" class="w-full border rounded px-2 py-1" placeholder="Passenger name">
+                                        <button type="button" class="px-2 border rounded rm">✕</button>`;
+                        paxWrap.appendChild(row);
+                    } else if (e.target.classList.contains('rm')) {
+                        e.target.parentElement.remove();
+                    }
+                });
+
+                function calcNights() {
+                    const ci = new Date(checkIn.value);
+                    const co = new Date(checkOut.value);
+                    if (isNaN(ci) || isNaN(co) || co <= ci) { nights.value = 0; return 0; }
+                    const n = Math.round((co - ci) / (1000*60*60*24));
+                    nights.value = n;
+                    return n;
+                }
+
+                // preview conversion for UI only (backend still converts)
+                async function convert(amount, from, to='KWD') {
+                    if (!amount || from === to) return {converted: amount, rate: 1};
+                    try {
+                        const res = await fetch(`/api/convert?from=${from}&to=${to}&amount=${amount}`);
+                        const data = await res.json();
+                        if (data.status === 'success') return {converted: +data.converted, rate: +data.exchange_rate};
+                    } catch {}
+                        return {converted: null, rate: null};
+                }
+
+                async function recompute() {
+                    const p = parseFloat(price.value) || 0;
+                    const cur = currency.value;
+                    const n = calcNights();
+                    const total = +(p * n).toFixed(3);
+
+                    totalOrig.value = total ? `${total.toFixed(3)} ${cur}` : '';
+                    const conv1 = await convert(p, cur, 'KWD');
+                    priceKwd.value = conv1.converted != null ? conv1.converted.toFixed(3) : '';
+
+                    const convTotal = await convert(total, cur, 'KWD');
+                    totalKwd.value = convTotal.converted != null ? convTotal.converted.toFixed(3) : '';
+                }
+
+                [price, currency, checkIn, checkOut].forEach(el => el.addEventListener('change', recompute));
+                price.addEventListener('input', recompute);
+
+                setFormSubmitHandler((e) => {
+                    const hotelField = form.querySelector('[name="task_hotel_details[0][hotel_id]"]');
+                    const hotelId = hotelField?.value?.trim() || '';
+                    const pax = Array.from(paxWrap.querySelectorAll('input[type="text"]')).map(i => i.value.trim()).filter(Boolean);
+
+                    if (!hotelId || !checkIn.value || !checkOut.value || pax.length < 1) {
+                        e.preventDefault();
+                        alert('Hotel, dates and at least one passenger are required.');
+                        return;
+                    }
+
+                    clearSynthInputs();
+
+                    const perNight = parseFloat(price.value) || 0;
+                    const cur = currency.value;
+                    const n = calcNights();
+                    const originalTotal = +(perNight * n).toFixed(3);
+
+                    const addHidden = (name, val) => {
+                        const inp = document.createElement('input');
+                        inp.type = 'hidden'; inp.name = name; inp.value = val;
+                        inp.setAttribute('data-synth','1');
+                        form.appendChild(inp);
+                    };
+
+                    addHidden('status', 'issued');
+                    addHidden('original_currency', cur);
+                    addHidden('exchange_currency', 'KWD');
+                    addHidden('original_price', originalTotal);
+                    addHidden('total', '');
+                    addHidden('client_name', pax.join(', '));
+                });
+
+                return;
+            } else if (supplier.name === 'Magic Holiday') {
                 const modeWrap = document.createElement('div');
                 modeWrap.className = 'mb-2';
                 modeWrap.innerHTML = `

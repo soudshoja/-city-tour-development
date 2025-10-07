@@ -198,6 +198,9 @@
                         </p>
                         @elseif ($detail->task->type === 'flight')
                         <p>
+                            @if(!empty($detail->task->reference))
+                                Reference: {{ $detail->task->reference }}<br>
+                            @endif
                             @if(!empty($detail->task->gds_reference))
                                 GDS Reference: {{ $detail->task->gds_reference }}<br>
                             @endif
@@ -213,6 +216,9 @@
                         </p>
                         @elseif ($detail->task->type === 'visa')
                         <p>
+                            @if(!empty($detail->task->reference))
+                                Reference: {{ $detail->task->reference }}<br>
+                            @endif
                             Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}<br>
                             Passenger Name: {{ $detail->task->passenger_name ?? 'N/A' }}
                             <br>Visa Type: {{ $detail->task->visaDetails->visa_type ?? 'N/A' }}
@@ -224,6 +230,9 @@
                         </p>
                         @elseif ($detail->task->type === 'insurance')
                         <p>
+                            @if(!empty($detail->task->reference))
+                                Reference: {{ $detail->task->reference }}<br>
+                            @endif
                             Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}<br>
                             Passenger Name: {{ $detail->task->passenger_name ?? 'N/A' }}
                             <br>Insurance Type: {{ $detail->task->insuranceDetails->insurance_type ?? 'N/A' }}

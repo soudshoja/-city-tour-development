@@ -17,6 +17,7 @@ use App\Models\Payment;
 use App\Http\Controllers\ClientController;
 use App\Models\Client;
 use App\Models\Invoice;
+use App\Models\InvoiceReceipt;
 
 class ReceiptVoucherController extends Controller
 {
@@ -154,6 +155,8 @@ class ReceiptVoucherController extends Controller
 
     public function store(Request $request)
     {
+        $allData = $request->all();
+        $items = $allData['items'];
 
         if ($request->receiptvouchertype === 'PaymentByDate') {
             $receiptvoucherType = 'Receipt';
@@ -175,7 +178,7 @@ class ReceiptVoucherController extends Controller
             $reconciledProcess = 'no';
         }
 
-        $request->validate([
+        $data = $request->validate([
             'company_id' => 'required|exists:companies,id',
             'branch_id' => 'required|exists:branches,id',
             'docdate' => 'required|date',
@@ -188,7 +191,7 @@ class ReceiptVoucherController extends Controller
                     $clientIdExists = Client::where('id', $value)->exists();
 
                     // Check concatenated name
-                    $clientNameExists = \App\Models\Client::whereRaw(
+                    $clientNameExists = Client::whereRaw(
                         "TRIM(CONCAT_WS(' ', first_name, middle_name, last_name)) = ?",
                         [$value]
                     )->exists();
@@ -223,144 +226,196 @@ class ReceiptVoucherController extends Controller
             $hasClient = !empty($item['client_id']);
             $hasAccount = !empty($item['account_id']);
             $hasInvoice = !empty($item['invoice_id']);
-            // Only error if none of the three is present
             if (!$hasClient && !$hasAccount && !$hasInvoice) {
                 return back()->with('error', "Row " . ($i + 1) . ": Please select either Client Credit, A/C, or Invoice Number.");
             }
-            // Prevent selecting both client and account (but allow invoice with either)
             if ($hasClient && $hasAccount) {
                 return back()->with('error', "Row " . ($i + 1) . ": You cannot select both Client Credit and A/C. Please choose only one.");
             }
         }
+
+        $type = data_get($items, '0.type_selector');
+        $amount = data_get($items, '0.amount');
+        $invoiceId = data_get($items, '0.invoice_id');
+        
+        $invoice = Invoice::where('id', $invoiceId)->first();
+
         try {
             DB::beginTransaction();
 
-            // Create Transaction Record
-            $transaction = Transaction::create([
-                'entity_id' => $request->company_id ?? auth()->user()->company->id,
-                'entity_type' => 'company',
-                'company_id' => $request->company_id ?? auth()->user()->company->id,
-                'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
-                'transaction_type' => 'debit',
-                'amount' => $request->receiptvouchertype === 'Refund'
-                    ? $totalNettRefund
-                    : abs($request->credit - $request->debit),
-                'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                'description' => $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
-                'description' => $request->receiptvouchertype === 'Refund'
-                    ? 'Refund to Client - ' . $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : '')
-                    : $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
-                'invoice_id' => null,
-                'reference_number' => $request->receiptvoucherref,
-                'reference_type' => $receiptvoucherType,
-                'name' => $request->pay_to,
-                'remarks_internal' => $request->internal_remarks,
-                'remarks_fl' => $request->remarks_fl,
-                'transaction_date' => now(),
+            if ($type == 'invoice') {
+                $transaction = Transaction::create([
+                    'entity_id' => $request->company_id ?? auth()->user()->company->id,
+                    'entity_type' => 'company',
+                    'company_id' => $request->company_id ?? auth()->user()->company->id,
+                    'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
+                    'transaction_type' => 'debit',
+                    'amount' => $amount,
+                    'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                    'description' => 'Payment for Invoice ' . $invoice->invoice_number . '. Additional Remarks of ' . $request->remarks_create,
+                    'invoice_id' => $invoiceId,
+                    'reference_number' => $request->receiptvoucherref,
+                    'reference_type' => 'Invoice', //$receiptvoucherType
+                    'name' => $request->pay_to,
+                    'transaction_date' => $request->docdate,
+                ]);
 
-            ]);
-
-            // Store JournalEntries
-            foreach ($request->items as $item) {
-
-                if (!empty($item['account_id'])) {
-
-                    $accname = Account::where('id', $item['account_id'])->first();
-
-                    $journalEntryRec = JournalEntry::create([
-                        'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                        'account_id' => $item['account_id'],
-                        'company_id' => $request->company_id ?? auth()->user()->company->id,
-                        'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
-                        'transaction_id' => $transaction->id,
-                        'description' => $request->receiptvouchertype === 'Refund'
-                            ? 'Refund - ' . $item['remarks']
-                            : $item['remarks'],
-                        'debit' => $item['debit'] ?? 0,
-                        'credit' => $item['credit'] ?? 0,
-                        'balance' => $item['balance'] ?? 0,
-                        'voucher_number' => $request->receiptvoucherref,
-                        'name' => $accname->name ?? '',
-                        'type' => 'payable',
-                        'currency' => $item['currency'] ?? '',
-                        'exchange_rate' => $item['exchange_rate'] ?? 0,
-                        'amount' => $item['amount'] ?? 0,
-                        'cheque_no' => $item['cheque_no'] ?? '',
-                        'cheque_date' => $item['cheque_date'] ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') : null,
-                        'bank_info' => $item['bank_name'] ?? '',
-                        'auth_no' => $item['auth_no'] ?? '',
-                        'reconciled' => $reconciledFlag,
+                if (!$transaction) {
+                    Log::error('error', 'Failed to create Transaction with ID: ', [
+                        'transaction_id' => $transaction->id
                     ]);
+                    
+                    return redirect()->back()->with('error', 'Failed to create Transaction record for ' . $invoice->invoice_number);
+                }
 
-                    // Update selected journal entries 
-
-                    if (!empty($item['transaction_id'])) {
-                        $ids = array_filter(array_map('trim', explode(',', $item['transaction_id'])));
-                        $selectedJournalEntryIds = array_unique(array_map('intval', $ids));
-
-                        if (!empty($selectedJournalEntryIds)) {
-                            JournalEntry::where('company_id', auth()->user()->company->id)
-                                ->where('branch_id', auth()->user()->branch->id)
-                                ->whereIn('id', $selectedJournalEntryIds)
-                                ->where('reconciled', '!=', 2)
-                                ->update([
-                                    'reconciled' => 1,
-                                    'reconciled_ref_id' => $journalEntryRec->id,
+                $invoiceReceipt = InvoiceReceipt::create([
+                                    'invoice_id' => $invoiceId,
+                                    'transaction_id' => $transaction->id,
                                 ]);
+                
+                if (!$invoiceReceipt) {
+                    Log::error('Failed to create Invoice Receipt record for transaction ID: ', [
+                        'invoice_id' => $invoiceId,
+                        'transaction_id' => $transaction->id
+                    ]);
+
+                    return redirect()->back()->with('error', 'Failed to create Invoice Receipt record');
+                }
+
+                foreach ($request->items as $item) {
+                    if (!empty($item['invoice_id'])) {
+                        $invoice = Invoice::find($item['invoice_id']);
+                        if ($invoice && $invoice->status === 'unpaid') {
+                            // Compare paid amount with invoice amount
+                            $paidAmount = floatval($item['debit'] ?? $item['amount'] ?? 0);
+                            if ($paidAmount >= floatval($invoice->amount)) {
+                                $invoice->status = 'paid';
+                                $invoice->paid_date = now();
+                                $invoice->save();
+                            } else {
+                                // Optionally, set status to 'partial' or leave as 'unpaid'
+                                $invoice->status = 'partial';
+                                $invoice->save();
+                            }
                         }
                     }
                 }
-            }
-            foreach ($request->items as $item) {
-                if (!empty($item['invoice_id'])) {
-                    DB::table('invoice_receipt')->insert([
-                        'invoice_id' => $item['invoice_id'],
-                        'transaction_id' => $transaction->id,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
-            }
-            foreach ($request->items as $item) {
-                if (!empty($item['invoice_id'])) {
-                    $invoice = Invoice::find($item['invoice_id']);
-                    if ($invoice && $invoice->status === 'unpaid') {
-                        // Compare paid amount with invoice amount
-                        $paidAmount = floatval($item['debit'] ?? $item['amount'] ?? 0);
-                        if ($paidAmount >= floatval($invoice->amount)) {
-                            $invoice->status = 'paid';
-                            $invoice->paid_date = now();
-                            $invoice->save();
-                        } else {
-                            // Optionally, set status to 'partial' or leave as 'unpaid'
-                            $invoice->status = 'partial';
-                            $invoice->save();
+                
+            } elseif ($type == 'refund') {
+                // Create Transaction Record
+                $transaction = Transaction::create([
+                    'entity_id' => $request->company_id ?? auth()->user()->company->id,
+                    'entity_type' => 'company',
+                    'company_id' => $request->company_id ?? auth()->user()->company->id,
+                    'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
+                    'transaction_type' => 'debit',
+                    'amount' => $request->receiptvouchertype === 'Refund'
+                        ? $totalNettRefund
+                        : abs($request->amount),
+                    'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                    'description' => $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
+                    'description' => $request->receiptvouchertype === 'Refund'
+                        ? 'Refund to Client - ' . $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : '')
+                        : $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
+                    'invoice_id' => null,
+                    'reference_number' => $request->receiptvoucherref,
+                    'reference_type' => $receiptvoucherType,
+                    'name' => $request->pay_to,
+                    'remarks_internal' => $request->internal_remarks,
+                    'remarks_fl' => $request->remarks_fl,
+                    'transaction_date' => now(),
+
+                ]);
+
+                // Store JournalEntries
+                foreach ($request->items as $item) {
+
+                    if (!empty($item['account_id'])) {
+
+                        $accname = Account::where('id', $item['account_id'])->first();
+
+                        $journalEntryRec = JournalEntry::create([
+                            'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                            'account_id' => $item['account_id'],
+                            'company_id' => $request->company_id ?? auth()->user()->company->id,
+                            'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
+                            'transaction_id' => $transaction->id,
+                            'description' => $request->receiptvouchertype === 'Refund'
+                                ? 'Refund - ' . $item['remarks']
+                                : $item['remarks'],
+                            'debit' => $item['debit'] ?? 0,
+                            'credit' => $item['credit'] ?? 0,
+                            'balance' => $item['balance'] ?? 0,
+                            'voucher_number' => $request->receiptvoucherref,
+                            'name' => $accname->name ?? '',
+                            'type' => 'payable',
+                            'currency' => $item['currency'] ?? '',
+                            'exchange_rate' => $item['exchange_rate'] ?? 0,
+                            'amount' => $item['amount'] ?? 0,
+                            'cheque_no' => $item['cheque_no'] ?? '',
+                            'cheque_date' => $item['cheque_date'] ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') : null,
+                            'bank_info' => $item['bank_name'] ?? '',
+                            'auth_no' => $item['auth_no'] ?? '',
+                            'reconciled' => $reconciledFlag,
+                        ]);
+
+                        // Update selected journal entries 
+
+                        if (!empty($item['transaction_id'])) {
+                            $ids = array_filter(array_map('trim', explode(',', $item['transaction_id'])));
+                            $selectedJournalEntryIds = array_unique(array_map('intval', $ids));
+
+                            if (!empty($selectedJournalEntryIds)) {
+                                JournalEntry::where('company_id', auth()->user()->company->id)
+                                    ->where('branch_id', auth()->user()->branch->id)
+                                    ->whereIn('id', $selectedJournalEntryIds)
+                                    ->where('reconciled', '!=', 2)
+                                    ->update([
+                                        'reconciled' => 1,
+                                        'reconciled_ref_id' => $journalEntryRec->id,
+                                    ]);
+                            }
                         }
                     }
                 }
-            }
-            foreach ($request->items as $item) {
-                if (!empty($item['client_id']) && floatval($item['debit']) > 0) {
-                    Log::info('Crediting client', ['client_id' => $item['client_id'], 'amount' => $item['amount']]);
+            } elseif ($type == 'credit') {
+                foreach ($request->items as $item) {
+                    if (!empty($item['client_id']) && floatval($item['debit'] ?? 0)     > 0) {
+                        Log::info('Crediting client', ['client_id' => $item['client_id'], 'amount' => $item['amount']]);
+                    }
+                }
+
+                foreach ($request->items as $item) {
+                    if (!empty($item['client_id']) && floatval($item['amount']) > 0) {
+                        $client = Client::find($item['client_id']);
+                        $agentId = $client ? $client->agent_id : null;
+
+                        $payment = new Payment([
+                            'client_id' => $item['client_id'],
+                            'agent_id' => $agentId,
+                            'amount' => $item['amount'],
+                            'voucher_number' => $request->receiptvoucherref,
+                            'currency' => $item['currency'] ?? 'KWD',
+                        ]);
+
+                        $clientController = new ClientController;
+                        $addCreditResponse = $clientController->receiptVoucherCredit($payment, $data);
+                        if (isset($addCreditResponse['error'])) {
+                            Log::error('Failed to add credit to client from Receipt Voucher', [
+                                'message' => $addCreditResponse['error'],
+                                'payment_id' => $payment->id,
+                            ]);
+
+                            return redirect()->back()->with('error', 'Failed to add credit');
+                        }
+
+                        Log::info('Succesfully add credit to client through Receipt Voucher: ', [
+                            'response' => $addCreditResponse
+                        ]);
+                    }
                 }
             }
-            foreach ($request->items as $item) {
-                if (!empty($item['client_id']) && floatval($item['amount']) > 0) {
-                    $client = \App\Models\Client::find($item['client_id']);
-                    $agentId = $client ? $client->agent_id : null;
 
-                    $payment = new Payment([
-                        'client_id' => $item['client_id'],
-                        'agent_id' => $agentId,
-                        'amount' => $item['amount'],
-                        'voucher_number' => $request->receiptvoucherref,
-                        'currency' => $item['currency'] ?? 'KWD',
-                    ]);
-                    $addCreditResponse = app(ClientController::class)->addCredit($payment);
-
-                    Log::info('Add Credit Response: ' . json_encode($addCreditResponse));
-                }
-            }
             DB::commit();
             return redirect()->route('receipt-voucher.index')->with('success', 'Receipt Voucher Successfully Recorded.');
         } catch (\Exception $e) {

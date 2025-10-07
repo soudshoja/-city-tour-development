@@ -1,51 +1,156 @@
 <x-app-layout>
-    <div class="mb-6">
-        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+    <div class="mb-6" x-data="{ openFilters: {{ request()->hasAny(['from_date', 'to_date', 'agent_id']) ? 'true' : 'false' }} }">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
                 <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">Daily Sales Report</h1>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     Date:
                     <span class="font-semibold">
-                        {{ \Carbon\Carbon::parse($date)->format('d-m-Y') }}
+                        @php
+                            $f = $from instanceof \Carbon\Carbon ? $from : \Carbon\Carbon::parse($from);
+                            $t = $to instanceof \Carbon\Carbon ? $to : \Carbon\Carbon::parse($to);
+                        @endphp
+                        @if (empty($t) || $f->isSameDay($t))
+                            {{ $f->format('d-m-Y') }}
+                        @else
+                            {{ $f->format('d-m-Y') }} – {{ $t->format('d-m-Y') }}
+                        @endif
                     </span>
                 </p>
             </div>
 
-            <div class="flex items-end gap-2">
-                <a href="{{ route('reports.daily-sales.pdf', ['date' => \Carbon\Carbon::parse($date)->format('Y-m-d')]) }}" target="_blank"
-                    class="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium bg-slate-600 hover:bg-slate-700 active:bg-slate-800 text-white transition-all
-                        focus:outline-none focus:ring-2 focus:ring-slate-400/40">
+            <div class="flex items-center gap-2">
+                <!-- <a href="{{ route('reports.daily-sales.pdf', [
+                        'from_date' => \Carbon\Carbon::parse($from)->format('Y-m-d'),
+                        'to_date' => \Carbon\Carbon::parse($to)->format('Y-m-d'),
+                        'type' => request('type'),
+                        'agent_id' => request('agent_id'),
+                        'report_view' => request('report_view'),
+                    ]) }}"
+                    target="_blank"
+                    class="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium bg-slate-600 hover:bg-slate-700 active:bg-slate-800 text-white transition focus:outline-none focus:ring-2 focus:ring-slate-400/40">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
                     View PDF
                 </a>
-                <a href="{{ route('reports.daily-sales.pdf.download', ['date' => \Carbon\Carbon::parse($date)->format('Y-m-d')]) }}"
-                    class="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white transition-all
-                        focus:outline-none focus:ring-2 focus:ring-blue-400/40">
+                <a href="{{ route('reports.daily-sales.pdf.download', [
+                        'from_date' => \Carbon\Carbon::parse($from)->format('Y-m-d'),
+                        'to_date' => \Carbon\Carbon::parse($to)->format('Y-m-d'),
+                        'type' => request('type'),
+                        'agent_id' => request('agent_id'),
+                        'report_view' => request('report_view'),
+                    ]) }}"
+                    class="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white transition focus:outline-none focus:ring-2 focus:ring-blue-400/40">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
                     </svg>
                     Download PDF
-                </a>
-                <form method="GET" action="{{ route('reports.daily-sales') }}"
-                    class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2.5 rounded-lg flex items-end gap-2">
-                    <div>
-                        <label for="date" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-                            Select date
-                        </label>
-                        <input type="date" id="date" name="date" value="{{ \Carbon\Carbon::parse($date)->format('Y-m-d') }}"
-                            class="w-44 rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100
-                                text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <button type="submit" class="h-9 px-3 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white
-                            transition-all focus:outline-none focus:ring-2 focus:ring-blue-400/40">
-                        Apply
-                    </button>
-                </form>
+                </a> -->
+                <button type="button" @click="openFilters = !openFilters"
+                    class="inline-flex items-center gap-2 h-9 px-3 rounded-md text-sm font-medium text-amber-800 ring-amber-200 bg-amber-100 hover:bg-amber-200 dark:border-amber-700/50 dark:text-amber-200 dark:bg-amber-900/30">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M4 6h16M7 12h10M10 18h4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    Filters
+                </button>
             </div>
+        </div>
+        <div class="mt-3 rounded-xl border border-gray-200 bg-gray-50/100 shadow-sm" x-show="openFilters" x-collapse x-cloak>
+            <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Filter options</span>
+                <button @click="openFilters = false" class="rounded-full px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-200 hover:text-gray-700 transition">
+                    Hide
+                </button>
+            </div>
+            <form id="invoice-filter-form" method="GET" action="{{ route('reports.daily-sales') }}">
+                <div x-data="agentPicker({
+                        items: @js($allAgents->map(fn($a)=>['id'=>$a->id,'name'=>$a->name])),
+                        preselected: @js(collect(request('agent_ids',[]))->map(fn($v)=>(int)$v)->all())
+                    })"
+                    class="grid grid-cols-1 md:grid-cols-2 gap-3 px-4 py-3 items-end">
+                    <div class="relative">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Agents</label>
+                        <button type="button" @click="open = !open" class="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-left flex items-center justify-between">
+                            <span class="truncate text-sm" x-text="summary()"></span>
+                            <svg class="w-4 h-4 text-gray-500 ml-2 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                        <div x-show="open" x-transition @click.outside="open=false"
+                            class="absolute left-0 top-full mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg z-10">
+                            <div class="p-2 border-b flex items-center gap-2">
+                                <input x-model="q" type="text" placeholder="Search agents…" class="w-full h-9 px-2 border rounded-md text-sm">
+                                <button type="button" class="text-xs px-2 py-1 rounded border" @click="toggleAll()" x-text="allSelected ? 'Clear all' : 'Select all'"></button>
+                            </div>
+                            <div class="max-h-56 overflow-auto py-1">
+                                <template x-for="a in filtered()" :key="a.id">
+                                    <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer">
+                                        <input type="checkbox" class="rounded border-gray-300" :value="a.id" :checked="selected.includes(a.id)" @change="toggle(a.id)">
+                                        <span class="text-sm" x-text="a.name"></span>
+                                    </label>
+                                </template>
+                                <div class="px-3 py-2 text-xs text-gray-500" x-show="filtered().length===0">No matches</div>
+                            </div>
+                            <div class="px-3 py-2 border-t text-xs text-gray-600 flex justify-between">
+                                <span x-text="selected.length===0 ? 'All agents included' : selected.length + ' selected'"></span>
+                                <button type="button" class="text-blue-600 hover:underline" @click="open=false">Done</button>
+                            </div>
+                        </div>
+                        <template x-for="id in selected" :key="'hid-'+id">
+                            <input type="hidden" name="agent_ids[]" :value="id">
+                        </template>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-gray-600 mb-1">Date Range</label>
+                        <input type="text" id="date-range" class="form-select cursor-pointer bg-white dark:bg-gray-900" placeholder="Select date range" autocomplete="off" />
+                        <input type="hidden" name="from_date" id="from_date" value="{{ request('from_date') }}">
+                        <input type="hidden" name="to_date" id="to_date" value="{{ request('to_date') }}">
+                    </div>
+                    <!-- <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Report</label>
+                        <select name="report_view" class="form-select">
+                            <option value="details" @selected(request('report_view','details')==='details')>Details Report</option>
+                            <option value="summary" @selected(request('report_view')==='summary')>Summary Report</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Type</label>
+                        @php
+                            $isAgent = auth()->user()->role_id === \App\Models\Role::AGENT;
+                            $isFilteringAgent = !$isAgent && request()->filled('agent_id');
+                            $allowedTypes = $isAgent ? ['all' => 'All', 'agent' => 'Agent', 'refund' => 'Refunds']
+                                : ['all' => 'All', 'agent' => 'Agent', 'refund' => 'Refunds', 'supplier' => 'Supplier'];
+                        @endphp
+                        <select name="type" class="form-select">
+                            @foreach($allowedTypes as $k => $v)
+                                <option value="{{ $k }}" @selected(request('type','all')===$k)>{{ $v }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Agent</label>
+                        <x-searchable-dropdown
+                            name="agent_id"
+                            :items="$allAgents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
+                            :selectedId="request('agent_id')"
+                            :selectedName="optional(($allAgents ?? collect())->firstWhere('id', request('agent_id')))->name"
+                            placeholder="All agents" />
+                    </div> -->
+                    <div class="md:col-span-2 -mt-1">
+                        <div class="flex flex-wrap gap-1 min-h-[28px]">
+                            <template x-for="s in selectedNames()" :key="'chip-'+s">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs" x-text="s"></span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-end gap-2 border-t border-gray-200 px-4 py-3">
+                    <a href="{{ route('reports.daily-sales') }}" class="rounded-full bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">Clear</a>
+                    <button type="submit" class="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 shadow-sm">Apply Filters</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -97,7 +202,6 @@
                 Paid today: <span class="font-semibold">{{ number_format($summary['topAgentAmount'] ?? 0, 3) }}</span> KWD
             </div>
         </div>
-
         <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
             <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-1">Top Supplier</h3>
             <div class="text-lg font-bold text-gray-900 dark:text-gray-100">
@@ -117,12 +221,12 @@
                     <tr class="px-3 py-2 text-center">
                         <th>Agent</th>
                         <th>Total Invoices</th>
-                        <th>Total Invoiced (KWD)</th>
-                        <th>Paid (KWD)</th>
-                        <th>Unpaid (KWD)</th>
-                        <th>Profit (KWD)</th>
-                        <th>Commission (KWD)</th>
-                        <th>Top-ups (KWD)</th>
+                        <th>Total Invoiced</th>
+                        <th>Paid</th>
+                        <th>Unpaid</th>
+                        <th>Profit</th>
+                        <th>Commission</th>
+                        <th>Payment Links</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -152,57 +256,60 @@
                         <td colspan="9" class="p-0">
                             <div class="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
                                 @if($row['invoices']->isEmpty())
-                                <div class="text-sm text-gray-500 dark:text-gray-400">No invoices created today.</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">No invoices found for this agent within the selected date range.</div>
                                 @else
                                 <div class="space-y-3">
                                     @foreach($row['invoices'] as $invoice)
                                     <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                                         <div onclick="toggleInvoiceTasks('{{ $row['agent']->id }}','{{ $invoice->id }}')"
-                                            class="p-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                            <div class="flex items-center gap-2">
-                                                <svg id="invoice-caret-{{ $row['agent']->id }}-{{ $invoice->id }}" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            class="p-3 grid grid-cols-12 items-center gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                            <div class="col-span-6 flex items-start gap-2">
+                                                <svg id="invoice-caret-{{ $row['agent']->id }}-{{ $invoice->id }}" class="w-4 h-4 mt-1.5 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                                 </svg>
                                                 <div>
                                                     <div class="text-xs text-gray-500 dark:text-gray-400">Invoice</div>
                                                     <div class="font-semibold tracking-wide">{{ $invoice->invoice_number }}</div>
-                                                    <div class="mt-0.5 flex items-center gap-2">
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
-                                                            bg-gray-200 text-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                                                    <div class="mt-1 flex items-center gap-2">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-200 text-gray-700 dark:bg-gray-900 dark:text-gray-300">
                                                             {{ \Carbon\Carbon::parse($invoice->invoice_date)->format('d-m-Y') }}
                                                         </span>
                                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold
-                                                            {{ $invoice->status === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
-                                                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200' }}">
+                                                            {{ $invoice->status === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200' }}">
                                                             {{ ucfirst($invoice->status) }}
                                                         </span>
+                                                        <div class="inline-flex items-center px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700">
+                                                            <span class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Bill To:</span>
+                                                            <span class="ml-2 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $invoice->client?->full_name ?? '—' }}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="grid grid-cols-4 gap-4 text-right">
+                                            <div class="col-span-6 grid grid-cols-5 gap-4 text-right tabular-nums">
                                                 <div>
-                                                    <div class="text-xs text-gray-500 dark:text-gray-400">Amount</div>
+                                                    <div class="text-xs text-gray-700 dark:text-gray-400">Amount</div>
                                                     <div class="font-semibold">{{ number_format($invoice->amount, 3) }} KWD</div>
                                                 </div>
                                                 <div>
-                                                    <div class="text-xs text-gray-500 dark:text-gray-400">Paid Invoice</div>
-                                                    <div class="font-semibold">
-                                                        {{ $invoice->status === 'paid' ? number_format($invoice->amount, 3) : number_format($invoice->paid_amount ?? 0, 3) }} KWD
-                                                    </div>
+                                                    <div class="text-xs text-gray-700 dark:text-gray-400">Paid Invoice</div>
+                                                    <div class="font-semibold text-emerald-600">{{ number_format($invoice->paid_amount ?? 0, 3) }} KWD</div>
                                                 </div>
                                                 <div>
-                                                    <div class="text-xs text-gray-500 dark:text-gray-400">Profit</div>
-                                                    <div class="font-semibold text-emerald-600">{{ number_format($invoice->computed_profit ?? 0, 3) }} KWD</div>
+                                                    <div class="text-xs text-gray-700 dark:text-gray-400">Unpaid Invoice</div>
+                                                    <div class="font-semibold text-red-600">{{ number_format($invoice->unpaid_amount ?? 0, 3) }} KWD</div>
                                                 </div>
                                                 <div>
-                                                    <div class="text-xs text-gray-500 dark:text-gray-400">Commission</div>
-                                                    <div class="font-semibold text-blue-600">
+                                                    <div class="text-xs text-gray-700 dark:text-gray-400">Profit</div>
+                                                    <div class="font-semibold text-amber-600">{{ number_format($invoice->computed_profit ?? 0, 3) }} KWD</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-xs text-gray-700 dark:text-gray-400">Commission</div>
+                                                    <div class="font-semibold text-blue-600 flex items-center justify-end gap-1 whitespace-nowrap">
                                                         {{ number_format($invoice->computed_commission ?? 0, 3) }} KWD
                                                         @if(($row['agent']->type_id ?? null) == 3)
-                                                        <span class="text-[11px] text-gray-500">rate part</span>
-                                                        @endif
-                                                        @if(($row['agent']->type_id ?? null) == 4)
-                                                        <span class="text-[11px] text-gray-500">prorated</span>
+                                                        <span class="text-[11px] text-gray-600">rate part</span>
+                                                        @elseif(($row['agent']->type_id ?? null) == 4)
+                                                        <span class="text-[11px] text-gray-600">prorated</span>
                                                         @endif
                                                     </div>
                                                 </div>
@@ -568,7 +675,6 @@
                                     <td class="px-3 py-2 font-medium">
                                         {{ $row['supplier']->name ?? ($row['supplier_account_name'] ?? '—') }}
                                     </td>
-                                    <!-- <td class="px-3 py-2">{{ $row['accounts'][0]['account']['name'] ?? ($row['supplier_account_name'] ?? '—') }}</td> -->
                                     <td class="px-3 py-2 text-center">{{ $row['totalTasks'] }}</td>
                                     <td class="px-3 py-2 text-right">{{ number_format($row['totalTaskPrice'], 3) }}</td>
                                     <td class="px-3 py-2 text-right">{{ number_format($row['paid'], 3) }}</td>
@@ -605,42 +711,42 @@
                                                 </thead>
                                                 <tbody class="divide-y divide-gray-200/80 dark:divide-gray-700">
                                                     @forelse($row['accounts'] ?? [] as $acc)
-                                                        <tr class="bg-gray-100 dark:bg-gray-900/50">
-                                                            <td colspan="6" class="px-3 py-2 font-semibold text-base text-gray-600 dark:text-gray-200">
-                                                                Account: {{ $acc['account']['name'] ?? '—' }}
-                                                                <span class="ml-3 text-xs text-gray-600 dark:text-gray-400">
-                                                                    Credit Today: {{ number_format($acc['credit'] ?? 0, 3) }}
-                                                                </span>
-                                                            </td>
-                                                        </tr>
-                                                        @forelse($acc['entries'] ?? [] as $entry)
-                                                            <tr class="bg-white/70 dark:bg-gray-800/70 px-3 py-2">
-                                                                <td class="px-3 py-1">
-                                                                    {{ $entry['transaction_date'] ? \Carbon\Carbon::parse($entry['transaction_date'])->format('d-m-Y') : '—' }}
-                                                                </td>
-                                                                <td class="px-3 py-1">
-                                                                    {{ $entry['supplier_pay_date'] ? \Carbon\Carbon::parse($entry['supplier_pay_date'])->format('d-m-Y') : '—' }}
-                                                                </td>
-                                                                <td class="px-3 py-1">{{ $entry['reference'] ?? '—' }}</td>
-                                                                <td class="px-3 py-1">{{ $entry['client_name'] ?? 'Not Set' }}</td>
-                                                                <!-- <td class="px-3 py-1">{{ $entry['account_name'] ?? ($acc['account']['name'] ?? '—') }}</td> -->
-                                                                <td class="px-3 py-1">{{ number_format($entry['debit'] ?? 0, 3) }}</td>
-                                                                <td class="px-3 py-1">{{ number_format($entry['credit'] ?? 0, 3) }}</td>
-                                                                <!-- <td class="px-3 py-1">{{ number_format($entry['running_balance'] ?? 0, 3) }}</td> -->
-                                                            </tr>
-                                                        @empty
-                                                            <tr>
-                                                                <td colspan="6" class="px-3 py-2 text-center text-gray-500 dark:text-gray-400">
-                                                                    No ledger entries for this account today.
-                                                                </td>
-                                                            </tr>
-                                                        @endforelse
+                                                    <tr class="bg-gray-100 dark:bg-gray-900/50">
+                                                        <td colspan="6" class="px-3 py-2 font-semibold text-base text-gray-600 dark:text-gray-200">
+                                                            Account: {{ $acc['account']['name'] ?? '—' }}
+                                                            <span class="ml-3 text-xs text-gray-600 dark:text-gray-400">
+                                                                Credit Today: {{ number_format($acc['credit'] ?? 0, 3) }}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                    @forelse($acc['entries'] ?? [] as $entry)
+                                                    <tr class="bg-white/70 dark:bg-gray-800/70 px-3 py-2">
+                                                        <td class="px-3 py-1">
+                                                            {{ $entry['transaction_date'] ? \Carbon\Carbon::parse($entry['transaction_date'])->format('d-m-Y') : '—' }}
+                                                        </td>
+                                                        <td class="px-3 py-1">
+                                                            {{ $entry['supplier_pay_date'] ? \Carbon\Carbon::parse($entry['supplier_pay_date'])->format('d-m-Y') : '—' }}
+                                                        </td>
+                                                        <td class="px-3 py-1">{{ $entry['reference'] ?? '—' }}</td>
+                                                        <td class="px-3 py-1">{{ $entry['client_name'] ?? 'Not Set' }}</td>
+                                                        <!-- <td class="px-3 py-1">{{ $entry['account_name'] ?? ($acc['account']['name'] ?? '—') }}</td> -->
+                                                        <td class="px-3 py-1">{{ number_format($entry['debit'] ?? 0, 3) }}</td>
+                                                        <td class="px-3 py-1">{{ number_format($entry['credit'] ?? 0, 3) }}</td>
+                                                        <!-- <td class="px-3 py-1">{{ number_format($entry['running_balance'] ?? 0, 3) }}</td> -->
+                                                    </tr>
                                                     @empty
-                                                        <tr>
-                                                            <td colspan="6" class="px-3 py-2 text-center text-gray-500 dark:text-gray-400">
-                                                                No accounts with entries today for this supplier.
-                                                            </td>
-                                                        </tr>
+                                                    <tr>
+                                                        <td colspan="6" class="px-3 py-2 text-center text-gray-500 dark:text-gray-400">
+                                                            No ledger entries for this account today.
+                                                        </td>
+                                                    </tr>
+                                                    @endforelse
+                                                    @empty
+                                                    <tr>
+                                                        <td colspan="6" class="px-3 py-2 text-center text-gray-500 dark:text-gray-400">
+                                                            No accounts with entries today for this supplier.
+                                                        </td>
+                                                    </tr>
                                                     @endforelse
                                                 </tbody>
                                             </table>
@@ -688,8 +794,61 @@
                 page-break-after: auto;
             }
         }
+
+        .form-select {
+            @apply w-full h-10 rounded-md border border-gray-300 bg-white text-gray-900 text-sm px-2 py-1 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-400/40;
+        }
     </style>
     <script>
+        flatpickr("#date-range", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            defaultDate: [
+                "{{ request('from_date') }}",
+                "{{ request('to_date') }}"
+            ].filter(Boolean)
+        });
+
+        document.getElementById('invoice-filter-form').addEventListener('submit', function(e) {
+            const parts = document.getElementById('date-range').value.split(' to ');
+            document.getElementById('from_date').value = parts[0] ? parts[0].trim() : '';
+            document.getElementById('to_date').value = parts[1] ? parts[1].trim() : parts[0];
+        });
+
+        function agentPicker({
+            items,
+            preselected = []
+        }) {
+            return {
+                open: false,
+                q: '',
+                items,
+                selected: [...preselected],
+                get allSelected() {
+                    return this.items.length > 0 && this.selected.length === this.items.length
+                },
+                filtered() {
+                    const s = this.q.toLowerCase();
+                    return s ? this.items.filter(i => i.name.toLowerCase().includes(s)) : this.items;
+                },
+                selectedNames() {
+                    const set = new Set(this.selected);
+                    return this.items.filter(i => set.has(i.id)).map(i => i.name);
+                },
+                toggle(id) {
+                    const i = this.selected.indexOf(id);
+                    i > -1 ? this.selected.splice(i, 1) : this.selected.push(id);
+                },
+                toggleAll() {
+                    this.allSelected ? this.selected = [] : this.selected = this.items.map(i => i.id);
+                },
+                summary() {
+                    if (this.selected.length === 0 || this.allSelected) return 'All agents';
+                    return `${this.selected.length} selected`;
+                }
+            }
+        }
+
         function toggleAgentRow(agentId) {
             const row = document.getElementById('agent-details-' + agentId);
             const caret = document.getElementById('agent-caret-' + agentId);

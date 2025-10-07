@@ -1597,57 +1597,77 @@ class ReportController extends Controller
 
     public function dailySalesReport(Request $request)
     {
-        if (Auth::user()->role->id == Role::COMPANY) {
+        $roleId = Auth::user()->role->id;
+        if ($roleId == Role::COMPANY) {
             $companyId = Auth::user()->company->id;
-        } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
+        } elseif ($roleId == Role::ACCOUNTANT) {
             $companyId = Auth::user()->accountant->branch->company_id;
         } else {
-            return abort(403, 'Unauthorized action.');
+            abort(403, 'Unauthorized action.');
         }
 
-        $date = $request->filled('date') ? Carbon::parse($request->input('date'))->toDateString() : now()->toDateString();
+        $from = $request->filled('from_date') ? Carbon::parse($request->input('from_date'))->startOfDay() : now()->startOfDay();
+        $to = $request->filled('to_date') ? Carbon::parse($request->input('to_date'))->endOfDay() : (clone $from)->endOfDay();
+        // $reportView = $request->input('report_view', 'details');
+        $agentIds = collect((array) $request->input('agent_ids', []))->filter()->map(fn($v) => (int) $v)->unique()->values()->all();
 
-        $summary = $this->dailySalesSummary($companyId, $date);
-        $agents = $this->dailySalesAgents($companyId, $date);
-        $groups = $this->dailySalesSuppliers($date);
-        $refunds = $this->dailySalesRefunds($companyId, $date);
+        $allAgents = Agent::whereHas('branch.company', fn($q) => $q->where('id', $companyId))->orderBy('name')->get(['id', 'name']);
 
-        return view('reports.daily-sales', compact('summary', 'agents', 'groups', 'refunds', 'date'));
+        $summary = $this->rangeSalesSummary($companyId, $from, $to, $agentIds);
+        $agents = $this->rangeSalesAgents($companyId, $from, $to, $agentIds);
+        $groups = $this->rangeSalesSuppliers($from, $to, $companyId, $agentIds);
+        $refunds = $this->rangeSalesRefunds($companyId, $from, $to, $agentIds);
+
+        return view('reports.daily-sales', compact('summary', 'agents', 'groups', 'refunds', 'from', 'to', 'allAgents'));
     }
 
-    private function dailySalesSummary($companyId, $date)
+    private function rangeSalesSummary(int $companyId, Carbon $from, Carbon $to, $agentIds): array
     {
-        $invoices = Invoice::with('invoiceDetails')
-            ->whereDate('invoice_date', $date)
-            ->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId))
-            ->get();
+        $invBase = Invoice::with('invoiceDetails')
+            ->whereBetween('invoice_date', [$from, $to])
+            ->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId));
 
+        if (!empty($agentIds)) {
+            $invBase->whereIn('agent_id', $agentIds);
+        }
+
+        $invoices = $invBase->get();
         $totalInvoices = $invoices->count();
         $totalInvoiced = $invoices->sum('amount');
 
-        $partialsToday = InvoicePartial::query()
-            ->whereHas('invoice', function ($q) use ($companyId, $date) {
-                $q->whereDate('invoice_date', $date)
+        $partials = InvoicePartial::query()
+            ->whereHas('invoice', function ($q) use ($companyId, $from, $to, $agentIds) {
+                $q->whereBetween('invoice_date', [$from, $to])
                     ->whereHas('agent.branch.company', fn($q2) => $q2->where('id', $companyId));
+                if (!empty($agentIds)) $q->whereIn('agent_id', $agentIds);
             });
 
-        $totalPaid = (clone $partialsToday)->sum('invoice_partials.amount');
-        $cashSum = (clone $partialsToday)->where('invoice_partials.payment_gateway', 'cash')->sum('invoice_partials.amount');
-        $creditSum = (clone $partialsToday)->where('invoice_partials.payment_gateway', 'credit')->sum('invoice_partials.amount');
-        $gatewaySum = (clone $partialsToday)->whereNotIn('invoice_partials.payment_gateway', ['cash', 'credit'])->sum('invoice_partials.amount');
+        $totalPaid = (clone $partials)->sum('invoice_partials.amount');
+        $cashSum   = (clone $partials)->where('invoice_partials.payment_gateway', 'cash')->sum('invoice_partials.amount');
+        $creditSum = (clone $partials)->where('invoice_partials.payment_gateway', 'credit')->sum('invoice_partials.amount');
+        $gatewaySum = (clone $partials)->whereNotIn('invoice_partials.payment_gateway', ['cash', 'credit'])->sum('invoice_partials.amount');
 
-        $refunds = Refund::whereDate('date', $date)
-            ->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId))
+        $refunds = Refund::whereBetween('date', [$from, $to])
+            ->where(function ($q) use ($companyId, $agentIds) {
+                $q->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId))
+                    ->orWhereHas('task.agent.branch.company', fn($q) => $q->where('id', $companyId));
+                if ($agentIds) {
+                    $q->where(function ($qq) use ($agentIds) {
+                        $qq->whereHas('invoice', fn($q) => $q->whereIn('agent_id', $agentIds))
+                            ->orWhereHas('task', fn($q) => $q->whereIn('agent_id', $agentIds));
+                    });
+                }
+            })
             ->sum('total_nett_refund');
 
         $profit = 0;
-        foreach ($invoices as $invoice) {
-            $profit += $invoice->invoiceDetails->sum('markup_price');
+        foreach ($invoices as $inv) {
+            $profit += $inv->invoiceDetails->sum('markup_price');
         }
 
-        $topAgentRow = (clone $partialsToday)
+        $topAgentRow = (clone $partials)
             ->join('invoices as inv', 'invoice_partials.invoice_id', '=', 'inv.id')
-            ->selectRaw('inv.agent_id as agent_id, SUM(invoice_partials.amount) as total_paid')
+            ->selectRaw('inv.agent_id, SUM(invoice_partials.amount) as total_paid')
             ->groupBy('inv.agent_id')
             ->orderByDesc('total_paid')
             ->first();
@@ -1663,7 +1683,7 @@ class ReportController extends Controller
         $topSupplierRow = DB::table('invoice_details as idt')
             ->join('invoices as inv', 'idt.invoice_id', '=', 'inv.id')
             ->join('tasks as t', 'idt.task_id', '=', 't.id')
-            ->whereDate('inv.invoice_date', $date)
+            ->whereBetween('inv.invoice_date', [$from, $to])
             ->whereExists(function ($qq) use ($companyId) {
                 $qq->select(DB::raw(1))
                     ->from('agents as a')
@@ -1671,7 +1691,11 @@ class ReportController extends Controller
                     ->join('companies as c', 'b.company_id', '=', 'c.id')
                     ->whereColumn('inv.agent_id', 'a.id')
                     ->where('c.id', $companyId);
-            })
+            });
+
+        if ($agentIds) $topSupplierRow->whereIn('inv.agent_id', $agentIds);
+
+        $topSupplierRow = $topSupplierRow
             ->selectRaw('t.supplier_id, SUM(idt.task_price) as total_revenue')
             ->groupBy('t.supplier_id')
             ->orderByDesc('total_revenue')
@@ -1685,46 +1709,39 @@ class ReportController extends Controller
             $topSupplierAmount = (float) $topSupplierRow->total_revenue;
         }
 
-        return [
-            'totalInvoices' => $totalInvoices,
-            'totalInvoiced' => $totalInvoiced,
-            'totalPaid' => $totalPaid,
-            'gatewaySum' => $gatewaySum,
-            'cashSum' => $cashSum,
-            'creditSum' => $creditSum,
-            'refunds' => $refunds,
-            'profit' => $profit,
-            'topAgent' => $topAgent,
-            'topAgentAmount' => $topAgentAmount,
-            'topSupplier' => $topSupplier,
-            'topSupplierAmount' => $topSupplierAmount,
-        ];
+        return compact('totalInvoices', 'totalInvoiced', 'totalPaid', 'gatewaySum', 'cashSum', 'creditSum', 'refunds', 'profit', 'topAgent', 'topAgentAmount', 'topSupplier', 'topSupplierAmount');
     }
 
-    private function dailySalesAgents(int $companyId, string $date)
+    private function rangeSalesAgents(int $companyId, Carbon $from, Carbon $to, $agentIds)
     {
-        $agents = Agent::whereHas('branch.company', fn($q) => $q->where('id', $companyId))
+        $query = Agent::whereHas('branch.company', fn($q) => $q->where('id', $companyId))
             ->with([
-                'invoices' => fn($q) => $q->whereDate('invoice_date', $date)
-                    ->with(['client', 'invoiceDetails.task']),
-            ])->get();
+                'invoices' => fn($q) => $q->whereBetween('invoice_date', [$from, $to])
+                    ->with(['client', 'invoiceDetails.task', 'invoicePartials']),
+            ]);
+
+        if (!empty($agentIds)) $query->whereIn('id', $agentIds);
+
+        $agents = $query->get();
 
         $data = [];
-
         foreach ($agents as $agent) {
-            $invoices = $agent->invoices;
+            $invoices = $agent->invoices->each(function ($invoice) {
+                $partials = $invoice->invoicePartials ?? collect();
+                $paid = $invoice->status === 'paid' ? $invoice->amount : $partials->where('status', 'paid')->sum('amount');
+                $invoice->setAttribute('paid_amount', $paid);
+                $invoice->setAttribute('unpaid_amount', max(0, $invoice->amount - $paid));
+            });
             $totalInvoices = $invoices->count();
             $totalInvoiced = $invoices->sum('amount');
             $paid = $invoices->where('status', 'paid')->sum('amount');
             $unpaid = $invoices->where('status', '<>', 'paid')->sum('amount');
 
             $summary = $this->calculateAgentCommission($agent, $invoices);
-            $profit = $summary['profit'];
-            $commission = $summary['commission'];
 
             $topupCollected = Payment::whereNull('invoice_id')
                 ->where('agent_id', $agent->id)
-                ->whereDate('payment_date', $date)
+                ->whereBetween('payment_date', [$from, $to])
                 ->sum('amount');
 
             $data[] = [
@@ -1732,44 +1749,41 @@ class ReportController extends Controller
                 'totalInvoices' => $totalInvoices,
                 'totalInvoiced' => $totalInvoiced,
                 'paid' => $paid,
-                'unpaid'  => $unpaid,
-                'profit' => $profit,
-                'commission' => $commission,
+                'unpaid' => $unpaid,
+                'profit' => $summary['profit'],
+                'commission' => $summary['commission'],
                 'topupCollected' => $topupCollected,
                 'invoices' => $invoices,
             ];
         }
-
         return $data;
     }
 
-    private function dailySalesSuppliers(string $date): array
+    private function rangeSalesSuppliers(Carbon $from, Carbon $to, int $companyId, $agentIds = null): array
     {
-        Log::info('DailySuppliers: start', ['date' => $date]);
+        Log::info('RangeSuppliers: start', ['from' => $from->toDateString(), 'to' => $to->toDateString(), 'company' => $companyId, 'agent' => $agentIds]);
 
         $liabilities = Account::where('name', 'Liabilities')->first();
         if (!$liabilities) {
-            Log::warning('DailySuppliers: Liabilities root not found');
+            Log::warning('RangeSuppliers: Liabilities root not found');
             return [];
         }
-        Log::info('DailySuppliers: Liabilities found', ['id' => $liabilities->id]);
 
         $accountPayable = Account::where('root_id', $liabilities->id)
             ->where(function ($q) {
                 $q->where('name', 'Accounts Payable')
-                    ->whereRaw("LOWER(name) LIKE '%accounts payable%'");
+                    ->orWhere('name', 'like', '%accounts payable%');
             })
             ->first();
 
         if (!$accountPayable) {
-            Log::info('DailySuppliers: Accounts Payable node not found under Liabilities', [
+            Log::info('RangeSuppliers: Accounts Payable node not found under Liabilities', [
                 'root_id' => $liabilities->id,
             ]);
             return [];
         }
-        Log::info('DailySuppliers: Accounts Payable found', ['ap_id' => $accountPayable->id, 'ap_name' => $accountPayable->name]);
 
-        // 3) Supplier TYPES (children of A/P that include supplier/suppliers in the name)
+        // Supplier TYPES (children of A/P that include supplier/suppliers in the name)
         $supplierTypes = Account::where('root_id', $liabilities->id)
             ->where('parent_id', $accountPayable->id)
             ->where(function ($q) {
@@ -1786,10 +1800,7 @@ class ReportController extends Controller
         ]);
 
         if ($supplierTypes->isEmpty()) {
-            Log::info('DailySuppliers: no supplier types found under A/P', [
-                'ap_id' => $accountPayable->id,
-                'root_id' => $liabilities->id,
-            ]);
+            Log::info('RangeSuppliers: no supplier types found');
             return [];
         }
 
@@ -1797,38 +1808,25 @@ class ReportController extends Controller
 
         foreach ($supplierTypes as $typeNode) {
 
-            // 4a) Fetch SUPPLIERS under this type (L4)
+            // Suppliers under this type (L4). If none, treat type as supplier.
             $suppliers = Account::where('parent_id', $typeNode->id)
                 ->orderBy('id')
                 ->get(['id', 'name', 'parent_id']);
 
             if ($suppliers->isEmpty()) {
-                // Some charts post straight to the type node (rare). Treat type as the only supplier.
                 $suppliers = collect([$typeNode]);
-                Log::info('DailySuppliers: type has no supplier children; will treat TYPE as supplier', [
-                    'type_id'   => $typeNode->id,
-                    'type_name' => $typeNode->name,
-                ]);
-            } else {
-                Log::info('DailySuppliers: suppliers under type', [
-                    'type_id' => $typeNode->id,
-                    'type_name' => $typeNode->name,
-                    'supplier_count' => $suppliers->count(),
-                    'supplier_ids' => $suppliers->pluck('id')->take(30),
-                    'supplier_names' => $suppliers->pluck('name')->take(30),
-                ]);
             }
 
-            // 4b) For each supplier, get POSTING accounts (L5). If none, supplier itself is posting.
-            $leafIds = collect();               // all posting ids for this TYPE
-            $leafToSupplier = [];                      // map posting_id -> supplier_id
-            $supplierById = $suppliers->keyBy('id'); // for easy lookup later
+            // Posting accounts (L5) per supplier; if none, supplier itself is posting.
+            $leafIds = collect();
+            $leafToSupplier = [];
+            $supplierById = $suppliers->keyBy('id');
 
             foreach ($suppliers as $sup) {
                 $children = Account::where('parent_id', $sup->id)->get(['id', 'name', 'parent_id']);
                 $postings = $children->isNotEmpty() ? $children : collect([$sup]);
 
-                Log::info('DailySuppliers: postings for supplier', [
+                Log::info('RangeSuppliers: postings for supplier', [
                     'type_id' => $typeNode->id,
                     'type_name' => $typeNode->name,
                     'supplier_id' => $sup->id,
@@ -1847,39 +1845,32 @@ class ReportController extends Controller
 
             $leafIds = $leafIds->unique()->values();
             if ($leafIds->isEmpty()) {
-                Log::info('DailySuppliers: no posting ids resolved for type', [
-                    'type_id' => $typeNode->id,
-                    'type_name' => $typeNode->name,
-                ]);
                 continue;
             }
 
-            // 4c) Pull JE for the selected TRANSACTION DATE on those posting accounts
-            $jeToday = JournalEntry::with([
+            // Journal entries for the range, scoped to this company (and optional agent)
+            $jeQuery = JournalEntry::with([
                 'account:id,name,parent_id',
                 'transaction:id,transaction_date',
-                'task:id,reference,client_id,supplier_pay_date,issued_date',
+                'task:id,reference,client_id,supplier_pay_date,issued_date,agent_id',
                 'task.client:id,name',
+                'task.agent.branch.company:id' // for scoping
             ])
                 ->whereIn('account_id', $leafIds)
-                ->whereDate('transaction_date', $date)
-                ->orderBy('transaction_date')
-                ->get();
+                ->whereBetween('transaction_date', [$from, $to])
+                ->whereHas('task.agent.branch.company', fn($q) => $q->where('id', $companyId));
 
-            Log::info('DailySuppliers: JEs for TYPE on date', [
-                'type_id' => $typeNode->id,
-                'type_name' => $typeNode->name,
-                'date' => $date,
-                'leaf_count' => $leafIds->count(),
-                'je_count' => $jeToday->count(),
-                'je_by_account' => $jeToday->groupBy('account_id')->map->count()->toArray(),
-            ]);
+            if (!empty($agentIds)) {
+                $jeQuery->whereHas('task', fn($q) => $q->whereIn('agent_id', $agentIds));
+            }
 
-            if ($jeToday->isEmpty()) {
+            $jeRange = $jeQuery->orderBy('transaction_date')->get();
+
+            if ($jeRange->isEmpty()) {
                 continue;
             }
 
-            // 4d) Aggregate by SUPPLIER using reverse map posting_id -> supplier_id
+            // Aggregate by supplier
             $rows = [];
             $groupTotals = [
                 'totalTasks' => 0,
@@ -1890,7 +1881,7 @@ class ReportController extends Controller
 
             // supplier_id => entries
             $entriesBySupplier = [];
-            foreach ($jeToday as $e) {
+            foreach ($jeRange as $e) {
                 $postingId  = $e->account_id;
                 $supplierId = $leafToSupplier[$postingId] ?? null;
                 if ($supplierId) {
@@ -1899,13 +1890,13 @@ class ReportController extends Controller
             }
 
             foreach ($entriesBySupplier as $supplierId => $entries) {
-                $supplierNode = $supplierById->get($supplierId); // L4 node (e.g., Amadeus, Wethaq Insurance)
+                $supplierNode = $supplierById->get($supplierId);
                 if (!$supplierNode) continue;
 
-                // Split entries by posting account (so details table shows each account)
+                // Split entries by posting account
                 $byAccount = collect($entries)->groupBy('account_id');
 
-                $accountRows    = [];
+                $accountRows = [];
                 $supplierTaskIds = [];
                 $supplierCredit = 0.0;
                 $supplierPaid = 0.0;
@@ -1939,8 +1930,8 @@ class ReportController extends Controller
 
                     $accountRows[] = [
                         'account' => $accObj ? $accObj->only(['id', 'name', 'parent_id']) : ['id' => $accId, 'name' => '—', 'parent_id' => null],
-                        'debit' => $debit,
-                        'credit' => $credit,
+                        'debit'   => $debit,
+                        'credit'  => $credit,
                         'entries' => $entryRows,
                     ];
                 }
@@ -1966,7 +1957,6 @@ class ReportController extends Controller
 
             if (!empty($rows)) {
                 $rows = collect($rows)->sortByDesc('creditedToday')->values()->all();
-                // group header = TYPE name (e.g., Suppliers (Flights))
                 $groups[$typeNode->name] = [
                     'totals' => [
                         'totalTasks' => $groupTotals['totalTasks'],
@@ -1976,24 +1966,10 @@ class ReportController extends Controller
                     ],
                     'rows' => $rows,
                 ];
-
-                Log::info('DailySuppliers: group built', [
-                    'type_id' => $typeNode->id,
-                    'type_name' => $typeNode->name,
-                    'row_count' => count($rows),
-                    'total_tasks' => $groupTotals['totalTasks'],
-                    'total_task_price' => $groupTotals['totalTaskPrice'],
-                    'total_paid' => $groupTotals['paid'],
-                ]);
-            } else {
-                Log::info('DailySuppliers: no rows after supplier aggregation', [
-                    'type_id'   => $typeNode->id,
-                    'type_name' => $typeNode->name,
-                ]);
             }
         }
 
-        Log::info('DailySuppliers: finished', [
+        Log::info('RangeSuppliers: finished', [
             'group_count' => count($groups),
             'group_names' => array_keys($groups),
         ]);
@@ -2001,7 +1977,7 @@ class ReportController extends Controller
         return $groups;
     }
 
-    private function dailySalesRefunds($companyId, $date)
+    private function rangeSalesRefunds(int $companyId, Carbon $from, Carbon $to, $agentIds)
     {
         return Refund::with([
             'invoice.agent',
@@ -2009,10 +1985,17 @@ class ReportController extends Controller
             'task.agent.branch.company',
             'task.originalTask.invoiceDetail.invoice',
         ])
-            ->whereDate('date', $date)
-            ->where(function ($q) use ($companyId) {
+            ->whereBetween('date', [$from, $to])
+            ->where(function ($q) use ($companyId, $agentIds) {
                 $q->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId))
                     ->orWhereHas('task.agent.branch.company', fn($q) => $q->where('id', $companyId));
+
+                if (!empty($agentIds)) {
+                    $q->where(function ($qq) use ($agentIds) {
+                        $qq->whereHas('invoice', fn($q) => $q->whereIn('agent_id', $agentIds))
+                            ->orWhereHas('task', fn($q) => $q->whereIn('agent_id', $agentIds));
+                    });
+                }
             })
             ->get()
             ->map(function ($refund) {
@@ -2030,7 +2013,6 @@ class ReportController extends Controller
                     'view_original' => $original ? route('invoice.details', ['companyId' => $original->agent->branch->company_id, 'invoiceNumber' => $original->invoice_number]) : null,
                     'view_refund_inv' => $refundInv ? route('invoice.show', ['companyId' => $refundInv->agent->branch->company_id, 'invoiceNumber' => $refundInv->invoice_number]) : null,
                 ];
-
                 return $refund;
             });
     }

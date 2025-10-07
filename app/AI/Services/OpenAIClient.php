@@ -786,7 +786,7 @@ class OpenAIClient implements AIClientInterface
         foreach ($flightFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
-        $prompt .= "\n3. `task_hotel_details` model (for hotels) - THIS IS AN ARRAY that can contain multiple hotel details:\n";
+        $prompt .= "\n3. `task_hotel_details` model (for hotels):\n";
         foreach ($hotelFields as $field => $meta) {
             $prompt .= "   - `$field`: {$meta['description']}\n";
         }
@@ -806,7 +806,12 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (FIRST TAKAFUL INSURANCE): If the supplier or insurer is 'First Takaful' (case-insensitive), set issued_by to 'First Takaful' and agent_name to null.\n";
         $prompt .= "HOTEL TASK COLLAPSING RULE (CRITICAL):\n";
         $prompt .= "- For all hotel suppliers except Magic Holiday: if additional structured room information is present (e.g., name, board, passengers, etc), insert it into task_hotel_details.room_details as JSON. For Magic Holiday: always use task_hotel_details.room_details for the room information.\n";
-        $prompt .= "- Example: {\"name\":\"Standard Room with twin beds\",\"board\":\"ROOM ONLY\",\"info\":null,\"type\":\"TWN.ST\",\"passengers\":[\"Mrs. Hassah ALHAIDARI\"]}\n";
+        $prompt .= "- When setting room_details, normalize Board/BoardBasis as follows:\n";
+        $prompt .= "  • Recognize these codes: RO=Room Only, SC=Self Catering, BB=Bed and Breakfast, HB=Half Board, FB=Full Board, AI=All Inclusive.\n";
+        $prompt .= "  • If only board text is given (e.g., 'Room Only'), set boardBasis using the matching code (e.g., 'RO').\n";
+        $prompt .= "  • If only a code is given (e.g., 'BB'), set board using its full name (e.g., 'BED AND BREAKFAST'). If both exist, make them consistent.\n";
+        $prompt .= "  • If the value is unrecognized, keep board as-is and leave boardBasis null.\n";
+        $prompt .= "- Example: {\"name\":\"Deluxe Room\",\"board\":\"Room Only\",\"boardBasis\":\"RO\",\"info\":null,\"type\":\"TWN.ST\",\"passengers\":[\"Ali Ahmed\"]}\n";
 
         $prompt .= "\nIMPORTANT INSTRUCTIONS:\n";
         $prompt .= "- The PDF may contain multiple passengers/bookings. Return an array of task objects.\n";
@@ -938,6 +943,14 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (Pilot Tours/Pailot Tours):\n";
         $prompt .= "  • ROOM DETAILS JSON: – passengers = array with ONLY the guest name BEFORE any parentheses (e.g., 'Mr Abdulrahman Alazemi').\n";
         $prompt .= "    – info = pax text INSIDE the parentheses as 'Pax: ...' (e.g., '(2 Adult + 2 Child)' → 'Pax: 2 Adult + 2 Child').\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Trendy Travel, Alam Al Raya Travel & Tourism Co):\n";
+        $prompt .= "  • HARD RULE: Always set task.status = 'issued'. Do NOT copy the document status into task.status.\n";
+        $prompt .= "  • Put the document status (e.g., Confirmed/Issued/etc.) into supplier_status exactly as shown in the document.\n";
+        $prompt .= "  • Use the printed on/date/voucher date as issued_date (fallback to today if missing).\n";
+        $prompt .= "  • Always extract flight class/cabin into task_flight_details.class_type.\n";
+        $prompt .= "  • For airline tickets, use the PNR as the reference. For hotel bookings, use the booking number or voucher number as the reference.\n";
+        $prompt .= "  • Create ONE task per passenger listed under Passenger Details table.\n";
+        $prompt .= "  • Create ONE task per ROOM (room type), never per passenger, never a single combined task for all rooms.\n";
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

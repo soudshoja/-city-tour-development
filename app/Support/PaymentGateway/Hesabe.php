@@ -41,6 +41,13 @@ class Hesabe
 
         $payment = Payment::find($request->input('payment_id'));
 
+        $company = $payment->agent->branch->company;
+
+        if(!$company){
+            Log::error('Hesabe: Company not found for payment', ['payment_id' => $payment->id]);
+            return response()->json(['error' => 'Company not found for the agent.'], 404);
+        }
+
         if ($hesabeConfig['status'] === 'error') {
             $payment->delete();
 
@@ -71,19 +78,7 @@ class Hesabe
             $clientPhone = ltrim($clientPhone, '0');
         }
 
-        $companyId = null;
-
-        if ($auth->role_id == Role::COMPANY) {
-            $companyId = Company::where('user_id', $auth->id)->value('id');
-        } elseif ($auth->role_id == Role::AGENT) {
-            $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
-            $companyId = $agent->branch->company->id;
-        } elseif ($auth->role_id == Role::ACCOUNTANT) {
-            $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
-            $companyId = $accountant->branch->company->id;
-        } else {
-            $companyId = Company::value('id');
-        }
+        $companyId = $company->id;
 
         $company = $companyId ? Company::find($companyId) : null;
         $companyEmail = $company?->email ?? 'admin@citytravelers.co';

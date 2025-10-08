@@ -745,12 +745,13 @@ class WhatsAppHotelController extends Controller
         }
     }
 
-    public function findAllOffers(Request $request){
+       public function findAllOffers(Request $request)
+    {
         Log::channel('whatsapp')->info('findOffer: Incoming request', ['request' => $request->all()]);
+
         try {
             $request->validate([
                 'telephone' => 'required|string',
-                // 'room_name' => 'required|string',
                 'board_basis' => 'nullable|string',
                 'non_refundable' => 'nullable|boolean',
                 'price_min' => 'nullable|numeric',
@@ -759,18 +760,31 @@ class WhatsAppHotelController extends Controller
             ]);
 
             $offers = TemporaryOffer::where('telephone', $request->telephone)->get();
-
-            $roomQuery = OfferedRoom::whereIn('temp_offer_id', $offers->pluck('id'));
+            Log::channel('whatsapp')->info('findOffer: Offers fetched', [
+                'telephone' => $request->telephone,
+                'offer_count' => $offers->count(),
+                'offer_ids' => $offers->pluck('id')->toArray(),
+            ]);
 
             if ($offers->isEmpty()) {
-                Log::channel('whatsapp')->warning('findOffer: No matching offer found', ['telephone' => $request->telephone]);
+                Log::channel('whatsapp')->warning('findOffer: No offers found for telephone', [
+                    'telephone' => $request->telephone
+                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'No matching offer found.'
                 ], 404);
             }
 
+            $roomQuery = OfferedRoom::whereIn('temp_offer_id', $offers->pluck('id'));
+            Log::channel('whatsapp')->info('findOffer: Initial room query built', [
+                'temp_offer_ids' => $offers->pluck('id')->toArray()
+            ]);
+
             if ($request->has('board_basis')) {
+                Log::channel('whatsapp')->info('findOffer: Applying board_basis filter', [
+                    'board_basis' => $request->board_basis
+                ]);
                 if (is_null($request->board_basis)) {
                     $roomQuery->whereNull('board_basis');
                 } else {
@@ -779,25 +793,43 @@ class WhatsAppHotelController extends Controller
             }
 
             if ($request->has('non_refundable')) {
+                Log::channel('whatsapp')->info('findOffer: Applying non_refundable filter', [
+                    'non_refundable' => $request->non_refundable
+                ]);
                 $roomQuery->where('non_refundable', $request->non_refundable);
             }
 
             if ($request->has('price_min')) {
+                Log::channel('whatsapp')->info('findOffer: Applying price_min filter', [
+                    'price_min' => $request->price_min
+                ]);
                 $roomQuery->where('price', '>=', $request->price_min);
             }
+
             if ($request->has('price_max')) {
+                Log::channel('whatsapp')->info('findOffer: Applying price_max filter', [
+                    'price_max' => $request->price_max
+                ]);
                 $roomQuery->where('price', '<=', $request->price_max);
             }
 
-
             if ($request->has('occupancy')) {
+                Log::channel('whatsapp')->info('findOffer: Applying occupancy filter', [
+                    'occupancy' => $request->occupancy
+                ]);
                 $roomQuery->where('occupancy', 'like', '%' . json_encode($request->occupancy) . '%');
             }
 
             $rooms = $roomQuery->get();
+            Log::channel('whatsapp')->info('findOffer: Room query executed', [
+                'rooms_count' => $rooms->count(),
+            ]);
 
             if ($rooms->isEmpty()) {
-                Log::channel('whatsapp')->warning('findOffer: No matching room(s) found', ['request' => $request->all()]);
+                Log::channel('whatsapp')->warning('findOffer: No matching room(s) found', [
+                    'filters' => $request->all(),
+                    'offer_ids' => $offers->pluck('id')->toArray()
+                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'No matching room(s) found.'
@@ -831,13 +863,19 @@ class WhatsAppHotelController extends Controller
                     'offers' => $groupedOffers,
                 ],
             ];
+
             Log::channel('whatsapp')->info('findOffer: Success response', ['response' => $response]);
             return response()->json($response);
+
         } catch (Exception $e) {
-            Log::channel('whatsapp')->error('findOffer: Exception', ['error' => $e->getMessage()]);
+            Log::channel('whatsapp')->error('findOffer: Exception occurred', [
+                'error_message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred.',
+                'message' => 'An error occurred. Please check logs for details.',
             ], 500);
         }
     }

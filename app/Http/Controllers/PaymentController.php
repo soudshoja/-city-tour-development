@@ -111,18 +111,11 @@ class PaymentController extends Controller
 
         $client = $invoice->client;
 
-        $companyId = null;
+        $companyId = $invoice->agent->branch->company_id;
 
-        if ($auth->role_id == Role::COMPANY) {
-            $companyId = Company::where('user_id', $auth->id)->value('id');
-        } elseif ($auth->role_id == Role::AGENT) {
-            $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
-            $companyId = $agent->branch->company->id;
-        } elseif ($auth->role_id == Role::ACCOUNTANT) {
-            $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
-            $companyId = $accountant->branch->company->id;
-        } else {
-            $companyId = Company::value('id');
+        if(!$companyId){
+            Log::error('InvoiceController@create: Company not found for the invoice', ['invoice_id' => $invoice->id]);
+            return auth()->user() ? redirect()->back()->with('error', 'Company not found for this invoice!') : abort(404);
         }
 
         $company = $companyId ? Company::find($companyId) : null;

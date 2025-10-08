@@ -745,7 +745,7 @@ class WhatsAppHotelController extends Controller
         }
     }
 
-       public function findAllOffers(Request $request)
+    public function findAllOffers(Request $request)
     {
         Log::channel('whatsapp')->info('findOffer: Incoming request', ['request' => $request->all()]);
 

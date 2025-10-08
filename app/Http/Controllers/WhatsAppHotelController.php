@@ -706,14 +706,14 @@ class WhatsAppHotelController extends Controller
                 return $room->temporaryOffer->offer_index;
             })->map(function ($group, $offerIndex) {
                 return [
-                    'offer_index' => $offerIndex,
+                    // 'offer_index' => $offerIndex,
                     'room_details' => $group->map(function ($room) {
                         return [
                             'room_name' => $room->room_name,
                             'board_basis' => $room->board_basis,
                             'non_refundable' => (bool) $room->non_refundable,
-                            'room_token' => $room->room_token,
-                            'package_token' => $room->package_token,
+                            // 'room_token' => $room->room_token,
+                            // 'package_token' => $room->package_token,
                             'price' => (float) $room->price,
                             'currency' => $room->currency ?? 'KWD',
                             'occupancy' => json_decode($room->occupancy, true) ?: [],

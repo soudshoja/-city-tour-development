@@ -750,53 +750,53 @@ class WhatsAppHotelController extends Controller
         Log::channel('whatsapp')->info('findOffer: Incoming request', ['request' => $request->all()]);
 
         try {
-            /* -----------------------------
-            * 1) Normalize inputs (before validate)
-            * ----------------------------- */
+            // -------- 1) Normalize BEFORE validation --------
+            // non_refundable: accept "ANY" (remove), "true/false", "yes/no", "1/0"
+            if ($request->exists('non_refundable')) {
+                $raw = $request->input('non_refundable');
 
-            // non_refundable: allow "ANY", "true/false", "yes/no", "1/0"
-            if ($request->has('non_refundable')) {
-                $nrRaw = $request->input('non_refundable');
-
-                if (is_string($nrRaw)) {
-                    $v = strtolower(trim($nrRaw));
+                if (is_string($raw)) {
+                    $v = strtolower(trim($raw));
                     if ($v === 'any' || $v === '') {
-                        // remove filter entirely -> no validation, no where-clause
+                        // remove to avoid validating/applying this filter
                         $request->request->remove('non_refundable');
-                        Log::channel('whatsapp')->info('findOffer: normalized non_refundable -> removed (ANY)');
+                        Log::channel('whatsapp')->info('findOffer: normalized non_refundable -> removed (ANY/empty)');
                     } elseif (in_array($v, ['1', 'true', 'yes'], true)) {
                         $request->merge(['non_refundable' => 1]);
                         Log::channel('whatsapp')->info('findOffer: normalized non_refundable -> 1');
                     } elseif (in_array($v, ['0', 'false', 'no'], true)) {
                         $request->merge(['non_refundable' => 0]);
                         Log::channel('whatsapp')->info('findOffer: normalized non_refundable -> 0');
+                    } else {
+                        // leave as-is; may be null or invalid and fail validation
                     }
                 }
+                // If it's null, we leave it null; validation allows nullable, and we won't apply the filter later.
             }
 
-            // board_basis: if "ANY" or empty string -> remove filter
-            if ($request->has('board_basis')) {
-                $bbRaw = $request->input('board_basis');
-                if (is_string($bbRaw) && in_array(strtolower(trim($bbRaw)), ['any', ''], true)) {
+            // board_basis: if "ANY" or empty -> remove filter
+            if ($request->exists('board_basis')) {
+                $bb = $request->input('board_basis');
+                if (is_string($bb) && in_array(strtolower(trim($bb)), ['any', ''], true)) {
                     $request->request->remove('board_basis');
-                    Log::channel('whatsapp')->info('findOffer: normalized board_basis -> removed (ANY)');
+                    Log::channel('whatsapp')->info('findOffer: normalized board_basis -> removed (ANY/empty)');
                 }
             }
 
-            // price_min / price_max: cast strings like "0" / "999999" into numeric
+            // price numbers: coerce strings to numeric
             foreach (['price_min', 'price_max'] as $k) {
                 if ($request->filled($k)) {
-                    $casted = +$request->input($k);
-                    $request->merge([$k => $casted]);
-                    Log::channel('whatsapp')->info("findOffer: normalized {$k}", ['value' => $casted]);
+                    $num = +$request->input($k);
+                    $request->merge([$k => $num]);
+                    Log::channel('whatsapp')->info("findOffer: normalized {$k}", ['value' => $num]);
                 }
             }
 
-            // occupancy: ensure array shape if present as JSON string
-            if ($request->has('occupancy')) {
-                $occRaw = $request->input('occupancy');
-                if (is_string($occRaw)) {
-                    $decoded = json_decode($occRaw, true);
+            // occupancy: decode if sent as JSON string
+            if ($request->exists('occupancy')) {
+                $occ = $request->input('occupancy');
+                if (is_string($occ)) {
+                    $decoded = json_decode($occ, true);
                     if (json_last_error() === JSON_ERROR_NONE) {
                         $request->merge(['occupancy' => $decoded]);
                         Log::channel('whatsapp')->info('findOffer: normalized occupancy from JSON string');
@@ -804,21 +804,17 @@ class WhatsAppHotelController extends Controller
                 }
             }
 
-            /* -----------------------------
-            * 2) Validate (after normalization)
-            * ----------------------------- */
+            // -------- 2) Validate --------
             $request->validate([
                 'telephone'      => 'required|string',
                 'board_basis'    => 'nullable|string',
-                'non_refundable' => 'nullable|boolean', // now passes because we normalized to 0/1 or removed it
+                'non_refundable' => 'nullable|boolean',
                 'price_min'      => 'nullable|numeric',
                 'price_max'      => 'nullable|numeric',
                 'occupancy'      => 'nullable|array',
             ]);
 
-            /* -----------------------------
-            * 3) Load temp offers for phone
-            * ----------------------------- */
+            // -------- 3) Load offers for phone --------
             $offers = TemporaryOffer::where('telephone', $request->telephone)->get();
 
             if ($offers->isEmpty()) {
@@ -836,60 +832,59 @@ class WhatsAppHotelController extends Controller
 
             $roomQuery = OfferedRoom::whereIn('temp_offer_id', $offerIds);
 
-            /* -----------------------------
-            * 4) Apply filters (if provided)
-            * ----------------------------- */
+            // -------- 4) Apply filters (only when truly provided) --------
 
-            // board_basis (LIKE for partials)
-            if ($request->has('board_basis')) {
-                $bb = $request->board_basis;
-                if (is_null($bb)) {
+            // board_basis:
+            if ($request->exists('board_basis')) {
+                $bb = $request->input('board_basis'); // could be null or string
+                if ($bb === null) {
                     $roomQuery->whereNull('board_basis');
-                    Log::channel('whatsapp')->info('findOffer: filter board_basis -> NULL');
+                    Log::channel('whatsapp')->info('findOffer: filter board_basis -> IS NULL');
                 } else {
                     $roomQuery->where('board_basis', 'like', '%' . $bb . '%');
                     Log::channel('whatsapp')->info('findOffer: filter board_basis LIKE', ['value' => $bb]);
                 }
             }
 
-            // non_refundable (0/1)
-            if ($request->has('non_refundable')) {
-                $nr = (int) $request->non_refundable;
-                $roomQuery->where('non_refundable', $nr);
-                Log::channel('whatsapp')->info('findOffer: filter non_refundable =', ['value' => $nr]);
+            // non_refundable: apply ONLY if explicitly 0 or 1 (do NOT cast null)
+            if ($request->exists('non_refundable')) {
+                $nr = $request->input('non_refundable'); // may be 0/1 or null
+                if ($nr === 0 || $nr === 1 || $nr === '0' || $nr === '1') {
+                    $roomQuery->where('non_refundable', (int)$nr);
+                    Log::channel('whatsapp')->info('findOffer: filter non_refundable =', ['value' => (int)$nr]);
+                } else {
+                    Log::channel('whatsapp')->info('findOffer: non_refundable present but null/invalid -> filter NOT applied');
+                }
             }
 
-            // price range
-            if ($request->has('price_min')) {
+            // price range:
+            if ($request->filled('price_min')) {
                 $roomQuery->where('price', '>=', $request->price_min);
                 Log::channel('whatsapp')->info('findOffer: filter price >=', ['min' => $request->price_min]);
             }
-            if ($request->has('price_max')) {
+            if ($request->filled('price_max')) {
                 $roomQuery->where('price', '<=', $request->price_max);
                 Log::channel('whatsapp')->info('findOffer: filter price <=', ['max' => $request->price_max]);
             }
 
-            // occupancy (stored as JSON text in OfferedRoom.occupancy)
-            // We’ll do a simple LIKE match on the encoded incoming array to keep it consistent with your previous logic.
-            if ($request->has('occupancy')) {
+            // occupancy: LIKE on stored JSON text
+            if ($request->exists('occupancy') && is_array($request->occupancy)) {
                 $encoded = json_encode($request->occupancy);
                 $roomQuery->where('occupancy', 'like', '%' . $encoded . '%');
                 Log::channel('whatsapp')->info('findOffer: filter occupancy LIKE', ['needle' => $encoded]);
             }
 
-            /* -----------------------------
-            * 5) Execute and handle empty
-            * ----------------------------- */
+            // -------- 5) Execute --------
             $rooms = $roomQuery->get();
 
             if ($rooms->isEmpty()) {
                 Log::channel('whatsapp')->warning('findOffer: No matching room(s) after filters', [
                     'telephone'      => $request->telephone,
-                    'board_basis'    => $request->input('board_basis', '[none]'),
-                    'non_refundable' => $request->has('non_refundable') ? (int)$request->non_refundable : '[none]',
-                    'price_min'      => $request->input('price_min', '[none]'),
-                    'price_max'      => $request->input('price_max', '[none]'),
-                    'occupancy'      => $request->has('occupancy') ? $request->occupancy : '[none]',
+                    'board_basis'    => $request->exists('board_basis') ? $request->board_basis : '[none]',
+                    'non_refundable' => $request->exists('non_refundable') ? $request->non_refundable : '[none]',
+                    'price_min'      => $request->filled('price_min') ? $request->price_min : '[none]',
+                    'price_max'      => $request->filled('price_max') ? $request->price_max : '[none]',
+                    'occupancy'      => $request->exists('occupancy') ? $request->occupancy : '[none]',
                 ]);
                 return response()->json([
                     'success' => false,
@@ -897,25 +892,22 @@ class WhatsAppHotelController extends Controller
                 ], 404);
             }
 
-            /* -----------------------------
-            * 6) Group by offer_index and format
-            * ----------------------------- */
+            // -------- 6) Group and shape response --------
             $groupedOffers = $rooms->groupBy(function ($room) {
-                // relies on OfferedRoom belongsTo TemporaryOffer relation named `temporaryOffer`
                 return $room->temporaryOffer->offer_index;
             })->map(function ($group, $offerIndex) {
                 return [
                     'offer_index' => $offerIndex,
                     'room_details' => $group->map(function ($room) {
                         return [
-                            'room_name'       => $room->room_name,
-                            'board_basis'     => $room->board_basis,
-                            'non_refundable'  => (bool) $room->non_refundable,
-                            'room_token'      => $room->room_token,
-                            'package_token'   => $room->package_token,
-                            'price'           => (float) $room->price,
-                            'currency'        => $room->currency ?? 'KWD',
-                            'occupancy'       => json_decode($room->occupancy, true) ?: [],
+                            'room_name'      => $room->room_name,
+                            'board_basis'    => $room->board_basis,
+                            'non_refundable' => (bool)$room->non_refundable,
+                            'room_token'     => $room->room_token,
+                            'package_token'  => $room->package_token,
+                            'price'          => (float)$room->price,
+                            'currency'       => $room->currency ?? 'KWD',
+                            'occupancy'      => json_decode($room->occupancy, true) ?: [],
                         ];
                     })->values(),
                 ];
@@ -930,7 +922,7 @@ class WhatsAppHotelController extends Controller
             ];
 
             Log::channel('whatsapp')->info('findOffer: Success response', [
-                'offer_groups' => $groupedOffers->count(),
+                'offer_groups'   => $groupedOffers->count(),
                 'rooms_returned' => $rooms->count(),
             ]);
 
@@ -948,6 +940,7 @@ class WhatsAppHotelController extends Controller
             ], 500);
         }
     }
+
 
 
     public function storePrebook(Request $request)

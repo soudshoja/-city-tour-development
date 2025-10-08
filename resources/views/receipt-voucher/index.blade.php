@@ -54,6 +54,7 @@
                         <table id="myTable" class="table-hover whitespace-nowrap dataTable-table w-full">
                             <thead>
                                 <tr>
+                                    <th></th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Receipt Ref</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Type</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Receive from</th>
@@ -74,6 +75,19 @@
                                 @else
                                 @foreach ($receiptvouchers as $receiptvoucher)
                                 <tr>
+                                    <td><a data-tooltip="View Receipt Voucher"
+                                                href="{{ route('receipt-voucher.edit', $receiptvoucher->id) }}"
+                                                class="text-blue-500 hover:underline">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20"
+                                                    height="20" viewBox="0 0 24 24">
+                                                    <g fill="none" stroke="currentColor" stroke-width="1">
+                                                        <path
+                                                            d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z"
+                                                            opacity=".5"></path>
+                                                        <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z"></path>
+                                                    </g>
+                                                </svg>
+                                            </a></td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         {{ $receiptvoucher->reference_number }}
                                     </td>
@@ -97,33 +111,34 @@
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         <div class="flex items-center gap-2">
-                                            @if($receiptvoucher->reference_type === 'Receipt')
+                                            @if ($receiptvoucher->reference_type === 'Receipt')
                                                 <span class="inline-flex items-center rounded-full border border-green-600/30 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
                                                     Paid
-                                                </span>                                            
-                                            @else
-                                            <form method="POST" action="{{ route('receipt-voucher.approve', $receiptvoucher->id) }}" style="display:inline;">
-                                                @csrf
-                                                <button type="submit" class="btn btn-success btn-sm ml-2">Approve</button>
-                                            </form>
+                                                </span>
+                                            @elseif ($receiptvoucher->reference_type !== 'Receipt' && optional($invoicePartial->status === 'paid'))
+                                                <span class="inline-flex items-center rounded-full border border-green-600/30 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                                                    Paid
+                                                </span>
+                                            @elseif ($receiptvoucher->reference_type !== 'Receipt' && $invoicePartial->status === 'unpaid')
+                                                <span class="inline-flex items-center rounded-full border border-red-600/30 bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                                                    Unaid
+                                                </span>
                                             @endif
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="flex">
-                                            <a data-tooltip="View Receipt Voucher"
-                                                href="{{ route('receipt-voucher.edit', $receiptvoucher->id) }}"
-                                                class="text-blue-500 hover:underline">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20"
-                                                    height="20" viewBox="0 0 24 24">
-                                                    <g fill="none" stroke="currentColor" stroke-width="1">
-                                                        <path
-                                                            d="M3.275 15.296C2.425 14.192 2 13.639 2 12c0-1.64.425-2.191 1.275-3.296C4.972 6.5 7.818 4 12 4s7.028 2.5 8.725 4.704C21.575 9.81 22 10.361 22 12c0 1.64-.425 2.191-1.275 3.296C19.028 17.5 16.182 20 12 20s-7.028-2.5-8.725-4.704Z"
-                                                            opacity=".5"></path>
-                                                        <path d="M15 12a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z"></path>
-                                                    </g>
-                                                </svg>
-                                            </a>
+                                        <div class="flex items-center space-x-3">
+                                            @if ($receiptvoucher->reference_type !== 'Receipt' && $invoicePartial->status === 'unpaid') 
+                                                <form method="POST" action="{{ route('receipt-voucher.approve', $receiptvoucher->id) }}">
+                                                    @csrf
+                                                    <button type="submit" 
+                                                        class="bg-green-600 hover:bg-green-700 text-white font-semibold py-1 px-3 rounded-md text-sm shadow-sm transition-all">
+                                                        Approve
+                                                    </button>
+                                                </form>
+                                            @else
+                                                <span class="p-3 text-sm font-semibold text-gray-500">N/A</span>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>

@@ -434,8 +434,8 @@
                         opacity=".5" />
                 </svg>
             </div>
-            <div x-data="{ addTaskModal: false }" class="flex items-center gap-5">
-                <div @click="addTaskModal = true"
+            <div x-data="{ addTaskModal: false, manualFormWide: false }" class="flex items-center gap-5">
+                <div @click="addTaskModal = true; manualFormWide = false"
                     class="p-2 text-center bg-white rounded-full shadow group hover:bg-black dark:hover:bg-gray-600 dark:bg-gray-700 cursor-pointer"
                     data-tooltip-left="Add Task">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
@@ -446,10 +446,10 @@
                             d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7"
                             stroke="" stroke-width="1.5" stroke-linecap="round" />
                     </svg>
-
                 </div>
                 <div x-cloak x-show="addTaskModal" x-init="$watch('addTaskModal', value => {
                         if (!value) {
+                            manualFormWide = false;
                             $nextTick(() => {
                                 if (typeof window.__resetTaskForm === 'function') {
                                     window.__resetTaskForm();
@@ -464,7 +464,9 @@
                         }
                     })"
                     class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-                    <div @click.away="addTaskModal = false" class="bg-white rounded shadow w-96">
+                    <div @click.away="addTaskModal = false; manualFormWide = false" class="bg-white rounded shadow min-w-96"
+                        @modal:wide.window="manualFormWide = true"
+                        @modal:normal.window="manualFormWide = false">
                         <div class="p-4 flex justify-between items-center">
                             <span class="text-lg font-semibold">Add Task For Specific Supplier</span>
 
@@ -479,27 +481,47 @@
                         <hr>
                         <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
                             class="p-4 flex flex-col" method="POST" enctype="multipart/form-data">
-                            @csrf
+                                @csrf
 
-                            <div class="mb-3">
+                            <div class="mb-3 z-10">
                                 <x-searchable-dropdown name="supplier_id" :items="$suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])" placeholder="Select Supplier"
                                     label="Select a Supplier" />
                             </div>
-                            <!-- Hidden native select (logic only) -->
-                            <select id="select-supplier-task" class="hidden">
-                                @foreach ($suppliers as $supplier)
-                                <option value="{{ $supplier->id }}" data-supplier='{{ json_encode($supplier) }}'>
-                                    {{ $supplier->name }}
-                                </option>
-                                @endforeach
-                            </select>
-                            <div id="template-hotel-dropdown" class="hidden">
-                                <x-searchable-dropdown
-                                    name="task_hotel_details[0][hotel_id]" 
-                                    :items="$hotels->map(fn($h) => ['id' => $h->id, 'name' => $h->name])" 
-                                    placeholder="Select Hotel" />
+                            <div class="flex-1 min-h-0 overflow-y-auto max-h-[calc(90vh-224px)]">
+                                <!-- Hidden native select (logic only) -->
+                                <select id="select-supplier-task" class="hidden">
+                                    @foreach ($suppliers as $supplier)
+                                    <option value="{{ $supplier->id }}" data-supplier='{{ json_encode($supplier) }}'>
+                                        {{ $supplier->name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                                <div id="template-hotel-dropdown" class="hidden min-w-0">
+                                    <x-searchable-dropdown
+                                        name="task_hotel_details[0][hotel_id]" 
+                                        :items="$hotels->map(fn($h) => ['id' => $h->id, 'name' => $h->name])"
+                                        placeholder="Select Hotel" />
+                                </div>
+                                <div id="template-client-dropdown" class="hidden min-w-0">
+                                    <x-searchable-dropdown
+                                        name="client_id"
+                                        :items="$fullClients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name])"
+                                        placeholder="Select Client"
+                                    />
+                                </div>
+                                <div id="template-currency-dropdown" class="hidden min-w-0 Z-2">
+                                    <x-searchable-dropdown
+                                        name="original_currency"
+                                        :items="$allIso->map(function ($code) use ($currencies) {
+                                            $c = $currencies[$code] ?? null;
+                                            return ['id' => $code, 'name' => trim(($c->symbol ?? '') . ' ' . $code . ' ' . ($c->name ?? ''))];
+                                        })"
+                                        placeholder="Select Currency"
+                                    />
+                                    <input type="hidden" id="selected-currency" x-effect="$el.value = ($el.previousElementSibling.__x?.$data?.selectedId || '').toUpperCase()">
+                                </div>
+                                <div id="form-task-container" class="mb-3"></div>
                             </div>
-                            <div id="form-task-container" class="mb-3"></div>
 
                             @unlessrole('agent')
                             <!-- <div class="mb-4">
@@ -510,9 +532,9 @@
                             <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
                             @endunlessrole
                         </form>
-                        <hr>
-                        <div class="p-4 flex justify-between items-center">
-                            <button @click="addTaskModal = false"
+                        <hr class="shrink-0">
+                        <div class="p-4 flex justify-between items-center bg-white z-5">
+                            <button @click="addTaskModal = false; manualFormWide = false"
                                 class="rounded-full shadow-sm px-4 py-2 text-red-500 border border-white-100 bg-white hover:bg-gray-100 transition">
                                 Cancel
                             </button>
@@ -2139,17 +2161,38 @@
             }
 
             console.log('Selected Supplier:', supplier);
-            if (supplier.is_manual == true && supplier.has_hotel == true) {
-                const dropdownTemplate = document.getElementById('template-hotel-dropdown').innerHTML;
+            if ((supplier?.is_manual == 1 || supplier?.is_manual == '1') && isHotel) {
+                const hotelTemplate = document.getElementById('template-hotel-dropdown').innerHTML;
+                const clientTemplate = document.getElementById('template-client-dropdown')?.innerHTML ?? '';
+                const currencyTemplate = document.getElementById('template-currency-dropdown')?.innerHTML ?? 'KWD';
                 const html = `
-                    <div class="border rounded-md p-3 bg-white space-y-3">
+                    <div class="border rounded-md p-4 bg-white space-y-4">
                         <p class="font-medium text-gray-800">Manual hotel booking</p>
                         <input type="hidden" name="type" value="hotel">
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Hotel name</label>
-                            ${dropdownTemplate}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Hotel name</label>
+                                ${hotelTemplate}
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Room name</label>
+                                <input id="mh-room" name="task_hotel_details[0][room_name]" type="text" class="w-full border rounded px-2 py-1" placeholder="e.g. Deluxe King">
+                            </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div class="col-span-1">
+                                <label class="block text-xs text-gray-600 mb-1">Client</label>
+                                ${clientTemplate || `
+                                    <label class="block text-xs text-gray-600 mb-1">Client</label>
+                                    <input id="mh-client-fallback" type="text" class="w-full border rounded px-2 py-1" placeholder="Type client name">
+                                `}
+                            </div>
+                            <div class="col-span-1">
+                                <label class="block text-xs text-gray-600 mb-1">Reference number</label>
+                                <input id="mh-ref" name="reference" type="text" class="w-full border rounded px-2 py-1">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Check-in</label>
                                 <input id="mh-checkin" name="task_hotel_details[0][check_in]" type="date" class="w-full border rounded px-2 py-1">
@@ -2158,33 +2201,33 @@
                                 <label class="block text-xs text-gray-600 mb-1">Check-out</label>
                                 <input id="mh-checkout" name="task_hotel_details[0][check_out]" type="date" class="w-full border rounded px-2 py-1">
                             </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Total nights</label>
+                                <input id="mh-nights" type="number" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                            </div>
                         </div>
-                        <div class="grid grid-cols-3 gap-3">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Price per night</label>
                                 <input id="mh-price" type="number" step="0.001" class="w-full border rounded px-2 py-1" placeholder="0.000">
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Currency</label>
+                                ${currencyTemplate}
                                 <select id="mh-currency" class="w-full border rounded px-2 py-1">
-                                <option value="KWD">KWD</option>
-                                <option value="USD">USD</option>
-                                <option value="EUR">EUR</option>
-                                <option value="SAR">SAR</option>
-                                <option value="AED">AED</option>
-                                <!-- add what you support -->
+                                    <option value="KWD">KWD</option>
+                                    <option value="USD">USD</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="SAR">SAR</option>
+                                    <option value="AED">AED</option> 
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs text-gray-600 mb-1">Converted (KWD)</label>
+                                <label class="block text-xs text-gray-600 mb-1">Converted price/night (KWD)</label>
                                 <input id="mh-price-kwd" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
                             </div>
                         </div>
-                        <div class="grid grid-cols-3 gap-3">
-                            <div>
-                                <label class="block text-xs text-gray-600 mb-1">Total nights</label>
-                                <input id="mh-nights" type="number" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
-                            </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Total (original)</label>
                                 <input id="mh-total-orig" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
@@ -2193,19 +2236,31 @@
                                 <label class="block text-xs text-gray-600 mb-1">Total (KWD)</label>
                                 <input id="mh-total-kwd" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
                             </div>
+                            <div class="hidden md:block"></div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Adults</label>
+                                <input id="mh-adults" type="number" min="0" value="1" class="w-full border rounded px-2 py-1">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Children</label>
+                                <input id="mh-children" type="number" min="0" value="0" class="w-full border rounded px-2 py-1">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Total pax</label>
+                                <input id="mh-total-pax" type="number" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-xs text-gray-600 mb-1">Passengers</label>
                             <div id="mh-passengers" class="space-y-2">
                                 <div class="flex gap-2">
-                                    <input type="text" class="w-full border rounded px-2 py-1" placeholder="Passenger name">
+                                    <input type="text" class="w-full border rounded px-2 py-1 mh-passenger" placeholder="Passenger name">
                                     <button type="button" class="px-2 border rounded add">+ Add</button>
                                 </div>
                             </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">Reference number</label>
-                            <input id="mh-ref" name="reference" type="text" class="w-full border rounded px-2 py-1">
+                            <p id="mh-passenger-hint" class="text-xs text-gray-500 mt-1"></p>
                         </div>
                     </div>
                 `;
@@ -2213,27 +2268,20 @@
                 formTaskContainer.innerHTML = html;
                 window.Alpine?.initTree?.(formTaskContainer);
 
-                const price  = document.getElementById('mh-price');
+                const price      = document.getElementById('mh-price');
                 const currency = document.getElementById('mh-currency');
-                const priceKwd = document.getElementById('mh-price-kwd');
-                const checkIn = document.getElementById('mh-checkin');
-                const checkOut = document.getElementById('mh-checkout');
-                const nights = document.getElementById('mh-nights');
-                const totalOrig = document.getElementById('mh-total-orig');
-                const totalKwd = document.getElementById('mh-total-kwd');
-                const paxWrap = document.getElementById('mh-passengers');
-
-                paxWrap.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('add')) {
-                        const row = document.createElement('div');
-                        row.className = 'flex gap-2';
-                        row.innerHTML = `<input type="text" class="w-full border rounded px-2 py-1" placeholder="Passenger name">
-                                        <button type="button" class="px-2 border rounded rm">✕</button>`;
-                        paxWrap.appendChild(row);
-                    } else if (e.target.classList.contains('rm')) {
-                        e.target.parentElement.remove();
-                    }
-                });
+                const priceKwd   = document.getElementById('mh-price-kwd');
+                const checkIn    = document.getElementById('mh-checkin');
+                const checkOut   = document.getElementById('mh-checkout');
+                const nights     = document.getElementById('mh-nights');
+                const totalOrig  = document.getElementById('mh-total-orig');
+                const totalKwd   = document.getElementById('mh-total-kwd');
+                const paxWrap    = document.getElementById('mh-passengers');
+                const adultsEl   = document.getElementById('mh-adults');
+                const childrenEl = document.getElementById('mh-children');
+                const totalPaxEl = document.getElementById('mh-total-pax');
+                const paxHint    = document.getElementById('mh-passenger-hint');
+                // const currency = formTaskContainer.querySelector('input[name="original_currency"]');
 
                 function calcNights() {
                     const ci = new Date(checkIn.value);
@@ -2244,65 +2292,153 @@
                     return n;
                 }
 
-                // preview conversion for UI only (backend still converts)
-                async function convert(amount, from, to='KWD') {
-                    if (!amount || from === to) return {converted: amount, rate: 1};
+                function paxLimit() {
+                    const total = (parseInt(adultsEl.value||0) + parseInt(childrenEl.value||0)) || 0;
+                    totalPaxEl.value = total;
+                    const current = paxWrap.querySelectorAll('input.mh-passenger').length;
+                    const addBtn  = paxWrap.querySelector('button.add');
+                    addBtn.disabled = current >= total && total > 0;
+                    addBtn.classList.toggle('opacity-50', addBtn.disabled);
+                    paxHint.textContent = total ? `Max ${total} passenger name(s)` : '';
+                }
+
+                function csrf() {
+                    const m = document.querySelector('meta[name="csrf-token"]');
+                    return m?.getAttribute('content') || '{{ csrf_token() }}';
+                }
+
+                async function convertCurrency(amount, from, to='KWD') {
+                    if (!amount || from === to) return { converted: +amount, rate: 1 };
                     try {
-                        const res = await fetch(`/api/convert?from=${from}&to=${to}&amount=${amount}`);
+                        const res = await fetch(`{{ route('exchange.convert') }}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                            body: JSON.stringify({
+                                from_currency: String(from).toUpperCase(),
+                                to_currency: String(to).toUpperCase(),
+                                amount: +amount
+                            })
+                        });
                         const data = await res.json();
-                        if (data.status === 'success') return {converted: +data.converted, rate: +data.exchange_rate};
-                    } catch {}
-                        return {converted: null, rate: null};
+                        if (data.status === 'success') {
+                            return { converted: +data.converted_amount, rate: +data.exchange_rate };
+                        }
+                        // if controller returns "created:true" (rate added) just show a hint
+                        if (data.created) {
+                            return { converted: null, rate: null, created: true, message: data.message };
+                        }
+                    } catch (e) {}
+                    return { converted: null, rate: null };
                 }
 
                 async function recompute() {
                     const p = parseFloat(price.value) || 0;
-                    const cur = currency.value;
+                    const cur = currency?.value || 'KWD';
                     const n = calcNights();
                     const total = +(p * n).toFixed(3);
 
                     totalOrig.value = total ? `${total.toFixed(3)} ${cur}` : '';
-                    const conv1 = await convert(p, cur, 'KWD');
+                      // price/night → KWD
+                    const conv1 = await convertCurrency(p, cur, 'KWD');
                     priceKwd.value = conv1.converted != null ? conv1.converted.toFixed(3) : '';
 
-                    const convTotal = await convert(total, cur, 'KWD');
+                    const convTotal = await convertCurrency(total, cur, 'KWD');
                     totalKwd.value = convTotal.converted != null ? convTotal.converted.toFixed(3) : '';
                 }
 
-                [price, currency, checkIn, checkOut].forEach(el => el.addEventListener('change', recompute));
+                currency?.addEventListener('change', recompute);
+                // if your component emits a custom event, hook it too:
+                formTaskContainer.addEventListener('dropdown:change', (e) => {
+                    if (e.detail?.name === 'original_currency') recompute();
+                });
+
+                [price, checkIn, checkOut].forEach(el => el.addEventListener('change', recompute));
                 price.addEventListener('input', recompute);
+                adultsEl.addEventListener('input', paxLimit);
+                childrenEl.addEventListener('input', paxLimit);
+                paxLimit();
+
+                paxWrap.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('add')) return;
+                    const total = +totalPaxEl.value || 0;
+                    const current = paxWrap.querySelectorAll('input.mh-passenger').length;
+                    if (total && current >= total) return;
+
+                    const row = document.createElement('div');
+                    row.className = 'flex gap-2';
+                    row.innerHTML = `
+                        <input type="text" class="w-full border rounded px-2 py-1 mh-passenger" placeholder="Passenger name">
+                        <button type="button" class="px-2 border rounded rm">✕</button>`;
+                    paxWrap.appendChild(row);
+                    paxLimit();
+                });
+
+                paxWrap.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('rm')) return;
+                    e.target.parentElement.remove();
+                    paxLimit();
+                });
+
+                /* --------- client → first passenger auto-fill --------- */
+                (function wireClientToFirstPassenger(){
+                    // works for x-searchable-dropdown (listen to underlying input)
+                    const clientHidden = formTaskContainer.querySelector('input[name="client_id"]');
+                    const clientDisplay = formTaskContainer.querySelector('[data-dropdown-display] input, [data-dropdown-display]'); // adapt for your component
+                    const firstPassenger = () => paxWrap.querySelector('input.mh-passenger');
+
+                    function setFirst(name) {
+                        const fp = firstPassenger();
+                        if (fp && name) fp.value = name;
+                    }
+
+                    // 1) if using your component, capture selected label
+                    formTaskContainer.addEventListener('change', () => {
+                        if (clientHidden && clientHidden.value) {
+                        // try to read the label from the component (fallback to value attribute if you store it)
+                        const label = formTaskContainer.querySelector('[data-selected-label]')?.textContent?.trim()
+                                    || formTaskContainer.querySelector('[data-dropdown-display] input')?.value?.trim()
+                                    || '';
+                        if (label) setFirst(label);
+                        }
+                    });
+
+                    const fallback = document.getElementById('mh-client-fallback');
+                    if (fallback) fallback.addEventListener('input', e => setFirst(e.target.value.trim()));
+                })();
 
                 setFormSubmitHandler((e) => {
                     const hotelField = form.querySelector('[name="task_hotel_details[0][hotel_id]"]');
                     const hotelId = hotelField?.value?.trim() || '';
-                    const pax = Array.from(paxWrap.querySelectorAll('input[type="text"]')).map(i => i.value.trim()).filter(Boolean);
+                    const paxNames = Array.from(paxWrap.querySelectorAll('input.mh-passenger')).map(i => i.value.trim()).filter(Boolean);
+                    const totalPax = +totalPaxEl.value || 0;
 
-                    if (!hotelId || !checkIn.value || !checkOut.value || pax.length < 1) {
-                        e.preventDefault();
-                        alert('Hotel, dates and at least one passenger are required.');
-                        return;
+                    if (!hotelId || !checkIn.value || !checkOut.value) {
+                        e.preventDefault(); alert('Hotel & dates are required.'); return;
+                    }
+                    if (!totalPax || paxNames.length !== totalPax) {
+                        e.preventDefault(); alert('Please enter passenger names equal to total pax.'); return;
                     }
 
                     clearSynthInputs();
 
                     const perNight = parseFloat(price.value) || 0;
-                    const cur = currency.value;
-                    const n = calcNights();
-                    const originalTotal = +(perNight * n).toFixed(3);
+                    const night = calcNights();
+                    const originalTotal = +(perNight * night).toFixed(3);
 
                     const addHidden = (name, val) => {
-                        const inp = document.createElement('input');
-                        inp.type = 'hidden'; inp.name = name; inp.value = val;
-                        inp.setAttribute('data-synth','1');
-                        form.appendChild(inp);
+                        const input = document.createElement('input');
+                        input.type='hidden';
+                        input.name = name;
+                        input.value=val;
+                        input.setAttribute('data-synth','1');
+                        form.appendChild(input);
                     };
 
-                    addHidden('status', 'issued');
-                    addHidden('original_currency', cur);
                     addHidden('exchange_currency', 'KWD');
                     addHidden('original_price', originalTotal);
                     addHidden('total', '');
-                    addHidden('client_name', pax.join(', '));
+                    addHidden('client_name', paxNames[0] || '');
+                    paxNames.forEach((p, i) => addHidden(`passengers[${i}]`, p));
                 });
 
                 return;

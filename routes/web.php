@@ -172,6 +172,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{id}', [TaskController::class, 'destroy'])->name('destroy');
         Route::post('/columns/save', [TaskController::class, 'saveColumnPrefs'])->name('columns.save');
         Route::post('/bulk-update', [TaskController::class, 'bulkUpdate'])->name('bulkUpdate');
+        Route::post('/store-manual', [TaskController::class, 'storeManualHotel'])->name('store.manual');
     });
 
     // SUPPLIERS

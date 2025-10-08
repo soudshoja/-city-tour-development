@@ -49,7 +49,7 @@ use iio\libmergepdf\Merger;
 use iio\libmergepdf\Driver\Fpdi2Driver;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-
+use App\View\Components\AppLayout;
 
 class TaskController extends Controller
 {
@@ -329,7 +329,11 @@ class TaskController extends Controller
         }
 
         $countries = Country::all();
+        $hotels = Hotel::all();
         $suppliers = Supplier::with('companies');
+        $currencyExchange = (new AppLayout())->currencySidebar();
+        $allIso = $currencyExchange['all_iso'];
+        $currencies = $currencyExchange['currencies'];
 
         if ($user->role_id == Role::ADMIN) {
             $clients = Client::all();
@@ -453,10 +457,13 @@ class TaskController extends Controller
             'suppliers',
             'types',
             'countries',
+            'hotels',
             'paymentMethod',
             'visibleColumns',
             'allTypes',
-            'defaultColumns'
+            'defaultColumns',
+            'allIso',
+            'currencies',
             // 'searchTask'
         ));
     }
@@ -1038,6 +1045,79 @@ class TaskController extends Controller
                 'message' => 'Task creation failed: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function storeManualHotel(Request $request)
+    {
+        $request->validate([
+            'type' => 'nullable|in:hotel',
+            'reference' => 'nullable|string|max:190',
+            'original_currency' => 'nullable|string|max:10',
+            'exchange_currency' => 'nullable|string|max:10',
+            'original_price' => 'nullable|numeric',
+            'total' => 'nullable|numeric',
+            'client_id' => 'nullable|integer',
+            'client_name' => 'nullable|string|max:190',
+
+            // nested hotel detail (first/only room)
+            'task_hotel_details.0.hotel_id' => 'required|integer',
+            'task_hotel_details.0.check_in' => 'required|date',
+            'task_hotel_details.0.check_out' => 'required|date|after:task_hotel_details.0.check_in',
+            'task_hotel_details.0.room_name' => 'nullable|string|max:255',
+
+            'passengers' => 'array',
+            'passengers.*' => 'nullable|string|max:190',
+        ]);
+
+        $taskColumns = [
+            'type' => 'hotel',
+            'reference' => $request->input('reference'),
+            'status' => 'issued',
+            'client_id' => $request->input('client_id'),
+            'client_name' => $request->input('client_name'),
+            'original_currency' => $request->input('original_currency'),
+            'exchange_currency' => $request->input('exchange_currency', 'KWD'),
+            'original_price' => $request->input('original_price'),
+            'total' => $request->input('total'),
+        ];
+
+        $taskData = array_filter(
+            $taskColumns,
+            fn ($v) => !is_null($v) && $v !== ''
+        );
+
+        $task = Task::create($taskData);
+
+        $d = (array) $request->input('task_hotel_details.0', []);
+
+        $roomDetails = [
+            'name' => Arr::get($d, 'room_name'),
+            'board' => $request->input('board'),
+            'boardBasis' => $request->input('board_basis'),
+            'info' => $request->input('room_info'),
+            'type' => Arr::get($d, 'room_type'),
+            'passengers'  => array_values(array_filter($request->input('passengers', []))) ?: null,
+        ];
+        $roomDetails = array_filter($roomDetails, fn ($v) => !is_null($v) && $v !== '');
+
+        $detailColumns = [
+            'task_id' => $task->id,
+            'hotel_id' => Arr::get($d, 'hotel_id'),
+            // 'booking_time'   => $request->input('booking_time'),
+            'check_in' => Arr::get($d, 'check_in'),
+            'check_out' => Arr::get($d, 'check_out'),
+            'room_type' => Arr::get($d, 'room_name'),
+            'room_details' => $roomDetails ? json_encode($roomDetails) : null,
+        ];
+
+        $detailData = array_filter(
+            $detailColumns,
+            fn ($v) => !is_null($v) && $v !== ''
+        );
+
+        TaskHotelDetail::create($detailData);
+
+        return back()->with('success', 'Task created.');
     }
 
     private function triggerCheckTaskEvent(Task $task, string $reason = 'manual_trigger')

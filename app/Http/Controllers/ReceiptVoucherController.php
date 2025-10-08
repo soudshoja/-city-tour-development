@@ -18,6 +18,8 @@ use App\Http\Controllers\ClientController;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\InvoiceReceipt;
+use App\Models\InvoicePartial;
+use Exception;
 
 class ReceiptVoucherController extends Controller
 {
@@ -46,6 +48,16 @@ class ReceiptVoucherController extends Controller
                 ->whereNotNull('name')
                 ->where('reference_number', 'like', 'RV-%') // <-- change PV-% to RV-%
                 ->count();
+
+            $invoicePartial = InvoicePartial::whereIn('invoice_id', function ($query) use ($branchesId) {
+                $query->select('invoice_id')
+                    ->from('transactions')
+                    ->whereIn('branch_id', $branchesId)
+                    ->whereNotNull('name')
+                    ->where('reference_number', 'like', 'RV-%');
+            })
+            ->first();
+
         } elseif ($user->role_id == Role::AGENT) {
             $branchId = $user->branch_id;
             $receiptvouchers = Transaction::where('branch_id', $branchId)
@@ -62,7 +74,7 @@ class ReceiptVoucherController extends Controller
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
-        return view('receipt-voucher.index', compact('receiptvouchers', 'totalRecords'));
+        return view('receipt-voucher.index', compact('receiptvouchers', 'totalRecords', 'invoicePartial'));
     }
 
     public function create()
@@ -154,7 +166,7 @@ class ReceiptVoucherController extends Controller
     }
 
     public function store(Request $request)
-    {
+    {  
         $allData = $request->all();
         $items = $allData['items'];
 
@@ -237,68 +249,171 @@ class ReceiptVoucherController extends Controller
         $type = data_get($items, '0.type_selector');
         $amount = data_get($items, '0.amount');
         $invoiceId = data_get($items, '0.invoice_id');
-        
-        $invoice = Invoice::where('id', $invoiceId)->first();
 
         try {
             DB::beginTransaction();
 
             if ($type == 'invoice') {
-                $transaction = Transaction::create([
-                    'entity_id' => $request->company_id ?? auth()->user()->company->id,
-                    'entity_type' => 'company',
-                    'company_id' => $request->company_id ?? auth()->user()->company->id,
-                    'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
-                    'transaction_type' => 'debit',
-                    'amount' => $amount,
-                    'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                    'description' => 'Payment for Invoice ' . $invoice->invoice_number . '. Additional Remarks of ' . $request->remarks_create,
-                    'invoice_id' => $invoiceId,
-                    'reference_number' => $request->receiptvoucherref,
-                    'reference_type' => 'Invoice', //$receiptvoucherType
-                    'name' => $request->pay_to,
-                    'transaction_date' => $request->docdate,
-                ]);
 
-                if (!$transaction) {
-                    Log::error('error', 'Failed to create Transaction with ID: ', [
-                        'transaction_id' => $transaction->id
-                    ]);
-                    
-                    return redirect()->back()->with('error', 'Failed to create Transaction record for ' . $invoice->invoice_number);
+                $invoice = Invoice::where('id', $invoiceId)->first();
+                if (!$invoice) {
+                    Log::error('Invoice is not found');
                 }
+                $invoicePartial = InvoicePartial::where('invoice_id', $invoiceId)->first();
+                if (!$invoicePartial) {
+                    Log::error('Invoice Partial is not found');
 
-                $invoiceReceipt = InvoiceReceipt::create([
-                                    'invoice_id' => $invoiceId,
-                                    'transaction_id' => $transaction->id,
-                                ]);
-                
-                if (!$invoiceReceipt) {
-                    Log::error('Failed to create Invoice Receipt record for transaction ID: ', [
-                        'invoice_id' => $invoiceId,
-                        'transaction_id' => $transaction->id
+                    $new = InvoicePartial::create([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'client_id' => $invoice->client_id,
+                        'service_charge' => 0,
+                        'amount' => $invoice->amount,
+                        'status' => $invoice->status,
+                        'expiry_date' => $invoice->due_date,  
+                        'type' => 'full',    
+                        'charge_id' => null,
+                        'payment_gateway' => 'Cash',
+                        'payment_method' => null,
+                        'payment_id' => null,
+                        'receipt_voucher_id' => null,
                     ]);
 
-                    return redirect()->back()->with('error', 'Failed to create Invoice Receipt record');
-                }
-
-                foreach ($request->items as $item) {
-                    if (!empty($item['invoice_id'])) {
-                        $invoice = Invoice::find($item['invoice_id']);
-                        if ($invoice && $invoice->status === 'unpaid') {
-                            // Compare paid amount with invoice amount
-                            $paidAmount = floatval($item['debit'] ?? $item['amount'] ?? 0);
-                            if ($paidAmount >= floatval($invoice->amount)) {
-                                $invoice->status = 'paid';
-                                $invoice->paid_date = now();
-                                $invoice->save();
-                            } else {
-                                // Optionally, set status to 'partial' or leave as 'unpaid'
-                                $invoice->status = 'partial';
-                                $invoice->save();
-                            }
-                        }
+                    if (!$new) {
+                        Log::error('Failed to create Invoice Partial for Invoice ID: ' . $invoice->id);
+                        return redirect()->back()->with('error', 'Failed to create the missing Invoice Partial');
                     }
+
+                    $invoicePartial = $new;
+
+                }
+                
+                if ($invoicePartial) {
+                    Log::info('Found existing Invoice Partial for this invoice', [
+                        'invoice_id' => $invoicePartial->id,
+                        'invoice_number' => $invoicePartial->invoice_number,
+                    ]);
+                }
+
+                try {
+                    $transaction = Transaction::create([
+                        'entity_id' => $request->company_id ?? auth()->user()->company->id,
+                        'entity_type' => 'company',
+                        'company_id' => $request->company_id ?? auth()->user()->company->id,
+                        'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
+                        'transaction_type' => 'debit',
+                        'amount' => $amount,
+                        'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                        'description' => 'Payment for Invoice ' . $invoice->invoice_number . '. Additional Remarks of ' . $request->remarks_create,
+                        'invoice_id' => $invoiceId,
+                        'reference_number' => $request->receiptvoucherref,
+                        'reference_type' => 'Invoice', //$receiptvoucherType
+                        'name' => $request->pay_to,
+                        'transaction_date' => $request->docdate,
+                    ]);
+
+                    if (!$transaction) {
+                        Log::error('error', 'Failed to create Transaction with ID: ', [
+                            'transaction_id' => $transaction->id
+                        ]);
+                        
+                        return redirect()->back()->with('error', 'Failed to create Transaction record for ' . $invoice->invoice_number);
+                    }
+
+                    $invoiceReceipt = InvoiceReceipt::create([
+                        'invoice_id' => $invoiceId,
+                        'transaction_id' => $transaction->id,
+                        'amount' => $amount,
+                    ]);
+                
+                    if (!$invoiceReceipt) {
+                        Log::error('Failed to create Invoice Receipt record for transaction ID: ', [
+                            'invoice_id' => $invoiceId,
+                            'transaction_id' => $transaction->id
+                        ]);
+
+                        return redirect()->back()->with('error', 'Failed to create Invoice Receipt record');
+                    }
+
+                    $remainingBalance = $invoice->amount - $amount;
+                    if ($remainingBalance > 0) { //Partial/Split Payment
+                        try {
+                            $invoice->update([
+                                'payment_type' => 'partial',
+                            ]);
+
+                            Log::info('Successfully updated the Invoice', [
+                                'invoice_id' => $invoice->id,
+                            ]);
+                        
+                            $invoicePartial->update([
+                                'amount' => $amount,
+                                'status' => 'paid',
+                                'expiry_date' => null,
+                                'type' => 'partial',
+                                'charge_id' => null,
+                                'payment_gateway' => 'Cash',
+                                'payment_method' => null,
+                                'receipt_voucher_id' => $invoiceReceipt->id,
+                                'updated_at' => now(),
+                            ]); 
+
+                            Log::info('Successfully updated the existing Invoice Partial');
+                       
+                            $newPartial = InvoicePartial::create([
+                                'invoice_id' => $invoice->id,
+                                'invoice_number' => $invoice->invoice_number,
+                                'client_id'=> $invoice->client_id,
+                                'service_charge' => 0,
+                                'amount' => $remainingBalance,
+                                'status' => 'unpaid',
+                                'expiry_date' => null,  
+                                'type' => 'partial',    
+                                'charge_id' => null,
+                                'payment_gateway' => 'Cash',
+                                'payment_method' => null,
+                                'payment_id' => null,
+                            ]);
+                            
+                            Log::info('Successfully created new Invoice Partial');
+                        } catch (Exception $e ) {
+                            Log::error('Failed to process', [
+                                'response' => $newPartial,
+                            ]);
+                            return redirect()->back()->with('error', 'Failed to process');
+                        }
+
+                    } elseif ($remainingBalance == 0) { //Full Payment
+                        if ($invoice) {
+                            $invoice->update([
+                                'status' => 'paid',
+                                'paid_date' => now(),
+                            ]);
+                        } 
+                        
+                        if ($invoicePartial) {
+                            $invoicePartial->update([
+                                'amount' => $amount,
+                                'status' => 'paid',
+                                'expiry_date' => null,
+                                'type' => 'full',
+                                'payment_gateway' => 'Cash',
+                                'payment_method' => null,
+                                'receipt_voucher_id' => $invoiceReceipt->id,
+                                'updated_at' => now(),
+                            ]);
+                        }
+
+                        Log::info('Successfully updated Invoice Partial of full payment on ID:', ['id' => $invoicePartial->id]);
+                    }
+
+                } catch (Exception $e) {
+                    Log::error('Failed to process Receipt Voucher for Invoice: ' . $invoiceId, [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);          
+
+                    return redirect()->back()->with('error', 'Failed to create Receipt Voucher');
                 }
                 
             } elseif ($type == 'refund') {
@@ -378,7 +493,7 @@ class ReceiptVoucherController extends Controller
                         }
                     }
                 }
-            } elseif ($type == 'credit') {
+            } elseif ($type == 'client') {
                 foreach ($request->items as $item) {
                     if (!empty($item['client_id']) && floatval($item['debit'] ?? 0)     > 0) {
                         Log::info('Crediting client', ['client_id' => $item['client_id'], 'amount' => $item['amount']]);
@@ -741,14 +856,40 @@ class ReceiptVoucherController extends Controller
     }
 
     public function approve($id)
-    {
-        $receiptvoucher = Transaction::findOrFail($id);
+    {   
+        $transaction = Transaction::findOrFail($id);
+        $invoiceId = $transaction->invoice_id;
 
-        if ($receiptvoucher->invoice_id) {
-            $invoice = \App\Models\Invoice::find($receiptvoucher->invoice_id);
+        $invoiceReceipt = InvoiceReceipt::where('invoice_id', $invoiceId)->first();
+        if (!$invoiceReceipt) {
+            Log::error('Invoice Receipt not exist');
+            return redirect()->back()->with('error', 'Invoice Receipt not found');
+        }
+        if ($invoiceId) {
+            $invoice = Invoice::find($invoiceId);
             if ($invoice) {
-                $invoice->status = 'paid';
-                $invoice->save();
+                try {
+                    $invoice->update([
+                        'status' => 'paid',
+                        'paid_date' => now(),
+                    ]);
+
+                    Log::info('Succesfully updated the Invoice');
+                    
+                    $invoicePartial = InvoicePartial::where('invoice_id', $invoiceId);
+                    $invoicePartial->update([
+                        'status' => 'paid',
+                        'charge_id' => null,
+                        'updated_at' => now(),
+                    ]);
+                    
+                    Log::info('Successfully updated the existing Invoice Partial');
+                } catch (Exception $e) {
+                            Log::error('Failed to process the full payment of Invoice: ' . $invoiceId . ' Receipt Voucher', [
+                                'response' => $e->getMessage(),
+                            ]);
+                        }
+
             }
         }
 

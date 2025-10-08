@@ -3100,6 +3100,15 @@ class TaskController extends Controller
                 throw new Exception('Status not found');
             }
 
+            $total = $prices['total']['selling']['value'] ?? null;
+
+            $isRefund = $status == 'reissued'  && $supplierStatus == 'AM' && $total <= 0;
+
+            if ($isRefund) {
+                $status = 'refund';
+                $total = $prices['issue']['selling']['value'] ?? null;
+            }
+
             $taskData = [
                 'client_id' => null,
                 'agent_id' => $agentId,
@@ -3114,7 +3123,7 @@ class TaskController extends Controller
                 'price' => $prices['issue']['selling']['value'] ?? null,
                 'tax' => 0.00,
                 'surcharge' => 0.00,
-                'total' => $prices['total']['selling']['value'] ?? null,
+                'total' => $total,
                 'cancellation_policy' => json_encode($cancellationPolicy) ?? null,
                 'cancellation_deadline' => $cancellationDate ?? null,
                 'additional_info' => $reservation['service']['hotel']['name'] . ' - ' . $clientName,
@@ -3171,6 +3180,7 @@ class TaskController extends Controller
                     'reference' => $taskData['reference'],
                     'message' => 'Error creating task: ' . $response['message'],
                 ];
+                continue;
             }
 
             $task = Task::with('hotelDetails')->find($response['data']['id']);
@@ -3341,8 +3351,9 @@ class TaskController extends Controller
                     } else {
                         $response = $this->processSingleReservation($data, $agentId, $companyId);
 
+                        // dd($response);
                         if ($response['status'] == 'error') {
-                            return redirect()->back()->with('error', $response['message']);
+                            return redirect()->back()->with('error', $response['message'])->with('data', $response['data']['failed']);
                         }
 
                         $supplierController->magicReserveWebhook($data['id']);

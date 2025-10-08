@@ -303,37 +303,44 @@ class WhatsAppHotelController extends Controller
 
         $validator = Validator::make($request->all(), [
             'first_name'  => 'required|string',
-            'second_name' => 'required|string',
+            'second_name' => 'nullable|string',
             'city'        => 'required|string',
         ]);
 
         if ($validator->fails()) {
             $errors = $validator->errors()->toArray();
-            $friendlyMessages = [];
+            $missing = [];
 
-            if (isset($errors['first_name']) || isset($errors['second_name'])) {
-                $friendlyMessages[] = "hotel name";
+            if (isset($errors['first_name'])) {
+                $missing[] = "hotel name";
             }
             if (isset($errors['city'])) {
-                $friendlyMessages[] = "city";
+                $missing[] = "city";
             }
 
-            $msg = "Sorry, I didn’t get the " . implode(" and ", $friendlyMessages) . ". Please provide it.";
+            // Combine missing fields into a natural sentence
+            $msg = match (count($missing)) {
+                1 => "Sorry, I didn’t get the " . $missing[0] . ". Please provide it.",
+                2 => "Sorry, I didn’t get the " . implode(" and ", $missing) . ". Please provide them.",
+                default => "Some required details are missing. Please provide the hotel name and city."
+            };
 
             return response()->json([
                 'success' => false,
                 'message' => $msg,
-                'errors'  => $errors, // still keep raw errors for debugging/logging
+                'errors'  => $errors, // keep for logs/debugging
             ], 422);
         }
 
         try {
             $hotels = MapHotel::query()
                 ->where('name', 'like', '%' . $request->first_name . '%')
-                ->where('name', 'like', '%' . $request->second_name . '%')
-                ->whereHas('city', function ($q) use ($request) {
-                    $q->where('name', 'like', '%' . $request->city . '%');
-                })
+                ->when($request->second_name, fn($q) =>
+                    $q->where('name', 'like', '%' . $request->second_name . '%')
+                )
+                ->whereHas('city', fn($q) =>
+                    $q->where('name', 'like', '%' . $request->city . '%')
+                )
                 ->get()
                 ->map(fn($h) => [
                     'hotel_name'    => $h->name,
@@ -341,7 +348,10 @@ class WhatsAppHotelController extends Controller
                 ])->values()->toArray();
 
             if (empty($hotels)) {
-                return response()->json(['success' => false, 'message' => 'No hotels found with the given details.'], 404);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hotels found with the given details.',
+                ], 404);
             }
 
             return response()->json([
@@ -354,6 +364,7 @@ class WhatsAppHotelController extends Controller
             return response()->json(['success' => false, 'message' => 'An error occurred.'], 500);
         }
     }
+
 
 
     // public function getHotelDetails(Request $request)

@@ -10,6 +10,7 @@ class InvoiceReceipt extends Model
     protected $fillable = [
         'invoice_id',
         'transaction_id',
+        'amount',
     ];
 
     public function invoice() 

@@ -23,6 +23,7 @@ class InvoicePartial extends Model
         'payment_gateway',
         'payment_method',
         'payment_id',
+        'receipt_voucher_id',
     ];
     
     public function client()

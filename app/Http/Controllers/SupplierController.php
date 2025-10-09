@@ -33,6 +33,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Exports\SupplierTasksExport;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\DB;
 
 class SupplierController extends Controller
 {
@@ -193,7 +194,12 @@ class SupplierController extends Controller
             'has_visa' => 'required_without_all:has_hotel,has_flight,has_insurance,has_tour,has_cruise,has_car,has_rail,has_esim,has_event,has_lounge,has_ferry',
             'has_insurance' => 'required_without_all:has_hotel,has_flight,has_visa,has_tour,has_cruise,has_car,has_rail,has_esim,has_event,has_lounge,has_ferry',
             'country_id' => 'required|exists:countries,id',
+            'is_online' => 'exclude_unless:has_hotel,on|boolean',
+            'is_manual' => 'nullable|boolean',
         ]);
+
+        $hasHotel = $request->has('has_hotel');
+        $isOnline = $hasHotel ? (int)$request->boolean('is_online') : 0;
 
         $supplier = Supplier::create([
             'name' => $request->input('name'),
@@ -211,6 +217,8 @@ class SupplierController extends Controller
             'has_lounge' => $request->has('has_lounge'),
             'has_ferry' => $request->has('has_ferry'),
             'country_id' => $request->input('country_id'),
+            'is_online' => $isOnline,
+            'is_manual' => $request->boolean('is_manual'),
         ]);
 
         if (!$supplier) {
@@ -244,31 +252,42 @@ class SupplierController extends Controller
             'has_lounge' => 'nullable',
             'has_ferry' => 'nullable',
             'country_id' => 'required|exists:countries,id',
-            'is_online'   => 'exclude_unless:has_hotel,on|boolean',
+            'is_online' => 'exclude_unless:has_hotel,on|boolean',
+            'is_manual' => 'nullable|boolean',
         ]);
 
         $supplier = Supplier::findOrFail($id);
+        $oldName = $supplier->name;
+        $newName = $request->string('name')->trim();
+
         $hasHotel = $request->has('has_hotel');
         $isOnline = $hasHotel ? (int)$request->boolean('is_online') : 0;
 
-        $supplier->update([
-            'name' => $request->input('name'),
-            'auth_type' => $request->input('auth_type'),
-            'has_hotel' => $request->has('has_hotel'),
-            'has_flight' => $request->has('has_flight'),
-            'has_visa' => $request->has('has_visa'),
-            'has_insurance' => $request->has('has_insurance'),
-            'has_tour' => $request->has('has_tour'),
-            'has_cruise' => $request->has('has_cruise'),
-            'has_car' => $request->has('has_car'),
-            'has_rail' => $request->has('has_rail'),
-            'has_esim' => $request->has('has_esim'),
-            'has_event' => $request->has('has_event'),
-            'has_lounge' => $request->has('has_lounge'),
-            'has_ferry' => $request->has('has_ferry'),
-            'country_id' => $request->input('country_id'),
-            'is_online'    => $isOnline,
-        ]);
+        DB::transaction(function () use ($supplier, $request, $isOnline, $oldName, $newName) {
+            $supplier->update([
+                'name' => $newName,
+                'auth_type' => $request->input('auth_type'),
+                'has_hotel' => $request->has('has_hotel'),
+                'has_flight' => $request->has('has_flight'),
+                'has_visa' => $request->has('has_visa'),
+                'has_insurance' => $request->has('has_insurance'),
+                'has_tour' => $request->has('has_tour'),
+                'has_cruise' => $request->has('has_cruise'),
+                'has_car' => $request->has('has_car'),
+                'has_rail' => $request->has('has_rail'),
+                'has_esim' => $request->has('has_esim'),
+                'has_event' => $request->has('has_event'),
+                'has_lounge' => $request->has('has_lounge'),
+                'has_ferry' => $request->has('has_ferry'),
+                'country_id' => $request->input('country_id'),
+                'is_online'    => $isOnline,
+                'is_manual' => $request->boolean('is_manual'),
+            ]);
+
+            if ($oldName !== $newName) {
+                Account::where('name', 'LIKE', "%{$oldName}%")->update(['name' => $newName]);
+            }       
+        });
 
         return redirect()->back()->with('success', 'Supplier updated successfully.');
     }

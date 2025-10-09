@@ -13,6 +13,7 @@ class Supplier extends Model
     protected $fillable = [
         'name', 
         'auth_type',
+        'is_manual',
         'has_hotel',
         'has_flight',
         'has_visa',         
@@ -40,6 +41,7 @@ class Supplier extends Model
 
     protected $casts = [
         'is_online' => 'bool',
+        'is_manual' => 'bool',
     ];
     public function payableAccount()
     {

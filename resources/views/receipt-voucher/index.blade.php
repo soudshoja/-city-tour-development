@@ -74,6 +74,13 @@
                                 </tr>
                                 @else
                                 @foreach ($receiptvouchers as $receiptvoucher)
+                                @php
+                                    $invoicePartial = null;
+                                    if (!empty($receiptvoucher->invoice_id) && isset($invoicePartials[$receiptvoucher->invoice_id])) {
+                                        $invoicePartial = $invoicePartials[$receiptvoucher->invoice_id]->first();
+                                    }
+                                @endphp
+
                                 <tr>
                                     <td><a data-tooltip="View Receipt Voucher"
                                                 href="{{ route('receipt-voucher.edit', $receiptvoucher->id) }}"
@@ -111,23 +118,29 @@
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         <div class="flex items-center gap-2">
+                                            <script>
+                                        console.log(@json($invoicePartial));
+                                    </script>
+
+
                                             @if ($receiptvoucher->reference_type === 'Receipt')
                                                 <span class="inline-flex items-center rounded-full border border-green-600/30 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
                                                     Paid
                                                 </span>
-                                            @elseif ($receiptvoucher->reference_type !== 'Receipt' && optional($invoicePartial->status === 'paid'))
+                                            @elseif ($receiptvoucher->reference_type !== 'Receipt' && $invoicePartial->status === 'paid')
                                                 <span class="inline-flex items-center rounded-full border border-green-600/30 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
                                                     Paid
                                                 </span>
                                             @elseif ($receiptvoucher->reference_type !== 'Receipt' && $invoicePartial->status === 'unpaid')
                                                 <span class="inline-flex items-center rounded-full border border-red-600/30 bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
-                                                    Unaid
+                                                    Unpaid
                                                 </span>
                                             @endif
                                         </div>
                                     </td>
                                     <td>
                                         <div class="flex items-center space-x-3">
+                                            
                                             @if ($receiptvoucher->reference_type !== 'Receipt' && $invoicePartial->status === 'unpaid') 
                                                 <form method="POST" action="{{ route('receipt-voucher.approve', $receiptvoucher->id) }}">
                                                     @csrf

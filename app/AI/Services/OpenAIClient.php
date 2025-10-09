@@ -951,6 +951,11 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "  • For airline tickets, use the PNR as the reference. For hotel bookings, use the booking number or voucher number as the reference.\n";
         $prompt .= "  • Create ONE task per passenger listed under Passenger Details table.\n";
         $prompt .= "  • Create ONE task per ROOM (room type), never per passenger, never a single combined task for all rooms.\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (Sky Rooms):\n";
+        $prompt .= "  • Set status: confirmed if ONLY a voucher is present; issued if an INVOICE is present (with or without a voucher).\n";
+        $prompt .= "  • Create ONE task per ROOM (room type), never per passenger, never a single combined task for all rooms.\n";
+        $prompt .= "  • Set room_type and name in room_details to the EXACT room title from the documents — copy verbatim (keep punctuation/duplicates), join wrapped lines with a single space, and trim ends. (e.g., Deluxe Room, 1 King Bed, Non Smoking , 1 King Bed , Room Only (Package Deal)).\n";
+        $prompt .= "  • If a nightly calendar is shown and the amounts differ by night, keep the normal totals, and also append a concise nightly breakdown to additional_info, e.g.: 'Nightly rates (KWD): 24-Oct-2025: 64.71; 25-Oct-2025: 67.54; 26-Oct-2025: 56.26'.\n";
 
         $prompt .= "- Return the result in this JSON format:\n\n";
 

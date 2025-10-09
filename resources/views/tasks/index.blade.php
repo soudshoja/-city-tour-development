@@ -434,8 +434,8 @@
                         opacity=".5" />
                 </svg>
             </div>
-            <div x-data="{ addTaskModal: false }" class="flex items-center gap-5">
-                <div @click="addTaskModal = true"
+            <div x-data="{ addTaskModal: false, manualFormWide: false }" class="flex items-center gap-5">
+                <div @click="addTaskModal = true; manualFormWide = false"
                     class="p-2 text-center bg-white rounded-full shadow group hover:bg-black dark:hover:bg-gray-600 dark:bg-gray-700 cursor-pointer"
                     data-tooltip-left="Add Task">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
@@ -446,10 +446,10 @@
                             d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7"
                             stroke="" stroke-width="1.5" stroke-linecap="round" />
                     </svg>
-
                 </div>
                 <div x-cloak x-show="addTaskModal" x-init="$watch('addTaskModal', value => {
                         if (!value) {
+                            manualFormWide = false;
                             $nextTick(() => {
                                 if (typeof window.__resetTaskForm === 'function') {
                                     window.__resetTaskForm();
@@ -464,7 +464,9 @@
                         }
                     })"
                     class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
-                    <div @click.away="addTaskModal = false" class="bg-white rounded shadow w-96">
+                    <div @click.away="addTaskModal = false; manualFormWide = false" class="bg-white rounded shadow min-w-96"
+                        @modal:wide.window="manualFormWide = true" @modal:normal.window="manualFormWide = false"
+                        :class="{ 'w-full max-w-96': !manualFormWide }">
                         <div class="p-4 flex justify-between items-center">
                             <span class="text-lg font-semibold">Add Task For Specific Supplier</span>
 
@@ -476,25 +478,77 @@
                                 </svg>
                             </button>
                         </div>
-
                         <hr>
                         <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
                             class="p-4 flex flex-col" method="POST" enctype="multipart/form-data">
-                            @csrf
+                                @csrf
 
-                            <div class="mb-3">
+                            <div class="mb-3 z-10">
                                 <x-searchable-dropdown name="supplier_id" :items="$suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])" placeholder="Select Supplier"
                                     label="Select a Supplier" />
                             </div>
-                            <!-- Hidden native select (logic only) -->
-                            <select id="select-supplier-task" class="hidden">
-                                @foreach ($suppliers as $supplier)
-                                <option value="{{ $supplier->id }}" data-supplier='{{ json_encode($supplier) }}'>
-                                    {{ $supplier->name }}
-                                </option>
-                                @endforeach
-                            </select>
-                            <div id="form-task-container" class="mb-3"></div>
+                            <div class="flex-1 min-h-0" :class="manualFormWide ? 'overflow-y-auto max-h-[calc(90vh-224px)]' : 'overflow-visible max-h-none'">
+                                <!-- Hidden native select (logic only) -->
+                                <select id="select-supplier-task" class="hidden">
+                                    @foreach ($suppliers as $supplier)
+                                    <option value="{{ $supplier->id }}" data-supplier='{{ json_encode($supplier) }}'>
+                                        {{ $supplier->name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                                <div id="template-hotel-dropdown" class="hidden min-w-0">
+                                    <script type="application/json" id="hotel-items-json">
+                                        {!! $hotels->map(fn($h) => ['id' => $h->id, 'name' => $h->name])->values()->toJson() !!}
+                                    </script>
+                                    <div class="relative sd" data-sd="hotel">
+                                        <button type="button" class="sd-btn w-full border border-gray-300 p-2 rounded text-left bg-white">
+                                            <span class="sd-text text-gray-400">Select Hotel</span>
+                                        </button>
+                                        <div class="sd-menu absolute z-10 mt-1 w-full max-h-60 overflow-auto bg-white border rounded shadow hidden">
+                                            <div class="p-2">
+                                                <input class="sd-search w-full border rounded px-2 py-1" placeholder="Search hotel">
+                                            </div>
+                                            <div class="sd-list py-1"></div>
+                                        </div>
+                                        <input type="hidden" id="selected-hotel" name="hotel_id">
+                                    </div>
+                                </div>
+                                <div id="template-client-dropdown" class="hidden min-w-0">
+                                    <script type="application/json" id="client-items-json">
+                                        {!! $fullClients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name])->values()->toJson() !!}
+                                    </script>
+                                    <div class="relative sd" data-sd="client">
+                                        <button type="button" class="sd-btn w-full border border-gray-300 p-2 rounded text-left bg-white">
+                                            <span class="sd-text text-gray-400">Select Client</span>
+                                        </button>
+                                        <div class="sd-menu absolute z-10 mt-1 w-full max-h-60 overflow-auto bg-white border rounded shadow hidden">
+                                            <div class="p-2">
+                                                <input class="sd-search w-full border rounded px-2 py-1" placeholder="Search client">
+                                            </div>
+                                            <div class="sd-list py-1"></div>
+                                        </div>
+                                        <input type="hidden" id="selected-client" name="client_id">
+                                    </div>
+                                </div>
+                                <div id="template-currency-dropdown" class="hidden min-w-0">
+                                    <script type="application/json" id="currency-items-json">
+                                        {!! $currencies->map(fn($c) => ['id' => $c->iso_code, 'name' => $c->name.' ('.$c->iso_code.')'])->values()->toJson() !!}
+                                    </script>
+                                    <div class="relative sd" data-sd="currency">
+                                        <button type="button" class="sd-btn w-full border border-gray-300 p-2 rounded text-left bg-white">
+                                            <span class="sd-text text-gray-400">Select Currency</span>
+                                        </button>
+                                        <div class="sd-menu absolute z-15 mt-1 w-full max-h-60 overflow-auto bg-white border rounded shadow hidden">
+                                            <div class="p-2">
+                                                <input class="sd-search w-full border rounded px-2 py-1" placeholder="Search currency">
+                                            </div>
+                                            <div class="sd-list py-1"></div>
+                                        </div>
+                                        <input type="hidden" id="selected-currency" value="KWD">
+                                    </div>
+                                </div>
+                                <div id="form-task-container" class="mb-3"></div>
+                            </div>
 
                             @unlessrole('agent')
                             <!-- <div class="mb-4">
@@ -505,10 +559,9 @@
                             <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
                             @endunlessrole
                         </form>
-
-                        <hr>
-                        <div class="p-4 flex justify-between items-center">
-                            <button @click="addTaskModal = false"
+                        <hr class="shrink-0">
+                        <div class="p-4 flex justify-between items-center bg-white z-5">
+                            <button @click="addTaskModal = false; manualFormWide = false"
                                 class="rounded-full shadow-sm px-4 py-2 text-red-500 border border-white-100 bg-white hover:bg-gray-100 transition">
                                 Cancel
                             </button>
@@ -517,7 +570,6 @@
                                 class="rounded-full shadow-md px-6 py-2 text-white bg-black hover:bg-gray-800 transition">
                                 Submit
                             </x-primary-button>
-
                         </div>
                     </div>
                 </div>
@@ -1141,10 +1193,13 @@
                                                                 </div>
                                                             </template>
                                                             @php
-                                                            $isInvoiced = \App\Models\InvoiceDetail::where('task_id', $task->id)->exists();
+                                                            $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
+                                                                ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
+                                                                ->exists();
                                                             @endphp
                                                             <template x-teleport="body">
-                                                                <div x-show="editOpen" x-cloak x-data="{ readOnly: false }" class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800 bg-opacity-50">
+                                                                <div x-show="editOpen" x-cloak x-data="{ readOnly: {{ $isInvoicedAndPaid ? 'true' : 'false' }} }"
+                                                                    class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800 bg-opacity-50">
                                                                     <form id="edit-task-form-{{ $task->id }}"
                                                                         action="{{ route('tasks.update', $task->id) }}"
                                                                         method="post"
@@ -1166,27 +1221,23 @@
                                                                                 <div class="flex flex-col gap-6">
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                                                         <div class="flex-1">
-                                                                                            <label for="reference"
-                                                                                                class="block text-sm font-medium text-gray-700">Reference</label>
+                                                                                            <label for="reference" class="block text-sm font-medium text-gray-700">Reference</label>
                                                                                             <input type="text"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
                                                                                                 name="reference"
                                                                                                 value="{{ $task->reference }}">
                                                                                         </div>
                                                                                         <div class="flex-1">
-                                                                                            <label for="status"
-                                                                                                class="block text-sm font-medium text-gray-700">Status</label>
+                                                                                            <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
                                                                                             @if ($task->status === 'refund')
-                                                                                            <select name="status"
-                                                                                                id="status"
+                                                                                            <select name="status" id="status"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
                                                                                                 disabled>
                                                                                                 <option value="refund"
                                                                                                     selected>Refund
                                                                                                 </option>
                                                                                             </select>
-                                                                                            <input type="hidden"
-                                                                                                name="status" value="refund">
+                                                                                            <input type="hidden" name="status" value="refund">
                                                                                             @else
                                                                                             <select name="status"
                                                                                                 id="status_{{ $task->id }}"
@@ -1220,13 +1271,6 @@
                                                                                                 </option>
                                                                                             </select>
                                                                                             @endif
-
-
-                                                                                            @if ($task->status === 'refund')
-                                                                                            <input type="hidden"
-                                                                                                name="status" value="Refund">
-                                                                                            @endif
-
                                                                                         </div>
                                                                                     </div>
 
@@ -1249,11 +1293,11 @@
 
                                                                                             <label for="original_task_id" class="block text-sm font-medium text-gray-700">Original Task</label>
                                                                                             <x-searchable-dropdown
-                                                                                                name="original_task_id"
-                                                                                                :items="$originalTasks->map(fn($t) => [
-                                                                                                'id' => $t->id,
-                                                                                                'name' => $t->reference . ' - ' . ($t->client->full_name ?? $t->client_name)
-                                                                                            ])->values()"
+                                                                                                    name="original_task_id"
+                                                                                                    :items="$originalTasks->map(fn($t) => [
+                                                                                                    'id' => $t->id,
+                                                                                                    'name' => $t->reference . ' - ' . ($t->client->full_name ?? $t->client_name)
+                                                                                                ])->values()"
                                                                                                 :selectedId="$task->original_task_id"
                                                                                                 :selectedName="$selectedOriginalTask
                                                                                                 ? $selectedOriginalTask->reference . ' - ' . ($selectedOriginalTask->client->full_name ?? $selectedOriginalTask->client_name)
@@ -1264,10 +1308,8 @@
                                                                                     @endif
 
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                                        <!-- Supplier Name -->
                                                                                         <div class="flex-1">
-                                                                                            <label for="supplier"
-                                                                                                class="block text-sm font-medium text-gray-700">Supplier</label>
+                                                                                            <label for="supplier" class="block text-sm font-medium text-gray-700">Supplier</label>
                                                                                             <input type="text"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full bg-gray-200"
                                                                                                 value="{{ $task->supplier ? $task->supplier->name : '' }}"
@@ -1278,12 +1320,8 @@
                                                                                                 value="{{ $task->supplier ? $task->supplier->id : '' }}">
 
                                                                                         </div>
-
-                                                                                        <!-- Task Type -->
                                                                                         <div class="flex-1">
-                                                                                            <label for="type"
-                                                                                                class="block text-sm font-medium text-gray-700">Task
-                                                                                                Type</label>
+                                                                                            <label for="type" class="block text-sm font-medium text-gray-700">Task Type</label>
                                                                                             <input type="text"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full bg-gray-200"
                                                                                                 value="{{ ucfirst($task->type) }}"
@@ -1298,16 +1336,15 @@
                                                                                         ? $selectedClient->full_name . ' - ' . $selectedClient->phone
                                                                                         : 'Select a Client';
                                                                                         @endphp
-                                                                                        <div class="flex-1">
-                                                                                            <label for="client_id"
-                                                                                                class="block text-sm font-medium text-gray-700">Client</label>
+                                                                                        <div class="flex-1 min-w-0">
+                                                                                            <label for="client_id" class="block text-sm font-medium text-gray-700">Client</label>
                                                                                             <div class="w-full">
                                                                                                 <x-searchable-dropdown
-                                                                                                    name="client_id"
-                                                                                                    :items="$fullClients->map(fn($c) => [
-                                                                                                    'id' => $c->id, 
-                                                                                                    'name' => $c->full_name . ' - ' . $c->phone
-                                                                                                ])"
+                                                                                                        name="client_id"
+                                                                                                        :items="$fullClients->map(fn($c) => [
+                                                                                                        'id' => $c->id, 
+                                                                                                        'name' => $c->full_name . ' - ' . $c->phone
+                                                                                                    ])"
                                                                                                     :selectedId="$task->client_id"
                                                                                                     :selectedName="$selectedClient ? $selectedClient->full_name . ' - ' . $selectedClient->phone : null"
                                                                                                     placeholder="Select Client" />
@@ -1316,62 +1353,50 @@
 
                                                                                         <!-- Agent Selection (Role-based) -->
                                                                                         <div class="flex-1">
-                                                                                            <label for="agent_id"
-                                                                                                class="block text-sm font-medium text-gray-700">Agent</label>
+                                                                                            <label for="agent_id" class="block text-sm font-medium text-gray-700">Agent</label>
                                                                                             <select
                                                                                                 id="agent_id_select_{{ $task->id }}"
                                                                                                 name="agent_id"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base">
-                                                                                                <option value=""> Choose
-                                                                                                    Agent</option>
+                                                                                                <option value=""> Choose Agent</option>
                                                                                                 @foreach ($agents as $agent)
-                                                                                                <option
-                                                                                                    value="{{ $agent->id }}"
+                                                                                                <option value="{{ $agent->id }}"
                                                                                                     {{ $task->agent && $task->agent->id === $agent->id ? 'selected' : '' }}>
                                                                                                     {{ $agent->name }}
                                                                                                 </option>
                                                                                                 @endforeach
                                                                                             </select>
                                                                                         </div>
-
                                                                                     </div>
 
-                                                                                    <div
-                                                                                        x-data="{
-                                                                                        rawPrice: '{{ $task->price ?? 0 }}',
-                                                                                        rawTax: '{{ $task->tax ?? 0 }}',
-                                                                                        rawSurcharge: '{{ $task->surcharge ?? 0 }}',
-                                                                                        total: 0,
-                                                                                        parseNum(v) {
-                                                                                        if (!v) return 0;
-                                                                                        const num = parseFloat(String(v).replace(/,/g,'').trim());
-                                                                                        return isNaN(num) ? 0 : num;
-                                                                                        }
-                                                                                    }"
+                                                                                    <div x-data="{
+                                                                                            rawPrice: '{{ $task->price ?? 0 }}',
+                                                                                            rawTax: '{{ $task->tax ?? 0 }}',
+                                                                                            rawSurcharge: '{{ $task->surcharge ?? 0 }}',
+                                                                                            total: 0,
+                                                                                            parseNum(v) {
+                                                                                            if (!v) return 0;
+                                                                                            const num = parseFloat(String(v).replace(/,/g,'').trim());
+                                                                                            return isNaN(num) ? 0 : num;
+                                                                                            }
+                                                                                        }"
                                                                                         x-effect="total = +(parseNum(rawPrice) + parseNum(rawTax) + parseNum(rawSurcharge)).toFixed(3)"
                                                                                         class="flex flex-wrap gap-4">
-                                                                                        <!-- Price -->
                                                                                         <div class="flex-1 min-w-[150px]">
                                                                                             <label class="block text-sm font-medium text-gray-700">Price</label>
                                                                                             <input type="text" name="price" x-model="rawPrice"
                                                                                                 class="border border-gray-300 p-2 rounded-md w-full">
                                                                                         </div>
-
-                                                                                        <!-- Tax -->
                                                                                         <div class="flex-1 min-w-[150px]">
                                                                                             <label class="block text-sm font-medium text-gray-700">Tax</label>
                                                                                             <input type="text" name="tax" x-model="rawTax"
                                                                                                 class="border border-gray-300 p-2 rounded-md w-full">
                                                                                         </div>
-
-                                                                                        <!-- Surcharge -->
                                                                                         <div class="flex-1 min-w-[150px]">
                                                                                             <label class="block text-sm font-medium text-gray-700">Surcharge</label>
                                                                                             <input type="text" name="surcharge" x-model="rawSurcharge"
                                                                                                 class="border border-gray-300 p-2 rounded-md w-full">
                                                                                         </div>
-
-                                                                                        <!-- Total -->
                                                                                         <div class="flex-1 min-w-[150px]">
                                                                                             <label class="block text-sm font-medium text-gray-700">Total</label>
                                                                                             <input type="text" name="total" :value="total" readonly
@@ -1392,11 +1417,9 @@
                                                                                         </div>
                                                                                     </div>
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                                        <!-- Additional Info and Venue -->
                                                                                         <div class="flex-1">
                                                                                             <label for="additional_info"
-                                                                                                class="block text-sm font-medium text-gray-700">Additional
-                                                                                                Info</label>
+                                                                                                class="block text-sm font-medium text-gray-700">Additional Info</label>
                                                                                             <textarea rows="3" readonly
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-3 rounded-md bg-gray-200 w-full resize-none">{{ $task->additional_info }} - {{ $task->venue }}
                                                                                             </textarea>
@@ -1418,7 +1441,6 @@
                                                                                 </button>
                                                                             </div>
                                                                         </div>
-
                                                                     </form>
                                                                 </div>
                                                             </template>
@@ -2152,10 +2174,6 @@
             formTaskContainer.innerHTML = '';
             const isHotel = (supplier?.has_hotel == 1 || supplier?.has_hotel == '1') && supplier.name != 'Amadeus';
 
-            function clearSynthInputs() {
-                Array.from(form.querySelectorAll('input[data-synth="1"]')).forEach(el => el.remove());
-            }
-
             function setFormSubmitHandler(handler) {
                 // remove any previous handler
                 if (form._currentSubmitHandler) {
@@ -2166,7 +2184,345 @@
             }
 
             console.log('Selected Supplier:', supplier);
-            if (supplier.name === 'Magic Holiday') {
+            setFormSubmitHandler(null);
+
+            if ((supplier?.is_manual == 1 || supplier?.is_manual == '1') && isHotel) {
+                const hotelTemplate = document.getElementById('template-hotel-dropdown').innerHTML;
+                const clientTemplate = document.getElementById('template-client-dropdown')?.innerHTML;
+                const currencyTemplate = document.getElementById('template-currency-dropdown')?.innerHTML;
+                const html = `
+                    <div class="border rounded-md p-4 bg-white space-y-4">
+                        <p class="font-medium text-gray-800">Manual hotel booking</p>
+                        <input type="hidden" name="type" value="hotel">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Hotel name</label>
+                                ${hotelTemplate}
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Room name</label>
+                                <input id="mh-room" name="room_name" type="text" required class="w-full border rounded px-2 py-2 bg-white" placeholder="e.g. Deluxe King">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div class="col-span-1">
+                                <label class="block text-xs text-gray-600 mb-1">Client</label>
+                                ${clientTemplate}
+                            </div>
+                            <div class="col-span-1">
+                                <label class="block text-xs text-gray-600 mb-1">Reference</label>
+                                <input id="mh-ref" name="reference" type="text" required class="w-full border rounded px-2 py-2 bg-white">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1">
+                            <div class="col-span-1">
+                                <label class="block text-xs text-gray-600 mb-1">Issued date</label>
+                                <input id="mh-issued-date" name="issued_date" type="date" required class="w-full border rounded px-2 py-2 bg-white">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Check-in</label>
+                                <input id="mh-checkin" name="check_in" type="date" required class="w-full border rounded px-2 py-2 bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Check-out</label>
+                                <input id="mh-checkout" name="check_out" type="date" required class="w-full border rounded px-2 py-2 bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Total nights</label>
+                                <input id="mh-nights" type="number" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Price per night</label>
+                                <input id="mh-price-orig" type="number" step="0.001" required class="w-full border rounded px-2 py-2 bg-white" placeholder="0.000">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Currency</label>
+                                ${currencyTemplate}
+                            </div>
+                            <div>
+                                <label id="mh-total-orig-label" class="block text-xs text-gray-600 mb-1">Total (original)</label>
+                                <input id="mh-total-orig" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div id="mh-price-kwd-wrap" class="hidden">
+                                <label class="block text-xs text-gray-600 mb-1">Price per night (KWD)</label>
+                                <input id="mh-price-kwd" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                            </div>
+                            <div id="mh-total-kwd-wrap" class="hidden">
+                                <label class="block text-xs text-gray-600 mb-1">Total (KWD)</label>
+                                <input id="mh-total-kwd" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                            </div>
+                            <div class="hidden md:block"></div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Adults</label>
+                                <input id="mh-adults" type="number" min="0" value="1" class="w-full border rounded px-2 py-2 bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Children</label>
+                                <input id="mh-children" type="number" min="0" value="0" class="w-full border rounded px-2 py-2 bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">Total pax</label>
+                                <input id="mh-total-pax" type="number" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">Passengers</label>
+                            <div id="mh-passengers" class="space-y-2">
+                                <div class="flex gap-2">
+                                    <input type="text" class="w-full border rounded px-2 py-1 mh-passenger" placeholder="Passenger name">
+                                    <button type="button" class="px-2 border rounded add">+ Add</button>
+                                </div>
+                            </div>
+                            <p id="mh-passenger-hint" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+                    </div>
+                `;
+                formTaskContainer.innerHTML = html;
+                window.dispatchEvent(new Event('modal:wide'));
+
+                function initSearchDropdown(root, items, evtName) {
+                    const btn   = root.querySelector('.sd-btn');
+                    const text  = root.querySelector('.sd-text');
+                    const menu  = root.querySelector('.sd-menu');
+                    const search= root.querySelector('.sd-search');
+                    const list  = root.querySelector('.sd-list');
+                    const hid   = root.querySelector('input[type="hidden"]');
+
+                    function render(filter='') {
+                        const f = String(filter).trim().toLowerCase();
+                        const data = f ? items.filter(i => String(i.name ?? '').toLowerCase().includes(f) || String(i.id).toLowerCase().includes(f)) : items;
+
+                        list.innerHTML = data.length ? '' : '<div class="p-2 text-sm text-gray-400">No results</div>';
+                        data.forEach(i => {
+                            const div = document.createElement('div');
+                            div.className = 'p-2 hover:bg-gray-100 cursor-pointer text-sm';
+                            div.textContent = i.name;
+                            div.dataset.id = i.id;
+                            list.appendChild(div);
+                        });
+                    }
+                    function open() {
+                        document.querySelectorAll('.sd-menu').forEach(m => m.classList.add('hidden'));
+                        menu.classList.remove('hidden');
+                        render('');
+                        search.value = '';
+                        setTimeout(() => search.focus(), 0);
+                    }
+                    function close() {
+                        menu.classList.add('hidden');
+                    }
+
+                    btn.addEventListener('click', (e)=>{
+                        e.stopPropagation();
+                        menu.classList.contains('hidden') ? open() : close();
+                    });
+                    document.addEventListener('click', (e)=>{ if(!root.contains(e.target)) close(); });
+                    search.addEventListener('input', ()=>render(search.value));
+                    list.addEventListener('click', (e)=>{
+                        const row = e.target.closest('[data-id]'); if(!row) return;
+                        hid.value = row.dataset.id;
+                        text.textContent = row.textContent.trim();
+                        text.classList.remove('text-gray-400');
+                        root.dispatchEvent(
+                            new CustomEvent(evtName, { detail: { id: hid.value, label: text.textContent }, bubbles: true })
+                            );
+                        close();
+                    });
+
+                    // if hidden has a value, show it
+                    if (hid.value) {
+                        const found = items.find(i=>i.id==hid.value);
+                        if (found) { text.textContent = found.name; text.classList.remove('text-gray-400'); }
+                    }
+                }
+
+                const hotelItems = JSON.parse(formTaskContainer.querySelector('#hotel-items-json')?.textContent || '[]');
+                const clientItems = JSON.parse(formTaskContainer.querySelector('#client-items-json')?.textContent || '[]');
+                const currencyItems = JSON.parse(formTaskContainer.querySelector('#currency-items-json')?.textContent || '[]');
+
+                initSearchDropdown(formTaskContainer.querySelector('[data-sd="hotel"]'), hotelItems, 'manual:hotel-changed');
+                initSearchDropdown(formTaskContainer.querySelector('[data-sd="client"]'), clientItems, 'manual:client-changed');
+                initSearchDropdown(formTaskContainer.querySelector('[data-sd="currency"]'), currencyItems, 'manual:currency-changed');
+
+                const priceOrig = formTaskContainer.querySelector('#mh-price-orig');
+                const totalOrig = formTaskContainer.querySelector('#mh-total-orig');
+                const currencyHidden = formTaskContainer.querySelector('#selected-currency');
+                const priceKwd = formTaskContainer.querySelector('#mh-price-kwd');
+                const priceKwdWrap = formTaskContainer.querySelector('#mh-price-kwd-wrap');
+                const totalOrigLabel = formTaskContainer.querySelector('#mh-total-orig-label');
+                const totalKwd = formTaskContainer.querySelector('#mh-total-kwd');
+                const totalKwdWrap = formTaskContainer.querySelector('#mh-total-kwd-wrap');
+                const checkIn = formTaskContainer.querySelector('#mh-checkin');
+                const checkOut = formTaskContainer.querySelector('#mh-checkout');
+                const nights = formTaskContainer.querySelector('#mh-nights');
+                const paxWrap = formTaskContainer.querySelector('#mh-passengers');
+                const adultsEl = formTaskContainer.querySelector('#mh-adults');
+                const childrenEl = formTaskContainer.querySelector('#mh-children');
+                const totalPaxEl = formTaskContainer.querySelector('#mh-total-pax');
+                const paxHint = formTaskContainer.querySelector('#mh-passenger-hint');
+
+                function calcNights() {
+                    const ci = new Date(checkIn.value);
+                    const co = new Date(checkOut.value);
+                    if (isNaN(ci) || isNaN(co) || co <= ci) { nights.value = 0; return 0; }
+                    const n = Math.round((co - ci) / (1000*60*60*24));
+                    nights.value = n;
+                    return n;
+                }
+
+                function paxLimit() {
+                    const total = (+adultsEl.value || 0) + (+childrenEl.value || 0);
+                    totalPaxEl.value = total;
+                    const current = paxWrap.querySelectorAll('input.mh-passenger').length;
+                    const addBtn  = paxWrap.querySelector('button.add');
+                    addBtn.disabled = current >= total && total > 0;
+                    addBtn.classList.toggle('opacity-50', addBtn.disabled);
+                    paxHint.textContent = total ? `Max ${total} passenger name(s)` : '';
+                }
+
+                async function convertCurrency(amount, from, to='KWD') {
+                    if (!amount || from === to) return { converted: +amount, rate: 1 };
+                    try {
+                        const res = await fetch(`{{ route('exchange.convert') }}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute("content")
+                            },
+                            body: JSON.stringify({
+                                from_currency: String(from).toUpperCase(),
+                                to_currency: String(to).toUpperCase(),
+                                amount: +amount
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.status === 'success') {
+                            return { converted: +data.converted_amount, rate: +data.exchange_rate };
+                        }
+                        if (data.created) {
+                            return { converted: null, rate: null, created: true, message: data.message };
+                        }
+                    } catch (e) {}
+                    return { converted: null, rate: null };
+                }
+
+                async function recompute() {
+                    const price = parseFloat(priceOrig.value) || 0;
+                    const currency = (currencyHidden?.value || 'KWD').toUpperCase();
+                    const nights = calcNights();
+                    const total = +(price * nights).toFixed(3);
+
+                    totalOrigLabel.textContent = `Total (${currency})`;
+                    totalOrig.value = total ? `${total.toFixed(3)}` : '';
+
+                    const showConverted = currency !== 'KWD';
+                    priceKwdWrap.classList.toggle('hidden', !showConverted);
+                    totalKwdWrap.classList.toggle('hidden', !showConverted);
+
+                    if (showConverted) {
+                        const conv1 = await convertCurrency(price, currency, 'KWD');
+                        priceKwd.value = conv1.converted != null ? conv1.converted.toFixed(3) : '';
+                        const convTotal = await convertCurrency(total, currency, 'KWD');
+                        totalKwd.value = convTotal.converted != null ? convTotal.converted.toFixed(3) : '';
+                    } else {
+                        priceKwd.value = '';
+                        totalKwd.value = total ? total.toFixed(3) : '';
+                    }
+                }
+
+                formTaskContainer.addEventListener('manual:currency-changed', recompute);
+                formTaskContainer.addEventListener('manual:client-changed', (e)=>{
+                    const first = paxWrap.querySelector('input.mh-passenger');
+                    if (first && e.detail?.label) first.value = e.detail.label;
+                });
+
+                [priceOrig, checkIn, checkOut].forEach(el => el.addEventListener('change', recompute));
+                priceOrig.addEventListener('input', recompute);
+                adultsEl.addEventListener('input', paxLimit);
+                childrenEl.addEventListener('input', paxLimit);
+                paxLimit();
+
+                paxWrap.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('add')) return;
+                    const total = +totalPaxEl.value || 0;
+                    const current = paxWrap.querySelectorAll('input.mh-passenger').length;
+                    if (total && current >= total) return;
+
+                    const row = document.createElement('div');
+                    row.className = 'flex gap-2';
+                    row.innerHTML = `
+                        <input type="text" class="w-full border rounded px-2 py-1 mh-passenger" placeholder="Passenger name">
+                        <button type="button" class="px-2 border rounded rm">✕</button>`;
+                    paxWrap.appendChild(row);
+                    paxLimit();
+                });
+
+                paxWrap.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('rm')) return;
+                    e.target.parentElement.remove();
+                    paxLimit();
+                });
+
+                setFormSubmitHandler((e) => {
+                    const hotelId = (formTaskContainer.querySelector('#selected-hotel')?.value || '').trim();
+                    const clientId = (formTaskContainer.querySelector('#selected-client')?.value || '').trim();
+                    const paxNames = Array.from(paxWrap.querySelectorAll('input.mh-passenger')).map(i => i.value.trim()).filter(Boolean);
+                    const totalPax = +totalPaxEl.value || 0;
+
+                    if (!hotelId) {
+                        e.preventDefault(); alert('Hotel are required.'); return;
+                    }
+                    if (!clientId) {
+                        e.preventDefault(); alert('Client is required.'); return;
+                    }
+
+                    const currency = (currencyHidden?.value || 'KWD').toUpperCase();
+                    const perNight = parseFloat(priceOrig.value) || 0;
+                    const night = calcNights();
+                    const originalTotal = +(perNight * night).toFixed(3);
+
+                    Array.from(form.querySelectorAll('input[data-synth="1"]')).forEach(el => el.remove());
+
+                    const addHidden = (name, val) => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = name;
+                        input.value = (typeof val === 'object') ? JSON.stringify(val) : String(val);
+                        input.setAttribute('data-synth','1');
+                        form.appendChild(input);
+                    };
+
+                    addHidden('additional_info', `Price per night: ${perNight.toFixed(4)} ${currency}`);
+                    if (paxNames.length) {
+                        addHidden('client_name', paxNames[0]);
+                        paxNames.forEach((p, i) => addHidden(`passengers[${i}]`, p));
+                    }
+                    if (currency === 'KWD') {
+                        addHidden('exchange_currency', 'KWD');
+                        addHidden('price',  +originalTotal.toFixed(3));
+                        addHidden('total',  +originalTotal.toFixed(3));
+                    } else {
+                        addHidden('original_currency', currency);
+                        addHidden('original_price', +originalTotal.toFixed(3));
+                        addHidden('original_total', +originalTotal.toFixed(3));
+                        addHidden('exchange_currency', 'KWD');
+
+                        const totalKwdEl = formTaskContainer.querySelector('#mh-total-kwd');
+                        let totalKwd = parseFloat(totalKwdEl?.value);
+                        addHidden('price', +(+totalKwd).toFixed(3));
+                        addHidden('total', +(+totalKwd).toFixed(3));
+                    }
+                });
+                return;
+            } else if (supplier.name === 'Magic Holiday') {
                 const modeWrap = document.createElement('div');
                 modeWrap.className = 'mb-2';
                 modeWrap.innerHTML = `
@@ -2191,7 +2547,7 @@
                     let active = 0;
 
                     const toolbar = document.createElement('div');
-                    toolbar.className = 'sticky top-0 bg-white -mx-4 px-4 pt-1 pb-2';
+                    toolbar.className = 'sticky top-0 bg-white px-0 pt-1 pb-2';
                     toolbar.innerHTML = `
                     <div class="flex items-center justify-between">
                         <div>
@@ -2461,13 +2817,14 @@
                     r.addEventListener('change', (e) => e.target.value === 'ref' ? renderRef() : renderBatch());
                 });
 
+                window.dispatchEvent(new Event('modal:normal'));
                 return;
             } else if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air' || isHotel) {
                 const batches = [];
                 let active = 0;
 
                 const toolbar = document.createElement('div');
-                toolbar.className = 'sticky top-0 bg-white -mx-4 px-4 pt-1 pb-2';
+                toolbar.className = 'sticky top-0 bg-white px-0 pt-1 pb-2';
                 toolbar.innerHTML = `
                     <div class="flex items-center justify-between">
                         <div>
@@ -2731,6 +3088,7 @@
                 form._tboSubmitHandler = onSubmit;
                 form.addEventListener('submit', onSubmit);
 
+                window.dispatchEvent(new Event('modal:normal'));
                 return;
             } else {
                 const customFiles = [];
@@ -2848,6 +3206,7 @@
                 formTaskContainer.appendChild(dropZone);
                 formTaskContainer.appendChild(fileInput);
                 formTaskContainer.appendChild(fileListDisplay);
+                window.dispatchEvent(new Event('modal:normal'));
             }
         });
 

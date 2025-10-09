@@ -86,4 +86,10 @@ class Transaction extends Model
     {
         return $this->belongsToMany(Invoice::class, 'invoice_receipt', 'transaction_id', 'invoice_id');
     }
+
+    public function invoicePartial()
+{
+    return $this->hasOne(InvoicePartial::class, 'invoice_id', 'invoice_id')->latest();
+}
+
 }

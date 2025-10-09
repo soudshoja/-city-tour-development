@@ -39,6 +39,7 @@ class JournalEntry extends Model
         'task_id',
         'original_currency',
         'original_amount',
+        'receipt_reference_number',
     ];
 
     protected static function booted()

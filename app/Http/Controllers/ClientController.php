@@ -1710,7 +1710,7 @@ class ClientController extends Controller
                 'debit'            => $payment->amount,
                 'credit'           => 0,
                 'name'             => $receiptVoucherCash->name,
-                'type'             => 'cash',
+                'type'             => 'receivable',
                 'voucher_number'   => $payment->voucher_number,
                 'type_reference_id'=> $receiptVoucherCash->id,
             ]);

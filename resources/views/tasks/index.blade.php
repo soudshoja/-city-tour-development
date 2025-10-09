@@ -465,8 +465,8 @@
                     })"
                     class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20">
                     <div @click.away="addTaskModal = false; manualFormWide = false" class="bg-white rounded shadow min-w-96"
-                        @modal:wide.window="manualFormWide = true"
-                        @modal:normal.window="manualFormWide = false">
+                        @modal:wide.window="manualFormWide = true" @modal:normal.window="manualFormWide = false"
+                        :class="{ 'w-full max-w-96': !manualFormWide }">
                         <div class="p-4 flex justify-between items-center">
                             <span class="text-lg font-semibold">Add Task For Specific Supplier</span>
 
@@ -487,7 +487,7 @@
                                 <x-searchable-dropdown name="supplier_id" :items="$suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])" placeholder="Select Supplier"
                                     label="Select a Supplier" />
                             </div>
-                            <div class="flex-1 min-h-0 overflow-y-auto max-h-[calc(90vh-224px)]">
+                            <div class="flex-1 min-h-0" :class="manualFormWide ? 'overflow-y-auto max-h-[calc(90vh-224px)]' : 'overflow-visible max-h-none'">
                                 <!-- Hidden native select (logic only) -->
                                 <select id="select-supplier-task" class="hidden">
                                     @foreach ($suppliers as $supplier)
@@ -497,28 +497,55 @@
                                     @endforeach
                                 </select>
                                 <div id="template-hotel-dropdown" class="hidden min-w-0">
-                                    <x-searchable-dropdown
-                                        name="task_hotel_details[0][hotel_id]" 
-                                        :items="$hotels->map(fn($h) => ['id' => $h->id, 'name' => $h->name])"
-                                        placeholder="Select Hotel" />
+                                    <script type="application/json" id="hotel-items-json">
+                                        {!! $hotels->map(fn($h) => ['id' => $h->id, 'name' => $h->name])->values()->toJson() !!}
+                                    </script>
+                                    <div class="relative sd" data-sd="hotel">
+                                        <button type="button" class="sd-btn w-full border border-gray-300 p-2 rounded text-left bg-white">
+                                            <span class="sd-text text-gray-400">Select Hotel</span>
+                                        </button>
+                                        <div class="sd-menu absolute z-10 mt-1 w-full max-h-60 overflow-auto bg-white border rounded shadow hidden">
+                                            <div class="p-2">
+                                                <input class="sd-search w-full border rounded px-2 py-1" placeholder="Search hotel">
+                                            </div>
+                                            <div class="sd-list py-1"></div>
+                                        </div>
+                                        <input type="hidden" id="selected-hotel" name="hotel_id">
+                                    </div>
                                 </div>
                                 <div id="template-client-dropdown" class="hidden min-w-0">
-                                    <x-searchable-dropdown
-                                        name="client_id"
-                                        :items="$fullClients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name])"
-                                        placeholder="Select Client"
-                                    />
+                                    <script type="application/json" id="client-items-json">
+                                        {!! $fullClients->map(fn($c) => ['id' => $c->id, 'name' => $c->full_name])->values()->toJson() !!}
+                                    </script>
+                                    <div class="relative sd" data-sd="client">
+                                        <button type="button" class="sd-btn w-full border border-gray-300 p-2 rounded text-left bg-white">
+                                            <span class="sd-text text-gray-400">Select Client</span>
+                                        </button>
+                                        <div class="sd-menu absolute z-10 mt-1 w-full max-h-60 overflow-auto bg-white border rounded shadow hidden">
+                                            <div class="p-2">
+                                                <input class="sd-search w-full border rounded px-2 py-1" placeholder="Search client">
+                                            </div>
+                                            <div class="sd-list py-1"></div>
+                                        </div>
+                                        <input type="hidden" id="selected-client" name="client_id">
+                                    </div>
                                 </div>
-                                <div id="template-currency-dropdown" class="hidden min-w-0 Z-2">
-                                    <x-searchable-dropdown
-                                        name="original_currency"
-                                        :items="$allIso->map(function ($code) use ($currencies) {
-                                            $c = $currencies[$code] ?? null;
-                                            return ['id' => $code, 'name' => trim(($c->symbol ?? '') . ' ' . $code . ' ' . ($c->name ?? ''))];
-                                        })"
-                                        placeholder="Select Currency"
-                                    />
-                                    <input type="hidden" id="selected-currency" x-effect="$el.value = ($el.previousElementSibling.__x?.$data?.selectedId || '').toUpperCase()">
+                                <div id="template-currency-dropdown" class="hidden min-w-0">
+                                    <script type="application/json" id="currency-items-json">
+                                        {!! $currencies->map(fn($c) => ['id' => $c->iso_code, 'name' => $c->name.' ('.$c->iso_code.')'])->values()->toJson() !!}
+                                    </script>
+                                    <div class="relative sd" data-sd="currency">
+                                        <button type="button" class="sd-btn w-full border border-gray-300 p-2 rounded text-left bg-white">
+                                            <span class="sd-text text-gray-400">Select Currency</span>
+                                        </button>
+                                        <div class="sd-menu absolute z-15 mt-1 w-full max-h-60 overflow-auto bg-white border rounded shadow hidden">
+                                            <div class="p-2">
+                                                <input class="sd-search w-full border rounded px-2 py-1" placeholder="Search currency">
+                                            </div>
+                                            <div class="sd-list py-1"></div>
+                                        </div>
+                                        <input type="hidden" id="selected-currency" value="KWD">
+                                    </div>
                                 </div>
                                 <div id="form-task-container" class="mb-3"></div>
                             </div>
@@ -2147,10 +2174,6 @@
             formTaskContainer.innerHTML = '';
             const isHotel = (supplier?.has_hotel == 1 || supplier?.has_hotel == '1') && supplier.name != 'Amadeus';
 
-            function clearSynthInputs() {
-                Array.from(form.querySelectorAll('input[data-synth="1"]')).forEach(el => el.remove());
-            }
-
             function setFormSubmitHandler(handler) {
                 // remove any previous handler
                 if (form._currentSubmitHandler) {
@@ -2161,10 +2184,12 @@
             }
 
             console.log('Selected Supplier:', supplier);
+            setFormSubmitHandler(null);
+
             if ((supplier?.is_manual == 1 || supplier?.is_manual == '1') && isHotel) {
                 const hotelTemplate = document.getElementById('template-hotel-dropdown').innerHTML;
-                const clientTemplate = document.getElementById('template-client-dropdown')?.innerHTML ?? '';
-                const currencyTemplate = document.getElementById('template-currency-dropdown')?.innerHTML ?? 'KWD';
+                const clientTemplate = document.getElementById('template-client-dropdown')?.innerHTML;
+                const currencyTemplate = document.getElementById('template-currency-dropdown')?.innerHTML;
                 const html = `
                     <div class="border rounded-md p-4 bg-white space-y-4">
                         <p class="font-medium text-gray-800">Manual hotel booking</p>
@@ -2176,30 +2201,33 @@
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Room name</label>
-                                <input id="mh-room" name="task_hotel_details[0][room_name]" type="text" class="w-full border rounded px-2 py-1" placeholder="e.g. Deluxe King">
+                                <input id="mh-room" name="room_name" type="text" required class="w-full border rounded px-2 py-2 bg-white" placeholder="e.g. Deluxe King">
                             </div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="col-span-1">
                                 <label class="block text-xs text-gray-600 mb-1">Client</label>
-                                ${clientTemplate || `
-                                    <label class="block text-xs text-gray-600 mb-1">Client</label>
-                                    <input id="mh-client-fallback" type="text" class="w-full border rounded px-2 py-1" placeholder="Type client name">
-                                `}
+                                ${clientTemplate}
                             </div>
                             <div class="col-span-1">
-                                <label class="block text-xs text-gray-600 mb-1">Reference number</label>
-                                <input id="mh-ref" name="reference" type="text" class="w-full border rounded px-2 py-1">
+                                <label class="block text-xs text-gray-600 mb-1">Reference</label>
+                                <input id="mh-ref" name="reference" type="text" required class="w-full border rounded px-2 py-2 bg-white">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1">
+                            <div class="col-span-1">
+                                <label class="block text-xs text-gray-600 mb-1">Issued date</label>
+                                <input id="mh-issued-date" name="issued_date" type="date" required class="w-full border rounded px-2 py-2 bg-white">
                             </div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Check-in</label>
-                                <input id="mh-checkin" name="task_hotel_details[0][check_in]" type="date" class="w-full border rounded px-2 py-1">
+                                <input id="mh-checkin" name="check_in" type="date" required class="w-full border rounded px-2 py-2 bg-white">
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Check-out</label>
-                                <input id="mh-checkout" name="task_hotel_details[0][check_out]" type="date" class="w-full border rounded px-2 py-1">
+                                <input id="mh-checkout" name="check_out" type="date" required class="w-full border rounded px-2 py-2 bg-white">
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Total nights</label>
@@ -2209,30 +2237,23 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Price per night</label>
-                                <input id="mh-price" type="number" step="0.001" class="w-full border rounded px-2 py-1" placeholder="0.000">
+                                <input id="mh-price-orig" type="number" step="0.001" required class="w-full border rounded px-2 py-2 bg-white" placeholder="0.000">
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Currency</label>
                                 ${currencyTemplate}
-                                <select id="mh-currency" class="w-full border rounded px-2 py-1">
-                                    <option value="KWD">KWD</option>
-                                    <option value="USD">USD</option>
-                                    <option value="EUR">EUR</option>
-                                    <option value="SAR">SAR</option>
-                                    <option value="AED">AED</option> 
-                                </select>
                             </div>
                             <div>
-                                <label class="block text-xs text-gray-600 mb-1">Converted price/night (KWD)</label>
-                                <input id="mh-price-kwd" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                                <label id="mh-total-orig-label" class="block text-xs text-gray-600 mb-1">Total (original)</label>
+                                <input id="mh-total-orig" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div>
-                                <label class="block text-xs text-gray-600 mb-1">Total (original)</label>
-                                <input id="mh-total-orig" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
+                            <div id="mh-price-kwd-wrap" class="hidden">
+                                <label class="block text-xs text-gray-600 mb-1">Price per night (KWD)</label>
+                                <input id="mh-price-kwd" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
                             </div>
-                            <div>
+                            <div id="mh-total-kwd-wrap" class="hidden">
                                 <label class="block text-xs text-gray-600 mb-1">Total (KWD)</label>
                                 <input id="mh-total-kwd" type="text" class="w-full border rounded px-2 py-1 bg-gray-50" readonly>
                             </div>
@@ -2241,11 +2262,11 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Adults</label>
-                                <input id="mh-adults" type="number" min="0" value="1" class="w-full border rounded px-2 py-1">
+                                <input id="mh-adults" type="number" min="0" value="1" class="w-full border rounded px-2 py-2 bg-white">
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Children</label>
-                                <input id="mh-children" type="number" min="0" value="0" class="w-full border rounded px-2 py-1">
+                                <input id="mh-children" type="number" min="0" value="0" class="w-full border rounded px-2 py-2 bg-white">
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Total pax</label>
@@ -2264,24 +2285,89 @@
                         </div>
                     </div>
                 `;
-
                 formTaskContainer.innerHTML = html;
-                window.Alpine?.initTree?.(formTaskContainer);
+                window.dispatchEvent(new Event('modal:wide'));
 
-                const price      = document.getElementById('mh-price');
-                const currency = document.getElementById('mh-currency');
-                const priceKwd   = document.getElementById('mh-price-kwd');
-                const checkIn    = document.getElementById('mh-checkin');
-                const checkOut   = document.getElementById('mh-checkout');
-                const nights     = document.getElementById('mh-nights');
-                const totalOrig  = document.getElementById('mh-total-orig');
-                const totalKwd   = document.getElementById('mh-total-kwd');
-                const paxWrap    = document.getElementById('mh-passengers');
-                const adultsEl   = document.getElementById('mh-adults');
-                const childrenEl = document.getElementById('mh-children');
-                const totalPaxEl = document.getElementById('mh-total-pax');
-                const paxHint    = document.getElementById('mh-passenger-hint');
-                // const currency = formTaskContainer.querySelector('input[name="original_currency"]');
+                function initSearchDropdown(root, items, evtName) {
+                    const btn   = root.querySelector('.sd-btn');
+                    const text  = root.querySelector('.sd-text');
+                    const menu  = root.querySelector('.sd-menu');
+                    const search= root.querySelector('.sd-search');
+                    const list  = root.querySelector('.sd-list');
+                    const hid   = root.querySelector('input[type="hidden"]');
+
+                    function render(filter='') {
+                        const f = String(filter).trim().toLowerCase();
+                        const data = f ? items.filter(i => String(i.name ?? '').toLowerCase().includes(f) || String(i.id).toLowerCase().includes(f)) : items;
+
+                        list.innerHTML = data.length ? '' : '<div class="p-2 text-sm text-gray-400">No results</div>';
+                        data.forEach(i => {
+                            const div = document.createElement('div');
+                            div.className = 'p-2 hover:bg-gray-100 cursor-pointer text-sm';
+                            div.textContent = i.name;
+                            div.dataset.id = i.id;
+                            list.appendChild(div);
+                        });
+                    }
+                    function open() {
+                        document.querySelectorAll('.sd-menu').forEach(m => m.classList.add('hidden'));
+                        menu.classList.remove('hidden');
+                        render('');
+                        search.value = '';
+                        setTimeout(() => search.focus(), 0);
+                    }
+                    function close() {
+                        menu.classList.add('hidden');
+                    }
+
+                    btn.addEventListener('click', (e)=>{
+                        e.stopPropagation();
+                        menu.classList.contains('hidden') ? open() : close();
+                    });
+                    document.addEventListener('click', (e)=>{ if(!root.contains(e.target)) close(); });
+                    search.addEventListener('input', ()=>render(search.value));
+                    list.addEventListener('click', (e)=>{
+                        const row = e.target.closest('[data-id]'); if(!row) return;
+                        hid.value = row.dataset.id;
+                        text.textContent = row.textContent.trim();
+                        text.classList.remove('text-gray-400');
+                        root.dispatchEvent(
+                            new CustomEvent(evtName, { detail: { id: hid.value, label: text.textContent }, bubbles: true })
+                            );
+                        close();
+                    });
+
+                    // if hidden has a value, show it
+                    if (hid.value) {
+                        const found = items.find(i=>i.id==hid.value);
+                        if (found) { text.textContent = found.name; text.classList.remove('text-gray-400'); }
+                    }
+                }
+
+                const hotelItems = JSON.parse(formTaskContainer.querySelector('#hotel-items-json')?.textContent || '[]');
+                const clientItems = JSON.parse(formTaskContainer.querySelector('#client-items-json')?.textContent || '[]');
+                const currencyItems = JSON.parse(formTaskContainer.querySelector('#currency-items-json')?.textContent || '[]');
+
+                initSearchDropdown(formTaskContainer.querySelector('[data-sd="hotel"]'), hotelItems, 'manual:hotel-changed');
+                initSearchDropdown(formTaskContainer.querySelector('[data-sd="client"]'), clientItems, 'manual:client-changed');
+                initSearchDropdown(formTaskContainer.querySelector('[data-sd="currency"]'), currencyItems, 'manual:currency-changed');
+
+                const priceOrig = formTaskContainer.querySelector('#mh-price-orig');
+                const totalOrig = formTaskContainer.querySelector('#mh-total-orig');
+                const currencyHidden = formTaskContainer.querySelector('#selected-currency');
+                const priceKwd = formTaskContainer.querySelector('#mh-price-kwd');
+                const priceKwdWrap = formTaskContainer.querySelector('#mh-price-kwd-wrap');
+                const totalOrigLabel = formTaskContainer.querySelector('#mh-total-orig-label');
+                const totalKwd = formTaskContainer.querySelector('#mh-total-kwd');
+                const totalKwdWrap = formTaskContainer.querySelector('#mh-total-kwd-wrap');
+                const checkIn = formTaskContainer.querySelector('#mh-checkin');
+                const checkOut = formTaskContainer.querySelector('#mh-checkout');
+                const nights = formTaskContainer.querySelector('#mh-nights');
+                const paxWrap = formTaskContainer.querySelector('#mh-passengers');
+                const adultsEl = formTaskContainer.querySelector('#mh-adults');
+                const childrenEl = formTaskContainer.querySelector('#mh-children');
+                const totalPaxEl = formTaskContainer.querySelector('#mh-total-pax');
+                const paxHint = formTaskContainer.querySelector('#mh-passenger-hint');
 
                 function calcNights() {
                     const ci = new Date(checkIn.value);
@@ -2293,7 +2379,7 @@
                 }
 
                 function paxLimit() {
-                    const total = (parseInt(adultsEl.value||0) + parseInt(childrenEl.value||0)) || 0;
+                    const total = (+adultsEl.value || 0) + (+childrenEl.value || 0);
                     totalPaxEl.value = total;
                     const current = paxWrap.querySelectorAll('input.mh-passenger').length;
                     const addBtn  = paxWrap.querySelector('button.add');
@@ -2302,17 +2388,15 @@
                     paxHint.textContent = total ? `Max ${total} passenger name(s)` : '';
                 }
 
-                function csrf() {
-                    const m = document.querySelector('meta[name="csrf-token"]');
-                    return m?.getAttribute('content') || '{{ csrf_token() }}';
-                }
-
                 async function convertCurrency(amount, from, to='KWD') {
                     if (!amount || from === to) return { converted: +amount, rate: 1 };
                     try {
                         const res = await fetch(`{{ route('exchange.convert') }}`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf() },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute("content")
+                            },
                             body: JSON.stringify({
                                 from_currency: String(from).toUpperCase(),
                                 to_currency: String(to).toUpperCase(),
@@ -2323,7 +2407,6 @@
                         if (data.status === 'success') {
                             return { converted: +data.converted_amount, rate: +data.exchange_rate };
                         }
-                        // if controller returns "created:true" (rate added) just show a hint
                         if (data.created) {
                             return { converted: null, rate: null, created: true, message: data.message };
                         }
@@ -2332,28 +2415,37 @@
                 }
 
                 async function recompute() {
-                    const p = parseFloat(price.value) || 0;
-                    const cur = currency?.value || 'KWD';
-                    const n = calcNights();
-                    const total = +(p * n).toFixed(3);
+                    const price = parseFloat(priceOrig.value) || 0;
+                    const currency = (currencyHidden?.value || 'KWD').toUpperCase();
+                    const nights = calcNights();
+                    const total = +(price * nights).toFixed(3);
 
-                    totalOrig.value = total ? `${total.toFixed(3)} ${cur}` : '';
-                      // price/night → KWD
-                    const conv1 = await convertCurrency(p, cur, 'KWD');
-                    priceKwd.value = conv1.converted != null ? conv1.converted.toFixed(3) : '';
+                    totalOrigLabel.textContent = `Total (${currency})`;
+                    totalOrig.value = total ? `${total.toFixed(3)}` : '';
 
-                    const convTotal = await convertCurrency(total, cur, 'KWD');
-                    totalKwd.value = convTotal.converted != null ? convTotal.converted.toFixed(3) : '';
+                    const showConverted = currency !== 'KWD';
+                    priceKwdWrap.classList.toggle('hidden', !showConverted);
+                    totalKwdWrap.classList.toggle('hidden', !showConverted);
+
+                    if (showConverted) {
+                        const conv1 = await convertCurrency(price, currency, 'KWD');
+                        priceKwd.value = conv1.converted != null ? conv1.converted.toFixed(3) : '';
+                        const convTotal = await convertCurrency(total, currency, 'KWD');
+                        totalKwd.value = convTotal.converted != null ? convTotal.converted.toFixed(3) : '';
+                    } else {
+                        priceKwd.value = '';
+                        totalKwd.value = total ? total.toFixed(3) : '';
+                    }
                 }
 
-                currency?.addEventListener('change', recompute);
-                // if your component emits a custom event, hook it too:
-                formTaskContainer.addEventListener('dropdown:change', (e) => {
-                    if (e.detail?.name === 'original_currency') recompute();
+                formTaskContainer.addEventListener('manual:currency-changed', recompute);
+                formTaskContainer.addEventListener('manual:client-changed', (e)=>{
+                    const first = paxWrap.querySelector('input.mh-passenger');
+                    if (first && e.detail?.label) first.value = e.detail.label;
                 });
 
-                [price, checkIn, checkOut].forEach(el => el.addEventListener('change', recompute));
-                price.addEventListener('input', recompute);
+                [priceOrig, checkIn, checkOut].forEach(el => el.addEventListener('change', recompute));
+                priceOrig.addEventListener('input', recompute);
                 adultsEl.addEventListener('input', paxLimit);
                 childrenEl.addEventListener('input', paxLimit);
                 paxLimit();
@@ -2379,68 +2471,56 @@
                     paxLimit();
                 });
 
-                /* --------- client → first passenger auto-fill --------- */
-                (function wireClientToFirstPassenger(){
-                    // works for x-searchable-dropdown (listen to underlying input)
-                    const clientHidden = formTaskContainer.querySelector('input[name="client_id"]');
-                    const clientDisplay = formTaskContainer.querySelector('[data-dropdown-display] input, [data-dropdown-display]'); // adapt for your component
-                    const firstPassenger = () => paxWrap.querySelector('input.mh-passenger');
-
-                    function setFirst(name) {
-                        const fp = firstPassenger();
-                        if (fp && name) fp.value = name;
-                    }
-
-                    // 1) if using your component, capture selected label
-                    formTaskContainer.addEventListener('change', () => {
-                        if (clientHidden && clientHidden.value) {
-                        // try to read the label from the component (fallback to value attribute if you store it)
-                        const label = formTaskContainer.querySelector('[data-selected-label]')?.textContent?.trim()
-                                    || formTaskContainer.querySelector('[data-dropdown-display] input')?.value?.trim()
-                                    || '';
-                        if (label) setFirst(label);
-                        }
-                    });
-
-                    const fallback = document.getElementById('mh-client-fallback');
-                    if (fallback) fallback.addEventListener('input', e => setFirst(e.target.value.trim()));
-                })();
-
                 setFormSubmitHandler((e) => {
-                    const hotelField = form.querySelector('[name="task_hotel_details[0][hotel_id]"]');
-                    const hotelId = hotelField?.value?.trim() || '';
+                    const hotelId = (formTaskContainer.querySelector('#selected-hotel')?.value || '').trim();
+                    const clientId = (formTaskContainer.querySelector('#selected-client')?.value || '').trim();
                     const paxNames = Array.from(paxWrap.querySelectorAll('input.mh-passenger')).map(i => i.value.trim()).filter(Boolean);
                     const totalPax = +totalPaxEl.value || 0;
 
-                    if (!hotelId || !checkIn.value || !checkOut.value) {
-                        e.preventDefault(); alert('Hotel & dates are required.'); return;
+                    if (!hotelId) {
+                        e.preventDefault(); alert('Hotel are required.'); return;
                     }
-                    if (!totalPax || paxNames.length !== totalPax) {
-                        e.preventDefault(); alert('Please enter passenger names equal to total pax.'); return;
+                    if (!clientId) {
+                        e.preventDefault(); alert('Client is required.'); return;
                     }
 
-                    clearSynthInputs();
-
-                    const perNight = parseFloat(price.value) || 0;
+                    const currency = (currencyHidden?.value || 'KWD').toUpperCase();
+                    const perNight = parseFloat(priceOrig.value) || 0;
                     const night = calcNights();
                     const originalTotal = +(perNight * night).toFixed(3);
 
+                    Array.from(form.querySelectorAll('input[data-synth="1"]')).forEach(el => el.remove());
+
                     const addHidden = (name, val) => {
                         const input = document.createElement('input');
-                        input.type='hidden';
+                        input.type = 'hidden';
                         input.name = name;
-                        input.value=val;
+                        input.value = (typeof val === 'object') ? JSON.stringify(val) : String(val);
                         input.setAttribute('data-synth','1');
                         form.appendChild(input);
                     };
 
-                    addHidden('exchange_currency', 'KWD');
-                    addHidden('original_price', originalTotal);
-                    addHidden('total', '');
-                    addHidden('client_name', paxNames[0] || '');
-                    paxNames.forEach((p, i) => addHidden(`passengers[${i}]`, p));
-                });
+                    addHidden('additional_info', `Price per night: ${perNight.toFixed(4)} ${currency}`);
+                    if (paxNames.length) {
+                        addHidden('client_name', paxNames[0]);
+                        paxNames.forEach((p, i) => addHidden(`passengers[${i}]`, p));
+                    }
+                    if (currency === 'KWD') {
+                        addHidden('exchange_currency', 'KWD');
+                        addHidden('price',  +originalTotal.toFixed(3));
+                        addHidden('total',  +originalTotal.toFixed(3));
+                    } else {
+                        addHidden('original_currency', currency);
+                        addHidden('original_price', +originalTotal.toFixed(3));
+                        addHidden('original_total', +originalTotal.toFixed(3));
+                        addHidden('exchange_currency', 'KWD');
 
+                        const totalKwdEl = formTaskContainer.querySelector('#mh-total-kwd');
+                        let totalKwd = parseFloat(totalKwdEl?.value);
+                        addHidden('price', +(+totalKwd).toFixed(3));
+                        addHidden('total', +(+totalKwd).toFixed(3));
+                    }
+                });
                 return;
             } else if (supplier.name === 'Magic Holiday') {
                 const modeWrap = document.createElement('div');
@@ -2467,7 +2547,7 @@
                     let active = 0;
 
                     const toolbar = document.createElement('div');
-                    toolbar.className = 'sticky top-0 bg-white -mx-4 px-4 pt-1 pb-2';
+                    toolbar.className = 'sticky top-0 bg-white px-0 pt-1 pb-2';
                     toolbar.innerHTML = `
                     <div class="flex items-center justify-between">
                         <div>
@@ -2737,13 +2817,14 @@
                     r.addEventListener('change', (e) => e.target.value === 'ref' ? renderRef() : renderBatch());
                 });
 
+                window.dispatchEvent(new Event('modal:normal'));
                 return;
             } else if (supplier.name == 'TBO Car' || supplier.name == 'TBO Air' || isHotel) {
                 const batches = [];
                 let active = 0;
 
                 const toolbar = document.createElement('div');
-                toolbar.className = 'sticky top-0 bg-white -mx-4 px-4 pt-1 pb-2';
+                toolbar.className = 'sticky top-0 bg-white px-0 pt-1 pb-2';
                 toolbar.innerHTML = `
                     <div class="flex items-center justify-between">
                         <div>
@@ -3007,6 +3088,7 @@
                 form._tboSubmitHandler = onSubmit;
                 form.addEventListener('submit', onSubmit);
 
+                window.dispatchEvent(new Event('modal:normal'));
                 return;
             } else {
                 const customFiles = [];
@@ -3124,6 +3206,7 @@
                 formTaskContainer.appendChild(dropZone);
                 formTaskContainer.appendChild(fileInput);
                 formTaskContainer.appendChild(fileListDisplay);
+                window.dispatchEvent(new Event('modal:normal'));
             }
         });
 

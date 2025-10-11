@@ -121,6 +121,7 @@
                                 <th class="p-3 text-left font-medium whitespace-nowrap">Payment Type</th>
                                 <th class="p-3 text-left font-medium whitespace-nowrap">Notes</th>
                                 <th class="p-3 text-left font-medium whitespace-nowrap">Amount</th>
+                                <th class="p-3 text-left font-medium whitespace-nowrap">Client Pay</th>
                                 <th class="p-3 text-left font-medium whitespace-nowrap">Created At</th>
                                 <th class="p-3 text-left font-medium whitespace-nowrap">Created By</th>
                                 <th class="p-3 text-left font-medium whitespace-nowrap">Reference</th>
@@ -161,7 +162,10 @@
                                     {{ $payment->notes ?? 'No Notes' }}
                                 </td>
                                 <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
-                                    {{ $payment->amount }}
+                                    {{ number_format($payment->amount,3) }}
+                                </td>
+                                <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
+                                    {{ number_format($payment->amount + $payment->service_charge,3) }}
                                 </td>
                                 @if (auth()->user()->role->name === 'admin' || auth()->user()->role->name === 'company')
                                 <td class="px-3 py-2 whitespace-nowrap text-sm">

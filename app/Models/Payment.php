@@ -43,6 +43,16 @@ class Payment extends Model
         'shipping',
         'completed',
     ];
+
+    protected $casts = [
+        'payment_date' => 'datetime',
+        'expiry_date' => 'datetime',
+        'amount' => 'decimal:3',
+        'service_charge' => 'decimal:3',
+        'tax' => 'decimal:3',
+        'completed' => 'boolean',
+    ];
+
     public function client()
     {
         return $this->belongsTo(Client::class, 'client_id');

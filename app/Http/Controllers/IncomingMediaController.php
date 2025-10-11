@@ -464,7 +464,8 @@ class IncomingMediaController extends Controller
                                 'civil_no' => $data['civil_no'],
                                 'passport_no' => $data['passport_no'] ?? null,
                                 'old_passport_no' => $data['passport_no'] ?? null,
-                                'agent_id' => $agentId
+                                'agent_id' => $agentId,
+                                'company_id' => $companyId
                             ]);
 
                             $autoReplyText = "Thank you, {$autoReplyAdd} profile has been created successfully.\n\nClient: {$data['first_name']} {$data['last_name']}\nCivil ID: {$data['civil_no']}";

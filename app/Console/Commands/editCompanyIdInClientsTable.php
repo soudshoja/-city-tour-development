@@ -17,7 +17,7 @@ class editCompanyIdInClientsTable extends Command
 
         foreach($clients as $client) {
             if($client->company_id == null){
-                if ($client->agent && $client->agent->branch->company_idl) {
+                if ($client->agent && $client->agent->branch->company_id) {
                     $client->company_id = $client->agent->branch->company_id;
                     $client->save();
                     $this->info("Updated client ID {$client->id} with company ID {$client->company_id}");

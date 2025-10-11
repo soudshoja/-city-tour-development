@@ -39,6 +39,24 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use App\Services\ChargeService;
 
+class ClientStoreResponse
+{
+    public string $status;
+    public string $type;
+    public string $message;
+    public ?array $data;
+    public ?int $task_id;
+
+    public function __construct($status, $type, $message, $data = null, $task_id = null)
+    {
+        $this->status = $status;
+        $this->type = $type;
+        $this->message = $message;
+        $this->data = $data;
+        $this->task_id = $task_id;
+    }
+}
+
 class ClientController extends Controller
 {
     use Converter, NotificationTrait;
@@ -157,7 +175,7 @@ class ClientController extends Controller
         ));
     }
 
-    public function storeProcess(Request $request)
+    public function storeProcess(Request $request) : ClientStoreResponse
     {
         $request->validate([
             'first_name' => 'required|string|max:255',
@@ -165,7 +183,7 @@ class ClientController extends Controller
             'last_name' => 'nullable|string|max:255',
             'dial_code' => 'required|string|max:30',
             'email' => 'nullable|email',
-            'civil_no' => 'nullable|string|max:100|unique:clients,civil_no',
+            'civil_no' => 'nullable|string|max:100',
             'phone' => 'required|string|max:15',
             'agent_id' => 'required|exists:agents,id',
             'company_id' => 'nullable|exists:companies,id',
@@ -178,6 +196,52 @@ class ClientController extends Controller
             $companyId = Agent::find($request->agent_id)->branch->company_id;
 
             $request->merge(['company_id' => $companyId]);
+        }
+
+        $existingClient = null;
+        $duplicateType = null;
+
+        if ($request->civil_no) {
+
+            $existingClient = Client::where('company_id', $request->company_id)
+                ->where('civil_no', $request->civil_no)
+                ->with('agent') // Load the owner agent
+                ->first();
+
+            $duplicateType = 'civil_no';
+
+        } else {
+            $existingClient = Client::where('company_id', $request->company_id)
+                ->where('first_name', $request->first_name)
+                ->where('phone', preg_replace('/\s+/', '', $request->phone))
+                ->with('agent') // Load the owner agent
+                ->first();
+
+            $duplicateType = 'name_phone';
+        }
+
+        $message  = '';
+
+        if ($existingClient) {
+            $duplicateResponse = $this->handleDuplicateClient($existingClient, $request->agent_id, $duplicateType);
+
+            Log::info('Duplicate client detected: ', $duplicateResponse);            
+
+            if ($duplicateResponse['status'] == 'success') { // means we succeed in handling duplicate client by showing assignment request form
+
+                return new ClientStoreResponse(
+                    'error',
+                    'duplicate',
+                    $duplicateResponse['message'],
+                    $duplicateResponse['data']
+                );
+            }
+
+            return new ClientStoreResponse(
+                'error',
+                'general',
+                $duplicateResponse['message']
+            );
         }
 
 
@@ -199,6 +263,7 @@ class ClientController extends Controller
                 'passport_no' => $request->passport_no,
                 'old_passport_no' => $request->passport_no,
                 'agent_id' => $request->agent_id,
+                'company_id' => $request->company_id,
             ]);
 
             if ($request->filled('task_id')) {
@@ -219,20 +284,23 @@ class ClientController extends Controller
 
             DB::commit();
 
-            return [
-                'status' => 'success',
-                'message' => $message,
-                'data' => $client,
-                'task_id' => $request->task_id,
-            ];
+            return new ClientStoreResponse(
+                'success',
+                'general',
+                $message,
+                $client->toArray(),
+                $request->task_id
+            );
+
         } catch (\Exception $e) {
             DB::rollBack();
             logger('Error in storeProcess(): ' . $e->getMessage());
 
-            return [
-                'status' => 'error',
-                'message' => 'Failed to create client',
-            ];
+            return new ClientStoreResponse(
+                'error',
+                'general',
+                'An error occurred while creating the client. Please try again.'
+            );
         }
     }
 
@@ -247,7 +315,7 @@ class ClientController extends Controller
             'phone' => 'required|string|max:15',
             'agent_id' => 'required|exists:agents,id',
             'company_id' => 'nullable|exists:companies,id', //this will be compulsory later
-            'civil_no' => 'required',
+            'civil_no' => 'nullable|string|max:100',
             'passport_no' => 'nullable|string',
             'date_of_birth' => 'nullable|date',
         ]);
@@ -258,44 +326,28 @@ class ClientController extends Controller
             $request->merge(['company_id' => $companyId]);
         }
 
-        $existingClient = null;
-
-        if ($request->civil_no) {
-            $existingClient = Client::where('company_id', $request->company_id)
-                ->where('civil_no', $request->civil_no)
-                ->with('agent') // Load the owner agent
-                ->first();
-
-            if ($existingClient) {
-                $duplicateResponse = $this->handleDuplicateClient($existingClient, $request, 'civil_no');
-                if ($duplicateResponse !== null) {
-                    return $duplicateResponse; // Return the duplicate handling response
-                }
-                // If null, continue with normal creation
-            }
-        } else {
-            $existingClient = Client::where('company_id', $request->company_id)
-                ->where('first_name', $request->first_name)
-                ->where('phone', preg_replace('/\s+/', '', $request->phone))
-                ->with('agent') // Load the owner agent
-                ->first();
-
-            if ($existingClient) {
-                $duplicateResponse = $this->handleDuplicateClient($existingClient, $request, 'name_phone');
-                if ($duplicateResponse !== null) {
-                    return $duplicateResponse; // Return the duplicate handling response
-                }
-                // If null, continue with normal creation
-            }
-        }
-
         $response = $this->storeProcess($request);
 
-        if ($response['status'] === 'error') {
-            return redirect()->back()->withInput()->with('error', $response['message']);
+        Log::info('Store process response: ', (array)$response);
+
+        $status = $response->status;
+        $type = $response->type;
+        $message = $response->message;
+
+        if ($status == 'error') {
+            if ($type == 'duplicate' && auth()->user()->role_id == Role::AGENT) {
+                $data = $response->data;
+                return $this->showAssignmentRequestForm(
+                    $data['existing_client'],
+                    $data['current_agent'],
+                    $data['owner_agent'],
+                    $data['duplicate_type'],
+                    $request
+                );
+            }
         }
 
-        return redirect()->back()->with('success', $response['message']);
+        return redirect()->back()->with($status, $message);
     }
 
     /**
@@ -313,9 +365,9 @@ class ClientController extends Controller
     /**
      * Handle duplicate client detection and assignment request workflow
      */
-    private function handleDuplicateClient($existingClient, $request, $duplicateType)
+    private function handleDuplicateClient($existingClient, $requestAgentId, $duplicateType) : array
     {
-        $currentAgent = Agent::find($request->agent_id);
+        $currentAgent = Agent::find($requestAgentId);
         $ownerAgent = $existingClient->agent;
         $assignedAgents = $existingClient->agents;
 
@@ -325,19 +377,40 @@ class ClientController extends Controller
                 ? 'You already have a client with this Civil No.'
                 : 'You already have a client with this name and phone number.';
 
-            return redirect()->back()->withInput()->with('error', $message);
+            // return redirect()->back()->withInput()->with('error', $message);
+            return [
+                'status' => 'error',
+                'message' => $message
+            ];
+
         }
 
         // Check if the current agent is already assigned to this client
         if ($existingClient->agents()->where('agent_id', $currentAgent->id)->exists()) {
-            return redirect()->back()->withInput()->with(
-                'info',
-                "You are already assigned to this client. You can find them in your client list under the name: {$existingClient->first_name} {$existingClient->last_name}"
-            );
+            // return redirect()->back()->withInput()->with(
+            //     'info',
+            //     "You are already assigned to this client. You can find them in your client list under the name: {$existingClient->first_name} {$existingClient->last_name}"
+            // );
+
+            return [
+                'status' => 'error',
+                'message' => "You are already assigned to this client. You can find them in your client list under the name: {$existingClient->first_name} {$existingClient->last_name}"
+            ];
         }
 
         // Show assignment request form instead of allowing duplicate creation
-        return $this->showAssignmentRequestForm($existingClient, $currentAgent, $ownerAgent, $duplicateType, $request);
+        // return $this->showAssignmentRequestForm($existingClient, $currentAgent, $ownerAgent, $duplicateType, $request);
+
+        return [
+            'status' => 'success',
+            'message' => 'Duplicate client detected',
+            'data' => [
+                'existing_client' => $existingClient,
+                'current_agent' => $currentAgent,
+                'owner_agent' => $ownerAgent,
+                'duplicate_type' => $duplicateType
+            ],
+        ];
     }
 
     /**

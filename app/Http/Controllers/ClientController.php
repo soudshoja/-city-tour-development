@@ -39,13 +39,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use App\Services\ChargeService;
 
-class StoreResponse
+class ClientStoreResponse
 {
     public string $status;
     public string $type;
     public string $message;
-    public array $data;
-    public int $task_id;
+    public ?array $data;
+    public ?int $task_id;
 
     public function __construct($status, $type, $message, $data = null, $task_id = null)
     {
@@ -175,7 +175,7 @@ class ClientController extends Controller
         ));
     }
 
-    public function storeProcess(Request $request) : StoreResponse
+    public function storeProcess(Request $request) : ClientStoreResponse
     {
         $request->validate([
             'first_name' => 'required|string|max:255',
@@ -227,9 +227,9 @@ class ClientController extends Controller
 
             Log::info('Duplicate client detected: ', $duplicateResponse);            
 
-            if ($duplicateResponse['status'] !== 'success') {
+            if ($duplicateResponse['status'] == 'success') { // means we succeed in handling duplicate client by showing assignment request form
 
-                return new StoreResponse(
+                return new ClientStoreResponse(
                     'error',
                     'duplicate',
                     $duplicateResponse['message'],
@@ -237,7 +237,7 @@ class ClientController extends Controller
                 );
             }
 
-            return new StoreResponse(
+            return new ClientStoreResponse(
                 'error',
                 'general',
                 $duplicateResponse['message']
@@ -284,11 +284,11 @@ class ClientController extends Controller
 
             DB::commit();
 
-            return new StoreResponse(
+            return new ClientStoreResponse(
                 'success',
                 'general',
                 $message,
-                $client,
+                $client->toArray(),
                 $request->task_id
             );
 
@@ -296,7 +296,7 @@ class ClientController extends Controller
             DB::rollBack();
             logger('Error in storeProcess(): ' . $e->getMessage());
 
-            return new StoreResponse(
+            return new ClientStoreResponse(
                 'error',
                 'general',
                 'An error occurred while creating the client. Please try again.'
@@ -326,9 +326,7 @@ class ClientController extends Controller
             $request->merge(['company_id' => $companyId]);
         }
 
-
         $response = $this->storeProcess($request);
-        dd($response);
 
         Log::info('Store process response: ', (array)$response);
 
@@ -338,11 +336,12 @@ class ClientController extends Controller
 
         if ($status == 'error') {
             if ($type == 'duplicate') {
+                $data = $response->data;
                 return $this->showAssignmentRequestForm(
-                    $response['data']['existing_client'],
-                    $response['data']['current_agent'],
-                    $response['data']['owner_agent'],
-                    $response['data']['duplicate_type'],
+                    $data['current_agent'],
+                    $data['existing_client'],
+                    $data['owner_agent'],
+                    $data['duplicate_type'],
                     $request
                 );
             }

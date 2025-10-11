@@ -315,7 +315,7 @@ class ClientController extends Controller
             'phone' => 'required|string|max:15',
             'agent_id' => 'required|exists:agents,id',
             'company_id' => 'nullable|exists:companies,id', //this will be compulsory later
-            'civil_no' => 'required',
+            'civil_no' => 'nullable|string|max:100',
             'passport_no' => 'nullable|string',
             'date_of_birth' => 'nullable|date',
         ]);
@@ -335,11 +335,11 @@ class ClientController extends Controller
         $message = $response->message;
 
         if ($status == 'error') {
-            if ($type == 'duplicate') {
+            if ($type == 'duplicate' && auth()->user()->role_id == Role::AGENT) {
                 $data = $response->data;
                 return $this->showAssignmentRequestForm(
-                    $data['current_agent'],
                     $data['existing_client'],
+                    $data['current_agent'],
                     $data['owner_agent'],
                     $data['duplicate_type'],
                     $request

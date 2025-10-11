@@ -16,12 +16,14 @@ class editCompanyIdInClientsTable extends Command
         $clients = Client::all();
 
         foreach($clients as $client) {
-            if ($client->agent && $client->agent->branch->company_id && $client->company_id == null) {
-                $client->company_id = $client->agent->branch->company_id;
-                $client->save();
-                $this->info("Updated client ID {$client->id} with company ID {$client->company_id}");
-            } else {
-                $this->warn("Client ID {$client->id} has no associated agent or agent has no company ID");
+            if($client->company_id == null){
+                if ($client->agent && $client->agent->branch->company_idl) {
+                    $client->company_id = $client->agent->branch->company_id;
+                    $client->save();
+                    $this->info("Updated client ID {$client->id} with company ID {$client->company_id}");
+                } else {
+                    $this->warn("Client ID {$client->id} has no associated agent or agent has no company ID");
+                }
             }
         }
     }

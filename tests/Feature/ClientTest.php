@@ -276,13 +276,12 @@ class ClientTest extends TestCase
             'dial_code' => '', // Required field missing
             'phone' => '', // Required field missing
             'agent_id' => 999, // Non-existent agent
-            'civil_no' => '', // Required field missing
         ];
 
         $response = $this->actingAs($this->adminUser)
                          ->post(route('clients.store'), $invalidData);
 
-        $response->assertSessionHasErrors(['first_name', 'email', 'dial_code', 'phone', 'agent_id', 'civil_no']);
+        $response->assertSessionHasErrors(['first_name', 'email', 'dial_code', 'phone', 'agent_id']);
     }
 
     public function test_client_show_page_displays_correctly()

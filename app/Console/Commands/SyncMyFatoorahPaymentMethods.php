@@ -50,7 +50,13 @@ class SyncMyFatoorahPaymentMethods extends Command
         $total = 0; $errors = 0;
 
         foreach ($companyIds as $companyId) {
-            $count = app(MFMethodSyncService::class)->sync((int)$companyId);
+
+            $myFatoorahChargeId = Charge::withoutGlobalScopes()
+                ->where('company_id', $companyId)
+                ->where('name', 'like', '%myfatoorah%')
+                ->value('id');
+
+            $count = app(MFMethodSyncService::class)->sync((int)$companyId, $myFatoorahChargeId);
 
             if ($count === false) {
                 $this->error("Company {$companyId}: sync failed");

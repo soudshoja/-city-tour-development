@@ -10,7 +10,7 @@ use App\Services\GatewayConfigService;
 
 class MFMethodSyncService
 {
-    public function sync(int $companyId)
+    public function sync(int $companyId, int $chargeId): int|false
     {
         try {
             $configService = new GatewayConfigService();
@@ -57,6 +57,7 @@ class MFMethodSyncService
             foreach ($methods as $method) {
                 PaymentMethod::updateOrCreate(
                     [
+                        'charge_id' => $chargeId,
                         'myfatoorah_id' => $method['PaymentMethodId'],
                         'company_id' => $companyId,
                         'type' => 'myfatoorah',

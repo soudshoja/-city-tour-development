@@ -3503,7 +3503,6 @@ class TaskController extends Controller
                     } else {
                         $response = $this->processSingleReservation($data, $agentId, $companyId);
 
-                        // dd($response);
                         if ($response['status'] == 'error') {
                             return redirect()->back()->with('error', $response['message'])->with('data', $response['data']['failed']);
                         }

@@ -713,6 +713,7 @@ class InvoiceController extends Controller
 
     public function savePartial(Request $request): JsonResponse
     {
+        Log::info('invoice.partial.payload', $request->all());
         $request->validate([
             'invoiceId' => 'required',
             'date' => 'nullable',
@@ -780,6 +781,24 @@ class InvoiceController extends Controller
                 $invoice->save();
             }
 
+            $isCash = strcasecmp($type ?? '', 'cash') === 0 || strcasecmp($gateway ?? '', 'cash') === 0;
+
+            // Handle new payment types: cash
+            if ($isCash) {
+                try {
+                    $receiptVoucher = new ReceiptVoucherController();
+                    return $receiptVoucher->autoGenerate($invoice, $request);
+
+                    if (! $invoice instanceof \App\Models\Invoice) {
+                        Log::error('Expected Invoice, got: '.(is_object($invoice) ? get_class($invoice) : gettype($invoice)));
+                        return response()->json(['ok' => false, 'message' => 'Internal type mismatch'], 500);
+                    }
+                } catch (Exception $e) {
+                    Log::error('Failed to auto generate the receipt voucer: ' . $e->getMessage());
+                    throw new \Exception('Failed to auto generate the receipt voucer: ' . $e->getMessage());
+                }
+            }
+
             $gatewayFee = 0;
 
             if (strtolower($gateway) === 'myfatoorah' && $method) {
@@ -830,7 +849,6 @@ class InvoiceController extends Controller
 
             $status = 'unpaid';
             try {
-
                 switch ($gateway) {
                     case 'Tabby':
                         $status = 'paid';
@@ -875,35 +893,12 @@ class InvoiceController extends Controller
                     }
                 }
 
-                // Handle new payment types: cash
-                if ($type === 'cash') {
-                    try {
-                        // For cash payment, do NOT mark invoice as paid - stays unpaid until receipt voucher
-                        $invoicePartial->status = 'unpaid';
-                        $invoicePartial->save();
-
-                        // Create journal entries for cash payment
-                        $journalResponse = $this->createPaymentJournalEntries($invoice, $invoicePartial, $amount, $type);
-
-                        if ($journalResponse['status'] == 'error') {
-                            throw new Exception($journalResponse['message']);
-                        }
-                    } catch (Exception $e) {
-                        Log::error('Failed to create payment journal entries: ' . $e->getMessage());
-                        throw new \Exception('Failed to create payment journal entries: ' . $e->getMessage());
-                    }
-                }
-
                 $invoice->payment_type = $type;
 
                 // Auto-payment logic: if charge has is_auto_paid = true, automatically mark as paid
                 if ($charge && $charge->is_auto_paid) {
                     $invoice->status = 'paid';
                     $invoice->paid_date = now();
-                } elseif ($type === 'cash') {
-                    // For cash payment, keep invoice as unpaid until receipt voucher is processed
-                    $invoice->status = 'unpaid';
-                    // Don't set paid_date for cash payments
                 } else {
                     $invoicePartial->status = $credit ? 'paid' : 'unpaid';
                     if ($credit) {

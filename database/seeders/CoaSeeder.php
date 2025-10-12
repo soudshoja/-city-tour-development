@@ -24,6 +24,7 @@ class CoaSeeder extends Seeder
             // Assets (Level 2 and deeper)
             ['code' => '1100', 'name' => 'Cash In Hand',                 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1110', 'name' => 'Petty Cash',                   'level' => 3, 'parent' => 'Cash In Hand', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1120', 'name' => 'Receipt Voucher Cash',         'level' => 3, 'parent' => 'Cash In Hand', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             
             ['code' => '1200', 'name' => 'Bank Accounts',                'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1201', 'name' => 'Kuwait International Bank',                      'level' => 3, 'parent' => 'Bank Accounts', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
@@ -101,6 +102,8 @@ class CoaSeeder extends Seeder
 
             ['code' => '2620', 'name' => 'Advances', 'level' => 2, 'parent' => 'Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2630', 'name' => 'Client', 'level' => 3, 'parent' => 'Advances', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '2631', 'name' => 'Cash', 'level' => 4, 'parent' => 'Client', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '2632', 'name' => 'Payment Link', 'level' => 4, 'parent' => 'Client', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
         
             // Equity (Level 2)
             ['code' => '3100', 'name' => 'Capital Stock',               'level' => 2, 'parent' => 'Equity', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],

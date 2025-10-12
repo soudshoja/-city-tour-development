@@ -173,6 +173,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/columns/save', [TaskController::class, 'saveColumnPrefs'])->name('columns.save');
         Route::post('/bulk-update', [TaskController::class, 'bulkUpdate'])->name('bulkUpdate');
         Route::post('/store-manual', [TaskController::class, 'storeManualHotel'])->name('store.manual');
+        Route::put('/update-financial/{task}', [TaskController::class, 'updateAdminFinancial'])->name('update.financial');
     });
 
     // SUPPLIERS

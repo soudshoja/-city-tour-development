@@ -566,7 +566,7 @@ class WhatsAppHotelController extends Controller
                 'offers.*.room_details.*.occupancy' => 'nullable|array',
             ]);
 
-            TemporaryOffer::where('telephone', $request->telephone)->delete();
+            // TemporaryOffer::where('telephone', $request->telephone)->delete();
 
             $allOffers = [];
 

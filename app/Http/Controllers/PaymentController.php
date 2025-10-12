@@ -111,18 +111,11 @@ class PaymentController extends Controller
 
         $client = $invoice->client;
 
-        $companyId = null;
+        $companyId = $invoice->agent->branch->company_id;
 
-        if ($auth->role_id == Role::COMPANY) {
-            $companyId = Company::where('user_id', $auth->id)->value('id');
-        } elseif ($auth->role_id == Role::AGENT) {
-            $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
-            $companyId = $agent->branch->company->id;
-        } elseif ($auth->role_id == Role::ACCOUNTANT) {
-            $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
-            $companyId = $accountant->branch->company->id;
-        } else {
-            $companyId = Company::value('id');
+        if(!$companyId){
+            Log::error('InvoiceController@create: Company not found for the invoice', ['invoice_id' => $invoice->id]);
+            return auth()->user() ? redirect()->back()->with('error', 'Company not found for this invoice!') : abort(404);
         }
 
         $company = $companyId ? Company::find($companyId) : null;
@@ -1909,7 +1902,6 @@ class PaymentController extends Controller
             return $this->importPaymentProcess($request);
             exit;
         }
-
         $request->validate([
             'payment_gateway' => 'required',
             'payment_method' => 'nullable',
@@ -1921,7 +1913,8 @@ class PaymentController extends Controller
             'auth_code' => 'nullable',
             'paymentReference' => 'nullable',
             'trackId' => 'nullable',
-            'notes' => 'nullable|string|max:255'
+            'notes' => 'nullable|string|max:255',
+            'currency' => 'nullable|string|max:3'
         ]);
 
         $companyId = null;
@@ -1963,6 +1956,26 @@ class PaymentController extends Controller
             ]);
             return ['status' => 'error', 'message' => $e->getMessage()];
         }
+
+        $paymentMethodId = (int) $request->payment_method;
+        
+        if (strtolower($request->payment_gateway) === 'myfatoorah') {
+            $chargeResult = ChargeService::FatoorahCharge($request->amount, $paymentMethodId, $companyId);
+        } else if (strtolower($request->payment_gateway) === 'tap') {
+            $chargeResult = ChargeService::TapCharge([
+                'amount' => $request->amount,
+                'client_id' => $client->id,
+                'agent_id' => $agent->id,
+                'currency' => $request->currency ?? 'KWD',
+            ], 'tap');
+
+        } else if (strtolower($request->payment_gateway) === 'upayment') {
+            $chargeResult = ChargeService::UPaymentCharge($request->amount, $paymentMethodId, $companyId);
+        } else if (strtolower($request->payment_gateway) === 'hesabe') {
+            $chargeResult = ChargeService::HesabeCharge($request->amount, $paymentMethodId, $companyId);
+        }
+
+        $serviceCharge = $chargeResult['gatewayFee'] ?? 0;
         
         try {
             $data = [
@@ -1974,6 +1987,7 @@ class PaymentController extends Controller
                 'currency' => 'KWD',
                 'payment_date' => Carbon::now(),
                 'amount' => $request->amount,
+                'service_charge' => $serviceCharge,
                 'payment_gateway' => $request->payment_gateway,
                 'payment_method_id' => $request->payment_method,
                 'status' => 'pending',
@@ -2057,7 +2071,6 @@ class PaymentController extends Controller
         $chargeResult = [];
         $gatewayFee = 0;
         $finalAmount = 0;
-        $paidBy = 'Company';
         $chargeData = [
             'amount'    => $payment->amount,
             'client_id' => $payment->client_id,
@@ -2071,11 +2084,9 @@ class PaymentController extends Controller
                 if ($invoicePartial) {
                     $gatewayFee = $invoicePartial->service_charge ?? 0;
                     $finalAmount = $payment->amount;
-                    $paidBy = ($gatewayFee > 0) ? 'Client' : 'Company';
                 } else {
                     $gatewayFee = 0;
                     $finalAmount = $payment->amount;
-                    $paidBy = 'Company';
                 }
             } else {
 
@@ -2089,7 +2100,7 @@ class PaymentController extends Controller
                 if(strtolower($payment->payment_gateway) === 'myfatoorah'){
                     $tempChargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
                 } else if(strtolower($payment->payment_gateway) === 'tap'){
-                    $tempChargeResult = ChargeService::TapCharge($payment->amount, $payment->payment_method_id, $companyId);
+                    $tempChargeResult = ChargeService::TapCharge($chargeData, $companyId);
                 } else if(strtolower($payment->payment_gateway) === 'upayment'){
                     $tempChargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
                 } else if(strtolower($payment->payment_gateway) === 'hesabe') {
@@ -2098,7 +2109,6 @@ class PaymentController extends Controller
 
                 $gatewayFee = $tempChargeResult['fee'] ?? 0;
                 $finalAmount = $payment->amount;
-                $paidBy = ($gatewayFee > 0) ? 'Client' : 'Company';
             }
         } else if ($payment->status !== 'completed') {
             $chargeData = [
@@ -2122,13 +2132,15 @@ class PaymentController extends Controller
 
             $gatewayFee = $chargeResult['fee'] ?? 0;
             $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
-            $paidBy = $chargeResult['paid_by'] ?? 'Company';
 
             $payment->service_charge = ($chargeResult['paid_by'] === 'Company') ? 0 : $chargeResult['fee'];
             $payment->save();
+        } else {
+            $gatewayFee = $payment->service_charge ?? 0;
+            $finalAmount = $payment->amount + $gatewayFee;
         }
 
-        return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy', 'invoiceRef', 'authorizationId'));
+        return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'invoiceRef', 'authorizationId'));
     }
 
     public function paymentLinkInitiate(Request $request)

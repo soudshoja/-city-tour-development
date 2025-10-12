@@ -33,21 +33,19 @@ class Tap
             'process' => 'nullable|string',
         ]);
 
-        $auth = Auth::user();
+        $payment = Payment::find($request->input('payment_id'));
 
-        $companyId = null;
+        $company = $payment->agent->branch->company;
 
-        if ($auth->role_id == Role::COMPANY) {
-            $companyId = Company::where('user_id', $auth->id)->value('id');
-        } elseif ($auth->role_id == Role::AGENT) {
-            $agent = Agent::with('branch')->where('user_id', $auth->id)->first();
-            $companyId = $agent->branch->company->id;
-        } elseif ($auth->role_id == Role::ACCOUNTANT) {
-            $accountant = Accountant::with('branch')->where('user_id', $auth->id)->first();
-            $companyId = $accountant->branch->company->id;
-        } else {
-            $companyId = Company::value('id');
+        if(!$company) {
+            logger('Tap: Company not found for payment', ['payment_id' => $payment->id]);
+            return [
+                'status' => 'error',
+                'message' => 'Company not found for the agent.',
+            ];
         }
+
+        $companyId = $company->id;
 
         $company = $companyId ? Company::find($companyId) : null;
         $companyEmail = $company?->email ?? 'admin@citytravelers.co';

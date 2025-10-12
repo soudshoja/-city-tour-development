@@ -49,7 +49,7 @@ use iio\libmergepdf\Merger;
 use iio\libmergepdf\Driver\Fpdi2Driver;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-
+use App\View\Components\AppLayout;
 
 class TaskController extends Controller
 {
@@ -329,7 +329,10 @@ class TaskController extends Controller
         }
 
         $countries = Country::all();
+        $hotels = Hotel::all();
         $suppliers = Supplier::with('companies');
+        $currencyExchange = (new AppLayout())->currencySidebar();
+        $currencies = $currencyExchange['currencies'];
 
         if ($user->role_id == Role::ADMIN) {
             $clients = Client::all();
@@ -453,10 +456,12 @@ class TaskController extends Controller
             'suppliers',
             'types',
             'countries',
+            'hotels',
             'paymentMethod',
             'visibleColumns',
             'allTypes',
-            'defaultColumns'
+            'defaultColumns',
+            'currencies',
             // 'searchTask'
         ));
     }
@@ -1037,6 +1042,146 @@ class TaskController extends Controller
                 'status' => 'error',
                 'message' => 'Task creation failed: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function storeManualHotel(Request $request)
+    {
+        $request->validate([
+            'reference' => 'required|string',
+            'company_id' => 'required|integer',
+            'supplier_id' => 'required|integer',
+            'client_id' => 'nullable|integer',
+            'client_name' => 'nullable|string',
+            'original_currency' => 'nullable|string',
+            'original_total' => 'nullable|numeric',
+            'original_price' => 'nullable|numeric',
+            'total' => 'required|numeric',
+            'price' => 'required|numeric',
+            'issued_date' => 'required|date',
+            'additional_info' => 'nullable|string',
+            'hotel_id' => 'required|integer',
+            'check_in' => 'required|date',
+            'check_out' => 'required|date',
+            'room_name' => 'required|string',
+            'passengers' => 'array',
+            'passengers.*' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $passengers = array_values(array_filter(
+                (array) $request->input('passengers', []),
+                fn ($v) => trim((string)$v) !== ''
+            ));
+            $firstPassenger = $passengers[0] ?? null;
+
+            $agentId = null;
+            if (Auth::user()->role_id == Role::AGENT) {
+                $agentId = Auth::user()->agent->id;
+            }
+
+            $checkIn = Carbon::parse($request->input('check_in'))->toDateString();
+            $checkOut = Carbon::parse($request->input('check_out'))->toDateString();
+            $roomType = $request->input('room_name');
+
+            $existQuery = Task::query()
+                ->where('reference', $request->reference)
+                ->where('company_id', $request->company_id)
+                ->where('status', 'issued')
+                ->where('supplier_status', 'issued')
+                ->when($request->filled('client_name'), fn($q) => $q->where('passenger_name', trim($request->client_name)))
+                ->when($request->filled('supplier_id'), fn($q) => $q->where('supplier_id', $request->supplier_id))
+                ->whereHas('hotelDetails', function ($q) use ($request, $checkIn, $checkOut, $roomType) {
+                    $q->where('hotel_id', $request->input('hotel_id'))
+                        ->whereDate('check_in',  $checkIn)
+                        ->whereDate('check_out', $checkOut);
+                    if ($roomType) $q->where('room_type', $roomType);
+                });
+
+            $existingTask = $existQuery->first();
+
+            Log::info('Manual hotel existing task check', [
+                'existing_task_id' => optional($existingTask)->id,
+                'hotel_id' => $request->input('hotel_id'),
+                'room_type' => $roomType,
+                'check_in' => $checkIn,
+                'check_out' => $checkOut,
+            ]);
+
+            if ($existingTask) {
+                DB::rollBack();
+                return redirect()->back()->withErrors(['error' => 'Task already created for this booking information.'])->withInput();
+            }
+
+            $origCurrency = $request->input('original_currency');
+
+            $task = Task::create([
+                'type' => 'hotel',
+                'reference' => $request->input('reference'),
+                'company_id' => $request->input('company_id'),
+                'status' => 'issued',
+                'supplier_status' => 'issued',
+                'issued_date' => $request->input('issued_date'),
+                'supplier_pay_date' => $request->input('issued_date'),
+                'supplier_id' => $request->input('supplier_id'),
+                'client_id' => $request->input('client_id'),
+                'client_name' => $request->input('client_name'),
+                'passenger_name' => $firstPassenger,
+                'agent_id' => $agentId,
+                'original_currency' => $origCurrency ?? null,
+                'exchange_currency' => 'KWD',
+                'original_price' => $origCurrency !== 'KWD' ? $request->input('original_price') : null,
+                'original_total' => $origCurrency !== 'KWD' ? $request->input('original_total') : null,
+                'price' => $request->input('price'),
+                'total' => $request->input('total'),
+                'additional_info' => $request->input('additional_info'),
+            ]);
+
+            $roomDetails = ([
+                'name' => $request->input('room_name') ?? null,
+                'board' => null,
+                'boardBasis' => null,
+                'info' => null,
+                'type' => null,
+                'passengers' => $passengers ?: null,
+            ]);
+
+            TaskHotelDetail::create([
+                'task_id' => $task->id,
+                'hotel_id' => $request->input('hotel_id'),
+                'check_in' => $request->input('check_in'),
+                'check_out' => $request->input('check_out'),
+                'room_type' => $request->input('room_name'),
+                'room_details' => $roomDetails ? json_encode($roomDetails) : null,
+            ]);
+
+            if ($task->is_complete && $task->agent && $task->client) {
+                $task->enabled = true;
+            } else {
+                $task->enabled = false;
+            }
+            $task->save();
+
+            $task->loadMissing('supplier');
+            $offline = ($task->type === 'hotel' && $task->supplier_id) ? !(bool) data_get($task, 'supplier.is_online', true) : false;
+            $shouldProcessFinancials = $offline && $task->is_complete;
+
+            if ($shouldProcessFinancials) {
+                Log::info("Processing financial transactions for complete task: " . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
+                $this->processTaskFinancial($task);
+            } else {
+                Log::warning('Financial processing skipped (task not complete): ' . $task->reference);
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Manual hotel task created successfully.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Manual Task creation failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return redirect()->back()->withErrors(['error' => 'Task creation failed: ' . $e->getMessage()])->withInput();
         }
     }
 
@@ -3100,6 +3245,15 @@ class TaskController extends Controller
                 throw new Exception('Status not found');
             }
 
+            $total = $prices['total']['selling']['value'] ?? null;
+
+            $isRefund = $status == 'reissued'  && $supplierStatus == 'AM' && $total <= 0;
+
+            if ($isRefund) {
+                $status = 'refund';
+                $total = $prices['issue']['selling']['value'] ?? null;
+            }
+
             $taskData = [
                 'client_id' => null,
                 'agent_id' => $agentId,
@@ -3114,7 +3268,7 @@ class TaskController extends Controller
                 'price' => $prices['issue']['selling']['value'] ?? null,
                 'tax' => 0.00,
                 'surcharge' => 0.00,
-                'total' => $prices['total']['selling']['value'] ?? null,
+                'total' => $total,
                 'cancellation_policy' => json_encode($cancellationPolicy) ?? null,
                 'cancellation_deadline' => $cancellationDate ?? null,
                 'additional_info' => $reservation['service']['hotel']['name'] . ' - ' . $clientName,
@@ -3171,6 +3325,7 @@ class TaskController extends Controller
                     'reference' => $taskData['reference'],
                     'message' => 'Error creating task: ' . $response['message'],
                 ];
+                continue;
             }
 
             $task = Task::with('hotelDetails')->find($response['data']['id']);
@@ -3298,6 +3453,13 @@ class TaskController extends Controller
             return redirect()->back()->with('error', 'User not authorized to create task');
         }
 
+        $request->merge([
+            'company_id' => $companyId,
+        ]);
+        if ($supplier->is_manual && $supplier->has_hotel) {
+            return $this->storeManualHotel($request);
+        }
+
         switch ($supplier->name) {
             case 'Magic Holiday':
 
@@ -3342,7 +3504,7 @@ class TaskController extends Controller
                         $response = $this->processSingleReservation($data, $agentId, $companyId);
 
                         if ($response['status'] == 'error') {
-                            return redirect()->back()->with('error', $response['message']);
+                            return redirect()->back()->with('error', $response['message'])->with('data', $response['data']['failed']);
                         }
 
                         $supplierController->magicReserveWebhook($data['id']);

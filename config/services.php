@@ -104,5 +104,9 @@ return [
         'merchant_code' => env('APP_ENV') == 'production' ? env('HESABE_MERCHANT_CODE') : env('HESABE_SANDBOX_MERCHANT_CODE'),
         'access_code' => env('APP_ENV') == 'production' ? env('HESABE_ACCESS_CODE') : env('HESABE_SANDBOX_ACCESS_CODE'),
         'iv_key' => env('APP_ENV') == 'production' ? env('HESABE_IV_KEY') : env('HESABE_SANDBOX_IV_KEY'),
+    ],
+
+    'n8n' => [
+        'webhook_url' => env('N8N_WEBHOOK_URL'),
     ]
 ];

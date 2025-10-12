@@ -239,10 +239,12 @@
                         <tbody id="paymentTable">
                             @foreach ($JournalEntrys as $index => $entry)
                                 <tr>
-                                    <td>
-                                      {{ $entry->transaction->invoiceReceipts()->first()->invoice_number }}
-                                        <input readonly type="hidden" name="items[{{ $index }}][invoice_number]"
-                                            value="{{ $entry->transaction->invoiceReceipts()->first()->invoice_number}}" />
+                                   <td>
+                                        {{ $entry->transaction->invoiceReceipts()->first()?->invoice_number ?? $entry->reference_number }}
+
+                                        <input type="hidden" readonly
+                                            name="items[{{ $index }}][invoice_number]"
+                                            value="{{ $entry->transaction->invoiceReceipts()->first()?->invoice_number ?? $entry->reference_number }}">
                                     </td>
                                     <td>
                                         {{ $entry->account ? '[' . $entry->account->root->name . '] [' . $entry->account->code . '] ' . $entry->account->name : 'N/A' }}

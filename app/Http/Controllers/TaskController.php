@@ -4191,20 +4191,22 @@ class TaskController extends Controller
             ], 404);
         }
 
-        $journalEntries = JournalEntry::where('task_id', $task->id)
-            ->where('branch_id', $branchId)
-            ->whereHas('account', function ($query) use ($liabilities) {
-                $query->where('root_id', $liabilities->id);
-            })
-            ->get();
+        // now edit payment method doesn't need to have journal entries in liabilities to be edited
 
-        if ($journalEntries->isEmpty()) {
-            Log::error('No existing journal entries found for task ID: ' . $task->id . ' with liabilities root ID: ' . $liabilities->id);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'No existing journal entries found for this task.',
-            ], 404);
-        }
+        // $journalEntries = JournalEntry::where('task_id', $task->id)
+        //     ->where('branch_id', $branchId)
+        //     ->whereHas('account', function ($query) use ($liabilities) {
+        //         $query->where('root_id', $liabilities->id);
+        //     })
+        //     ->get();
+
+        // if ($journalEntries->isEmpty()) {
+        //     Log::error('No existing journal entries found for task ID: ' . $task->id . ' with liabilities root ID: ' . $liabilities->id);
+        //     return response()->json([
+        //         'status' => 'error',
+        //         'message' => 'No existing journal entries found for this task.',
+        //     ], 404);
+        // }
 
         $creditorsAccount = Account::where('name', 'Creditors')
             ->where('company_id', $task->company_id)
@@ -4219,10 +4221,12 @@ class TaskController extends Controller
             ], 404);
         }
 
-        $journalEntriesWithCreditorsChild = $journalEntries->filter(function ($journalEntry) use ($creditorsAccount) {
-            $account = $journalEntry->account;
-            return $account && $account->parent_id === $creditorsAccount->id;
-        });
+        $journalEntriesWithCreditorsChild = JournalEntry::where('task_id', $task->id)
+            ->where('branch_id', $branchId)
+            ->whereHas('account', function ($query) use ($creditorsAccount) {
+                $query->where('parent_id', $creditorsAccount->id);
+            })
+            ->get();
 
         if ($journalEntriesWithCreditorsChild->isNotEmpty()) {
             Log::info('Found ' . $journalEntriesWithCreditorsChild->count() . ' journal entries attached to child accounts of Creditors account for task ID: ' . $task->id);
@@ -4268,7 +4272,6 @@ class TaskController extends Controller
             Log::info('No journal entries found attached to child accounts of Creditors account for task ID: ' . $task->id);
         }
 
-        Log::info('Found ' . $journalEntries->count() . ' journal entries for task ID: ' . $task->id);
 
         try {
             $transaction = Transaction::create([

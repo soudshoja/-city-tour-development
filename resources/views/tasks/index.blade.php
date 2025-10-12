@@ -411,7 +411,7 @@
         }
 
         .required-input::after {
-            content: 'This field is required';
+            content: 'This field is required to enable task';
             color: red;
         }
 
@@ -1352,7 +1352,7 @@
                                                                                         ? $selectedClient->full_name . ' - ' . $selectedClient->phone
                                                                                         : 'Select a Client';
                                                                                         @endphp
-                                                                                        <div class="flex-1 min-w-0">
+                                                                                        <div class="flex-1 min-w-0 {{ $task->client ?? 'required-input' }}">
                                                                                             <label for="client_id" class="block text-sm font-medium text-gray-700">Client</label>
                                                                                             <div class="w-full">
                                                                                                 <x-searchable-dropdown
@@ -1383,14 +1383,14 @@
                                                                                                 @endforeach
                                                                                             </select> -->
                                                                                             <x-searchable-dropdown
-                                                                                                name="agent_id_select{{ $task->id }}"
+                                                                                                name="agent_id"
                                                                                                 :items="$agents->map(fn($c) => [
                                                                                                         'id' => $c->id, 
                                                                                                         'name' => $c->name . ' - ' . $c->branch->name
                                                                                                     ])"
                                                                                                 :selectedId="$task->agent_id"
                                                                                                 :selectedName="$task->agent ? $task->agent->name . ' - ' . $task->agent->branch->name : null"
-                                                                                                placeholder="Select Client" />
+                                                                                                placeholder="Select Agent" />
                                                                                         </div>
                                                                                     </div>
 

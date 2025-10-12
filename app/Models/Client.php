@@ -27,6 +27,7 @@ class Client extends Model
         'date_of_birth',
         'phone',
         'country_code',
+        'company_id',
     ];
 
     protected $appends = ['full_name'];

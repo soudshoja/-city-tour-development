@@ -117,7 +117,8 @@
                             hasEvent: {{ $supplier->has_event ? 'true' : 'false' }},
                             hasLounge: {{ $supplier->has_lounge ? 'true' : 'false' }},
                             hasFerry: {{ $supplier->has_ferry ? 'true' : 'false' }},
-                            hotelChannel: '{{ old('hotel_channel', ($supplier->is_online === null ? '' : ($supplier->is_online ? 'online' : 'offline'))) }}'
+                            hotelChannel: '{{ old('hotel_channel', ($supplier->is_online === null ? '' : ($supplier->is_online ? 'online' : 'offline'))) }}',
+                            isManual: {{ $supplier->is_manual ? 'true' : 'false' }},
                         }" class="mt-2">
                         <span class="text-sm font-medium text-gray-700 mr-3 whitespace-nowrap shrink-0">Service Type</span>
 
@@ -308,16 +309,32 @@
                         </div>
 
                         <div x-cloak x-show="hasHotel" class="mt-2" @click.stop>
-                            <label for="hotel_channel" class="block text-sm font-medium text-gray-700 mb-1">Hotel Supplier Mode</label>
-                            <select name="hotel_channel" id="hotel_channel" x-model="hotelChannel" :disabled="!hasHotel"
-                                class="block h-10 w-64 md:w-72 min-w-[16rem] border border-gray-300 rounded px-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
-                                <option value="" disabled>Select mode</option>
-                                <option value="online">Online</option>
-                                <option value="offline">Offline</option>
-                            </select>
-                            <template x-if="hasHotel">
-                                <input type="hidden" name="is_online" :value="hotelChannel === 'online' ? 1 : 0">
-                            </template>
+                            <div class="flex flex-col md:flex-row md:items-end gap-6">
+                                <div class="flex flex-col">
+                                    <label for="hotel_channel" class="block text-sm font-medium text-gray-700 mb-1">Hotel Supplier Mode</label>
+                                    <select name="hotel_channel" id="hotel_channel" x-model="hotelChannel" :disabled="!hasHotel"
+                                        class="block h-10 w-64 md:w-72 min-w-[16rem] border border-gray-300 rounded px-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                                        <option value="" disabled>Select mode</option>
+                                        <option value="online">Online</option>
+                                        <option value="offline">Offline</option>
+                                    </select>
+                                    <template x-if="hasHotel">
+                                        <input type="hidden" name="is_online" :value="hotelChannel === 'online' ? 1 : 0">
+                                    </template>
+                                </div>
+                                <div class="flex flex-col">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Manual Supplier</label>
+                                    <button type="button" @click="isManual = !isManual"
+                                        :aria-pressed="isManual.toString()"
+                                        class="w-11 h-6 rounded-full relative transition"
+                                        :class="isManual ? 'bg-blue-600' : 'bg-gray-200'">
+                                        <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition" :class="isManual ? 'translate-x-5' : ''"></span>
+                                    </button>
+                                    <template x-if="isManual">
+                                        <input type="hidden" name="is_manual" value="1">
+                                    </template>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="mt-5 flex items-center justify-between">
@@ -333,9 +350,7 @@
                         </button>
                     </div>
                 </form>
-
             </div>
-
         </div>
         @endif
     </div>
@@ -350,7 +365,7 @@
                     <th class="px-4 py-2 border-b">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="suppliersTable">
                 @if($suppliers->isEmpty())
                 <tr>
                     <td colspan="3" class="text-center">No suppliers found</td>
@@ -473,7 +488,8 @@
                                             hasEvent: {{ $supplier->has_event ? 'true' : 'false' }},
                                             hasLounge: {{ $supplier->has_lounge ? 'true' : 'false' }},
                                             hasFerry: {{ $supplier->has_ferry ? 'true' : 'false' }},
-                                            hotelChannel: '{{ old('hotel_channel', ($supplier->is_online === null ? '' : ($supplier->is_online ? 'online' : 'offline'))) }}'
+                                            hotelChannel: '{{ old('hotel_channel', ($supplier->is_online === null ? '' : ($supplier->is_online ? 'online' : 'offline'))) }}',
+                                            isManual: {{ $supplier->is_manual ? 'true' : 'false' }},
                                         }" class="mt-2">
                                         <span class="text-sm font-medium text-gray-700 mr-3 whitespace-nowrap shrink-0">Service Type</span>
 
@@ -660,20 +676,36 @@
                                                     <input type="hidden" name="has_ferry" value="1">
                                                 </template>
                                             </div>
-
                                         </div>
 
                                         <div x-cloak x-show="hasHotel" class="mt-2" @click.stop>
-                                            <label for="hotel_channel" class="block text-sm font-medium text-gray-700 mb-1">Hotel Supplier Mode</label>
-                                            <select name="hotel_channel" id="hotel_channel" x-model="hotelChannel" :disabled="!hasHotel"
-                                                class="block h-10 w-64 md:w-72 min-w-[16rem] border border-gray-300 rounded px-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
-                                                <option value="" disabled>Select mode</option>
-                                                <option value="online">Online</option>
-                                                <option value="offline">Offline</option>
-                                            </select>
-                                            <template x-if="hasHotel">
-                                                <input type="hidden" name="is_online" :value="hotelChannel === 'online' ? 1 : 0">
-                                            </template>
+                                            <div class="flex flex-col md:flex-row md:items-end gap-6">
+                                                <div class="flex flex-col">
+                                                    <label for="hotel_channel" class="block text-sm font-medium text-gray-700 mb-1">Hotel Supplier Mode</label>
+                                                    <select name="hotel_channel" id="hotel_channel" x-model="hotelChannel" :disabled="!hasHotel"
+                                                        class="block h-10 w-64 md:w-72 min-w-[16rem] border border-gray-300 rounded px-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                                                        <option value="" disabled>Select mode</option>
+                                                        <option value="online">Online</option>
+                                                        <option value="offline">Offline</option>
+                                                    </select>
+                                                    <template x-if="hasHotel">
+                                                        <input type="hidden" name="is_online" :value="hotelChannel === 'online' ? 1 : 0">
+                                                    </template>
+                                                </div>
+                                                <div class="flex flex-col">
+                                                    <label class="block text-sm font-medium text-gray-700 mb-1">Manual Supplier</label>
+                                                    <button type="button" @click="isManual = !isManual"
+                                                        :aria-pressed="isManual.toString()"
+                                                        class="w-11 h-6 rounded-full relative transition"
+                                                        :class="isManual ? 'bg-blue-600' : 'bg-gray-200'">
+                                                        <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition"
+                                                            :class="isManual ? 'translate-x-5' : ''"></span>
+                                                    </button>
+                                                    <template x-if="isManual">
+                                                        <input type="hidden" name="is_manual" value="1">
+                                                    </template>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -745,6 +777,31 @@
     </div>
     @endrole
     <script>
+        const searchInput   = document.getElementById('searchInput');
+        const suppliersData = document.getElementById('suppliersData');
+        const tbody = document.getElementById('suppliersTable');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        function applyFilter(q) {
+            const query = q.trim().toLowerCase();
+            let visible = 0;
+
+            rows.forEach(row => {
+                const nameCell = row.querySelector('td:first-child');
+                if (!nameCell) return;
+
+                const match = nameCell.textContent.toLowerCase().includes(query);
+                row.style.display = match ? '' : 'none';
+                if (match) visible++;
+            });
+
+            suppliersData.textContent = visible;
+        }
+
+        applyFilter('');
+        searchInput.addEventListener('input', (e) => applyFilter(e.target.value));
+    </script>
+    <!-- <script>
         const searchInput = document.getElementById('searchInput');
         const suppliersData = document.getElementById('suppliersData');
         const suppliers = @json($suppliers);
@@ -801,5 +858,5 @@
                 oauthInput.classList.remove('hidden');
             }
         });
-    </script>
+    </script> -->
 </x-app-layout>

@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 // testing
+use Exception;
 use App\AI\AIManager;
 use App\Http\Traits\Converter;
 use App\Http\Traits\CurrencyExchangeTrait;
 use App\Http\Traits\NotificationTrait;
-use Illuminate\Http\Request;
+use App\View\Components\AppLayout;
 use App\Models\Task;
 use App\Models\Agent;
 use App\Models\TaskFlightDetail;
@@ -23,33 +24,30 @@ use App\Models\Room;
 use App\Models\TaskHotelDetail;
 use App\Models\TaskInsuranceDetail;
 use App\Models\TaskVisaDetail;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Exception;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\SupplierCompany;
 use App\Models\Transaction;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
-use Illuminate\Support\Facades\DB;
 use App\Models\Payment;
-use Illuminate\Support\Facades\Date;
 use App\Models\FileUpload;
-use Illuminate\Database\Eloquent\Casts\Json;
+use App\Models\SystemLog;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use iio\libmergepdf\Merger;
 use iio\libmergepdf\Driver\Fpdi2Driver;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
-use App\View\Components\AppLayout;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class TaskController extends Controller
 {
@@ -123,7 +121,7 @@ class TaskController extends Controller
                 $query->whereHas('invoiceDetail');
             } elseif ($request->input('invoiced') == '0') {
                 $amadeusId = Supplier::where('name', 'Amadeus')->value('id');
-                $jazeeraId = Supplier::where('name', 'Jazeera Airways')->value('id'); 
+                $jazeeraId = Supplier::where('name', 'Jazeera Airways')->value('id');
 
                 $query->whereDoesntHave('invoiceDetail');
 
@@ -163,7 +161,7 @@ class TaskController extends Controller
                         });
                 });
             }
-        }  
+        }
 
         $filterable = [
             'reference',
@@ -201,8 +199,8 @@ class TaskController extends Controller
                         $query->whereHas('client', function ($q) use ($billTos) {
                             foreach ($billTos as $billTo) {
                                 $q->orWhere('first_name', 'like', '%' . $billTo . '%')
-                                ->orWhere('last_name', 'like', '%' . $billTo . '%')
-                                ->orWhere('phone', 'like', '%' . $billTo . '%');
+                                    ->orWhere('last_name', 'like', '%' . $billTo . '%')
+                                    ->orWhere('phone', 'like', '%' . $billTo . '%');
                             }
                         });
                     }
@@ -1011,7 +1009,7 @@ class TaskController extends Controller
             // Process financial transactions immediately if task is complete (regardless of agent assignment)
             // This ensures company liability to supplier is tracked immediately
             // Special case: Void tasks should ALWAYS process financials if they have an original_task_id
-            $shouldProcessFinancials = $offline && $task->is_complete || $task->status !== 'confirmed'|| ($task->status == 'void' && $task->original_task_id);
+            $shouldProcessFinancials = $offline && $task->is_complete || $task->status !== 'confirmed' || ($task->status == 'void' && $task->original_task_id);
 
             if ($shouldProcessFinancials) {
                 $supplierName = strtolower(optional($task->supplier)->name ?? '');
@@ -1073,7 +1071,7 @@ class TaskController extends Controller
         try {
             $passengers = array_values(array_filter(
                 (array) $request->input('passengers', []),
-                fn ($v) => trim((string)$v) !== ''
+                fn($v) => trim((string)$v) !== ''
             ));
             $firstPassenger = $passengers[0] ?? null;
 
@@ -1559,7 +1557,6 @@ class TaskController extends Controller
             'description' => 'Task created: ' . $task->reference,
             'reference_type' => 'Payment',
             'transaction_date' => $transactionDate,
-            
         ]);
 
         if (!$transaction) {
@@ -2405,6 +2402,297 @@ class TaskController extends Controller
             Log::error('Task update failed: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Task update failed: ' . $e->getMessage());
         }
+    }
+
+    public function updateAdminFinancial(Request $request, Task $task)
+    {
+        $request->validate([
+            'price' => 'nullable|numeric',
+            'tax' => 'nullable|numeric',
+            'surcharge' => 'nullable|numeric',
+            'total' => 'required|numeric',
+            'remarks' => 'required|string|min:10',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $oldTotal = $task->total;
+            $newTotal = $request->total;
+
+            $task->price = $request->price;
+            $task->tax = $request->tax;
+            $task->surcharge = $request->surcharge;
+            $task->total = $newTotal;
+            $task->save();
+
+            $journalEntries = JournalEntry::with('transaction')
+                ->where('task_id', $task->id)
+                ->whereHas('transaction', function ($q) use ($task) {
+                    $q->where('description', 'like', '%' . $task->reference . '%');
+                })->get();
+
+            foreach ($journalEntries as $entry) {
+                $beforeTxAmt = $entry->transaction ? $entry->transaction->amount : null;
+                $beforeDebit = $entry->debit ?? 0;
+                $beforeCredit = $entry->credit ?? 0;
+                if ($entry->transaction) {
+                    $entry->transaction->amount = $newTotal;
+                    $entry->transaction->save();
+                }
+
+                if ($beforeTxAmt === null || abs($beforeTxAmt - $newTotal) >= 0.0005) {
+                    SystemLog::create([
+                        'user_id' => Auth::user()->id,
+                        'model' => 'task',
+                        'current_value' => $beforeTxAmt ?? 'null',
+                        'new_value' => $newTotal,
+                        'remarks' => "Transaction #{$entry->transaction->id} amount changed | " . $request->remarks,
+                    ]);
+                }
+
+                if (($entry->debit ?? 0) > 0) {
+                    $entry->debit = $newTotal;
+                    $entry->credit = 0;
+                    $entry->balance = $newTotal;
+                } else {
+                    $entry->credit = $newTotal;
+                    $entry->debit = 0;
+                    $entry->balance = $newTotal;
+                }
+    
+                if (isset($entry->amount)) {
+                    $entry->amount = $newTotal;
+                }
+                $entry->save();
+
+                if (abs($beforeDebit - $entry->debit) >= 0.0005) {
+                    SystemLog::create([
+                        'user_id' => Auth::user()->id,
+                        'model' => 'task',
+                        'current_value' => $beforeDebit,
+                        'new_value' => $entry->debit,
+                        'remarks' => "JE #{$entry->id} debit updated | " . $request->remarks,
+                    ]);
+                }
+
+                if (abs($beforeCredit - $entry->credit) >= 0.0005) {
+                    SystemLog::create([
+                        'user_id' => Auth::user()->id,
+                        'model' => 'task',
+                        'current_value' => $beforeCredit,
+                        'new_value' => $entry->credit,
+                        'remarks' => "JE #{$entry->id} credit updated | " . $request->remarks,
+                    ]);
+                }
+            }
+
+            $invoiceDetail = $task->invoiceDetail;
+            if ($invoiceDetail) {
+                $selling = $invoiceDetail->task_price ?? 0;
+                $beforeSupplier = $invoiceDetail->supplier_price ?? 0;
+                $beforeMarkup = $invoiceDetail->markup_price ?? 0;
+                $invoiceDetail->supplier_price = $newTotal;
+                $invoiceDetail->markup_price = $selling - $newTotal;
+                $invoiceDetail->save();
+
+                if (abs($beforeSupplier - $invoiceDetail->supplier_price) >= 0.0005) {
+                    SystemLog::create([
+                        'user_id' => Auth::user()->id,
+                        'model' => 'task',
+                        'current_value' => $beforeSupplier,
+                        'new_value' => $invoiceDetail->supplier_price,
+                        'remarks' => "InvoiceDetail #{$invoiceDetail->id} supplier_price updated | " . $request->remarks,
+                    ]);
+                }
+            
+                if (abs($beforeMarkup - $invoiceDetail->markup_price) >= 0.0005) {
+                    SystemLog::create([
+                        'user_id' => Auth::user()->id,
+                        'model' => 'task',
+                        'current_value' => $beforeMarkup,
+                        'new_value' => $invoiceDetail->markup_price,
+                        'remarks' => "InvoiceDetail #{$invoiceDetail->id} markup_price updated | " . $request->remarks,
+                    ]);
+                }
+            }
+
+            $isPaid = InvoiceDetail::where('task_id', $task->id)
+                ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
+                ->exists();
+
+            if ($isPaid) {
+                $this->recalculateCommissionForTask($task, $newTotal);
+            }
+
+            SystemLog::create([
+                'user_id' => Auth::user()->id,
+                'model' => 'task',
+                'current_value' => $oldTotal,
+                'new_value' => $newTotal,
+                'remarks' => $request->remarks,
+            ]);
+
+            DB::commit();
+            return back()->with('success', 'Task financials and related records were updated successfully.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Admin amount adjust failed', ['task_id' => $task->id, 'err' => $e->getMessage()]);
+            return back()->with('error', 'Adjustment failed: ' . $e->getMessage());
+        }
+    }
+
+    protected function recalculateCommissionForTask(Task $task, float $newSupplierAmount): void
+    {
+        $agent = $task->agent;
+        if (!$agent) return;
+        if (!in_array((int) $agent->type_id, [2, 3], true)) return;
+
+        $invoiceDetail = $task->invoiceDetail;
+        if (!$invoiceDetail) return;
+
+        $selling = $invoiceDetail->task_price ?? 0;
+        $supplier = $newSupplierAmount ?? 0;
+        $rate = $agent->commission ?? 0.15;
+        $markup = $selling - $supplier;
+        $commission = $rate * $markup;
+
+        $commissionLiabilityAcc = Account::where('name', 'Commissions (Agents)')
+            ->where('company_id', $task->company_id)
+            ->first();
+
+        $commissionExpenseAcc = Account::where('name', 'like', '%Commissions Expense (Agents)%')
+            ->where('company_id', $task->company_id)
+            ->first();
+
+        if (!$commissionLiabilityAcc || !$commissionExpenseAcc) return;
+
+        $entriesLiability = JournalEntry::with('transaction')
+            ->where('invoice_detail_id', $invoiceDetail->id)
+            ->where('account_id', $commissionLiabilityAcc->id)
+            ->get();
+
+        $entriesExpense = JournalEntry::with('transaction')
+            ->where('invoice_detail_id', $invoiceDetail->id)
+            ->where('account_id', $commissionExpenseAcc->id)
+            ->get();
+
+        if ($entriesLiability->isEmpty() && $entriesExpense->isEmpty()) return;
+
+        DB::transaction(function () use ($entriesLiability, $entriesExpense, $commission) {
+            // Update agents (liability) entries: set CREDIT
+            foreach ($entriesLiability as $je) {
+                $beforeDebit  = $je->debit ?? 0;
+                $beforeCredit = $je->credit ?? 0;
+                $beforeBalance = $je->balance ?? 0;
+                $beforeTxAmt = $je->transaction ? $je->transaction->amount : null;
+
+                $je->debit = 0;
+                $je->credit = $commission;
+                $je->balance = $commission;
+                if (isset($je->amount)) $je->amount = $commission;
+                $je->save();
+
+                if ($je->transaction) {
+                    $je->transaction->amount = $commission;
+                    $je->transaction->save();
+
+                    if (abs($beforeTxAmt - $je->transaction->amount) >= 0.0005) {
+                        SystemLog::create([
+                            'user_id' => Auth::user()->id,
+                            'model' => 'task',
+                            'current_value' => $beforeTxAmt ?? 'null',
+                            'new_value' => $je->transaction->amount,
+                            'remarks' => "Commission liability TX #{$je->transaction->id} amount updated",
+                        ]);
+                    }
+                }
+
+                if (abs($beforeCredit - $je->credit) >= 0.0005) {
+                    SystemLog::create([
+                        'user_id' => Auth::id(),
+                        'model' => 'task',
+                        'current_value' => $beforeCredit,
+                        'new_value' => $je->credit,
+                        'remarks' => "Commission liability JE #{$je->id} credit updated",
+                    ]);
+                }
+                if (abs($beforeDebit - $je->debit) >= 0.0005) {
+                    SystemLog::create([
+                        'user_id' => Auth::user()->id,
+                        'model' => 'task',
+                        'current_value' => $beforeDebit,
+                        'new_value' => $je->debit,
+                        'remarks' => "Commission liability JE #{$je->id} debit updated",
+                    ]);
+                }
+                if (abs($beforeBalance - $je->balance) >= 0.0005) {
+                    SystemLog::create([
+                        'user_id' => Auth::user()->id,
+                        'model' => 'task',
+                        'current_value' => $beforeBalance,
+                        'new_value' => $je->balance,
+                        'remarks' => "Commission liability JE #{$je->id} balance updated",
+                    ]);
+                }   
+            }
+
+            // Update expense entries: set DEBIT
+            foreach ($entriesExpense as $je) {
+                $beforeDebit = $je->debit ?? 0;
+                $beforeCredit = $je->credit ?? 0;
+                $beforeBalance = $je->balance ?? 0;
+                $beforeTxAmt = $je->transaction ? $je->transaction->amount : null;
+
+                $je->credit = 0;
+                $je->debit = $commission;
+                $je->balance = $commission;
+                if (isset($je->amount)) $je->amount = $commission;
+                $je->save();
+
+                if ($je->transaction) {
+                    $je->transaction->amount = $commission;
+                    $je->transaction->save();
+
+                    if (abs($beforeTxAmt - (float)$je->transaction->amount) >= 0.0005) {
+                        SystemLog::create([
+                            'user_id' => Auth::user()->id,
+                            'model' => 'task',
+                            'current_value' => $beforeTxAmt ?? 'null',
+                            'new_value' => $je->transaction->amount,
+                            'remarks' => "Commission expense TX #{$je->transaction->id} amount updated",
+                        ]);
+                    }
+                }
+
+                if (abs($beforeDebit - $je->debit) >= 0.0005) {
+                    SystemLog::create([
+                        'user_id' => Auth::user()->id,
+                        'model' => 'task',
+                        'current_value' => $beforeDebit,
+                        'new_value' => $je->debit,
+                        'remarks' => "Commission expense JE #{$je->id} debit updated",
+                    ]);
+                }
+                if (abs($beforeCredit - $je->credit) >= 0.0005) {
+                    SystemLog::create([
+                        'user_id' => Auth::user()->id,
+                        'model' => 'task',
+                        'current_value' => $beforeCredit,
+                        'new_value' => $je->credit,
+                        'remarks' => "Commission expense JE #{$je->id} credit updated",
+                    ]);
+                }
+                if (abs($beforeBalance - $je->balance) >= 0.0005) {
+                    SystemLog::create([
+                        'user_id' => Auth::user()->id,
+                        'model' => 'task',
+                        'current_value' => $beforeBalance,
+                        'new_value' => $je->balance,
+                        'remarks' => "Commission expense JE #{$je->id} balance updated",
+                    ]);
+                }
+            }
+        });
     }
 
     public function upload(Request $request)
@@ -3463,7 +3751,7 @@ class TaskController extends Controller
         switch ($supplier->name) {
             case 'Magic Holiday':
 
-                if (!$request->supplier_ref && !$request->has('batches')){
+                if (!$request->supplier_ref && !$request->has('batches')) {
                     return redirect()->back()->with('error', 'Please provide either a supplier reference or upload a task file.');
                 }
 
@@ -3845,7 +4133,7 @@ class TaskController extends Controller
         $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
 
         $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
-        
+
         $transaction = Transaction::create([
             'branch_id' => $originalTask->agent->branch_id,
             'company_id' => $originalTask->company_id,

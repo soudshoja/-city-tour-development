@@ -1158,7 +1158,9 @@
                                                                 <span class="slider round"></span>
                                                             </label>
                                                         </div>
-                                                        <div x-data="{ open: false, editOpen: false }" @keydown.escape.window="open = false; editOpen = false" class="relative flex items-center justify-center h-full">
+                                                        <div x-data="{ open: false, editOpen: false, adminAmountOpen: false }"
+                                                            @keydown.escape.window="open = false; editOpen = false; adminAmountOpen = false"
+                                                            class="relative flex items-center justify-center h-full">
                                                             <button @click.stop="open = !open" x-ref="button"
                                                                 class="p-2 rounded-full bg-gray-100 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 focus:outline-none flex items-center justify-center">
                                                                 <svg class="w-5 h-5 text-gray-700 dark:text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -1189,6 +1191,17 @@
                                                                                 Edit Task
                                                                             </a>
                                                                         </li>
+                                                                        @if (Auth()->user()->role_id == \App\Models\Role::ADMIN)
+                                                                        <li>
+                                                                            <a href="javascript:void(0);" @click.stop="adminAmountOpen = true"
+                                                                                class="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                                                                <svg class="w-7 h-7 mr-2 text-amber-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                                                    <path d="M12 20h9M15 3l6 6-9 9H6v-6l9-9z" />
+                                                                                </svg>
+                                                                                Edit Task Financials
+                                                                            </a>
+                                                                        </li>
+                                                                        @endif
                                                                     </ul>
                                                                 </div>
                                                             </template>
@@ -1444,9 +1457,73 @@
                                                                     </form>
                                                                 </div>
                                                             </template>
+                                                            <template x-teleport="body">
+                                                                <div x-show="adminAmountOpen" x-cloak
+                                                                    class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800/60">
+                                                                    <form id="financial-form-{{ $task->id }}" action="{{ route('tasks.update.financial', $task->id) }}" method="POST"
+                                                                        class="inline-flex flex-col gap-4 items-stretch w-full sm:max-w-md mx-4 bg-white rounded-md border p-6 relative">
+                                                                        @csrf
+                                                                        @method('PUT')
+                                                                        <div @click.away="adminAmountOpen = false">
+                                                                            <button type="button" @click="adminAmountOpen = false"
+                                                                                class="absolute top-2 right-2 p-2 text-gray-400 hover:text-red-500 text-2xl">&times;</button>
+                                                                            <div class="mb-2">
+                                                                                <h2 class="text-xl font-bold text-gray-800">Edit Task Financials</h2>
+                                                                                <p class="text-gray-600 italic text-xs mt-1">
+                                                                                    Update <strong>Price</strong>, <strong>Tax</strong>, and <strong>Surcharge</strong>.
+                                                                                    The <strong>Total</strong> recalculates automatically. This action update the task and its related COA records.
+                                                                                    @if($isInvoicedAndPaid)
+                                                                                        It will also recalculate commission for the <strong>paid</strong> invoice.
+                                                                                    @endif
+                                                                                </p>
+                                                                            </div>
+                                                                            <div x-data="{
+                                                                                    rawPrice: '{{ $task->price ?? 0 }}',
+                                                                                    rawTax: '{{ $task->tax ?? 0 }}',
+                                                                                    rawSurcharge: '{{ $task->surcharge ?? 0 }}',
+                                                                                    get total() {
+                                                                                        const p = parseFloat((this.rawPrice||'').toString().replace(/,/g,'')) || 0;
+                                                                                        const t = parseFloat((this.rawTax||'').toString().replace(/,/g,'')) || 0;
+                                                                                        const s = parseFloat((this.rawSurcharge||'').toString().replace(/,/g,'')) || 0;
+                                                                                        return (p + t + s).toFixed(3);
+                                                                                    }
+                                                                                }"
+                                                                                class="space-y-3">
+                                                                                <div>
+                                                                                    <label class="block text-sm font-medium text-gray-700">Price</label>
+                                                                                    <input name="price" x-model="rawPrice" class="border p-2 border-gray-300 rounded-md w-full">
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label class="block text-sm font-medium text-gray-700">Tax</label>
+                                                                                    <input name="tax" x-model="rawTax" class="border p-2 border-gray-300 rounded-md w-full">
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label class="block text-sm font-medium text-gray-700">Surcharge</label>
+                                                                                    <input name="surcharge" x-model="rawSurcharge" class="border p-2 border-gray-300 rounded-md w-full">
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label class="block text-sm font-medium text-gray-700">Total</label>
+                                                                                    <input required readonly name ="total" :value="total" class="border border-gray-300 p-2 rounded-md w-full bg-gray-100">
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label class="block text-sm font-medium text-gray-700">Remarks *</label>
+                                                                                    <textarea required name="remarks" rows="3" class="border border-gray-300 p-2 rounded-md w-full"
+                                                                                        placeholder="Enter reason for adjustment (required)"></textarea>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div class="mt-4 flex items-center justify-between gap-3">
+                                                                                <button type="button" @click="adminAmountOpen = false"
+                                                                                    class="px-4 py-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700">Cancel</button>
+                                                                                <button type="submit"
+                                                                                    class="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-600 text-white">Apply Adjustment</button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </form>
+                                                                </div>
+                                                            </template>
                                                         </div>
                                                         @can('destroy', App\Models\Task::class)
-                                                        <form action="{{ route('tasks.destroy', $task->id) }}" method="POST">
+                                                        <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" class="ml-1">
                                                             @csrf
                                                             @method('DELETE')
                                                             <button type="submit" class="group" @click.stop>

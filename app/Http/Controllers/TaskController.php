@@ -2035,6 +2035,13 @@ class TaskController extends Controller
                 ], 400);
             }
 
+            if ($task->supplier_pay_date == null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Task must have an issued date before it can be enabled.'
+                ], 400);
+            }
+
             if ($task->status === 'void') {
                 $journalEntries = JournalEntry::where('task_id', $task->original_task_id)
                     ->whereHas('transaction', function ($q) {
@@ -2188,7 +2195,8 @@ class TaskController extends Controller
 
     public function update(Request $request, $id)
     {
-        $request->validate([
+        $task = Task::findOrFail($id);
+        $rules = [
             'reference' => 'nullable|string',
             'status' => 'required',
             'price' => 'nullable|numeric',
@@ -2200,18 +2208,22 @@ class TaskController extends Controller
             'client_id' => 'nullable|exists:clients,id',
             'supplier_id' => 'required',
             'original_task_id' => 'nullable|exists:tasks,id',
-        ], [
+            'supplier_pay_date' => $task->supplier_pay_date ? 'sometimes|date' : 'required|date', // we show 'issued date' in the form label
+        ];
+        $messages = [
             'supplier_id.required' => 'Please select a supplier',
             'status.required' => 'Please select a status',
             'total.required' => 'Please enter the total amount',
-        ]);
+            'supplier_pay_date.required' => 'Issued date is required',
+        ];
+        $request->validate($rules, $messages);
 
         DB::beginTransaction();
 
         try {
-            $task = Task::findOrFail($id);
             $oldPaymentMethod = $task->payment_method_account_id;
             $oldStatus = $task->status;
+            $oldSupplierPayDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : null;
 
             Log::info('Before task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id . ', status: ' . $task->status);
             Log::info('Incoming Request: agent_id: ' . $request->agent_id . ', client_id: ' . $request->client_id);
@@ -2244,9 +2256,32 @@ class TaskController extends Controller
                 $data['agent_id'] = $agent->id;
                 $data['agent_name'] = $agent->name;
             }
+            if ($request->has('supplier_pay_date')) {
+                $data['supplier_pay_date'] = $request->input('supplier_pay_date');
+            }
 
             $task->update($data);
             Log::info('After task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id . ', status: ' . $task->status);
+
+            $newSupplierPayDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : null;
+            if ($oldSupplierPayDate !== $newSupplierPayDate) {
+                $journalEntries = JournalEntry::with('transaction')
+                    ->where('task_id', $task->id)
+                    ->whereHas('transaction', function ($q) use ($task) {
+                        $q->where('description', 'like', '%' . $task->reference . '%');
+                    })
+                    ->get();
+
+                foreach ($journalEntries as $je) {
+                    $je->transaction_date = $newSupplierPayDate;
+                    $je->save();
+
+                    if ($je->transaction) {
+                        $je->transaction->transaction_date = $newSupplierPayDate;
+                        $je->transaction->save();
+                    }
+                }
+            }
 
             if ($request->filled('payment_method_account_id') && $request->payment_method_account_id != $oldPaymentMethod) {
                 $response = $this->updateJournalPaymentMethod($task, $request->payment_method_account_id);
@@ -4188,20 +4223,22 @@ class TaskController extends Controller
             ], 404);
         }
 
-        $journalEntries = JournalEntry::where('task_id', $task->id)
-            ->where('branch_id', $branchId)
-            ->whereHas('account', function ($query) use ($liabilities) {
-                $query->where('root_id', $liabilities->id);
-            })
-            ->get();
+        // now edit payment method doesn't need to have journal entries in liabilities to be edited
 
-        if ($journalEntries->isEmpty()) {
-            Log::error('No existing journal entries found for task ID: ' . $task->id . ' with liabilities root ID: ' . $liabilities->id);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'No existing journal entries found for this task.',
-            ], 404);
-        }
+        // $journalEntries = JournalEntry::where('task_id', $task->id)
+        //     ->where('branch_id', $branchId)
+        //     ->whereHas('account', function ($query) use ($liabilities) {
+        //         $query->where('root_id', $liabilities->id);
+        //     })
+        //     ->get();
+
+        // if ($journalEntries->isEmpty()) {
+        //     Log::error('No existing journal entries found for task ID: ' . $task->id . ' with liabilities root ID: ' . $liabilities->id);
+        //     return response()->json([
+        //         'status' => 'error',
+        //         'message' => 'No existing journal entries found for this task.',
+        //     ], 404);
+        // }
 
         $creditorsAccount = Account::where('name', 'Creditors')
             ->where('company_id', $task->company_id)
@@ -4216,10 +4253,12 @@ class TaskController extends Controller
             ], 404);
         }
 
-        $journalEntriesWithCreditorsChild = $journalEntries->filter(function ($journalEntry) use ($creditorsAccount) {
-            $account = $journalEntry->account;
-            return $account && $account->parent_id === $creditorsAccount->id;
-        });
+        $journalEntriesWithCreditorsChild = JournalEntry::where('task_id', $task->id)
+            ->where('branch_id', $branchId)
+            ->whereHas('account', function ($query) use ($creditorsAccount) {
+                $query->where('parent_id', $creditorsAccount->id);
+            })
+            ->get();
 
         if ($journalEntriesWithCreditorsChild->isNotEmpty()) {
             Log::info('Found ' . $journalEntriesWithCreditorsChild->count() . ' journal entries attached to child accounts of Creditors account for task ID: ' . $task->id);
@@ -4265,7 +4304,6 @@ class TaskController extends Controller
             Log::info('No journal entries found attached to child accounts of Creditors account for task ID: ' . $task->id);
         }
 
-        Log::info('Found ' . $journalEntries->count() . ' journal entries for task ID: ' . $task->id);
 
         try {
             $transaction = Transaction::create([
@@ -4278,7 +4316,7 @@ class TaskController extends Controller
                 'name' => $paymentMethodAccount->name,
                 'description' => 'Update payment account for: ' . $task->reference,
                 'reference_type' => 'Payment',
-                'transaction_date' => $task->issued_date,
+                'transaction_date' => $task->supplier_pay_date ?? $task->issued_date,
             ]);
 
             Log::info('Created new transaction for task ID: ' . $task->id . ' with ID: ' . $transaction->id);
@@ -4292,7 +4330,7 @@ class TaskController extends Controller
                 'debit' => 0,
                 'credit' => $task->total,
                 'balance' => $task->total,
-                'transaction_date' => $task->issued_date,
+                'transaction_date' => $task->supplier_pay_date ?? $task->issued_date,
                 'description' => 'Update For Whom to Pay: ' . $task->reference,
                 'name' => $paymentMethodAccount->name,
                 'type' => 'payable',

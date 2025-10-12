@@ -404,6 +404,17 @@
             }
         }
 
+        .required-input {
+            font-size: 0.7em;
+            /* padding: 8px 12px;
+            border-radius: 6px; */
+        }
+
+        .required-input::after {
+            content: 'This field is required to enable task';
+            color: red;
+        }
+
         @media (hover: none) {
             .group:hover .group-hover\:block {
                 display: none;
@@ -1150,12 +1161,20 @@
                                                             </div>
                                                         </div>
                                                         @endif
+                                                        @php
+                                                        $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
+                                                            ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
+                                                            ->exists();
+                                                        @endphp
                                                         <div class="flex items-center justify-center h-full mr-2">
-                                                            <label class="switch m-0" @click.stop>
-                                                                <input type="checkbox" class="toggle-task-status"
+                                                            <label class="switch m-0" @click.stop
+                                                                data-tooltip="{{ $isInvoicedAndPaid ? 'This task is invoiced and paid — enabling/disabling is not allowed.' : 'Toggle task availability' }}">
+                                                                <input type="checkbox"
+                                                                    class="toggle-task-status"
                                                                     data-task-id="{{ $task->id }}"
-                                                                    {{ $task->enabled ? 'checked' : '' }}>
-                                                                <span class="slider round"></span>
+                                                                    {{ $task->enabled ? 'checked' : '' }}
+                                                                    {{ $isInvoicedAndPaid ? 'disabled' : '' }}>
+                                                                <span class="slider round {{ $isInvoicedAndPaid ? 'opacity-50 cursor-not-allowed' : '' }}"></span>
                                                             </label>
                                                         </div>
                                                         <div x-data="{ open: false, editOpen: false }" @keydown.escape.window="open = false; editOpen = false" class="relative flex items-center justify-center h-full">
@@ -1192,11 +1211,6 @@
                                                                     </ul>
                                                                 </div>
                                                             </template>
-                                                            @php
-                                                            $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
-                                                                ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
-                                                                ->exists();
-                                                            @endphp
                                                             <template x-teleport="body">
                                                                 <div x-show="editOpen" x-cloak x-data="{ readOnly: {{ $isInvoicedAndPaid ? 'true' : 'false' }} }"
                                                                     class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800 bg-opacity-50">
@@ -1276,7 +1290,7 @@
 
                                                                                     @if (strtolower($task->status) !== 'issued' && strtolower($task->status) !== 'confirmed'|| $task->status == null)
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                                        <div class="flex-1">
+                                                                                        <div class="flex-1 min-w-0">
                                                                                             @php
                                                                                             $originalTasks = \App\Models\Task::with('client')
                                                                                             ->where('status', 'issued')
@@ -1308,7 +1322,7 @@
                                                                                     @endif
 
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                                        <div class="flex-1">
+                                                                                        <div class="flex-1 min-w-0">
                                                                                             <label for="supplier" class="block text-sm font-medium text-gray-700">Supplier</label>
                                                                                             <input type="text"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full bg-gray-200"
@@ -1320,7 +1334,7 @@
                                                                                                 value="{{ $task->supplier ? $task->supplier->id : '' }}">
 
                                                                                         </div>
-                                                                                        <div class="flex-1">
+                                                                                        <div class="flex-1 min-w-0">
                                                                                             <label for="type" class="block text-sm font-medium text-gray-700">Task Type</label>
                                                                                             <input type="text"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full bg-gray-200"
@@ -1336,12 +1350,12 @@
                                                                                         ? $selectedClient->full_name . ' - ' . $selectedClient->phone
                                                                                         : 'Select a Client';
                                                                                         @endphp
-                                                                                        <div class="flex-1 min-w-0">
+                                                                                        <div class="flex-1 min-w-0 {{ $task->client ?? 'required-input' }}">
                                                                                             <label for="client_id" class="block text-sm font-medium text-gray-700">Client</label>
                                                                                             <div class="w-full">
                                                                                                 <x-searchable-dropdown
-                                                                                                        name="client_id"
-                                                                                                        :items="$fullClients->map(fn($c) => [
+                                                                                                    name="client_id"
+                                                                                                    :items="$fullClients->map(fn($c) => [
                                                                                                         'id' => $c->id, 
                                                                                                         'name' => $c->full_name . ' - ' . $c->phone
                                                                                                     ])"
@@ -1352,20 +1366,19 @@
                                                                                         </div>
 
                                                                                         <!-- Agent Selection (Role-based) -->
-                                                                                        <div class="flex-1">
+                                                                                        <div class="flex-1 min-w-0 {{ $task->agent ?? 'required-input' }}">
                                                                                             <label for="agent_id" class="block text-sm font-medium text-gray-700">Agent</label>
-                                                                                            <select
-                                                                                                id="agent_id_select_{{ $task->id }}"
-                                                                                                name="agent_id"
-                                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base">
-                                                                                                <option value=""> Choose Agent</option>
-                                                                                                @foreach ($agents as $agent)
-                                                                                                <option value="{{ $agent->id }}"
-                                                                                                    {{ $task->agent && $task->agent->id === $agent->id ? 'selected' : '' }}>
-                                                                                                    {{ $agent->name }}
-                                                                                                </option>
-                                                                                                @endforeach
-                                                                                            </select>
+                                                                                            <div class="w-full">
+                                                                                                <x-searchable-dropdown
+                                                                                                    name="agent_id"
+                                                                                                    :items="$agents->map(fn($a) => [
+                                                                                                            'id' => $a->id, 
+                                                                                                            'name' => $a->name
+                                                                                                        ])"
+                                                                                                    :selectedId="$task->agent_id"
+                                                                                                    :selectedName="$task->agent ? $task->agent->name : null"
+                                                                                                    placeholder="Select Agent" />
+                                                                                            </div>
                                                                                         </div>
                                                                                     </div>
 
@@ -1405,16 +1418,31 @@
                                                                                     </div>
                                                                                     <!-- Payment Method -->
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                                        <div class="flex-1">
+                                                                                        <div class="flex-1 min-w-0">
                                                                                             <label for="payment_method" class="block text-sm font-medium text-gray-700">Payment Method</label>
-                                                                                            <select name="payment_method_account_id" id="payment_method_account_id_{{ $task->id }}"
-                                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                                                <option value="">Select Payment Method</option>
-                                                                                                @foreach($paymentMethod as $method)
+                                                                                            <div class="w-full">
+                                                                                                <select name="payment_method_account_id"
+                                                                                                    id="payment_method_account_id_{{ $task->id }}"
+                                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                                                    <option value="">Select Payment Method</option>
+                                                                                                    @foreach($paymentMethod as $method)
                                                                                                     <option value="{{ $method->id }}" {{ $task->payment_method_account_id == $method->id ? 'selected' : ''}}>{{ $method->name }}</option>
-                                                                                                @endforeach
-                                                                                            </select>
+                                                                                                    @endforeach
+                                                                                                </select>
+                                                                                            </div>
                                                                                         </div>
+                                                                                        @if (empty($task->supplier_pay_date))
+                                                                                        <div class="flex-1 min-w-0 required-input">
+                                                                                            <label for="supplier_pay_date"
+                                                                                                class="block text-sm font-medium text-gray-700">Issued Date</label>
+                                                                                            <div class="w-full">
+                                                                                                <input type="date"
+                                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
+                                                                                                    name="supplier_pay_date"
+                                                                                                    value="{{ old('supplier_pay_date') }}">
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        @endif
                                                                                     </div>
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                                                         <div class="flex-1">
@@ -2289,14 +2317,14 @@
                 window.dispatchEvent(new Event('modal:wide'));
 
                 function initSearchDropdown(root, items, evtName) {
-                    const btn   = root.querySelector('.sd-btn');
-                    const text  = root.querySelector('.sd-text');
-                    const menu  = root.querySelector('.sd-menu');
-                    const search= root.querySelector('.sd-search');
-                    const list  = root.querySelector('.sd-list');
-                    const hid   = root.querySelector('input[type="hidden"]');
+                    const btn = root.querySelector('.sd-btn');
+                    const text = root.querySelector('.sd-text');
+                    const menu = root.querySelector('.sd-menu');
+                    const search = root.querySelector('.sd-search');
+                    const list = root.querySelector('.sd-list');
+                    const hid = root.querySelector('input[type="hidden"]');
 
-                    function render(filter='') {
+                    function render(filter = '') {
                         const f = String(filter).trim().toLowerCase();
                         const data = f ? items.filter(i => String(i.name ?? '').toLowerCase().includes(f) || String(i.id).toLowerCase().includes(f)) : items;
 
@@ -2309,6 +2337,7 @@
                             list.appendChild(div);
                         });
                     }
+
                     function open() {
                         document.querySelectorAll('.sd-menu').forEach(m => m.classList.add('hidden'));
                         menu.classList.remove('hidden');
@@ -2316,31 +2345,44 @@
                         search.value = '';
                         setTimeout(() => search.focus(), 0);
                     }
+
                     function close() {
                         menu.classList.add('hidden');
                     }
 
-                    btn.addEventListener('click', (e)=>{
+                    btn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         menu.classList.contains('hidden') ? open() : close();
                     });
-                    document.addEventListener('click', (e)=>{ if(!root.contains(e.target)) close(); });
-                    search.addEventListener('input', ()=>render(search.value));
-                    list.addEventListener('click', (e)=>{
-                        const row = e.target.closest('[data-id]'); if(!row) return;
+                    document.addEventListener('click', (e) => {
+                        if (!root.contains(e.target)) close();
+                    });
+                    search.addEventListener('input', () => render(search.value));
+                    list.addEventListener('click', (e) => {
+                        const row = e.target.closest('[data-id]');
+                        if (!row) return;
                         hid.value = row.dataset.id;
                         text.textContent = row.textContent.trim();
                         text.classList.remove('text-gray-400');
                         root.dispatchEvent(
-                            new CustomEvent(evtName, { detail: { id: hid.value, label: text.textContent }, bubbles: true })
-                            );
+                            new CustomEvent(evtName, {
+                                detail: {
+                                    id: hid.value,
+                                    label: text.textContent
+                                },
+                                bubbles: true
+                            })
+                        );
                         close();
                     });
 
                     // if hidden has a value, show it
                     if (hid.value) {
-                        const found = items.find(i=>i.id==hid.value);
-                        if (found) { text.textContent = found.name; text.classList.remove('text-gray-400'); }
+                        const found = items.find(i => i.id == hid.value);
+                        if (found) {
+                            text.textContent = found.name;
+                            text.classList.remove('text-gray-400');
+                        }
                     }
                 }
 
@@ -2372,8 +2414,11 @@
                 function calcNights() {
                     const ci = new Date(checkIn.value);
                     const co = new Date(checkOut.value);
-                    if (isNaN(ci) || isNaN(co) || co <= ci) { nights.value = 0; return 0; }
-                    const n = Math.round((co - ci) / (1000*60*60*24));
+                    if (isNaN(ci) || isNaN(co) || co <= ci) {
+                        nights.value = 0;
+                        return 0;
+                    }
+                    const n = Math.round((co - ci) / (1000 * 60 * 60 * 24));
                     nights.value = n;
                     return n;
                 }
@@ -2382,14 +2427,17 @@
                     const total = (+adultsEl.value || 0) + (+childrenEl.value || 0);
                     totalPaxEl.value = total;
                     const current = paxWrap.querySelectorAll('input.mh-passenger').length;
-                    const addBtn  = paxWrap.querySelector('button.add');
+                    const addBtn = paxWrap.querySelector('button.add');
                     addBtn.disabled = current >= total && total > 0;
                     addBtn.classList.toggle('opacity-50', addBtn.disabled);
                     paxHint.textContent = total ? `Max ${total} passenger name(s)` : '';
                 }
 
-                async function convertCurrency(amount, from, to='KWD') {
-                    if (!amount || from === to) return { converted: +amount, rate: 1 };
+                async function convertCurrency(amount, from, to = 'KWD') {
+                    if (!amount || from === to) return {
+                        converted: +amount,
+                        rate: 1
+                    };
                     try {
                         const res = await fetch(`{{ route('exchange.convert') }}`, {
                             method: 'POST',
@@ -2405,13 +2453,24 @@
                         });
                         const data = await res.json();
                         if (data.status === 'success') {
-                            return { converted: +data.converted_amount, rate: +data.exchange_rate };
+                            return {
+                                converted: +data.converted_amount,
+                                rate: +data.exchange_rate
+                            };
                         }
                         if (data.created) {
-                            return { converted: null, rate: null, created: true, message: data.message };
+                            return {
+                                converted: null,
+                                rate: null,
+                                created: true,
+                                message: data.message
+                            };
                         }
                     } catch (e) {}
-                    return { converted: null, rate: null };
+                    return {
+                        converted: null,
+                        rate: null
+                    };
                 }
 
                 async function recompute() {
@@ -2439,7 +2498,7 @@
                 }
 
                 formTaskContainer.addEventListener('manual:currency-changed', recompute);
-                formTaskContainer.addEventListener('manual:client-changed', (e)=>{
+                formTaskContainer.addEventListener('manual:client-changed', (e) => {
                     const first = paxWrap.querySelector('input.mh-passenger');
                     if (first && e.detail?.label) first.value = e.detail.label;
                 });
@@ -2478,10 +2537,14 @@
                     const totalPax = +totalPaxEl.value || 0;
 
                     if (!hotelId) {
-                        e.preventDefault(); alert('Hotel are required.'); return;
+                        e.preventDefault();
+                        alert('Hotel are required.');
+                        return;
                     }
                     if (!clientId) {
-                        e.preventDefault(); alert('Client is required.'); return;
+                        e.preventDefault();
+                        alert('Client is required.');
+                        return;
                     }
 
                     const currency = (currencyHidden?.value || 'KWD').toUpperCase();
@@ -2496,7 +2559,7 @@
                         input.type = 'hidden';
                         input.name = name;
                         input.value = (typeof val === 'object') ? JSON.stringify(val) : String(val);
-                        input.setAttribute('data-synth','1');
+                        input.setAttribute('data-synth', '1');
                         form.appendChild(input);
                     };
 
@@ -2507,8 +2570,8 @@
                     }
                     if (currency === 'KWD') {
                         addHidden('exchange_currency', 'KWD');
-                        addHidden('price',  +originalTotal.toFixed(3));
-                        addHidden('total',  +originalTotal.toFixed(3));
+                        addHidden('price', +originalTotal.toFixed(3));
+                        addHidden('total', +originalTotal.toFixed(3));
                     } else {
                         addHidden('original_currency', currency);
                         addHidden('original_price', +originalTotal.toFixed(3));

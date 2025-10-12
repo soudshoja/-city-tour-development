@@ -10,6 +10,7 @@ use App\Http\Controllers\KnowledgeBaseController;
 use App\Http\Controllers\IncomingMediaController;
 use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ClientController;
 use App\Http\Controllers\WhatsAppHotelController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SupplierController;
@@ -49,6 +50,13 @@ Route::post('payment/importfatoorah', [PaymentController::class, 'importPaidFato
 
 Route::get('/clients', [MobileController::class, 'client']);
 Route::get('/clients/{agentId}', [MobileController::class, 'getClientByAgentId']);
+
+Route::group([
+    'prefix' => 'clients',
+    'as' => 'clients.',
+], function () {
+    Route::post('/', [ ClientController::class, 'storeApi' ]);
+});
 
 Route::get('/test-get-client', [MobileController::class, 'clientTest']);
 // Route::get('/thread/{threadId}',[MobileController::class, 'retrieveThread']);

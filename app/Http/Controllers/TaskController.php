@@ -2200,10 +2200,12 @@ class TaskController extends Controller
             'client_id' => 'nullable|exists:clients,id',
             'supplier_id' => 'required',
             'original_task_id' => 'nullable|exists:tasks,id',
+            'supplier_pay_date' => 'required|date', // we show 'issued date' in the form label
         ], [
             'supplier_id.required' => 'Please select a supplier',
             'status.required' => 'Please select a status',
             'total.required' => 'Please enter the total amount',
+            'supplier_pay_date.required' => 'Issued date is required',
         ]);
 
         DB::beginTransaction();
@@ -2231,6 +2233,7 @@ class TaskController extends Controller
                 'supplier_id',
                 'original_task_id',
                 'payment_method_account_id',
+                'supplier_pay_date',
             ]);
 
             if ($request->filled('client_id')) {

@@ -350,6 +350,73 @@ class ClientController extends Controller
         return redirect()->back()->with($status, $message);
     }
 
+    public function storeApi(Request $request) : JsonResponse
+    {
+        Log::info('API Client store request: ', $request->all());
+
+        $response = $this->storeProcess($request);
+
+        $status = $response->status;
+        $type = $response->type;
+        $message = $response->message;
+        $data = $response->data;
+        $task_id = $response->task_id;
+
+        if($status == 'error') {
+            if($type == 'duplicate') {
+                $data = $response->data;
+
+                $requestAgent = $data['current_agent'];
+                $client = $data['existing_client'];
+                $ownerAgent = $data['owner_agent'];
+
+                if($requestAgent->name == Agent::AI_AGENT){
+                   $client->agents()->attach($requestAgent->id);
+
+                   Log::info("AI Agent assigned to client ID {$client->id}");
+
+                    $this->sendAssignmentRequest(
+                        $ownerAgent,
+                        $requestAgent,
+                        $client,
+                        'Client automatically assigned to AI Agent by system.'
+                    );
+
+                   return response()->json([
+                        'status' => 'success',
+                        'type' => 'general',
+                        'message' => 'Client assigned to AI Agent successfully.',
+                        'data' => $client
+                    ]);
+
+                } else {
+
+                    $this->sendAssignmentRequest(
+                        $ownerAgent,
+                        $requestAgent,
+                        $client,
+                        'Requesting assignment to existing client by ' . $requestAgent->name
+                    );
+                }
+
+                return response()->json([
+                    'status' => 'error',
+                    'type' => 'duplicate',
+                    'message' => $response->message,
+                    'data' => $data
+                ]);
+            }
+        }
+
+        return response()->json([
+            'status' => $status,
+            'type' => $type,
+            'message' => $message,
+            'data' => $data,
+            'task_id' => $task_id
+        ]);
+    }
+
     /**
      * Check if a string is valid JSON.
      *

@@ -15,6 +15,7 @@ class Agent extends Model
     use HasFactory;
     protected $table = 'agents'; // Explicitly define the table name
 
+    public const AI_AGENT = 'AI Agent';
 
     protected $fillable = [
         'user_id',

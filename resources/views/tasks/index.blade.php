@@ -543,12 +543,7 @@
                                 </div>
                                 <div id="template-currency-dropdown" class="hidden min-w-0">
                                     <script type="application/json" id="currency-items-json">
-                                        {
-                                            !!$currencies - > map(fn($c) => ['id' => $c - > iso_code, 'name' => $c - > name.
-                                                ' ('.$c - > iso_code.
-                                                ')'
-                                            ]) - > values() - > toJson() !!
-                                        }
+                                        {!! $currencies->map(fn($c) => ['id' => $c->iso_code, 'name' => $c->name.' ('.$c->iso_code.')'])->values()->toJson() !!}
                                     </script>
                                     <div class="relative sd" data-sd="currency">
                                         <button type="button" class="sd-btn w-full border border-gray-300 p-2 rounded text-left bg-white">
@@ -1166,12 +1161,20 @@
                                                             </div>
                                                         </div>
                                                         @endif
+                                                        @php
+                                                        $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
+                                                            ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
+                                                            ->exists();
+                                                        @endphp
                                                         <div class="flex items-center justify-center h-full mr-2">
-                                                            <label class="switch m-0" @click.stop>
-                                                                <input type="checkbox" class="toggle-task-status"
+                                                            <label class="switch m-0" @click.stop
+                                                                data-tooltip="{{ $isInvoicedAndPaid ? 'This task is invoiced and paid — enabling/disabling is not allowed.' : 'Toggle task availability' }}">
+                                                                <input type="checkbox"
+                                                                    class="toggle-task-status"
                                                                     data-task-id="{{ $task->id }}"
-                                                                    {{ $task->enabled ? 'checked' : '' }}>
-                                                                <span class="slider round"></span>
+                                                                    {{ $task->enabled ? 'checked' : '' }}
+                                                                    {{ $isInvoicedAndPaid ? 'disabled' : '' }}>
+                                                                <span class="slider round {{ $isInvoicedAndPaid ? 'opacity-50 cursor-not-allowed' : '' }}"></span>
                                                             </label>
                                                         </div>
                                                         <div x-data="{ open: false, editOpen: false }" @keydown.escape.window="open = false; editOpen = false" class="relative flex items-center justify-center h-full">
@@ -1208,11 +1211,6 @@
                                                                     </ul>
                                                                 </div>
                                                             </template>
-                                                            @php
-                                                            $isInvoicedAndPaid = \App\Models\InvoiceDetail::where('task_id', $task->id)
-                                                                ->whereHas('invoice', fn($q) => $q->where('status', 'paid'))
-                                                                ->exists();
-                                                            @endphp
                                                             <template x-teleport="body">
                                                                 <div x-show="editOpen" x-cloak x-data="{ readOnly: {{ $isInvoicedAndPaid ? 'true' : 'false' }} }"
                                                                     class="fixed inset-0 z-[10000] flex items-center justify-center bg-gray-800 bg-opacity-50">
@@ -1292,7 +1290,7 @@
 
                                                                                     @if (strtolower($task->status) !== 'issued' && strtolower($task->status) !== 'confirmed'|| $task->status == null)
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                                        <div class="flex-1">
+                                                                                        <div class="flex-1 min-w-0">
                                                                                             @php
                                                                                             $originalTasks = \App\Models\Task::with('client')
                                                                                             ->where('status', 'issued')
@@ -1324,7 +1322,7 @@
                                                                                     @endif
 
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                                        <div class="flex-1">
+                                                                                        <div class="flex-1 min-w-0">
                                                                                             <label for="supplier" class="block text-sm font-medium text-gray-700">Supplier</label>
                                                                                             <input type="text"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full bg-gray-200"
@@ -1336,7 +1334,7 @@
                                                                                                 value="{{ $task->supplier ? $task->supplier->id : '' }}">
 
                                                                                         </div>
-                                                                                        <div class="flex-1">
+                                                                                        <div class="flex-1 min-w-0">
                                                                                             <label for="type" class="block text-sm font-medium text-gray-700">Task Type</label>
                                                                                             <input type="text"
                                                                                                 class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full bg-gray-200"
@@ -1368,29 +1366,19 @@
                                                                                         </div>
 
                                                                                         <!-- Agent Selection (Role-based) -->
-                                                                                        <div class="flex-1 {{ $task->agent ?? 'required-input' }}">
+                                                                                        <div class="flex-1 min-w-0 {{ $task->agent ?? 'required-input' }}">
                                                                                             <label for="agent_id" class="block text-sm font-medium text-gray-700">Agent</label>
-                                                                                            <!-- <select
-                                                                                                id="agent_id_select_{{ $task->id }}"
-                                                                                                name="agent_id"
-                                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base">
-                                                                                                <option value=""> Choose Agent</option>
-                                                                                                @foreach ($agents as $agent)
-                                                                                                <option value="{{ $agent->id }}"
-                                                                                                    {{ $task->agent && $task->agent->id === $agent->id ? 'selected' : '' }}>
-                                                                                                    {{ $agent->name }}
-                                                                                                </option>
-                                                                                                @endforeach
-                                                                                            </select> -->
-                                                                                            <x-searchable-dropdown
-                                                                                                name="agent_id"
-                                                                                                :items="$agents->map(fn($c) => [
-                                                                                                        'id' => $c->id, 
-                                                                                                        'name' => $c->name . ' - ' . $c->branch->name
-                                                                                                    ])"
-                                                                                                :selectedId="$task->agent_id"
-                                                                                                :selectedName="$task->agent ? $task->agent->name . ' - ' . $task->agent->branch->name : null"
-                                                                                                placeholder="Select Agent" />
+                                                                                            <div class="w-full">
+                                                                                                <x-searchable-dropdown
+                                                                                                    name="agent_id"
+                                                                                                    :items="$agents->map(fn($a) => [
+                                                                                                            'id' => $a->id, 
+                                                                                                            'name' => $a->name
+                                                                                                        ])"
+                                                                                                    :selectedId="$task->agent_id"
+                                                                                                    :selectedName="$task->agent ? $task->agent->name : null"
+                                                                                                    placeholder="Select Agent" />
+                                                                                            </div>
                                                                                         </div>
                                                                                     </div>
 
@@ -1430,26 +1418,31 @@
                                                                                     </div>
                                                                                     <!-- Payment Method -->
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                                        <div class="w-full">
+                                                                                        <div class="flex-1 min-w-0">
                                                                                             <label for="payment_method" class="block text-sm font-medium text-gray-700">Payment Method</label>
-                                                                                            <select name="payment_method_account_id" id="payment_method_account_id_{{ $task->id }}"
-                                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                                                <option value="">Select Payment Method</option>
-                                                                                                @foreach($paymentMethod as $method)
-                                                                                                <option value="{{ $method->id }}" {{ $task->payment_method_account_id == $method->id ? 'selected' : ''}}>{{ $method->name }}</option>
-                                                                                                @endforeach
-                                                                                            </select>
+                                                                                            <div class="w-full">
+                                                                                                <select name="payment_method_account_id"
+                                                                                                    id="payment_method_account_id_{{ $task->id }}"
+                                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
+                                                                                                    <option value="">Select Payment Method</option>
+                                                                                                    @foreach($paymentMethod as $method)
+                                                                                                    <option value="{{ $method->id }}" {{ $task->payment_method_account_id == $method->id ? 'selected' : ''}}>{{ $method->name }}</option>
+                                                                                                    @endforeach
+                                                                                                </select>
+                                                                                            </div>
                                                                                         </div>
-                                                                                        <div class="w-full {{ $task->supplier_pay_date !== null ? '' : 'required-input' }}">
+                                                                                        @if (empty($task->supplier_pay_date))
+                                                                                        <div class="flex-1 min-w-0 required-input">
                                                                                             <label for="supplier_pay_date"
-                                                                                                class="block text-sm font-medium text-gray-700">Issued
-                                                                                                Date</label>
-                                                                                            <input type="date"
-                                                                                                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
-                                                                                                name="supplier_pay_date"
-                                                                                                value="{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '' }}">
-
+                                                                                                class="block text-sm font-medium text-gray-700">Issued Date</label>
+                                                                                            <div class="w-full">
+                                                                                                <input type="date"
+                                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
+                                                                                                    name="supplier_pay_date"
+                                                                                                    value="{{ old('supplier_pay_date') }}">
+                                                                                            </div>
                                                                                         </div>
+                                                                                        @endif
                                                                                     </div>
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                                                         <div class="flex-1">

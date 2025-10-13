@@ -20,9 +20,12 @@
                         </span>
                     </div>
 
-                    <form method="POST" action="" class="space-y-8">
+                    <form method="POST" action="{{ route('invoice.accountant.update') }}" class="space-y-8">
                         @csrf
                         @method('PUT')
+
+                        <input type="hidden" name="invoice_id" value="{{ $invoice->id }}">
+                        <input type="hidden" name="company_id" value="{{ auth()->user()->accountant->branch->company_id }}">
 
                         <!-- Basic Information -->
                         <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
@@ -53,6 +56,8 @@
                                     <x-searchable-dropdown
                                         name="client_id"
                                         id="client_id"
+                                        :selectedName="$invoice->client ? $invoice->client->full_name . ' - ' . $invoice->client->phone : null"
+                                        :selectedId="$invoice->client ? $invoice->client_id : null"
                                         :items="$clients->map(fn($client) => ['id' => $client->id, 'name' => $client->full_name . ' - ' . $client->phone])"
                                         placeholder="Select Client" />
                                     @error('client_id')
@@ -67,6 +72,8 @@
                                     </label>
                                     <x-searchable-dropdown
                                         name="agent_id"
+                                        :selectedId="$invoice->agent_id"
+                                        :selectedName="$invoice->agent ? $invoice->agent->name : null"
                                         id="agent_id"
                                         :items="$agents->map(fn($agent) => ['id' => $agent->id, 'name' => $agent->name])"
                                         placeholder="Select Agent" />
@@ -80,14 +87,8 @@
                                     <label for="currency" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Currency
                                     </label>
-                                    <select id="currency"
-                                        name="currency"
-                                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
-                                        <option value="KWD" {{ old('currency', $invoice->currency) == 'KWD' ? 'selected' : '' }}>KWD</option>
-                                        <option value="USD" {{ old('currency', $invoice->currency) == 'USD' ? 'selected' : '' }}>USD</option>
-                                        <option value="EUR" {{ old('currency', $invoice->currency) == 'EUR' ? 'selected' : '' }}>EUR</option>
-                                        <option value="GBP" {{ old('currency', $invoice->currency) == 'GBP' ? 'selected' : '' }}>GBP</option>
-                                    </select>
+                                    <input class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                                        type="text" name="currency" value="{{ old('currency', $invoice->currency) }}" />
                                     @error('currency')
                                     <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
                                     @enderror
@@ -102,9 +103,7 @@
                                         name="status"
                                         class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
                                         <option value="pending" {{ old('status', $invoice->status) == 'pending' ? 'selected' : '' }}>Pending</option>
-                                        <option value="paid" {{ old('status', $invoice->status) == 'paid' ? 'selected' : '' }}>Paid</option>
-                                        <option value="cancelled" {{ old('status', $invoice->status) == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
-                                        <option value="overdue" {{ old('status', $invoice->status) == 'overdue' ? 'selected' : '' }}>Overdue</option>
+                                        <option value="paid" {{ old('status', $invoice->status) == 'unpaid' ? 'selected' : '' }}>Paid</option>
                                     </select>
                                     @error('status')
                                     <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
@@ -129,26 +128,47 @@
                         </div>
 
                         <!-- Financial Information -->
-                        <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
+                        <div class="grid grid-cols-1 gap-3 items-left bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Financial Information</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                                <!-- Sub Amount -->
-                                <div>
-                                    <label for="sub_amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Sub Amount
+                                @if($invoice->invoiceDetails->isNotEmpty())
+                                <div class="grid grid-cols-1 gap-4">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Invoice Details
+                                        @foreach($invoice->invoiceDetails as $key => $detail)
                                     </label>
-                                    <input id="sub_amount"
-                                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                                        type="number"
-                                        step="0.001"
-                                        name="sub_amount"
-                                        value="{{ old('sub_amount', $invoice->sub_amount) }}" />
-                                    @error('sub_amount')
-                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
-                                    @enderror
+                                    <div class="flex gap-3">
+                                        <div class="p-2 bg-gray-100 dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500">
+                                            @php
+                                            $task = $detail->task;
+                                            @endphp
+                                            <p>
+                                                {{ $task->reference}}
+                                            </p>
+                                            <div>
+                                                <ul>
+                                                    <li>{{ $task->status }}</li>
+                                                    <li>{{ $task->passenger_name }}</li>
+                                                    <li>{{ $task->issued_by ?? $task->company->name }}</li>
+                                                </ul>
+                                            </div>
+                                            <div>
+                                                <input type="number" oninput="updateTotalAmount(this)"
+                                                    step="0.001"
+                                                    name="invoice_details[{{ $detail->task_id }}][amount]"
+                                                    value="{{ number_format(old('invoice_details.' . $detail->id . '.amount', $detail->task_price),3) }}"
+                                                    class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white" placeholder="Amount" />
+                                                @error('invoice_details.' . $detail->id . '.amount')
+                                                <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endforeach
                                 </div>
-
+                                @endif
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <!-- Invoice Charge -->
                                 <div>
                                     <label for="invoice_charge" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -159,7 +179,8 @@
                                         type="number"
                                         step="0.001"
                                         name="invoice_charge"
-                                        value="{{ old('invoice_charge', $invoice->invoice_charge) }}" />
+                                        oninput="updateTotalAmount(this)"
+                                        value="{{ number_format(old('invoice_charge', $invoice->invoice_charge), 3) }}" />
                                     @error('invoice_charge')
                                     <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
                                     @enderror
@@ -175,7 +196,8 @@
                                         type="number"
                                         step="0.001"
                                         name="amount"
-                                        value="{{ old('amount', $invoice->amount) }}"
+                                        onblur="formatToThreeDecimals(this)"
+                                        value="{{ number_format(old('amount', $invoice->amount),3) }}"
                                         required />
                                     @error('amount')
                                     <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
@@ -198,37 +220,6 @@
                                     @enderror
                                 </div>
 
-                                <!-- Discount -->
-                                <div>
-                                    <label for="discount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Discount
-                                    </label>
-                                    <input id="discount"
-                                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                                        type="number"
-                                        step="0.001"
-                                        name="discount"
-                                        value="{{ old('discount', $invoice->discount) }}" />
-                                    @error('discount')
-                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
-                                    @enderror
-                                </div>
-
-                                <!-- Shipping -->
-                                <div>
-                                    <label for="shipping" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Shipping
-                                    </label>
-                                    <input id="shipping"
-                                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                                        type="number"
-                                        step="0.001"
-                                        name="shipping"
-                                        value="{{ old('shipping', $invoice->shipping) }}" />
-                                    @error('shipping')
-                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
-                                    @enderror
-                                </div>
                             </div>
                         </div>
 
@@ -453,4 +444,44 @@
             </div>
         </div>
     </div>
+    <script>
+        const totalAmountInput = document.getElementById('amount');
+        const invoiceChargeInput = document.getElementById('invoice_charge');
+
+        let debounceTimer;
+
+        function formatToThreeDecimals(inputElement) {
+            let value = parseFloat(inputElement.value) || 0;
+            inputElement.value = value.toFixed(3);
+        }
+
+        function updateTotalAmount(inputElement) {
+
+            let changedValue = parseFloat(inputElement.value) || 0;
+            inputElement.value = changedValue.toFixed(3);
+
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+
+
+                let invoiceChargeValue = parseFloat(invoiceChargeInput.value) || 0;
+
+                let detailsTotal = 0;
+                const detailInputs = document.querySelectorAll('input[name^="invoice_details"]');
+                detailInputs.forEach(input => {
+                    detailsTotal += parseFloat(input.value) || 0;
+                });
+
+                let finalTotal = detailsTotal + invoiceChargeValue;
+
+                console.log('Changed Value:', changedValue);
+                console.log('Details Total:', detailsTotal);
+                console.log('Invoice Charge:', invoiceChargeValue);
+                console.log('Final Total:', finalTotal);
+
+                totalAmountInput.value = finalTotal.toFixed(3);
+
+            }, 300)
+        }
+    </script>
 </x-app-layout>

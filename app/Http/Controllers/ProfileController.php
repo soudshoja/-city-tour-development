@@ -142,7 +142,11 @@ class ProfileController extends Controller
                 'image',
                 'dimensions:max_width=700,max_height=400'
             ],
-            // ... other rules ...
+            'facebook' => ['nullable','url','max:255'],
+            'instagram' => ['nullable','url','max:255'],
+            'snapchat' => ['nullable','url','max:255'],
+            'tiktok' => ['nullable','url','max:255'],
+            'whatsapp' => ['nullable','url','max:255'],
         ]);
 
         $company = $user->company; // related company
@@ -244,6 +248,22 @@ class ProfileController extends Controller
             
             if ($request->has('address') && $request->input('address') !== $company->address) {
                 $updateData['address'] = $request->input('address');
+            }
+
+            if ($request->filled('facebook')) {
+                $updateData['facebook'] = $request->input('facebook');
+            }
+            if ($request->filled('instagram')) {
+                $updateData['instagram'] = $request->input('instagram');
+            }
+            if ($request->filled('snapchat')) {
+                $updateData['snapchat'] = $request->input('snapchat');
+            }
+            if ($request->filled('tiktok')) {
+                $updateData['tiktok'] = $request->input('tiktok');
+            }
+            if ($request->filled('whatsapp')) {
+                $updateData['whatsapp'] = $request->input('whatsapp');
             }
             
             if (!empty($updateData)) {

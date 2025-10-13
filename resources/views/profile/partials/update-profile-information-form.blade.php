@@ -85,11 +85,51 @@
         </div>
         @endif
         @if ($userPhone)
-        <div>
+        <div class="mt-4">
             <x-input-label for="phone" :value="__('Phone Number')" />
             <x-text-input id="phone" name="phone" type="text"
                 class="mt-1 block w-full" :value="old('phone', $userPhone)" required autofocus autocomplete="phone" />
             <x-input-error class="mt-2" :messages="$errors->get('phone')" />
+        </div>
+        @endif
+
+        @if ($user->role_id == \App\Models\Role::COMPANY)
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <x-input-label for="facebook" :value="__('Facebook Page Link')" />
+                <x-text-input id="facebook" name="facebook" type="url" placeholder="https://www.facebook.com/"
+                    class="mt-1 block w-full"
+                    :value="old('facebook', optional($user->company)->facebook)" autocomplete="off" />
+                <x-input-error class="mt-2" :messages="$errors->get('facebook')" />
+            </div>
+            <div>
+                <x-input-label for="instagram" :value="__('Instagram Profile Link')" />
+                <x-text-input id="instagram" name="instagram" type="url" placeholder="https://www.instagram.com/"
+                    class="mt-1 block w-full"
+                    :value="old('instagram', optional($user->company)->instagram)" autocomplete="off" />
+                <x-input-error class="mt-2" :messages="$errors->get('instagram')" />
+            </div>
+            <div>
+                <x-input-label for="snapchat" :value="__('Snapchat Profile Link')" />
+                <x-text-input id="snapchat" name="snapchat" type="url" placeholder="https://www.snapchat.com/add/"
+                    class="mt-1 block w-full"
+                    :value="old('snapchat', optional($user->company)->snapchat)" autocomplete="off" />
+                <x-input-error class="mt-2" :messages="$errors->get('snapchat')" />
+            </div>
+            <div>
+                <x-input-label for="tiktok" :value="__('TikTok Profile Link')" />
+                <x-text-input id="tiktok" name="tiktok" type="url" placeholder="https://www.tiktok.com/"
+                    class="mt-1 block w-full"
+                    :value="old('tiktok', optional($user->company)->tiktok)" autocomplete="off" />
+                <x-input-error class="mt-2" :messages="$errors->get('tiktok')" />
+            </div>
+            <div>
+                <x-input-label for="whatsapp" :value="__('WhatsApp Link')" />
+                <x-text-input id="whatsapp" name="whatsapp" type="url" placeholder="https://wa.me/"
+                    class="mt-1 block w-full"
+                    :value="old('whatsapp', optional($user->company)->whatsapp)" autocomplete="off" />
+                <x-input-error class="mt-2" :messages="$errors->get('whatsapp')" />
+            </div>
         </div>
         @endif
 

@@ -46,6 +46,7 @@ use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ResayilController;
 use App\Http\Controllers\SettingController;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 Route::middleware(['auth'])->group(function () {
 
@@ -594,6 +595,14 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 }); // auth middleware end
+
+Route::get('/download-pdf/{path}', function ($path) {
+    $fullPath = 'city_travelers/' . $path;
+    if (!Storage::exists($fullPath)) {
+        abort(404, 'File not found');
+    }
+    return response()->file(storage_path('app/' . $fullPath));
+})->where('path', '.*');
 
 Route::get('/admin', [VersionController::class, 'login'])->name('version.login');
 //VERSION

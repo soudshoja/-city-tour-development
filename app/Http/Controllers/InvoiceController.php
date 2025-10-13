@@ -3034,4 +3034,269 @@ class InvoiceController extends Controller
             'payment_gateway' => 'required|string',
         ]);
     }
+
+    public function accountantUpdate(Request $request){
+
+        $request->validate([
+            'company_id' => 'required|integer|exists:companies,id',
+            'invoice_id' => 'required|integer|exists:invoices,id',
+            'invoice_charge' => 'nullable',
+            'amount' => 'nullable|numeric',
+            'invoice_details' => 'required|array',
+            'invoice_details.*' => 'required|array',
+        ]);
+
+        $invoice = Invoice::find($request->invoice_id);
+
+        $success = [];
+        $error = [];
+
+        if($request->filled('invoice_details')){
+
+            $originalDetails = $invoice->invoiceDetails;
+            $updatingDetails = null;
+
+            $requestInvoiceDetails = $request->input('invoice_details');
+            foreach($originalDetails as $detail){
+                if($requestInvoiceDetails[$detail->task_id]['amount'] != $detail->task_price){
+                    $updatingDetails[$detail->task_id] = $requestInvoiceDetails[$detail->task_id]['amount'];
+                }
+            }
+
+            $responseUpdateAmount = $this->updateDetailsAmount(
+                new Request([
+                    'tasks' => $updatingDetails,
+                    'company_id' => $request->company_id,
+                    'invoice_number' => $invoice->invoice_number,
+                ]),
+            );
+
+            if($responseUpdateAmount->getStatusCode() !== 200){
+                Log::error('Failed to update invoice details', [
+                    'invoice_id' => $invoice->id,
+                    'response' => $responseUpdateAmount->getContent(),
+                ]);
+            }
+
+            $responseData = $responseUpdateAmount->getData();
+
+            if(isset($responseData->error)){
+                $error[] = $responseData->error;
+            }
+
+            if(isset($responseData->message)){
+                $success[] = $responseData->message;
+            }
+
+        }
+
+        if($invoice->invoice_charge !== $request->invoice_charge || $invoice->amount !== $request->amount){
+            if($request->amount !== bcadd($invoice->sub_amount, $request->invoice_charge ?? 0, 3)){
+                
+                Log::error('Invoice amount mismatch', [
+                    'invoice_id' => $invoice->id,
+                    'expected_amount' => bcadd($invoice->sub_amount, $request->invoice_charge ?? 0, 2),
+                    'provided_amount' => $request->amount,
+                ]);
+
+                $error[] = 'The total amount does not match the sum of sub amount and invoice charge.';
+            }
+
+            if($request->invoice_charge !== bcsub($invoice->amount, $invoice->sub_amount, 3)){
+                
+                Log::error('Invoice charge mismatch', [
+                    'invoice_id' => $invoice->id,
+                    'expected_charge' => bcsub($invoice->amount, $invoice->sub_amount, 2),
+                    'provided_charge' => $request->invoice_charge,
+                ]);
+
+                $error[] = 'The invoice charge does not match the difference between total amount and sub amount.';
+            }
+
+            if(empty($error)){
+
+                $invoice->invoice_charge = $request->invoice_charge ?? 0;
+                $invoice->amount = $request->amount ?? 0;
+                $invoice->save();
+
+                $success[] = 'Invoice amounts updated successfully.';
+            }
+        }
+
+        return redirect()->back()->with([
+            'success' => $success,
+            'error' => $error,
+        ]);
+    }
+
+    private function updateSubAmount($subAmount){
+
+    }
+
+    private function updateInvoicecharge($invoiceCharge){
+
+    }
+
+    private function updateDetailsAmount(Request $request): JsonResponse {
+        $request->validate([
+            'company_id' => 'required|integer|exists:companies,id',
+            'invoice_number' => 'required|string|exists:invoices,invoice_number',
+            'tasks' => 'required|array',
+            'tasks.*' => 'required|numeric|min:0',
+        ]);
+        // dd($request->all());
+
+        $companyId = $request->input('company_id');
+        $invoiceNumber = $request->input('invoice_number');
+
+
+        try{
+            DB::transaction(function () use ($request, $companyId, $invoiceNumber) {
+                $invoice = Invoice::with(['invoiceDetails.task', 'agent', 'agent.branch', 'transactions.journalEntries'])
+                    ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
+                    ->where('invoice_number', $invoiceNumber)
+                    ->firstOrFail();
+    
+                $transactionToReverse = $invoice->transactions()
+                    ->where('description', 'LIKE', 'Invoice reversal for%')
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+    
+                if (!$transactionToReverse) {
+                    $transactionToReverse = $invoice->transactions()->first();
+                }
+    
+                $oldAmount = $invoice->amount;
+                $reversalTransaction = Transaction::create([
+                    'description' => 'Invoice reversal for: ' . $invoice->invoice_number . ' (Old Amount: ' . $oldAmount . ')',
+                    'invoice_id' => $invoice->id,
+                    'entity_id' => $transactionToReverse->entity_id,
+                    'entity_type' => $transactionToReverse->entity_type,
+                    'transaction_date' => $transactionToReverse->transaction_date,
+                    'reference_type' => 'Invoice',
+                    'transaction_type' => $transactionToReverse->transaction_type === 'debit' ? 'credit' : 'debit',
+                    'amount' => 0.00,
+                ]);
+    
+                foreach ($transactionToReverse->journalEntries as $entry) {
+                    JournalEntry::create([
+                        'transaction_id' => $reversalTransaction->id,
+                        'account_id' => $entry->account_id,
+                        'description' => $entry->description,
+                        'debit' => $entry->credit,
+                        'credit' => $entry->debit,
+                        'company_id' => $entry->company_id,
+                        'branch_id' => $entry->branch_id,
+                        'invoice_id' => $entry->invoice_id,
+                        'agent_id' => $invoice->agent_id,
+                        'invoice_detail_id' => $entry->invoice_detail_id,
+                        'transaction_date' => $entry->transaction_date,
+                        'type' => $entry->type,
+                        'task_id' => $entry->task_id,
+                        'name' => $entry->name,
+                    ]);
+                }
+    
+                $taskUpdates = $request->input('tasks', []);
+                $newAmount = 0;
+                $updatedDetails = collect();
+
+                // dd($taskUpdates);
+                foreach ($invoice->invoiceDetails as $detail) {
+                    $newTaskAmount = $taskUpdates[$detail->task_id] ?? $detail->task_price;
+                    $newAmount += $newTaskAmount;
+    
+                    $detail->task_price = $newTaskAmount;
+                    $detail->markup_price = $newTaskAmount - $detail->supplier_price;
+                    $detail->save();
+                    $updatedDetails->push($detail);
+    
+                    foreach ($invoice->invoicePartials as $partial) {
+                        $partial->amount = $newTaskAmount;
+                        $partial->save();
+                    }
+                }
+    
+                $invoice->sub_amount = $newAmount;
+                $invoice->amount = $newAmount + ($invoice->invoice_charge ?? 0);
+                $invoice->save();
+    
+                $correctedTransaction = Transaction::create([
+                    'date' => now(),
+                    'description' => 'Invoice: ' . $invoice->invoice_number . ' (New Amount: ' . $newAmount . ')',
+                    'invoice_id' => $invoice->id,
+                    'entity_id' => $transactionToReverse->entity_id,
+                    'entity_type' => $transactionToReverse->entity_type,
+                    'transaction_date' => $transactionToReverse->transaction_date,
+                    'reference_type' => 'Invoice',
+                    'transaction_type' => $transactionToReverse->transaction_type,
+                    'amount' => $newAmount,
+                ]);
+    
+                foreach ($transactionToReverse->journalEntries as $entry) {
+                    $relevantDetail = $updatedDetails->firstWhere('id', $entry->invoice_detail_id);
+                    $taskSpecificAmount = $relevantDetail->task_price;
+                    $newDebit = 0;
+                    $newCredit = 0;
+                    $commission = 0;
+                    $agent = $invoice->agent;
+                    if (in_array($agent->type_id, [2, 3])) {
+                        $rate = (float) ($agent->commission ?? 0.15);
+                        $commission = $rate * ($taskSpecificAmount - $relevantDetail->supplier_price);
+                    }
+    
+                    if (str_contains($entry->description, 'Invoice created for (Assets)')) {
+                        $newDebit = $taskSpecificAmount;
+                    } else if (str_contains($entry->description, 'Invoice created for (Income)')) {
+                        $newCredit = $taskSpecificAmount;
+                    } else if (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
+                        $newDebit = $commission;
+                    } else if (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
+                        $newCredit = $commission;
+                    }
+    
+                    if ($newDebit > 0 || $newCredit > 0) {
+                        JournalEntry::create([
+                            'transaction_id' => $correctedTransaction->id,
+                            'account_id' => $entry->account_id,
+                            'description' => $entry->description,
+                            'debit' => $newDebit,
+                            'credit' => $newCredit,
+                            'entity_id' => $entry->entity_id ?? null,
+                            'entity_type' => $entry->entity_type ?? null,
+                            'amount' => $newAmount,
+                            'company_id' => $entry->company_id,
+                            'branch_id' => $entry->branch_id,
+                            'invoice_id' => $entry->invoice_id,
+                            'agent_id' => $task->agent_id ?? $invoice->agent_id,
+                            'invoice_detail_id' => $entry->invoice_detail_id,
+                            'transaction_date' => $entry->transaction_date,
+                            'type' => $entry->type,
+                            'task_id' => $entry->task_id,
+                            'name' => $entry->name,
+                        ]);
+                    }
+                }
+
+                return response()->json(['success' => 'Invoice updated successfully', 'invoice_total' => $invoice->amount]);
+            });
+
+        } catch (Exception $e) {
+            Log::error('Failed to update invoice details: ' . $e->getMessage(), [
+                'company_id' => $companyId,
+                'invoice_number' => $invoiceNumber,
+                'tasks' => $request->input('tasks', []),
+            ]);
+            return response()->json(['error' => 'Failed to update invoice details.'], 500);
+        }
+
+        Log::alert('Invoice details maybe not updated as expected because it goes outside of try-catch block', [
+            'company_id' => $companyId,
+            'invoice_number' => $invoiceNumber,
+            'tasks' => $request->input('tasks', []),
+        ]);
+
+        return response()->json(['success' => 'Invoice updated successfully.'], 200);
+    }
+
 }

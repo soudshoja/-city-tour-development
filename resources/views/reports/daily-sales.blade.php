@@ -69,7 +69,7 @@
                         items: @js($allAgents->map(fn($a)=>['id'=>$a->id,'name'=>$a->name])),
                         preselected: @js(collect(request('agent_ids',[]))->map(fn($v)=>(int)$v)->all())
                     })"
-                    class="grid grid-cols-1 md:grid-cols-2 gap-3 px-4 py-3 items-end">
+                    class="grid grid-cols-1 md:grid-cols-3 gap-3 px-4 py-3 items-end">
                     <div class="relative">
                         <label class="block text-xs font-medium text-gray-600 mb-1">Agents</label>
                         <button type="button" @click="open = !open" class="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-left flex items-center justify-between">
@@ -108,36 +108,24 @@
                         <input type="hidden" name="from_date" id="from_date" value="{{ request('from_date') }}">
                         <input type="hidden" name="to_date" id="to_date" value="{{ request('to_date') }}">
                     </div>
-                    <!-- <div>
+                    <div>
                         <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Report</label>
                         <select name="report_view" class="form-select">
-                            <option value="details" @selected(request('report_view','details')==='details')>Details Report</option>
-                            <option value="summary" @selected(request('report_view')==='summary')>Summary Report</option>
+                            <option value="summary" @selected(request('report_view','summary')==='summary')>Summary Report</option>
+                            <option value="details" @selected(request('report_view','summary')==='details')>Details Report</option>
                         </select>
                     </div>
+                    <!-- @if(request('report_view','summary') === 'details')
                     <div>
                         <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Type</label>
-                        @php
-                            $isAgent = auth()->user()->role_id === \App\Models\Role::AGENT;
-                            $isFilteringAgent = !$isAgent && request()->filled('agent_id');
-                            $allowedTypes = $isAgent ? ['all' => 'All', 'agent' => 'Agent', 'refund' => 'Refunds']
-                                : ['all' => 'All', 'agent' => 'Agent', 'refund' => 'Refunds', 'supplier' => 'Supplier'];
-                        @endphp
-                        <select name="type" class="form-select">
-                            @foreach($allowedTypes as $k => $v)
-                                <option value="{{ $k }}" @selected(request('type','all')===$k)>{{ $v }}</option>
+                        <select name="task_type" class="form-select">
+                            <option value="">All Types</option>
+                            @foreach(($taskTypes ?? collect()) as $type)
+                                <option value="{{ $type }}" @selected(($taskType ?? request('task_type')) === $type)>{{ ucfirst($type) }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Agent</label>
-                        <x-searchable-dropdown
-                            name="agent_id"
-                            :items="$allAgents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-                            :selectedId="request('agent_id')"
-                            :selectedName="optional(($allAgents ?? collect())->firstWhere('id', request('agent_id')))->name"
-                            placeholder="All agents" />
-                    </div> -->
+                    @endif -->
                     <div class="md:col-span-2 -mt-1">
                         <div class="flex flex-wrap gap-1 min-h-[28px]">
                             <template x-for="s in selectedNames()" :key="'chip-'+s">
@@ -154,6 +142,7 @@
         </div>
     </div>
 
+    @if($reportView === 'summary')
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 print:grid-cols-4">
         @php
         $cards = [
@@ -763,6 +752,60 @@
         </div>
         @endif
     </div>
+    @endif
+    @if($reportView === 'details')
+    <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 mb-6">
+        <h2 class="text-lg font-bold mb-3 text-gray-900 dark:text-gray-100">Detailed Tasks</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 dark:bg-gray-900/40">
+                    <tr class="p-3 text-left">
+                        <th>Issued Date</th>
+                        <th>Reference</th>
+                        <th>Type</th>
+                        <th>Client</th>
+                        <th>Agent</th>
+                        <th>Supplier</th>
+                        <th class="text-right">Task Price</th>
+                        <!-- <th class="text-right">Cost</th>
+                        <th class="text-right">Profit</th> -->
+                        <th>Invoice</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200/70 dark:divide-gray-700">
+                    @forelse($tasks as $task)
+                    <tr class="bg-white/70 dark:bg-gray-800/70 p-3">
+                        <td class="p-3">{{ optional($task->supplier_pay_date)->format('d-m-Y') ?? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') }}</td>
+                        <td class="font-semibold">{{ $task->reference }}</td>
+                        <td>{{ ucfirst($task->type ?? '—') }}</td>
+                        <td class="max-w-[180px] whitespace-normal break-words">{{ $task->client->full_name ?? 'Not Set' }}</td>
+                        <td>{{ $task->agent->name ?? '—' }}</td>
+                        <td>{{ $task->supplier->name ?? '—' }}</td>
+                        <td class="text-right">{{ number_format($task->total, 3) }}</td>
+                        <!-- <td class="text-right">{{ number_format($task->computed_cost, 3) }}</td>
+                        <td class="text-right">{{ number_format($task->computed_profit, 3) }}</td> -->
+                        <td>
+                            @if(optional($task->invoiceDetail)->invoice)
+                                {{ $task->invoiceDetail->invoice->invoice_number }}
+                                <span class="ml-1 text-[11px] px-1.5 py-0.5 rounded-full
+                                    {{ $task->invoiceDetail->invoice->status==='paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                                    {{ ucfirst($task->invoiceDetail->invoice->status) }}
+                                </span>
+                            @else
+                                <span class="text-gray-500">Not Invoiced</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="10" class="px-3 py-6 text-center text-gray-500">No tasks in this period.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
 
     <style>
         @media print {

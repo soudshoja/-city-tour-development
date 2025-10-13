@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Imports\AccountsImport;
 use App\Exports\AccountsExport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -44,7 +45,7 @@ class CoaController extends Controller
             return abort(403, 'Unauthorized action.');
         }
         $company = Company::where('user_id', $user->id)->first();
-        
+
         // Ensure the company exists before proceeding
         if (!$company) {
             try {
@@ -86,7 +87,7 @@ class CoaController extends Controller
 
         $assets = $this->childAccount($assetsAccount, 'normal');
         $liabilities = $this->childAccount($liabilitiesAccount, 'reverse');
-        
+
         $incomes = $this->childAccount($incomesAccount, 'reverse');
         $expenses = $this->childAccount($expensesAccount, 'normal');
         $equities = $this->childAccount($equitiesAccount, 'reverse');
@@ -158,7 +159,7 @@ class CoaController extends Controller
         $totalDebit = 0;
         $totalCredit = 0;
         $originalCurrencyTotals = []; // Track totals by original currency
-        
+
         // Track excluded amounts separately for reporting purposes
         $excludedPaymentDebit = 0;
         $excludedPaymentCredit = 0;
@@ -179,7 +180,7 @@ class CoaController extends Controller
                 } else {
                     // Store separate tracking for payment accounts (excluded from parent)
                     $child->excluded_from_parent = true;
-                    
+
                     // Track excluded payment amounts for reporting
                     $excludedPaymentDebit += $child->debit ?? 0;
                     $excludedPaymentCredit += $child->credit ?? 0;
@@ -580,25 +581,14 @@ class CoaController extends Controller
     public function transaction(Request $request)
     {
         $user = Auth::user();
-
-        if($user->role_id == Role::ADMIN){
-            $request->validate([
-                'company_id' => 'nullable|exists:companies,id',
-            ]);
-
-            if($request->company_id) {
-                $company = Company::findOrFail($request->company_id);
-            } else {
-                $company = Company::first();
-            }
-
-
+        if ($user->role_id == Role::ADMIN) {
+            $request->validate(['company_id' => 'nullable|exists:companies,id']);
+            $company = $request->company_id ? Company::findOrFail($request->company_id) : Company::first();
         } else {
             $company = Company::where('user_id', $user->id)->first();
         }
-        
+
         $companies = Company::all();
-    
         if (!$company) {
             try {
                 $companyId = $user->accountant->branch->company->id;
@@ -608,51 +598,63 @@ class CoaController extends Controller
                 return redirect()->route('dashboard')->with('error', 'Company not found.');
             }
         }
-    
-        $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-    
-        $query = Transaction::with('journalEntries')
-            ->where('company_id', $company->id);
-    
-        if ($startDate) {
-            $query->whereDate('transaction_date', '>=', Carbon::parse($startDate)->startOfDay());
-        }
-    
-        if ($endDate) {
-            $query->whereDate('transaction_date', '<=', Carbon::parse($endDate)->endOfDay());
-        }
-    
-        $transactions = $query
-            ->orderBy('transaction_date', 'desc')
-            ->get();
-    
-        $grouped = $transactions->groupBy(function ($item) {
-            return Carbon::parse($item->transaction_date)->format('Y-m-d');
-        });
-    
-        $perPage = 10;
-        $currentPage = LengthAwarePaginator::resolveCurrentPage();
-        $dateKeys = $grouped->keys();
-        $paginatedKeys = $dateKeys->slice(($currentPage - 1) * $perPage, $perPage);
-    
-        $paginatedGroups = $paginatedKeys->mapWithKeys(function ($date) use ($grouped) {
-            return [$date => $grouped[$date]];
-        });
-    
-        $paginated = new LengthAwarePaginator(
-            $paginatedGroups,
-            $grouped->count(),
-            $perPage,
-            $currentPage,
-            ['path' => request()->url(), 'query' => request()->query()]
-        );
-    
-        return view('coa.transaction', [
-            'companies' => $companies,
-            'company' => $company,
-            'transactionsByDate' => $paginated
-        ]);
+
+        $referenceTypes = (array) $request->input('reference_type', []);
+        $entityTypes = (array) $request->input('entity_type', []);
+        $agentIds = array_filter((array) $request->input('agent_ids', []));
+        $accountIds = array_filter((array) $request->input('account_ids', []));
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+
+        $agents = Agent::query()
+            ->whereHas('branch', fn($q) => $q->where('company_id', $company->id))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $accounts = Account::query()
+            ->where('company_id', $company->id)
+            ->whereNotIn('level', [1, 2])
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $withJournal = function ($q) use ($accountIds, $agentIds) {
+            $q->when($accountIds, fn($qq) => $qq->whereIn('account_id', $accountIds))
+                ->when($agentIds, function ($qq) use ($agentIds) {
+                    $qq->where(function ($w) use ($agentIds) {
+                        $w->whereHas('task', fn($t) => $t->whereIn('agent_id', $agentIds))
+                            ->orWhereHas('invoice', fn($i) => $i->whereIn('agent_id', $agentIds));
+                    });
+                })
+                ->with(['account', 'task.agent', 'invoice.agent']);
+        };
+
+        $query = Transaction::query()
+            ->with(['journalEntries' => $withJournal])
+            ->where('company_id', $company->id)
+            ->when($referenceTypes, fn($q) => $q->whereIn('reference_type', $referenceTypes))
+            ->when($entityTypes, fn($q) => $q->whereIn('entity_type', $entityTypes))
+            ->when($agentIds, function ($q) use ($agentIds) {
+                $q->where(function ($w) use ($agentIds) {
+                    $w->whereHas('journalEntries.task', fn($t) => $t->whereIn('agent_id', $agentIds))
+                        ->orWhereHas('journalEntries.invoice', fn($i) => $i->whereIn('agent_id', $agentIds));
+                });
+            })
+            ->when($accountIds, fn($q) => $q->whereHas('journalEntries', fn($j) => $j->whereIn('account_id', $accountIds)))
+            ->when(
+                $fromDate && $toDate,
+                fn($q) => $q->whereBetween('transaction_date', [Carbon::parse($fromDate)->startOfDay(), Carbon::parse($toDate)->endOfDay()]),
+                function ($q) use ($fromDate, $toDate) {
+                    $q->when($fromDate, fn($qq) =>  $qq->whereDate('transaction_date', '>=', Carbon::parse($fromDate)->startOfDay()))
+                        ->when($toDate, fn($qq) => $qq->whereDate('transaction_date', '<=', Carbon::parse($toDate)->endOfDay()));
+                }
+            );
+
+        $transactions = $query->orderBy('transaction_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(50)
+            ->withQueryString();
+
+        return view('coa.transaction', compact('companies', 'company', 'agents', 'accounts', 'transactions'));
     }
 
     public function importAccounts(Request $request)
@@ -859,10 +861,29 @@ class CoaController extends Controller
         // Header row
         $data = collect();
         $data->push([
-            'Serial Number', 'Root Name', 'Account Type', 'Report Type', 'Name', 'Level',
-            'Actual Balance', 'Budget Balance', 'Variance', 'Parent Name', 'Company Name',
-            'Branch Name', 'Agent Name', 'Client Name', 'Supplier Name', 'Reference ID', 'Code',
-            'Currency', 'Is Group', 'Disabled', 'Balance Must Be', 'Created At', 'Updated At',
+            'Serial Number',
+            'Root Name',
+            'Account Type',
+            'Report Type',
+            'Name',
+            'Level',
+            'Actual Balance',
+            'Budget Balance',
+            'Variance',
+            'Parent Name',
+            'Company Name',
+            'Branch Name',
+            'Agent Name',
+            'Client Name',
+            'Supplier Name',
+            'Reference ID',
+            'Code',
+            'Currency',
+            'Is Group',
+            'Disabled',
+            'Balance Must Be',
+            'Created At',
+            'Updated At',
             'Account Type ID'
         ]);
 
@@ -897,8 +918,14 @@ class CoaController extends Controller
 
         return Excel::download(new class($data) implements \Maatwebsite\Excel\Concerns\FromCollection {
             protected $data;
-            public function __construct(Collection $data) { $this->data = $data; }
-            public function collection() { return $this->data; }
+            public function __construct(Collection $data)
+            {
+                $this->data = $data;
+            }
+            public function collection()
+            {
+                return $this->data;
+            }
         }, 'accounts_export.xlsx');
     }
 
@@ -938,7 +965,7 @@ class CoaController extends Controller
             return redirect()->back()->with('error', 'Account not found');
         }
 
-        if($account->name !== 'Amadeus'){
+        if ($account->name !== 'Amadeus') {
             return redirect()->back()->with('error', 'This account is not Amadeus');
         }
 
@@ -955,7 +982,7 @@ class CoaController extends Controller
             ->pluck('issued_by')
             ->unique()
             ->toArray();
-        
+
         if (empty($issuedBy)) {
             return redirect()->back()->with('error', 'No issued tasks found for this account');
         }
@@ -977,7 +1004,7 @@ class CoaController extends Controller
         //     ->pluck('issued_by')
         //     ->unique()
         //     ->toArray();
-        
+
         // $notIssued = Task::where('company_id', $account->company_id)
         //     ->where('type', 'flight')
         //     ->whereNull('issued_by')
@@ -1029,12 +1056,12 @@ class CoaController extends Controller
                 }
 
                 $childAccount = Account::create($data);
-                
+
                 // Get tasks for this specific company from our collection
                 $companyTasks = $tasks->where('issued_by', $company);
-                
-                foreach($companyTasks as $task){
-                   foreach($task->journalEntries->where('account_id',$account->id) as $journalEntry){
+
+                foreach ($companyTasks as $task) {
+                    foreach ($task->journalEntries->where('account_id', $account->id) as $journalEntry) {
                         $journalEntry->account_id = $childAccount->id;
                         $journalEntry->update();
                     }
@@ -1044,8 +1071,8 @@ class CoaController extends Controller
 
                 $code++;
             }
-           
-            if($notIssuedTask->isNotEmpty()){
+
+            if ($notIssuedTask->isNotEmpty()) {
                 $notIssuedAccount = Account::create([
                     'name' => 'Not Issued',
                     'parent_id' => $account->id,
@@ -1060,15 +1087,14 @@ class CoaController extends Controller
                     'variance' => 0,
                 ]);
 
-                foreach($notIssuedTask as $task){
-                    foreach($task->journalEntries->where('account_id',$account->id) as $journalEntry){
+                foreach ($notIssuedTask as $task) {
+                    foreach ($task->journalEntries->where('account_id', $account->id) as $journalEntry) {
                         $journalEntry->account_id = $notIssuedAccount->id;
                         $journalEntry->update();
                     }
                 }
                 $cumulativeTaskTotal += $notIssuedTask->sum('total');
             }
-
         } catch (Exception $e) {
             Log::error('Error creating account', [
                 'error' => $e->getMessage(),
@@ -1078,8 +1104,8 @@ class CoaController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Error creating account: contact you support ');
         }
-        
-        if(number_format($cumulativeTaskTotal, 2) !== number_format($totalAmount, 2)){
+
+        if (number_format($cumulativeTaskTotal, 2) !== number_format($totalAmount, 2)) {
             Log::error('Cumulative task price does not match account balance', [
                 'cumulative_task_total' => $cumulativeTaskTotal,
                 'total_amount' => $totalAmount,
@@ -1104,7 +1130,7 @@ class CoaController extends Controller
         // return response()->json(['success' => 'Account has been relegated to all companies successfully']);
     }
 
-    public function deleteTransaction($id) 
+    public function deleteTransaction($id)
     {
 
         $transaction = Transaction::findOrFail($id);
@@ -1137,5 +1163,4 @@ class CoaController extends Controller
             ], 500);
         }
     }
-
 }

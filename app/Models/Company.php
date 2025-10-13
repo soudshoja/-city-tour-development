@@ -23,6 +23,11 @@ class Company extends Model
         'logo',
         'address',
         'phone',
+        'facebook',
+        'instagram',
+        'snapchat',
+        'tiktok',
+        'whatsapp',
     ];
 
     public function branches()

@@ -24,6 +24,7 @@ use App\Models\RefundClient;
 use App\Models\Role;
 use App\Models\Transaction;
 use App\Models\Credit;
+use App\Models\InvoiceReceipt;
 use App\Enums\ChargeType;
 use App\Http\Traits\NotificationTrait;
 use App\Models\Company;
@@ -1733,12 +1734,12 @@ class ClientController extends Controller
         }
     }
 
-    public function receiptVoucherCredit(Payment $payment, $data)
+    public function receiptVoucherCredit($data)
     {
+        //dd($data);
         $user = Auth::user();
-        $client = Client::findOrFail($payment->client_id);
-        $agent = Agent::find($payment->agent_id);
 
+        $client = Client::findOrFail($data['items'][0]['client_id']);
         if (!$client) {
             return [
                 'status' => 'error',
@@ -1746,49 +1747,36 @@ class ClientController extends Controller
             ];
         }
 
-        DB::beginTransaction();
+        $companyId = $data['company_id'];
+        $branchId = $data['branch_id'];
+        $amount = $data['items'][0]['amount'];
 
         try {
-            $topupCreditClientData = [
-                'company_id'  => $agent->branch->company->id,
-                'branch_id'   => $agent->branch->id,
+            DB::beginTransaction();
+
+            $topupCreditClientData = Credit::create ([
+                'company_id'  => $companyId,
+                'branch_id'   => $branchId,
                 'client_id'   => $client->id,
                 'type'        => 'Topup',
-                'payment_id'  => $payment->id,
-                'description' => 'Topup Credit via ' . $payment->voucher_number . '. Additional Remarks of ' . $data['remarks_create'],
-                'amount'      => $payment->amount,
+                'description' => 'Topup Credit via ' . $data['receiptvoucherref'] . '. Additional Remarks of ' . $data['remarks_create'],
+                'amount'      => $amount,
                 'topup_by'    => $user->id,
-            ];
-
-            Log::info('Creating Credit record:', $topupCreditClientData);
-
-            Credit::create($topupCreditClientData);
+            ]);
             
             Log::info('Credit record created successfully for client ID: ' . $client->id);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Failed to create Credit record', [
-                'data'  => $topupCreditClientData,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-        }
-        DB::commit();
-
-        DB::beginTransaction();
-        try {
+       
             $transaction = Transaction::create([
-                'branch_id'        => $agent->branch->id,
-                'company_id'       => $agent->branch->company->id,
+                'branch_id'        => $branchId,
+                'company_id'       => $companyId,
                 'name'             => $client->full_name,
-                'entity_id'        => $agent->branch->company->id,
+                'entity_id'        => $companyId,
                 'entity_type'      => 'client',
                 'transaction_type' => 'debit',
-                'amount'           => $payment->amount,
+                'amount'           => $amount,
                 'description'      => 'Credit for Client ' . $client->full_name . '. Additional Remarks of ' . $data['remarks_create'],
-                'invoice_id'       => null,
                 'reference_type'   => 'Receipt',
-                'reference_number' => $payment->voucher_number,
+                'reference_number' => $data['receiptvoucherref'],
                 'transaction_date' => now(),
             ]);
 
@@ -1799,8 +1787,6 @@ class ClientController extends Controller
                     'message' => 'Failed to create transaction',
                 ];
             }
-
-            $companyId = $payment->agent->branch->company->id;
 
             $assets = Account::where('name', 'like', '%Assets%')
                 ->where('company_id', $companyId)
@@ -1842,20 +1828,20 @@ class ClientController extends Controller
 
             JournalEntry::create([
                 'transaction_id'   => $transaction->id,
-                'company_id'       => $agent->branch->company->id,
-                'branch_id'        => $agent->branch->id,
+                'company_id'       => $companyId,
+                'branch_id'        => $branchId,
                 'account_id'       => $receiptVoucherCash->id,
                 'transaction_date' => Carbon::now(),
                 'description'      => 'Client ' . $client->full_name . ' Pays Cash via (Assets): ' . $receiptVoucherCash->name,
-                'debit'            => $payment->amount,
+                'debit'            => $amount,
                 'credit'           => 0,
                 'name'             => $receiptVoucherCash->name,
                 'type'             => 'receivable',
-                'voucher_number'   => $payment->voucher_number,
+                'voucher_number'   => $data['receiptvoucherref'],
                 'type_reference_id'=> $receiptVoucherCash->id,
             ]);
 
-            $receiptVoucherCash->actual_balance = ($receiptVoucherCash->actual_balance ?? 0) + $payment->amount;
+            $receiptVoucherCash->actual_balance = ($receiptVoucherCash->actual_balance ?? 0) + $amount;
             $receiptVoucherCash->save();
 
             $advancesParent = Account::where('name', 'Advances')
@@ -1883,22 +1869,39 @@ class ClientController extends Controller
 
             JournalEntry::create([
                 'transaction_id'   => $transaction->id,
-                'company_id'       => $agent->branch->company->id,
-                'branch_id'        => $agent->branch->id,
+                'company_id'       => $companyId,
+                'branch_id'        => $branchId,
                 'account_id'       => $cash->id,
-                'voucher_number'   => $payment->voucher_number,
+                'voucher_number'   => $data['receiptvoucherref'],
                 'transaction_date' => Carbon::now(),
                 'description'      => 'Client Pays Credit via (Advances): ' . $cash->name,
                 'debit'            => 0, // liability increase → credit
-                'credit'           => $payment->amount,
-                'balance'          => ($cash->actual_balance ?? 0) + $payment->amount,
+                'credit'           => $amount,
+                'balance'          => ($cash->actual_balance ?? 0) + $amount,
                 'name'             => $cash->name,
                 'type'             => 'credit',
                 'type_reference_id'=> $cash->id,
             ]);
 
-            $cash->actual_balance = ($cash->actual_balance ?? 0) + $payment->amount;
+            $cash->actual_balance = ($cash->actual_balance ?? 0) + $amount;
             $cash->save();
+            
+            $invoiceReceipt = InvoiceReceipt::create([
+                'type' => 'credit',
+                'credit_id' => $topupCreditClientData->id,
+                'transaction_id' => $transaction->id,
+                'amount' => $amount,
+                'status' => 'approved',
+            ]);
+
+            if (!$invoiceReceipt) {
+                    Log::error('Failed to create Invoice Receipt record', [
+                    'transaction_id' => $transaction->id
+                ]);
+            }
+            
+            DB::commit();
+
         } catch (Exception $e) {
             DB::rollBack();
             logger('Error adding JournalEntry: ' . $e->getMessage());
@@ -1908,13 +1911,13 @@ class ClientController extends Controller
             ];
         }
 
-        DB::commit();
+        
         return [
             'status' => 'success',
             'message' => 'Credit added successfully',
             'data' => [
                 'client_id' => $client->id,
-                'credit' => $payment->amount,
+                'credit' => $amount,
             ],
         ];
     }

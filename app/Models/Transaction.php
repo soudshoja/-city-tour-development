@@ -82,14 +82,19 @@ class Transaction extends Model
     {
         return $this->belongsTo(Company::class);
     }
+
     public function invoiceReceipts()
     {
         return $this->belongsToMany(Invoice::class, 'invoice_receipt', 'transaction_id', 'invoice_id');
     }
 
     public function invoicePartial()
-{
-    return $this->hasOne(InvoicePartial::class, 'invoice_id', 'invoice_id')->latest();
-}
+    {
+        return $this->hasOne(InvoicePartial::class, 'invoice_id', 'invoice_id')->latest();
+    }
 
+    public function invoiceReceipt()    // one receipt per transaction
+    {
+        return $this->hasOne(InvoiceReceipt::class, 'transaction_id');
+    }
 }

@@ -546,12 +546,13 @@
                     <td colspan="2" style="min-width:300px;">
                         <div style="display: flex; gap: 8px;">
                         
-                            <!-- Account/Invoice/Client Dropdown -->
+                            <!-- Account/Invoice/Client/Import Dropdown -->
                                 <select required class="form-control form-control-sm" name="items[${index}][type_selector]" onchange="toggleAccountClientInput(this, ${index})" style="flex: 0 0 120px;">
                                     <option value="none" ${(item.type_selector === 'none') ? 'selected' : ''}>-- Select Type --</option>
-                                    <option value="invoice" ${item.type_selector === 'invoice' ? 'selected' : ''}>Invoice Number</option>
                                     <option value="account" ${item.type_selector === 'account' ? 'selected' : ''}>Account Name</option>
-                                    <option value="client" ${item.type_selector === 'client' ? 'selected' : ''}>Client Credit</option>
+                                    <option value="invoice" ${item.type_selector === 'invoice' ? 'selected' : ''}>Invoice Number</option>
+                                    <option value="credit" ${item.type_selector === 'credit' ? 'selected' : ''}>Client Credit</option>
+                                    <option value="import" ${item.type_selector === 'import' ? 'selected' : ''}>Import</option>
                                 </select>
                                         <!-- Account/Client Input -->
                                 <div id="accountClientInput_${index}" style="flex: 1 1 8%;">
@@ -575,7 +576,7 @@
                                                 @endforeach
                                             </datalist>`
                                         
-                                        : item.type_selector === 'client'
+                                        : item.type_selector === 'credit'
                                         ? `<input required list="clientList_${index}" class="form-control form-control-sm"
                                                 name="items[${index}][client_name]"
                                                 value="${item.client_name || ''}"
@@ -590,7 +591,26 @@
                                                     </option>
                                                 @endforeach
                                             </datalist>`
-                                        
+                                        : item.type_selector === 'import'
+                                        ? `<input required type="text" class="form-control form-control-sm"
+                                                name="items[${index}][import_name]"
+                                                value="${item.import_name || ''}"
+                                                placeholder="Enter name..."
+                                                oninput="updateField(${index}, 'import_name', this.value)">`
+                                        : item.type_selector === 'account'
+                                        ? `<input required list="accountList_${index}" class="form-control form-control-sm"
+                                            name="items[${index}][ac_code]"
+                                            value="${item.ac_code || ''}"
+                                            placeholder="Search account..."
+                                            oninput="selectedAccName(this, ${index})">
+                                        <datalist id="accountList_${index}">
+                                            ${accountOptions}
+                                        </datalist>
+                                        <small id="selectedAccName_${index}" class="text-muted">
+                                            ${selectedAccDisplay}
+                                        </small>
+                                        <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="${selectedAcc ? selectedAcc.id : ''}">
+                                        <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id || ''}">`
                                         : `<input required list="accountList_${index}" class="form-control form-control-sm"
                                                     name="items[${index}][ac_code]"
                                                     value="${item.ac_code || ''}"

@@ -4075,23 +4075,30 @@ class TaskController extends Controller
 
     public function hotelPdf($taskId)
     {
-        $invoiceTask = Task::with('hotelDetails.hotel', 'hotelDetails.room', 'hotelDetails.hotel.country', 'agent', 'client')->findOrFail($taskId);
+        $invoiceTask = Task::with('company', 'hotelDetails.room', 'hotelDetails.hotel.country', 'agent', 'client')->findOrFail($taskId);
+        $tasks = $invoiceTask->reference ? Task::with(['agent','client','company'])->where('reference', $invoiceTask->reference)->get() : collect([$invoiceTask]);
 
-        if ($invoiceTask->reference) {
-            $tasks = Task::with(['agent', 'client'])
-                ->where('reference', $invoiceTask->reference)
-                ->get();
-
-            if ($tasks->isEmpty()) {
-                $tasks = collect([$invoiceTask]);
-            }
-        } else {
+        if ($tasks->isEmpty()) {
             $tasks = collect([$invoiceTask]);
         }
 
-        $hotelDetails = $invoiceTask->hotelDetails()->get();
+        $hotelDetail = $invoiceTask->hotelDetails;
 
-        return view('tasks.pdf.hotel', compact('tasks', 'hotelDetails'));
+        $task = $tasks->first();
+        $company = $task->company;
+        $policies = [];
+        if ($task->cancellation_policy) {
+            $decoded = @json_decode($task->cancellation_policy, true);
+            if (is_string($decoded)) $decoded = @json_decode($decoded, true);
+            if (is_array($decoded)) $policies = $decoded;
+        }
+
+        $boardLabels = [
+            'RO' => 'Room Only', 'SC' => 'Self-Catering', 'BB' => 'Bed & Breakfast',
+            'HB' => 'Half Board', 'FB' => 'Full Board', 'AI' => 'All Inclusive', 'RD' => 'Room Description',
+        ];
+
+        return view('tasks.pdf.hotel', compact('tasks', 'company', 'hotelDetail', 'policies', 'boardLabels'));
     }
 
     public function receiptPdf($taskId)

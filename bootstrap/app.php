@@ -1,8 +1,14 @@
 <?php
 
+use App\Http\Middleware\AccountantView;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use PragmaRX\Google2FALaravel\Middleware as PragmaMidleware;
+use App\Http\Middleware\CheckFactorAuthentication;
+use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,11 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
-            '2fa' => \PragmaRX\Google2FALaravel\Middleware::class,
-            'check2fa' => \App\Http\Middleware\CheckFactorAuthentication::class,
-            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            '2fa' => PragmaMidleware::class,
+            'check2fa' => CheckFactorAuthentication::class,
+            'role' => RoleMiddleware::class,
+            'permission' => PermissionMiddleware::class,
+            'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'accountant' => AccountantView::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

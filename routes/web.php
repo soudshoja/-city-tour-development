@@ -404,8 +404,10 @@ Route::middleware(['auth'])->group(function () {
         Route::group([ // make sure to put this route before the route with {companyId}/{invoiceNumber} route as it may conflict because of the dynamic parameters
             'prefix' => 'accountant',
             'as' => 'accountant.',
+            'middleware' => 'accountant',
         ], function () {
             Route::get('{companyId}/edit/{invoiceNumber}', [InvoiceController::class, 'accountantEdit'])->name('edit');
+            Route::put('/update', [InvoiceController::class, 'accountantUpdate'])->name('update');
         });
 
         Route::get('/{companyId}/{invoiceNumber}', [InvoiceController::class, 'show'])->name('show')->withoutMiddleware(['auth']);

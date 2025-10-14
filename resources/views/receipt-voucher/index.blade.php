@@ -67,20 +67,19 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @if ($receiptvouchers->isEmpty())
+                                @if ($invoicereceiptvouchers->isEmpty())
                                 <tr>
                                     <td colspan="7" class="text-center p-3 text-sm font-semibold text-gray-500 ">
                                         No data for now.... Create new!</td>
                                 </tr>
                                 @else
-                                @foreach ($receiptvouchers as $receiptvoucher)
+                                @foreach ($invoicereceiptvouchers as $receiptvoucher)
                                 @php
                                     $invoicePartial = null;
                                     if (!empty($receiptvoucher->invoice_id) && isset($invoicePartials[$receiptvoucher->invoice_id])) {
                                         $invoicePartial = $invoicePartials[$receiptvoucher->invoice_id]->first();
                                     }
                                 @endphp
-
                                 <tr>
                                     <td><a data-tooltip="View Receipt Voucher"
                                                 href="{{ route('receipt-voucher.edit', $receiptvoucher->id) }}"
@@ -118,20 +117,21 @@
                                     </td>
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         <div class="flex items-center gap-2">
-                                            <script>
-                                        console.log(@json($invoicePartial));
-                                    </script>
+                                            @php
+                                                $receipt = $receiptvoucher->invoiceReceipt;
+                                                $approved = $receipt?->status === 'approved';                                             
+                                            @endphp
 
-
-                                            @if ($receiptvoucher->reference_type === 'Receipt')
+                                            @if ($receipt && $approved)
                                                 <span class="inline-flex items-center rounded-full border border-green-600/30 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
                                                     Paid
                                                 </span>
-                                            @elseif ($receiptvoucher->reference_type !== 'Receipt' && ($invoicePartial && $invoicePartial->status === 'paid'))
-                                                <span class="inline-flex items-center rounded-full border border-green-600/30 bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
-                                                    Paid
+                                            @elseif ($receipt && ! $approved)
+                                                <span class="inline-flex items-center rounded-full border border-red-600/30 bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                                                    Unpaid
                                                 </span>
-                                            @elseif ($receiptvoucher->reference_type !== 'Receipt' && ($invoicePartial && $invoicePartial->status === 'unpaid'))
+                                            @else
+                                                {{-- No invoice_receipt yet (nothing generated) — show Unpaid or hide badge --}}
                                                 <span class="inline-flex items-center rounded-full border border-red-600/30 bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
                                                     Unpaid
                                                 </span>
@@ -140,8 +140,7 @@
                                     </td>
                                     <td>
                                         <div class="flex items-center space-x-3">
-                                            
-                                            @if ($receiptvoucher->reference_type !== 'Receipt' && ($invoicePartial && $invoicePartial->status === 'unpaid'))
+                                            @if (! $approved)
                                                 <form method="POST" action="{{ route('receipt-voucher.approve', $receiptvoucher->id) }}">
                                                     @csrf
                                                     <button type="submit" 

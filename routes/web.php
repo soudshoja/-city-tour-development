@@ -646,6 +646,7 @@ Route::put('/receipt-voucher/update/{id}', [ReceiptVoucherController::class, 'up
 Route::get('/receipt-voucher/fetch-journals-by-date', [ReceiptVoucherController::class, 'fetchPaymentsByDate'])->name('receipt-voucher.fetchPaymentsByDate');
 Route::get('/receipt-voucher/fetch-journals-view', [ReceiptVoucherController::class, 'fetchJournalEntriesByIds'])->name('receipt-voucher.fetch-journals');
 Route::post('/receipt-voucher/{id}/decline-reconcile', [ReceiptVoucherController::class, 'declineReconcile'])->name('receipt-voucher.decline-reconcile');
+Route::post('/receipt-voucher/import', [ReceiptVoucherController::class, 'import'])->name('import');
 
 
 Route::get('/bank-payments/create', [BankPaymentController::class, 'create'])->name('bank-payments.create');

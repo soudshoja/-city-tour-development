@@ -199,6 +199,7 @@
                         <div class="flex items-center">
                             <label class="w-full text-sm font-semibold">Invoice Number:</label>
                             <input id="invoiceNumber" type="text" name="invoiceNumber" value="{{ $invoiceNumber }}" class="w-full form-input" placeholder="Invoice Number" />
+                            <input type="hidden" id="invoiceNumber" name="invoiceNumber" value="{{ $invoiceNumber }}">
                             <input type="hidden" id="companyId" name="companyId" value="{{ $companyId }}">
                         </div>
 
@@ -741,93 +742,146 @@
                                         px-4 py-2 border border-gray-300 
                                         bg-white text-gray-700 transition gap-2 
                                         hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                        <span id="openImportModalBtn" class="font-medium">Import from Payment Gateway</span>
+                                        <span id="openImportModalBtn" class="font-medium">Import Payment</span>
                                     </div>
                                 </label>
                             </div>
                             @if(empty($invoice->payment_type))
-                            <!-- Modal -->
-                            <div id="importModal" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50 hidden">
+                           <!-- Modal -->
+                            <div id="importModal"
+                                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50 hidden">
                                 <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl overflow-y-auto" style="max-height: 90vh;">
-                                    <!-- Header -->
-                                    <div class="flex items-center justify-between mb-6">
-                                        <div>
-                                            <h2 class="text-xl font-bold text-gray-800">Import MyFatoorah Payment</h2>
-                                            <p class="text-gray-600 italic text-xs mt-1">
-                                                Import a payment from an existing transaction on MyFatoorah Portal
-                                            </p>
-                                        </div>
-                                        <button id="closeImportModalBtn"
-                                            class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">&times;</button>
-                                    </div>
-
-                                    <!-- Form -->
-                                    <form id="importForm" action="{{ route('payment.link.import.payment') }}" method="POST" class="space-y-4" x-data="{ gateway: '' }">
-                                        @csrf
-
-                                        <!-- Gateway selector -->
-                                        <div>
-                                            <label for="gateway" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Payment Gateway
-                                            </label>
-                                            <select name="gateway" id="gateway" x-model="gateway"
-                                                class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                                required>
-                                                <option value="" selected disabled hidden>Select Payment Gateway</option>
-                                                @foreach($can_import as $gateway)
-                                                <option value="{{ strtolower($gateway->name) }}">{{ $gateway->name }}</option>
-                                                @endforeach
-                                            </select>
+                                        <!-- Header -->
+                                        <div class="flex items-center justify-between mb-6">
+                                            <div>
+                                                <h2 class="text-xl font-bold text-gray-800">Import Payment</h2>
+                                                <p class="text-gray-600 italic text-xs mt-1">
+                                                Import a payment from a Payment Gateway or from a paid Receipt Voucher
+                                                </p>
+                                            </div>
+                                            <button id="closeImportModalBtn" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">&times;</button>
                                         </div>
 
-                                        <!-- MyFatoorah: Invoice ID -->
-                                        <div x-show="gateway === 'myfatoorah'" class="mt-4" x-cloak>
-                                            <label for="import_invoice_id" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Existing Invoice ID
-                                            </label>
-                                            <input type="text" name="import_invoice_id" id="import_invoice_id"
-                                                class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                                placeholder="Enter invoice ID">
-                                        </div>
+                                        <!-- Form -->
+                                        <form id="importForm"
+                                            action="{{ route('payment.link.import.payment') }}"
+                                            method="POST"
+                                            class="space-y-4"
+                                            x-data="{ source: 'placeholder', gateway: '' }"
+                                            x-effect="
+                                                // reset fields when source changes
+                                                if (source !== 'gateway') { gateway=''; }
+                                                if (source !== 'receipt') { $refs.receiptRef && ($refs.receiptRef.value=''); }
+                                            ">
+                                            @csrf
 
-                                        <!-- Hesabe: Order Reference -->
-                                        <div x-show="gateway === 'hesabe'" class="mt-4" x-cloak>
-                                            <label for="import_order_reference" class="block text-sm font-medium text-gray-700 mb-1">
-                                                Existing Order Reference
-                                            </label>
-                                            <input type="text" name="import_order_reference" id="import_order_reference"
-                                                class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                                placeholder="Enter order reference">
-                                        </div>
+                                            <!-- Source -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1">Import From</label>
+                                                <select name="source" x-model="source"
+                                                        class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                        required>
+                                                <option value="placeholder" selected disabled>Select an option</option>
+                                                <option value="gateway">Payment Gateway</option>
+                                                <option value="receipt">Receipt Voucher</option>
+                                                </select>
+                                            </div>
 
-                                        <!-- Success Message -->
-                                        <div id="successBox" class="hidden p-3 bg-green-50 border border-green-200 rounded-md text-green-800 text-sm"></div>
+                                            <!-- Payment Gateway section -->
+                                            <div x-show="source === 'gateway'" x-cloak>
+                                                <div class="mt-4">
+                                                <label for="gateway" class="block text-sm font-medium text-gray-700 mb-1">
+                                                    Payment Gateway
+                                                </label>
+                                                <select name="gateway" id="gateway" x-model="gateway"
+                                                        class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                        :required="source === 'gateway'">
+                                                    <option value="" selected disabled hidden>Select Payment Gateway</option>
+                                                    @foreach($can_import as $gateway)
+                                                    <option value="{{ strtolower($gateway->name) }}">{{ $gateway->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                                </div>
 
-                                        <!-- Error Message -->
-                                        <div id="errorBox" class="hidden p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm"></div>
+                                                <!-- MyFatoorah -->
+                                                <div x-show="gateway === 'myfatoorah'" class="mt-4" x-cloak>
+                                                    <label for="import_invoice_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                                        Existing Invoice ID
+                                                    </label>
+                                                    <input type="text" name="import_invoice_id" id="import_invoice_id"
+                                                            class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                            placeholder="Enter invoice ID"
+                                                            :required="source === 'gateway' && gateway === 'myfatoorah'">
+                                                </div>
 
-                                        <!-- Loading Spinner -->
-                                        <div id="loadingBox" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-800 text-sm flex items-center">
-                                            <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-blue-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <!-- Hesabe -->
+                                                <div x-show="gateway === 'hesabe'" class="mt-4" x-cloak>
+                                                    <label for="import_order_reference" class="block text-sm font-medium text-gray-700 mb-1">
+                                                        Existing Order Reference
+                                                    </label>
+                                                    <input type="text" name="import_order_reference" id="import_order_reference"
+                                                            class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                            placeholder="Enter order reference"
+                                                            :required="source === 'gateway' && gateway === 'hesabe'">
+                                                </div>
+                                            </div>
+
+                                            <!-- Receipt Voucher section -->
+                                            <div x-show="source === 'receipt'" x-cloak>
+                                                <div class="mt-4">
+                                                    <label for="receipt_reference" class="block text-sm font-medium text-gray-700 mb-1">
+                                                        Receipt Reference
+                                                    </label>
+
+
+                                                    <x-searchable-dropdown
+                                                        name="receipt"
+                                                        :items="$receiptVoucher
+                                                            ->filter(fn($r) => $r->transaction)
+                                                            ->map(fn($r) => [
+                                                                'id'   => $r->transaction->reference_number, 
+                                                                'name' => $r->transaction->reference_number 
+                                                                            .' — KWD '.number_format((float)$r->amount, 2),
+                                                            ])"
+                                                        :placeholder="'Select Receipt Voucher'"
+                                                        :selectedName="old('receipt') ?? ($selectedReceiptRef ?? null)"
+                                                        x-model="receipt"
+                                                    />
+
+                                                </div>
+                                            </div>
+
+                                            <!-- Success -->
+                                            <div id="successBox" class="hidden p-3 bg-green-50 border border-green-200 rounded-md text-green-800 text-sm"></div>
+
+                                            <!-- Error -->
+                                            <div id="errorBox" class="hidden p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm"></div>
+
+                                            <!-- Loading -->
+                                            <div id="loadingBox"
+                                                class="hidden p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-800 text-sm flex items-center">
+                                                <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-blue-800" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                                    viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                                        stroke-width="4"></circle>
                                                 <path class="opacity-75" fill="currentColor"
-                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Processing import...
-                                        </div>
+                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Processing import...
+                                            </div>
 
-                                        <!-- Buttons -->
-                                        <div class="flex justify-between pt-4 mt-4">
-                                            <button type="button" id="cancelImport"
-                                                class="w-32 shadow-md border border-gray-200 hover:bg-gray-400 font-semibold py-2 rounded-full text-sm transition duration-150">
+                                            <!-- Buttons -->
+                                            <div class="flex justify-between pt-4 mt-4">
+                                                <button type="button" id="cancelImport"
+                                                        class="w-32 shadow-md border border-gray-200 hover:bg-gray-400 font-semibold py-2 rounded-full text-sm transition duration-150">
                                                 Cancel
-                                            </button>
-                                            <button type="submit" id="submitImportBtn"
-                                                class="w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-full text-sm shadow-md transition duration-150">
+                                                </button>
+                                                <button type="submit" id="submitImportBtn"
+                                                        class="w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-full text-sm shadow-md transition duration-150">
                                                 Import
-                                            </button>
-                                        </div>
-                                    </form>
+                                                </button>
+                                            </div>
+                                        </form>
                                 </div>
                             </div>
                             @endif
@@ -4131,95 +4185,134 @@
 
             // Submit logic
             if (form) {
-                form.addEventListener('submit', async (e) => {
-                    e.preventDefault();
+               form.addEventListener('submit', async (e) => {
+                e.preventDefault();
 
-                    const agentName = document.getElementById('agentName')?.value || '';
-                    const clientName = document.getElementById('receiverName')?.value || '';
-                    const gateway = document.getElementById('gateway').value || '';
-                    const invoiceId = fatoorah.value.trim();
-                    const orderRef = hesabe.value.trim();
-                    const page = 'invoice';
+                // UI reset
+                successBox.classList.add('hidden');
+                errorBox.classList.add('hidden');
+                loadingBox.classList.remove('hidden');
 
-                    console.log("=== Import Form Debug ===");
-                    console.log("Gateway: ", gateway);
-                    console.log("Agent (hidden input):", agentName);
-                    console.log("Client (hidden input):", clientName);
-                    console.log("Invoice ID (Fatoorah):", invoiceId);
-                    console.log("Order Reference (Hesabe):", orderRef);
-                    console.log("Page:", page);
+                // Source selector (gateway | receipt)
+                const sourceEl = form.querySelector('[name="source"]');
+                const source   = (sourceEl?.value || '').trim();
 
-                    successBox.classList.add('hidden');
-                    errorBox.classList.add('hidden');
-                    loadingBox.classList.remove('hidden');
+                // Common context
+                const agentName  = document.getElementById('agentName')?.value || '';
+                const clientName = document.getElementById('receiverName')?.value || '';
+                const invoiceNumber = document.getElementById('invoiceNumber')?.value || '';
 
-                    if (!agentName || !clientName) {
-                        loadingBox.classList.add('hidden');
-                        errorBox.textContent = 'Agent and Client must be selected.';
-                        errorBox.classList.remove('hidden');
-                        return;
+                // Gateway inputs
+                const gatewayVal = document.getElementById('gateway')?.value || '';
+                const invoiceId  = (document.getElementById('import_invoice_id')?.value || '').trim();
+                const orderRef   = (document.getElementById('import_order_reference')?.value || '').trim();
+
+                // Receipt input (either datalist or your searchable component’s hidden/input)
+                const receiptRef = (
+                    document.getElementById('receipt_reference')?.value ||
+                    document.querySelector('[name="receipt"]')?.value ||
+                    ''
+                ).trim();
+
+                if (!agentName || !clientName) {
+                    loadingBox.classList.add('hidden');
+                    errorBox.textContent = 'Agent and Client must be selected.';
+                    errorBox.classList.remove('hidden');
+                    return;
+                }
+
+                let url = '';
+                const fd = new FormData();
+                fd.append('_token', '{{ csrf_token() }}');
+
+                if (source === 'gateway') {
+                    if (!gatewayVal) {
+                    loadingBox.classList.add('hidden');
+                    errorBox.textContent = 'Please select a payment gateway.';
+                    errorBox.classList.remove('hidden');
+                    return;
                     }
-
                     if (!invoiceId && !orderRef) {
-                        loadingBox.classList.add('hidden');
-                        errorBox.textContent = 'Payment ID or Order Reference is required.';
-                        errorBox.classList.remove('hidden');
-                        return;
+                    loadingBox.classList.add('hidden');
+                    errorBox.textContent = 'Payment ID or Order Reference is required.';
+                    errorBox.classList.remove('hidden');
+                    return;
                     }
 
-                    const formData = new FormData();
-                    formData.append('_token', '{{ csrf_token() }}');
-                    formData.append('gateway', gateway);
-                    formData.append('agentName', agentName);
-                    formData.append('receiverName', clientName);
-                    formData.append('page', page);
+                    url = `{{ route('payment.link.import.invoice') }}`;
+                    fd.append('gateway', gatewayVal);
+                    fd.append('agentName', agentName);
+                    fd.append('receiverName', clientName);
+                    fd.append('page', 'invoice');
+                    if (invoiceId) fd.append('import_invoice_id', invoiceId);
+                    if (orderRef)  fd.append('import_order_reference', orderRef);
 
-                    if (invoiceId) formData.append('import_invoice_id', invoiceId);
-                    if (orderRef) formData.append('import_order_reference', orderRef);
-
-                    try {
-                        const res = await fetch(`{{ route('payment.link.import.invoice') }}`, {
-                            method: 'POST',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
-                            body: formData,
-                        });
-
-                        loadingBox.classList.add('hidden');
-
-                        if (res.ok) {
-                            let data;
-                            try {
-                                data = await res.json();
-                            } catch {
-                                const text = await res.text();
-                                throw new Error("Non-JSON response: " + text.substring(0, 200));
-                            }
-                            successBox.textContent = `Payment imported successfully.`;
-                            successBox.classList.remove('hidden');
-                            setTimeout(() => {
-                                closeModal();
-                                window.location.reload();
-                            }, 2000);
-                        } else {
-                            let data;
-                            try {
-                                data = await res.json();
-                                errorBox.textContent = data.message || "Import failed.";
-                            } catch {
-                                errorBox.textContent = "Import failed. Non-JSON response.";
-                            }
-                            errorBox.classList.remove('hidden');
-                        }
-                    } catch (err) {
-                        console.error(err);
-                        loadingBox.classList.add('hidden');
-                        errorBox.textContent = err.message;
-                        errorBox.classList.remove('hidden');
+                } else if (source === 'receipt') {
+                    if (!receiptRef) {
+                    loadingBox.classList.add('hidden');
+                    errorBox.textContent = 'Please choose a Receipt Reference.';
+                    errorBox.classList.remove('hidden');
+                    return;
                     }
+
+                    // ▶️ New endpoint for receipt import
+                    url = `{{ route('import') }}`;
+
+                    fd.append('source', 'receipt');
+                    fd.append('receipt_reference', receiptRef);
+                    // Include context if your controller needs it
+                    fd.append('agent_name', agentName);
+                    fd.append('client_name', clientName);
+                    fd.append('invoice_number', invoiceNumber);
+                } else {
+                    loadingBox.classList.add('hidden');
+                    errorBox.textContent = 'Please select where to import from.';
+                    errorBox.classList.remove('hidden');
+                    return;
+                }
+
+                // 🔎 DEBUG: log URL and payload being sent
+                console.log('[IMPORT] POST URL =>', url);
+                console.log('[IMPORT] FormData payload:');
+                for (const [k, v] of fd.entries()) {
+                    console.log('  ', k, '=>', v);
+                }
+
+                try {
+                    const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd,
+                    });
+
+                    loadingBox.classList.add('hidden');
+
+                    if (!res.ok) {
+                    let msg = 'Import failed.';
+                    try { msg = (await res.json()).message || msg; }
+                    catch { msg = (await res.text()).slice(0, 200) || msg; }
+                    errorBox.textContent = msg;
+                    errorBox.classList.remove('hidden');
+                    return;
+                    }
+
+                    let data = {};
+                    try { data = await res.json(); } catch {}
+
+                    successBox.textContent = data.message || 'Imported successfully.';
+                    successBox.classList.remove('hidden');
+                    setTimeout(() => {
+                    // optionally close modal here if you want:
+                    // modal.classList.add('hidden');
+                    window.location.reload();
+                    }, 1200);
+
+                } catch (err) {
+                    loadingBox.classList.add('hidden');
+                    errorBox.textContent = err.message || 'Network error.';
+                    errorBox.classList.remove('hidden');
+                }
                 });
-
             }
         }
     </script>

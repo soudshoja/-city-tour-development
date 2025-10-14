@@ -51,28 +51,28 @@ class JournalEntry extends Model
         });
     }
 
-    public static function boot()
-    {
-        parent::boot();
+    // public static function boot()
+    // {
+    //     parent::boot();
 
-        static::creating(function ($journalEntry) {
-            $account = Account::find($journalEntry->account_id);
+    //     static::creating(function ($journalEntry) {
+    //         $account = Account::find($journalEntry->account_id);
 
-            // Log::info('Creating Journal Entry for Account ID: ' . $journalEntry->account_id);
-            // Log::info('Account Details: ', $account->toArray());
-            // Log::infO('Account Children'. json_encode($account->children()->get()));
+    //         // Log::info('Creating Journal Entry for Account ID: ' . $journalEntry->account_id);
+    //         // Log::info('Account Details: ', $account->toArray());
+    //         // Log::infO('Account Children'. json_encode($account->children()->get()));
             
-            if ($account && $account->children()->exists()) {
+    //         if ($account && $account->children()->exists()) {
 
-                Log::error('Attempt to create journal entry for an account with child accounts.', [
-                    'account_id' => $journalEntry->account_id,
-                    'account_name' => $account->name,
-                ]);
+    //             Log::error('Attempt to create journal entry for an account with child accounts.', [
+    //                 'account_id' => $journalEntry->account_id,
+    //                 'account_name' => $account->name,
+    //             ]);
 
-                throw new \Exception('Cannot create journal entry for an account that has child accounts.');
-            }
-        });
-    }
+    //             throw new \Exception('Cannot create journal entry for an account that has child accounts.');
+    //         }
+    //     });
+    // }
 
     // Define the relationship to the Invoice model
     public function account()

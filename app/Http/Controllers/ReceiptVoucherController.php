@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\Transaction;
 use App\Models\JournalEntry;
@@ -24,8 +25,10 @@ use App\Models\InvoicePartial;
 use App\Models\InvoiceDetail;
 use App\Models\Task;
 use App\Models\Agent;
+use App\Models\Credit;
 use Exception;
 use Throwable;
+use Carbon\Carbon;
 class ReceiptVoucherController extends Controller
 {
     public function index()
@@ -33,7 +36,7 @@ class ReceiptVoucherController extends Controller
         $user = auth()->user();
 
         if ($user->role_id == Role::ADMIN) {
-            $receiptvouchers = Transaction::all();
+            $invoicereceiptvouchers = Transaction::all();
             $totalRecords = Transaction::count();
         } elseif ($user->role_id == Role::COMPANY) {
 
@@ -41,27 +44,20 @@ class ReceiptVoucherController extends Controller
             $branch = Branch::where('company_id', $companyId)->get();
 
             $branchesId = $branch->pluck('id')->toArray();
-            $receiptvouchers = Transaction::whereIn('branch_id', $branchesId)
+            $invoicereceiptvouchers = Transaction::with('invoiceReceipt')
+                ->whereIn('branch_id', $branchesId)
                 ->whereNotNull('name')
-                ->where('reference_number', 'like', 'RV-%') // <-- change PV-% to RV-%
-                ->latest()
-                ->paginate(10);
+                ->where('reference_number', 'like', 'RV-%')
+                ->get();
 
             $totalRecords = Transaction::whereIn('branch_id', $branchesId)
                 ->whereNotNull('name')
                 ->where('reference_number', 'like', 'RV-%') // <-- change PV-% to RV-%
                 ->count();
 
-            $invoiceIds = $receiptvouchers->pluck('invoice_id')->filter()->unique();
-
-            $invoicePartials = InvoicePartial::whereIn('invoice_id', $invoiceIds)
-                ->orderByDesc('updated_at')
-                ->get()
-                ->groupBy('invoice_id');
-
         } elseif ($user->role_id == Role::AGENT) {
             $branchId = $user->branch_id;
-            $receiptvouchers = Transaction::where('branch_id', $branchId)
+            $invoicereceiptvouchers = Transaction::where('branch_id', $branchId)
                 ->whereNotNull('name')
                 ->where('reference_number', 'like', 'RV-%') // <-- change PV-% to RV-%
                 ->latest()
@@ -71,11 +67,29 @@ class ReceiptVoucherController extends Controller
                 ->whereNotNull('name')
                 ->where('reference_number', 'like', 'RV-%') // <-- change PV-% to RV-%
                 ->count();
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companyId = $user->accountant->branch->company->id;
+            
+            $branch = Branch::where('company_id', $companyId)->get();
+
+            $branchesId = $branch->pluck('id')->toArray();
+            
+            $invoicereceiptvouchers = Transaction::with('invoiceReceipt')
+                ->whereIn('branch_id', $branchesId) 
+                ->whereNotNull('name')
+                ->where('reference_number', 'like', 'RV-%')
+                ->latest() 
+                ->paginate(10); 
+
+            $totalRecords = Transaction::whereIn('branch_id', $branchesId) // <-- CORRECTED
+                ->whereNotNull('name')
+                ->where('reference_number', 'like', 'RV-%')
+                ->count();
         } else {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
-        return view('receipt-voucher.index', compact('receiptvouchers', 'totalRecords', 'invoicePartials'));
+        return view('receipt-voucher.index', compact('invoicereceiptvouchers', 'totalRecords'));
     }
 
     public function create()
@@ -145,6 +159,40 @@ class ReceiptVoucherController extends Controller
                 ->where('branch_id', $user->branch->id)
                 ->select('refund_number')
                 ->get();
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+             $company = Company::with('branches.agents')->find($user->company->id);
+            $accounts = $company->branches->flatMap->accounts;
+            $branches = $company->branches;
+            $companies = $company;
+
+            $rootNames = ['Assets', 'Liabilities', 'Income', 'Expenses', 'Equity'];
+            $rootIds = Account::whereIn('name', $rootNames)->pluck('id');
+
+            $accpayreceives = Account::doesntHave('children')
+                ->with('root')
+                ->whereHas('parent', function ($query) use ($rootIds) {
+                    $query->whereIn('root_id', $rootIds);
+                })
+                ->get();
+
+            $lastLevelAccounts = Account::doesntHave('children')
+                ->with('root')
+                ->whereHas('parent', function ($query) use ($rootIds) {
+                    $query->whereIn('root_id', $rootIds);
+                })
+                ->get();
+
+            $rootIds = Account::where('name', 'Liabilities')->pluck('id');
+            $suppliers = Account::doesntHave('children')
+                ->with('root')
+                ->whereIn('root_id', $rootIds)
+                ->get();
+            $clients = \App\Models\Client::all();
+
+            $refundNumbers = Refund::where('company_id', $user->company->id)
+                ->where('branch_id', $user->accountant->branch->id)
+                ->select('refund_number')
+                ->get();
         } else {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
@@ -167,36 +215,16 @@ class ReceiptVoucherController extends Controller
     }
 
     public function store(Request $request)
-    {  
-        $allData = $request->all();
-        $items = $allData['items'];
-
-        if ($request->receiptvouchertype === 'PaymentByDate') {
-            $receiptvoucherType = 'Receipt';
-            $reconciledFlag = 2; //0 = no yet reconciled, 1 = the record that has been reconciled, 2 = reconciled record
-            $reconciledProcess = 'yes';
-        } elseif ($request->receiptvouchertype === 'Receipt') {
-            $receiptvoucherType = 'Receipt';
-            $reconciledFlag = 0;
-            $reconciledProcess = 'no';
-        } elseif ($request->receiptvouchertype === 'Refund') {
-            $receiptvoucherType = 'Refund';
-            $reconciledFlag = 0;
-            $reconciledProcess = 'no';
-            $totalNettRefund = Refund::where('refund_number', $request->refund_number)
-                ->value('total_nett_refund');
-        } else {
-            $receiptvoucherType = 'Invoice';
-            $reconciledFlag = 0;
-            $reconciledProcess = 'no';
-        }
-
+    {   
         $data = $request->validate([
             'company_id' => 'required|exists:companies,id',
             'branch_id' => 'required|exists:branches,id',
             'docdate' => 'required|date',
             'receiptvoucherref' => 'required|string',
             'receiptvouchertype' => 'required|string',
+            'remarks_create' => 'required|string',
+            'internal_remarks' => 'nullable|string',
+            'remarks_fl' => 'nullable|string',
             'pay_to' => [
                 'required',
                 function ($attribute, $value, $fail) {
@@ -214,9 +242,8 @@ class ReceiptVoucherController extends Controller
                     }
                 }
             ],
-            'remarks_create' => 'required|string',
-            'internal_remarks' => 'nullable|string',
-            'remarks_fl' => 'nullable|string',
+            'items.*.type_selector' => 'nullable|string',
+            'items.*.invoice_id' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.account_id' => ['nullable', 'exists:accounts,id'],
             'items.*.client_id' => ['nullable', 'exists:clients,id'],
@@ -235,26 +262,83 @@ class ReceiptVoucherController extends Controller
             'items.*.account_id.exists' => 'The selected account code does not exist.',
         ]);
 
+        $items = $data['items'][0];
+
         foreach ($request->items as $i => $item) {
             $hasClient = !empty($item['client_id']);
             $hasAccount = !empty($item['account_id']);
             $hasInvoice = !empty($item['invoice_id']);
-            if (!$hasClient && !$hasAccount && !$hasInvoice) {
-                return back()->with('error', "Row " . ($i + 1) . ": Please select either Client Credit, A/C, or Invoice Number.");
+            $hasImport = isset($item['type_selector']) && $item['type_selector'] === 'import'; 
+            if (!$hasClient && !$hasAccount && !$hasInvoice && !$hasImport) {
+                return back()->with('error', "Row " . ($i + 1) . ": Please select either Client Credit, A/C, Invoice Number or Import.");
             }
             if ($hasClient && $hasAccount) {
                 return back()->with('error', "Row " . ($i + 1) . ": You cannot select both Client Credit and A/C. Please choose only one.");
             }
         }
 
-        $type = data_get($items, '0.type_selector');
-        $amount = data_get($items, '0.amount');
-        $invoiceId = data_get($items, '0.invoice_id');
+        $type = $items['type_selector'] ?? null;
+        $amount = (float)($items['debit'] > 0 ? $items['debit'] : ($items['credit'] > 0 ? $items['credit'] : ($items['amount'] ?? 0)));        $invoiceId = $items['invoice_id'] ?? null;
+        $companyId = $data['company_id'];
+        $branchId = $data['branch_id'];
 
         try {
-            DB::beginTransaction();
+            DB::beginTransaction(); 
 
-            if ($type == 'invoice') {
+            if ($type == 'account') {
+                Log::info('Starting to create Receipt Voucher for Account with Receipt Reference: ' . $request->receiptvocuherref);
+
+                $account = Account::where('id', $items['account_id'])->first();
+                if (!$account) {
+                    Log::error('Account not found');
+                }
+
+                $type = (!empty($items['debit']) && (float)$items['debit'] > 0)
+                    ? 'debit'
+                    : ((!empty($items['credit']) && (float)$items['credit'] > 0)
+                        ? 'credit'
+                        : 'unknown');
+
+                $transaction = Transaction::create([
+                    'entity_id'         => $companyId,
+                    'entity_type'       => 'company',
+                    'company_id'        => $companyId,
+                    'branch_id'         => $branchId,
+                    'transaction_type'  => $type, 
+                    'amount'            => $amount,
+                    'date'              => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                    'description'       => 'Cash Payment for Account: '. $account->name . '. Additional Remarks: ' . $request->remarks_create,
+                    'invoice_id'        => null,
+                    'reference_number'  => $request->receiptvoucherref,
+                    'reference_type'    => 'Account',
+                    'name'              => $request->pay_to,
+                    'remarks_internal'  => $request->internal_remarks,
+                    'remarks_fl'        => $request->remarks_fl,
+                    'transaction_date'  => now(),
+                ]);
+                if (!$transaction) {
+                    Log::error("Failed to create {$type} transaction");
+                    return back()->with('error', 'Failed to create transaction');
+                }
+
+                $invoiceReceipt = InvoiceReceipt::create([
+                    'type' => 'account',
+                    'account_id' => $account->id,
+                    'transaction_id' => $transaction->id,
+                    'amount' => $request->total_payment,
+                    'status' => 'pending',
+                    'is_used' => false,
+                ]);
+
+                if (!$invoiceReceipt) {
+                     Log::error('Failed to create Invoice Receipt record', [
+                        'account_id' => $account->id,
+                        'transaction_id' => $transaction->id
+                    ]);
+                }
+
+                Log::info('Successfully created Receipt Voucher for Account: ' . $account->name . ' with ID: ' . $invoiceReceipt->id);
+            } elseif ($type == 'invoice') {
 
                 $invoice = Invoice::where('id', $invoiceId)->first();
                 if (!$invoice) {
@@ -301,7 +385,6 @@ class ReceiptVoucherController extends Controller
                     return ['status' => 'error', 'message' => 'Client not found'];
                 }
                 
-                //For uninvoiced tasks
                 $transaction = Transaction::where('invoice_id', $invoiceId)
                                 ->first();
                 if (!$transaction) {
@@ -314,7 +397,7 @@ class ReceiptVoucherController extends Controller
                         'amount' => $invoice->amount,
                         'description' => 'Invoice: ' . $invoice->invoice_number . ' Generated',
                         'invoice_id' => $invoice->id,
-                        'reference_type' => 'Invoice', //$receiptvoucherType
+                        'reference_type' => 'Invoice',
                         'name' => $client->name,
                         'transaction_date' => $invoice->invoice_date,
                     ]);
@@ -327,7 +410,7 @@ class ReceiptVoucherController extends Controller
                         return redirect()->back()->with('error', 'Failed to create Transaction record for ' . $invoice->invoice_number);
                     }
 
-                    $uninvoiced = $this->invoiceJournalEntry($transaction, $invoice, $allData);
+                    $uninvoiced = $this->invoiceJournalEntry($transaction, $invoice);
                     
                     if (!is_array($uninvoiced) || !isset($uninvoiced['status']) || $uninvoiced['status'] === 'error') {
                         Log::error('Failed to create journal entry during full payment', [
@@ -366,10 +449,10 @@ class ReceiptVoucherController extends Controller
                         'branch_id' => $request->branch_id ?? $invoice->agent->branch->id,
                         'transaction_type' => 'debit',
                         'amount' => $amount,
-                        'description' => 'Payment for Invoice ' . $invoice->invoice_number . '. Additional Remarks of ' . $request->remarks_create,
+                        'description' => 'Payment for Invoice ' . $invoice->invoice_number . '. Additional Remarks: ' . $request->remarks_create,
                         'invoice_id' => $invoiceId,
                         'reference_number' => $request->receiptvoucherref,
-                        'reference_type' => 'Invoice', //$receiptvoucherType
+                        'reference_type' => 'Invoice', 
                         'name' => $request->pay_to,
                         'transaction_date' => $request->docdate,
                     ]);
@@ -382,13 +465,16 @@ class ReceiptVoucherController extends Controller
                     }
 
                     $invoiceReceipt = InvoiceReceipt::create([
+                        'type' => 'invoice',
                         'invoice_id' => $invoiceId,
                         'transaction_id' => $transaction->id,
                         'amount' => $amount,
+                        'status' => 'pending',
+                        'is_used' => false,
                     ]);
                 
                     if (!$invoiceReceipt) {
-                        Log::error('Failed to create Invoice Receipt record for transaction ID: ', [
+                        Log::error('Failed to create Invoice Receipt record', [
                             'invoice_id' => $invoiceId,
                             'transaction_id' => $transaction->id
                         ]);
@@ -401,123 +487,67 @@ class ReceiptVoucherController extends Controller
 
                     return redirect()->back()->with('error', 'Failed to create Receipt Voucher');
                 }
-                
-            } elseif ($type == 'refund') {
-                // Create Transaction Record
-                $transaction = Transaction::create([
-                    'entity_id' => $request->company_id ?? auth()->user()->company->id,
-                    'entity_type' => 'company',
-                    'company_id' => $request->company_id ?? auth()->user()->company->id,
-                    'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
-                    'transaction_type' => 'debit',
-                    'amount' => $request->receiptvouchertype === 'Refund'
-                        ? $totalNettRefund
-                        : abs($request->amount),
-                    'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                    'description' => $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
-                    'description' => $request->receiptvouchertype === 'Refund'
-                        ? 'Refund to Client - ' . $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : '')
-                        : $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
-                    'invoice_id' => null,
-                    'reference_number' => $request->receiptvoucherref,
-                    'reference_type' => $receiptvoucherType,
-                    'name' => $request->pay_to,
-                    'remarks_internal' => $request->internal_remarks,
-                    'remarks_fl' => $request->remarks_fl,
-                    'transaction_date' => now(),
+                                
+                Log::info('Successfully created Receipt Voucher for Invoice ID: ' . $invoice->id);
 
+            } elseif ($type == 'credit') {
+
+                $addCreditResponse = $this->receiptVoucherCredit($data);
+                if (isset($addCreditResponse['error'])) {
+                    Log::error('Failed to add credit to client from Receipt Voucher', [
+                        'message' => $addCreditResponse['error'],
+                    ]);
+
+                    return redirect()->back()->with('error', 'Failed to add credit');
+                }
+
+                Log::info('Succesfully add credit to client through Receipt Voucher: ', [
+                    'response' => $addCreditResponse
                 ]);
+                
+            } elseif ($type == 'import') {
+                Log::info('Starting to create receipt voucher for import');
 
-                // Store JournalEntries
-                foreach ($request->items as $item) {
+                try {
+                    $transaction = Transaction::create([
+                        'entity_id'         =>  $data['company_id'],
+                        'entity_type'       => 'company',
+                        'company_id'        =>  $data['company_id'],
+                        'branch_id'         =>  $data['branch_id'],
+                        'transaction_type'  => 'payment', // 'debit' or 'credit'
+                        'amount'            => $amount,
+                        'date'              => $request->docdate,
+                        'description'       => 'Cash Payment via Receipt Voucher. Additional Remarks: ' . $request->remarks_create,
+                        'invoice_id'        => null,
+                        'reference_number'  => $request->receiptvoucherref,
+                        'reference_type'    => 'Import',
+                        'name'              => $request->pay_to,
+                        'remarks_internal'  => $request->internal_remarks,
+                        'remarks_fl'        => $request->remarks_fl,
+                        'transaction_date'  => now(),
+                    ]);
 
-                    if (!empty($item['account_id'])) {
+                    $invoiceReceipt = InvoiceReceipt::create([
+                        'type' => 'import',
+                        'transaction_id' => $transaction->id,
+                        'amount' => $amount,
+                        'status' => 'pending',
+                        'is_used' => false,
+                    ]);
 
-                        $accname = Account::where('id', $item['account_id'])->first();
+                } catch (Exception $e) {
+                    Log::error('Failed to create Receipt Voucher', [
+                        'response' => $e->getMessage(),
+                    ]);
 
-                        $journalEntryRec = JournalEntry::create([
-                            'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                            'account_id' => $item['account_id'],
-                            'company_id' => $request->company_id ?? auth()->user()->company->id,
-                            'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
-                            'transaction_id' => $transaction->id,
-                            'description' => $request->receiptvouchertype === 'Refund'
-                                ? 'Refund - ' . $item['remarks']
-                                : $item['remarks'],
-                            'debit' => $item['debit'] ?? 0,
-                            'credit' => $item['credit'] ?? 0,
-                            'balance' => $item['balance'] ?? 0,
-                            'voucher_number' => $request->receiptvoucherref,
-                            'name' => $accname->name ?? '',
-                            'type' => 'payable',
-                            'currency' => $item['currency'] ?? '',
-                            'exchange_rate' => $item['exchange_rate'] ?? 0,
-                            'amount' => $item['amount'] ?? 0,
-                            'cheque_no' => $item['cheque_no'] ?? '',
-                            'cheque_date' => $item['cheque_date'] ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') : null,
-                            'bank_info' => $item['bank_name'] ?? '',
-                            'auth_no' => $item['auth_no'] ?? '',
-                            'reconciled' => $reconciledFlag,
-                        ]);
-
-                        // Update selected journal entries 
-
-                        if (!empty($item['transaction_id'])) {
-                            $ids = array_filter(array_map('trim', explode(',', $item['transaction_id'])));
-                            $selectedJournalEntryIds = array_unique(array_map('intval', $ids));
-
-                            if (!empty($selectedJournalEntryIds)) {
-                                JournalEntry::where('company_id', auth()->user()->company->id)
-                                    ->where('branch_id', auth()->user()->branch->id)
-                                    ->whereIn('id', $selectedJournalEntryIds)
-                                    ->where('reconciled', '!=', 2)
-                                    ->update([
-                                        'reconciled' => 1,
-                                        'reconciled_ref_id' => $journalEntryRec->id,
-                                    ]);
-                            }
-                        }
-                    }
-                }
-            } elseif ($type == 'client') {
-                foreach ($request->items as $item) {
-                    if (!empty($item['client_id']) && floatval($item['debit'] ?? 0)     > 0) {
-                        Log::info('Crediting client', ['client_id' => $item['client_id'], 'amount' => $item['amount']]);
-                    }
+                    return redirect()->back()->with('error', 'Failed to create Receipt Voucher');
                 }
 
-                foreach ($request->items as $item) {
-                    if (!empty($item['client_id']) && floatval($item['amount']) > 0) {
-                        $client = Client::find($item['client_id']);
-                        $agentId = $client ? $client->agent_id : null;
-
-                        $payment = new Payment([
-                            'client_id' => $item['client_id'],
-                            'agent_id' => $agentId,
-                            'amount' => $item['amount'],
-                            'voucher_number' => $request->receiptvoucherref,
-                            'currency' => $item['currency'] ?? 'KWD',
-                        ]);
-
-                        $clientController = new ClientController;
-                        $addCreditResponse = $clientController->receiptVoucherCredit($payment, $data);
-                        if (isset($addCreditResponse['error'])) {
-                            Log::error('Failed to add credit to client from Receipt Voucher', [
-                                'message' => $addCreditResponse['error'],
-                                'payment_id' => $payment->id,
-                            ]);
-
-                            return redirect()->back()->with('error', 'Failed to add credit');
-                        }
-
-                        Log::info('Succesfully add credit to client through Receipt Voucher: ', [
-                            'response' => $addCreditResponse
-                        ]);
-                    }
-                }
+                Log::info('Successfully created Cash Receipt Voucher with ID: ' . $invoiceReceipt->id);
             }
-
+        
             DB::commit();
+
             return redirect()->route('receipt-voucher.index')->with('success', 'Receipt Voucher Successfully Recorded.');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -844,46 +874,94 @@ class ReceiptVoucherController extends Controller
     public function approve($id)
     {   
         $transaction = Transaction::findOrFail($id);
-        $invoiceId = $transaction->invoice_id;
-        
-        $invoice = Invoice::where('id', $invoiceId)->first();
+        $transactionId = $transaction->id;
 
-        $invoiceDetail = InvoiceDetail::where('invoice_number', $invoice->invoice_number)->first();
-        if (!$invoiceDetail) {
-            Log::error('Invoice detail not found', ['invoice_number' => $invoice->invoice_number]);
-            return ['status' => 'error', 'message' => 'Invoice detail not found'];
-        }
-
-        $invoicePartial = InvoicePartial::where('invoice_id', $invoiceId)->first();
-
-        $invoiceReceipt = InvoiceReceipt::where('invoice_id', $invoiceId)->first();
+        $invoiceReceipt = InvoiceReceipt::where('transaction_id', $transactionId)->first();
         if (!$invoiceReceipt) {
             Log::error('Invoice Receipt not exist');
             return redirect()->back()->with('error', 'Invoice Receipt not found');
         }
 
-        $companyId = $invoice->agent->branch->company->id ?? null;
-        if (!$companyId) {
-            Log::error('Company ID not found from invoice relationship');
-            return ['status' => 'error', 'message' => 'Company ID not found'];
-        }
+        $companyId = $transaction->company_id;
+        $branchId = $transaction->company_id;
+        $type = $invoiceReceipt->type;
+        $amount = (float) $transaction->amount;
 
-        $client = Client::find($invoice->client_id);
-        if (!$client) {
-            Log::error('Client not found', ['client_id' => $invoice->client_id]);
-            return ['status' => 'error', 'message' => 'Client not found'];
-        }
+        if ($type == 'account') {
 
-        $clientName = $client->name ?? trim(implode(' ', array_filter([
-            $client->first_name ?? null,
-            $client->middle_name ?? null,
-            $client->last_name ?? null,
-        ])));
+            $type = strtolower($transaction->transaction_type);
+            if (!in_array($type, ['debit', 'credit'], true)) {
+                // FIX: Change the hyphen (-) to an arrow (->)
+                return back()->with('error', 'Invalid transaction type');
+            }
 
-        if ($invoiceId) {
-            $invoice = Invoice::find($invoiceId);
+            $debit = $type === 'debit' ? $amount : 0;
+            $credit = $type === 'credit' ? $amount : 0;
+
+            $account = Account::where('id', $invoiceReceipt->account_id)
+                            ->first();
+            try {
+                $journalEntry = JournalEntry::create([
+                    'transaction_date'         => $transaction->transaction_date,
+                    'account_id'               => $invoiceReceipt->account_id,
+                    'company_id'               => $companyId,
+                    'branch_id'                => $branchId,
+                    'transaction_id'           => $transaction->id,
+                    'description'              => 'Client Pays Cash via Account: ' . $account->name,
+                    'amount'                   => $amount,
+                    'debit'                    => $debit,
+                    'credit'                   => $credit,
+                    'balance'                  => $account->balance ?? 0,
+                    'receipt_reference_number' => $transaction->reference_number,
+                    'name'                     => $account->name ?? '',
+                    'type'                     => $type === 'debit' ? 'receivable' : 'payable', 
+                    'currency'                 => 'KWD',
+                    'exchange_rate'            => 1,
+                ]);
+
+                //dd($journalEntry);
+                $invoiceReceipt->update([
+                    'status' => 'approved',
+                    'is_used' => true,
+                ]);
+
+            } catch (Exception $e) {
+                    Log::error('Failed to approve the Receipt Voucher of ID: ' . $invoiceReceipt->id, [
+                        'response' => $e->getMessage(),
+                ]);
+                return redirect()->back()->with('error', 'Failed to approve');
+            }
+                        
+        } elseif ($type == 'invoice') {
+
+            $invoiceId = $transaction->invoice_id;
+        
+            $invoice = Invoice::where('id', $invoiceId)->first();
+
+            $invoiceDetail = InvoiceDetail::where('invoice_number', $invoice->invoice_number)->first();
+            if (!$invoiceDetail) {
+                Log::error('Invoice detail not found', ['invoice_number' => $invoice->invoice_number]);
+                return ['status' => 'error', 'message' => 'Invoice detail not found'];
+            }
+
+            $invoicePartial = InvoicePartial::where('invoice_id', $invoiceId)->first();
+
+            $client = Client::find($invoice->client_id);
+            if (!$client) {
+                Log::error('Client not found', ['client_id' => $invoice->client_id]);
+                return ['status' => 'error', 'message' => 'Client not found'];
+            }
+
+            $clientName = $client->name ?? trim(implode(' ', array_filter([
+                $client->first_name ?? null,
+                $client->middle_name ?? null,
+                $client->last_name ?? null,
+            ])));
+
             if ($invoice) {
                 try {
+                    DB::beginTransaction();
+
                     $remainingBalance = $invoice->amount - ($invoicePartial->amount);
                     if ($remainingBalance > 0) { //Partial/Split Payment
                         Log::info('Remaining balance: KWD ' . $remainingBalance . '. Proceed to create new partial for another payment to complete the transaction');
@@ -903,6 +981,12 @@ class ReceiptVoucherController extends Controller
                             'updated_at' => now(),
                         ]);
                         Log::info('Successfully updated the existing Invoice Partial, status remained Unpaid as there is remaining balance of KWD ' . $remainingBalance);
+
+                        $invoiceReceipt->update([
+                            'status' => 'approved',
+                            'is_used' => true,
+
+                        ]);
 
                         $totalSum = InvoicePartial::where('invoice_id', $invoiceId)
                                         ->sum('amount');
@@ -945,6 +1029,11 @@ class ReceiptVoucherController extends Controller
                             'updated_at' => now(),
                         ]);
                         Log::info('Successfully updated the existing Invoice Partial');
+
+                        $invoiceReceipt->update([
+                            'status' => 'approved',
+                            'is_used' => true,
+                        ]);
                     }
 
                     //Cash Account (Assets)
@@ -1040,18 +1129,136 @@ class ReceiptVoucherController extends Controller
                         ],
                     ]);
 
+                    DB::commit();
+
                     return redirect()->back()->with('success', 'Receipt Voucher has been successfully approved');
 
                 } catch (Exception $e) {
-                    Log::error('Failed to approve the Receipt Voucher of Invoice: ' . $invoiceId . ' Receipt Voucher', [
+                    Log::error('Failed to approve the Receipt Voucher of ID: ' . $invoiceReceipt->id, [
                         'response' => $e->getMessage(),
                     ]);
-                    return redirect()->back()->with('error', 'Failed to approve Receipt Voucher');
+                    return redirect()->back()->with('error', 'Failed to approve');
                 }
             }
-        }
+        } elseif ($type == 'import') {
+            try {
+                //Assets
+                $assets = Account::where('name', 'like', '%Assets%')
+                ->where('company_id', $companyId)
+                ->value('id');
 
-        return redirect()->route('receipt-voucher.index')->with('success', 'Invoice marked as paid.');
+                if (!$assets) {
+                    Log::error('Assets root account not found');
+                    return [
+                        'status' => 'error',
+                        'message' => 'Assets root account not found',
+                    ];
+                }
+
+                $liabilities = Account::where('name', 'like', '%Liabilities%')
+                    ->where('company_id', $companyId)
+                    ->value('id');
+
+                if (!$liabilities) {
+                    Log::error('Liabilities root account not found');
+                    return [
+                        'status' => 'error',
+                        'message' => 'Liabilities root account not found',
+                    ];
+                }
+
+                $receiptVoucherCash = Account::where('name', 'Receipt Voucher Cash')
+                    ->where('company_id', $companyId)
+                    ->where('root_id', $assets)
+                    ->first();
+
+                if (!$receiptVoucherCash) {
+                    Log::error('Cash in Hand (Receipt Voucher Cash) account not found');
+                    return [
+                        'status' => 'error',
+                        'message' => 'Failed to add journal entry to Cash in Hand (Receipt Voucher Cash) account',
+                    ];
+                }
+
+                $journalEntry1 = JournalEntry::create([
+                    'transaction_date'         => $transaction->transaction_date,
+                    'account_id'               => $receiptVoucherCash->id,
+                    'company_id'               => $companyId,
+                    'branch_id'                => $branchId,
+                    'transaction_id'           => $transaction->id,
+                    'description'              => 'Client Pays Cash via Account: ' . $receiptVoucherCash->name,
+                    'amount'                   => $amount,
+                    'debit'                    => $amount,
+                    'credit'                   => 0,
+                    'balance'                  => $receiptVoucherCash->balance ?? 0,
+                    'receipt_reference_number' => $transaction->reference_number,
+                    'name'                     => $receiptVoucherCash->name ?? '',
+                    'type'                     => 'receivable', 
+                    'currency'                 => 'KWD',
+                    'exchange_rate'            => 1,
+                ]); 
+
+                $receiptVoucherCash->actual_balance = ($receiptVoucherCash->actual_balance ?? 0) + $amount;
+                $receiptVoucherCash->save();
+
+                $advancesParent = Account::where('name', 'Advances')
+                    ->where('company_id', $companyId)
+                    ->where('root_id', $liabilities)
+                    ->first();
+
+                $clientAdvance = Account::where('name', 'Client')
+                    ->where('company_id', $companyId)
+                    ->where('parent_id', $advancesParent->id)
+                    ->first();
+
+                $cash= Account::where('name', 'Cash')
+                    ->where('company_id', $companyId)
+                    ->where('parent_id', $clientAdvance->id)
+                    ->first();
+                    
+                if (!$cash) {
+                    Log::error('Advances (Client -> Cash) account not found');
+                    return [
+                        'status' => 'error',
+                        'message' => 'Failed to add journal entry to Advances (Client -> Cash) account',
+                    ];
+                }
+
+                $journalEntry2 = JournalEntry::create([
+                    'transaction_id'   => $transaction->id,
+                    'company_id'       => $companyId,
+                    'branch_id'        => $branchId,
+                    'account_id'       => $cash->id,
+                    'transaction_date' => Carbon::now(),
+                    'description'      => 'Client Pays Cash via (Advances): ' . $cash->name,
+                    'debit'            => 0,
+                    'credit'           => $amount,
+                    'balance'          => ($cash->actual_balance ?? 0) + $amount,
+                    'name'             => $cash->name,
+                    'type'             => 'cash',
+                    'type_reference_id'=> $cash->id,
+                    'receipt_reference_number' => $transaction->reference_number,
+                ]);
+
+                $cash->actual_balance = ($cash->actual_balance ?? 0) + $amount;
+                $cash->save();
+
+                //dd($journalEntry1, $journalEntry2);
+                $invoiceReceipt->update([
+                    'status' => 'approved',
+                ]);
+            } catch (Exception $e) {
+                Log::error('Failed to approce the Receipt Voucher of ID: ' . $invoiceReceipt->id, [
+                    'response' => $e->getMessage(),
+                ]);
+
+                return redirect()->back()->with('error', 'Failed to approve');
+            }
+        }
+        
+        Log::info('Receipt Voucher for ID: ' . $invoiceReceipt->id . ' has been successfully approved');
+
+        return redirect()->route('receipt-voucher.index')->with('success', 'Receipt Voucher has been marked as paid');
     }
 
     public function invoiceJournalEntry($transaction, $invoice)
@@ -1135,6 +1342,8 @@ class ReceiptVoucherController extends Controller
                     'currency' => $task->currency ?? 'KWD',
                     'exchange_rate' => $task->exchange_rate ?? 1.0,
                     'amount' => $invoice->amount,
+                    'receipt_reference_number' => $transaction->reference_number,
+
                 ]);
             }
 
@@ -1326,10 +1535,11 @@ class ReceiptVoucherController extends Controller
                 ]
             );
         }
-// or dump the whole model safely
-Log::info('data of invoice partial', [
-    'invoice_partial' => $invoicePartial->withoutRelations()->toArray(),
-]);        $client = $invoice->client()->first();
+        Log::info('data of invoice partial', [
+            'invoice_partial' => $invoicePartial->withoutRelations()->toArray(),
+        ]);        
+        
+        $client = $invoice->client()->first();
         if (!$client) {
             Log::error('Missing client relation', ['invoice_id' => $invoiceId]);
             return response()->json(['ok' => false, 'message' => 'Client missing for invoice'], 422);
@@ -1424,6 +1634,377 @@ Log::info('data of invoice partial', [
             ]);
             return response()->json(['ok' => false, 'message' => 'Failed to generate a Receipt Voucher'], 500);
         }
+    }
+
+    public function import(Request $request) 
+    {
+        Log::info('Starting to process the import payment of Receipt Voucher', [
+            'data' => $request->all(),
+        ]);
+
+        $user = Auth::user();
+
+        if ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company?->id;
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company->id;
+        } elseif ($user->role_id == Role::AGENT) {
+            $companyId = $user->branch->company->id;
+        }
+
+        $request->validate([
+            'receipt_reference' => 'required|string',
+            'agent_name' => 'required|string',
+            'client_name' => 'required|string',
+            'invoice_number' => 'required|string',
+        ]);
+        
+        $transaction = Transaction::with('invoiceReceipt')
+                            ->where('reference_number', $request->receipt_reference)
+                            ->first();
+
+        $client = Client::where('name', $transaction->client_id)->first();
+
+        $invoice = Invoice::where('invoice_number', $request->invoice_number)->first();
+        if (!$invoice) {
+            Log::error('Invoice is not found for invoice number: ' . $request->invoice_number);
+        }
+
+        $invoiceReceipt = InvoiceReceipt::where('transaction_id', $transaction->id)->first();
+
+        $companyId = $invoice->agent->branch->company->id;
+        $branchId = $invoice->agent->branch->id;
+
+        $remainingBalance = (float)($invoice->amount) - (float)($transaction->invoiceReceipt->amount); 
+
+        try {
+            
+            DB::beginTransaction();
+
+            if ($remainingBalance == 0) {
+                    Log::info('Has 0 of remaining balance. Proceed to pay the entire invoice');
+
+                    $invoice->update([
+                        'status' => 'paid',
+                        'paid_date' => now(),
+                    ]);
+
+                    $invoicePartial = InvoicePartial::create([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'client_id' => $client->id,
+                        'service_charge' => 0,
+                        'amount' => $invoice->amount,
+                        'status' => 'paid',
+                        'expiry_date' => now(),
+                        'type' => 'cash',
+                        'charge_id' => null,
+                        'payment_gateway' => 'Cash',
+                        'payment_method' => null, 
+                        'payment_id' => null,
+                        'receipt_voucher_id' => $transaction->invoiceReceipt?->id,
+                    ]);
+                    if(!$invoicePartial) {
+                        Log::error('Failed to create Invoice Partial for invoice ID: ', [
+                            'invoice_id' => $invoice->id
+                        ]);
+                    }
+
+                    $transaction = Transaction::create([
+                        'entity_id' => $companyId,
+                        'entity_type' => 'company',
+                        'company_id' => $companyId,
+                        'branch_id' => $branchId,
+                        'transaction_type' => 'debit',
+                        'amount' => $invoice->amount,
+                        'description' => 'Payment for Invoice ' . $invoice->invoice_number . '. Additional Remarks: ' . $transaction->description,
+                        'invoice_id' => $invoice->id,
+                        'reference_number' => $transaction->reference_number,
+                        'reference_type' => 'Invoice', //$receiptvoucherType
+                        'name' => $client->name,
+                        'transaction_date' => now(),
+                    ]);
+
+                    if (!$transaction) {
+                        Log::error('error', 'Failed to create Transaction with ID: ', [
+                            'transaction_id' => $transaction->id
+                        ]);
+                    }
+
+                    $uninvoiced = $this->invoiceJournalEntry($transaction, $invoice);
+                    if (!is_array($uninvoiced) || !isset($uninvoiced['status']) || $uninvoiced['status'] === 'error') {
+                        Log::error('Failed to create journal entry during full payment', [
+                            'invoice_id' => $invoice->id ?? null,
+                            'transaction_id' => $transaction->id ?? null,
+                            'response' => $uninvoiced,
+                        ]);
+
+                        return redirect()->back()->with('error', $journal['message'] ?? 'Failed to create journal entry');
+                    }
+
+                    Log::info('Successfully paid Invoice with ID: ' . $invoice->id . ' using Receipt Voucher via full payment');
+
+            } elseif ($remainingBalance > 0)  {
+                Log::info('Remaining balance: KWD ' . $remainingBalance . '. Proceed to create new partial for another payment to complete the transaction');
+
+                $invoice->update([
+                    'status' => 'unpaid',
+                    'type' => 'partial',
+                    'payment_type' => 'partial',
+                    'paid_date' => now(),
+                ]); 
+                Log::info('Succesfully updated the Invoice, status remained Unpaid as there is remaining balance of KWD ' . $remainingBalance);
+
+                $invoicePartial = InvoicePartial::create([
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'client_id' => $client->id,
+                    'service_charge' => 0,
+                    'amount' => $invoice->amount,
+                    'status' => 'paid',
+                    'expiry_date' => now(),
+                    'type' => 'cash',
+                    'charge_id' => null,
+                    'payment_gateway' => 'Cash',
+                    'payment_method' => null, 
+                    'payment_id' => null,
+                    'receipt_voucher_id' => $transaction->invoiceReceipt?->id,
+                ]);
+                if(!$invoicePartial) {
+                    Log::error('Failed to create Invoice Partial for invoice ID: ', [
+                        'invoice_id' => $invoice->id
+                    ]);
+                }
+
+                $totalSum = InvoicePartial::where('invoice_id', $invoice->id)
+                                ->sum('amount');
+
+                if ($totalSum < $invoice->amount) {
+                    $newPartial = InvoicePartial::create([
+                        'invoice_id' => $invoice->id,
+                        'invoice_number' => $invoice->invoice_number,
+                        'client_id'=> $invoice->client_id,
+                        'service_charge' => 0,
+                        'amount' => $remainingBalance,
+                        'status' => 'unpaid',
+                        'expiry_date' => null,  
+                        'type' => 'partial',    
+                        'charge_id' => null,
+                        'payment_gateway' => null,
+                        'payment_method' => null,
+                        'payment_id' => null,
+                    ]);   
+                    Log::info('Successfully created new Invoice Partial', [
+                        'response' => $newPartial,
+                    ]);
+                }
+
+                Log::info('Successfully paid Invoice with ID: ' . $invoice->id . ' using Receipt Voucher. Invoice remained unpaid as there is remaining balance of KWD ' . $remainingBalance);
+            }
+
+            $invoiceReceipt->update([
+                'is_used' => true,
+            ]);
+
+            DB::commit();
+        } catch (Exception $e) {
+            Log::error('Failed to process import via Receipt Voucher', [
+                'transaction_id' => $transaction->id,
+                'invoice_id' => $invoice->id,
+                'receipt_reference_number' => $transaction->reference_number,
+            ]);
+
+            DB::rollback();
+
+            return redirect()->back()->with('error', 'Failed to process import via Receipt Voucher');
+        }
+    }
+
+    public function receiptVoucherCredit($data)
+    {
+        //dd($data);
+        $user = Auth::user();
+
+        $client = Client::findOrFail($data['items'][0]['client_id']);
+        if (!$client) {
+            return [
+                'status' => 'error',
+                'message' => 'Client not found',
+            ];
+        }
+
+        $companyId = $data['company_id'];
+        $branchId = $data['branch_id'];
+        $amount = $data['items'][0]['amount'];
+
+        try {
+            DB::beginTransaction();
+
+            $topupCreditClientData = Credit::create ([
+                'company_id'  => $companyId,
+                'branch_id'   => $branchId,
+                'client_id'   => $client->id,
+                'type'        => 'Topup',
+                'description' => 'Topup Credit via ' . $data['receiptvoucherref'] . '. Additional Remarks: ' . $data['remarks_create'],
+                'amount'      => $amount,
+            ]);
+            
+            Log::info('Credit record created successfully for client ID: ' . $client->id);
+       
+            $transaction = Transaction::create([
+                'branch_id'        => $branchId,
+                'company_id'       => $companyId,
+                'name'             => $client->full_name,
+                'entity_id'        => $companyId,
+                'entity_type'      => 'client',
+                'transaction_type' => 'debit',
+                'amount'           => $amount,
+                'description'      => 'Credit for Client ' . $client->full_name . '. Additional Remarks: ' . $data['remarks_create'],
+                'reference_type'   => 'Credit',
+                'reference_number' => $data['receiptvoucherref'],
+                'transaction_date' => now(),
+            ]);
+
+            if (!$transaction) {
+                Log::error('Transaction failed to create');
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to create transaction',
+                ];
+            }
+
+            $assets = Account::where('name', 'like', '%Assets%')
+                ->where('company_id', $companyId)
+                ->value('id');
+
+            if (!$assets) {
+                Log::error('Assets root account not found');
+                return [
+                    'status' => 'error',
+                    'message' => 'Assets root account not found',
+                ];
+            }
+
+            $liabilities = Account::where('name', 'like', '%Liabilities%')
+                ->where('company_id', $companyId)
+                ->value('id');
+
+            if (!$liabilities) {
+                Log::error('Liabilities root account not found');
+                return [
+                    'status' => 'error',
+                    'message' => 'Liabilities root account not found',
+                ];
+            }
+
+            $receiptVoucherCash = Account::where('name', 'Receipt Voucher Cash')
+                ->where('company_id', $companyId)
+                ->where('root_id', $assets)
+                ->first();
+
+            if (!$receiptVoucherCash) {
+                Log::error('Cash in Hand (Receipt Voucher Cash) account not found');
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to add journal entry to Cash in Hand (Receipt Voucher Cash) account',
+                ];
+            }
+
+            JournalEntry::create([
+                'transaction_id'   => $transaction->id,
+                'company_id'       => $companyId,
+                'branch_id'        => $branchId,
+                'account_id'       => $receiptVoucherCash->id,
+                'transaction_date' => Carbon::now(),
+                'description'      => 'Client ' . $client->full_name . ' Pays Cash via (Assets): ' . $receiptVoucherCash->name,
+                'debit'            => $amount,
+                'credit'           => 0,
+                'name'             => $receiptVoucherCash->name,
+                'type'             => 'receivable',
+                'voucher_number'   => $data['receiptvoucherref'],
+                'type_reference_id'=> $receiptVoucherCash->id,
+            ]);
+
+            $receiptVoucherCash->actual_balance = ($receiptVoucherCash->actual_balance ?? 0) + $amount;
+            $receiptVoucherCash->save();
+
+            $advancesParent = Account::where('name', 'Advances')
+                ->where('company_id', $companyId)
+                ->where('root_id', $liabilities)
+                ->first();
+
+            $clientAdvance = Account::where('name', 'Client')
+                ->where('company_id', $companyId)
+                ->where('parent_id', $advancesParent->id)
+                ->first();
+
+            $cash= Account::where('name', 'Cash')
+                ->where('company_id', $companyId)
+                ->where('parent_id', $clientAdvance->id)
+                ->first();
+                
+            if (!$cash) {
+                Log::error('Advances (Client -> Cash) account not found');
+                return [
+                    'status' => 'error',
+                    'message' => 'Failed to add journal entry to Advances (Client -> Cash) account',
+                ];
+            }
+
+            JournalEntry::create([
+                'transaction_id'   => $transaction->id,
+                'company_id'       => $companyId,
+                'branch_id'        => $branchId,
+                'account_id'       => $cash->id,
+                'voucher_number'   => $data['receiptvoucherref'],
+                'transaction_date' => Carbon::now(),
+                'description'      => 'Client Pays Credit via (Advances): ' . $cash->name,
+                'debit'            => 0, // liability increase → credit
+                'credit'           => $amount,
+                'balance'          => ($cash->actual_balance ?? 0) + $amount,
+                'name'             => $cash->name,
+                'type'             => 'credit',
+                'type_reference_id'=> $cash->id,
+            ]);
+
+            $cash->actual_balance = ($cash->actual_balance ?? 0) + $amount;
+            $cash->save();
+
+            $invoiceReceipt = InvoiceReceipt::create([
+                'type' => 'credit',
+                'credit_id' => $topupCreditClientData->id,
+                'transaction_id' => $transaction->id,
+                'amount' => $amount,
+                'status' => 'approved',
+                'is_used' => true,
+            ]);
+
+            if (!$invoiceReceipt) {
+                    Log::error('Failed to create Invoice Receipt record', [
+                    'transaction_id' => $transaction->id
+                ]);
+            }
+            
+            DB::commit();
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            logger('Error adding JournalEntry: ' . $e->getMessage());
+            return [
+                'status' => 'error',
+                'message' => 'Failed to add JournalEntry',
+            ];
+        }
+
+        
+        return [
+            'status' => 'success',
+            'message' => 'Credit added successfully',
+            'data' => [
+                'client_id' => $client->id,
+                'credit' => $amount,
+            ],
+        ];
     }
 }
 

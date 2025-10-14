@@ -8,9 +8,14 @@ class InvoiceReceipt extends Model
 {
     protected $table = 'invoice_receipt';
     protected $fillable = [
+        'type',
         'invoice_id',
+        'account_id',
+        'credit_id',
         'transaction_id',
         'amount',
+        'status',
+        'is_used',
     ];
 
     public function invoice() 

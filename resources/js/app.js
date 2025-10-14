@@ -2,6 +2,9 @@ import { searchableDropdown } from './components/searchableDropdown';
 
 window.searchableDropdown = searchableDropdown;
 
+import { multiPicker } from './components/multiPicker';
+window.multiPicker = multiPicker;
+
 // Get the body element and the saved theme from localStorage (default is "light")
 const body = document.body;
 const savedTheme = localStorage.getItem("theme") || "light"; // If no saved theme, default to light

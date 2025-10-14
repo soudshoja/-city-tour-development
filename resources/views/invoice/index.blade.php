@@ -409,8 +409,8 @@
                                                                         <div class="absolute left-0 top-0 bottom-0 w-1 bg-koromiko-400 rounded-l-md"></div>
                                                                         <div class="relative z-10 text-sm text-gray-800 space-y-1">
                                                                             <p><span class="font-semibold">Client:</span> {{ $invoiceDetail->task->client->full_name }}</p>
-                                                                            <p><span class="font-semibold">Reference:</span> {{ $invoiceDetail->task->hotelDetails->room->reference ?? 'n/a' }}</p>
-                                                                            <p><span class="font-semibold">Room:</span> {{ $invoiceDetail->task->hotelDetails->room->name ?? 'n/a' }}</p>
+                                                                            <p><span class="font-semibold">Reference:</span> {{ $invoiceDetail->task->reference ?? 'N/A' }}</p>
+                                                                            <p><span class="font-semibold">Room:</span> {{ $invoiceDetail->task->hotelDetails->room_type ?? 'N/A' }}</p>
                                                                         </div>
                                                                     </div>
                                                                 </div>

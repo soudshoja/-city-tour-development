@@ -15,6 +15,7 @@ class InvoiceReceipt extends Model
         'transaction_id',
         'amount',
         'status',
+        'is_used',
     ];
 
     public function invoice() 

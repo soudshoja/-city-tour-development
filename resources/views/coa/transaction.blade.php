@@ -8,14 +8,27 @@
                 <p class="text-sm">You have access to all transactions across all companies.</p>
             </div>
 
-            <select name="company_id" id="" class="form-select w-fit py-2 px-6 border rounded-md bg-white text-gray-800">
-                <option value="">Select Company</option>
-                @foreach($companies as $companySelect)
-                <option value="{{ $company->id }}" {{ $companySelect->id == $company->id ? 'selected' : '' }}>
-                    {{ $company->name }}
-                </option>
+            <form method="GET" action="{{ route('coa.transaction') }}">
+                @foreach(request()->except('company_id','page') as $key => $val)
+                    @if(is_array($val))
+                        @foreach($val as $v)
+                            <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+                        @endforeach
+                    @else
+                        <input type="hidden" name="{{ $key }}" value="{{ $val }}">
+                    @endif
                 @endforeach
-            </select>
+                <select name="company_id"
+                        class="form-select w-fit py-2 px-6 border rounded-md bg-white text-gray-800"
+                        onchange="this.form.submit()">
+                    <option value="">Select Company</option>
+                    @foreach($companies as $companySelect)
+                        <option value="{{ $companySelect->id }}" {{ $companySelect->id == $company->id ? 'selected' : '' }}>
+                            {{ $companySelect->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </form>
         </div>
         @endif
         <div class="flex justify-between items-center gap-5 my-3 mb-4">
@@ -34,7 +47,8 @@
             <!-- Filter + Export -->
             <div class="flex items-center space-x-4 mb-6">
                 <!-- Filter Button & Modal -->
-                <!-- <div class="relative" @click.outside="showFilter = false">
+                <div class="relative" x-data="{ showFilter: false }"
+                    @click.outside="if (!$event.target.closest('.flatpickr-calendar') && !$event.target.closest('#date-range')) { showFilter = false}">
                     <button @click="showFilter = !showFilter"
                         class="dark:text-white flex px-5 py-3 gap-2 city-light-yellow rounded-lg BoxShadow items-center text-xs md:text-sm">
                         <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
@@ -47,23 +61,145 @@
                     <div x-cloak x-show="showFilter" x-transition
                         class="absolute right-0 mt-2 w-72 bg-white shadow-md p-4 rounded-lg border border-gray-300 z-50">
                         <form method="GET" action="{{ route('coa.transaction') }}" class="flex flex-col space-y-4">
-                            <div class="flex items-center space-x-2">
-                                <label for="start_date" class="text-sm">Start Date</label>
-                                <input type="date" name="start_date" class="form-control p-2 border rounded-md w-full" value="{{ request('start_date') }}">
+                            @if(auth()->user()->role_id == \App\Models\Role::ADMIN && request('company_id'))
+                                <input type="hidden" name="company_id" value="{{ request('company_id') }}">
+                            @endif
+                            <div class="flex flex-col">
+                                <label class="text-xs font-semibold text-gray-700 mb-1">Date Range</label>
+                                <input type="text" id="date-range" class="form-select cursor-pointer bg-white dark:bg-gray-900" placeholder="Select date range" autocomplete="off" />
+                                <input type="hidden" id="from_date" value="{{ request('from_date') }}">
+                                <input type="hidden" id="to_date" value="{{ request('to_date') }}">
                             </div>
-                            <div class="flex items-center space-x-2">
-                                <label for="end_date" class="text-sm">End Date</label>
-                                <input type="date" name="end_date" class="form-control p-2 border rounded-md w-full" value="{{ request('end_date') }}">
+                            <div x-data="{ open: false }" class="relative">
+                                <label class="text-xs font-semibold text-gray-700 mb-1 block">Reference Type</label>
+                                <button type="button" @click="open = !open"
+                                    class="w-full text-left border rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-300 flex justify-between items-center">
+                                    <span>Select reference type</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                <div x-show="open" @click.outside="open = false"
+                                    class="absolute mt-1 w-full bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+                                    @foreach (['Receipt','Invoice','Payment','Refund'] as $opt)
+                                    <label class="flex items-center px-3 py-2 hover:bg-gray-50 text-sm">
+                                        <input type="checkbox" name="reference_type[]" value="{{ $opt }}"
+                                            class="mr-2 rounded border-gray-300"
+                                            @checked(collect(request('reference_type', []))->contains($opt))>
+                                        {{ $opt }}
+                                    </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <div x-data="{ open: false }" class="relative">
+                                <label class="text-xs font-semibold text-gray-700 mb-1 block">Entity Type</label>
+                                <button type="button" @click="open = !open"
+                                    class="w-full text-left border rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-300 flex justify-between items-center">
+                                    <span>Select entity type</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                <div x-show="open" @click.outside="open = false"
+                                    class="absolute mt-1 w-full bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+                                    @foreach (['company','branch','agent','client'] as $opt)
+                                    <label class="flex items-center px-3 py-2 hover:bg-gray-50 text-sm">
+                                        <input type="checkbox" name="entity_type[]" value="{{ $opt }}"
+                                            class="mr-2 rounded border-gray-300"
+                                            @checked(collect(request('entity_type', []))->contains($opt))>
+                                        {{ ucfirst($opt) }}
+                                    </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <div x-data="multiPicker({
+                                    items: @js($agents->map(fn($a)=>['id'=>$a->id,'name'=>$a->name])->values()),
+                                    preselected: @js(collect(request('agent_ids',[]))->map(fn($v)=>(int)$v)->all()),
+                                    allLabel: 'All agents',
+                                    placeholder: 'Select agents'
+                                })"
+                                class="relative">
+                                <label class="text-xs font-semibold text-gray-700 mb-1 block">Agents</label>
+                                <button type="button" @click="open = !open"
+                                    class="w-full text-left border rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-300 flex justify-between items-center">
+                                    <span x-text="summary()"></span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                <div x-show="open" x-transition @click.outside="open=false"
+                                    class="absolute mt-1 w-full bg-white border rounded-md shadow-lg z-50">
+                                    <div class="p-2 border-b flex gap-2 items-center">
+                                        <input x-model="q" type="text" placeholder="Search agents…" class="w-full h-9 px-2 border rounded-md text-sm">
+                                        <button type="button" class="text-xs px-2 py-1 rounded border" @click="toggleAll()" x-text="allSelected ? 'Clear all' : 'Select all'"></button>
+                                    </div>
+                                    <div class="max-h-56 overflow-auto py-1">
+                                        <template x-for="i in filtered()" :key="'ag-'+i.id">
+                                            <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer">
+                                                <input type="checkbox" class="rounded border-gray-300" :value="i.id"
+                                                    :checked="selected.includes(i.id)" @change="toggle(i.id)">
+                                                <span class="text-sm" x-text="i.name"></span>
+                                            </label>
+                                        </template>
+                                        <div class="px-3 py-2 text-xs text-gray-500" x-show="filtered().length===0">No matches</div>
+                                    </div>
+                                    <div class="px-3 py-2 border-t text-xs text-gray-600 text-right">
+                                        <button type="button" class="text-blue-600 hover:underline" @click="open=false">Done</button>
+                                    </div>
+                                </div>
+                                <template x-for="id in selected" :key="'ag-hid-'+id">
+                                    <input type="hidden" name="agent_ids[]" :value="id">
+                                </template>
+                            </div>
+                            <div x-data="multiPicker({
+                                    items: @js($accounts->map(fn($a)=>['id'=>$a->id,'name'=>$a->name])->values()),
+                                    preselected: @js(collect(request('account_ids',[]))->map(fn($v)=>(int)$v)->all()),
+                                    allLabel: 'All accounts',
+                                    placeholder: 'Select accounts'
+                                })"
+                                class="relative">
+                                <label class="text-xs font-semibold text-gray-700 mb-1 block">Accounts</label>
+                                <button type="button" @click="open = !open"
+                                    class="w-full text-left border rounded-md px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-300 flex justify-between items-center">
+                                    <span x-text="summary()"></span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                <div x-show="open" x-transition @click.outside="open=false"
+                                    class="absolute mt-1 w-full bg-white border rounded-md shadow-lg z-50">
+                                    <div class="p-2 border-b flex gap-2 items-center">
+                                        <input x-model="q" type="text" placeholder="Search accounts…" class="w-full h-9 px-2 border rounded-md text-sm">
+                                        <button type="button" class="text-xs px-2 py-1 rounded border" @click="toggleAll()" x-text="allSelected ? 'Clear all' : 'Select all'"></button>
+                                    </div>
+                                    <div class="max-h-56 overflow-auto py-1">
+                                        <template x-for="i in filtered()" :key="'acc-'+i.id">
+                                            <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer">
+                                                <input type="checkbox" class="rounded border-gray-300" :value="i.id"
+                                                    :checked="selected.includes(i.id)" @change="toggle(i.id)">
+                                                <span class="text-sm" x-text="i.name"></span>
+                                            </label>
+                                        </template>
+                                        <div class="px-3 py-2 text-xs text-gray-500" x-show="filtered().length===0">No matches</div>
+                                    </div>
+                                    <div class="px-3 py-2 border-t text-xs text-gray-600 text-right">
+                                        <button type="button" class="text-blue-600 hover:underline" @click="open=false">Done</button>
+                                    </div>
+                                </div>
+                                <template x-for="id in selected" :key="'acc-hid-'+id">
+                                    <input type="hidden" name="account_ids[]" :value="id">
+                                </template>
                             </div>
                             <div class="flex justify-between space-x-2">
-                                <a href="{{ route('coa.transaction') }}" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-full hover:bg-gray-400 text-sm">
+                                <a href="{{ route('coa.transaction', auth()->user()->role_id == \App\Models\Role::ADMIN ? ['company_id' => request('company_id')] : []) }}"
+                                    class="px-4 py-2 bg-gray-300 text-gray-800 rounded-full hover:bg-gray-400">
                                     Reset
                                 </a>
                                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-full">Apply Filter</button>
                             </div>
                         </form>
                     </div>
-                </div> -->
+                </div>
 
                 <!-- Export Button -->
                 <button class="dark:text-white flex px-5 py-3 gap-2 city-light-yellow rounded-lg BoxShadow items-center text-xs md:text-sm">
@@ -77,267 +213,121 @@
         </div>
 
         <!-- Transaction List -->
-        <!-- <div class="panel overflow-y-auto max-h-screen mt-4">
-            @php
-            $hasData = false;
-            foreach ($transactionsByDate->items() as $group) {
-            if (!$group->isEmpty()) {
-            $hasData = true;
-            break;
-            }
-            }
-            @endphp
-
-            @if (!$hasData)
-            <div class="text-center text-gray-600 py-20">
-                <svg class="mx-auto w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h3 class="text-lg font-semibold">No transactions found</h3>
-                <p class="text-sm text-gray-500 mt-1">Try adjusting your filter or date range.</p>
-                <a href="{{ route('coa.transaction') }}" class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700">Reset Filter</a>
-            </div>
-            @else
-            @foreach ($transactionsByDate->items() as $date => $transactions)
-            <div class="date-group mb-6" x-data="{ open: false, descriptionOpen: null, showMenu: null }">
-                <div class="flex items-center space-x-4">
-                    <button @click="open = !open"
-                        class="text-white hover:text-gray-700 flex items-center justify-center w-4 h-4 rounded-full mb-2"
-                        :class="open ? 'bg-red-600' : 'bg-blue-600'">
-                        <span x-show="!open" class="text-xs font-bold">+</span>
-                        <span x-show="open" class="text-xs font-bold">-</span>
-                    </button>
-                    <h2 class="text-lg font-bold mb-2 cursor-pointer" @click="open = !open"
-                        :class="open ? 'text-blue-600' : 'text-gray-700'">
-                        {{ \Carbon\Carbon::parse($date)->format('d F Y') }}
-                    </h2>
-                </div>
-                <div class="border-b-2 border-gray-300 mb-2" :class="open ? 'border-blue-600' : ''"></div>
-                <div x-cloak x-show="open" x-transition>
-                    @if ($transactions->isEmpty())
-                    <p class="text-gray-500">No transactions available.</p>
-                    @else
-                    <ul class="transaction-list space-y-4">
-                        @foreach ($transactions as $transaction)
-                        <li class="transaction-item flex items-center justify-between p-4 rounded-lg bg-gray-50 shadow-sm">
-                            <div class="text-sm icon bg-gray-200 rounded-full p-2 w-8 h-8 flex items-center justify-center text-center">
-                                @if ($transaction->credit > 0)
-                                <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 512 512">
-                                    <path d="M448 224H288V64h-64v160H64v64h160v160h64V288h160z" fill="#00ab55" />
-                                </svg>
-                                @else
-                                <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 512 512">
-                                    <path d="M64 224h384v64H64z" fill="#e11d48" />
-                                </svg>
-                                @endif
-                            </div>
-                            <div class="transaction-details flex-grow px-4" x-data="{ openSections: [] }">
-                                <p class="text-gray-800 font-semibold cursor-pointer text-grey-500 hover:text-blue-500"
-                                    @click="openSections.includes({{ $transaction->id }}) ? openSections = openSections.filter(id => id !== {{ $transaction->id }}) : openSections.push({{ $transaction->id }})">
-                                    {{ $transaction->description ?? 'N/A' }}
-                                </p>
-                                <div x-show="openSections.includes({{ $transaction->id }})" x-transition class="mt-2 space-y-2">
-                                    <p class="text-gray-600 text-sm">Transaction ID: {{ $transaction->id }}</p>
-                                    <p class="text-gray-600 text-sm">Type: {{ ucwords($transaction->transaction_type ?? 'N/A') }}</p>
-                                    <p class="text-gray-600 text-sm">Date: {{ $transaction->created_at }}</p>
-                                    @if ($transaction->payment)
-                                    <p class="text-gray-600 text-sm">
-                                        Payment Reference:
-                                        <a href="{{ route('payment.link.index') }}" class="text-blue-500 hover:underline">
-                                            {{ $transaction->payment_reference }}
-                                        </a>
-                                    </p>
-                                    @endif
-                                </div>
-                            </div>
-                            <div
-                                x-data="{ showMenu: null, showDeleteModal: false }"
-                                class="relative"
-                                @click.outside="showMenu = null">
-                                <button
-                                    @click="showMenu = (showMenu === {{ $transaction->id }} ? null : {{ $transaction->id }})"
-                                    class="text-black hover:text-gray-700 pl-4">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4"
-                                            d="M12 6h.01M12 12h.01M12 18h.01" />
-                                    </svg>
-                                </button>
-
-                                <div
-                                    x-show="showMenu === {{ $transaction->id }}"
-                                    x-transition
-                                    class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 border border-gray-200 z-10">
-                                    @unless($transaction->journalEntries->isEmpty())
-                                    <a href="{{ route('journal-entries.index', $transaction->id) }}"
-                                        class="text-center block px-4 py-2 text-gray-700 hover:bg-blue-200">
-                                        View Ledger
-                                    </a>
-                                    @endunless
-
-                                    @if(auth()->user()->role_id == \App\Models\Role::ADMIN)
-                                    <button
-                                        @click="showMenu = null; showDeleteModal = true"
-                                        class="text-center block w-full px-4 py-2 text-gray-700 hover:bg-red-200">
-                                        Delete Transaction
-                                    </button>
-                                    @endif
-                                </div>
-
-                                <div
-                                    x-show="showDeleteModal"
-                                    x-cloak
-                                    class="fixed inset-0 flex items-center justify-center backdrop-blur-sm backdrop-brightness-75 z-50"
-                                    @keydown.escape.window="showDeleteModal = false"
-                                    @click.self="showDeleteModal = false">
-                                    <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-                                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Confirm Delete</h2>
-                                        <p class="text-gray-700 mb-6">
-                                            Are you sure you want to delete this transaction? This action cannot be undone.
-                                        </p>
-
-                                        <div class="flex justify-end space-x-4">
-                                            <button
-                                                @click="showDeleteModal = false"
-                                                class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                                                Cancel
-                                            </button>
-
-                                            <form
-                                                action="{{ route('coa.deleteTransaction', $transaction->id) }}"
-                                                method="POST">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button
-                                                    type="submit"
-                                                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-                                                    Delete
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                        </li>
-                        @endforeach
-                    </ul>
-                    @endif
-                </div>
-            </div>
-            @endforeach
-            @if ($transactionsByDate->total() > $transactionsByDate->perPage())
-            <div class="mt-6">
-                {{ $transactionsByDate->appends(request()->query())->links() }}
-            </div>
-            @endif
-
-            @endif
-        </div> -->
         <div class="panel overflow-x-auto max-h-screen mt-4">
-            @php
-            $hasData = false;
-            foreach ($transactionsByDate->items() as $group) {
-            if (!$group->isEmpty()) {
-            $hasData = true;
-            break;
-            }
-            }
-            @endphp
-
-            @if (!$hasData)
+            @if ($transactions->isEmpty())
             <div class="text-center text-gray-600 py-20">
-                <!-- ...existing empty state code... -->
+                <h3 class="text-lg font-semibold">No transactions found</h3>
+                <p class="text-sm text-gray-500 mt-1">Try adjusting your filters or date range.</p>
+                <a href="{{ route('coa.transaction', auth()->user()->role_id == \App\Models\Role::ADMIN ? ['company_id' => request('company_id')] : []) }}"
+                class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700">Reset Filter</a>
             </div>
             @else
-            <table class="min-w-full bg-white rounded-lg shadow-md">
-                <thead>
-                    <tr>
-                        <th class="px-4 py-2 border-b text-left w-32" style="width: 160px;">Date</th>
-                        <th class="px-2 py-1 border-b text-left w-40" style="width: 160px;">Agent Name</th>
-                        <th class="px-4 py-2 border-b text-left w-64" style="width: 230px;">Description</th>
-                        <th class="px-2 py-1 border-b text-left w-40" style="width: 140px;">Account</th>
-                        <th class="px-2 py-1 border-b text-right w-28" style="width: 100px;">Debit</th>
-                        <th class="px-2 py-1 border-b text-right w-28" style="width: 100px;">Credit</th>
-                        <th class="px-2 py-1 border-b text-right w-36" style="width: 140px;">Running Balance</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($transactionsByDate->items() as $date => $transactions)
-                    @foreach ($transactions as $transaction)
-                    @if($transaction->journalEntries && $transaction->journalEntries->count())
-                    @foreach($transaction->journalEntries as $entry)
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-2 border-b">{{ \Carbon\Carbon::parse($date)->format('d F Y') }}</td>
-                        <td class="px-2 py-1 border-b">
-                            {{
-                                    $entry->task && $entry->task->agent
-                                        ? $entry->task->agent->name
-                                        : (
-                                            $entry->invoice && $entry->invoice->agent
-                                                ? $entry->invoice->agent->name
-                                                : 'N/A'
-                                        )
-                                }}
-                        </td>
-                        <td class="px-4 py-2 border-b">{{ $transaction->description ?? 'N/A' }}</td>
-                        <td class="px-2 py-1 border-b">{{ $entry->account->name ?? 'N/A' }}</td>
-                        <td class="px-2 py-1 border-b text-right">{{ number_format($entry->debit, 2) }}</td>
-                        <td class="px-2 py-1 border-b text-right">{{ number_format($entry->credit, 2) }}</td>
-                        <td class="px-2 py-1 border-b text-right">{{ number_format($entry->running_balance ?? 0, 2) }}</td>
-                    </tr>
-                    @endforeach
-                    @else
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-2 border-b">{{ \Carbon\Carbon::parse($date)->format('d F Y') }}</td>
-                        <td class="px-2 py-1 border-b">
-                            {{
-                                $entry->task && $entry->task->agent
-                                    ? $entry->task->agent->name
-                                    : (
-                                        $entry->invoice && $entry->invoice->agent
-                                            ? $entry->invoice->agent->name
-                                            : 'N/A'
-                                    )
-                            }}
-                        </td>
-                        <td class="px-4 py-2 border-b">{{ $transaction->description ?? 'N/A' }}</td>
-                        <td class="px-4 py-2 border-b">{{ ucwords($transaction->transaction_type ?? 'N/A') }}</td>
-                        <td class="px-4 py-2 border-b text-right text-green-600">
-                            {{ $transaction->credit > 0 ? number_format($transaction->credit, 2) : '-' }}
-                        </td>
-                        <td class="px-4 py-2 border-b text-right text-red-600">
-                            {{ $transaction->debit > 0 ? number_format($transaction->debit, 2) : '-' }}
-                        </td>
-                        <td colspan="6" class="px-2 py-1 border-b text-gray-400">No journal entries</td>
-                    </tr>
-                    @endif
-                    @endforeach
-                    @endforeach
-                </tbody>
-            </table>
-            @if ($transactionsByDate->total() > $transactionsByDate->perPage())
-            <div class="mt-6">
-                <x-pagination :data="$transactionsByDate" />
+            <div class="relative max-h-[90vh] overflow-y-auto rounded-lg shadow">
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-200 sticky top-0 z-20">
+                        <tr>
+                            <th class="p-3 border-b text-left w-[140px] text-md font-bold text-gray-900 dark:text-gray-300">Date</th>
+                            <th class="p-3 border-b text-left w-[160px] text-md font-bold text-gray-900 dark:text-gray-300">Agent Name</th>
+                            <th class="p-3 border-b text-left w-[235px] text-md font-bold text-gray-900 dark:text-gray-300">Description</th>
+                            <th class="p-3 border-b text-left w-[160px] text-md font-bold text-gray-900 dark:text-gray-300">Account</th>
+                            <th class="p-3 border-b text-right w-[90px] text-md font-bold text-gray-900 dark:text-gray-300">Debit</th>
+                            <th class="p-3 border-b text-right w-[90px] text-md font-bold text-gray-900 dark:text-gray-300">Credit</th>
+                            <th class="p-3 border-b text-right w-[115px] text-md font-bold text-gray-900 dark:text-gray-300">Running Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($transactions as $transaction)
+                            @php
+                                $entries = $transaction->journalEntries ?? collect();
+                            @endphp
+                            @if ($entries->isNotEmpty())
+                                @foreach ($entries as $entry)
+                                    <tr class="p-[0.65rem]">
+                                        <td class="border-b">{{ \Carbon\Carbon::parse($transaction->transaction_date)->format('d F Y') }}</td>
+                                        <td class="border-b"> {{ $entry->task && $entry->task->agent ? $entry->task->agent->name
+                                            : ($entry->invoice && $entry->invoice->agent ? $entry->invoice->agent->name : 'N/A') }}
+                                        </td>
+                                        <td class="border-b">{{ $transaction->description ?? 'N/A' }}</td>
+                                        <td class="border-b">{{ $entry->account->name ?? 'N/A' }}</td>
+                                        <td class="border-b text-right {{ $entry->debit != 0 ? 'text-green-600 font-semibold' : 'text-gray-900' }}">
+                                            {{ number_format($entry->debit, 2) }}
+                                        </td>
+                                        <td class="border-b text-right {{ $entry->credit != 0 ? 'text-red-600 font-semibold' : 'text-gray-900' }}">
+                                            {{ number_format($entry->credit, 2) }}
+                                        </td>
+                                        <td class="border-b text-right">{{ number_format($entry->running_balance ?? 0, 2) }}</td>
+                                    </tr>
+                                @endforeach
+                            @else
+                            <tr class="p-[0.65rem]">
+                                <td class="border-b">{{ \Carbon\Carbon::parse($transaction->transaction_date)->format('d F Y') }}</td>
+                                <td class="border-b">N/A</td>
+                                <td class="border-b">{{ $transaction->description ?? 'N/A' }}</td>
+                                <td colspan="4" class="border-b text-center text-gray-500 font-semibold italic">No journal entries</td>
+                            </tr>
+                            @endif
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
             @endif
-            @endif
+        </div>
+        <div class="mt-2">
+            <x-pagination :data="$transactions" />
         </div>
     </div>
 
-    <!-- Javascript -->
     <script>
-        flatpickr("#datepicker", {
-            mode: "single",
-            dateFormat: "d F Y",
-            onChange: function(selectedDates, dateStr, instance) {
-                const selectedDate = selectedDates[0] ? selectedDates[0].toISOString().split('T')[0] : '';
-                if (selectedDate) {
-                    window.location.href = `?date=${selectedDate}`;
-                }
-            }
+        const fromEl = document.getElementById('from_date');
+        const toEl = document.getElementById('to_date');
+        if (fromEl.value) fromEl.name = 'from_date'; else fromEl.removeAttribute('name');
+        if (toEl.value) toEl.name = 'to_date'; else toEl.removeAttribute('name');
 
+        flatpickr("#date-range", {
+            mode: "range",
+            dateFormat: "Y-m-d",
+            defaultDate: ["{{ request('from_date') }}","{{ request('to_date') }}"].filter(Boolean),
+            onChange: function(selectedDates) {
+                const [start, end] = selectedDates;
+                fromEl.value = start ? start.toISOString().slice(0,10) : '';
+                toEl.value = end ? end.toISOString().slice(0,10)   : '';
+
+                if (fromEl.value) fromEl.name = 'from_date'; else fromEl.removeAttribute('name');
+                if (toEl.value) toEl.name = 'to_date'; else toEl.removeAttribute('name');
+            }
         });
+
+        function multiPicker({
+            items,
+            preselected = [],
+            allLabel = 'All',
+            placeholder = 'Select items'
+        }) {
+            return {
+                open: false,
+                q: '',
+                items,
+                selected: [...preselected],
+                get allSelected() {
+                    return this.items.length > 0 && this.selected.length === this.items.length
+                },
+                filtered() {
+                    const s = this.q.trim().toLowerCase();
+                    return s ? this.items.filter(i => i.name.toLowerCase().includes(s)) : this.items;
+                },
+                toggle(id) {
+                    const i = this.selected.indexOf(id);
+                    i > -1 ? this.selected.splice(i, 1) : this.selected.push(id);
+                },
+                toggleAll() {
+                    this.allSelected ? this.selected = [] : this.selected = this.items.map(i => i.id);
+                },
+                summary() {
+                    if (this.selected.length === 0 || this.allSelected) return `${allLabel}`;
+                    return `${this.selected.length} selected`;
+                },
+                placeholder
+            }
+        }
     </script>
 </x-app-layout>

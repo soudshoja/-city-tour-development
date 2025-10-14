@@ -123,6 +123,9 @@
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Refund</a>
             </menuitem>
             @endcan
+            <menuitem><a href="{{ route('auto-billing.index') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Auto Billing</a>
+            </menuitem>
         </menu>
         </menuitem>
 

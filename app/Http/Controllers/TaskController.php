@@ -33,6 +33,7 @@ use App\Models\InvoiceDetail;
 use App\Models\Payment;
 use App\Models\FileUpload;
 use App\Models\SystemLog;
+use App\Models\AutoBilling;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -952,6 +953,26 @@ class TaskController extends Controller
                 }
             } else {
                 Log::warning("FileUpload not found or no user_id for file: {$request->file_name}");
+            }
+        }
+
+        $rules = AutoBilling::where('company_id', $request->company_id)->where('active', true)->get();
+
+        foreach ($rules as $rule) {
+            $match = false;
+
+            if ($rule->created_by_list && in_array($request->created_by, $rule->created_by_list)) {
+                $match = true;
+            }
+            if ($rule->agent_ids && in_array($request->agent_id, $rule->agent_ids)) {
+                $match = true;
+            }
+            if ($rule->issued_by_list && in_array($request->issued_by, $rule->issued_by_list)) {
+                $match = true;
+            }
+            if ($match) {
+                $request->merge(['client_id' => $rule->client_id]);
+                break;
             }
         }
 

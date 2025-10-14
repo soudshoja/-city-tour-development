@@ -15,6 +15,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\VersionController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\AdminUsersController;
+use App\Http\Controllers\AutoBillingController;
 use App\Http\Controllers\ChargeController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\CoaController;
@@ -551,6 +552,17 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}', [ChargeController::class, 'show'])->name('show');
         Route::delete('/{id}', [ChargeController::class, 'destroy'])->name('destroy');
         Route::put('/{id}/credentials', [ChargeController::class, 'updateCredentials'])->name('credentials.update');
+    });
+
+    //Auto Billing
+    Route::group([
+        'prefix' => 'auto-billing',
+        'as' => 'auto-billing.',
+    ], function () {
+        Route::get('/', [AutoBillingController::class, 'index'])->name('index');
+        Route::post('/store', [AutoBillingController::class, 'store'])->name('store');
+        Route::get('/edit/{id}', [AutoBillingController::class, 'edit'])->name('edit');
+        Route::delete('/{id}', [AutoBillingController::class, 'destroy'])->name('destroy');
     });
 
     Route::group([

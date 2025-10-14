@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="mb-6" x-data="{ openFilters: {{ request()->hasAny(['from_date', 'to_date', 'agent_id']) ? 'true' : 'false' }} }">
+    <div class="mb-6" x-data="{ openFilters: {{ request()->hasAny(['from_date', 'to_date', 'agent_ids', 'report_view', 'task_types']) ? 'true' : 'false' }} }">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div>
                 <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">Daily Sales Report</h1>
@@ -70,6 +70,19 @@
                         preselected: @js(collect(request('agent_ids',[]))->map(fn($v)=>(int)$v)->all())
                     })"
                     class="grid grid-cols-1 md:grid-cols-2 gap-3 px-4 py-3 items-end">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Report</label>
+                        <select name="report_view" class="form-select">
+                            <option value="summary" @selected(request('report_view','summary')==='summary')>Summary Report</option>
+                            <option value="details" @selected(request('report_view','summary')==='details')>Details Report</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-gray-600 mb-1">Date Range</label>
+                        <input type="text" id="date-range" class="form-select cursor-pointer bg-white dark:bg-gray-900" placeholder="Select date range" autocomplete="off" />
+                        <input type="hidden" name="from_date" id="from_date" value="{{ request('from_date') }}">
+                        <input type="hidden" name="to_date" id="to_date" value="{{ request('to_date') }}">
+                    </div>
                     <div class="relative">
                         <label class="block text-xs font-medium text-gray-600 mb-1">Agents</label>
                         <button type="button" @click="open = !open" class="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-left flex items-center justify-between">
@@ -102,42 +115,46 @@
                             <input type="hidden" name="agent_ids[]" :value="id">
                         </template>
                     </div>
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-gray-600 mb-1">Date Range</label>
-                        <input type="text" id="date-range" class="form-select cursor-pointer bg-white dark:bg-gray-900" placeholder="Select date range" autocomplete="off" />
-                        <input type="hidden" name="from_date" id="from_date" value="{{ request('from_date') }}">
-                        <input type="hidden" name="to_date" id="to_date" value="{{ request('to_date') }}">
-                    </div>
-                    <!-- <div>
-                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Report</label>
-                        <select name="report_view" class="form-select">
-                            <option value="details" @selected(request('report_view','details')==='details')>Details Report</option>
-                            <option value="summary" @selected(request('report_view')==='summary')>Summary Report</option>
-                        </select>
-                    </div>
+                    @if(request('report_view','summary') === 'details')
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Type</label>
-                        @php
-                            $isAgent = auth()->user()->role_id === \App\Models\Role::AGENT;
-                            $isFilteringAgent = !$isAgent && request()->filled('agent_id');
-                            $allowedTypes = $isAgent ? ['all' => 'All', 'agent' => 'Agent', 'refund' => 'Refunds']
-                                : ['all' => 'All', 'agent' => 'Agent', 'refund' => 'Refunds', 'supplier' => 'Supplier'];
-                        @endphp
-                        <select name="type" class="form-select">
-                            @foreach($allowedTypes as $k => $v)
-                                <option value="{{ $k }}" @selected(request('type','all')===$k)>{{ $v }}</option>
-                            @endforeach
-                        </select>
+                        <div x-data="typePicker({
+                                items: @js($possibleTypes),
+                                preselected: @js(collect(request('task_types', []))->map(fn($v) => strtolower($v))->all())
+                            })"
+                            class="relative">
+                            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Task Types</label>
+                            <button type="button" @click="open = !open" class="w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-left flex items-center justify-between">
+                                <span class="truncate text-sm" x-text="summary()"></span>
+                                <svg class="w-4 h-4 text-gray-500 ml-2 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            <div x-show="open" x-transition @click.outside="open=false"
+                                class="absolute left-0 top-full mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg z-10">
+                                <div class="p-2 border-b flex items-center gap-2">
+                                    <input x-model="q" type="text" placeholder="Search types…" class="w-full h-9 px-2 border rounded-md text-sm">
+                                    <button type="button" class="text-xs px-2 py-1 rounded border" @click="toggleAll()" x-text="allSelected ? 'Clear all' : 'Select all'"></button>
+                                </div>
+                                <div class="max-h-56 overflow-auto py-1">
+                                    <template x-for="(label, key) in filtered()" :key="key">
+                                        <label class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer">
+                                            <input type="checkbox" class="rounded border-gray-300" :value="key" :checked="selected.includes(key)" @change="toggle(key)">
+                                            <span class="text-sm" x-text="label"></span>
+                                        </label>
+                                    </template>
+                                    <div class="px-3 py-2 text-xs text-gray-500" x-show="Object.keys(filtered()).length===0">No matches</div>
+                                </div>
+                                <div class="px-3 py-2 border-t text-xs text-gray-600 flex justify-between">
+                                    <span x-text="selected.length===0 ? 'All types included' : selected.length + ' selected'"></span>
+                                    <button type="button" class="text-blue-600 hover:underline" @click="open=false">Done</button>
+                                </div>
+                            </div>
+                            <template x-for="t in selected" :key="'hid-type-'+t">
+                                <input type="hidden" name="task_types[]" :value="t">
+                            </template>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Agent</label>
-                        <x-searchable-dropdown
-                            name="agent_id"
-                            :items="$allAgents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-                            :selectedId="request('agent_id')"
-                            :selectedName="optional(($allAgents ?? collect())->firstWhere('id', request('agent_id')))->name"
-                            placeholder="All agents" />
-                    </div> -->
+                    @endif
                     <div class="md:col-span-2 -mt-1">
                         <div class="flex flex-wrap gap-1 min-h-[28px]">
                             <template x-for="s in selectedNames()" :key="'chip-'+s">
@@ -213,6 +230,7 @@
         </div>
     </div>
 
+    @if($reportView === 'summary')
     <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 mb-6">
         <h2 class="text-lg font-bold text-gray-900 dark:text-gray-100 mb-3">Agent Performance</h2>
         <div class="overflow-x-auto">
@@ -220,6 +238,8 @@
                 <thead class="bg-gray-50 dark:bg-gray-900/40 text-gray-700 dark:text-gray-200">
                     <tr class="px-3 py-2 text-center">
                         <th>Agent</th>
+                        <th>Total Tasks</th>
+                        <th>Void Tasks</th>
                         <th>Total Invoices</th>
                         <th>Total Invoiced</th>
                         <th>Paid</th>
@@ -234,6 +254,8 @@
                     @foreach($agents as $row)
                     <tr class="bg-white/70 dark:bg-gray-800/70 hover:bg-gray-100 dark:hover:bg-gray-700 px-3 py-2 text-center">
                         <td class="font-semibold">{{ $row['agent']->name }}</td>
+                        <td>{{ $row['totalTasks'] }}</td>
+                        <td>{{ $row['voidTasks'] }}</td>
                         <td>{{ $row['totalInvoices'] }}</td>
                         <td>{{ number_format($row['totalInvoiced'], 3) }}</td>
                         <td>{{ number_format($row['paid'], 3) }}</td>
@@ -253,17 +275,17 @@
                         </td>
                     </tr>
                     <tr id="agent-details-{{ $row['agent']->id }}" class="hidden">
-                        <td colspan="9" class="p-0">
+                        <td colspan="11" class="p-0">
                             <div class="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
                                 @if($row['invoices']->isEmpty())
-                                <div class="text-sm text-gray-500 dark:text-gray-400">No invoices found for this agent within the selected date range.</div>
+                                <div class="italic text-center text-sm text-gray-500 dark:text-gray-400">No invoices found for this agent within the selected date range.</div>
                                 @else
                                 <div class="space-y-3">
                                     @foreach($row['invoices'] as $invoice)
                                     <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                                         <div onclick="toggleInvoiceTasks('{{ $row['agent']->id }}','{{ $invoice->id }}')"
-                                            class="p-3 grid grid-cols-12 items-center gap-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                            <div class="col-span-6 flex items-start gap-2">
+                                            class="p-2.5 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                            <div class="flex items-center gap-2 leading-tight flex-shrink-0">
                                                 <svg id="invoice-caret-{{ $row['agent']->id }}-{{ $invoice->id }}" class="w-4 h-4 mt-1.5 shrink-0 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                                 </svg>
@@ -271,10 +293,10 @@
                                                     <div class="text-xs text-gray-500 dark:text-gray-400">Invoice</div>
                                                     <div class="font-semibold tracking-wide">{{ $invoice->invoice_number }}</div>
                                                     <div class="mt-1 flex items-center gap-2">
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-200 text-gray-700 dark:bg-gray-900 dark:text-gray-300">
+                                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-700 dark:bg-gray-900 dark:text-gray-300">
                                                             {{ \Carbon\Carbon::parse($invoice->invoice_date)->format('d-m-Y') }}
                                                         </span>
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold
+                                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-semibold
                                                             {{ $invoice->status === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200' }}">
                                                             {{ ucfirst($invoice->status) }}
                                                         </span>
@@ -285,9 +307,13 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="col-span-6 grid grid-cols-5 gap-4 text-right tabular-nums">
+                                            <div class="flex items-center justify-end gap-x-8 text-right tabular-nums whitespace-nowrap w-full">
                                                 <div>
-                                                    <div class="text-xs text-gray-700 dark:text-gray-400">Amount</div>
+                                                    <div class="text-xs text-gray-700 dark:text-gray-400">Task Price</div>
+                                                    <div class="font-semibold">{{ number_format($invoice->invoiceDetails->sum('supplier_price'), 3) }} KWD</div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-xs text-gray-700 dark:text-gray-400">Sell Price</div>
                                                     <div class="font-semibold">{{ number_format($invoice->amount, 3) }} KWD</div>
                                                 </div>
                                                 <div>
@@ -412,9 +438,7 @@
                                                 $room = null;
                                                 if (!empty($detail->task->hotelDetails->room_details)) {
                                                 $decoded = json_decode($detail->task->hotelDetails->room_details, true);
-                                                if (is_array($decoded)) {
-                                                $room = isset($decoded[0]) ? $decoded[0] : $decoded;
-                                                }
+                                                if (is_array($decoded)) { $room = isset($decoded[0]) ? $decoded[0] : $decoded; }
                                                 }
                                                 @endphp
                                                 @if($hotelDetails)
@@ -605,8 +629,8 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">
-                            No refunds for the selected date.
+                        <td colspan="9" class="text-center italic text-gray-500 dark:text-gray-400">
+                            No refunds found for the selected date range.
                         </td>
                     </tr>
                     @endforelse
@@ -763,6 +787,266 @@
         </div>
         @endif
     </div>
+    @endif
+
+    @if($reportView === 'details')
+    <div x-data class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 mb-6">
+        <h2 class="text-lg font-bold mb-3 text-gray-900 dark:text-gray-100">Detailed Tasks</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 dark:bg-gray-900/40">
+                    <tr class="p-3 text-left">
+                        <th>Issued Date</th>
+                        <th>Reference</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Bill To</th>
+                        <th>Agent</th>
+                        <th>Supplier</th>
+                        <th class="w-[110px] text-right">Net Price</th>
+                        <th class="w-[110px] text-right">Sell Price</th>
+                        <th class="w-[110px] text-right">Profit</th>
+                        <th class="w-[120px] text-center">Invoice</th>
+                        <th class="w-[90px] text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200/70 dark:divide-gray-700">
+                    @forelse($tasks as $task)
+                    <tbody x-data="{ open: false }" class="divide-y divide-gray-200/70 dark:divide-gray-700">
+                        <tr class="bg-white/70 dark:bg-gray-800/70 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer" @click="open = !open">
+                            <td class="whitespace-nowrap w-[90px]">
+                                {{ optional($task->supplier_pay_date)->format('d-m-Y') ?? \Carbon\Carbon::parse($task->supplier_pay_date)->format('d-m-Y') }}
+                            </td>
+                            <td class="font-semibold">{{ $task->reference }}</td>
+                            <td>{{ ucfirst($task->type) }}</td>
+                            @php
+                                $status = strtolower($task->status ?? '');
+                                $statusStyles = match ($status) {
+                                    'issued' => 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-800',
+                                    'void' => 'bg-rose-100 text-rose-700 ring-1 ring-rose-300 dark:bg-rose-900/30 dark:text-rose-200 dark:ring-rose-800',
+                                    'refund' => 'bg-yellow-100 text-yellow-700 ring-1 ring-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-200 dark:ring-yellow-800',
+                                    'reissued' => 'bg-blue-100 text-blue-700 ring-1 ring-blue-300 dark:bg-blue-900/30 dark:text-blue-200 dark:ring-blue-800',
+                                    default => 'bg-gray-100 text-gray-700 ring-1 ring-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700',
+                                };
+                            @endphp
+                            <td>
+                                <span class="inline-flex items-center text-[12px] px-2.5 py-0.34 rounded-full font-medium {{ $statusStyles }}">
+                                    {{ ucfirst($task->status) }}
+                                </span>
+                            </td>
+                            <td class="max-w-[200px] whitespace-normal break-words">{{ $task->client->full_name ?? 'Not Set' }}</td>
+                            <td>{{ $task->agent->name ?? 'Not Set' }}</td>
+                            <td>{{ $task->supplier->name }}</td>
+                            <td class="text-right">{{ number_format($task->total, 3) }}</td>
+                            <td class="text-right">{{ $task->invoiceDetail?->task_price !== null ? number_format($task->invoiceDetail->task_price, 3) : '—' }}</td>
+                            <td class="text-right">{{ $task->invoiceDetail?->markup_price !== null ? number_format($task->invoiceDetail->markup_price, 3) : '—' }}</td>
+                            <td class="w-[120px] text-center whitespace-nowrap">
+                                @if(optional($task->invoiceDetail)->invoice)
+                                    <span class="font-medium">{{ $task->invoiceDetail->invoice->invoice_number }}</span>
+                                    <span class="ml-1 text-[12px] px-1.5 py-0.5 rounded-full font-semibold
+                                        {{ $task->invoiceDetail->invoice->status==='paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }}">
+                                        {{ ucfirst($task->invoiceDetail->invoice->status) }}
+                                    </span>
+                                @else
+                                    <span class="text-gray-600 font-medium">Not Invoiced</span>
+                                @endif
+                            </td>
+                            <td class="w-[90px] text-center">
+                                <button type="button" class="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-gray-300
+                                    dark:border-gray-600 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm">
+                                    <svg :class="open ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                    View
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="12" class="p-0 border-t-0">
+                                <div x-show="open" x-collapse x-cloak class="transition-all duration-300">
+                                    <div class="text-sm text-gray-700 dark:text-gray-300 space-y-2 bg-slate-50 dark:bg-slate-900 px-4 py-3">
+                                        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1">
+                                            @if($task->passenger_name)<div><strong>Passenger:</strong> {{ $task->passenger_name }}</div>@endif
+                                            @if($task->ticket_number)<div><strong>Ticket Number:</strong> {{ $task->ticket_number }}</div>@endif
+                                            @if($task->gds_reference)<div><strong>GDS Reference:</strong> {{ $task->gds_reference }}</div>@endif
+                                            @if($task->airline_reference)<div><strong>Airline Reference:</strong> {{ $task->airline_reference }}</div>@endif
+                                            @if($task->created_by && $task->supplier->name === 'Amadeus')
+                                                <div><strong>Created By:</strong> {{ $task->created_by }}</div>
+                                            @endif
+                                        </div>
+
+                                        @if($task->flightDetail && $task->flightDetail->isNotEmpty())
+                                            <div class="p-3 rounded-md bg-blue-50 border border-blue-200 dark:bg-blue-900/20">
+                                                <div class="text-xs font-semibold mb-2 text-blue-700 dark:text-blue-300">Flight Details</div>
+                                                @foreach($task->flightDetail as $flight)
+                                                    <div class="border border-blue-100 dark:border-blue-800 rounded-md p-2 mb-2 text-xs bg-white/40 dark:bg-blue-950/10">
+                                                        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1 text-gray-700 dark:text-gray-200">
+                                                            <div><strong>Departure:</strong> {{ \Carbon\Carbon::parse($flight->departure_time)->format('d-m-Y H:i') }}</div>
+                                                            <div><strong>Arrival:</strong> {{ \Carbon\Carbon::parse($flight->arrival_time)->format('d-m-Y H:i') }}</div>
+                                                            <div><strong>From:</strong> {{ $flight->airport_from ?? '—' }} (T{{ $flight->terminal_from ?? '-' }})</div>
+                                                            <div><strong>To:</strong> {{ $flight->airport_to ?? '—' }} (T{{ $flight->terminal_to ?? '-' }})</div>
+                                                            <div><strong>Class:</strong> {{ ucfirst($flight->class_type ?? '—') }}</div>
+                                                            <div><strong>Baggage:</strong> {{ $flight->baggage_allowed ?? '—' }}</div>
+                                                            <div><strong>Flight No:</strong> {{ $flight->flight_number ?? '—' }}</div>
+                                                            <div><strong>Seat:</strong> {{ $flight->seat_no ?? '—' }}</div>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+
+                                        @php
+                                            $hotel = $task->hotelDetails ?? null;
+                                            $room = null;
+                                            if ($hotel && !empty($hotel->room_details)) {
+                                                $decoded = json_decode($hotel->room_details, true);
+                                                if (is_array($decoded)) {
+                                                    $room = isset($decoded[0]) ? $decoded[0] : $decoded;
+                                                }
+                                            }
+                                        @endphp
+                                        @if($hotel)
+                                            <div class="p-3 rounded-md bg-blue-50 border border-blue-200 dark:bg-blue-900/20">
+                                                <div class="text-xs font-semibold mb-2 text-blue-700 dark:text-blue-300">Hotel Details</div>
+                                                <div class="border border-blue-100 dark:border-blue-800 rounded-md p-2 mb-2 text-xs bg-white/40 dark:bg-blue-950/10">
+                                                    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1 text-gray-700 dark:text-gray-200">
+                                                        <div><strong>Hotel:</strong> {{ $hotel->hotel->name ?? '—' }}</div>
+                                                        <div><strong>Check-in:</strong> {{ $hotel->check_in }}</div>
+                                                        <div><strong>Check-out:</strong> {{ $hotel->check_out }}</div>
+                                                        <div><strong>Booking Time:</strong> {{ $hotel->booking_time }}</div>
+                                                        @if($room)
+                                                            <div><strong>Room:</strong> {{ $room['name'] ?? '—' }}</div>
+                                                            <div><strong>Board:</strong> {{ $room['board'] ?? '—' }}</div>
+                                                            <div><strong>Passengers:</strong>
+                                                                @if(is_array($room['passengers'] ?? null))
+                                                                    {{ implode(', ', $room['passengers']) }}
+                                                                @else
+                                                                    {{ $room['passengers'] ?? '—' }}
+                                                                @endif
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        @if($task->visaDetails)
+                                            <div class="p-3 rounded-md bg-blue-50 border border-blue-200 dark:bg-blue-900/20">
+                                                <div class="text-xs font-semibold mb-2 text-blue-700 dark:text-blue-300">Visa Details</div>
+                                                <div class="border border-blue-100 dark:border-blue-800 rounded-md p-2 mb-2 text-xs bg-white/40 dark:bg-blue-950/10">
+                                                    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1 text-gray-700 dark:text-gray-200">
+                                                        <div><strong>Issuing Country:</strong> {{ $task->visaDetails->issuing_country }}</div>
+                                                        <div><strong>Duration of Stay:</strong> {{ $task->visaDetails->stay_duration }} days</div>
+                                                        <div><strong>Entries:</strong> {{ $task->visaDetails->number_of_entries }}</div>
+                                                        <div><strong>Expiry Date:</strong> {{ $task->visaDetails->expiry_date }}</div>
+                                                        <div><strong>Application No:</strong> {{ $task->visaDetails->application_number }}</div>
+                                                        <div><strong>Type:</strong> {{ $task->visaDetails->visa_type }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        @if($task->insuranceDetails)
+                                            <div class="p-3 rounded-md bg-blue-50 border border-blue-200 dark:bg-blue-900/20">
+                                                <div class="text-xs font-semibold mb-2 text-blue-700 dark:text-blue-300">Insurance Details</div>
+                                                <div class="border border-blue-100 dark:border-blue-800 rounded-md p-2 mb-2 text-xs bg-white/40 dark:bg-blue-950/10">
+                                                    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1 text-gray-700 dark:text-gray-200">
+                                                        <div><strong>Paid Leaves:</strong> {{ $task->insuranceDetails->paid_leaves }}</div>
+                                                        <div><strong>Document Reference:</strong> {{ $task->insuranceDetails->document_reference }}</div>
+                                                        <div><strong>Type:</strong> {{ $task->insuranceDetails->insurance_type }}</div>
+                                                        <div><strong>Destination:</strong> {{ $task->insuranceDetails->destination }}</div>
+                                                        <div><strong>Plan Type:</strong> {{ $task->insuranceDetails->plan_type }}</div>
+                                                        <div><strong>Duration:</strong> {{ $task->insuranceDetails->duration }}</div>
+                                                        <div><strong>Package:</strong> {{ $task->insuranceDetails->package }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        @if(optional($task->invoiceDetail)->invoice)
+                                            @php
+                                                $isPaid = $task->invoiceDetail->invoice->status === 'paid';
+                                                $bgColor = $isPaid ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-rose-50 dark:bg-rose-900/20';
+                                                $borderColor = $isPaid ? 'border-emerald-200 dark:border-emerald-800' : 'border-rose-200 dark:border-rose-800';
+                                                $textColor = $isPaid ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300';
+
+                                                $partials = $task->invoiceDetail->invoice->invoicePartials ?? collect();
+                                                $paymentInfo = $partials->map(function ($p) {
+                                                    return [
+                                                        'gateway' => $p->payment_gateway,
+                                                        'method' => $p->payment_method,
+                                                        'status' => $p->status,
+                                                        'service_charge' => number_format($p->service_charge, 3),
+                                                        'amount' => number_format($p->amount, 3),
+                                                    ];
+                                                });
+                                            @endphp
+                                            <div class="p-3 rounded-md {{ $bgColor }} {{ $borderColor }} mt-2">
+                                                <div class="text-xs font-semibold mb-2 {{ $textColor }}">Invoice Summary</div>
+                                                <div class="border {{ $borderColor }} rounded-md p-2 mb-2 text-xs bg-white/40 dark:bg-slate-900/30">
+                                                    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1 text-gray-700 dark:text-gray-200">
+                                                        <div><strong>Invoice Number:</strong> {{ $task->invoiceDetail->invoice->invoice_number }}</div>
+                                                        <div><strong>Status:</strong>
+                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold
+                                                                {{ $isPaid ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200' }}">
+                                                                {{ ucfirst($task->invoiceDetail->invoice->status) }}
+                                                            </span>
+                                                        </div>
+                                                        <div><strong>Invoice Date:</strong> {{ optional($task->invoiceDetail->invoice->invoice_date)->format('d-m-Y')
+                                                            ?? \Carbon\Carbon::parse($task->invoiceDetail->invoice->invoice_date)->format('d-m-Y') }}</div>
+                                                        <div><strong>Payment Type:</strong> {{ ucfirst($task->invoiceDetail->invoice->payment_type ?? 'Not Set') }}</div>
+                                                        <div><strong>Invoice Price:</strong> {{ number_format($task->invoiceDetail->task_price, 3) }} KWD</div>
+                                                        <div><strong>Supplier Price:</strong> {{ number_format($task->invoiceDetail->supplier_price, 3) }} KWD</div>
+                                                        <div><strong>Profit:</strong> {{ number_format($task->invoiceDetail->markup_price, 3) }} KWD</div>
+                                                    </div>
+                                                </div>
+                                                @if($paymentInfo->isNotEmpty())
+                                                    <div class="text-xs font-semibold mb-2 {{ $textColor }}">Payment Details</div>
+                                                    <div class="overflow-x-auto">
+                                                        <table class="min-w-full text-xs text-gray-700 dark:text-gray-200 border-collapse border {{ $borderColor }} rounded-md">
+                                                            <thead class="{{ $isPaid ? 'bg-emerald-100/70 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200' : 'bg-rose-100/70 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200' }}">
+                                                                <tr>
+                                                                <th class="px-2 py-1 text-left border {{ $borderColor }}">Gateway</th>
+                                                                <th class="px-2 py-1 text-left border {{ $borderColor }}">Method</th>
+                                                                <th class="px-2 py-1 text-left border {{ $borderColor }}">Status</th>
+                                                                <th class="px-2 py-1 text-right border {{ $borderColor }}">Service Charge</th>
+                                                                <th class="px-2 py-1 text-right border {{ $borderColor }}">Amount</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody class="{{ $isPaid ? 'divide-emerald-100 dark:divide-emerald-800' : 'divide-rose-100 dark:divide-rose-800' }}">
+                                                                @foreach($paymentInfo as $p)
+                                                                    <tr>
+                                                                        <td class="px-2 py-1 border {{ $borderColor }}">{{ ucfirst($p['gateway'] ?? 'Not Set') }}</td>
+                                                                        <td class="px-2 py-1 border {{ $borderColor }}">{{ ucfirst($p['method'] ?? '—') }}</td>
+                                                                        <td class="px-2 py-1 border {{ $borderColor }}">{{ ucfirst($p['status'] ?? '—') }}</td>
+                                                                        <td class="px-2 py-1 text-right border {{ $borderColor }}">{{ $p['service_charge'] }} KWD</td>
+                                                                        <td class="px-2 py-1 text-right border {{ $borderColor }}">{{ $p['amount'] }} KWD</td>
+                                                                    </tr>
+                                                                @endforeach
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                @else
+                                                    <div class="text-xs text-gray-600 dark:text-gray-400 font-semibold italic mt-1">No payment records found.</div>
+                                                @endif
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                    @empty
+                    <tr>
+                        <td colspan="12" class="text-center text-gray-500 font-semibold">No tasks in this period.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            <x-pagination :data="$tasks->appends(request()->query())" />
+        </div>
+    </div>
+    @endif
 
     <style>
         @media print {
@@ -844,6 +1128,38 @@
                 },
                 summary() {
                     if (this.selected.length === 0 || this.allSelected) return 'All agents';
+                    return `${this.selected.length} selected`;
+                }
+            }
+        }
+
+        function typePicker({ items, preselected = [] }) {
+            return {
+                open: false,
+                q: '',
+                items,
+                selected: [...preselected],
+                get allSelected() {
+                    return Object.keys(this.items).length > 0 && this.selected.length === Object.keys(this.items).length
+                },
+                filtered() {
+                    const s = this.q.toLowerCase();
+                    if (!s) return this.items;
+                    return Object.fromEntries(
+                        Object.entries(this.items).filter(([key, label]) => label.toLowerCase().includes(s))
+                    );
+                },
+                toggle(key) {
+                    const i = this.selected.indexOf(key);
+                    i > -1 ? this.selected.splice(i, 1) : this.selected.push(key);
+                },
+                toggleAll() {
+                    this.allSelected
+                        ? this.selected = []
+                        : this.selected = Object.keys(this.items);
+                },
+                summary() {
+                    if (this.selected.length === 0 || this.allSelected) return 'All types';
                     return `${this.selected.length} selected`;
                 }
             }

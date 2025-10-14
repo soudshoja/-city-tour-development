@@ -135,9 +135,9 @@
                                 <div class="grid grid-cols-1 gap-4">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Invoice Details
-                                        @foreach($invoice->invoiceDetails as $key => $detail)
                                     </label>
                                     <div class="flex gap-3">
+                                        @foreach($invoice->invoiceDetails as $key => $detail)
                                         <div class="p-2 bg-gray-100 dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500">
                                             @php
                                             $task = $detail->task;
@@ -153,7 +153,7 @@
                                                 </ul>
                                             </div>
                                             <div>
-                                                <input type="number" 
+                                                <input type="number"
                                                     oninput="updateTotalAmount(this)"
                                                     onblur="formatToThreeDecimals(this)"
                                                     step="0.001"
@@ -165,8 +165,8 @@
                                                 @enderror
                                             </div>
                                         </div>
+                                        @endforeach
                                     </div>
-                                    @endforeach
                                 </div>
                                 @endif
                             </div>

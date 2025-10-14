@@ -153,7 +153,9 @@
                                                 </ul>
                                             </div>
                                             <div>
-                                                <input type="number" oninput="updateTotalAmount(this)"
+                                                <input type="number" 
+                                                    oninput="updateTotalAmount(this)"
+                                                    onblur="formatToThreeDecimals(this)"
                                                     step="0.001"
                                                     name="invoice_details[{{ $detail->task_id }}][amount]"
                                                     value="{{ number_format(old('invoice_details.' . $detail->id . '.amount', $detail->task_price),3) }}"
@@ -180,6 +182,7 @@
                                         step="0.001"
                                         name="invoice_charge"
                                         oninput="updateTotalAmount(this)"
+                                        onblur="formatToThreeDecimals(this)"
                                         value="{{ number_format(old('invoice_charge', $invoice->invoice_charge), 3) }}" />
                                     @error('invoice_charge')
                                     <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
@@ -196,6 +199,7 @@
                                         type="number"
                                         step="0.001"
                                         name="amount"
+                                        oninput="updateInvoiceCharge(this)"
                                         onblur="formatToThreeDecimals(this)"
                                         value="{{ number_format(old('amount', $invoice->amount),3) }}"
                                         required />
@@ -456,14 +460,9 @@
         }
 
         function updateTotalAmount(inputElement) {
-
-            let changedValue = parseFloat(inputElement.value) || 0;
-            inputElement.value = changedValue.toFixed(3);
-
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
-
-
+                // Don't format the input here - let user type freely
                 let invoiceChargeValue = parseFloat(invoiceChargeInput.value) || 0;
 
                 let detailsTotal = 0;
@@ -474,12 +473,36 @@
 
                 let finalTotal = detailsTotal + invoiceChargeValue;
 
-                console.log('Changed Value:', changedValue);
-                console.log('Details Total:', detailsTotal);
-                console.log('Invoice Charge:', invoiceChargeValue);
-                console.log('Final Total:', finalTotal);
+                // console.log('Details Total:', detailsTotal);
+                // console.log('Invoice Charge:', invoiceChargeValue);
+                // console.log('Final Total:', finalTotal);
 
                 totalAmountInput.value = finalTotal.toFixed(3);
+
+            }, 300)
+        }
+
+        function updateInvoiceCharge(inputElement) {
+            let changedValue = parseFloat(inputElement.value) || 0;
+            let invoiceChargeInput = document.getElementById('invoice_charge');
+
+
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+
+                let detailsTotal = 0;
+                const detailInputs = document.querySelectorAll('input[name^="invoice_details"]');
+                detailInputs.forEach(input => {
+                    detailsTotal += parseFloat(input.value) || 0;
+                });
+
+                let finalTotal = changedValue - detailsTotal;
+
+                // console.log('Changed Value:', changedValue);
+                // console.log('Details Total:', detailsTotal);
+                // console.log('Final Total:', finalTotal);
+
+                invoiceChargeInput.value = finalTotal.toFixed(3);
 
             }, 300)
         }

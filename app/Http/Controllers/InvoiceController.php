@@ -3135,14 +3135,12 @@ class InvoiceController extends Controller
         $request->validate([
             'company_id' => 'required|integer|exists:companies,id',
             'invoice_number' => 'required|string|exists:invoices,invoice_number',
-            'tasks' => 'required|array',
-            'tasks.*' => 'required|numeric|min:0',
+            'tasks' => 'nullable|array',
+            'tasks.*' => 'nullable|numeric|min:0',
         ]);
-        // dd($request->all());
 
         $companyId = $request->input('company_id');
         $invoiceNumber = $request->input('invoice_number');
-
 
         try{
             DB::transaction(function () use ($request, $companyId, $invoiceNumber) {
@@ -3195,7 +3193,6 @@ class InvoiceController extends Controller
                 $newAmount = 0;
                 $updatedDetails = collect();
 
-                // dd($taskUpdates);
                 foreach ($invoice->invoiceDetails as $detail) {
                     $newTaskAmount = $taskUpdates[$detail->task_id] ?? $detail->task_price;
                     $newAmount += $newTaskAmount;
@@ -3290,7 +3287,7 @@ class InvoiceController extends Controller
             'tasks' => $request->input('tasks', []),
         ]);
 
-        return response()->json(['success' => 'Invoice updated successfully.'], 200);
+        return response()->json(['error' => 'No changes detected or invoice not found.'], 400);
     }
 
 }

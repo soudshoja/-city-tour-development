@@ -452,59 +452,51 @@
         const totalAmountInput = document.getElementById('amount');
         const invoiceChargeInput = document.getElementById('invoice_charge');
 
-        let debounceTimer;
-
         function formatToThreeDecimals(inputElement) {
             let value = parseFloat(inputElement.value) || 0;
             inputElement.value = value.toFixed(3);
         }
 
-        function updateTotalAmount(inputElement) {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                // Don't format the input here - let user type freely
-                let invoiceChargeValue = parseFloat(invoiceChargeInput.value) || 0;
+        function calculateTotal() {
+            let invoiceChargeValue = parseFloat(invoiceChargeInput.value) || 0;
 
-                let detailsTotal = 0;
-                const detailInputs = document.querySelectorAll('input[name^="invoice_details"]');
-                detailInputs.forEach(input => {
-                    detailsTotal += parseFloat(input.value) || 0;
-                });
+            let detailsTotal = 0;
+            const detailInputs = document.querySelectorAll('input[name^="invoice_details"]');
+            detailInputs.forEach(input => {
+                detailsTotal += parseFloat(input.value) || 0;
+            });
 
-                let finalTotal = detailsTotal + invoiceChargeValue;
-
-                // console.log('Details Total:', detailsTotal);
-                // console.log('Invoice Charge:', invoiceChargeValue);
-                // console.log('Final Total:', finalTotal);
-
-                totalAmountInput.value = finalTotal.toFixed(3);
-
-            }, 300)
+            let finalTotal = detailsTotal + invoiceChargeValue;
+            totalAmountInput.value = finalTotal.toFixed(3);
         }
+
+        function updateTotalAmount(inputElement) {
+            calculateTotal(); // Calculate immediately without debounce
+        }
+
+        // Simple form submission handler 
+        document.querySelector('form').addEventListener('submit', function(e) {
+            // Ensure final calculation before submission
+            calculateTotal();
+        });
 
         function updateInvoiceCharge(inputElement) {
             let changedValue = parseFloat(inputElement.value) || 0;
             let invoiceChargeInput = document.getElementById('invoice_charge');
 
+            let detailsTotal = 0;
+            const detailInputs = document.querySelectorAll('input[name^="invoice_details"]');
+            detailInputs.forEach(input => {
+                detailsTotal += parseFloat(input.value) || 0;
+            });
 
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
+            let finalTotal = changedValue - detailsTotal;
 
-                let detailsTotal = 0;
-                const detailInputs = document.querySelectorAll('input[name^="invoice_details"]');
-                detailInputs.forEach(input => {
-                    detailsTotal += parseFloat(input.value) || 0;
-                });
+            // console.log('Changed Value:', changedValue);
+            // console.log('Details Total:', detailsTotal);
+            // console.log('Final Total:', finalTotal);
 
-                let finalTotal = changedValue - detailsTotal;
-
-                // console.log('Changed Value:', changedValue);
-                // console.log('Details Total:', detailsTotal);
-                // console.log('Final Total:', finalTotal);
-
-                invoiceChargeInput.value = finalTotal.toFixed(3);
-
-            }, 300)
+            invoiceChargeInput.value = finalTotal.toFixed(3);
         }
     </script>
 </x-app-layout>

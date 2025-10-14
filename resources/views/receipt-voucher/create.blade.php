@@ -217,7 +217,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th colspan="2">
-                                        A/C / Invoice Number / Client Credit
+                                        Account / Invoice Number / Credit / Import
                                     </th>
                                     <th>Remarks</th>
                                     <th>Currency</th>
@@ -546,7 +546,7 @@
                     <td colspan="2" style="min-width:300px;">
                         <div style="display: flex; gap: 8px;">
                         
-                            <!-- Account/Invoice/Client/Import Dropdown -->
+                            <!-- Account/Invoice/Credit/Import Dropdown -->
                                 <select required class="form-control form-control-sm" name="items[${index}][type_selector]" onchange="toggleAccountClientInput(this, ${index})" style="flex: 0 0 120px;">
                                     <option value="none" ${(item.type_selector === 'none') ? 'selected' : ''}>-- Select Type --</option>
                                     <option value="account" ${item.type_selector === 'account' ? 'selected' : ''}>Account Name</option>
@@ -1115,6 +1115,7 @@
                         branch: "",
                         auth_no: "",
                         balance: 0,
+                        type_selector: "",
                     });
                 }
             }

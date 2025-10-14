@@ -80,7 +80,6 @@
                                         $invoicePartial = $invoicePartials[$receiptvoucher->invoice_id]->first();
                                     }
                                 @endphp
-
                                 <tr>
                                     <td><a data-tooltip="View Receipt Voucher"
                                                 href="{{ route('receipt-voucher.edit', $receiptvoucher->id) }}"

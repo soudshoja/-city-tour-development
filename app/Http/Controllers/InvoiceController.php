@@ -27,6 +27,7 @@ use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\Credit;
+use App\Models\InvoiceReceipt;
 use App\Models\Setting;
 use App\Services\ChargeService;
 use Illuminate\Support\Facades\Log;
@@ -381,12 +382,19 @@ class InvoiceController extends Controller
             $branches = $company->branches;
             $agents = $branches->pluck('agents')->flatten();
             $agentsId = $agents->pluck('id');
+            $companyId = $user->company->id;
+
         } elseif ($user->role_id == Role::AGENT) {
             $agent = $user->agent;
             $company = $agent->branch->company;
             $branches = $company->branches;
             $agents   = $branches->pluck('agents')->flatten();
             $agentsId = $agents->pluck('id')->toArray();
+            $companyId = $user->agent->branch->company_id;
+
+        } elseif ($user->role_id == Role::BRANCH) {
+            $companyId = $user->branch->company_id;
+
         } elseif ($user->role_id == Role::ACCOUNTANT) {
             return $this->accountantEdit($companyId, $invoiceNumber);
         } else {
@@ -539,19 +547,16 @@ class InvoiceController extends Controller
 
         $invoiceExpireDefault = $invoiceExpireDefault ? date('Y-m-d', strtotime('+' . $invoiceExpireDefault->value . ' days')) : date('Y-m-d', strtotime('+5 days'));
 
-        if ($user->role_id == Role::AGENT) {
-            $companyId = $user->agent->branch->company_id;
-        } elseif ($user->role_id == Role::BRANCH) {
-            $companyId = $user->branch->company_id;
-        } elseif ($user->role_id == Role::COMPANY) {
-            $companyId = $user->company->id;
-        } else {
-            $companyId = null;
-        }
-
         $can_import = Charge::where('company_id', $companyId)
             ->where('can_import', true)
             ->get();
+
+        $receiptVoucher = InvoiceReceipt::with('transaction')
+                            ->where('type', 'import')
+                            ->where('status', 'approved')
+                            ->where('is_used', false)
+                            ->get();
+
         return view('invoice.edit', compact(
             'clients',
             'invoice',
@@ -580,6 +585,7 @@ class InvoiceController extends Controller
             'uPaymentMethods',
             'hesabeMethods',
             'can_import',
+            'receiptVoucher',
         ));
     }
 

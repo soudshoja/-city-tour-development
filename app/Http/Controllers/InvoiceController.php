@@ -3063,46 +3063,51 @@ class InvoiceController extends Controller
                 }
             }
 
-            $responseUpdateAmount = $this->updateDetailsAmount(
-                new Request([
-                    'tasks' => $updatingDetails,
-                    'company_id' => $request->company_id,
-                    'invoice_number' => $invoice->invoice_number,
-                ]),
-            );
+            if (!empty($updatingDetails)) {
 
-            if($responseUpdateAmount->getStatusCode() !== 200){
-                Log::error('Failed to update invoice details', [
-                    'invoice_id' => $invoice->id,
-                    'response' => $responseUpdateAmount->getContent(),
-                ]);
-            }
+                $responseUpdateAmount = $this->updateDetailsAmount(
+                    new Request([
+                        'tasks' => $updatingDetails,
+                        'company_id' => $request->company_id,
+                        'invoice_number' => $invoice->invoice_number,
+                    ]),
+                );
 
-            $responseData = $responseUpdateAmount->getData();
+                if ($responseUpdateAmount->getStatusCode() !== 200) {
+                    Log::error('Failed to update invoice details', [
+                        'invoice_id' => $invoice->id,
+                        'response' => $responseUpdateAmount->getContent(),
+                    ]);
+                }
 
-            if(isset($responseData->error)){
-                $error[] = $responseData->error;
-            }
+                $responseData = $responseUpdateAmount->getData();
 
-            if(isset($responseData->message)){
-                $success[] = $responseData->message;
+                if (isset($responseData->error)) {
+                    $error[] = $responseData->error;
+                }
+
+                if (isset($responseData->message)) {
+                    $success[] = $responseData->message;
+                }
             }
 
         }
 
+        $invoice = $invoice->fresh();
+
         if($invoice->invoice_charge !== $request->invoice_charge || $invoice->amount !== $request->amount){
-            if($request->amount !== bcadd($invoice->sub_amount, $request->invoice_charge ?? 0, 3)){
+            if($request->amount != bcadd($invoice->sub_amount, $request->invoice_charge ?? 0, 3)){
                 
                 Log::error('Invoice amount mismatch', [
                     'invoice_id' => $invoice->id,
-                    'expected_amount' => bcadd($invoice->sub_amount, $request->invoice_charge ?? 0, 2),
+                    'expected_amount' => bcadd($invoice->sub_amount, $request->invoice_charge ?? 0, 3),
                     'provided_amount' => $request->amount,
                 ]);
 
                 $error[] = 'The total amount does not match the sum of sub amount and invoice charge.';
             }
-
-            if($request->invoice_charge !== bcsub($invoice->amount, $invoice->sub_amount, 3)){
+            
+            if($request->invoice_charge !== bcsub($request->amount, $invoice->sub_amount, 3)){
                 
                 Log::error('Invoice charge mismatch', [
                     'invoice_id' => $invoice->id,
@@ -3123,17 +3128,103 @@ class InvoiceController extends Controller
             }
         }
 
-        return redirect()->back()->with([
-            'success' => $success,
-            'error' => $error,
-        ]);
+        $return = redirect()->back();
+
+        if($success) $return = $return->with('success', implode(' ', $success));
+
+        if($error) $return = $return->with('error', 'There is some issue')->with('data', $error);
+
+        return $return;
     }
 
     private function updateSubAmount($subAmount){
 
     }
 
-    private function updateInvoicecharge($invoiceCharge){
+    private function updateInvoicecharge($invoiceNumber, $user, $companyId, $newInvoiceCharge){
+    
+        $whoIsUser = '';
+
+        if($user->role_id == Role::ADMIN){
+            $whoIsUser = 'Admin';
+        } else if($user->role_id == Role::COMPANY) {
+            $whoIsUser = 'Company admin ' . $user->company->name;
+        } else if ($user->role_id == Role::BRANCH) {
+            $whoIsUser = 'Branch admin ' . $user->branch->name;
+        } else if ($user->role_id == Role::AGENT) {
+            $whoIsUser = 'Agent ' . $user->agent->name;
+        } else if ($user->role_id == Role::ACCOUNTANT) {
+            $whoIsUser = 'Accountant ' . $user->accountant->name;
+        }  else {
+            return response()->json(['error' => 'User role not recognized.'], 403);
+        }
+
+        $invoice = Invoice::where('invoice_number', $invoiceNumber)
+            ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
+            ->first();
+
+        if (!$invoice) {
+            Log::error('Invoice not found for updateInvoiceCharge', [
+                'invoice_number' => $invoiceNumber,
+                'company_id' => $companyId,
+            ]);
+            return response()->json(['error' => 'Invoice not found.'], 404);
+        }
+
+        if ($invoice->invoice_charge == $newInvoiceCharge) {
+            return response()->json(['message' => 'No change in invoice charge.'], 200);
+        }
+
+
+        DB::transaction(function () use ($invoice, $newInvoiceCharge, $whoIsUser) {
+
+            $invoiceChargeTransaction = $invoice->transactions()
+                ->where('description', 'LIKE', '%Invoice additional charge%')
+                ->first();
+
+            if($invoiceChargeTransaction){
+                $updateInvoiceChargeTransaction = Transaction::create([
+                    'company_id' => $invoiceChargeTransaction->company_id,
+                    'entity_id' => $invoiceChargeTransaction->entity_id,
+                    'entity_type' => $invoiceChargeTransaction->entity_type,
+                    'branch_id' => $invoiceChargeTransaction->branch_id,
+                    'transaction_type' => $invoiceChargeTransaction->transaction_type === 'debit' ? 'credit' : 'debit',
+                    'amount' => 0.00,
+                    'description' => 'Reversal of: ' . $invoiceChargeTransaction->description . ' by ' . $whoIsUser,
+                    'invoice_id' => $invoiceChargeTransaction->invoice_id,
+                    'reference_type' => $invoiceChargeTransaction->reference_type,
+                    'transaction_date' => $invoiceChargeTransaction->transaction_date,
+                ]);
+
+
+                foreach ($invoiceChargeTransaction->journalEntries as $entry) {
+                    JournalEntry::create([
+                        'transaction_id' => $updateInvoiceChargeTransaction->id,
+                        'account_id' => $entry->account_id,
+                        'description' => $entry->description . ' reversal by ' . $whoIsUser,
+                        'debit' => $entry->credit,
+                        'credit' => $entry->debit,
+                        'company_id' => $entry->company_id,
+                        'branch_id' => $entry->branch_id,
+                        'invoice_id' => $entry->invoice_id,
+                        'agent_id' => $entry->agent_id,
+                        'transaction_date' => $entry->transaction_date,
+                        'type' => $entry->type,
+                        'task_id' => $entry->task_id,
+                        'name' => $entry->name,
+                    ]);
+                }
+            }
+
+            $invoice->invoice_charge = $newInvoiceCharge;
+
+            if ($invoice->amount != bcadd($invoice->sub_amount, $newInvoiceCharge, 3)) {
+                $invoice->amount = bcadd($invoice->sub_amount, $newInvoiceCharge, 3);
+            }
+
+            $invoice->save();
+
+        });
 
     }
 
@@ -3143,13 +3234,39 @@ class InvoiceController extends Controller
             'invoice_number' => 'required|string|exists:invoices,invoice_number',
             'tasks' => 'nullable|array',
             'tasks.*' => 'nullable|numeric|min:0',
+            // 'user_id' => 'required|integer|exists:users,id',
+        ]);
+
+        $user = User::find(29);
+
+        $whoIsUser = '';
+
+        if($user->role_id == Role::ADMIN){
+            $whoIsUser = 'Admin';
+        } else if($user->role_id == Role::COMPANY) {
+            $whoIsUser = 'Company admin ' . $user->company->name;
+        } else if ($user->role_id == Role::BRANCH) {
+            $whoIsUser = 'Branch admin ' . $user->branch->name;
+        } else if ($user->role_id == Role::AGENT) {
+            $whoIsUser = 'Agent ' . $user->agent->name;
+        } else if ($user->role_id == Role::ACCOUNTANT) {
+            $whoIsUser = 'Accountant ' . $user->accountant->name;
+        }  else {
+            return response()->json(['error' => 'User role not recognized.'], 403);
+        }
+
+        Log::info('User ' . $user->name . ' (' . $whoIsUser . ') is attempting to update invoice details.', [
+            'user_id' => $user->id,
+            'invoice_number' => $request->invoice_number,
+            'company_id' => $request->company_id,
+            'tasks' => $request->tasks,
         ]);
 
         $companyId = $request->input('company_id');
         $invoiceNumber = $request->input('invoice_number');
 
         try{
-            DB::transaction(function () use ($request, $companyId, $invoiceNumber) {
+            DB::transaction(function () use ($request, $companyId, $invoiceNumber, $whoIsUser) {
                 $invoice = Invoice::with(['invoiceDetails.task', 'agent', 'agent.branch', 'transactions.journalEntries'])
                     ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
                     ->where('invoice_number', $invoiceNumber)
@@ -3166,7 +3283,7 @@ class InvoiceController extends Controller
     
                 $oldAmount = $invoice->amount;
                 $reversalTransaction = Transaction::create([
-                    'description' => 'Invoice reversal for: ' . $invoice->invoice_number . ' (Old Amount: ' . $oldAmount . ')',
+                    'description' => 'Invoice reversal for: ' . $invoice->invoice_number . ' (Old Amount: ' . $oldAmount . ') by ' . $whoIsUser,
                     'invoice_id' => $invoice->id,
                     'entity_id' => $transactionToReverse->entity_id,
                     'entity_type' => $transactionToReverse->entity_type,
@@ -3180,7 +3297,7 @@ class InvoiceController extends Controller
                     JournalEntry::create([
                         'transaction_id' => $reversalTransaction->id,
                         'account_id' => $entry->account_id,
-                        'description' => $entry->description,
+                        'description' => $entry->description . ' reversal by ' . $whoIsUser,
                         'debit' => $entry->credit,
                         'credit' => $entry->debit,
                         'company_id' => $entry->company_id,
@@ -3220,7 +3337,7 @@ class InvoiceController extends Controller
     
                 $correctedTransaction = Transaction::create([
                     'date' => now(),
-                    'description' => 'Invoice: ' . $invoice->invoice_number . ' (New Amount: ' . $newAmount . ')',
+                    'description' => 'Invoice: ' . $invoice->invoice_number . ' (New Amount: ' . $newAmount . ') by ' . $whoIsUser,
                     'invoice_id' => $invoice->id,
                     'entity_id' => $transactionToReverse->entity_id,
                     'entity_type' => $transactionToReverse->entity_type,
@@ -3256,7 +3373,7 @@ class InvoiceController extends Controller
                         JournalEntry::create([
                             'transaction_id' => $correctedTransaction->id,
                             'account_id' => $entry->account_id,
-                            'description' => $entry->description,
+                            'description' => $entry->description . ' correction by ' . $whoIsUser,
                             'debit' => $newDebit,
                             'credit' => $newCredit,
                             'entity_id' => $entry->entity_id ?? null,
@@ -3275,8 +3392,18 @@ class InvoiceController extends Controller
                     }
                 }
 
-                return response()->json(['success' => 'Invoice updated successfully', 'invoice_total' => $invoice->amount]);
             });
+
+            $invoice = Invoice::where('invoice_number', $invoiceNumber)->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))->first();
+
+            Log::info('Invoice details updated successfully', [
+                'company_id' => $companyId,
+                'invoice_number' => $invoiceNumber,
+                'new_amount' => $invoice->amount,
+                'tasks' => $request->input('tasks', []),
+            ]);
+
+            return response()->json(['success' => 'Invoice updated successfully', 'invoice_total' => $invoice->amount]);
 
         } catch (Exception $e) {
             Log::error('Failed to update invoice details: ' . $e->getMessage(), [
@@ -3294,6 +3421,32 @@ class InvoiceController extends Controller
         ]);
 
         return response()->json(['error' => 'No changes detected or invoice not found.'], 400);
+    }
+
+    public function updateDateProcess(Request $request)
+    {
+        $request->validate([
+            'invdate' => 'required|date',
+            'company_id' => 'required|integer|exists:companies,id',
+            'invoice_number' => 'required|string|exists:invoices,invoice_number',
+        ]);
+
+        $invoice = Invoice::whereHas('agent.branch', function ($q) use ($request) {
+            $q->where('company_id', $request->company_id);
+        })->where('invoice_number', $request->invoice_number)->firstOrFail();
+
+        $invoice->invoice_date = $request->input('invdate');
+        $invoice->save();
+
+        $transactions = Transaction::where('invoice_id', $invoice->id)->get();
+
+        foreach ($transactions as $transaction) {
+            $transaction->transaction_date = $request->input('invdate');
+            $transaction->save();
+        }
+        JournalEntry::where('invoice_id', $invoice->id)->update(['transaction_date' => $request->input('invdate')]);
+
+        return redirect()->back()->with('success', 'Invoice date, transaction date, and journal entry date updated!');
     }
 
 }

@@ -1608,9 +1608,14 @@ class ReportController extends Controller
 
         $from = $request->filled('from_date') ? Carbon::parse($request->input('from_date'))->startOfDay() : now()->startOfDay();
         $to = $request->filled('to_date') ? Carbon::parse($request->input('to_date'))->endOfDay() : (clone $from)->endOfDay();
-        $reportView = $request->input('report_view', 'summary');
-        $agentIds = collect((array) $request->input('agent_ids', []))->filter()->map(fn($v) => (int) $v)->unique()->values()->all();
 
+        $reportView = $request->input('report_view', 'summary');
+        if ($reportView !== 'details') {
+            $request->merge(['task_types' => []]);
+        }
+        $taskTypes = collect((array) $request->input('task_types', []))->filter()->unique()->values()->all();
+
+        $agentIds = collect((array) $request->input('agent_ids', []))->filter()->map(fn($v) => (int) $v)->unique()->values()->all();
         $allAgents = Agent::whereHas('branch.company', fn($q) => $q->where('id', $companyId))->orderBy('name')->get(['id', 'name']);
 
         $summary = $this->rangeSalesSummary($companyId, $from, $to, $agentIds);
@@ -1618,37 +1623,48 @@ class ReportController extends Controller
         $groups = $this->rangeSalesSuppliers($from, $to, $companyId, $agentIds);
         $refunds = $this->rangeSalesRefunds($companyId, $from, $to, $agentIds);
 
-        $tasks = collect();
+        $possibleTypes = [
+            'hotel' => 'Hotel',
+            'flight' => 'Flight',
+            'visa' => 'Visa',
+            'insurance' => 'Insurance',
+            'tour' => 'Tour',
+            'cruise' => 'Cruise',
+            'car' => 'Car',
+            'rail' => 'Rail',
+            'esim' => 'Esim',
+            'event' => 'Event',
+            'lounge' => 'Lounge',
+            'ferry' => 'Ferry',
+        ];
+
+        $tasks = null;
         if ($reportView === 'details') {
-            $tasks = $this->rangeSalesTasks($companyId, $from, $to, $agentIds);
+            $tasks = $this->rangeSalesTasks($companyId, $from, $to, $agentIds, $taskTypes);
         }
 
-        return view('reports.daily-sales', compact('summary', 'agents', 'groups', 'refunds', 'from', 'to', 'allAgents', 'reportView', 'tasks'));
+        return view('reports.daily-sales', compact('summary', 'agents', 'groups', 'refunds', 'from', 'to', 'allAgents', 'reportView', 'tasks', 'taskTypes', 'possibleTypes'));
     }
 
-    private function rangeSalesTasks(int $companyId, Carbon $from, Carbon $to, array $agentIds = [])
+    private function rangeSalesTasks(int $companyId, Carbon $from, Carbon $to, array $agentIds = [], array $taskTypes = [])
     {
         return Task::query()
             ->with([
-                'client:id,first_name,middle_name,last_name',
-                'agent:id,name,branch_id',
-                'agent.branch.company:id',
-                'supplier:id,name',
-                'invoiceDetail:id,task_id,task_price,supplier_price',
+                'client',
+                'agent',
+                'agent.branch.company',
+                'supplier',
+                'invoiceDetail',
+                'invoiceDetail.invoice',
+                'invoiceDetail.invoice.invoicePartials'
             ])
             ->whereBetween('supplier_pay_date', [$from, $to])
             ->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId))
             ->when(!empty($agentIds), fn($q) => $q->whereIn('agent_id', $agentIds))
+            ->when(!empty($taskTypes), fn($q) => $q->whereIn('type', $taskTypes))
             ->orderBy('supplier_pay_date')
-            ->get()
-            ->map(function ($t) {
-                $tp = optional($t->invoiceDetail)->task_price ?? 0;
-                $cp = optional($t->invoiceDetail)->supplier_price ?? 0;
-                $t->computed_task_price = (float) $tp;
-                $t->computed_cost = (float) $cp;
-                $t->computed_profit = (float) ($tp - $cp);
-                return $t;
-            });
+            ->paginate(30)
+            ->withQueryString();
     }
 
     private function rangeSalesSummary(int $companyId, Carbon $from, Carbon $to, $agentIds): array
@@ -1774,6 +1790,17 @@ class ReportController extends Controller
                 ->whereBetween('payment_date', [$from, $to])
                 ->sum('amount');
 
+            $totalTasks = Task::where('agent_id', $agent->id)
+                ->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId))
+                ->whereBetween('supplier_pay_date', [$from, $to])
+                ->count();
+
+            $voidTasks = Task::where('agent_id', $agent->id)
+                ->whereHas('agent.branch.company', fn($q) => $q->where('id', $companyId))
+                ->whereBetween('supplier_pay_date', [$from, $to])
+                ->where('status', 'void')
+                ->count();
+
             $data[] = [
                 'agent' => $agent,
                 'totalInvoices' => $totalInvoices,
@@ -1784,6 +1811,8 @@ class ReportController extends Controller
                 'commission' => $summary['commission'],
                 'topupCollected' => $topupCollected,
                 'invoices' => $invoices,
+                'totalTasks' => $totalTasks,
+                'voidTasks' => $voidTasks,
             ];
         }
         return $data;

@@ -1213,12 +1213,20 @@ class InvoiceController extends Controller
                     ->where('root_id', optional($liabilities)->id)
                     ->first();
 
-                if ($clientAdvance) {
+                $paymentGateway = Account::where('name', 'Payment Gateway')
+                    ->where('company_id', $task->company_id)
+                    ->where('parent_id', $clientAdvance->id)
+                    ->first();
+                if (!$paymentGateway) {
+                    throw new Exception('Payment Gateway account not found');
+                }
+
+                if ($paymentGateway) {
                     JournalEntry::create([
                         'transaction_id' => $transactionId,
                         'branch_id' => $task->agent->branch_id ?? null,
                         'company_id' => $task->company_id ?? null,
-                        'account_id' => $clientAdvance->id,
+                        'account_id' => $paymentGateway->id,
                         'task_id' => $task->id ?? null,
                         'agent_id'       => $task->agent_id ?? $invoice->agent_id,
                         'invoice_id' => $invoiceId,
@@ -1227,8 +1235,8 @@ class InvoiceController extends Controller
                         'description' => 'Invoice created for (Assets): ' . $clientName,
                         'debit' => $task->invoiceDetail->task_price,
                         'credit' => 0,
-                        'balance' => $clientAdvance->balance ?? 0,
-                        'name' => $clientAdvance->name,
+                        'balance' => $paymentGateway->balance ?? 0,
+                        'name' => $paymentGateway->name,
                         'type' => 'receivable',
                         'currency' => $task->currency ?? 'USD',
                         'exchange_rate' => $task->exchange_rate ?? 1.00,

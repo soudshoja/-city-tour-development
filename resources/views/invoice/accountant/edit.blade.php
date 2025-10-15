@@ -279,24 +279,63 @@
                             </div>
                         </div>
 
-                        <!-- Payment Information -->
                         <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Payment Information</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Payment Type -->
+                                
                                 <div class="flex gap-2 items-end">
                                     <div class="w-full">
                                         <label for="payment_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                             Payment Type
+                                            @if($invoice->status === 'paid')
+                                                <span class="text-xs text-gray-500">(Current: {{ ucfirst($invoice->payment_type ?? 'None') }})</span>
+                                            @endif
                                         </label>
                                         <select name="payment_type" id="payment_type" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
                                             @foreach($invoicePaymentTypes as $key => $type)
-                                            <option value="{{ $key }}" {{ old('payment_type', $invoice->payment_type) == $key ? 'selected' : '' }}>{{ ucfirst($type) }}</option>
+                                            <option value="{{ $key }}" 
+                                                {{ old('payment_type', $invoice->payment_type) == $key ? 'selected' : '' }}
+                                                data-payment-type="{{ $key }}">
+                                                {{ ucfirst($type) }}
+                                            </option>
                                             @endforeach
                                         </select>
                                         @error('payment_type')
                                         <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
                                         @enderror
+                                        
+                                        <!-- Payment Type Change Warning -->
+                                        <div id="payment-type-warning" class="hidden mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                            <div class="flex">
+                                                <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                </svg>
+                                                <div class="ml-3">
+                                                    <p class="text-sm text-yellow-800" id="payment-warning-text">
+                                                        <!-- Warning text will be inserted here -->
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Payment Type Restrictions Info -->
+                                        @if($invoice->status === 'paid')
+                                        <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                            <div class="flex">
+                                                <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                                </svg>
+                                                <div class="ml-3">
+                                                    <p class="text-sm text-blue-800">
+                                                        <strong>Payment Type Change Rules:</strong><br>
+                                                        • Only Credit ↔ Cash changes are supported<br>
+                                                        • External gateway payments (MyFatoorah, Tap, etc.) cannot be changed<br>
+                                                        • Credit changes require sufficient client balance
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        @endif
                                     </div>
                                     @if(strtolower(old('payment_type', $invoice->payment_type)) == '')
                                     <x-searchable-dropdown
@@ -309,7 +348,6 @@
                                     @endif
                                 </div>
 
-                                <!-- External URL -->
                                 <div>
                                     <label for="external_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         External URL
@@ -325,95 +363,7 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Bank Information -->
-                        <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Bank Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                                <!-- Account Number -->
-                                <div>
-                                    <label for="account_number" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Account Number
-                                    </label>
-                                    <input id="account_number"
-                                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                                        type="text"
-                                        name="account_number"
-                                        value="{{ old('account_number', $invoice->account_number) }}" />
-                                    @error('account_number')
-                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
-                                    @enderror
-                                </div>
-
-                                <!-- Bank Name -->
-                                <div>
-                                    <label for="bank_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Bank Name
-                                    </label>
-                                    <input id="bank_name"
-                                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                                        type="text"
-                                        name="bank_name"
-                                        value="{{ old('bank_name', $invoice->bank_name) }}" />
-                                    @error('bank_name')
-                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
-                                    @enderror
-                                </div>
-
-                                <!-- SWIFT Number -->
-                                <div>
-                                    <label for="swift_no" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        SWIFT Number
-                                    </label>
-                                    <input id="swift_no"
-                                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                                        type="text"
-                                        name="swift_no"
-                                        value="{{ old('swift_no', $invoice->swift_no) }}" />
-                                    @error('swift_no')
-                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
-                                    @enderror
-                                </div>
-
-                                <!-- IBAN Number -->
-                                <div>
-                                    <label for="iban_no" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        IBAN Number
-                                    </label>
-                                    <input id="iban_no"
-                                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                                        type="text"
-                                        name="iban_no"
-                                        value="{{ old('iban_no', $invoice->iban_no) }}" />
-                                    @error('iban_no')
-                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
-                                    @enderror
-                                </div>
-
-                                <!-- Country -->
-                                <div>
-                                    <label for="country_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Country
-                                    </label>
-                                    <select id="country_id"
-                                        name="country_id"
-                                        class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
-                                        <option value="">Select Country</option>
-                                        @foreach($countries as $country)
-                                        <option value="{{ $country->id }}" {{ old('country_id', $invoice->country_id) == $country->id ? 'selected' : '' }}>
-                                            {{ $country->name }}
-                                        </option>
-                                        @endforeach
-                                    </select>
-                                    @error('country_id')
-                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Action Buttons -->
+                        
                         <div class="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-600">
                             <a href="{{ route('invoices.index') }}"
                                 class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
@@ -433,6 +383,110 @@
                         </div>
                     </form>
 
+                    <!-- Credit Shortage Payment Link Section -->
+                    @if(session('shortage_info'))
+                    <div class="mt-8 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                        <h3 class="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-4">
+                            <svg class="w-5 h-5 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                            </svg>
+                            Payment Type Changed - Credit Shortage Detected
+                        </h3>
+                        
+                        <div class="mb-4 p-3 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded">
+                            <p class="text-green-800 dark:text-green-200 text-sm">
+                                ✓ Payment type has been successfully changed to Credit. The client's credit balance will go negative.
+                            </p>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border">
+                                <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400">Available Credit</h4>
+                                <p class="text-lg font-semibold text-green-600 dark:text-green-400">
+                                    {{ number_format(session('shortage_info')['available_credit'], 3) }} {{ $invoice->currency }}
+                                </p>
+                            </div>
+                            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border">
+                                <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400">Invoice Amount</h4>
+                                <p class="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                                    {{ number_format(session('shortage_info')['required_amount'], 3) }} {{ $invoice->currency }}
+                                </p>
+                            </div>
+                            <div class="bg-white dark:bg-gray-800 p-4 rounded-lg border">
+                                <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400">Credit Shortage</h4>
+                                <p class="text-lg font-semibold text-red-600 dark:text-red-400">
+                                    {{ number_format(session('shortage_info')['shortage_amount'], 3) }} {{ $invoice->currency }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded">
+                            <p class="text-yellow-800 dark:text-yellow-200 text-sm">
+                                <strong>Optional:</strong> You can create a payment link for the shortage amount to help the client top up their credit balance.
+                            </p>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <form method="POST" action="{{ route('invoice.accountant.create.payment.link.shortage') }}" class="flex-1">
+                                @csrf
+                                <input type="hidden" name="invoice_id" value="{{ session('shortage_info')['invoice_id'] }}">
+                                <input type="hidden" name="client_id" value="{{ session('shortage_info')['client_id'] }}">
+                                <input type="hidden" name="shortage_amount" value="{{ session('shortage_info')['shortage_amount'] }}">
+                                
+                                <div class="flex flex-col sm:flex-row gap-4">
+                                    <div class="flex-1">
+                                        <label for="payment_gateway" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Payment Gateway
+                                        </label>
+                                        <select name="payment_gateway" id="payment_gateway" required
+                                            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                                            onchange="togglePaymentMethods()">
+                                            <option value="">Select Gateway</option>
+                                            @foreach($charges->where('can_generate_link', true) as $charge)
+                                            <option value="{{ $charge->name }}" data-gateway="{{ strtolower($charge->name) }}">{{ $charge->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="flex-1" id="payment_method_section" style="display: none;">
+                                        <label for="payment_method" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Payment Method
+                                        </label>
+                                        <select name="payment_method" id="payment_method"
+                                            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
+                                            <option value="">Select Method</option>
+                                            @foreach($paymentMethods as $method)
+                                            <option value="{{ $method->id }}" 
+                                                data-type="{{ strtolower($method->type) }}"
+                                                data-charge-id="{{ $method->charge_id }}">
+                                                {{ $method->english_name ?? $method->arabic_name }}
+                                            </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="flex items-end">
+                                        <button type="submit"
+                                            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                            </svg>
+                                            Create Payment Link
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                            
+                            <div class="flex items-end">
+                                <a href="{{ route('invoice.accountant.edit', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
+                                    class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Skip Payment Link
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     <!-- Timestamp Information -->
                     <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-600">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-500 dark:text-gray-400">
@@ -451,6 +505,15 @@
     <script>
         const totalAmountInput = document.getElementById('amount');
         const invoiceChargeInput = document.getElementById('invoice_charge');
+        const paymentTypeSelect = document.getElementById('payment_type');
+        const paymentWarning = document.getElementById('payment-type-warning');
+        const paymentWarningText = document.getElementById('payment-warning-text');
+
+        // Store original payment type
+        const originalPaymentType = '{{ $invoice->payment_type }}';
+        const invoiceStatus = '{{ $invoice->status }}';
+        const clientCredit = parseFloat('{{ $clientCredit }}');
+        const invoiceAmount = parseFloat('{{ $invoice->amount }}');
 
         function formatToThreeDecimals(inputElement) {
             let value = parseFloat(inputElement.value) || 0;
@@ -492,11 +555,85 @@
 
             let finalTotal = changedValue - detailsTotal;
 
-            // console.log('Changed Value:', changedValue);
-            // console.log('Details Total:', detailsTotal);
-            // console.log('Final Total:', finalTotal);
-
             invoiceChargeInput.value = finalTotal.toFixed(3);
+        }
+
+        // Payment type change validation
+        function handlePaymentTypeChange() {
+            const selectedPaymentType = paymentTypeSelect.value;
+            
+            // Hide warning by default
+            paymentWarning.classList.add('hidden');
+            
+            // Only show warnings for paid invoices
+            if (invoiceStatus !== 'paid') {
+                return;
+            }
+
+            // If no change, hide warning
+            if (selectedPaymentType === originalPaymentType) {
+                return;
+            }
+
+            // Validate payment type changes
+            if (originalPaymentType === 'credit' && selectedPaymentType === 'cash') {
+                paymentWarningText.innerHTML = 'Changing from Credit to Cash will refund the amount back to client\'s credit balance.';
+                paymentWarning.classList.remove('hidden');
+            } else if (originalPaymentType === 'cash' && selectedPaymentType === 'credit') {
+                if (clientCredit < invoiceAmount) {
+                    const shortage = invoiceAmount - clientCredit;
+                    paymentWarningText.innerHTML = `Insufficient client credit! Available: ${clientCredit.toFixed(3)}, Required: ${invoiceAmount.toFixed(3)}, Shortage: ${shortage.toFixed(3)}`;
+                    paymentWarning.classList.remove('hidden');
+                } else {
+                    paymentWarningText.innerHTML = 'Changing from Cash to Credit will deduct the amount from client\'s credit balance.';
+                    paymentWarning.classList.remove('hidden');
+                }
+            } else if (!['credit', 'cash'].includes(originalPaymentType) || !['credit', 'cash'].includes(selectedPaymentType)) {
+                paymentWarningText.innerHTML = 'Only changes between Credit and Cash payment types are currently supported.';
+                paymentWarning.classList.remove('hidden');
+            }
+        }
+
+        // Add event listener for payment type changes
+        if (paymentTypeSelect) {
+            paymentTypeSelect.addEventListener('change', handlePaymentTypeChange);
+            // Run validation on page load
+            handlePaymentTypeChange();
+        }
+
+        // Payment method visibility toggle for shortage payment link
+        function togglePaymentMethods() {
+            const gatewaySelect = document.getElementById('payment_gateway');
+            const methodSection = document.getElementById('payment_method_section');
+            const methodSelect = document.getElementById('payment_method');
+            
+            if (!gatewaySelect || !methodSection || !methodSelect) return;
+            
+            const selectedGateway = gatewaySelect.value.toLowerCase();
+            const requiresMethod = ['myfatoorah', 'hesabe'].includes(selectedGateway);
+            
+            if (requiresMethod) {
+                methodSection.style.display = 'block';
+                methodSelect.setAttribute('required', 'required');
+                
+                // Filter payment methods by gateway
+                const allOptions = methodSelect.querySelectorAll('option[data-type]');
+                allOptions.forEach(option => {
+                    const optionType = option.getAttribute('data-type');
+                    if (optionType === selectedGateway) {
+                        option.style.display = 'block';
+                    } else {
+                        option.style.display = 'none';
+                    }
+                });
+                
+                // Reset selection
+                methodSelect.value = '';
+            } else {
+                methodSection.style.display = 'none';
+                methodSelect.removeAttribute('required');
+                methodSelect.value = '';
+            }
         }
     </script>
 </x-app-layout>

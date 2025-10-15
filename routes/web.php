@@ -408,6 +408,7 @@ Route::middleware(['auth'])->group(function () {
         ], function () {
             Route::get('{companyId}/edit/{invoiceNumber}', [InvoiceController::class, 'accountantEdit'])->name('edit');
             Route::put('/update', [InvoiceController::class, 'accountantUpdate'])->name('update');
+            Route::post('/create-payment-link-shortage', [InvoiceController::class, 'createPaymentLinkForShortage'])->name('create.payment.link.shortage');
         });
 
         Route::get('/{companyId}/{invoiceNumber}', [InvoiceController::class, 'show'])->name('show')->withoutMiddleware(['auth']);

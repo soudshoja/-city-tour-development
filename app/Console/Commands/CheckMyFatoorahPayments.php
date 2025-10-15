@@ -115,6 +115,14 @@ class CheckMyFatoorahPayments extends Command
                         throw new \RuntimeException('Client advance account not found.');
                     }
 
+                    $paymentGateway = Account::where('name', 'Payment Gateway')
+                            ->where('company_id', $companyId)
+                            ->where('parent_id', $clientAdvance->id)
+                            ->first();
+                    if (!$paymentGateway) {
+                        throw new \RuntimeException('Payment Gateway account not found');
+                    }
+
                     $transaction = Transaction::create([
                         'branch_id'         => $branchId,
                         'company_id'        => $companyId,
@@ -135,20 +143,20 @@ class CheckMyFatoorahPayments extends Command
                         'branch_id'          => $branchId,
                         'company_id'         => $companyId,
                         'invoice_id'         => $payment->invoice_id,
-                        'account_id'         => $clientAdvance->id,
+                        'account_id'         => $paymentGateway->id,
                         'transaction_date'   => now(),
                         'description'        => 'Advance Payment in voucher number: ' . $payment->voucher_number,
                         'debit'              => 0,
                         'credit'             => $payment->amount,
-                        'balance'            => ($clientAdvance->actual_balance ?? 0) - $payment->amount,
+                        'balance'            => ($paymentGateway->actual_balance ?? 0) - $payment->amount,
                         'name'               => $payment->client->full_name,
                         'type'               => 'receivable',
                         'voucher_number'     => $payment->voucher_number,
-                        'type_reference_id'  => $clientAdvance->id,
+                        'type_reference_id'  => $paymentGateway->id,
                     ]);
 
-                    $clientAdvance->actual_balance = ($clientAdvance->actual_balance ?? 0) - $payment->amount;
-                    $clientAdvance->save();
+                    $paymentGateway->actual_balance = ($paymentGateway->actual_balance ?? 0) - $payment->amount;
+                    $paymentGateway->save();
                 }
 
                 if ($result['amount'] !== null) $payment->amount = (float)$result['amount'];

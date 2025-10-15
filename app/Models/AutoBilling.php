@@ -11,26 +11,23 @@ class AutoBilling extends Model
 
     protected $fillable = [
         'company_id',
-        'created_by_list',
-        'agent_ids',
-        'issued_by_list',
+        'created_by',
+        'agent_id',
+        'issued_by',
         'client_id',
         'add_amount',
-        'gateway',
-        'method',
+        'gateway_id',
+        'method_id',
         'invoice_time_company',
         'invoice_time_system',
         'timezone',
         'auto_send_whatsapp',
-        'active',
+        'is_active',
     ];
 
     protected $casts = [
-        'created_by_list' => 'array',
-        'agent_ids' => 'array',
-        'issued_by_list' => 'array',
         'auto_send_whatsapp' => 'boolean',
-        'active' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function company()
@@ -41,5 +38,20 @@ class AutoBilling extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function agent()
+    {
+        return $this->belongsTo(Agent::class);
+    }
+
+    public function gateway()
+    {
+        return $this->belongsTo(Charge::class, 'gateway_id');
+    }
+
+    public function method()
+    {
+        return $this->belongsTo(PaymentMethod::class, 'method_id');
     }
 }

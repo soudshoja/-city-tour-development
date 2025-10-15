@@ -14,18 +14,18 @@ return new class extends Migration
         Schema::create('auto_billings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
-            $table->json('created_by_list')->nullable(); // e.g. ["KWIKT2727"]
-            $table->json('agent_ids')->nullable(); // e.g. [12, 25]
-            $table->json('issued_by_list')->nullable();  // e.g. ["Ahmad", "Ali"]
+            $table->string('created_by')->nullable();
+            $table->foreignId('agent_id')->nullable()->constrained('agents')->nullOnDelete();
+            $table->string('issued_by')->nullable();
             $table->foreignId('client_id')->constrained('clients');
             $table->decimal('add_amount', 10, 3)->default(1);
-            $table->string('gateway')->nullable();
-            $table->string('method')->nullable();
+            $table->foreignId('gateway_id')->nullable()->constrained('charges')->nullOnDelete();
+            $table->foreignId('method_id')->nullable()->constrained('payment_methods')->nullOnDelete();
             $table->time('invoice_time_company');
             $table->time('invoice_time_system');
             $table->string('timezone')->nullable();
             $table->boolean('auto_send_whatsapp')->default(false);
-            $table->boolean('active')->default(true);
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
     }

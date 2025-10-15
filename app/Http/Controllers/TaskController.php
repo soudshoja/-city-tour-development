@@ -956,26 +956,6 @@ class TaskController extends Controller
             }
         }
 
-        $rules = AutoBilling::where('company_id', $request->company_id)->where('active', true)->get();
-
-        foreach ($rules as $rule) {
-            $match = false;
-
-            if ($rule->created_by_list && in_array($request->created_by, $rule->created_by_list)) {
-                $match = true;
-            }
-            if ($rule->agent_ids && in_array($request->agent_id, $rule->agent_ids)) {
-                $match = true;
-            }
-            if ($rule->issued_by_list && in_array($request->issued_by, $rule->issued_by_list)) {
-                $match = true;
-            }
-            if ($match) {
-                $request->merge(['client_id' => $rule->client_id]);
-                break;
-            }
-        }
-
         DB::beginTransaction();
 
         try {
@@ -998,7 +978,26 @@ class TaskController extends Controller
             $data = $request->all();
             $data['supplier_pay_date'] = $supplier_pay_date;
 
-            $task = Task::create($data);;
+            $task = Task::create($data);
+
+            // Auto-link task with active AutoBilling rule if matching created_by / issued_by / agent_id
+            $autoRule = AutoBilling::where('company_id', $task->company_id)
+                ->where('is_active', true)
+                ->where(function ($q) use ($task) {
+                    $q->where('created_by', $task->created_by)
+                    ->orWhere('issued_by', $task->issued_by)
+                    ->orWhere('agent_id', $task->agent_id);
+                })
+                ->first();
+
+            if ($autoRule) {
+                $task->client_id = $autoRule->client_id;
+                $task->save();
+
+                Log::info("[Task Store] Auto-linked task {$task->id} with AutoBilling rule #{$autoRule->id} (Client ID {$autoRule->client_id})");
+            } else {
+                Log::info("[Task Store] No AutoBilling rule matched for task {$task->id} (created_by: {$task->created_by}, issued_by: {$task->issued_by}, agent_id: {$task->agent_id})");
+            }
 
             if ($task->type === 'hotel' && $request->has('task_hotel_details') && !empty($request->task_hotel_details)) {
                 $this->saveHotelDetails($request->task_hotel_details, $task->id);

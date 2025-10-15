@@ -1593,6 +1593,17 @@ class PaymentController extends Controller
                     ];
                 }                
 
+                $paymentGateway = Account::where('name', 'Payment Gateway')
+                        ->where('company_id', $payment->agent->branch->company_id)
+                        ->where('parent_id', $clientAdvance->id)
+                        ->first();
+                if (!$paymentGateway) {
+                    return [
+                        'status' => 'error',
+                        'message' => 'Payment Gateway account not found'
+                    ];
+                } 
+
                 DB::beginTransaction();
 
                 try {
@@ -1616,16 +1627,16 @@ class PaymentController extends Controller
                         'branch_id' => $payment->agent->branch->id,
                         'company_id' => $payment->agent->branch->company->id,
                         'invoice_id' => $payment->invoice_id,
-                        'account_id' => $clientAdvance->id,
+                        'account_id' => $paymentGateway->id,
                         'transaction_date' => now(),
                         'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
                         'debit' => 0,
                         'credit' => $payment->amount,
-                        'balance' => $clientAdvance->actual_balance - $payment->amount,
+                        'balance' => $paymentGateway->actual_balance - $payment->amount,
                         'name' => $payment->client->full_name,
                         'type' => 'receivable',
                         'voucher_number' => $payment->voucher_number,
-                        'type_reference_id' => $clientAdvance->id
+                        'type_reference_id' => $paymentGateway->id
                     ]);
 
                     Log::info('Successfully created transaction and journal entry for import payment of ' . $payment->payment_gateway . ' from the portal');
@@ -2845,13 +2856,13 @@ class PaymentController extends Controller
                 }
             }
 
-            $paymentLink = Account::where('name', 'Payment Link')
+            $paymentGateway = Account::where('name', 'Payment Gateway')
                             ->where('company_id', $payment->agent->branch->company_id)
                             ->where('parent_id', $clientAdvance->id)
                             ->first();
-            if (!$paymentLink) {
+            if (!$paymentGateway) {
                 if (auth()->user()) {
-                    return redirect()->back()->with('error', 'Payment Link account not found.');
+                    return redirect()->back()->with('error', 'Payment Gateway account not found.');
                 } else {
                     return abort(500);
                 }
@@ -2880,16 +2891,16 @@ class PaymentController extends Controller
                     'branch_id' => $payment->agent->branch->id,
                     'company_id' => $payment->agent->branch->company->id,
                     'invoice_id' => $payment->invoice_id,
-                    'account_id' => $paymentLink->id,
+                    'account_id' => $paymentGateway->id,
                     'transaction_date' => now(),
                     'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
                     'debit' => 0,
                     'credit' => $payment->amount,
-                    'balance' => $paymentLink->actual_balance - $payment->amount,
+                    'balance' => $paymentGateway->actual_balance - $payment->amount,
                     'name' => $payment->client->full_name,
                     'type' => 'receivable',
                     'voucher_number' => $payment->voucher_number,
-                    'type_reference_id' => $paymentLink->id
+                    'type_reference_id' => $paymentGateway->id
                 ]);
             } catch (Exception $e) {
                 DB::rollBack();
@@ -3090,12 +3101,12 @@ class PaymentController extends Controller
                         return redirect()->route($route['name'], $route['params'])->with('error', 'Client advance account not found');
                     }
 
-                    $paymentLink = Account::where('name', 'Payment Link')
+                    $paymentGateway = Account::where('name', 'Payment Gateway')
                             ->where('company_id', $payment->agent->branch->company_id)
                             ->where('parent_id', $clientAdvance->id)
                             ->first();
-                    if (!$paymentLink) {
-                        return redirect()->route($route['name'], $route['params'])->with('error', 'Payment Link account not found');
+                    if (!$paymentGateway) {
+                        return redirect()->route($route['name'], $route['params'])->with('error', 'Payment Gateway account not found');
                     }
 
                     DB::beginTransaction();
@@ -3120,16 +3131,16 @@ class PaymentController extends Controller
                             'branch_id' => $payment->agent->branch->id,
                             'company_id' => $payment->agent->branch->company->id,
                             'invoice_id' => $payment->invoice_id,
-                            'account_id' => $paymentLink->id,
+                            'account_id' => $paymentGateway->id,
                             'transaction_date' => now(),
                             'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
                             'debit' => 0,
                             'credit' => $payment->amount,
-                            'balance' => $paymentLink->actual_balance - $payment->amount,
+                            'balance' => $paymentGateway->actual_balance - $payment->amount,
                             'name' => $payment->client->full_name,
                             'type' => 'receivable',
                             'voucher_number' => $payment->voucher_number,
-                            'type_reference_id' => $paymentLink->id
+                            'type_reference_id' => $paymentGateway->id
                         ]);
                     } catch (Exception $e) {
                         DB::rollBack();
@@ -3783,12 +3794,12 @@ class PaymentController extends Controller
                         throw new \RuntimeException('Client advance account not found');
                     }
 
-                    $paymentLink = Account::where('name', 'Payment Link')
+                    $paymentGateway = Account::where('name', 'Payment Gateway')
                             ->where('company_id', $payment->agent->branch->company_id)
                             ->where('parent_id', $clientAdvance->id)
                             ->first();
-                    if (!$paymentLink) {
-                        throw new \RuntimeException('Payment Link account not found');
+                    if (!$paymentGateway) {
+                        throw new \RuntimeException('Payment Gateway account not found');
                     }
 
                     $transactionRecord = Transaction::create([
@@ -3811,16 +3822,16 @@ class PaymentController extends Controller
                         'branch_id' => $payment->agent->branch->id,
                         'company_id' => $payment->agent->branch->company->id,
                         'invoice_id' => $payment->invoice_id,
-                        'account_id' => $paymentLink->id,
+                        'account_id' => $paymentGateway->id,
                         'transaction_date' => now(),
                         'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
                         'debit' => 0,
                         'credit' => $payment->amount,
-                        'balance' => $paymentLink->actual_balance - $payment->amount,
+                        'balance' => $paymentGateway->actual_balance - $payment->amount,
                         'name' => $payment->client->full_name,
                         'type' => 'receivable',
                         'voucher_number' => $payment->voucher_number,
-                        'type_reference_id' => $paymentLink->id
+                        'type_reference_id' => $paymentGateway->id
                     ]);
                 } else {
                     if (!empty($selectedPartialIds)) {
@@ -4340,12 +4351,12 @@ class PaymentController extends Controller
                     return ['success' => false, 'message' => 'Client advance account not found'];
                 }
 
-                $paymentLink = Account::where('name', 'Payment Link')
+                $paymentGateway = Account::where('name', 'Payment Gateway')
                             ->where('company_id', $payment->agent->branch->company_id)
                             ->where('parent_id', $clientAdvance->id)
                             ->first();
-                if (!$paymentLink) {
-                    return ['success' => false, 'message' => 'Payment Link account not found'];
+                if (!$paymentGateway) {
+                    return ['success' => false, 'message' => 'Payment Gateway account not found'];
                 }
 
                 DB::beginTransaction();
@@ -4371,16 +4382,16 @@ class PaymentController extends Controller
                         'branch_id' => $payment->agent->branch->id,
                         'company_id' => $payment->agent->branch->company->id,
                         'invoice_id' => $payment->invoice_id,
-                        'account_id' => $paymentLink->id,
+                        'account_id' => $paymentGateway->id,
                         'transaction_date' => now(),
                         'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
                         'debit' => 0,
                         'credit' => $payment->amount,
-                        'balance' => $paymentLink->actual_balance - $payment->amount,
+                        'balance' => $paymentGateway->actual_balance - $payment->amount,
                         'name' => $payment->client->full_name,
                         'type' => 'receivable',
                         'voucher_number' => $payment->voucher_number,
-                        'type_reference_id' => $paymentLink->id
+                        'type_reference_id' => $paymentGateway->id
                     ]);
 
                     DB::commit();

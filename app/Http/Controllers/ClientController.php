@@ -1300,6 +1300,14 @@ class ClientController extends Controller
                 throw new Exception('Client Advance account not found');
             }
 
+            $paymentGateway = Account::where('name', 'Payment Gateway')
+                        ->where('company_id', $agent->branch->company_id)
+                        ->where('parent_id', $clientAdvance->id)
+                        ->first();
+            if (!$paymentGateway) {
+                throw new Exception('Payment Gateway account not found');
+            }
+
             $refundPayable = Account::where('name', 'Refund Payable')
                 ->where('company_id', $agent->branch->company->id)
                 ->where('root_id', $liabilities->id)
@@ -1337,7 +1345,7 @@ class ClientController extends Controller
                 'transaction_id' => $transaction->id,
                 'branch_id' => $agent->branch->id,
                 'company_id' => $agent->branch->company->id,
-                'account_id' =>  $clientAdvance->id,
+                'account_id' =>  $paymentGateway->id,
                 'transaction_date' => Carbon::now(),
                 'description' => 'Deduct Client Advance: ' . $client->full_name . ' of ' . $request->amount,
                 'debit' => $request->amount,

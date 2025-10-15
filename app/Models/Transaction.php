@@ -37,8 +37,22 @@ class Transaction extends Model
     protected static function booted()
     {
         static::addGlobalScope('company', function ($query) {
-            if (auth()->check() && auth()->user()->company != null) {
-                $query->where('company_id', auth()->user()->company->id);
+            if (!auth()->check()) {
+                return;
+            }
+
+            $user = auth()->user();
+
+            if($user->role_id == Role::ADMIN){
+                $query->all();
+            } else if($user->role_id == Role::COMPANY){
+                $query->where('company_id', $user->company->id);
+            } else if ($user->role_id == Role::BRANCH){
+                $query->whereHas('branch_id', $user->branch->id);
+            } else if ($user->role_id == Role::AGENT){
+                $query->whereHas('invoice.agent_id', $user->agent->id);
+            } else if ($user->role_id == Role::ACCOUNTANT){
+                $query->where('company_id', $user->accountant->branch->company->id);
             }
         });
     }

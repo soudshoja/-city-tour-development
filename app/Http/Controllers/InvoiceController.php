@@ -3050,6 +3050,7 @@ class InvoiceController extends Controller
 
         $success = [];
         $error = [];
+        $transactionId = null;
 
         if($request->filled('invoice_details')){
 
@@ -3064,7 +3065,7 @@ class InvoiceController extends Controller
             }
 
             if (!empty($updatingDetails)) {
-
+                dd('here');
                 $responseUpdateAmount = $this->updateDetailsAmount(
                     new Request([
                         'tasks' => $updatingDetails,
@@ -3086,12 +3087,14 @@ class InvoiceController extends Controller
                     $error[] = $responseData->error;
                 }
 
-                if (isset($responseData->message)) {
+                if (isset($responseData->success)) {
                     $success[] = $responseData->message;
+                    $transactionId = $responseData->transaction_id ?? null;
                 }
             }
-
         }
+
+        $transactionId = $invoice->transactions()->latest()->value('id');
 
         $invoice = $invoice->fresh();
 
@@ -3126,6 +3129,34 @@ class InvoiceController extends Controller
 
                 $success[] = 'Invoice amounts updated successfully.';
             }
+
+            $invoice->refresh();
+
+            $responseUpdateAmount = $this->updateDetailsAmount(
+                new Request([
+                    'tasks' => $updatingDetails,
+                    'company_id' => $request->company_id,
+                    'invoice_number' => $invoice->invoice_number,
+                ]),
+            );
+
+            if ($responseUpdateAmount->getStatusCode() !== 200) {
+                Log::error('Failed to update invoice details', [
+                    'invoice_id' => $invoice->id,
+                    'response' => $responseUpdateAmount->getContent(),
+                ]);
+            }
+
+            $responseData = $responseUpdateAmount->getData();
+
+            if (isset($responseData->error)) {
+                $error[] = $responseData->error;
+            }
+
+            if (isset($responseData->success)) {
+                $success[] = $responseData->success;
+                $transactionId = $responseData->transaction_id ?? null;
+            }
         }
 
         $return = redirect()->back();
@@ -3141,92 +3172,48 @@ class InvoiceController extends Controller
 
     }
 
-    private function updateInvoicecharge($invoiceNumber, $user, $companyId, $newInvoiceCharge){
+    // private function addInvoiceChargeJournalEntries($invoiceNumber, $user, $companyId, $newInvoiceCharge){
     
-        $whoIsUser = '';
+    //     $whoIsUser = '';
 
-        if($user->role_id == Role::ADMIN){
-            $whoIsUser = 'Admin';
-        } else if($user->role_id == Role::COMPANY) {
-            $whoIsUser = 'Company admin ' . $user->company->name;
-        } else if ($user->role_id == Role::BRANCH) {
-            $whoIsUser = 'Branch admin ' . $user->branch->name;
-        } else if ($user->role_id == Role::AGENT) {
-            $whoIsUser = 'Agent ' . $user->agent->name;
-        } else if ($user->role_id == Role::ACCOUNTANT) {
-            $whoIsUser = 'Accountant ' . $user->accountant->name;
-        }  else {
-            return response()->json(['error' => 'User role not recognized.'], 403);
-        }
+    //     if($user->role_id == Role::ADMIN){
+    //         $whoIsUser = 'Admin';
+    //     } else if($user->role_id == Role::COMPANY) {
+    //         $whoIsUser = 'Company admin ' . $user->company->name;
+    //     } else if ($user->role_id == Role::BRANCH) {
+    //         $whoIsUser = 'Branch admin ' . $user->branch->name;
+    //     } else if ($user->role_id == Role::AGENT) {
+    //         $whoIsUser = 'Agent ' . $user->agent->name;
+    //     } else if ($user->role_id == Role::ACCOUNTANT) {
+    //         $whoIsUser = 'Accountant ' . $user->accountant->name;
+    //     }  else {
+    //         return response()->json(['error' => 'User role not recognized.'], 403);
+    //     }
 
-        $invoice = Invoice::where('invoice_number', $invoiceNumber)
-            ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
-            ->first();
+    //     $invoice = Invoice::where('invoice_number', $invoiceNumber)
+    //         ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
+    //         ->first();
 
-        if (!$invoice) {
-            Log::error('Invoice not found for updateInvoiceCharge', [
-                'invoice_number' => $invoiceNumber,
-                'company_id' => $companyId,
-            ]);
-            return response()->json(['error' => 'Invoice not found.'], 404);
-        }
+    //     if (!$invoice) {
+    //         Log::error('Invoice not found for updateInvoiceCharge', [
+    //             'invoice_number' => $invoiceNumber,
+    //             'company_id' => $companyId,
+    //         ]);
+    //         return response()->json(['error' => 'Invoice not found.'], 404);
+    //     }
 
-        if ($invoice->invoice_charge == $newInvoiceCharge) {
-            return response()->json(['message' => 'No change in invoice charge.'], 200);
-        }
+    //     $transactionToAdd = $invoice->transactions()
+    //         ->where('description', 'LIKE', 'Invoice reversal for%')
+    //         ->orderBy('created_at', 'desc')
+    //         ->first();
 
+    //     if (!$transactionToAdd) {
+    //         $transactionToAdd = $invoice->transactions()->first();
+    //     }
 
-        DB::transaction(function () use ($invoice, $newInvoiceCharge, $whoIsUser) {
-
-            $invoiceChargeTransaction = $invoice->transactions()
-                ->where('description', 'LIKE', '%Invoice additional charge%')
-                ->first();
-
-            if($invoiceChargeTransaction){
-                $updateInvoiceChargeTransaction = Transaction::create([
-                    'company_id' => $invoiceChargeTransaction->company_id,
-                    'entity_id' => $invoiceChargeTransaction->entity_id,
-                    'entity_type' => $invoiceChargeTransaction->entity_type,
-                    'branch_id' => $invoiceChargeTransaction->branch_id,
-                    'transaction_type' => $invoiceChargeTransaction->transaction_type === 'debit' ? 'credit' : 'debit',
-                    'amount' => 0.00,
-                    'description' => 'Reversal of: ' . $invoiceChargeTransaction->description . ' by ' . $whoIsUser,
-                    'invoice_id' => $invoiceChargeTransaction->invoice_id,
-                    'reference_type' => $invoiceChargeTransaction->reference_type,
-                    'transaction_date' => $invoiceChargeTransaction->transaction_date,
-                ]);
-
-
-                foreach ($invoiceChargeTransaction->journalEntries as $entry) {
-                    JournalEntry::create([
-                        'transaction_id' => $updateInvoiceChargeTransaction->id,
-                        'account_id' => $entry->account_id,
-                        'description' => $entry->description . ' reversal by ' . $whoIsUser,
-                        'debit' => $entry->credit,
-                        'credit' => $entry->debit,
-                        'company_id' => $entry->company_id,
-                        'branch_id' => $entry->branch_id,
-                        'invoice_id' => $entry->invoice_id,
-                        'agent_id' => $entry->agent_id,
-                        'transaction_date' => $entry->transaction_date,
-                        'type' => $entry->type,
-                        'task_id' => $entry->task_id,
-                        'name' => $entry->name,
-                    ]);
-                }
-            }
-
-            $invoice->invoice_charge = $newInvoiceCharge;
-
-            if ($invoice->amount != bcadd($invoice->sub_amount, $newInvoiceCharge, 3)) {
-                $invoice->amount = bcadd($invoice->sub_amount, $newInvoiceCharge, 3);
-            }
-
-            $invoice->save();
-
-        });
-
-    }
+    //     $response = $this->agentCommission($invoice, null, $invoice->invoice_charge, 'Invoice charge');
+            
+    // }
 
     private function updateDetailsAmount(Request $request): JsonResponse {
         $request->validate([
@@ -3264,24 +3251,25 @@ class InvoiceController extends Controller
 
         $companyId = $request->input('company_id');
         $invoiceNumber = $request->input('invoice_number');
+        $transactionToReverse = null;
 
         try{
-            DB::transaction(function () use ($request, $companyId, $invoiceNumber, $whoIsUser) {
+            DB::transaction(function () use ($request, $companyId, $invoiceNumber, $whoIsUser, &$transactionToReverse) {
                 $invoice = Invoice::with(['invoiceDetails.task', 'agent', 'agent.branch', 'transactions.journalEntries'])
                     ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
                     ->where('invoice_number', $invoiceNumber)
                     ->firstOrFail();
     
-                $transactionToReverse = $invoice->transactions()
+                $transactionToReverse =  Transaction::where('invoice_id', $invoice->id)
                     ->where('description', 'LIKE', 'Invoice reversal for%')
                     ->orderBy('created_at', 'desc')
                     ->first();
-    
+                
                 if (!$transactionToReverse) {
                     $transactionToReverse = $invoice->transactions()->first();
                 }
     
-                $oldAmount = $invoice->amount;
+                $oldAmount = $transactionToReverse->amount;
                 $reversalTransaction = Transaction::create([
                     'description' => 'Invoice reversal for: ' . $invoice->invoice_number . ' (Old Amount: ' . $oldAmount . ') by ' . $whoIsUser,
                     'invoice_id' => $invoice->id,
@@ -3337,61 +3325,83 @@ class InvoiceController extends Controller
     
                 $correctedTransaction = Transaction::create([
                     'date' => now(),
-                    'description' => 'Invoice: ' . $invoice->invoice_number . ' (New Amount: ' . $newAmount . ') by ' . $whoIsUser,
+                    'description' => 'Invoice: ' . $invoice->invoice_number . ' (New Amount: ' . $invoice->amount . ') by ' . $whoIsUser,
                     'invoice_id' => $invoice->id,
                     'entity_id' => $transactionToReverse->entity_id,
                     'entity_type' => $transactionToReverse->entity_type,
                     'transaction_date' => $transactionToReverse->transaction_date,
                     'reference_type' => 'Invoice',
                     'transaction_type' => $transactionToReverse->transaction_type,
-                    'amount' => $newAmount,
+                    'amount' => $invoice->amount,
                 ]);
     
                 foreach ($transactionToReverse->journalEntries as $entry) {
                     $relevantDetail = $updatedDetails->firstWhere('id', $entry->invoice_detail_id);
-                    $taskSpecificAmount = $relevantDetail->task_price;
-                    $newDebit = 0;
-                    $newCredit = 0;
-                    $commission = 0;
-                    $agent = $invoice->agent;
-                    if (in_array($agent->type_id, [2, 3])) {
-                        $rate = (float) ($agent->commission ?? 0.15);
-                        $commission = $rate * ($taskSpecificAmount - $relevantDetail->supplier_price);
-                    }
+                    if($relevantDetail && !str_contains($entry->description, JournalEntry::ADDITIONAL_INVOICE_CHARGE)){
+                        $taskSpecificAmount = $relevantDetail->task_price;
+                        $newDebit = 0;
+                        $newCredit = 0;
+                        $commission = 0;
+                        $agent = $invoice->agent;
     
-                    if (str_contains($entry->description, 'Invoice created for (Assets)')) {
-                        $newDebit = $taskSpecificAmount;
-                    } else if (str_contains($entry->description, 'Invoice created for (Income)')) {
-                        $newCredit = $taskSpecificAmount;
-                    } else if (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
-                        $newDebit = $commission;
-                    } else if (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
-                        $newCredit = $commission;
-                    }
+                        if (in_array($agent->type_id, [2, 3])) {
+                            $rate = (float) ($agent->commission ?? 0.15);
+                            $commission = $rate * ($taskSpecificAmount - $relevantDetail->supplier_price);
+                        }
     
-                    if ($newDebit > 0 || $newCredit > 0) {
-                        JournalEntry::create([
-                            'transaction_id' => $correctedTransaction->id,
-                            'account_id' => $entry->account_id,
-                            'description' => $entry->description . ' correction by ' . $whoIsUser,
-                            'debit' => $newDebit,
-                            'credit' => $newCredit,
-                            'entity_id' => $entry->entity_id ?? null,
-                            'entity_type' => $entry->entity_type ?? null,
-                            'amount' => $newAmount,
-                            'company_id' => $entry->company_id,
-                            'branch_id' => $entry->branch_id,
-                            'invoice_id' => $entry->invoice_id,
-                            'agent_id' => $task->agent_id ?? $invoice->agent_id,
-                            'invoice_detail_id' => $entry->invoice_detail_id,
-                            'transaction_date' => $entry->transaction_date,
-                            'type' => $entry->type,
-                            'task_id' => $entry->task_id,
-                            'name' => $entry->name,
-                        ]);
+                        if(!str_contains($entry->description, JournalEntry::ADDITIONAL_INVOICE_CHARGE)){
+                            if (str_contains($entry->description, 'Invoice created for (Assets)')) {
+                                $newDebit = $taskSpecificAmount;
+                            } else if (str_contains($entry->description, 'Invoice created for (Income)')) {
+                                $newCredit = $taskSpecificAmount;
+                            } else if (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
+                                $newDebit = $commission;
+                            } else if (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
+                                $newCredit = $commission;
+                            } 
+                        }
+        
+        
+                        if ($newDebit > 0 || $newCredit > 0) {
+                            JournalEntry::create([
+                                'transaction_id' => $correctedTransaction->id,
+                                'account_id' => $entry->account_id,
+                                'description' => $entry->description . ' correction by ' . $whoIsUser,
+                                'debit' => $newDebit,
+                                'credit' => $newCredit,
+                                'entity_id' => $entry->entity_id ?? null,
+                                'entity_type' => $entry->entity_type ?? null,
+                                'amount' => $invoice->amount,
+                                'company_id' => $entry->company_id,
+                                'branch_id' => $entry->branch_id,
+                                'invoice_id' => $entry->invoice_id,
+                                'agent_id' => $task->agent_id ?? $invoice->agent_id,
+                                'invoice_detail_id' => $entry->invoice_detail_id,
+                                'transaction_date' => $entry->transaction_date,
+                                'type' => $entry->type,
+                                'task_id' => $entry->task_id,
+                                'name' => $entry->name,
+                            ]);
+                        }
+                    } else {
+                        if (str_contains($entry->description, 'Invoice created for (Assets)')) {
+                            $newDebit = $invoice->invoice_charge;
+                        } else if (str_contains($entry->description, 'Invoice created for (Income)')) {
+                            $newCredit = $invoice->invoice_charge;
+                        } else if (str_contains($entry->description, 'Agents Commissions for (Expenses)')) {
+                            $newDebit = $invoice->invoice_charge * ($agent->commission ?? 0.15);
+                        } else if (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
+                            $newCredit = $invoice->invoice_charge * ($agent->commission ?? 0.15);
+                        }
                     }
                 }
 
+                $journalEntriesOfInvoiceCharge = $transactionToReverse->journalEntries()->where('description', 'LIKE', '%' . JournalEntry::ADDITIONAL_INVOICE_CHARGE . '%')->get();
+
+                if($journalEntriesOfInvoiceCharge->isEmpty() && $invoice->invoice_charge > 0){
+                    $this->addInvoiceChargeJournalEntries($invoice, $correctedTransaction);
+                    $this->agentCommissionForInvoiceCharge($invoice, $invoice->invoice_charge, 'Invoice charge');
+                } 
             });
 
             $invoice = Invoice::where('invoice_number', $invoiceNumber)->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))->first();
@@ -3401,9 +3411,14 @@ class InvoiceController extends Controller
                 'invoice_number' => $invoiceNumber,
                 'new_amount' => $invoice->amount,
                 'tasks' => $request->input('tasks', []),
+                'transaction_id' => $transactionToReverse->id ?? null,
             ]);
 
-            return response()->json(['success' => 'Invoice updated successfully', 'invoice_total' => $invoice->amount]);
+            return response()->json([
+                'success' => 'Invoice updated successfully',
+                'invoice_total' => $invoice->amount,
+                'transaction_id' => $transactionToReverse->id ?? null
+            ], 200);
 
         } catch (Exception $e) {
             Log::error('Failed to update invoice details: ' . $e->getMessage(), [
@@ -3447,6 +3462,302 @@ class InvoiceController extends Controller
         JournalEntry::where('invoice_id', $invoice->id)->update(['transaction_date' => $request->input('invdate')]);
 
         return redirect()->back()->with('success', 'Invoice date, transaction date, and journal entry date updated!');
+    }
+
+    private function addInvoiceChargeJournalEntries(Invoice $invoice, Transaction $transaction): array {
+        $agent = $invoice->agent;
+
+        if(!$agent){
+            Log::error('Agent not found for invoice charge journal entry', ['invoice_id' => $invoice->id]);
+            return ['status' => 'error', 'message' => 'Something went wrong. Please try again later.'];
+        }
+
+        $companyId = $agent->branch->company_id ?? null;
+
+        if(!$companyId){
+            Log::error('Company ID not found for invoice charge journal entry', ['invoice_id' => $invoice->id]);
+            return ['status' => 'error', 'message' => 'Something went wrong. Please try again later.'];
+        }
+      
+        try{
+            DB::transaction(function () use ($invoice, $transaction, $companyId, $agent) {
+                try {
+                    $detailsAccount = Account::where('name', 'like', 'Commission & Service Fee Income%')
+                        ->where('company_id', $companyId)
+                        ->first();
+
+                    if (!$detailsAccount) {
+
+                        $incomeAccount = Account::where('name', 'Income')
+                            ->where('company_id', $companyId)
+                            ->first();
+
+                        if (!$incomeAccount) {
+                            Log::error('Income account not found for company', ['company_id' => $companyId]);
+                            return ['status' => 'error', 'message' => 'Something went wrong. Please try again later.'];
+                        }
+
+                        $directIncomeAccount = Account::where('name', 'Direct Income')
+                            ->where('company_id', $companyId)
+                            ->where('parent_id', $incomeAccount->id)
+                            ->first();
+
+                        if (!$directIncomeAccount) {
+                            Log::error('Direct Income account not found for company', ['company_id' => $companyId]);
+                            return ['status' => 'error', 'message' => 'Something went wrong. Please try again later.'];
+                        }
+
+                        $detailsAccount = Account::create([
+                            'name' => 'Commision & Service Fee Income',
+                            'level' => $directIncomeAccount->level + 1,
+                            'parent_id' => $directIncomeAccount->id,
+                            'root_id' => $incomeAccount->id,
+                            'report_type' => Account::REPORT_TYPES['PROFIT_LOSS'],
+                        ]);
+                    }
+
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $agent->branch_id,
+                        'company_id' => $companyId,
+                        'account_id' => $detailsAccount->id,
+                        'agent_id' => $agent->id,
+                        'invoice_id' => $invoice->id,
+                        'transaction_date' => $invoice->invoice_date,
+                        'description' => 'Invoice created for (Income): ' . $invoice->invoice_number, 
+                        'debit' => 0,
+                        'credit' => $invoice->invoice_charge,
+                        'balance' => $detailsAccount->balance ?? 0,
+                        'name' => $detailsAccount->name . ' - ' . JournalEntry::ADDITIONAL_INVOICE_CHARGE,
+                        'type' => 'payable',
+                        'currency' => $invoice->currency ?? 'KWD',
+                        'amount' => $invoice->invoice_charge,
+                    ]);
+                } catch (Exception $e) {
+                    Log::error('Income Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
+
+                    return [
+                        'status' => 'error',
+                        'message' => 'Failed to create income entry',
+                    ];
+                }
+
+
+                // Client account (Asset)
+                try {
+                    if ($invoice->is_client_credit === 1) {
+                        $liabilities = Account::where('name', 'like', 'Liabilities%')
+                            ->where('company_id', $companyId)
+                            ->first();
+
+                        $advances = Account::where('name', 'Advances')
+                            ->where('company_id', $companyId)
+                            ->where('parent_id', optional($liabilities)->id)
+                            ->first();
+
+                        $clientAdvance = Account::where('name', 'Client')
+                            ->where('company_id', $companyId)
+                            ->where('parent_id', optional($advances)->id)
+                            ->where('root_id', optional($liabilities)->id)
+                            ->first();
+
+                        if ($clientAdvance) {
+                            JournalEntry::create([
+                                'transaction_id' => $transaction->id,
+                                'branch_id' => $agent->branch_id,
+                                'company_id' => $companyId,
+                                'account_id' => $clientAdvance->id,
+                                'agent_id'       => $agent->id,
+                                'invoice_id' => $invoice->id,
+                                'transaction_date' => $invoice->invoice_date,
+                                'description' => 'Invoice created for (Assets): ' . $invoice->client->full_name,
+                                'debit' => $invoice->invoice_charge,
+                                'credit' => 0,
+                                'balance' => $clientAdvance->balance ?? 0,
+                                'name' => $clientAdvance->name . ' - ' . JournalEntry::ADDITIONAL_INVOICE_CHARGE,
+                                'type' => 'receivable',
+                                'currency' => $invoice->currency ?? 'USD',
+                                'amount' => $invoice->invoice_charge,
+                            ]);
+                        }
+                    } else {
+                        $accountReceivable = Account::where('name', 'Accounts Receivable')
+                            ->where('company_id', $companyId)
+                            ->first();
+
+                        $clientAccount = Account::where('name', 'Clients')
+                            ->where('company_id', $companyId)
+                            ->where('parent_id', optional($accountReceivable)->id)
+                            ->first();
+
+                        if ($clientAccount) {
+                            JournalEntry::create([
+                                'transaction_id' => $transaction->id,
+                                'branch_id' => $task->agent->branch_id ?? null,
+                                'company_id' => $task->company_id ?? null,
+                                'account_id' => $clientAccount->id,
+                                'task_id' => $task->id ?? null,
+                                'agent_id' => $task->agent_id ?? $invoice->agent_id,
+                                'invoice_id' => $invoice->id,
+                                'transaction_date' => $invoice->invoice_date,
+                                'description' => 'Invoice created for (Assets): ' . $invoice->client->full_name,
+                                'debit' => $invoice->invoice_charge,
+                                'credit' => 0,
+                                'balance' => $clientAccount->balance ?? 0,
+                                'name' => $clientAccount->name . ' - ' . JournalEntry::ADDITIONAL_INVOICE_CHARGE,
+                                'type' => 'receivable',
+                                'currency' => $task->currency ?? 'USD',
+                                'amount' => $invoice->invoice_charge,
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Client Asset Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
+                    return [
+                        'status' => 'error',
+                        'message' => 'Failed to create client asset entry',
+                    ];
+                }
+            });
+        } catch (Exception $e) {
+            Log::error('Journal Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
+
+            return [
+                'status' => 'error',
+                'message' => 'Failed to create journal entries',
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'message' => 'Journal entries created successfully'
+        ];
+    }
+
+    private function agentCommissionForInvoiceCharge(
+        Invoice $invoice,
+        float $newAmount,
+        ?string $additionalDesc
+    ): array {
+        
+        $agent = $invoice->agent;
+
+        if(!$agent){
+            Log::error('Agent commission calculation failed: Invoice has no associated agent', ['invoice_id' => $invoice->id]);
+            return ['status' => 'error', 'message' => 'Something went wrong. Please try again later.'];
+        }
+
+        $companyId = $agent->branch->company_id;
+
+        if(!$companyId){
+            Log::error('Agent commission calculation failed: Agent does not belong to a company', ['agent_id' => $agent->id]);
+            return ['status' => 'error', 'message' => 'Something went wrong. Please try again later.'];
+        }
+
+        $transaction = $invoice->transactions()->first();
+
+        if(!$transaction){
+            Log::error('Agent commission calculation failed: Invoice has no associated transaction', ['invoice_id' => $invoice->id]);
+            return ['status' => 'error', 'message' => 'Something went wrong. Please try again later.'];
+        }
+
+        $transactionId = $transaction->id;
+
+
+
+        try {
+            DB::transaction(function () use (
+                $agent,
+                $transactionId,
+                $invoice,
+                $newAmount,
+                $companyId,
+                $additionalDesc,
+            ) {
+
+                $additionalDesc = $additionalDesc ? $additionalDesc . ' - ' : '';
+                // Commission Expense Entry
+                try {
+                    if (in_array($agent->type_id, [2, 3])) {
+                        $rate = (float) ($agent->commission ?? 0.15);
+                        $commission = $rate * $newAmount;
+
+                        $commissionExpenses = Account::where('name', 'like', 'Commissions Expense (Agents)%')
+                            ->where('company_id', $companyId)
+                            ->first();
+
+                        if ($commissionExpenses) {
+                            JournalEntry::create([
+                                'transaction_id' => $transactionId,
+                                'branch_id' => $agent->branch_id ?? null,
+                                'company_id' => $companyId,
+                                'account_id' => $commissionExpenses->id,
+                                'task_id' => null,    
+                                'agent_id' => $invoice->agent_id,
+                                'invoice_id' => $invoice->id,
+                                'transaction_date' => $invoice->invoice_date,
+                                'description' => $additionalDesc . 'Agents Commissions for (Expenses): ' . $agent->name,
+                                'debit' => $commission,
+                                'credit' => 0,
+                                'balance' => $commissionExpenses->balance ?? 0,
+                                'name' => $commissionExpenses->name . ' - ' . JournalEntry::ADDITIONAL_INVOICE_CHARGE,
+                                'type' => 'receivable',
+                                'currency' => 'USD',
+                                'exchange_rate' => 1.00,
+                                'amount' => $commission,
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Commission Expense Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
+                    throw new \Exception('Failed to create commission expense entry: ' . $e->getMessage());
+                }
+
+                // Commission Liability Entry
+                try {
+                    if (in_array($agent->type_id, [2, 3])) {
+                        $rate = (float) ($agent->commission ?? 0.15);
+                        $commission = $rate * $newAmount;
+
+                        $accruedCommissions = Account::where('name', 'like', 'Commissions (Agents)%')
+                            ->where('company_id', $companyId)
+                            ->first();
+                        
+
+                        if ($accruedCommissions) {
+                            JournalEntry::create([
+                                'transaction_id' => $transactionId,
+                                'branch_id' => $agent->branch_id ?? null,
+                                'company_id' => $companyId,
+                                'account_id' => $accruedCommissions->id,
+                                'task_id' => null,    
+                                'agent_id' => $invoice->agent_id,
+                                'invoice_id' => $invoice->id,
+                                'transaction_date' => $invoice->invoice_date,
+                                'description' => $additionalDesc . 'Agents Commissions for (Liabilities): ' . $agent->name,
+                                'debit' => 0,
+                                'credit' => $commission,
+                                'balance' => $accruedCommissions->balance ?? 0,
+                                'name' => $accruedCommissions->name . ' - ' . JournalEntry::ADDITIONAL_INVOICE_CHARGE,
+                                'type' => 'payable',
+                                'currency' => 'USD',
+                                'exchange_rate' => 1.00,
+                                'amount' => $commission,
+                            ]);
+                        }
+                    }
+                } catch (Exception $e) {
+                    Log::error('Commission Liability Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
+                    throw new Exception('Failed to create commission liability entry: ' . $e->getMessage());
+                }
+            });
+
+            return ['status' => 'success'];
+
+        } catch (Exception $e) {
+            Log::error('Agent commission transaction failed: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
+            return ['status' => 'error', 'message' => 'Something went wrong. Please try again later.'];
+        }
     }
 
 }

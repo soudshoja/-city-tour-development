@@ -130,7 +130,7 @@
                         <!-- Financial Information -->
                         <div class="grid grid-cols-1 gap-3 items-left bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Financial Information</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div class="grid grid-cols-1 gap-4">
                                 @if($invoice->invoiceDetails->isNotEmpty())
                                 <div class="grid grid-cols-1 gap-4">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

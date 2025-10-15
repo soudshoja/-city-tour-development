@@ -42,6 +42,8 @@ class JournalEntry extends Model
         'receipt_reference_number',
     ];
 
+    public const ADDITIONAL_INVOICE_CHARGE = 'Additional Invoice Charge';
+
     protected static function booted()
     {
         static::addGlobalScope('company', function ($query) {

@@ -184,25 +184,33 @@ class CreditController extends Controller
                 ->where('company_id', $agent->branch->company->id)
                 ->first();
 
-            if ($clientAdvance) {
+            $paymentGateway = Account::where('name', 'Payment Gateway')
+                    ->where('company_id', $agent->branch->company_id)
+                    ->where('parent_id', $clientAdvance->id)
+                    ->first();
+            if (!$paymentGateway) {
+                throw new Exception('Payment Gateway account not found');
+            }
+
+            if ($paymentGateway) {
                 JournalEntry::create([
                     'transaction_id'      => $transaction->id,
                     'branch_id'           => $agent->branch->id,
                     'company_id'          => $agent->branch->company->id,
-                    'account_id'          => $clientAdvance->id,
+                    'account_id'          => $paymentGateway->id,
                     'transaction_date'    => now(),
                     'description'         => 'Advance Payment for: ' . $client->full_name,
                     'debit'               => 0,
                     'credit'              => $request->amount,
-                    'balance'             => $clientAdvance->actual_balance - $request->amount,
+                    'balance'             => $paymentGateway->actual_balance - $request->amount,
                     'name'                => $client->full_name,
                     'type'                => 'receivable',
                     'voucher_number'      => 'MTU-' . now()->timestamp,
-                    'type_reference_id'   => $clientAdvance->id,
+                    'type_reference_id'   => $paymentGateway->id,
                 ]);
 
-                $clientAdvance->actual_balance -= $request->amount;
-                $clientAdvance->save();
+                $paymentGateway->actual_balance -= $request->amount;
+                $paymentGateway->save();
             }
 
             $receivableRoot = Account::where('name', 'Assets')

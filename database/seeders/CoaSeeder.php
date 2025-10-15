@@ -103,7 +103,7 @@ class CoaSeeder extends Seeder
             ['code' => '2620', 'name' => 'Advances', 'level' => 2, 'parent' => 'Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2630', 'name' => 'Client', 'level' => 3, 'parent' => 'Advances', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2631', 'name' => 'Cash', 'level' => 4, 'parent' => 'Client', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '2632', 'name' => 'Payment Link', 'level' => 4, 'parent' => 'Client', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '2632', 'name' => 'Payment Gateway', 'level' => 4, 'parent' => 'Client', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
         
             // Equity (Level 2)
             ['code' => '3100', 'name' => 'Capital Stock',               'level' => 2, 'parent' => 'Equity', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],

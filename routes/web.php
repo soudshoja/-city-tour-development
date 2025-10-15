@@ -561,8 +561,8 @@ Route::middleware(['auth'])->group(function () {
     ], function () {
         Route::get('/', [AutoBillingController::class, 'index'])->name('index');
         Route::post('/store', [AutoBillingController::class, 'store'])->name('store');
-        Route::get('/edit/{id}', [AutoBillingController::class, 'edit'])->name('edit');
-        Route::delete('/{id}', [AutoBillingController::class, 'destroy'])->name('destroy');
+        Route::put('/update/{id}', [AutoBillingController::class, 'update'])->name('update');
+        Route::delete('/{rule}', [AutoBillingController::class, 'destroy'])->name('destroy');
     });
 
     Route::group([

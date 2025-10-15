@@ -3065,7 +3065,6 @@ class InvoiceController extends Controller
             }
 
             if (!empty($updatingDetails)) {
-                dd('here');
                 $responseUpdateAmount = $this->updateDetailsAmount(
                     new Request([
                         'tasks' => $updatingDetails,
@@ -3088,7 +3087,7 @@ class InvoiceController extends Controller
                 }
 
                 if (isset($responseData->success)) {
-                    $success[] = $responseData->message;
+                    $success[] = $responseData->success;
                     $transactionId = $responseData->transaction_id ?? null;
                 }
             }
@@ -3098,7 +3097,7 @@ class InvoiceController extends Controller
 
         $invoice = $invoice->fresh();
 
-        if($invoice->invoice_charge !== $request->invoice_charge || $invoice->amount !== $request->amount){
+        if( empty($updatingDetails) && ( $invoice->invoice_charge !== $request->invoice_charge || $invoice->amount !== $request->amount)){
             if($request->amount != bcadd($invoice->sub_amount, $request->invoice_charge ?? 0, 3)){
                 
                 Log::error('Invoice amount mismatch', [
@@ -3130,7 +3129,7 @@ class InvoiceController extends Controller
                 $success[] = 'Invoice amounts updated successfully.';
             }
 
-            $invoice->refresh();
+            // $invoice->refresh();
 
             $responseUpdateAmount = $this->updateDetailsAmount(
                 new Request([
@@ -3259,18 +3258,20 @@ class InvoiceController extends Controller
                     ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
                     ->where('invoice_number', $invoiceNumber)
                     ->firstOrFail();
-    
-                $transactionToReverse =  Transaction::where('invoice_id', $invoice->id)
-                    ->where('description', 'LIKE', 'Invoice reversal for%')
-                    ->orderBy('created_at', 'desc')
-                    ->first();
-                
-                if (!$transactionToReverse) {
-                    $transactionToReverse = $invoice->transactions()->first();
+
+                $transactionToReverse = $invoice->transactions()->orderBy('id','desc')->first();
+
+                if (!$transactionToReverse && $transactionToReverse->isEmpty()) {
+                    $transactionToReverse = Transaction::where('invoice_id', $invoice->id)
+                        ->where('description', 'LIKE', 'Invoice reversal for%')
+                        ->orderBy('created_at', 'desc')
+                        ->first();
                 }
     
                 $oldAmount = $transactionToReverse->amount;
                 $reversalTransaction = Transaction::create([
+                    'company_id' => $transactionToReverse->company_id,
+                    'branch_id' => $transactionToReverse->branch_id,
                     'description' => 'Invoice reversal for: ' . $invoice->invoice_number . ' (Old Amount: ' . $oldAmount . ') by ' . $whoIsUser,
                     'invoice_id' => $invoice->id,
                     'entity_id' => $transactionToReverse->entity_id,
@@ -3282,10 +3283,16 @@ class InvoiceController extends Controller
                 ]);
     
                 foreach ($transactionToReverse->journalEntries as $entry) {
+
+                    $description = $entry->description;
+                    if(!str_contains($description, 'reversal by')){
+                        $description = $entry->description . ' reversal by ' . $whoIsUser;
+                    }
+
                     JournalEntry::create([
                         'transaction_id' => $reversalTransaction->id,
                         'account_id' => $entry->account_id,
-                        'description' => $entry->description . ' reversal by ' . $whoIsUser,
+                        'description' => $description,
                         'debit' => $entry->credit,
                         'credit' => $entry->debit,
                         'company_id' => $entry->company_id,
@@ -3324,6 +3331,8 @@ class InvoiceController extends Controller
                 $invoice->save();
     
                 $correctedTransaction = Transaction::create([
+                    'company_id' => $transactionToReverse->company_id,
+                    'branch_id' => $transactionToReverse->branch_id,
                     'date' => now(),
                     'description' => 'Invoice: ' . $invoice->invoice_number . ' (New Amount: ' . $invoice->amount . ') by ' . $whoIsUser,
                     'invoice_id' => $invoice->id,
@@ -3361,12 +3370,18 @@ class InvoiceController extends Controller
                             } 
                         }
         
-        
                         if ($newDebit > 0 || $newCredit > 0) {
+
+                            $description = $entry->description;
+
+                            // if(!str_contains($description, 'correction by')){
+                            //     $description = $entry->description . ' correction by ' . $whoIsUser;
+                            // }
+
                             JournalEntry::create([
                                 'transaction_id' => $correctedTransaction->id,
                                 'account_id' => $entry->account_id,
-                                'description' => $entry->description . ' correction by ' . $whoIsUser,
+                                'description' => $description,
                                 'debit' => $newDebit,
                                 'credit' => $newCredit,
                                 'entity_id' => $entry->entity_id ?? null,
@@ -3393,6 +3408,9 @@ class InvoiceController extends Controller
                         } else if (str_contains($entry->description, 'Agents Commissions for (Liabilities)')) {
                             $newCredit = $invoice->invoice_charge * ($agent->commission ?? 0.15);
                         }
+
+
+
                     }
                 }
 

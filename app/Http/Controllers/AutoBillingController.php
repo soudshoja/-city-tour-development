@@ -32,10 +32,19 @@ class AutoBillingController extends Controller
         $branchIds = $company->branches->pluck('id')->toArray();
         $agents = Agent::whereIn('branch_id', $branchIds)->get();
 
-        $clients = Client::where('company_id', $company->id)
-            ->orWhereHas('agent.branch', function ($q) use ($company) {
-                $q->where('company_id', $company->id);
+        // Get all client IDs already used in rules
+        $usedClientIds = AutoBilling::where('company_id', $company->id)
+            ->pluck('client_id')
+            ->toArray();
+
+        // Filter clients that are not already assigned
+        $clients = Client::where(function ($q) use ($company) {
+                $q->where('company_id', $company->id)
+                ->orWhereHas('agent.branch', function ($q2) use ($company) {
+                    $q2->where('company_id', $company->id);
+                });
             })
+            ->whereNotIn('id', $usedClientIds)
             ->get();
 
         $paymentGateways = Charge::where('is_active', true)

@@ -72,16 +72,18 @@ class RunAutoBilling extends Command
                 $query = Task::query()
                     ->where('company_id', $rule->company_id)
                     ->where('client_id', $rule->client_id)
-                    ->where('status', 'issued')
-                    ->whereDoesntHave('invoiceDetail');
-
-                if ($rule->created_by) {
-                    $query->where('created_by', $rule->created_by);
-                } elseif ($rule->issued_by) {
-                    $query->where('issued_by', $rule->issued_by);
-                } elseif ($rule->agent_id) {
-                    $query->where('agent_id', $rule->agent_id);
-                }
+                    ->whereDoesntHave('invoiceDetail')
+                    ->where(function ($q) use ($rule) {
+                        if ($rule->created_by) {
+                            $q->where('created_by', $rule->created_by);
+                        }
+                        if ($rule->issued_by) {
+                            $q->where('issued_by', $rule->issued_by);
+                        }
+                        if ($rule->agent_id) {
+                            $q->where('agent_id', $rule->agent_id);
+                        }
+                    });
 
                 $tasks = $query->get();
 
@@ -97,10 +99,6 @@ class RunAutoBilling extends Command
 
                 foreach ($tasks as $task) {
                     $issues = [];
-
-                    if (!in_array($task->status, ['issued', 'confirmed'])) {
-                        $issues[] = "Invalid status: {$task->status}";
-                    }
 
                     if (!$task->is_complete) {
                         $issues[] = 'Task not marked complete';
@@ -141,7 +139,6 @@ class RunAutoBilling extends Command
                             ->exists()
                     ) {
                         $task->enabled = true;
-                        $task->is_complete = true;
                         $task->save();
 
                         $this->line("🔓 Task {$task->id} auto-enabled (client: {$task->client_id}, agent: {$task->agent_id})");
@@ -189,7 +186,7 @@ class RunAutoBilling extends Command
                 }
 
                 if (empty($eligibleTasks)) {
-                    $this->warn("⚠️  No eligible tasks for rule #{$rule->id}, skipping invoice creation.");
+                    $this->warn("⚠️ No eligible tasks for rule #{$rule->id}, skipping invoice creation.");
                     DB::rollBack();
                     continue;
                 }
@@ -261,16 +258,15 @@ class RunAutoBilling extends Command
                 }
 
                 $gateway = optional($rule->gateway)->name ?? null;
-                $method = optional($rule->method)->english_name ?? null;
                 $fee = 0;
 
                 try {
                     switch (strtolower($gateway)) {
                         case 'myfatoorah':
-                            $fee = ChargeService::FatoorahCharge($totalAmount, $method, $rule->company_id)['fee'] ?? 0;
+                            $fee = ChargeService::FatoorahCharge($totalAmount, $rule->method_id, $rule->company_id)['fee'] ?? 0;
                             break;
                         case 'hesabe':
-                            $fee = ChargeService::HesabeCharge($totalAmount, $method, $rule->company_id)['fee'] ?? 0;
+                            $fee = ChargeService::HesabeCharge($totalAmount, $rule->method_id, $rule->company_id)['fee'] ?? 0;
                             break;
                         case 'tap':
                             $fee = ChargeService::TapCharge([
@@ -281,7 +277,7 @@ class RunAutoBilling extends Command
                             ], $gateway)['fee'] ?? 0;
                             break;
                         case 'upayment':
-                            $fee = ChargeService::UPaymentCharge($totalAmount, $method, $rule->company_id)['fee'] ?? 0;
+                            $fee = ChargeService::UPaymentCharge($totalAmount, $rule->method_id, $rule->company_id)['fee'] ?? 0;
                             break;
                     }
                 } catch (Exception $e) {
@@ -331,7 +327,7 @@ class RunAutoBilling extends Command
         $bar->finish();
         $duration = round(microtime(true) - $startTime, 2);
 
-        $this->newLine(2);
+        $this->newLine();
         $this->info("✅ AutoBilling completed for {$rules->count()} rule(s) in {$duration}s.");
         Log::info("=== [AutoBilling] Command finished in {$duration}s ===");
 

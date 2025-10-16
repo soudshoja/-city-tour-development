@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div x-data="{ createModal: false }" class="container mx-auto px-6 py-4">
+    <div x-data="{ createModal: false }">
         <div class="flex justify-between items-center my-4">
             <div class="flex items-center gap-5">
                 <h2 class="text-3xl font-bold">Auto Billing Settings</h2>
@@ -33,26 +33,26 @@
         <div class="panel bg-white rounded-lg shadow p-4">
             <table class="table-auto w-full border-collapse">
                 <thead>
-                    <tr class="bg-gray-100 text-gray-700 text-sm">
-                        <th class="px-3 py-2 text-left">Created By</th>
-                        <th class="px-3 py-2 text-left">Agents</th>
-                        <th class="px-3 py-2 text-left">Issued By</th>
-                        <th class="px-3 py-2 text-left">Client</th>
-                        <th class="px-3 py-2 text-left">Amount</th>
-                        <th class="px-3 py-2 text-left">Payment Type</th>
-                        <th class="px-3 py-2 text-left">Invoice Time</th>
-                        <th class="px-3 py-2 text-left">Auto send WhatsApp</th>
-                        <th class="px-3 py-2 text-left">Status</th>
-                        <th class="px-3 py-2 text-left">Actions</th>
+                    <tr class="bg-gray-100 text-gray-700">
+                        <th class="p-3 text-center text-base font-bold text-gray-500">Created By</th>
+                        <th class="p-3 text-center text-base font-bold text-gray-500">Agent</th>
+                        <th class="p-3 text-center text-base font-bold text-gray-500">Issued By</th>
+                        <th class="p-3 text-center text-base font-bold text-gray-500">Client</th>
+                        <th class="p-3 text-center text-base font-bold text-gray-500">Invoice Surcharge</th>
+                        <th class="p-3 text-center text-base font-bold text-gray-500">Payment Type</th>
+                        <th class="p-3 text-center text-base font-bold text-gray-500">Invoice Time</th>
+                        <th class="p-3 text-center text-base font-bold text-gray-500">WhatsApp Auto-Send</th>
+                        <th class="p-3 text-center text-base font-bold text-gray-500">Status</th>
+                        <th class="p-3 text-center text-base font-bold text-gray-500">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($rules as $rule)
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="px-3 py-2 text-sm font-medium text-gray-700">{{ $rule->created_by ?? '-' }}</td>
-                        <td class="px-3 py-2 text-sm font-medium text-gray-700">{{ $rule->agent->name ?? '-' }}</td>
-                        <td class="px-3 py-2 text-sm font-medium text-gray-700">{{ $rule->issued_by ?? '-' }}</td>
-                        <td class="px-3 py-2 text-sm font-semibold text-gray-700">{{ $rule->client->full_name ?? '-' }}</td>
+                    <tr class="border-b hover:bg-gray-50 text-center text-gray-700">
+                        <td class="px-3 py-2 text-sm font-medium">{{ $rule->created_by ?? '-' }}</td>
+                        <td class="px-3 py-2 text-sm font-medium">{{ $rule->agent->name ?? '-' }}</td>
+                        <td class="px-3 py-2 text-sm font-medium">{{ $rule->issued_by ?? '-' }}</td>
+                        <td class="px-3 py-2 text-sm font-semibold">{{ $rule->client->full_name ?? '-' }}</td>
                         <td class="px-3 py-2 text-sm">{{ number_format($rule->add_amount, 2) }}</td>
                         <td class="px-3 py-2 text-sm">
                             {{ $rule->gateway?->name ?? '-' }}
@@ -63,14 +63,14 @@
                         <td class="px-3 py-2 text-sm">
                             {{ \Carbon\Carbon::parse($rule->invoice_time_company)->format('H:i A') }}
                         </td>
-                        <td class="px-3 py-2 text-center">
+                        <td class="px-3 py-2">
                             @if($rule->auto_send_whatsapp)
                                 <span class="inline-flex px-2.5 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Yes</span>
                             @else
                                 <span class="inline-flex px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">No</span>
                             @endif
                         </td>
-                        <td class="px-3 py-2 text-sm text-center">
+                        <td class="px-3 py-2 text-sm">
                             @if($rule->is_active)
                                 <span class="inline-flex px-2.5 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
                             @else
@@ -141,7 +141,7 @@
                                                                 class="border border-gray-300 p-2 rounded-md w-full text-base"
                                                                 placeholder="Enter Issued By">
                                                         </div>
-                                                        <div class="flex-1">
+                                                        <div class="flex-1 min-w-0">
                                                             <label class="block text-sm font-medium text-gray-700">
                                                                 Client <span class="text-red-500">*</span>
                                                             </label>
@@ -197,7 +197,7 @@
                                                             <input type="checkbox" name="auto_send_whatsapp" value="1" x-bind:checked="currentRule.auto_send_whatsapp" class="sr-only peer">
                                                             <div class="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px]
                                                                 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5"></div>
-                                                            <span class="ml-3 text-sm font-medium text-gray-700">Auto WhatsApp</span>
+                                                            <span class="ml-3 text-sm font-medium text-gray-700">Auto share invoice to WhatsApp</span>
                                                         </label>
                                                         <label class="relative inline-flex items-center cursor-pointer">
                                                             <input type="checkbox" name="is_active" value="1" x-bind:checked="currentRule.is_active" class="sr-only peer">
@@ -279,7 +279,7 @@
                             <div>
                                 <h2 class="text-xl font-bold text-gray-800">Create Auto Billing Rule</h2>
                                 <p class="text-gray-600 italic text-xs mt-1">
-                                    Please complete the fields below to enable automatic billing for this client.
+                                    Please complete the fields below to enable automatic billing for a client.
                                 </p>
                             </div>
                             <button type="button" @click="createModal=false"
@@ -346,7 +346,7 @@
                                         class="border border-gray-300 p-2 rounded-md w-full text-base" disabled>
                                         <option value="">Select Method</option>
                                     </select>
-                                    <p class="text-xs text-gray-500 mt-1">Shown only if the gateway supports multiple methods.</p>
+                                    <p class="text-xs text-gray-500 mt-1">Shown only if the gateway supports multiple methods</p>
                                 </div>
                             </div>
                             <div class="flex flex-col sm:flex-row gap-4">
@@ -355,7 +355,7 @@
                                         Invoice Surcharge <span class="text-red-500">*</span>
                                     </label>
                                     <input type="number" min=1 name="add_amount" value="1" class="border border-gray-300 p-2 rounded-md w-full text-base">
-                                    <p class="text-xs text-gray-500 mt-1">Additional amount to add to the invoice total</p>
+                                    <p class="text-xs text-gray-500 mt-1">Additional surcharge to add to the invoice total</p>
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <label class="block text-sm font-medium text-gray-700">
@@ -375,7 +375,7 @@
                                     <input type="checkbox" name="auto_send_whatsapp" value="1" id="auto_send" class="sr-only peer">
                                     <div class="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px]
                                         after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5"></div>
-                                    <span class="ml-3 text-sm font-medium text-gray-700">Auto WhatsApp</span>
+                                    <span class="ml-3 text-sm font-medium text-gray-700">Auto share invoice to WhatsApp</span>
                                 </label>
                             </div>
                         </div>
@@ -523,7 +523,7 @@
                         renderMethodOptions(methodSelect, methods);
                         methodSelect.disabled = false;
                         methodSelect.classList.remove('bg-gray-100', 'text-gray-400');
-                        methodNote.textContent = 'Select one of the supported methods for this gateway.';
+                        methodNote.textContent = 'Select one of the supported methods for this gateway';
 
                         if (methodLabel) {
                             const star = document.createElement('span');
@@ -535,7 +535,7 @@
                         methodSelect.innerHTML = '<option value="">No specific method required</option>';
                         methodSelect.disabled = true;
                         methodSelect.classList.add('bg-gray-100', 'text-gray-400');
-                        methodNote.textContent = 'This gateway does not require selecting a method.';
+                        methodNote.textContent = 'This gateway does not require selecting a method';
                     }
                 });
             }

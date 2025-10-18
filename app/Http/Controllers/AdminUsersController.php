@@ -115,6 +115,7 @@ class AdminUsersController extends Controller
             $phone = $user->agent->phone_number;
         } elseif($user->role_id == Role::ACCOUNTANT && $user->company) {
             $userRole = 'accountant';
+            $phone = $user->accountant->phone_number;
         } elseif($user->role_id == Role::CLIENT && $user->client) {
             $userRole = 'client';
         }

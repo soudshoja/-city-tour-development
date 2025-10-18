@@ -919,7 +919,6 @@ class ReceiptVoucherController extends Controller
                     'exchange_rate'            => 1,
                 ]);
 
-                //dd($journalEntry);
                 $invoiceReceipt->update([
                     'status' => 'approved',
                     'is_used' => true,
@@ -1243,7 +1242,6 @@ class ReceiptVoucherController extends Controller
                 $cash->actual_balance = ($cash->actual_balance ?? 0) + $amount;
                 $cash->save();
 
-                //dd($journalEntry1, $journalEntry2);
                 $invoiceReceipt->update([
                     'status' => 'approved',
                 ]);
@@ -1822,7 +1820,6 @@ class ReceiptVoucherController extends Controller
 
     public function receiptVoucherCredit($data)
     {
-        //dd($data);
         $user = Auth::user();
 
         $client = Client::findOrFail($data['items'][0]['client_id']);

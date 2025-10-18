@@ -19,6 +19,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:delete-expired-offers')->everyFifteenMinutes();
         $schedule->command('app:update-hotel-status')->everyFifteenMinutes();
         $schedule->command('app:calculate-agent-commission')->monthlyOn(1, '00:10');
+        $schedule->command('autobill:run')->everyMinute();
         
         // Process expired confirmed tasks every 5 minutes
         $schedule->command('tasks:process-expired-confirmed')

@@ -44,7 +44,7 @@ class Transaction extends Model
             $user = auth()->user();
 
             if($user->role_id == Role::ADMIN){
-                $query->all();
+                $query->where('company_id', '!=', null);
             } else if($user->role_id == Role::COMPANY){
                 $query->where('company_id', $user->company->id);
             } else if ($user->role_id == Role::BRANCH){

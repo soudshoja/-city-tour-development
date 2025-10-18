@@ -2749,6 +2749,8 @@ class PaymentController extends Controller
             return abort(404);
         }
 
+        Log::info('Payment link process response', ['response' => $response]);
+
         if (isset($response['errors'])) {
 
             if (auth()->user()) {
@@ -2778,6 +2780,25 @@ class PaymentController extends Controller
                 'reference_type' => 'Payment',
                 'transaction_date' => now(),
             ]);
+
+            $agent = $payment->agent;
+            $client = $payment->client;
+            $message = 'Your client ' . $client->full_name . ' attempted to top up their account but the payment failed or was cancelled. Please follow up with your client to resolve the issue.';
+
+            $this->storeNotification([
+                'user_id' => $agent->user_id,
+                'title' => 'Client '. $client->full_name . "'s Topup Failed",
+                'message' => $message,
+            ]);
+
+            $resayilController = new ResayilController();
+
+            $resayilController->message(
+                $agent->phone_number,
+                $agent->country_code,
+                $message,
+            );
+
 
             if (auth()->user()) {
                 return redirect()->back()->with('error', 'Payment ' . strtolower($response['status']));
@@ -2975,16 +2996,12 @@ class PaymentController extends Controller
                 $invoice->save();
             }
 
-            if(auth()->user()){
-            return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
-            } else {
-                return redirect()->route('payment.success');
-            }
         } catch (Exception $e) {
             logger('Failed to update payment status', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
 
             if (auth()->user()) {
                 return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('error', 'Payment cannot be updated.');
@@ -2992,6 +3009,22 @@ class PaymentController extends Controller
                 return abort(500);
             }
         }
+
+        $receiptInfo = $this->publicReceiptNotice($payment, $process);
+
+        $agent = $payment->agent;
+
+        $this->storeNotification([
+            'user_id' => $agent->user_id,
+            'title'   => $receiptInfo['title'],
+            'message' => $receiptInfo['message'],
+        ]);
+
+        (new ResayilController())->message(
+            $agent->phone_number,
+            $agent->country_code,
+            $receiptInfo['message']
+        );
 
         if (auth()->user()) {
             return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
@@ -3447,6 +3480,24 @@ class PaymentController extends Controller
                 'reference_type' => 'Payment',
                 'transaction_date' => now(),
             ]);
+
+            $agent = $payment->agent;
+            $client = $payment->client;
+            $message = 'Your client ' . $client->full_name . ' attempted to top up their account using payment link ' . $payment->voucher_number . ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.';
+
+            $this->storeNotification([
+                'user_id' => $agent->user_id,
+                'title' => 'Client '. $client->full_name . "'s Topup Failed",
+                'message' => $message,
+            ]);
+
+            $resayilController = new ResayilController();
+
+            $resayilController->message(
+                $agent->phone_number,
+                $agent->country_code,
+                $message,
+            );
         }
 
         if (!isset($payment) || !$payment) {

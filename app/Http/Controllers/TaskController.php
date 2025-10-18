@@ -33,6 +33,7 @@ use App\Models\InvoiceDetail;
 use App\Models\Payment;
 use App\Models\FileUpload;
 use App\Models\SystemLog;
+use App\Models\AutoBilling;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -554,7 +555,6 @@ class TaskController extends Controller
         return response()->json(['success' => true]);
     }
 
-
     public function saveColumnPrefs(Request $request)
     {
         $validated = $request->validate([
@@ -977,7 +977,29 @@ class TaskController extends Controller
             $data = $request->all();
             $data['supplier_pay_date'] = $supplier_pay_date;
 
-            $task = Task::create($data);;
+            $task = Task::create($data);
+
+            // Auto-link task with active AutoBilling rule if matching created_by / issued_by / agent_id
+            $matchedRule = AutoBilling::where('company_id', $task->company_id)
+                ->where('is_active', true)
+                ->where(function ($q) use ($task) {
+                    $q->where('created_by', $task->created_by)
+                    ->orWhere('issued_by', $task->issued_by)
+                    ->orWhere('agent_id', $task->agent_id);
+                })
+                ->get()
+                ->first(fn($r) =>
+                    (!$r->created_by || $r->created_by === $task->created_by) &&
+                    (!$r->issued_by || $r->issued_by  === $task->issued_by) &&
+                    (!$r->agent_id || $r->agent_id === $task->agent_id)
+                );
+
+            if ($matchedRule) {
+                $task->update(['client_id' => $matchedRule->client_id]);
+                Log::info("[Task Store] Auto-linked task {$task->id} with AutoBilling rule #{$matchedRule->id} (Client ID {$matchedRule->client_id})");
+            } else {
+                Log::info("[Task Store] No AutoBilling rule matched for task {$task->id} (created_by: {$task->created_by}, issued_by: {$task->issued_by}, agent_id: {$task->agent_id})");
+            }
 
             if ($task->type === 'hotel' && $request->has('task_hotel_details') && !empty($request->task_hotel_details)) {
                 $this->saveHotelDetails($request->task_hotel_details, $task->id);
@@ -1196,7 +1218,6 @@ class TaskController extends Controller
         ]);
     }
 
-
     private function getOrCreateCurrencySpecificAccount(Task $task, $supplierPayableAccount, $currency, $branchId)
     {
         $supplier = Supplier::find($task->supplier_id);
@@ -1261,7 +1282,6 @@ class TaskController extends Controller
 
         return $currencySpecificAccount;
     }
-
 
     private function getTaskBranchId(Task $task)
     {
@@ -1514,7 +1534,6 @@ class TaskController extends Controller
         }
     }
 
-
     private function getMissingFields(Task $task): string
     {
         $missingFields = [];
@@ -1664,7 +1683,6 @@ class TaskController extends Controller
         ]);
     }
 
-
     private function processVoidTask(Task $task, $branchId)
     {
         Log::info('Check for invoice created for this task.');
@@ -1690,7 +1708,6 @@ class TaskController extends Controller
             $this->ReverseUnpaidVoidedTask($originalTask);
         }
     }
-
 
     private function processRefundTask(Task $task, $branchId)
     {
@@ -1933,7 +1950,6 @@ class TaskController extends Controller
         ]);
     }
 
-
     private function revertFinancialsForTask(Task $task): void
     {
         Log::info('Reverting financials for task: ' . $task->reference);
@@ -1956,7 +1972,6 @@ class TaskController extends Controller
             Log::info("Reverted {$journalEntries->count()} journal entries and {$transactionIds->count()} transactions for task: {$task->reference}");
         }
     }
-
 
     private function revertFinancialsForVoid(Task $voidTask): void
     {
@@ -2259,6 +2274,30 @@ class TaskController extends Controller
 
             $task->update($data);
             Log::info('After task detail update: agent_id: ' . $task->agent_id . ', client_id: ' . $task->client_id . ', status: ' . $task->status);
+
+            $matchedRule = AutoBilling::where('company_id', $task->company_id)
+                ->where('is_active', true)
+                ->where(function ($q) use ($task) {
+                    $q->where('created_by', $task->created_by)
+                    ->orWhere('issued_by', $task->issued_by)
+                    ->orWhere('agent_id', $task->agent_id);
+                })
+                ->get()
+                ->first(fn($r) =>
+                    (!$r->created_by || $r->created_by === $task->created_by) &&
+                    (!$r->issued_by || $r->issued_by === $task->issued_by) &&
+                    (!$r->agent_id || $r->agent_id === $task->agent_id)
+                );
+
+            if ($matchedRule) {
+                $task->update([
+                    'client_id' => $matchedRule->client_id,
+                    'client_name' => optional($matchedRule->client)->full_name,
+                ]);
+                Log::info("[Task Update] Auto-linked task {$task->id} with AutoBilling rule #{$matchedRule->id} (Client ID {$matchedRule->client_id})");
+            } else {
+                Log::info("[Task Update] No AutoBilling rule matched for task {$task->id} (created_by: {$task->created_by}, issued_by: {$task->issued_by}, agent_id: {$task->agent_id})");
+            }
 
             $newSupplierPayDate = $task->supplier_pay_date ? Carbon::parse($task->supplier_pay_date) : null;
             if ($oldSupplierPayDate !== $newSupplierPayDate) {

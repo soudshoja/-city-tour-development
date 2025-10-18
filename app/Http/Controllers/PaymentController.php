@@ -1919,7 +1919,6 @@ class PaymentController extends Controller
         ]);
 
         if (!$request->company_id) {
-            dd('here');
             $companyId = null;
             $user = Auth::user();
 

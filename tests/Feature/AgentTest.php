@@ -482,8 +482,8 @@ class AgentTest extends TestCase
         $response = $this->get(route('agents.show', $this->agent->id));
 
         $response->assertStatus(200);
-        $response->assertViewHas('paid', '1000.00');
-        $response->assertViewHas('unpaid', '500.00');
+        $response->assertViewHas('paid', '1000.000');
+        $response->assertViewHas('unpaid', '500.000');
         $response->assertViewHas('tasks');
         $response->assertViewHas('invoices');
         $response->assertViewHas('clients');

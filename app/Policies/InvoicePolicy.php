@@ -60,8 +60,6 @@ class InvoicePolicy
     {
         if($user->role_id == Role::ACCOUNTANT) return true;
 
-        if($user->hasPermissionTo('edit full invoice')) return true;
-
         return false;
     }
 }

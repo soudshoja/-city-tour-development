@@ -405,9 +405,10 @@ class TaskTest extends TestCase
             'payment_date' => now(),
         ]);
 
-                // 6. Create Transaction related to invoice
+        // 6. Create Transaction related to invoice
         $invoiceTransaction = Transaction::create([
             'invoice_id' => $invoice->id,
+            'company_id' => $company->id,
             'entity_id' => $company->id,
             'entity_type' => 'company',
             'amount' => 2500.00,

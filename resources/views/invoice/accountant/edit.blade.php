@@ -102,8 +102,8 @@
                                     <select id="status"
                                         name="status"
                                         class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white">
-                                        <option value="pending" {{ old('status', $invoice->status) == 'pending' ? 'selected' : '' }}>Pending</option>
-                                        <option value="paid" {{ old('status', $invoice->status) == 'unpaid' ? 'selected' : '' }}>Paid</option>
+                                        <option value="unpaid" {{ old('status', $invoice->status) == 'unpaid' ? 'selected' : '' }}>Unpaid</option>
+                                        <option value="paid" {{ old('status', $invoice->status) == 'paid' ? 'selected' : '' }}>Paid</option>
                                     </select>
                                     @error('status')
                                     <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
@@ -132,41 +132,233 @@
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Financial Information</h3>
                             <div class="grid grid-cols-1 gap-4">
                                 @if($invoice->invoiceDetails->isNotEmpty())
-                                <div class="grid grid-cols-1 gap-4">
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Invoice Details
+                                <div class="space-y-6">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                                        Invoice Details & Task Information
                                     </label>
-                                    <div class="flex gap-3">
-                                        @foreach($invoice->invoiceDetails as $key => $detail)
-                                        <div class="p-2 bg-gray-100 dark:bg-gray-600 rounded border border-gray-300 dark:border-gray-500">
-                                            @php
-                                            $task = $detail->task;
-                                            @endphp
-                                            <p>
-                                                {{ $task->reference}}
-                                            </p>
-                                            <div>
-                                                <ul>
-                                                    <li>{{ $task->status }}</li>
-                                                    <li>{{ $task->passenger_name }}</li>
-                                                    <li>{{ $task->issued_by ?? $task->company->name }}</li>
-                                                </ul>
+                                    
+                                    @foreach($invoice->invoiceDetails as $key => $detail)
+                                    @php
+                                        $task = $detail->task;
+                                    @endphp
+                                    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-sm">
+                                        <!-- Task Header -->
+                                        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 rounded-t-lg">
+                                            <div class="flex justify-between items-start">
+                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
+                                                    <div>
+                                                        <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">Reference</h4>
+                                                        <p class="text-base font-semibold text-gray-900 dark:text-white">{{ $task->reference }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">Passenger</h4>
+                                                        <p class="text-base text-gray-900 dark:text-white">{{ $task->passenger_name ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">Agent</h4>
+                                                        <p class="text-base text-gray-900 dark:text-white">{{ $task->agent->name ?? 'N/A' }}</p>
+                                                    </div>
+                                                </div>
+                                                <div class="ml-4">
+                                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                                                        @if($task->status == 'confirmed') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                                        @elseif($task->status == 'pending') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                                        @elseif($task->status == 'cancelled') bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200
+                                                        @else bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200
+                                                        @endif">
+                                                        {{ ucfirst($task->status) }}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <input type="number"
-                                                    oninput="updateTotalAmount(this)"
-                                                    onblur="formatToThreeDecimals(this)"
-                                                    step="0.001"
-                                                    name="invoice_details[{{ $detail->task_id }}][amount]"
-                                                    value="{{ number_format(old('invoice_details.' . $detail->id . '.amount', $detail->task_price),3) }}"
-                                                    class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white" placeholder="Amount" />
-                                                @error('invoice_details.' . $detail->id . '.amount')
-                                                <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
-                                                @enderror
+                                            <div class="mt-3 flex items-center justify-between">
+                                                <div>
+                                                    <h4 class="text-sm font-medium text-gray-500 dark:text-gray-400">Task Type</h4>
+                                                    <p class="text-base font-medium text-gray-900 dark:text-white">{{ ucfirst(str_replace('_', ' ', $task->type)) }}</p>
+                                                </div>
+                                                <div class="text-right">
+                                                    <input type="number"
+                                                        oninput="updateTotalAmount(this)"
+                                                        onblur="formatToThreeDecimals(this)"
+                                                        step="0.001"
+                                                        name="invoice_details[{{ $detail->task_id }}][amount]"
+                                                        value="{{ number_format(old('invoice_details.' . $detail->id . '.amount', $detail->task_price),3) }}"
+                                                        class="block w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white text-right font-semibold" 
+                                                        placeholder="Amount" />
+                                                    @error('invoice_details.' . $detail->id . '.amount')
+                                                    <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
+                                                    @enderror
+                                                </div>
                                             </div>
                                         </div>
-                                        @endforeach
+
+                                        <!-- Task Details -->
+                                        <div class="px-6 py-4">
+                                            @if($task->type == 'flight' && $task->flightDetails)
+                                                <h5 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Flight Details</h5>
+                                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                    @foreach($task->flightDetail as $flightDetail)
+                                                    <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-md border">
+                                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                                            <div>
+                                                                <span class="font-medium text-gray-600 dark:text-gray-400">Flight Number:</span>
+                                                                <span class="text-gray-900 dark:text-white ml-2">{{ $flightDetail->flight_number ?? 'N/A' }}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span class="font-medium text-gray-600 dark:text-gray-400">Class:</span>
+                                                                <span class="text-gray-900 dark:text-white ml-2">{{ ucfirst($flightDetail->class_type ?? 'N/A') }}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span class="font-medium text-gray-600 dark:text-gray-400">From:</span>
+                                                                <span class="text-gray-900 dark:text-white ml-2">{{ $flightDetail->airport_from ?? 'N/A' }}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span class="font-medium text-gray-600 dark:text-gray-400">To:</span>
+                                                                <span class="text-gray-900 dark:text-white ml-2">{{ $flightDetail->airport_to ?? 'N/A' }}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span class="font-medium text-gray-600 dark:text-gray-400">Departure:</span>
+                                                                <span class="text-gray-900 dark:text-white ml-2">{{ $flightDetail->departure_time ? $flightDetail->departure_time->format('M d, Y H:i') : 'N/A' }}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span class="font-medium text-gray-600 dark:text-gray-400">Arrival:</span>
+                                                                <span class="text-gray-900 dark:text-white ml-2">{{ $flightDetail->arrival_time ? $flightDetail->arrival_time->format('M d, Y H:i') : 'N/A' }}</span>
+                                                            </div>
+                                                            @if($flightDetail->ticket_number)
+                                                            <div class="md:col-span-2">
+                                                                <span class="font-medium text-gray-600 dark:text-gray-400">Ticket Number:</span>
+                                                                <span class="text-gray-900 dark:text-white ml-2">{{ $flightDetail->ticket_number }}</span>
+                                                            </div>
+                                                            @endif
+                                                            @if($flightDetail->baggage_allowed)
+                                                            <div class="md:col-span-2">
+                                                                <span class="font-medium text-gray-600 dark:text-gray-400">Baggage:</span>
+                                                                <span class="text-gray-900 dark:text-white ml-2">{{ $flightDetail->baggage_allowed }}</span>
+                                                            </div>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                    @endforeach
+                                                </div>
+                                            @elseif($task->type == 'hotel' && $task->hotelDetails)
+                                                <h5 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Hotel Details</h5>
+                                                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-md border">
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Check-in:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->hotelDetails->check_in ? date('M d, Y', strtotime($task->hotelDetails->check_in)) : 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Check-out:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->hotelDetails->check_out ? date('M d, Y', strtotime($task->hotelDetails->check_out)) : 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Nights:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->hotelDetails->nights ?? 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Room Type:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->hotelDetails->room_type ?? 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Room Number:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->hotelDetails->room_number ?? 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Meal Type:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->hotelDetails->meal_type ?? 'N/A' }}</span>
+                                                        </div>
+                                                        @if($task->hotelDetails->room_reference)
+                                                        <div class="md:col-span-2">
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Room Reference:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->hotelDetails->room_reference }}</span>
+                                                        </div>
+                                                        @endif
+                                                        @if($task->hotelDetails->is_refundable !== null)
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Refundable:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->hotelDetails->is_refundable ? 'Yes' : 'No' }}</span>
+                                                        </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @elseif($task->type == 'visa' && $task->visaDetails)
+                                                <h5 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Visa Details</h5>
+                                                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-md border">
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Visa Type:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->visaDetails->visa_type ?? 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Issuing Country:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->visaDetails->issuing_country ?? 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Entries:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->visaDetails->number_of_entries ?? 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Stay Duration:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->visaDetails->stay_duration ?? 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Expiry Date:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->visaDetails->expiry_date ? date('M d, Y', strtotime($task->visaDetails->expiry_date)) : 'N/A' }}</span>
+                                                        </div>
+                                                        @if($task->visaDetails->application_number)
+                                                        <div class="md:col-span-2">
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Application Number:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->visaDetails->application_number }}</span>
+                                                        </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @elseif($task->type == 'insurance' && $task->insuranceDetails)
+                                                <h5 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Insurance Details</h5>
+                                                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-md border">
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Insurance Type:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->insuranceDetails->insurance_type ?? 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Plan Type:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->insuranceDetails->plan_type ?? 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Destination:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->insuranceDetails->destination ?? 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Duration:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->insuranceDetails->duration ?? 'N/A' }}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Package:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->insuranceDetails->package ?? 'N/A' }}</span>
+                                                        </div>
+                                                        @if($task->insuranceDetails->document_reference)
+                                                        <div class="md:col-span-2">
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Document Reference:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ $task->insuranceDetails->document_reference }}</span>
+                                                        </div>
+                                                        @endif
+                                                        @if($task->insuranceDetails->date)
+                                                        <div>
+                                                            <span class="font-medium text-gray-600 dark:text-gray-400">Date:</span>
+                                                            <span class="text-gray-900 dark:text-white ml-2">{{ date('M d, Y', strtotime($task->insuranceDetails->date)) }}</span>
+                                                        </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @else
+                                                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-md border">
+                                                    <p class="text-sm text-gray-600 dark:text-gray-400">No detailed information available for this task type.</p>
+                                                </div>
+                                            @endif
+                                        </div>
                                     </div>
+                                    @endforeach
                                 </div>
                                 @endif
                             </div>
@@ -328,7 +520,7 @@
                                                 <div class="ml-3">
                                                     <p class="text-sm text-blue-800">
                                                         <strong>Payment Type Change Rules:</strong><br>
-                                                        • Only Credit ↔ Cash changes are supported<br>
+                                                        • Only Credit, Cash, Full changes are supported<br>
                                                         • External gateway payments (MyFatoorah, Tap, etc.) cannot be changed<br>
                                                         • Credit changes require sufficient client balance
                                                     </p>
@@ -588,8 +780,8 @@
                     paymentWarningText.innerHTML = 'Changing from Cash to Credit will deduct the amount from client\'s credit balance.';
                     paymentWarning.classList.remove('hidden');
                 }
-            } else if (!['credit', 'cash'].includes(originalPaymentType) || !['credit', 'cash'].includes(selectedPaymentType)) {
-                paymentWarningText.innerHTML = 'Only changes between Credit and Cash payment types are currently supported.';
+            } else if (!['credit', 'cash', 'full'].includes(originalPaymentType) || !['credit', 'cash', 'full'].includes(selectedPaymentType)) {
+                paymentWarningText.innerHTML = 'Only changes between Credit, Cash, and Full are supported for paid invoices.';
                 paymentWarning.classList.remove('hidden');
             }
         }

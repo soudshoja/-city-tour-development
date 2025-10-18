@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ChargeType;
 use App\Enums\InvoicePaymentType;
 use App\Http\Traits\NotificationTrait;
 use App\Models\Account;
@@ -614,6 +615,21 @@ class InvoiceController extends Controller
 
         $invoicePaymentTypes = InvoicePaymentType::labels();
         $clientCredit = $invoice->client ? Credit::getTotalCreditsByClient($invoice->client->id) : 0;
+
+        session()->forget('shortage_info');
+
+        if($clientCredit < $invoice->amount){
+
+            $shortage = $invoice->amount;
+
+            session(['shortage_info' => [
+                'available_credit' => $clientCredit,
+                'required_amount' => $invoice->amount,
+                'shortage_amount' => $shortage,
+                'client_id' => $invoice->client->id,
+                'invoice_id' => $invoice->id,
+            ]]);
+        }
 
         return view('invoice.accountant.edit', compact(
             'invoice',
@@ -3054,8 +3070,11 @@ class InvoiceController extends Controller
             'due_date' => 'nullable|date',
             'paid_date' => 'nullable|date',
             'payment_type' => 'nullable|string|in:full,partial,split,credit,cash',
-            'is_paid' => 'nullable|boolean',
+            'status' => 'nullable|string|in:paid,unpaid',
+            'client_id' => 'nullable|integer|exists:clients,id',
+            'agent_id' => 'nullable|integer|exists:agents,id',
         ]);
+
 
         $isPaid = $request->input('is_paid', true);
 
@@ -3063,7 +3082,19 @@ class InvoiceController extends Controller
 
         $success = [];
         $error = [];
-        $transactionId = null;
+
+        if($request->has('status') && $request->status !== $invoice->status){
+            $invoice->status = $request->status;
+            $invoice->save();
+            $success[] = 'Invoice status updated successfully.';
+        }
+
+        if($request->filled('agent_id') && $request->agent_id != $invoice->agent_id){
+            $response = $this->updateAgentProcess(new Request([
+                'invoice_id' => $invoice->id,
+                'new_agent_id' => $request->agent_id,
+            ]));
+        }
 
         if($request->filled('invoice_details')){
 
@@ -3207,13 +3238,31 @@ class InvoiceController extends Controller
             }
             
             if(isset($paymentTypeChangeResult['success'])){
-                $success = array_merge($success, $paymentTypeChangeResult['success']);
+                $success[] = $paymentTypeChangeResult['success'];
             }
             
             if(isset($paymentTypeChangeResult['shortage_info'])){
                 session(['shortage_info' => $paymentTypeChangeResult['shortage_info']]);
                 $success[] = 'Payment type changed successfully. Note: Client has insufficient credit balance.';
             }
+        }
+
+        if($request->filled('client_id') && $invoice->client_id != $request->client_id){
+
+            $responseClientChange = $this->changeInvoiceClientProcess(new Request([
+                'invoice_id' => $invoice->id,
+                'new_client_id' => $request->client_id,
+                'old_client_id' => $invoice->client_id,
+            ]));
+
+            if(isset($responseClientChange['error'])){
+                $error[] = $responseClientChange['error'];
+            }
+
+            if(isset($responseClientChange['success'])){
+                $success[] = $responseClientChange['success'];
+            }
+
         }
 
         $return = redirect()->back();
@@ -3806,7 +3855,7 @@ class InvoiceController extends Controller
         }
     }
 
-    private function handlePaymentTypeChange(Invoice $invoice, string $newPaymentType, bool $isPaid = true): array
+    private function handlePaymentTypeChange(Invoice $invoice, string $newPaymentType): array
     {
         $currentPaymentType = $invoice->payment_type;
         if ($invoice->status !== 'paid') {
@@ -3828,8 +3877,8 @@ class InvoiceController extends Controller
             return ['error' => 'Payment type is already set to ' . ucfirst($newPaymentType) . '.'];
         }
 
-        if (!in_array($currentPaymentType, ['credit', 'cash']) || !in_array($newPaymentType, ['credit', 'cash'])) {
-            return ['error' => 'Currently only changes between Credit and Cash payment types are supported.'];
+        if (!in_array($currentPaymentType, ['credit', 'cash', 'full']) || !in_array($newPaymentType, ['credit', 'cash', 'full'])) {
+            return ['error' => 'Currently only changes for Credit, Cash, and Full payment types are supported.'];
         }
 
         if ($currentPaymentType === 'credit' && $newPaymentType === 'cash') {
@@ -3919,7 +3968,7 @@ class InvoiceController extends Controller
             $currentCredit = Credit::getTotalCreditsByClient($client->id);
             $invoiceAmount = $invoice->amount;
 
-            $conversionResult = $this->processCashToCreditConversion($invoice, $invoiceAmount);
+            $conversionResult = $this->processInvoiceToCreditConversion($invoice, $invoiceAmount, 'Cash');
             
             if ($currentCredit < $invoiceAmount) {
                 $shortage = $invoiceAmount - $currentCredit;
@@ -3952,7 +4001,7 @@ class InvoiceController extends Controller
             $currentCredit = Credit::getTotalCreditsByClient($client->id);
             $invoiceAmount = $invoice->amount;
 
-            $conversionResult = $this->processCashToCreditConversion($invoice, $invoiceAmount);
+            $conversionResult = $this->processInvoiceToCreditConversion($invoice, $invoiceAmount, 'Full');
             
             if ($currentCredit < $invoiceAmount) {
                 $shortage = $invoiceAmount - $currentCredit;
@@ -4046,12 +4095,12 @@ class InvoiceController extends Controller
         ];
     }
     
-    private function processCashToCreditConversion(Invoice $invoice, float $amount): array
+    private function processInvoiceToCreditConversion(Invoice $invoice, float $amount,string $oldType): array
     {
         try {
-            DB::transaction(function () use ($invoice, $amount) {
+            DB::transaction(function () use ($invoice, $amount, $oldType) {
                 $cashPartial = $invoice->invoicePartials()
-                    ->where('payment_gateway', 'Cash')
+                    ->where('payment_gateway', $oldType)
                     ->where('status', 'paid')
                     ->first();
 
@@ -4078,7 +4127,7 @@ class InvoiceController extends Controller
                     'invoice_id' => $invoice->id,
                     'invoice_partial_id' => $creditPartial->id,
                     'type' => 'Invoice',
-                    'description' => 'Payment for ' . $invoice->invoice_number . ' (changed from Cash to Credit)',
+                    'description' => 'Payment for ' . $invoice->invoice_number . ' (changed from ' . $oldType . ' to Credit)',
                     'amount' => -$amount,
                 ]);
 
@@ -4086,16 +4135,16 @@ class InvoiceController extends Controller
                 $invoice->is_client_credit = true;
                 $invoice->save();
 
-                Log::info('Successfully changed payment type from cash to credit', [
+                Log::info('Successfully changed payment type from '. $oldType .' to credit', [
                     'invoice_id' => $invoice->id,
                     'deducted_amount' => $amount,
                 ]);
             });
 
-            return ['success' => ['Payment type successfully changed from Cash to Credit.']];
+            return ['success' => ['Payment type successfully changed from ' . $oldType . ' to Credit.']];
 
         } catch (Exception $e) {
-            Log::error('Failed to process cash to credit conversion: ' . $e->getMessage(), [
+            Log::error('Failed to process ' . $oldType . ' to credit conversion: ' . $e->getMessage(), [
                 'invoice_id' => $invoice->id,
             ]);
             throw $e;
@@ -4119,27 +4168,11 @@ class InvoiceController extends Controller
             $gateway = $request->payment_gateway;
             $paymentMethodId = $request->payment_method;
 
-            // $invoice = null;
-
-            $charge = Charge::where('name', $gateway)->first();
-            $invoicePartial = InvoicePartial::create([
-                'invoice_id' => $invoice->id,
-                'invoice_number' => $invoice->invoice_number,
-                'client_id' => $client->id,
-                'service_charge' => 0,
-                'amount' => $shortageAmount,
-                'status' => 'unpaid',
-                'expiry_date' => now()->addDays(7),
-                'type' => 'full',
-                'payment_gateway' => $gateway,
-                'payment_method' => $paymentMethodId,
-                'charge_id' => $charge ? $charge->id : null,
-            ]);
-
             $paymentRequest = new Request([
-                'client_id' => $newInvoice->client_id,
-                'agent_id' => $newInvoice->agent_id,
-                'invoice_id' => $newInvoice->id,
+                'client_id' => $request->client_id,
+                'company_id' => $invoice->agent->branch->company_id,
+                'agent_id' => $invoice->agent_id,
+                'invoice_id' => $request->invoice_id,
                 'amount' => $shortageAmount,
                 'type' => 'full',
                 'payment_gateway' => $gateway,
@@ -4151,8 +4184,6 @@ class InvoiceController extends Controller
             $response = $paymentController->paymentStoreLinkProcess($paymentRequest);
 
             if ($response['status'] === 'success') {
-                session()->forget('shortage_info');
-                
                 return redirect()->back()->with('success', 'Payment link created successfully for the credit shortage amount.');
             } else {
                 return redirect()->back()->with('error', 'Failed to create payment link: ' . ($response['message'] ?? 'Unknown error'));
@@ -4164,4 +4195,112 @@ class InvoiceController extends Controller
         }
     }
 
+    private function changeInvoiceClientProcess(Request $request){
+
+        $request->validate([
+            'invoice_id' => 'required|exists:invoices,id',
+            'old_client_id' => 'required|exists:clients,id',
+            'new_client_id' => 'required|exists:clients,id',
+        ]);
+
+        $invoice = Invoice::find($request->invoice_id);
+
+        if($invoice->client_id !== $request->old_client_id){
+            return ['error' => 'The old client does not match the invoice client.'];
+        }
+
+        $invoicePartial = $invoice->invoicePartials()
+            ->where('client_id', $request->old_client_id)
+            ->where('status', 'paid')
+            ->first();
+
+        if (!$invoicePartial) {
+            throw new Exception('No paid invoice partial found for this invoice.');
+        }
+
+        try {
+            DB::transaction(function () use ($invoice, $invoicePartial, $request) {
+ 
+                if ($invoice->payment_type == InvoicePaymentType::CREDIT->value) {
+                    $creditRecord = Credit::where('invoice_id', $invoice->id)
+                        ->where('invoice_partial_id', $invoicePartial->id)
+                        ->where('amount', '<', 0)
+                        ->first();
+    
+                    if (!$creditRecord) {
+                        throw new Exception('No credit deduction record found for this invoice.');
+                    }
+    
+                    Credit::create([
+                        'company_id' => $creditRecord->company_id,
+                        'client_id' => $creditRecord->client_id,
+                        'invoice_id' => $invoice->id,
+                        'invoice_partial_id' => $invoicePartial->id,
+                        'type' => 'Refund',
+                        'description' => 'Refund from changing invoice client from ' . $request->old_client_id . ' to ' . $request->new_client_id . ' for invoice: ' . $invoice->invoice_number,
+                        'amount' => abs($creditRecord->amount),
+                    ]);
+    
+                    Credit::create([
+                        'company_id' => $creditRecord->company_id,
+                        'client_id' => $request->new_client_id,
+                        'invoice_id' => $invoice->id,
+                        'invoice_partial_id' => $invoicePartial->id,
+                        'type' => 'Invoice',
+                        'description' => 'Payment for ' . $invoice->invoice_number . ' (changed client from ' . $request->old_client_id . ' to ' . $request->new_client_id . ')',
+                        'amount' => $creditRecord->amount,
+                    ]);
+                }     
+   
+                $invoicePartial->client_id = $request->new_client_id;
+                $invoicePartial->save();
+    
+                Log::info('Changing invoice client from ' . $request->old_client_id . ' to ' . $request->new_client_id, [
+                    'invoice_id' => $invoice->id,
+                ]);
+                $invoice->client_id = $request->new_client_id;
+                $invoice->save();
+            });
+
+        } catch (Exception $e) {
+            Log::error('Failed to change invoice client: ' . $e->getMessage(), [
+                'invoice_id' => $invoice->id,
+            ]);
+            return ['error' => 'Failed to change invoice client: ' . $e->getMessage()];
+        }
+
+        return [ 'success' => 'Invoice client successfully changed.' ];
+    }
+
+    private function updateAgentProcess(Request $request){
+
+        $request->validate([
+            'invoice_id' => 'required|exists:invoices,id',
+            'new_agent_id' => 'required|exists:agents,id',
+        ]);
+
+        $invoice = Invoice::find($request->invoice_id);
+        $oldAgent = $invoice->agent;
+        $newAgent = Agent::find($request->new_agent_id);
+
+        try {
+            DB::transaction(function () use ($invoice, $oldAgent, $newAgent) {
+   
+                Log::info('Changing invoice agent from ' . $oldAgent->id . ' to ' . $newAgent->id, [
+                    'invoice_id' => $invoice->id,
+                ]);
+                $invoice->agent_id = $newAgent->id;
+                $invoice->save();
+            });
+
+        } catch (Exception $e) {
+            Log::error('Failed to change invoice agent: ' . $e->getMessage(), [
+                'invoice_id' => $invoice->id,
+            ]);
+            return ['error' => 'Failed to change invoice agent: ' . $e->getMessage()];
+        }
+
+        return [ 'success' => 'Invoice agent successfully changed.' ];
+    }
 }
+

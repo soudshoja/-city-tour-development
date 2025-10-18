@@ -1758,7 +1758,7 @@ class PaymentController extends Controller
         $payments->when(data_get($filters, 'payment_gateway'), fn($q,$v)=>$q->whereIn('payment_gateway',(array)$v));
         $payments->when(data_get($filters, 'status'), fn($q,$v)=>$q->whereIn('status',(array)$v));
 
-        $payments = $payments->orderBy('created_at', 'desc')->paginate(15)->appends($request->only('q'));
+        $payments = $payments->orderBy('id', 'desc')->paginate(15)->appends($request->only('q'));
 
         $payments->getCollection()->transform(function ($payment) {
             if ($payment->payment_gateway === 'MyFatoorah') {
@@ -1906,26 +1906,32 @@ class PaymentController extends Controller
             'payment_gateway' => 'required',
             'payment_method' => 'nullable',
             'amount' => 'required|numeric',
-            'client_id' => 'nullable',
-            'agent_id' => 'nullable',
+            'client_id' => 'required|integer|exists:clients,id',
+            'agent_id' => 'required|integer|exists:agents,id',
             'invoice_id' => 'nullable',
             'invoice_reference' => 'nullable',
             'auth_code' => 'nullable',
             'paymentReference' => 'nullable',
             'trackId' => 'nullable',
             'notes' => 'nullable|string|max:255',
-            'currency' => 'nullable|string|max:3'
+            'currency' => 'nullable|string|max:3',
+            'company_id' => 'nullable|integer|exists:companies,id',
         ]);
 
-        $companyId = null;
-        $user = Auth::user();
+        if (!$request->company_id) {
+            dd('here');
+            $companyId = null;
+            $user = Auth::user();
 
-        if ($user->role_id == Role::COMPANY) {
-            $companyId = $user->company->id;
-        } elseif ($user->role_id == Role::BRANCH) {
-            $companyId = $user->branch->company->id;
-        } elseif ($user->role_id == Role::AGENT) {
-            $companyId = $user->agent->branch->company->id;
+            if ($user->role_id == Role::COMPANY) {
+                $companyId = $user->company->id;
+            } elseif ($user->role_id == Role::BRANCH) {
+                $companyId = $user->branch->company->id;
+            } elseif ($user->role_id == Role::AGENT) {
+                $companyId = $user->agent->branch->company->id;
+            }
+        } else {
+            $companyId = $request->company_id;
         }
 
         $company = $companyId ? Company::find($companyId) : null;

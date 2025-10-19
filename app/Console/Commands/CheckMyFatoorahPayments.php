@@ -7,6 +7,7 @@ use App\Models\Credit;
 use App\Models\Account;
 use App\Models\Transaction;
 use App\Models\JournalEntry;
+use App\Models\MyFatoorahPayment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -36,6 +37,7 @@ class CheckMyFatoorahPayments extends Command
             return self::SUCCESS;
         }
 
+        $updatedPayments = [];
         $bar = $this->output->createProgressBar($payments->count());
         $bar->start();
 
@@ -69,8 +71,19 @@ class CheckMyFatoorahPayments extends Command
             try {
                 DB::beginTransaction();
 
+                $data = $result['raw'] ?? [];
+                $transaction = $data['InvoiceTransactions'][0] ?? [];
+                $invoiceRef = $data['InvoiceReference'] ?? null;
+                $authCode = $transaction['AuthorizationId'] ?? null;
+
+                $payment->invoice_reference = $invoiceRef ?? $payment->invoice_reference;
+                $payment->auth_code = $authCode ?? $payment->auth_code;
+                if ($result['amount'] !== null) {
+                    $payment->amount = (float)$result['amount'];
+                }
+
                 $ud = [];
-                $udRaw = $result['raw']['UserDefinedField'] ?? null;
+                $udRaw = $data['UserDefinedField'] ?? null;
                 if (is_string($udRaw) && $udRaw !== '') {
                     $ud = json_decode($udRaw, true) ?: [];
                 }
@@ -98,7 +111,6 @@ class CheckMyFatoorahPayments extends Command
                 if (!$alreadyPosted) {
                     $companyId  = $payment->agent->branch->company->id;
                     $branchId   = $payment->agent->branch->id;
-                    $invoiceRef = $result['raw']['InvoiceReference'] ?? null;
 
                     $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
                         ->where('company_id', $companyId)
@@ -159,14 +171,33 @@ class CheckMyFatoorahPayments extends Command
                     $paymentGateway->save();
                 }
 
-                if ($result['amount'] !== null) $payment->amount = (float)$result['amount'];
+                $existingMF = MyFatoorahPayment::where('payment_int_id', $payment->id)->first();
+                if (!$existingMF) {
+                    MyFatoorahPayment::create([
+                        'payment_int_id'     => $payment->id,
+                        'payment_id'         => $transaction['PaymentId'] ?? null,
+                        'invoice_id'         => $data['InvoiceId'] ?? null,
+                        'invoice_ref'        => $invoiceRef,
+                        'invoice_status'     => $data['InvoiceStatus'] ?? null,
+                        'customer_reference' => $process === 'invoice' ? ($payment->invoice?->invoice_number ?? null) : $payment->voucher_number,
+                        'payload'            => $data,
+                    ]);
+                }
+
                 $payment->status = 'completed';
                 $payment->save();
+
+                $updatedPayments[] = [
+                    'id' => $payment->id,
+                    'voucher' => $payment->voucher_number,
+                    'reference' => $invoiceRef,
+                    'client' => $payment->client->full_name ?? 'Not Set',
+                ];
 
                 DB::commit();
             } catch (\Throwable $e) {
                 DB::rollBack();
-                Log::error('Failed to complete accounting; payment left uncompleted', [
+                Log::error('Failed to finalize MyFatoorah payment', [
                     'payment_id' => $payment->id,
                     'invoice'    => $payment->payment_reference,
                     'error'      => $e->getMessage(),
@@ -179,6 +210,17 @@ class CheckMyFatoorahPayments extends Command
         $bar->finish();
         $this->newLine();
         $this->info('MyFatoorah status check complete.');
+        $this->info('-----------------------------------------');
+        $this->info('Payments updated to status "completed": ' . count($updatedPayments));
+        $this->info('-----------------------------------------');
+
+        if (!empty($updatedPayments)) {
+            foreach ($updatedPayments as $p) {
+                $this->line("- Voucher: {$p['voucher']} | Client: {$p['client']} | InvoiceRef: {$p['reference']}");
+            }
+        } else {
+            $this->line('No payments were updated.');
+        }
         return self::SUCCESS;
     }
 
@@ -201,32 +243,24 @@ class CheckMyFatoorahPayments extends Command
             'Content-Type'  => 'application/json',
         ])->post("{$baseUrl}/getPaymentStatus", [
             'Key'     => $invoiceId,
-            'KeyType' => "InvoiceId",
+            'KeyType' => 'InvoiceId',
         ]);
 
-        Log::info('getPaymentStatusMyFatoorah Response: ', $response->json());
+        Log::info('getPaymentStatusMyFatoorah Response: ' . json_encode($response->json()));
 
-        if (!$response->successful() || !($response->json('IsSuccess'))) {
-            $message = $response->json()['Message'] ?? 'Unknown error';
-
-            Log::error('Failed to fetch payment status from MyFatoorah', [
-                'invoiceId' => $invoiceId,
-                'response' => $response->body()
-            ]);
-
+        if (!$response->successful() || !$response->json('IsSuccess')) {
             return [
-                'status' => 'error',
-                'message' => $message
+                'success' => false,
+                'message' => $response->json('Message') ?? 'Failed API response',
             ];
         }
 
-        $data = $response->json('Data') ?? [];
         return [
-            'success'             => true,
-            'invoice_status' => $data['InvoiceStatus'] ?? null,
-            'amount'         => $data['InvoiceValue'] ?? null,
-            'invoice_id'     => $data['InvoiceId'] ?? null,
-            'raw'            => $data,
+            'success'        => true,
+            'invoice_status' => $response->json('Data.InvoiceStatus'),
+            'amount'         => $response->json('Data.InvoiceValue'),
+            'invoice_id'     => $response->json('Data.InvoiceId'),
+            'raw'            => $response->json('Data'),
         ];
     }
 }

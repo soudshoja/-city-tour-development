@@ -614,13 +614,15 @@ class InvoiceController extends Controller
             ->get();
 
         $invoicePaymentTypes = InvoicePaymentType::labels();
-        $clientCredit = $invoice->client ? Credit::getTotalCreditsByClient($invoice->client->id) : 0;
+
+        $clientCredit = Credit::getTotalCreditsByClient($invoice->client->id);
+        $isCreditDeducted = Credit::where('client_id', $invoice->client_id)->where('invoice_id', $invoice->id)->exists();
 
         session()->forget('shortage_info');
 
-        if($clientCredit < $invoice->amount){
+        if($invoice->payment_type == InvoicePaymentType::CREDIT->value && !$isCreditDeducted ? $clientCredit < $invoice->amount : false){
 
-            $shortage = $invoice->amount;
+            $shortage = $invoice->amount - $clientCredit;
 
             session(['shortage_info' => [
                 'available_credit' => $clientCredit,
@@ -3264,6 +3266,29 @@ class InvoiceController extends Controller
             }
 
         }
+
+        $invoice->refresh();
+
+        $invoicePaidByOtherClientCredit = Credit::where('invoice_id', $invoice->id)
+            ->where('amount', '<' , 0)
+            ->where('client_id', '!=', $invoice->client_id)
+            ->get();
+        
+        if($invoicePaidByOtherClientCredit->isNotEmpty()){
+            foreach($invoicePaidByOtherClientCredit as $creditRecord){
+                Log::info('Refunded credit to client ' . $creditRecord->client->full_name . ' for invoice ' . $invoice->invoice_number);
+
+                $refundCredit = Credit::create([
+                    'company_id' => $creditRecord->company_id,
+                    'client_id' => $creditRecord->client_id,
+                    'invoice_id' => $invoice->id,
+                    'type' => 'Invoice Refund',
+                    'description' => 'Refund for invoice ' . $invoice->invoice_number . ' due to client change.',
+                    'amount' => abs($creditRecord->amount),
+                ]);
+            }
+        }
+
 
         $return = redirect()->back();
 

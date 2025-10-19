@@ -4216,7 +4216,7 @@ class TaskController extends Controller
         $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
 
         $transaction = Transaction::create([
-            'branch_id' => $originalTask->agent->branch_id,
+            'branch_id' => $originalTask->agent->branch_id ?? $originalTask->branch_id,
             'company_id' => $originalTask->company_id,
             'entity_id' => $originalTask->company_id,
             'entity_type' => 'company',

@@ -181,7 +181,12 @@
                                 </td>
                                 <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
                                     @php
-                                        $payment_reference = $payment->invoice_ref ? $payment->invoice_ref : ($payment->payment_reference ?? 'N/A');
+                                        $payment_reference = $payment->myFatoorahPayment ? $payment->myFatoorahPayment->invoice_ref : $payment->payment_reference;
+
+                                        if($payment_reference === null) {
+                                            $payment_reference = 'N/A';
+                                        }
+
                                         $isTrimmed = strlen($payment_reference) > 15;
                                         $trimmedValue = \Illuminate\Support\Str::limit($payment_reference, 15);
                                     @endphp

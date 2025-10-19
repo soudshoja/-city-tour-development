@@ -4,10 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use InvalidArgumentException;
 
 class Credit extends Model
 {
     use HasFactory;
+
+    public const INVOICE = 'Invoice';
+    public const TOPUP = 'Topup';
+    public const REFUND = 'Refund';
+    public const INVOICE_REFUND = 'Invoice Refund';
 
     protected $fillable = [
         'company_id',
@@ -23,6 +29,16 @@ class Credit extends Model
         'created_at',
         'updated_at',
     ];
+
+    public static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($credit) {
+            in_array($credit->type, [self::INVOICE, self::TOPUP, self::INVOICE_REFUND]) or
+                throw new InvalidArgumentException("Invalid credit type: {$credit->type}");
+        });
+    }
 
     public function company()
     {

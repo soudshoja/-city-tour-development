@@ -492,9 +492,9 @@
                                             <span class="badge badge-outline-success">{{ $invoice->status }}</span>
                                         </span>
                                         @elseif (in_array($invoice->status, ['paid']))
-                                        <a href="{{ route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank">
-                                            <span class="badge badge-outline-success cursor-pointer">{{ $invoice->status }}</span>
-                                        </a>
+                                        <!-- <a href="{{ route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank"> -->
+                                            <span class="badge badge-outline-success">{{ $invoice->status }}</span>
+                                        <!-- </a> -->
                                         @elseif ($invoice->status === 'paid by refund')
                                         <span class="badge badge-outline-success">{{ $invoice->status }}</span>
                                         @else

@@ -173,7 +173,6 @@ class PaymentController extends Controller
         return sprintf('VOU-%s-%05d', $year, $sequence);
     }
 
-
     public function initiatePayment($data): JsonResponse
     {
         $invoice = $data['invoice'];
@@ -519,7 +518,6 @@ class PaymentController extends Controller
         }
     }
     
-
     public function process(Request $request)
     {
         Log::info('Tap process:', ['process' => $request]);
@@ -2252,8 +2250,8 @@ class PaymentController extends Controller
                 return $this->paymentLinkReinitiate($payment->payment_reference);
             } elseif (in_array(strtolower($payment->status), ['completed', 'paid'])) {
                 Log::info('Initiate payment ignored: payment already completed', ['payment_id' => $payment->id]);
-                $route = $this->publicReceiptRoute($payment, $process);
-                return redirect()->route($route['name'], $route['params'])->with('success', 'Payment already completed.');
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success');
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
             }
 
             //filter record
@@ -3093,6 +3091,25 @@ class PaymentController extends Controller
                 $selectedPartialIds = $userDefinedField['invoice_partial_id'] ?? [];
 
                 if (!$invoiceId || $invoiceStatus !== 'paid') {
+                    $payment = Payment::where('payment_reference', $invoiceId)->orWhere('voucher_number', $voucherNumber)->first();
+                    if ($payment) {
+                        $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed');
+
+                        $this->storeNotification([
+                            'user_id' => $receiptInfo['agent']->user_id,
+                            'title'   => $receiptInfo['title'],
+                            'message' => $receiptInfo['message'],
+                        ]);
+
+                        (new ResayilController())->message(
+                            $receiptInfo['agent']->phone_number,
+                            $receiptInfo['agent']->country_code,
+                            $receiptInfo['message']
+                        );
+
+                        return redirect()->to($receiptInfo['url'])->with('error', 'Payment was not completed or was cancelled.');
+                    }
+
                     return redirect()->route('payment.failed')->with('error', 'Payment was not completed.');
                 }
 
@@ -3103,14 +3120,12 @@ class PaymentController extends Controller
                     return redirect()->route('payment.failed')->with('error', 'Payment record not found.');
                 }
 
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success');
+
                 if ($payment->status === 'completed') {
                     Log::info('Callback ignored: payment already completed', ['payment_id' => $payment->id]);
-                    $route = $this->publicReceiptRoute($payment, $process);
-                    return redirect()->route($route['name'], $route['params'])->with('success', 'Payment already completed.');
+                    return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
                 }
-
-                $receiptInfo = $this->publicReceiptNotice($payment, $process);
-                $route = $this->publicReceiptRoute($payment, $process);
 
                 if ($process === 'topup') {
                     $clientController = new ClientController;
@@ -3121,14 +3136,14 @@ class PaymentController extends Controller
                             'message' => $addCreditResponse['error'],
                             'payment_id' => $paymentId,
                         ]);
-                        return redirect()->route($route['name'], $route['params'])->with('error', $addCreditResponse['error']);
+                        return redirect()->to($receiptInfo['url'])->with('error', $addCreditResponse['error']);
                     }
 
                     $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
                         ->where('company_id', $payment->agent->branch->company->id)
                         ->first();
                     if (!$liabilitiesAccount) {
-                        return redirect()->route($route['name'], $route['params'])->with('error', 'Liabilities account not found');
+                        return redirect()->to($receiptInfo['url'])->with('error', 'Liabilities account not found');
                     }
 
                     $clientAdvance = Account::where('name', 'Client')
@@ -3136,7 +3151,7 @@ class PaymentController extends Controller
                         ->where('root_id', $liabilitiesAccount->id)
                         ->first();
                     if (!$clientAdvance) {
-                        return redirect()->route($route['name'], $route['params'])->with('error', 'Client advance account not found');
+                        return redirect()->to($receiptInfo['url'])->with('error', 'Client advance account not found');
                     }
 
                     $paymentGateway = Account::where('name', 'Payment Gateway')
@@ -3144,7 +3159,7 @@ class PaymentController extends Controller
                             ->where('parent_id', $clientAdvance->id)
                             ->first();
                     if (!$paymentGateway) {
-                        return redirect()->route($route['name'], $route['params'])->with('error', 'Payment Gateway account not found');
+                        return redirect()->to($receiptInfo['url'])->with('error', 'Payment Gateway account not found');
                     }
 
                     DB::beginTransaction();
@@ -3186,7 +3201,7 @@ class PaymentController extends Controller
                             'message' => $e->getMessage(),
                             'trace' => $e->getTraceAsString(),
                         ]);
-                        return redirect()->route($route['name'], $route['params'])->with('error', 'Payment cannot be updated');
+                        return redirect()->to($receiptInfo['url'])->with('error', 'Payment cannot be updated');
                     }
                     DB::commit();
                 }
@@ -3246,7 +3261,7 @@ class PaymentController extends Controller
                             ->first();
 
                         if (!$chargeRecord) {
-                            return redirect()->route($route['name'], $route['params'])->with('error', 'Charge account not configured');
+                            return redirect()->to($receiptInfo['url'])->with('error', 'Charge account not configured');
                         }
 
                         $bankPaymentFee = Account::find($chargeRecord->acc_fee_bank_id);
@@ -3379,7 +3394,7 @@ class PaymentController extends Controller
                     } catch (Exception $e) {
                         DB::rollBack();
                         Log::error('Payment processing failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-                        return redirect()->route($route['name'], $route['params'])->with('error', 'Error: ' . $e->getMessage());
+                        return redirect()->to($receiptInfo['url'])->with('error', 'Error: ' . $e->getMessage());
                     }
                 }
 
@@ -3396,7 +3411,7 @@ class PaymentController extends Controller
                     $agent->country_code,
                     $receiptInfo['message']
                 );
-                return redirect()->route($route['name'], $route['params'])->with('success', 'Payment successful!');
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
             } finally {
                 optional($lock)->release();
             }
@@ -3415,6 +3430,7 @@ class PaymentController extends Controller
         ]);
 
         $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
+        $payment = null;
 
         // Optionally update payment status as failed or cancelled
         if ($paymentId) {
@@ -3423,6 +3439,10 @@ class PaymentController extends Controller
                 $payment->status = 'failed';
                 $payment->save();
             }
+        }
+
+        if (!$payment) {
+            return redirect()->route('payment.failed')->with('error', 'Payment was not completed or was cancelled.');
         }
 
         if ($request->has('invoice_id')) {
@@ -3442,26 +3462,6 @@ class PaymentController extends Controller
                 'reference_type' => 'Invoice',
                 'transaction_date' => now(),
             ]);
-
-            $agent = $invoice->agent;
-            $client = $invoice->client;
-            $message = 'Your client ' . $client->full_name . ' attempted to pay invoice ' . $invoice->invoice_number . ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.';
-
-            $this->storeNotification([
-                'user_id' => $agent->user_id,
-                'title' => 'Client '. $client->full_name . "'s Payment Failed",
-                'message' => $message,
-            ]);
-
-            $resayilController = new ResayilController();
-
-            $resayilController->message(
-                $agent->phone_number,
-                $agent->country_code,
-                $message,
-            );
-
-            return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])->with('error', 'Payment failed');
         }
 
         if ($request->has('payment_id')) {
@@ -3480,33 +3480,24 @@ class PaymentController extends Controller
                 'reference_type' => 'Payment',
                 'transaction_date' => now(),
             ]);
-
-            $agent = $payment->agent;
-            $client = $payment->client;
-            $message = 'Your client ' . $client->full_name . ' attempted to top up their account using payment link ' . $payment->voucher_number . ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.';
-
-            $this->storeNotification([
-                'user_id' => $agent->user_id,
-                'title' => 'Client '. $client->full_name . "'s Topup Failed",
-                'message' => $message,
-            ]);
-
-            $resayilController = new ResayilController();
-
-            $resayilController->message(
-                $agent->phone_number,
-                $agent->country_code,
-                $message,
-            );
-        }
-
-        if (!isset($payment) || !$payment) {
-            return redirect()->route('payment.failed')->with('error', 'Payment was not completed or was cancelled.');
         }
 
         $process = $payment->invoice ? 'invoice' : 'topup';
-        $route = $this->publicReceiptRoute($payment, $process);
-        return redirect()->route($route['name'], $route['params'])->with('error', 'Payment was not completed or was cancelled.');
+        $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed');
+
+        $this->storeNotification([
+            'user_id' => $receiptInfo['agent']->user_id,
+            'title'   => $receiptInfo['title'],
+            'message' => $receiptInfo['message'],
+        ]);
+
+        (new ResayilController())->message(
+            $receiptInfo['agent']->phone_number,
+            $receiptInfo['agent']->country_code,
+            $receiptInfo['message']
+        );
+
+        return redirect()->to($receiptInfo['url'])->with('error', 'Payment was not completed or was cancelled.');
     }
 
     public function paymentUpdateLink($paymentId, Request $request)
@@ -3632,6 +3623,41 @@ class PaymentController extends Controller
                     $payment->status = 'completed';
                     $payment->save();
 
+                    $invoiceData = data_get($payload, 'Data.Invoice', []);
+                    $transactionData = data_get($payload, 'Data.Transaction', []);
+                    $userDefinedField = json_decode(data_get($invoiceData, 'UserDefinedField', '{}'), true) ?? [];
+
+                    $process = $userDefinedField['process'] ?? 'invoice';
+                    $customerReference = $process === 'invoice' ? ($payment->invoice?->invoice_number ?? null) : $payment->voucher_number;
+
+                    $existingMF = MyFatoorahPayment::where('payment_int_id', $payment->id)->first();
+                    if (!$existingMF) {
+                        MyFatoorahPayment::create([
+                            'payment_int_id' => $payment->id,
+                            'payment_id' => data_get($transactionData, 'PaymentId'),
+                            'invoice_id' => data_get($invoiceData, 'Id'),
+                            'invoice_ref' => data_get($invoiceData, 'Reference'),
+                            'invoice_status'  => data_get($invoiceData, 'Status'),
+                            'customer_reference' => $customerReference,
+                            'payload' => $payload,
+                        ]);
+
+                        Log::info('MyFatoorahPayment created from webhook', [
+                            'payment_id' => $payment->id,
+                            'invoice_id' => data_get($invoiceData, 'Id'),
+                            'reference' => data_get($invoiceData, 'Reference'),
+                        ]);
+                    } else {
+                        $existingMF->update([
+                            'invoice_status' => data_get($invoiceData, 'Status'),
+                            'payload' => $payload,
+                        ]);
+                        Log::info('MyFatoorahPayment already exists for webhook payment', [
+                            'payment_id' => $payment->id,
+                            'invoice_id' => data_get($invoiceData, 'Id'),
+                        ]);
+                    }
+
                     $paidPayment = Payment::where('status', 'completed')
                                     ->whereDoesntHave('credit')
                                     ->get();
@@ -3654,7 +3680,7 @@ class PaymentController extends Controller
                         }
                     }
 
-                    $receiptInfo = $this->publicReceiptNotice($payment, $payment->invoice ? 'invoice' : 'topup');
+                    $receiptInfo = $this->publicReceiptNotice($payment, $payment->invoice ? 'invoice' : 'topup', 'success');
                     $agent = $receiptInfo['agent'];
 
                     $this->storeNotification([
@@ -3677,26 +3703,21 @@ class PaymentController extends Controller
                         'new_status' => $invoiceStatus
                     ]);
                 } else {
-
                     $paymentType = $payment->invoice ? 'invoice' : 'topup';
 
                     if($paymentType === 'invoice' ){
-                        $agent = $payment->invoice->agent;
-                        $client = $payment->invoice->client;
-                        $message = 'Your client ' . $client->full_name . ' attempted to pay invoice ' . $payment->invoice->invoice_number . ' but the payment status is ' . $invoiceStatus . '. Please follow up with your client to resolve the issue.';
+                        $receiptInfo = $this->publicReceiptNotice($payment, $payment->invoice ? 'invoice' : 'topup', 'failed');
 
                         $this->storeNotification([
-                            'user_id' => $agent->user_id,
-                            'title' => 'Client '. $client->full_name . "'s Payment Issue",
-                            'message' => $message,
+                            'user_id' => $receiptInfo['agent']->user_id,
+                            'title'   => $receiptInfo['title'],
+                            'message' => $receiptInfo['message'],
                         ]);
 
-                        $resayilController = new ResayilController();
-
-                        $resayilController->message(
-                            $agent->phone_number,
-                            $agent->country_code,
-                            $message,
+                        (new ResayilController())->message(
+                            $receiptInfo['agent']->phone_number,
+                            $receiptInfo['agent']->country_code,
+                            $receiptInfo['message']
                         );
                     }
 
@@ -3726,7 +3747,8 @@ class PaymentController extends Controller
         return hash_hmac('sha256', $data, $secretKey);
     }
 
-    public function handleUPaymentCallback(Request $request) {
+    public function handleUPaymentCallback(Request $request)
+    {
         try {
             Log::info('UPayment callback received', ['request' => $request->all()]);
 
@@ -3748,8 +3770,8 @@ class PaymentController extends Controller
 
             if ($payment->status === 'completed') {
                 Log::info('Callback ignored: payment already completed', ['payment_id' => $payment->id]);
-                $route = $this->publicReceiptRoute($payment, $process);
-                return redirect()->route($route['name'], $route['params'])->with('success', 'Payment already completed.');
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success');
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
             }
 
             $uPayment = new UPayment();
@@ -3789,8 +3811,21 @@ class PaymentController extends Controller
                     'payment_date' => $transaction['payment_date'] ?? $transaction['transaction_date'] ?? now(),
                     'payload' => $statusResponse,
                 ]);
-                $route = $this->publicReceiptRoute($payment, $process);
-                return redirect()->route($route['name'], $route['params'])->with('error', 'Payment was not completed.');
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed');
+
+                $this->storeNotification([
+                    'user_id' => $receiptInfo['agent']->user_id,
+                    'title'   => $receiptInfo['title'],
+                    'message' => $receiptInfo['message'],
+                ]);
+
+                (new ResayilController())->message(
+                    $receiptInfo['agent']->phone_number,
+                    $receiptInfo['agent']->country_code,
+                    $receiptInfo['message']
+                );
+
+                return redirect()->to($receiptInfo['url'])->with('error', 'Payment was not completed or was cancelled.');
             }
 
             Log::info('Processing UPayment', [
@@ -3922,23 +3957,21 @@ class PaymentController extends Controller
                     $this->createUPaymentJournalEntries($payment, $totalPaidAmount);
                 }
             });
-            $receiptInfo = $this->publicReceiptNotice($payment, $process);
-            $route = $this->publicReceiptRoute($payment, $process);
-            $agent = $payment->agent;
+            $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success');
 
             $this->storeNotification([
-                'user_id' => $agent->user_id,
+                'user_id' => $receiptInfo['agent']->user_id,
                 'title'   => $receiptInfo['title'],
                 'message' => $receiptInfo['message'],
             ]);
 
             (new ResayilController())->message(
-                $agent->phone_number,
-                $agent->country_code,
+                $receiptInfo['agent']->phone_number,
+                $receiptInfo['agent']->country_code,
                 $receiptInfo['message']
             );
 
-            return redirect()->route($route['name'], $route['params'])->with('success', 'Payment successful!');
+            return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
         } catch (\Exception $e) {
             Log::error('UPayment callback exception', [
                 'message' => $e->getMessage(),
@@ -4122,8 +4155,21 @@ class PaymentController extends Controller
 
         if ($payment) {
             $process = $payment->invoice ? 'invoice' : 'topup';
-            $route = $this->publicReceiptRoute($payment, $process);
-            return redirect()->route($route['name'], $route['params'])->with('error', 'Payment was not completed or was cancelled.');
+            $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed');
+
+            $this->storeNotification([
+                'user_id' => $receiptInfo['agent']->user_id,
+                'title'   => $receiptInfo['title'],
+                'message' => $receiptInfo['message'],
+            ]);
+
+            (new ResayilController())->message(
+                $receiptInfo['agent']->phone_number,
+                $receiptInfo['agent']->country_code,
+                $receiptInfo['message']
+            );
+
+            return redirect()->to($receiptInfo['url'])->with('error', 'Payment was not completed or was cancelled.');
         }
 
         return redirect()->route('payment.failed');
@@ -4178,11 +4224,33 @@ class PaymentController extends Controller
             $payment->save();
 
             // Generate public receipt data (URL, title, message) for redirect and notifications
-            $receiptInfo = $this->publicReceiptNotice($payment, $process);
-            $route = $this->publicReceiptRoute($payment, $process);
+            $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success');
         } else {
-            Log::error('Response from Hesabe failed');
-            return redirect()->route('payment.failed')->with('error', 'Something went wrong. Please contact support team.');
+            Log::error('Response from Hesabe failed', ['response' => $responseData]);
+
+            $voucherNumber = $responseData['response']['orderReferenceNumber'] ?? null;
+            $payment = $voucherNumber ? Payment::where('voucher_number', $voucherNumber)->first() : null;
+
+            if ($payment) {
+                $process = $payment->invoice ? 'invoice' : 'topup';
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed');
+
+                $this->storeNotification([
+                    'user_id' => $receiptInfo['agent']->user_id,
+                    'title'   => $receiptInfo['title'],
+                    'message' => $receiptInfo['message'],
+                ]);
+
+                (new ResayilController())->message(
+                    $receiptInfo['agent']->phone_number,
+                    $receiptInfo['agent']->country_code,
+                    $receiptInfo['message']
+                );
+
+                return redirect()->to($receiptInfo['url'])->with('error', 'Payment failed or cancelled.');
+            }
+
+            return redirect()->route('payment.failed')->with('error', 'Payment failed.');
         }
 
         DB::beginTransaction();
@@ -4222,7 +4290,7 @@ class PaymentController extends Controller
                     Log::error('Failed to add credit to client', [
                         'payment_reference' => $data['transactionId'],
                     ]);
-                    return redirect()->route($route['name'], $route['params'])->with('error', $addCreditResponse['error']);
+                    return redirect()->to($receiptInfo['url'])->with('error', $addCreditResponse['error']);
                 }
 
                 $creditCoa = $this->creditCOA($payment);
@@ -4230,7 +4298,7 @@ class PaymentController extends Controller
                     Log::error('Failed to create journal entry for failed payment', [
                         'message' => $creditCoa['message'],
                     ]);
-                    return redirect()->route($route['name'], $route['params'])->with('error', $creditCoa['message']);
+                    return redirect()->to($receiptInfo['url'])->with('error', $creditCoa['message']);
                 }
             } elseif ($process === 'invoice') {
                 Log::info('Starting to process the invoice for successfull callback from Hesabe'); 
@@ -4251,7 +4319,7 @@ class PaymentController extends Controller
                 $invoiceCoa = $this->invoiceCOA($payment, $selectedPartialIds, $finalPaidAmount);
                 if (!$invoiceCoa['success']) {
                     Log::error('Failed to create journal entry for invoice payment', ['message' => $invoiceCoa['message']]);
-                    return redirect()->route($route['name'], $route['params'])->with('error', $invoiceCoa['message']);
+                    return redirect()->to($receiptInfo['url'])->with('error', $invoiceCoa['message']);
                 }
             }
 
@@ -4275,10 +4343,10 @@ class PaymentController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->route($route['name'], $route['params'])->with('error', 'Payment to Hesabe failed');
+            return redirect()->to($receiptInfo['url'])->with('error', 'Payment to Hesabe failed');
         }
 
-        return redirect()->route($route['name'], $route['params'])->with('success', 'Payment successful!');
+        return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
     }
 
     public function handleHesabeFailure(Request $request)
@@ -4363,8 +4431,21 @@ class PaymentController extends Controller
 
             if ($payment) {
                 $process = $payment && $payment->invoice_id ? 'invoice' : 'topup';
-                $route = $this->publicReceiptRoute($payment, $process);
-                return redirect()->route($route['name'], $route['params'])->with('error', 'Payment failed — ' . $creditCoa['message']);
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed');
+
+                $this->storeNotification([
+                    'user_id' => $receiptInfo['agent']->user_id,
+                    'title'   => $receiptInfo['title'],
+                    'message' => $receiptInfo['message'],
+                ]);
+
+                (new ResayilController())->message(
+                    $receiptInfo['agent']->phone_number,
+                    $receiptInfo['agent']->country_code,
+                    $receiptInfo['message']
+                );
+
+                return redirect()->to($receiptInfo['url'])->with('error', 'Payment failed — ' . ($creditCoa['message'] ?? 'Transaction declined.'));
             }
 
             return redirect()->route('payment.failed')->with('error', 'Payment failed.');
@@ -5023,40 +5104,66 @@ class PaymentController extends Controller
             'payment_gateway' => 'Hesabe',
             'payment_method_id' => $paymentMethodId,
         ]);
-    }
+    }   
 
-    private function publicReceiptRoute(Payment $payment, ?string $process = null): array
+    private function publicReceiptNotice(Payment $payment, ?string $process = null, string $status = 'success'): array
     {
         $isInvoice = $process === 'invoice' || (!empty($payment->invoice_id) && $process !== 'topup');
-    
-        return $isInvoice
-            ? ['name' => 'invoice.show', 'params' => [
-                    'companyId'     => $payment->agent->branch->company_id,
+
+        $route = $isInvoice
+            ? [
+                'name' => 'invoice.show',
+                'params' => [
+                    'companyId' => $payment->agent->branch->company_id,
                     'invoiceNumber' => $payment->invoice->invoice_number,
-            ]]
-            : ['name' => 'payment.link.show', 'params' => [
-                    'companyId'     => $payment->agent->branch->company_id,
+                ],
+            ]
+            : [
+                'name' => 'payment.link.show',
+                'params' => [
+                    'companyId' => $payment->agent->branch->company_id,
                     'voucherNumber' => $payment->voucher_number,
-            ]];
-    }    
+                ],
+            ];
 
-    private function publicReceiptNotice(Payment $payment, ?string $process = null): array
-    {
-        $isInvoice = $process === 'invoice' || (!empty($payment->invoice_id) && $process !== 'topup');
-        $route = $this->publicReceiptRoute($payment, $process);
         $url = route($route['name'], $route['params']);
+
+        if ($status === 'success') {
+            return $isInvoice
+                ? [
+                    'agent'  => $payment->invoice->agent,
+                    'title'   => $payment->invoice->invoice_number . ' paid successfully',
+                    'message' => 'Your client ' . $payment->client->full_name . ' has paid invoice ' . $payment->invoice->invoice_number .
+                                ".\n\nCheck the link : " . $url,
+                    'url' => $url,
+                    'route' => $route,
+                ]
+                : [
+                    'agent'  => $payment->agent,
+                    'title'   => 'Client ' . $payment->client->full_name . ' Topup Successful',
+                    'message' => 'Your client ' . $payment->client->full_name . ' has successfully topped up ' . number_format($payment->amount, 3) .
+                                ' ' . $payment->currency . ' using voucher ' . $payment->voucher_number . ".\n\nCheck the link : " . $url,
+                    'url' => $url,
+                    'route' => $route,
+                ];
+        }
 
         return $isInvoice
             ? [
-                'agent'  => $payment->invoice->agent,
-                'title'   => $payment->invoice->invoice_number . ' paid successfully',
-                'message' => 'Your client ' . $payment->client->full_name . ' has paid invoice ' . $payment->invoice->invoice_number . ".\n\nCheck the link : " . $url,
+                'agent' => $payment->invoice->agent,
+                'title' => 'Client ' . $payment->client->full_name . "'s Payment Failed",
+                'message' => 'Your client ' . $payment->client->full_name . ' attempted to pay invoice ' . $payment->invoice->invoice_number .
+                            ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.' . "\n\nCheck the link : " . $url,
+                'url' => $url,
+                'route' => $route,
             ]
             : [
-                'agent'  => $payment->agent,
-                'title'   => 'Client ' . $payment->client->full_name . ' Topup Successful',
-                'message' => 'Your client ' . $payment->client->full_name . ' has successfully topped up ' . number_format($payment->amount, 3) .
-                             ' ' . $payment->currency . ' using voucher ' . $payment->voucher_number . ".\n\nCheck the link : " . $url,
+                'agent' => $payment->agent,
+                'title' => 'Client ' . $payment->client->full_name . "'s Topup Failed",
+                'message' => 'Your client ' . $payment->client->full_name . ' attempted to top up their account using payment link ' . $payment->voucher_number .
+                            ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.' . "\n\nCheck the link : " . $url,
+                'url' => $url,
+                'route' => $route,
             ];
     }
 }

@@ -132,10 +132,6 @@
                             <td class="py-3 px-4">Invoice Reference</td>
                             <td class="py-3 px-4 text-right">{{ $invoiceRef }}</td>
                         </tr>
-                        <tr>
-                            <td class="py-3 px-4">Auth Code</td>
-                            <td class="py-3 px-4 text-right">{{ $authorizationId }}</td>
-                        </tr>
                     @endif
                 @endif
             </tbody>

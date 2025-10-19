@@ -457,13 +457,13 @@
                                 <!-- Paid Date -->
                                 <div>
                                     <label for="paid_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Paid Date
+                                        Paid Date & Time
                                     </label>
                                     <input id="paid_date"
                                         class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                                        type="date"
+                                        type="datetime-local"
                                         name="paid_date"
-                                        value="{{ old('paid_date', $invoice->paid_date ? \Carbon\Carbon::parse($invoice->paid_date)->format('Y-m-d') : '') }}" />
+                                        value="{{ old('paid_date', $invoice->paid_date ? \Carbon\Carbon::parse($invoice->paid_date)->format('Y-m-d\TH:i') : '') }}" />
                                     @error('paid_date')
                                     <span class="text-red-500 text-sm mt-1">{{ $message }}</span>
                                     @enderror

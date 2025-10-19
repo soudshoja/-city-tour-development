@@ -620,9 +620,13 @@ class InvoiceController extends Controller
 
         session()->forget('shortage_info');
 
-        if($invoice->payment_type == InvoicePaymentType::CREDIT->value && !$isCreditDeducted ? $clientCredit < $invoice->amount : false){
+        if($invoice->payment_type == InvoicePaymentType::CREDIT->value && $clientCredit < $invoice->amount){
 
-            $shortage = $invoice->amount - $clientCredit;
+            if($isCreditDeducted){
+                $shortage = $clientCredit;
+            } else {
+                $shortage = $invoice->amount - $clientCredit;
+            }
 
             session(['shortage_info' => [
                 'available_credit' => $clientCredit,
@@ -3070,7 +3074,7 @@ class InvoiceController extends Controller
             'invoice_details.*' => 'required|array',
             'invoice_date' => 'nullable|date',
             'due_date' => 'nullable|date',
-            'paid_date' => 'nullable|date',
+            'paid_date' => 'nullable|date_format:Y-m-d\TH:i',
             'payment_type' => 'nullable|string|in:full,partial,split,credit,cash',
             'status' => 'nullable|string|in:paid,unpaid',
             'client_id' => 'nullable|integer|exists:clients,id',
@@ -3278,14 +3282,41 @@ class InvoiceController extends Controller
             foreach($invoicePaidByOtherClientCredit as $creditRecord){
                 Log::info('Refunded credit to client ' . $creditRecord->client->full_name . ' for invoice ' . $invoice->invoice_number);
 
-                $refundCredit = Credit::create([
+                $existingRefund = Credit::where('invoice_id', $invoice->id)
+                    ->where('client_id', $creditRecord->client_id)
+                    ->where('type', Credit::INVOICE_REFUND)
+                    ->where('amount', abs($creditRecord->amount));
+
+                if ($creditRecord->invoice_partial_id !== null) {
+                    $existingRefund = $existingRefund->where('invoice_partial_id', $creditRecord->invoice_partial_id);
+                }
+
+                $existingRefund = $existingRefund->first();
+
+                if($existingRefund){
+                    Log::info('Refund credit record already exists for client ' . $creditRecord->client->full_name . ' for invoice ' . $invoice->invoice_number);
+                    continue;
+                }
+
+                $data = [
                     'company_id' => $creditRecord->company_id,
                     'client_id' => $creditRecord->client_id,
                     'invoice_id' => $invoice->id,
                     'type' => 'Invoice Refund',
                     'description' => 'Refund for invoice ' . $invoice->invoice_number . ' due to client change.',
                     'amount' => abs($creditRecord->amount),
-                ]);
+                ];
+
+                if ($creditRecord->invoice_partial_id !== null) {
+                    $data['invoice_partial_id'] = $creditRecord->invoice_partial_id;
+                }
+
+                try {
+                    Credit::create($data);
+                } catch (Exception $e) {
+                    Log::error('Failed to create refund credit record for client ' . $creditRecord->client->full_name . ' for invoice ' . $invoice->invoice_number . ': ' . $e->getMessage());
+                    continue;
+                }
             }
         }
 
@@ -3945,8 +3976,8 @@ class InvoiceController extends Controller
                     'company_id' => $creditRecord->company_id,
                     'client_id' => $creditRecord->client_id,
                     'invoice_id' => $invoice->id,
-                    'type' => 'Refund',
-                    'description' => 'Refund from changing payment type from Credit to Cash for invoice: ' . $invoice->invoice_number,
+                    'type' => 'Invoice Refund',
+                    'description' => 'Invoice refund from changing payment type from Credit to Cash for invoice: ' . $invoice->invoice_number,
                     'amount' => abs($creditRecord->amount),
                 ]);
 
@@ -4078,8 +4109,9 @@ class InvoiceController extends Controller
                     'company_id' => $creditRecord->company_id,
                     'client_id' => $creditRecord->client_id,
                     'invoice_id' => $invoice->id,
-                    'type' => 'Refund',
-                    'description' => 'Refund from changing payment type from Credit to Full for invoice: ' . $invoice->invoice_number,
+                    'invoice_partial_id' => $creditPartial->id,
+                    'type' => 'Invoice Refund',
+                    'description' => 'Invoice refund from changing payment type from Credit to Full for invoice: ' . $invoice->invoice_number,
                     'amount' => abs($creditRecord->amount),
                 ]);
 
@@ -4243,8 +4275,12 @@ class InvoiceController extends Controller
             throw new Exception('No paid invoice partial found for this invoice.');
         }
 
+
+        $oldClient = Client::find($request->old_client_id);
+        $newClient = Client::find($request->new_client_id);
+
         try {
-            DB::transaction(function () use ($invoice, $invoicePartial, $request) {
+            DB::transaction(function () use ($invoice, $invoicePartial, $request, $oldClient, $newClient) {
  
                 if ($invoice->payment_type == InvoicePaymentType::CREDIT->value) {
                     $creditRecord = Credit::where('invoice_id', $invoice->id)
@@ -4255,14 +4291,15 @@ class InvoiceController extends Controller
                     if (!$creditRecord) {
                         throw new Exception('No credit deduction record found for this invoice.');
                     }
+
     
                     Credit::create([
                         'company_id' => $creditRecord->company_id,
                         'client_id' => $creditRecord->client_id,
                         'invoice_id' => $invoice->id,
                         'invoice_partial_id' => $invoicePartial->id,
-                        'type' => 'Refund',
-                        'description' => 'Refund from changing invoice client from ' . $request->old_client_id . ' to ' . $request->new_client_id . ' for invoice: ' . $invoice->invoice_number,
+                        'type' => 'Invoice Refund',
+                        'description' => 'Invoice refund from changing invoice client from ' . $oldClient->full_name . ' to ' . $newClient->full_name . ' for invoice: ' . $invoice->invoice_number,
                         'amount' => abs($creditRecord->amount),
                     ]);
     
@@ -4272,7 +4309,7 @@ class InvoiceController extends Controller
                         'invoice_id' => $invoice->id,
                         'invoice_partial_id' => $invoicePartial->id,
                         'type' => 'Invoice',
-                        'description' => 'Payment for ' . $invoice->invoice_number . ' (changed client from ' . $request->old_client_id . ' to ' . $request->new_client_id . ')',
+                        'description' => 'Payment for ' . $invoice->invoice_number . ' (changed client from ' . $oldClient->full_name . ' to ' . $newClient->full_name . ')',
                         'amount' => $creditRecord->amount,
                     ]);
                 }     
@@ -4280,9 +4317,12 @@ class InvoiceController extends Controller
                 $invoicePartial->client_id = $request->new_client_id;
                 $invoicePartial->save();
     
-                Log::info('Changing invoice client from ' . $request->old_client_id . ' to ' . $request->new_client_id, [
+                Log::info('Changing invoice client from ' . $oldClient->full_name . ' to ' . $newClient->full_name , [
                     'invoice_id' => $invoice->id,
+                    'old_client_id' => $request->old_client_id,
+                    'new_client_id' => $request->new_client_id,
                 ]);
+
                 $invoice->client_id = $request->new_client_id;
                 $invoice->save();
             });

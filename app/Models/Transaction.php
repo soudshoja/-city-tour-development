@@ -48,9 +48,9 @@ class Transaction extends Model
             } else if($user->role_id == Role::COMPANY){
                 $query->where('company_id', $user->company->id);
             } else if ($user->role_id == Role::BRANCH){
-                $query->whereHas('branch_id', $user->branch->id);
+                $query->where('branch_id', $user->branch->id);
             } else if ($user->role_id == Role::AGENT){
-                $query->whereHas('invoice.agent_id', $user->agent->id);
+                $query->where('company_id', $user->agent->branch->company->id);
             } else if ($user->role_id == Role::ACCOUNTANT){
                 $query->where('company_id', $user->accountant->branch->company->id);
             }

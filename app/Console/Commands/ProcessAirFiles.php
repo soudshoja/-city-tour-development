@@ -768,7 +768,7 @@ class ProcessAirFiles extends Command
                 $this->logger->info("Task status is {$taskData['status']}. Checking original task for reference: {$taskData['reference']}");
 
                 $originalTask = Task::where('reference', $taskData['original_reference'])
-                    ->where('status', ['issued', 'reissued'])
+                    ->whereIn('status', ['issued', 'reissued'])
                     ->first();
 
                 if ($originalTask) {
@@ -1023,6 +1023,27 @@ class ProcessAirFiles extends Command
 
             $this->info("Task saved successfully");
 
+            $taskData = $response['data'];
+            $task = Task::find($taskData['id']);
+
+            if ($task) {
+                $request = new Request(['is_enabled' => true]);
+                $taskController = new TaskController();
+
+                $enableResponse = $taskController->toggleStatus($request, $task);
+
+                if ($enableResponse instanceof JsonResponse) {
+                    $enableData = $enableResponse->getData(true);
+
+                    if (isset($enableData['success']) && $enableData['success'] === true) {
+                        $this->logger->info("Task {$task->id} enabled automatically after save.");
+                    } else {
+                        $this->logger->warning("Task {$task->id} could not be enabled: " . ($enableData['message'] ?? 'Unknown reason.'));
+                    }
+                } else {
+                    $this->logger->warning("Unexpected response when toggling status for task {$task->id}");
+                }
+            }
         } catch (Exception $e) {
             // Single error log entry with comprehensive context
             $this->logger->error("Task save exception occurred", [

@@ -474,17 +474,12 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/delete/{paymentId}', [PaymentController::class, 'paymentDeleteLink'])->name('delete');
             Route::get('/share/{paymentId}', [PaymentController::class, 'shareLink'])->name('share');
             Route::post('/initiate', [PaymentController::class, 'paymentLinkInitiate'])->name('initiate')->withoutMiddleware(['auth']);
-            Route::get('/process', [PaymentController::class, 'paymentLinkProcess'])->name('process')->withoutMiddleware(['auth']);
             Route::post('/webhook', [PaymentController::class, 'paymentLinkWebhook'])->name('webhook');
             Route::post('/reinitiate', [PaymentController::class, 'paymentLinkReInitiate'])->name('reinitiate')->withoutMiddleware(['auth']);
             Route::post('/import/invoice', [PaymentController::class, 'importFromInvoice'])->name('import.invoice');
             Route::post('/import/payment', [PaymentController::class, 'importFromPayment'])->name('import.payment');
         });
-
-        Route::get('/test-payment', [PaymentController::class, 'testPayment'])->name('payment.test');
-        Route::post('/initiate-myfatoorah-payment', [PaymentController::class, 'initiateMyFatoorahPayment'])->name('payment.initiateMyFatoorah');
-        Route::get('/myfatoorah-callback', [PaymentController::class, 'myFatoorahCallback'])->name('payment.success');
-        Route::get('/myfatoorah-error', [PaymentController::class, 'myFatoorahCallback'])->name('payment.failed');
+        Route::get('/tap-callback', [PaymentController::class, 'handleTapCallback'])->name('tap.callback')->withoutMiddleware(['auth']);
 
         Route::get('/uPayment-callback', [PaymentController::class, 'handleUPaymentCallback'])->name('uPayment.callback')->withoutMiddleware(['auth']);
         Route::get('/uPayment-error', [PaymentController::class, 'handleUPaymentError'])->name('uPayment.error')->withoutMiddleware(['auth']);
@@ -701,8 +696,6 @@ Route::get('/payment/test', function () {
 
 Route::match(['get', 'post'], '/payments/callback', [PaymentController::class, 'handleMyFatoorahCallback'])->name('payments.callback');
 Route::match(['get', 'post'], '/payments/error', [PaymentController::class, 'handleMyFatoorahError'])->name('payments.error');
-
-Route::get('payment/process', [PaymentController::class, 'process'])->name('payment.process');
 
 Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhookDocs'])->name('magic-webhook-docs');
 

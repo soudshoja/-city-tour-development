@@ -57,11 +57,9 @@ class TaskController extends Controller
     public function index(Request $request)
     {
         Gate::authorize('viewAny', Task::class);
-
         $user = Auth::user();
 
         $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'agent-name', 'price', 'status', 'info'];
-
         if ($user->role_id === Role::AGENT) {
             $defaultColumns = ['reference', 'bill-to', 'passenger-name', 'price', 'status', 'info'];
         }
@@ -70,12 +68,80 @@ class TaskController extends Controller
 
         $sortBy = $request->query('sortBy', 'created_at');
         $sortOrder = $request->query('sortOrder', 'desc');
-
         $sortableColumns = ['supplier_pay_date', 'created_at'];
         if (!in_array($sortBy, $sortableColumns)) {
             $sortBy = 'created_at';
         }
+
         $query = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
+        $suppliers = Supplier::with('companies');
+
+        if ($user->role_id == Role::ADMIN) {
+            $clients = Client::all();
+            $agents = Agent::all();
+            $fullClients = Client::all();
+            $suppliers = $suppliers->get();
+        } elseif ($user->role_id == Role::COMPANY) {
+            $branches = Branch::where('company_id', $user->company->id)->get();
+            $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
+            $agentsId = $agents->pluck('id');
+            $clients = Client::whereIn('agent_id', $agentsId)->get();
+            $fullClients = Client::where(function ($q) use ($agentsId) {
+                $q->whereIn('agent_id', $agentsId)
+                    ->orWhereHas('agents', fn($qq) => $qq->whereIn('agent_id', $agentsId));
+            })->get();
+
+            $query->where('company_id', $user->company->id);
+            $suppliers = $suppliers->activeForCompany($user->company->id);
+        } elseif ($user->role_id == Role::BRANCH) {
+            $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
+            $agentsId = $agents->pluck('id');
+            $clients = Client::whereIn('agent_id', $agentsId)->get();
+            $fullClients = Client::where(function ($q) use ($agentsId) {
+                $q->whereIn('agent_id', $agentsId)
+                    ->orWhereHas('agents', fn($qq) => $qq->whereIn('agent_id', $agentsId));
+            })->get();
+
+            $query->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
+            $suppliers = $suppliers->activeForCompany($user->company_id);
+        } elseif ($user->role_id == Role::AGENT) {
+            $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
+            $clients = Client::where('agent_id', $user->agent->id)->get();
+            $fullClients = Client::where(function ($q) use ($user) {
+                $q->where('agent_id', $user->agent->id)
+                    ->orWhereHas('agents', fn($qq) => $qq->where('agent_id', $user->agent->id));
+            })->get();
+
+            $query->where(function ($q) use ($user) {
+                $q->where('agent_id', $user->agent->id)
+                    ->orWhere(function ($sub) use ($user) {
+                        $sub->whereNull('agent_id')
+                            ->where('company_id', $user->agent->branch->company_id);
+                    });
+            })->where('company_id', $user->agent->branch->company_id);
+
+            $suppliers = $suppliers->whereHas('companies', fn($q) => $q->where('supplier_companies.is_active', 1));
+        } elseif ($user->role_id == Role::ACCOUNTANT) {
+            $companyId = $user->accountant->branch->company->id;
+            $company = Company::findOrFail($companyId);
+            $agents = collect();
+            foreach ($company->branches as $branch) {
+                $agents = $agents->merge($branch->agents);
+            }
+            $agentsId = $agents->pluck('id');
+            $clients = Client::whereIn('agent_id', $agentsId)->get();
+            $fullClients = Client::where(function ($q) use ($agentsId) {
+                $q->whereIn('agent_id', $agentsId)
+                    ->orWhereHas('agents', fn($qq) => $qq->whereIn('agent_id', $agentsId));
+            })->get();
+
+            $query->where('company_id', $companyId);
+            $suppliers = $suppliers->activeForCompany($companyId);
+        } else {
+            return redirect()->back()->with('error', 'User not authorized to view tasks.');
+        }
+
+        $suppliers = $suppliers->with('companies')->get();
 
         $paymentMethod = Account::where('parent_id', 39)->get();
         if ($search = $request->query('q')) {
@@ -92,22 +158,21 @@ class TaskController extends Controller
                             ->orWhere('phone', 'LIKE', $searchTerm)
                             ->orWhere('civil_no', 'LIKE', $searchTerm);
                     })
-                    ->orWhereHas('agent', function ($qq) use ($searchTerm) {
-                        $qq->where('name', 'LIKE', $searchTerm);
-                    });
+                    ->orWhereHas('agent', fn($qq) => $qq->where('name', 'LIKE', $searchTerm));
             });
         }
 
-        if ($request->input('show_void') == '1') {
-            // Do not filter out void, show all statuses including void
-            // (No where clause needed here)
-        } elseif (!$request->has('status') && !$request->has('status[]')) {
-            $query->where('status', '!=', 'void');
-        } else {
-            $statuses = $request->input('status', $request->input('status[]', []));
-            if (!empty($statuses)) {
-                $query->whereIn('status', (array)$statuses);
+        $showVoid = $request->boolean('show_void', false);
+        $statuses = (array) $request->input('status', $request->input('status[]', []));
+
+        if (!$showVoid) {
+            if (empty($statuses)) {
+                $query->where('status', '!=', 'void');
+            } else {
+                $query->whereIn('status', $statuses);
             }
+        } elseif (!empty($statuses)) {
+            $query->whereIn('status', $statuses);
         }
 
         if (!$request->has('invoiced')) {
@@ -124,40 +189,34 @@ class TaskController extends Controller
                 $amadeusId = Supplier::where('name', 'Amadeus')->value('id');
                 $jazeeraId = Supplier::where('name', 'Jazeera Airways')->value('id');
 
-                $query->whereDoesntHave('invoiceDetail');
-
-                $query->where(function ($q) use ($amadeusId, $jazeeraId) {
+                $query->whereDoesntHave('invoiceDetail')->where(function ($q) use ($amadeusId, $jazeeraId) {
                     $q->whereNotIn('supplier_id', [$amadeusId, $jazeeraId])
-
-                        // Amadeus logic
                         ->orWhere(function ($q2) use ($amadeusId) {
                             $q2->where('supplier_id', $amadeusId)
                                 ->where(function ($q3) use ($amadeusId) {
                                     $q3->where('status', '!=', 'issued')
                                         ->orWhereRaw("
-                                            NOT EXISTS (
-                                                SELECT 1 FROM tasks t2
-                                                WHERE t2.reference = tasks.reference
-                                                AND t2.supplier_id = ?
-                                                AND t2.status = 'void'
-                                            )
-                                        ", [$amadeusId]);
+                                        NOT EXISTS (
+                                            SELECT 1 FROM tasks t2
+                                            WHERE t2.reference = tasks.reference
+                                            AND t2.supplier_id = ?
+                                            AND t2.status = 'void'
+                                        )
+                                    ", [$amadeusId]);
                                 });
                         })
-
-                        // Jazeera logic
                         ->orWhere(function ($q2) use ($jazeeraId) {
                             $q2->where('supplier_id', $jazeeraId)
                                 ->where(function ($q3) use ($jazeeraId) {
                                     $q3->where('status', '!=', 'confirmed')
                                         ->orWhereRaw("
-                                            NOT EXISTS (
-                                                SELECT 1 FROM tasks t2
-                                                WHERE t2.reference = tasks.reference
-                                                AND t2.supplier_id = ?
-                                                AND t2.status = 'issued'
-                                            )
-                                        ", [$jazeeraId]);
+                                        NOT EXISTS (
+                                            SELECT 1 FROM tasks t2
+                                            WHERE t2.reference = tasks.reference
+                                            AND t2.supplier_id = ?
+                                            AND t2.status = 'issued'
+                                        )
+                                    ", [$jazeeraId]);
                                 });
                         });
                 });
@@ -329,91 +388,8 @@ class TaskController extends Controller
 
         $countries = Country::all();
         $hotels = Hotel::all();
-        $suppliers = Supplier::with('companies');
         $currencyExchange = (new AppLayout())->currencySidebar();
         $currencies = $currencyExchange['currencies'];
-
-        if ($user->role_id == Role::ADMIN) {
-            $clients = Client::all();
-            $agents = Agent::all();
-            $fullClients = Client::all();
-        } elseif ($user->role_id == Role::COMPANY) {
-            $branches = Branch::where('company_id', $user->company->id)->get();
-            $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
-            $agentsId = $agents->pluck('id');
-            $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $fullClients = Client::where(function ($query) use ($agentsId) {
-                $query->whereIn('agent_id', $agentsId)
-                    ->orWhereHas('agents', function ($q) use ($agentsId) {
-                        $q->whereIn('agent_id', $agentsId);
-                    });
-            })->get();
-            $query->where('company_id', $user->company->id);
-
-            // $suppliers = Supplier::whereHas('companies', function ($query) use ($user) {
-            //     $query->where('company_id', $user->company->id)->where('is_active', true);
-            // })->get();
-
-            $suppliers = $suppliers->activeForCompany($user->company->id);
-        } elseif ($user->role_id == Role::BRANCH) {
-            $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
-            $agentsId = $agents->pluck('id');
-            $clients = Client::whereIn('agent_id', $agentsId)->get();
-            $fullClients = Client::where(function ($query) use ($agentsId) {
-                $query->whereIn('agent_id', $agentsId)
-                    ->orWhereHas('agents', function ($q) use ($agentsId) {
-                        $q->whereIn('agent_id', $agentsId);
-                    });
-            })->get();
-            $query->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
-            $suppliers = $suppliers->activeForCompany($user->company_id);
-        } elseif ($user->role_id == Role::AGENT) {
-
-            $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
-            $clients = Client::where('agent_id', $user->agent->id)->get();
-            $fullClients = Client::where(function ($query) use ($user) {
-                $query->where('agent_id', $user->agent->id)
-                    ->orWhereHas('agents', function ($q) use ($user) {
-                        $q->where('agent_id', $user->agent->id);
-                    });
-            })->get();
-            // Get tasks assigned to this agent OR unassigned tasks in the same company
-            $query->where(function ($q) use ($user) {
-                $q->where('agent_id', $user->agent->id)
-                    ->orWhere(function ($subQuery) use ($user) {
-                        $subQuery->whereNull('agent_id')
-                            ->where('company_id', $user->agent->branch->company_id);
-                    });
-            })->where('company_id', $user->agent->branch->company_id);
-            $suppliers = $suppliers->whereHas('companies', fn($query) => $query->where('supplier_companies.is_active', 1));
-        } elseif ($user->role_id == Role::ACCOUNTANT) {
-            $companyId = $user->accountant->branch->company->id;
-            $company = Company::findOrFail($companyId);
-            $agents = collect(); // Initialize an empty collection to hold all agents
-
-            // Iterate through each branch associated with the company
-            foreach ($company->branches as $branch) {
-                // Merge the agents from the current branch into the main collection
-                $agents = $agents->merge($branch->agents);
-            }
-
-            $agentsId = $agents->pluck('id');
-
-            $clients = Client::whereIn('agent_id', $agentsId)->get();
-
-            $fullClients = Client::where(function ($query) use ($agentsId) {
-                $query->whereIn('agent_id', $agentsId)
-                    ->orWhereHas('agents', function ($q) use ($agentsId) {
-                        $q->whereIn('agent_id', $agentsId);
-                    });
-            })->get();
-            $query->where('company_id', $company->id);
-            $suppliers = $suppliers->activeForCompany($company->id);
-        } else {
-            return redirect()->back()->with('error', 'User not authorized to view tasks.');
-        }
-
-        $suppliers = $suppliers->with('companies')->get();
 
         $possibleTypes = [
             'hotel' => 'Hotel',
@@ -461,8 +437,18 @@ class TaskController extends Controller
             'allTypes',
             'defaultColumns',
             'currencies',
-            // 'searchTask'
         ));
+    }
+
+    public function saveColumnPrefs(Request $request)
+    {
+        $validated = $request->validate([
+            'columns' => 'required|array'
+        ]);
+
+        session(['visible_task_columns' => $validated['columns']]);
+
+        return response()->json(['success' => true, 'message' => 'Column preferences saved.']);
     }
 
     public function bulkUpdate(Request $request)
@@ -553,17 +539,6 @@ class TaskController extends Controller
         });
 
         return response()->json(['success' => true]);
-    }
-
-    public function saveColumnPrefs(Request $request)
-    {
-        $validated = $request->validate([
-            'columns' => 'required|array'
-        ]);
-
-        $request->session()->put('visible_task_columns', $validated['columns']);
-
-        return response()->json(['success', 'message' => 'Column preferences saved.']);
     }
 
     public function store(Request $request): JsonResponse

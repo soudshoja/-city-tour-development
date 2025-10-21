@@ -453,7 +453,7 @@ class InvoiceController extends Controller
         $selectedAgent = $invoice->agent;
         $selectedClient = $invoice->client;
 
-        $paymentGateways = Charge::where('is_active', true)->get();
+        $paymentGateways = Charge::with('methods')->where('is_active', true)->get();
         $invoiceGateways = Charge::where('is_active', true)
             ->where('can_generate_link', true)
             ->get();
@@ -562,26 +562,10 @@ class InvoiceController extends Controller
                             ->get();
                             
         $companyIdForPartials = $invoice->agent->branch->company_id;
-                $unpaidPartial = InvoicePartial::with(['paymentMethod', 'charge'])
-        ->where('invoice_id', $invoice->id)
-        ->where('status', 'unpaid')
-        ->get()
-        ->map(function ($partial) use ($companyIdForPartials) {
-        $gatewayType = $partial->charge ? strtolower($partial->charge->name) : null;
-                                
-        $partial->available_methods = PaymentMethod::where('is_active', true)
-        ->where('type', 'myfatoorah')->get();
-
-        return $partial;
-        });
-
-        $allPaymentMethods = \App\Models\PaymentMethod::where('is_active', true)
-            ->where('company_id', $companyIdForPartials) // Crucial for filtering
-            ->get(['id', 'english_name', 'type']) // 'type' should match the gateway name (e.g., 'myfatoorah')
-            ->map(function ($method) {
-                $method->type = strtolower($method->type);
-                return $method;
-            });
+        $unpaidPartial = InvoicePartial::with(['paymentMethod', 'charge'])
+            ->where('invoice_id', $invoice->id)
+            ->where('status', 'unpaid')
+            ->get(); 
 
         return view('invoice.edit', compact(
             'clients',
@@ -614,7 +598,6 @@ class InvoiceController extends Controller
             'receiptVoucher',
             'unpaidPartial',
             'companyIdForPartials',
-            'allPaymentMethods',
         ));
     }
 
@@ -677,7 +660,7 @@ class InvoiceController extends Controller
         ));
     }
 
-    public function updatePaymentType(Request $request): JsonResponse
+    public function updatePaymentType(Request $request)
     {
         Log::info('Starting to update Payment Type');
 
@@ -686,7 +669,7 @@ class InvoiceController extends Controller
                     ->where('status', 'unpaid')
                     ->first();
             if (!$invoice) {
-                return response()->json(['error' => 'Invoice not found'], 404);
+                return redirect()->back()->with('error', 'Invoice not found');
             }
 
             $invoice->payment_type = null;
@@ -704,24 +687,16 @@ class InvoiceController extends Controller
                 Log::info('Payment type changed, no related invoice partial found for invoice ID: ' . $invoice->id);
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment type changed successfully!',
-                'invoiceId' => $invoice->id,
-            ]);
+            return redirect()->back()->with('success', 'Payment Type changed successfully');
             
         } catch (Exception $e) {
             Log::error('Failed to change payment type');
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to change the payment type',
-                'invoiceId' => $invoice->id,
-            ]);
+            return redirect()->back()->with('error', 'Failed to change Payment Type');
         }
     
     }
 
-    public function updatePartialGateway(Request $request) : JsonResponse
+    public function updatePartialGateway(Request $request)
     {
         Log::info('Starting to change the payment method for unpaid Partial/Split Invoice', [
             'data' => $request->all(),
@@ -777,10 +752,10 @@ class InvoiceController extends Controller
 
             DB::rollBack();
 
-            return response()->json(['message' => 'Failed to update payment method', 'invoice' => $invoicePartial]);
+            return redirect()->back()->with('error', 'Payment Method updated successfully');
         }
 
-        return response()->json(['success'=>true, 'message' => 'Payment Method updated successfully', 'invoice' => $invoicePartial]);
+        return redirect()->back()->with('success', 'Payment Method updated successfully');
     }
 
     public function updatePaymentGateway(Request $request): JsonResponse

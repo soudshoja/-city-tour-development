@@ -120,7 +120,7 @@ class TaskController extends Controller
                     });
             })->where('company_id', $user->agent->branch->company_id);
 
-            $suppliers = $suppliers->whereHas('companies', fn($q) => $q->where('supplier_companies.is_active', 1));
+            $suppliers = $suppliers->whereHas('companies', fn($q) => $q->where('supplier_companies.is_active', 1))->get();
         } elseif ($user->role_id == Role::ACCOUNTANT) {
             $companyId = $user->accountant->branch->company->id;
             $company = Company::findOrFail($companyId);

@@ -869,7 +869,7 @@
                                     </div>
                                 </label>
 
-                                <!-- Trigger Button -->
+                                <!-- Import Payment -->
                                 <label class="cursor-pointer rounded-full shadow">
                                     <input type="radio" id="payment_type_import" name="payment_type" value="import"
                                         onclick="showModal('import')" hidden class="peer" />

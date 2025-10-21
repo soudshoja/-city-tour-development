@@ -56,6 +56,11 @@ class Company extends Model
             ->withPivot('is_active');
     }
 
+    public function taskRules()
+    {
+        return $this->hasMany(TaskRules::class);
+    }
+
     /**
      * Get the main/default branch for this company
      * Returns the first branch or creates one if none exists

@@ -4208,15 +4208,16 @@ class TaskController extends Controller
         //     throw new Exception('Missing required accounts for reversal.');
         // }
 
-        Log::info('Recording reversal journal & transaction for task ID: ' . $originalTask->id);
+        Log::info('Recording reversal journal & transaction for task ID: ', ['data' => $originalTask, ]);
 
         // Use task's issued_date as transaction_date
         $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
 
         $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
-        Log::info('heh data', ['response' => $originalTask,]);
+        $branchIdFromJournal = $journalEntries->first()?->branch_id; 
+
         $transaction = Transaction::create([
-            'branch_id' => $originalTask->agent->branch_id ?? $originalTask->branch_id,
+            'branch_id' => $originalTask->agent->branch_id ?? $branchIdFromJournal,
             'company_id' => $originalTask->company_id,
             'entity_id' => $originalTask->company_id,
             'entity_type' => 'company',

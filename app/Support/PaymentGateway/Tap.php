@@ -73,7 +73,7 @@ class Tap
                 'process' => $request->input('process'),
             ],
             'redirect' => [
-                'url' => $isPaymentLink ? route('payment.link.process') : route('payment.process'),
+                'url' => route('payment.tap.callback'),
             ],
         ];
 

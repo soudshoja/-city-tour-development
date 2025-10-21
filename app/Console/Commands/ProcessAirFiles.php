@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use App\Services\FileProcessingLogger;
+use App\Services\TaskRuleConfiguration;
 use Illuminate\Http\JsonResponse;
 
 class ProcessAirFiles extends Command
@@ -860,6 +861,16 @@ class ProcessAirFiles extends Command
 
             $taskData['enabled'] = false;
             $taskData['file_name'] = $fileName;
+
+            $ruleConfig = new TaskRuleConfiguration();
+
+            $taskData['company_id'] = $companyId;
+            $taskData['supplier_id'] = $supplierId;
+
+            if ($taskData['status'] === 'reissued') {
+                $taskData = $ruleConfig->applyRules($taskData, $originalTask ?? null);
+            }
+
             $response = $this->saveTask($companyId, $taskData, $supplierId);
 
             if ($response['status'] === 'error') {

@@ -10,17 +10,17 @@ use InvalidArgumentException;
 
 class TaskRuleConfiguration
 {
-    public function applyRules(Task $task, ?Task $existingTask = null): array
+    public function applyRules(array $taskData, ?Task $existingTask = null): array
     {
-        $companyId = $task->company_id;
-        $supplierId = $task->supplier_id;
+        $companyId = $taskData['company_id'] ?? null;
+        $supplierId = $taskData['supplier_id'] ?? null;
 
         if($companyId === null){
-            throw new InvalidArgumentException("Task must have a company_id to apply rules.");
+            throw new InvalidArgumentException("Task data must have a company_id to apply rules.");
         }
 
         if($supplierId === null){
-            throw new InvalidArgumentException("Task must have a supplier_id to apply rules.");
+            throw new InvalidArgumentException("Task data must have a supplier_id to apply rules.");
         }
 
         $taskRules = $this->getRulesForTask($companyId, $supplierId);
@@ -30,7 +30,7 @@ class TaskRuleConfiguration
                 'company_id' => $companyId, 
                 'supplier_id' => $supplierId
             ]);
-            return $task->toArray();
+            return $taskData;
         }
 
         Log::info("Applying task rules", [
@@ -39,8 +39,6 @@ class TaskRuleConfiguration
             'rules_count' => $taskRules->count(),
             'existing_task' => $existingTask ? $existingTask->id : null
         ]);
-
-        $taskData = $task->toArray();
         
         foreach ($taskRules as $rule) {
             $taskData = $this->applyRule($rule, $taskData, $existingTask);
@@ -70,6 +68,9 @@ class TaskRuleConfiguration
                 
             case TaskRuleEnum::MINUS_EXISTING->value:
                 return $this->applyMinusExistingRule($rule, $taskData, $existingTask);
+
+            case TaskRuleEnum::TAX_CALCULATED->value:
+                return $this->applyTaxCalculatedRule($rule, $taskData);
                 
             default:
                 Log::warning("Unknown task rule: {$rule->name}");
@@ -114,6 +115,36 @@ class TaskRuleConfiguration
         ]);
 
         $taskData[$columnName] = $calculatedValue;
+        return $taskData;
+    }
+
+    protected function applyTaxCalculatedRule(TaskRules $rule, array $taskData): array
+    {
+        Log::debug('Applying TAX_CALCULATED rule for rule_id: ' . $rule->id);
+        
+        if(!$rule->column){
+            Log::warning("TAX_CALCULATED rule missing column", ['rule_id' => $rule->id]);
+            return $taskData;
+        }
+
+        $columnName = $rule->column;
+
+        if (!array_key_exists('price', $taskData) || !array_key_exists('total', $taskData)) {
+            Log::warning("Required columns for TAX_CALCULATED rule not found", ['rule_id' => $rule->id]);
+            return $taskData;
+        }
+
+        $price = (float) ($taskData['price'] ?? 0);
+        $total = (float) ($taskData['total'] ?? 0);
+        $tax = $total - $price;
+
+        Log::info("Applied TAX_CALCULATED rule", [
+            'rule_id' => $rule->id,
+            'calculation' => "tax = total ({$total}) - price ({$price}) = {$tax}",
+        ]);
+
+        $taskData[$columnName] = $tax;
+
         return $taskData;
     }
 

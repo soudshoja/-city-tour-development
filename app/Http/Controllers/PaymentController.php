@@ -517,376 +517,6 @@ class PaymentController extends Controller
             return response()->json(['error' => 'Failed to initiate payment.'], 500);
         }
     }
-    
-    public function process(Request $request)
-    {
-        Log::info('Tap process:', ['process' => $request]);
-        $tap = new Tap();
-
-        $tap_id = $request->tap_id;
-
-        $response = $tap->getCharge($tap_id);
-
-        if (isset($response['errors'])) {
-
-            // $this->storeNotification([
-            //     'user_id' => Auth::id(),
-            //     'title' => 'Payment Failed',
-            //     'message' => 'Payment failed: ' . $response['errors'][0]['description'],
-            // ]);
-
-            Log::error('Payment failed', ['errors' => $response['errors']]);
-
-            abort(500, 'Payment failed');
-        }
-
-        $invoiceNumber = $response['metadata']['invoice_number'];
-        $paymentId = $response['metadata']['payment_id'];
-
-        if ($response['status'] != 'CAPTURED') {
-            $invoice = Invoice::with('agent.branch', 'client')->where('invoice_number', $invoiceNumber)->first();
-            $paymentId = $response['metadata']['payment_id'] ?? null;
-            Transaction::create([
-                'branch_id' => $invoice->agent->branch->id,
-                'company_id' => $invoice->agent->branch->company->id,
-                'entity_id' => $invoice->agent->branch->company->id,
-                'entity_type' => 'company',
-                'transaction_type' => 'credit',
-                'transaction_date' => $invoice->invoice_date,
-                'amount' => $response['amount'],
-                'description' => 'Tap payment failed: ' . $invoiceNumber,
-                'invoice_id' => $invoice->id,
-                'payment_id' => $paymentId,
-                'payment_reference' => $response['id'],
-                'reference_type' => 'Invoice'
-            ]);
-
-            // $this->storeNotification([
-            //     'user_id' => Auth::id(),
-            //     'title' => 'Payment Failed',
-            //     'message' => 'Payment failed: ' . $response['status'],
-            // ]);
-
-            $agent = $invoice->agent;
-            $client = $invoice->client;
-            $message = 'Your client ' . $client->full_name . ' attempted to pay invoice ' . $invoice->invoice_number . ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.';
-
-            $this->storeNotification([
-                'user_id' => $agent->user_id,
-                'title' => 'Client '. $client->full_name . "'s Payment Failed",
-                'message' => $message,
-            ]);
-
-            $resayilController = new ResayilController();
-
-            $resayilController->message(
-                $agent->phone_number,
-                $agent->country_code,
-                $message,
-            );
-
-
-            Log::error('Payment failed', [
-                'status' => $response['status'],
-                'response' => $response,
-            ]);
-
-            return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Payment failed');
-        }
-
-        $paymentId = $response['metadata']['payment_id'];
-        $paymentGateway = $response['metadata']['payment_gateway'];
-        $invoicePartialIds = json_decode($response['metadata']['invoice_partial_id'], true);
-        $totalPaidAmount = $response['amount'];
-
-        if ($paymentId) {
-            $payment = Payment::with(['invoice.agent.branch.company'])->find($paymentId);
-        
-            if ($payment && $payment->invoice) {
-                $invoice = $payment->invoice;
-            } elseif ($payment && $payment->agent) {
-                $companyId = optional($payment->agent->branch)->company_id;
-                $invoice = Invoice::with(['agent.branch.company', 'client', 'invoiceDetails.task'])
-                    ->where('invoice_number', $invoiceNumber)
-                    ->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId))
-                    ->first();
-            }
-        }
-
-        $invoiceDetails = InvoiceDetail::with('task')
-            ->where('invoice_number', $invoiceNumber)
-            ->get();
-
-        // $receivableAccount = Account::where('name', 'like', '%Accounts Receivable – Clients%')
-        //     ->where('company_id', $invoice->agent->branch->company->id)
-        //     ->first();
-
-        Log::info('company_id:', ['company_id' => $invoice->agent->branch->company->id]);
-
-        $bankAccount = Account::where('name', 'Payment Gateway') // or bank account
-            ->where('company_id', $invoice->agent->branch->company->id)
-            ->first();
-
-        $chargeRecord = Charge::where('name', $paymentGateway)
-            ->where('company_id', $invoice->agent->branch->company->id)
-            ->select('amount', 'acc_bank_id', 'acc_fee_bank_id', 'acc_fee_id', 'paid_by')
-            ->first();
-
-        if ($chargeRecord) {
-            $gatewayFee = ChargeService::TapCharge([
-                'amount' => $payment->amount,
-                'client_id' => $invoice->client_id,
-                'agent_id' => $invoice->agent_id,
-                'currency' => $invoice->currency
-            ], $paymentGateway)['gatewayFee'] ?? 0;
-            $coaBankIdRec = $chargeRecord->acc_bank_id; //COA (Assets) for Debited Bank Account
-            $coaFeeIdRec = $chargeRecord->acc_fee_id; //COA (Expenses) for Payment Gateway Fee
-            $coaBankFeeIdRec = $chargeRecord->acc_fee_bank_id; //COA (Assets) for Bank Account for the selected Payment Gateway
-
-            $bankAccountAccRecord = Account::where('id', $coaBankIdRec)
-                ->where('company_id', $invoice->agent->branch->company->id)
-                ->first();
-
-            $tapAccount = Account::where('id', $coaFeeIdRec)
-                ->where('company_id', $invoice->agent->branch->company->id)
-                ->first();
-
-            $bankPaymentFee = Account::where('id', $coaBankFeeIdRec)
-                ->where('company_id', $invoice->agent->branch->company->id)
-                ->first();
-        } else {
-            Log::error('Charge record not found for payment gateway', ['payment_gateway' => $paymentGateway, 'company_id' => $invoice->agent->branch->company->id]);
-            return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
-        }
-
-        if (!$invoice) {
-            Log::error('Invoice not found', ['invoice_number' => $invoiceNumber]);
-            return redirect()->route('invoice.index')->with('error', 'Something went wrong, please try again later.');
-        }
-
-        if (!empty($invoiceDetails)) {
-            try {
-
-                $invoiceDetail = $invoiceDetails->first();
-
-                // Check if there's at least one invoice detail to process
-                if (!$invoiceDetail) {
-                    Log::error('No invoice details found for processing', ['invoice_number' => $invoiceNumber]);
-                    return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
-                }
-
-                $selectedtask = Task::where('id', $invoiceDetail->task_id)->first();
-                $client = Client::where('id', operator: $selectedtask->client_id)->first();
-
-                $receivableAccount = Account::where('name', 'Clients')->first();
-                $receivableAccountId = $receivableAccount->id;
-
-                if (!$receivableAccount || !$receivableAccountId) {
-                    Log::error('Receivable account not found', ['company_id' => $invoice->agent->branch->company->id]);
-                    return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
-                }
-
-                if (!$invoice->agent || !$invoice->agent->branch || !$invoice->agent->branch->company) {
-                    Log::error('Agent or branch or company not found for invoice', ['invoice_id' => $invoice->id]);
-                    return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])->with('error', 'Something went wrong, please try again later.');
-                }
-
-                // Create a transaction record first
-                $transaction = Transaction::create([
-                    'branch_id' =>  $invoice->agent->branch->id,
-                    'company_id' =>  $invoice->agent->branch->company->id,
-                    'entity_id' =>  $invoice->agent->branch->company->id,
-                    'entity_type' => 'company',
-                    'transaction_type' => 'debit',
-                    'amount' => $totalPaidAmount,
-                    'description' => 'Tap payment success: ' . $invoiceNumber,
-                    'invoice_id' => $invoice->id,
-                    'payment_id' => $paymentId,
-                    'payment_reference' => $response['id'],
-                    'reference_type' => 'Invoice',
-                    'transaction_date' => now(),
-                ]);
-
-                $payment = Payment::find($paymentId);
-                $payment->status = 'completed';
-                $payment->completed = '0';
-                $payment->account_id = $receivableAccountId;
-                $payment->save();
-
-                $dateCreated = Carbon::createFromTimestampMs($response['transaction']['date']['created'])->format('Y-m-d H:i:s');
-                $dateCompleted = isset($response['transaction']['date']['completed']) ? Carbon::createFromTimestampMs($response['transaction']['date']['completed'])->format('Y-m-d H:i:s') : now();
-                $dateTransaction = Carbon::createFromTimestampMs($response['transaction']['date']['transaction'])->format('Y-m-d H:i:s');
-
-                TapPayment::create([
-                    'payment_id' =>  $payment->id,
-                    'tap_id' =>  $response['id'],
-                    'authorization_id' =>  $response['transaction']['authorization_id'],
-                    'timezone' => $response['transaction']['timezone'],
-                    'expiry_period' => $response['transaction']['expiry']['period'],
-                    'expiry_type' => $response['transaction']['expiry']['type'],
-                    'amount' => $totalPaidAmount,
-                    'currency' => 'KWD',
-                    'date_created' => $dateCreated,
-                    'date_completed' => $dateCompleted,
-                    'date_transaction' => $dateTransaction,
-                    'receipt_id' => $response['receipt']['id'],
-                    'receipt_email' => $response['receipt']['email'],
-                    'receipt_sms' => $response['receipt']['sms'],
-                ]);
-
-                // Create record to receivable account (OK)
-                JournalEntry::create([
-                    'transaction_id' => $transaction->id,
-                    'branch_id' => $invoice->agent->branch->id,
-                    'company_id' => $invoice->agent->branch->company->id,
-                    'invoice_id' =>  $invoice->id,
-                    'account_id' =>  $receivableAccountId,
-                    'invoice_detail_id' =>  $invoiceDetail->id,
-                    'transaction_date' => $invoice->invoice_date,
-                    'description' => 'Client Pays via ' . $bankPaymentFee->name . ' by (Assets): ' . $client->full_name,
-                    'debit' => 0,
-                    'credit' => $totalPaidAmount,
-                    'balance' => $invoiceDetail['task_price'] - $totalPaidAmount,
-                    'name' =>  $client->full_name,
-                    'type' => 'receivable',
-                    'voucher_number' => $payment->voucher_number,
-                    'type_reference_id' => $receivableAccountId
-                ]);
-
-                // Create record to payment_gateway assets coa account (OK)
-                if ($bankPaymentFee) {
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'company_id' => $invoice->agent->branch->company->id,
-                        'branch_id' => $invoice->agent->branch->id,
-                        'account_id' =>  $bankPaymentFee->id,
-                        'invoice_id' =>  $invoice->id,
-                        'invoice_detail_id' =>  $invoiceDetail->id,
-                        'transaction_date' => $invoice->invoice_date,
-                        'description' => 'Client Pays by ' . $client->full_name . ' via (Assets): ' . $bankPaymentFee->name,
-                        'debit' => $totalPaidAmount,
-                        'credit' => 0,
-                        'balance' => $invoiceDetail['task_price'] - $totalPaidAmount,
-                        'name' =>  $bankPaymentFee->name,
-                        'type' => 'bank',
-                        'voucher_number' => $payment->voucher_number,
-                        'type_reference_id' => $bankPaymentFee->id
-                    ]);
-
-                    $bankPaymentFee->actual_balance += $invoiceDetail['task_price']; // Add to cash/bank account
-                    $bankPaymentFee->save();
-                }
-
-                $paidBy = $chargeRecord->paid_by ?? null;
-                if ($tapAccount) {
-                    $tapAccount->actual_balance += $gatewayFee; // Add to expenses account
-                    $tapAccount->save();
-
-                    JournalEntry::create([
-                        'transaction_id' => $transaction->id,
-                        'company_id' => $invoice->agent->branch->company->id,
-                        'branch_id' => $invoice->agent->branch->id,
-                        'account_id' =>  $tapAccount->id,
-                        'invoice_id' =>  $invoice->id,
-                        'invoice_detail_id' =>  $invoiceDetail->id,
-                        'voucher_number' => $payment->voucher_number,
-                        'transaction_date' => $invoice->invoice_date,
-                        'description' => ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ') . $tapAccount->name,
-                        'debit' => $gatewayFee,
-                        'credit' => 0,
-                        'balance' => $tapAccount->actual_balance,
-                        'name' =>  $tapAccount->name,
-                        'type' => 'charges',
-                        'type_reference_id' => $tapAccount->id
-                    ]);
-                }
-            } catch (\Exception $e) {
-                Log::error('Failed in invoice processing', [
-                    'message' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-
-                return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoiceNumber])
-                    ->with('error', 'Something went wrong while processing the invoice. Please try again later.');
-            }
-        }
-
-        $selectedPartials = InvoicePartial::whereIn('id', $invoicePartialIds)->get();
-        $companyId = $invoice->agent->branch->company_id;
-
-        foreach ($selectedPartials as $invoicePartial) {
-            $chargeResult = [];
-
-            if (strtolower($payment->payment_gateway) === 'tap') {
-                $chargeData = [
-                    'amount'    => $invoicePartial->amount,
-                    'client_id' => $payment->client_id,
-                    'agent_id'  => $payment->agent_id,
-                    'currency'  => $payment->currency,
-                ];
-                $chargeResult = ChargeService::TapCharge($chargeData, $payment->payment_gateway);
-            }
-
-            $invoicePartial->service_charge = $chargeResult['fee'];
-            $invoicePartial->amount = $chargeResult['finalAmount'];
-            $invoicePartial->payment_id = $payment->id;
-            $invoicePartial->status = 'paid';
-            $invoicePartial->save();
-        }
-        Log::info('selectedPartials:', ['selectedPartials' => $selectedPartials]);
-        $invoicePartials = InvoicePartial::where('invoice_id', $invoice->id)->get();
-        // Update the invoice status based on the payment received
-        Log::info('invoicePartials:', ['invoicePartials' => $invoicePartials]);
-        $paidCount = $invoicePartials->where('status', 'paid')->count();
-        Log::info('paidCount:', ['paidCount' => $paidCount]);
-        // Determine the invoice status based on the number of paid partials
-        if ($paidCount === $invoicePartials->count()) {
-            $invoice->status = 'paid'; // All partials are paid
-        } elseif ($paidCount > 0) {
-            $invoice->status = 'partial'; // Some partials are paid
-        } else {
-            $invoice->status = 'unpaid'; // No partials are paid
-        }
-
-        // Cash payments remain unpaid until receipt voucher is processed
-        // Only credit_payment type was removed as per business requirements
-
-        $invoice->paid_date = now();
-        $invoice->save();
-
-        // try {
-
-        //     $agentPhoneNumber = $invoice->agent->phone_number;
-        //     $agencyPhoneNumber = $invoice->agent->branch->company->phone;
-
-        //     $whatsAppService = new WhatsAppNotificationService();
-
-        //     // Notify agent and agency
-        //     $whatsAppService->sendWhatsAppMessage($agentPhoneNumber, "A new payment has been made from citytour.");
-        //     $whatsAppService->sendWhatsAppMessage($agencyPhoneNumber, "A new payment has been made by client XYZ.");
-
-        //     // Handle successful payment
-        // } catch (Exception $e) {
-        //     // Handle payment failure
-        //     return redirect()->back()->with('error', 'Payment failed: ' . $e->getMessage());
-        // }
-
-        $agent = $payment->invoice->agent;
-        $client = $payment->invoice->client;
-        $message = 'Your client ' . $client->full_name . ' has paid invoice ' . $payment->invoice->invoice_number . '.\n\nCheck the link : ' . route('invoice.show', ['companyId' => $payment->agent->branch->company_id, 'invoiceNumber' => $payment->invoice->invoice_number]);
-
-        $resayilController = new ResayilController();
-
-        $resayilController->message(
-            $agent->phone_number,
-            $agent->country_code,
-            $message,
-        );
-
-
-        return redirect()->route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])
-            ->with('status', 'Payment successful! Thank you for your payment.');
-    }
 
     public function processMyFatoorah(array $data)
     {
@@ -2733,304 +2363,6 @@ class PaymentController extends Controller
         return redirect()->back()->with('error', 'UPayment reinitiate failed: Missing link or trackId.');
     }
 
-    public function paymentLinkProcess(Request $request)
-    {   
-        if ($request->tap_id) {
-            $tapId = $request->tap_id;
-            $tap = new Tap();
-            $response = $tap->getCharge($tapId);
-        } else {
-            if(auth()->user()){
-                return redirect()->back()->with('error', 'Payment not found.');
-            }
-
-            return abort(404);
-        }
-
-        Log::info('Payment link process response', ['response' => $response]);
-
-        if (isset($response['errors'])) {
-
-            if (auth()->user()) {
-                return redirect()->back()->with('error', $response['errors'][0]['description']);
-            }
-
-            return abort(500);
-        }
-            $payment = Payment::with('client', 'agent.branch')->find($response['metadata']['payment_id']);
-
-        if ($payment->status === 'completed') {
-            return auth()->user() ? redirect()->route('invoices.index')->with('error', 'Payment already completed.') : abort(200, 'Payment already completed.');
-        }
-
-        if ($response['status'] != 'CAPTURED') {
-            Transaction::create([
-                'branch_id' => $payment->agent->branch->id,
-                'company_id' => $payment->agent->branch->company->id,
-                'entity_id' => $payment->agent->branch->company->id,
-                'entity_type' => 'company',
-                'transaction_type' => 'debit',
-                'amount' => $payment->amount,
-                'description' => 'Topup failed by ' . $payment->client->full_name,
-                'payment_id' => $payment->id,
-                'invoice_id' => $payment->invoice_id,
-                'payment_reference' => $response['id'],
-                'reference_type' => 'Payment',
-                'transaction_date' => now(),
-            ]);
-
-            $agent = $payment->agent;
-            $client = $payment->client;
-            $message = 'Your client ' . $client->full_name . ' attempted to top up their account but the payment failed or was cancelled. Please follow up with your client to resolve the issue.';
-
-            $this->storeNotification([
-                'user_id' => $agent->user_id,
-                'title' => 'Client '. $client->full_name . "'s Topup Failed",
-                'message' => $message,
-            ]);
-
-            $resayilController = new ResayilController();
-
-            $resayilController->message(
-                $agent->phone_number,
-                $agent->country_code,
-                $message,
-            );
-
-
-            if (auth()->user()) {
-                return redirect()->back()->with('error', 'Payment ' . strtolower($response['status']));
-            }
-
-            return abort(500);
-        }
-
-        $paymentId = $response['metadata']['payment_id'];
-
-        $payment = Payment::with('invoice')->find($paymentId);
-
-        if (!$payment) {
-            logger('Payment id returned from tap not found', [
-                'payment_id' => $paymentId,
-                'tap_id' => $tapId,
-            ]);
-            return redirect()->back()->with('error', 'Payment not found.');
-
-        }
-
-        $finalPaidAmount = $response['amount'];
-        $baseAmount = $payment->amount;
-        $companyId = $payment->agent->branch->company_id;
-        $serviceFeePaid = 0;
-
-        if (strtolower($payment->payment_gateway) === 'tap') {
-            $chargeData = [
-                'amount'    => $baseAmount,
-                'client_id' => $payment->client_id,
-                'agent_id'  => $payment->agent_id,
-                'currency'  => $payment->currency,
-            ];
-            $chargeResult = ChargeService::TapCharge($chargeData, $payment->payment_gateway);
-            $serviceFeePaid = $chargeResult['fee'] ?? 0;
-        }
-
-        $process = $response['metadata']['process'];
-
-        if ($process == 'topup') {
-            $clientController = new ClientController;
-
-            $addCreditResponse = $clientController->addCredit($payment);
-
-            if (isset($addCreditResponse['error'])) {
-                logger('Failed to add credit to client', [
-                    'message' => $addCreditResponse['error'],
-                    'payment_id' => $paymentId,
-                ]);
-
-                if (auth()->user()) {
-                    return redirect()->back()->with('error', 'Payment cannot be updated');
-                } else {
-                    return abort(500);
-                }
-            }
-
-            $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
-                ->where('company_id', $payment->agent->branch->company->id)
-                ->first();
-
-            if (!$liabilitiesAccount) {
-
-                if (auth()->user()) {
-                    return redirect()->back()->with('error', 'Liabilities account not found.');
-                } else {
-                    return abort(500);
-                }
-            }
-
-            $clientAdvance = Account::where('name', 'Client')
-                ->where('company_id', $payment->agent->branch->company->id)
-                ->where('root_id', $liabilitiesAccount->id)
-                ->first();
-
-            if (!$clientAdvance) {
-                if (auth()->user()) {
-                    return redirect()->back()->with('error', 'Client advance account not found.');
-                } else {
-                    return abort(500);
-                }
-            }
-
-            $paymentGateway = Account::where('name', 'Payment Gateway')
-                            ->where('company_id', $payment->agent->branch->company_id)
-                            ->where('parent_id', $clientAdvance->id)
-                            ->first();
-            if (!$paymentGateway) {
-                if (auth()->user()) {
-                    return redirect()->back()->with('error', 'Payment Gateway account not found.');
-                } else {
-                    return abort(500);
-                }
-            }
-
-            DB::beginTransaction();
-
-            try {
-                $transaction = Transaction::create([
-                    'branch_id' => $payment->agent->branch->id,
-                    'company_id' => $payment->agent->branch->company->id,
-                    'entity_id' => $payment->agent->branch->company->id,
-                    'entity_type' => 'company',
-                    'transaction_type' => 'debit',
-                    'amount' => $payment->amount,
-                    'description' => 'Topup success by ' . $payment->client->full_name,
-                    'payment_id' => $payment->id,
-                    'invoice_id' => $payment->invoice_id,
-                    'payment_reference' => $response['id'],
-                    'reference_type' => 'Payment',
-                    'transaction_date' => now(),
-                ]);
-
-                JournalEntry::create([
-                    'transaction_id' => $transaction->id,
-                    'branch_id' => $payment->agent->branch->id,
-                    'company_id' => $payment->agent->branch->company->id,
-                    'invoice_id' => $payment->invoice_id,
-                    'account_id' => $paymentGateway->id,
-                    'transaction_date' => now(),
-                    'description' => 'Advance Payment in voucher number: ' . $payment->voucher_number,
-                    'debit' => 0,
-                    'credit' => $payment->amount,
-                    'balance' => $paymentGateway->actual_balance - $payment->amount,
-                    'name' => $payment->client->full_name,
-                    'type' => 'receivable',
-                    'voucher_number' => $payment->voucher_number,
-                    'type_reference_id' => $paymentGateway->id
-                ]);
-            } catch (Exception $e) {
-                DB::rollBack();
-                logger('Failed to create journal entry', [
-                    'message' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                if (auth()->user()) {
-                    return redirect()->back()->with('error', 'Payment cannot be updated');
-                } else {
-                    return abort(500);
-                }
-            }
-            DB::commit();
-        } else if ($process == 'invoice') {
-            $invoice = Invoice::where('id', $payment->invoice_id)->first();
-            if (!$invoice) {
-                if (auth()->user()) {
-                    return redirect()->back()->with('error', 'Invoice not found.');
-                } else {
-                    return abort(500);
-                }
-            }
-        } else {
-
-            if (auth()->user()) {
-                return redirect()->back()->with('error', 'Invalid process type.');
-            } else {
-                return abort(500);
-            }
-            
-        }
-        
-        if (strtolower($payment->payment_gateway) === 'tap') {
-            $dateCreated = Carbon::createFromTimestampMs($response['transaction']['date']['created'])->format('Y-m-d H:i:s');
-            $dateCompleted = isset($response['transaction']['date']['completed']) ? Carbon::createFromTimestampMs($response['transaction']['date']['completed'])->format('Y-m-d H:i:s') : now();
-            $dateTransaction = Carbon::createFromTimestampMs($response['transaction']['date']['transaction'])->format('Y-m-d H:i:s');
-
-            TapPayment::create([
-                'payment_id' =>  $payment->id,
-                'tap_id' =>  $response['id'],
-                'authorization_id' =>  $response['transaction']['authorization_id'],
-                'timezone' => $response['transaction']['timezone'],
-                'expiry_period' => $response['transaction']['expiry']['period'],
-                'expiry_type' => $response['transaction']['expiry']['type'],
-                'amount' => $finalPaidAmount,
-                'currency' => 'KWD',
-                'date_created' => $dateCreated,
-                'date_completed' => $dateCompleted,
-                'date_transaction' => $dateTransaction,
-                'receipt_id' => $response['receipt']['id'],
-                'receipt_email' => $response['receipt']['email'],
-                'receipt_sms' => $response['receipt']['sms'],
-            ]);
-        }
-
-        try {
-            $payment->service_charge = $serviceFeePaid;
-            $payment->status = 'completed';
-            $payment->completed = 1;
-            $payment->payment_reference = $response['id'];
-            $payment->save();
-
-            if ($process == 'invoice') {
-                $invoice->status = 'paid';
-                $invoice->paid_date = now();
-                $invoice->save();
-            }
-
-        } catch (Exception $e) {
-            logger('Failed to update payment status', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-
-            if (auth()->user()) {
-                return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('error', 'Payment cannot be updated.');
-            } else {
-                return abort(500);
-            }
-        }
-
-        $receiptInfo = $this->publicReceiptNotice($payment, $process);
-
-        $agent = $payment->agent;
-
-        $this->storeNotification([
-            'user_id' => $agent->user_id,
-            'title'   => $receiptInfo['title'],
-            'message' => $receiptInfo['message'],
-        ]);
-
-        (new ResayilController())->message(
-            $agent->phone_number,
-            $agent->country_code,
-            $receiptInfo['message']
-        );
-
-        if (auth()->user()) {
-            return redirect()->route('payment.link.show', ['companyId' => $payment->agent->branch->company->id, 'voucherNumber' => $payment->voucher_number])->with('success', 'Payment successful!');
-        } else {
-            return redirect()->route('payment.success');
-        }
-    }
-
     public function paymentLinkWebhook(Request $request)
     {
         Log::info('Tap Payment Webhook received: ' . $request->getContent());
@@ -3498,6 +2830,210 @@ class PaymentController extends Controller
         );
 
         return redirect()->to($receiptInfo['url'])->with('error', 'Payment was not completed or was cancelled.');
+    }
+
+    public function handleTapCallback(Request $request)
+    {
+        try {
+            Log::info('Tap callback received', ['request' => $request->all()]);
+
+            $tapId = $request->query('tap_id') ?? $request->input('tap_id');
+            if (!$tapId) {
+                Log::error('Tap callback missing tap_id', ['request' => $request->all()]);
+                return redirect()->route('payment.failed')->with('error', 'Invalid callback data.');
+            }
+
+            $tap = new Tap();
+            $response = $tap->getCharge($tapId);
+
+            Log::info('Tap charge response', ['response' => $response]);
+
+            if (isset($response['errors'])) {
+                Log::error('Tap charge error', ['errors' => $response['errors']]);
+                return redirect()->route('payment.failed')->with('error', $response['errors'][0]['description'] ?? 'Payment failed.');
+            }
+
+            $paymentId = $response['metadata']['payment_id'] ?? null;
+            $process = $response['metadata']['process'] ?? null;
+            if (!$paymentId) {
+                Log::error('Missing payment_id in Tap metadata', ['response' => $response]);
+                return redirect()->route('payment.failed')->with('error', 'Payment reference missing.');
+            }
+
+            $payment = Payment::with(['agent.branch.company', 'client', 'invoice'])->find($paymentId);
+            if (!$payment) {
+                Log::error('Payment not found for Tap callback', ['payment_id' => $paymentId]);
+                return redirect()->route('payment.failed')->with('error', 'Payment not found.');
+            }
+
+            if ($payment->status === 'completed') {
+                Log::info('Callback ignored: already completed', ['payment_id' => $paymentId]);
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success');
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
+
+            if ($response['status'] !== 'CAPTURED') {
+                Log::warning('Tap payment failed or cancelled', ['status' => $response['status'], 'tap_id' => $tapId]);
+
+                Transaction::create([
+                    'branch_id' => $payment->agent->branch->id,
+                    'company_id' => $payment->agent->branch->company->id,
+                    'entity_id' => $payment->agent->branch->company->id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'debit',
+                    'amount' => $payment->amount,
+                    'description' => 'Tap payment failed for ' . $payment->client->full_name,
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $payment->invoice_id,
+                    'payment_reference' => $response['id'],
+                    'reference_type' => 'Payment',
+                    'transaction_date' => now(),
+                ]);
+
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed');
+
+                $this->storeNotification([
+                    'user_id' => $receiptInfo['agent']->user_id,
+                    'title'   => $receiptInfo['title'],
+                    'message' => $receiptInfo['message'],
+                ]);
+
+                (new ResayilController())->message(
+                    $receiptInfo['agent']->phone_number,
+                    $receiptInfo['agent']->country_code,
+                    $receiptInfo['message']
+                );
+
+                return redirect()->to($receiptInfo['url'])->with('error', 'Payment failed or cancelled.');
+            }
+
+            DB::transaction(function () use ($payment, $response, $process, $tapId) {
+                $finalPaidAmount = $response['amount'] ?? $payment->amount;
+                $invoicePartialIds = json_decode($response['metadata']['invoice_partial_id'] ?? '[]', true);
+
+                $dateCreated = Carbon::createFromTimestampMs($response['transaction']['date']['created'])->format('Y-m-d H:i:s');
+                $dateCompleted = isset($response['transaction']['date']['completed'])
+                    ? Carbon::createFromTimestampMs($response['transaction']['date']['completed'])->format('Y-m-d H:i:s')
+                    : now();
+                $dateTransaction = Carbon::createFromTimestampMs($response['transaction']['date']['transaction'])->format('Y-m-d H:i:s');
+
+                TapPayment::create([
+                    'payment_id'       => $payment->id,
+                    'tap_id'           => $response['id'],
+                    'authorization_id' => $response['transaction']['authorization_id'] ?? null,
+                    'timezone'         => $response['transaction']['timezone'] ?? null,
+                    'expiry_period'    => $response['transaction']['expiry']['period'] ?? null,
+                    'expiry_type'      => $response['transaction']['expiry']['type'] ?? null,
+                    'amount'           => $finalPaidAmount,
+                    'currency'         => $response['currency'] ?? 'KWD',
+                    'date_created'     => $dateCreated,
+                    'date_completed'   => $dateCompleted,
+                    'date_transaction' => $dateTransaction,
+                    'receipt_id'       => $response['receipt']['id'] ?? null,
+                    'receipt_email'    => $response['receipt']['email'] ?? null,
+                    'receipt_sms'      => $response['receipt']['sms'] ?? null,
+                ]);
+
+                $payment->status = 'completed';
+                $payment->completed = 1;
+                $payment->service_charge = $finalPaidAmount - $payment->amount;
+                $payment->payment_reference = $response['id'];
+                $payment->save();
+
+                if ($process === 'topup') {
+                    $clientController = new ClientController;
+                    $addCreditResponse = $clientController->addCredit($payment);
+                    if (isset($addCreditResponse['error'])) {
+                        throw new \RuntimeException('Failed to add credit: ' . $addCreditResponse['error']);
+                    }
+
+                    Transaction::create([
+                        'branch_id' => $payment->agent->branch->id,
+                        'company_id' => $payment->agent->branch->company->id,
+                        'entity_id' => $payment->agent->branch->company->id,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'debit',
+                        'amount' => $finalPaidAmount,
+                        'description' => 'Topup success by ' . $payment->client->full_name,
+                        'payment_id' => $payment->id,
+                        'payment_reference' => $response['id'],
+                        'reference_type' => 'Payment',
+                        'transaction_date' => now(),
+                    ]);
+                } else {
+                    $invoice = $payment->invoice;
+
+                    if (!$invoice) {
+                        throw new \RuntimeException('Invoice not found for payment.');
+                    }
+
+                    if (!empty($invoicePartialIds)) {
+                        $partials = InvoicePartial::where('invoice_id', $invoice->id)
+                            ->whereIn('id', $invoicePartialIds)
+                            ->get();
+    
+                        foreach ($partials as $partial) {
+                            $partial->status = 'paid';
+                            $partial->payment_id = $payment->id;
+                            $partial->amount = $finalPaidAmount;
+                            $partial->save();
+                        }
+    
+                        Log::info('Updated invoice partials to paid', [
+                            'invoice_id' => $invoice->id,
+                            'partials' => $invoicePartialIds
+                        ]);
+                    }
+
+                    $allPartials = InvoicePartial::where('invoice_id', $invoice->id)->get();
+                    $paidCount = $allPartials->where('status', 'paid')->count();
+                    if ($paidCount === $allPartials->count()) {
+                        $invoice->status = 'paid';
+                    } elseif ($paidCount > 0) {
+                        $invoice->status = 'partial';
+                    } else {
+                        $invoice->status = 'unpaid';
+                    }
+
+                    $invoice->paid_date = now();
+                    $invoice->save();
+
+                    Transaction::create([
+                        'branch_id' => $invoice->agent->branch->id,
+                        'company_id' => $invoice->agent->branch->company->id,
+                        'entity_id' => $invoice->agent->branch->company->id,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'debit',
+                        'amount' => $finalPaidAmount,
+                        'description' => 'Tap payment success: ' . $invoice->invoice_number,
+                        'invoice_id' => $invoice->id,
+                        'payment_id' => $payment->id,
+                        'payment_reference' => $response['id'],
+                        'reference_type' => 'Invoice',
+                        'transaction_date' => now(),
+                    ]);
+                }
+            });
+
+            $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success');
+            $this->storeNotification([
+                'user_id' => $receiptInfo['agent']->user_id,
+                'title'   => $receiptInfo['title'],
+                'message' => $receiptInfo['message'],
+            ]);
+
+            (new ResayilController())->message(
+                $receiptInfo['agent']->phone_number,
+                $receiptInfo['agent']->country_code,
+                $receiptInfo['message']
+            );
+
+            return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
+
+        } catch (\Throwable $e) {
+            Log::error('Tap callback exception', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return redirect()->route('payment.failed')->with('error', 'Something went wrong. Please contact support.');
+        }
     }
 
     public function paymentUpdateLink($paymentId, Request $request)

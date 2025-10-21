@@ -944,6 +944,24 @@ class InvoiceController extends Controller
                 $invoice->is_client_credit = $type === 'credit' ? true : false;
                 $hasUnpaid = $invoice->invoicePartials()->where('status', 'unpaid')->exists();
                 $invoice->status = $hasUnpaid ? 'unpaid' : 'paid';
+
+                if ($type === 'split') {
+                    $hasPaid = $invoice->invoicePartials()->where('status', 'paid')->exists();
+                
+                    if ($hasPaid && $hasUnpaid) {
+                        $invoice->status = 'partial';
+                        Log::info('Invoice marked as PARTIAL due to split payments', [
+                            'invoice_id' => $invoice->id,
+                            'has_paid'   => $hasPaid,
+                            'has_unpaid' => $hasUnpaid,
+                        ]);
+                    } elseif ($hasPaid && !$hasUnpaid) {
+                        $invoice->status = 'paid';
+                    } else {
+                        $invoice->status = 'unpaid';
+                    }
+                }
+
                 $invoice->save();
 
                 $transaction = Transaction::where('invoice_id', $invoice->id)->first();

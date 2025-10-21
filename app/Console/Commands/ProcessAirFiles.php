@@ -767,8 +767,8 @@ class ProcessAirFiles extends Command
             if (in_array($taskData['status'], ['reissued', 'refund', 'void'])) {
                 $this->logger->info("Task status is {$taskData['status']}. Checking original task for reference: {$taskData['reference']}");
 
-                $originalTask = Task::where('reference', $taskData['reference'])
-                    ->where('status', 'issued')
+                $originalTask = Task::where('reference', $taskData['original_reference'])
+                    ->where('status', ['issued', 'reissued'])
                     ->first();
 
                 if ($originalTask) {

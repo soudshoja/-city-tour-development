@@ -1306,9 +1306,9 @@
                                                                                         <div class="flex-1 min-w-0">
                                                                                             @php
                                                                                             $originalTasks = \App\Models\Task::with('client')
-                                                                                            ->where('status', 'issued')
+                                                                                            ->where('status', ['issued', 'reissued']')
                                                                                             ->where(function ($query) use ($task) {
-                                                                                            $query->where('reference', $task->reference)
+                                                                                            $query->where('reference', $task->original_reference)
                                                                                             ->orWhere('passenger_name', $task->passenger_name);
                                                                                             })
                                                                                             ->get();

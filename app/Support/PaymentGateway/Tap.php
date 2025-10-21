@@ -27,7 +27,7 @@ class Tap
             'invoice_number' => 'nullable|string|max:255',
             'payment_id' => 'required|integer|exists:payments,id',
             'payment_gateway' => 'required|string|max:255',
-            'invoice_partial_id' => 'nullable|array',
+            'invoice_partial_id' => 'nullable',
             'description' => 'required|string',
             'voucher_number' => 'nullable|string',
             'process' => 'nullable|string',
@@ -69,7 +69,7 @@ class Tap
                 'voucher_number' => $request->input('voucher_number'),
                 'payment_id' => $request->input('payment_id'),
                 'payment_gateway' => $request->input('payment_gateway'),
-                'invoice_partial_id' => json_encode($request->input('invoice_partial_id') ?? []),
+                'invoice_partial_id' => $request->input('invoice_partial_id'),
                 'process' => $request->input('process'),
             ],
             'redirect' => [

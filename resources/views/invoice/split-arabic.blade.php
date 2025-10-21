@@ -309,7 +309,7 @@
      <script>
          let invoicePartial = @json($invoicePartial);
          const paymentForm = document.getElementById('paymentForm');
-         addHiddenInput("invoice_partial_id[]", invoicePartial.id, paymentForm);
+         addHiddenInput("invoice_partial_id", invoicePartial.id, paymentForm);
          console.log("split blade");
 
          function addHiddenInput(name, value, form) {

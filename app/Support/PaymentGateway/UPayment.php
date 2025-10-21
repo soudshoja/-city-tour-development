@@ -33,7 +33,7 @@ class UPayment
             'payment_id' => 'required|integer|exists:payments,id',
             'payment_number' => 'required|string|max:255',
             'payment_method_id' => 'required|integer|exists:payment_methods,id',
-            'invoice_partial_id' => 'nullable|array',
+            'invoice_partial_id' => 'nullable',
             'currency' => 'required|string|max:10',
         ]);
 

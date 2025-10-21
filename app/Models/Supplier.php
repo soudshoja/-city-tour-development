@@ -98,5 +98,10 @@ class Supplier extends Model
 
         return false;
     }
+
+    public function taskRules()
+    {
+        return $this->hasMany(TaskRules::class);
+    }
     
 }

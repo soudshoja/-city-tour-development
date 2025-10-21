@@ -42,17 +42,17 @@ class TaskRuleConfigurationTest extends TestCase
             'description' => 'Default behavior',
         ]);
 
-        $task = new Task([
+        $taskData = [
             'reference' => 'TEST-001',
             'price' => 100.00,
             'total' => 120.00,
             'company_id' => $this->company->id,
             'supplier_id' => $this->supplier->id,
-        ]);
+        ];
 
-        $result = $this->ruleConfig->applyRules($task);
+        $result = $this->ruleConfig->applyRules($taskData);
 
-        $this->assertEquals($task->toArray(), $result);
+        $this->assertEquals($taskData, $result);
     }
 
     public function test_minus_existing_rule_with_existing_task()
@@ -65,22 +65,21 @@ class TaskRuleConfigurationTest extends TestCase
             'column' => 'price',
         ]);
 
-        $existingTask = new Task([
-            'id' => 1,
+        $existingTask = Task::factory()->create([
             'price' => 50.00,
             'company_id' => $this->company->id,
             'supplier_id' => $this->supplier->id,
         ]);
 
-        $task = new Task([
+        $taskData = [
             'reference' => 'TEST-001',
             'price' => 100.00,
             'total' => 120.00,
             'company_id' => $this->company->id,
             'supplier_id' => $this->supplier->id,
-        ]);
+        ];
 
-        $result = $this->ruleConfig->applyRules($task, $existingTask);
+        $result = $this->ruleConfig->applyRules($taskData, $existingTask);
 
         $this->assertEquals(50.00, $result['price']);
         $this->assertEquals(120.00, $result['total']);
@@ -96,17 +95,17 @@ class TaskRuleConfigurationTest extends TestCase
             'column' => 'price',
         ]);
 
-        $task = new Task([
+        $taskData = [
             'reference' => 'TEST-001',
             'price' => 100.00,
             'total' => 120.00,
             'company_id' => $this->company->id,
             'supplier_id' => $this->supplier->id,
-        ]);
+        ];
 
-        $result = $this->ruleConfig->applyRules($task, null);
+        $result = $this->ruleConfig->applyRules($taskData, null);
 
-        $this->assertEquals($task->toArray(), $result);
+        $this->assertEquals($taskData, $result);
     }
 
     public function test_multiple_rules_applied()
@@ -127,23 +126,22 @@ class TaskRuleConfigurationTest extends TestCase
             'column' => 'total',
         ]);
 
-        $existingTask = new Task([
-            'id' => 1,
+        $existingTask = Task::factory()->create([
             'price' => 30.00,
             'total' => 40.00,
             'company_id' => $this->company->id,
             'supplier_id' => $this->supplier->id,
         ]);
 
-        $task = new Task([
+        $taskData = [
             'reference' => 'TEST-001',
             'price' => 100.00,
             'total' => 120.00,
             'company_id' => $this->company->id,
             'supplier_id' => $this->supplier->id,
-        ]);
+        ];
 
-        $result = $this->ruleConfig->applyRules($task, $existingTask);
+        $result = $this->ruleConfig->applyRules($taskData, $existingTask);
 
         $this->assertEquals(70.00, $result['price']);
         $this->assertEquals(80.00, $result['total']);
@@ -154,17 +152,17 @@ class TaskRuleConfigurationTest extends TestCase
         // Create a different supplier with no rules
         $otherSupplier = Supplier::factory()->create(['country_id' => $this->supplier->country_id]);
         
-        $task = new Task([
+        $taskData = [
             'reference' => 'TEST-001',
             'price' => 100.00,
             'total' => 120.00,
             'company_id' => $this->company->id,
             'supplier_id' => $otherSupplier->id,
-        ]);
+        ];
 
-        $result = $this->ruleConfig->applyRules($task);
+        $result = $this->ruleConfig->applyRules($taskData);
 
-        $this->assertEquals($task->toArray(), $result);
+        $this->assertEquals($taskData, $result);
     }
 
     public function test_supplier_with_rules_applies_them()
@@ -181,20 +179,20 @@ class TaskRuleConfigurationTest extends TestCase
             'column' => 'price',
         ]);
 
-        $existingTask = new Task([
+        $existingTask = Task::factory()->create([
             'price' => 30.00,
             'company_id' => $this->company->id,
             'supplier_id' => $otherSupplier->id,
         ]);
 
-        $task = new Task([
+        $taskData = [
             'price' => 100.00,
             'total' => 120.00,
             'company_id' => $this->company->id,
             'supplier_id' => $otherSupplier->id,
-        ]);
+        ];
 
-        $result = $this->ruleConfig->applyRules($task, $existingTask);
+        $result = $this->ruleConfig->applyRules($taskData, $existingTask);
 
         $this->assertEquals(70.00, $result['price']); // 100 - 30 = 70 (supplier rule applied)
         $this->assertEquals(120.00, $result['total']); // unchanged
@@ -207,48 +205,83 @@ class TaskRuleConfigurationTest extends TestCase
         
         // No rules created for this supplier
 
-        $existingTask = new Task([
+        $existingTask = Task::factory()->create([
             'total' => 20.00,
             'company_id' => $this->company->id,
             'supplier_id' => $supplierWithoutRules->id,
         ]);
 
-        $task = new Task([
+        $taskData = [
             'price' => 100.00,
             'total' => 120.00,
             'company_id' => $this->company->id,
             'supplier_id' => $supplierWithoutRules->id,
-        ]);
+        ];
 
-        $result = $this->ruleConfig->applyRules($task, $existingTask);
+        $result = $this->ruleConfig->applyRules($taskData, $existingTask);
 
         // Should return unchanged (default behavior)
-        $this->assertEquals($task->toArray(), $result);
+        $this->assertEquals($taskData, $result);
     }
 
     public function test_throws_exception_when_task_missing_company_id()
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Task must have a company_id to apply rules.');
+        $this->expectExceptionMessage('Task data must have a company_id to apply rules.');
 
-        $task = new Task([
+        $taskData = [
             'price' => 100.00,
-            'supplier_id' => 1,
-        ]);
+            'supplier_id' => $this->supplier->id,
+        ];
 
-        $this->ruleConfig->applyRules($task);
+        $this->ruleConfig->applyRules($taskData);
     }
 
     public function test_throws_exception_when_task_missing_supplier_id()
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Task must have a supplier_id to apply rules.');
+        $this->expectExceptionMessage('Task data must have a supplier_id to apply rules.');
 
-        $task = new Task([
+        $taskData = [
             'price' => 100.00,
             'company_id' => $this->company->id,
+        ];
+
+        $this->ruleConfig->applyRules($taskData);
+    }
+
+    public function test_updating_tax_using_tax_calculate_rule()
+    {
+        TaskRules::create([
+            'company_id' => $this->company->id,
+            'supplier_id' => $this->supplier->id,
+            'name' => TaskRuleEnum::TAX_CALCULATED->value,
+            'description' => 'Calculate by subtracting price from total',
+            'column' => 'tax',
         ]);
 
-        $this->ruleConfig->applyRules($task);
+        $taskData = [
+            'reference' => 'TEST-002',
+            'price' => 200.00,
+            'total' => 220.00,
+            'company_id' => $this->company->id,
+            'supplier_id' => $this->supplier->id,
+        ];
+
+        $result = $this->ruleConfig->applyRules($taskData);
+
+        $this->assertEquals(20.00, $result['tax']);
+
+        $secondTaskData = [
+            'reference' => 'TEST-003',
+            'price' => 150.00,
+            'total' => 180.00,
+            'company_id' => $this->company->id,
+            'supplier_id' => $this->supplier->id,
+        ];
+
+        $secondResult = $this->ruleConfig->applyRules($secondTaskData);
+
+        $this->assertEquals(30.00, $secondResult['tax']);
     }
 }

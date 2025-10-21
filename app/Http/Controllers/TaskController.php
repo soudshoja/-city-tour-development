@@ -92,7 +92,7 @@ class TaskController extends Controller
             })->get();
 
             $query->where('company_id', $user->company->id);
-            $suppliers = $suppliers->activeForCompany($user->company->id);
+            $suppliers = $suppliers->activeForCompany($user->company->id)->get();
         } elseif ($user->role_id == Role::BRANCH) {
             $agents = Agent::with('branch')->where('branch_id', $user->branch_id)->get();
             $agentsId = $agents->pluck('id');
@@ -103,7 +103,7 @@ class TaskController extends Controller
             })->get();
 
             $query->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
-            $suppliers = $suppliers->activeForCompany($user->company_id);
+            $suppliers = $suppliers->activeForCompany($user->company_id)->get();
         } elseif ($user->role_id == Role::AGENT) {
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $clients = Client::where('agent_id', $user->agent->id)->get();
@@ -136,12 +136,10 @@ class TaskController extends Controller
             })->get();
 
             $query->where('company_id', $companyId);
-            $suppliers = $suppliers->activeForCompany($companyId);
+            $suppliers = $suppliers->activeForCompany($companyId)->get();
         } else {
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
-
-        $suppliers = $suppliers->with('companies')->get();
 
         $paymentMethod = Account::where('parent_id', 39)->get();
         if ($search = $request->query('q')) {
@@ -196,12 +194,13 @@ class TaskController extends Controller
                                 ->where(function ($q3) use ($amadeusId) {
                                     $q3->where('status', '!=', 'issued')
                                         ->orWhereRaw("
-                                        NOT EXISTS (
-                                            SELECT 1 FROM tasks t2
-                                            WHERE t2.reference = tasks.reference
-                                            AND t2.supplier_id = ?
-                                            AND t2.status = 'void'
-                                        )
+                                            NOT EXISTS (
+                                                SELECT 1 FROM tasks t2
+                                                WHERE t2.reference = tasks.reference
+                                                AND t2.supplier_id = ?
+                                                AND t2.status = 'void'
+                                                AND t2.deleted_at IS NULL
+                                            )
                                     ", [$amadeusId]);
                                 });
                         })
@@ -210,13 +209,14 @@ class TaskController extends Controller
                                 ->where(function ($q3) use ($jazeeraId) {
                                     $q3->where('status', '!=', 'confirmed')
                                         ->orWhereRaw("
-                                        NOT EXISTS (
-                                            SELECT 1 FROM tasks t2
-                                            WHERE t2.reference = tasks.reference
-                                            AND t2.supplier_id = ?
-                                            AND t2.status = 'issued'
-                                        )
-                                    ", [$jazeeraId]);
+                                            NOT EXISTS (
+                                                SELECT 1 FROM tasks t2
+                                                WHERE t2.reference = tasks.reference
+                                                AND t2.supplier_id = ?
+                                                AND t2.status = 'issued'
+                                                AND t2.deleted_at IS NULL
+                                            )
+                                        ", [$jazeeraId]);
                                 });
                         });
                 });
@@ -580,6 +580,7 @@ class TaskController extends Controller
             'enabled' => 'nullable|boolean',
             'refund_date' => 'nullable|date',
             'ticket_number' => 'nullable|string',
+            'original_ticket_number' => 'nullable|string',
             'refund_charge' => 'nullable|numeric',
             'task_hotel_details' => 'nullable|array',
             'task_flight_details' => 'nullable|array',
@@ -1680,7 +1681,7 @@ class TaskController extends Controller
             $this->voidTask($task, $originalTask, $payment);
         } else {
             Log::info('Invoice for the void task is not paid nor found. Processing unpaid void reversal.');
-            $this->ReverseUnpaidVoidedTask($originalTask);
+            $this->ReverseUnpaidVoidedTask($task, $originalTask);
         }
     }
 
@@ -4133,56 +4134,8 @@ class TaskController extends Controller
         return $pdf->download('receipt.pdf');
     }
 
-    public function ReverseUnpaidVoidedTask(Task $originalTask)
+    public function ReverseUnpaidVoidedTask(Task $voidTask, Task $originalTask)
     {
-
-        // $liabilities = Account::where('name', 'like', '%Liabilities%')
-        //     ->where('company_id', $originalTask->company_id)
-        //     ->first();
-
-        // $expenses = Account::where('name', 'like', '%Expenses%')
-        //     ->where('company_id', $originalTask->company_id)
-        //     ->first();
-
-        // $supplier = Supplier::find($originalTask->supplier_id);
-        // $supplierCompany = SupplierCompany::where('supplier_id', $originalTask->supplier_id)
-        //     ->where('company_id', $originalTask->company_id)
-        //     ->first();
-
-        // $supplierPayable = Account::where('name', $supplier->name)
-        //     ->where('company_id', $originalTask->company_id)
-        //     ->where('root_id', $liabilities->id)
-        //     ->first();
-
-        // $companyIssuedBy = $originalTask->issued_by;
-
-        // if (!$companyIssuedBy) {
-        //     Log::error('Company issued by not found for task ID: ' . $originalTask->id);
-        //     throw new Exception('Company issued by not found.');
-        // }
-
-        // $issuedByAccount = Account::where('name', $companyIssuedBy)
-        //     ->where('company_id', $originalTask->company_id)
-        //     ->where('root_id', $liabilities->id)
-        //     ->first();
-
-        // if (!$issuedByAccount) {
-        //     Log::error('Issued by account not found for task ID: ' . $originalTask->id);
-        //     throw new Exception('Issued by account not found.');
-        // }
-        // $supplierCost = Account::where('name', $supplier->name)
-        //     ->where('company_id', $originalTask->company_id)
-        //     ->where('root_id', $expenses->id)
-        //     ->first();
-
-        // if (!$supplierPayable || !$supplierCost) {
-        //     Log::error('Missing required accounts for reversal.', [
-        //         'payable' => $supplierPayable,
-        //         'cost' => $supplierCost
-        //     ]);
-        //     throw new Exception('Missing required accounts for reversal.');
-        // }
-
         Log::info('Recording reversal journal & transaction for task ID: ' . $originalTask->id);
 
         // Use task's issued_date as transaction_date
@@ -4193,11 +4146,11 @@ class TaskController extends Controller
         $transaction = Transaction::create([
             'branch_id' => $originalTask->agent->branch_id,
             'company_id' => $originalTask->company_id,
+            'name' => $originalTask->client->full_name ?? null,
             'entity_id' => $originalTask->company_id,
             'entity_type' => 'company',
             'transaction_type' => 'debit',
             'amount' => $originalTask->total,
-            'task_id' => $originalTask->id,
             'description' => 'Void reversal: ' . $originalTask->reference,
             'reference_type' => 'Payment',
             'transaction_date' => $transactionDate,
@@ -4209,7 +4162,7 @@ class TaskController extends Controller
                 'company_id' => $entry->company_id,
                 'branch_id' => $entry->branch_id,
                 'account_id' => $entry->account_id,
-                'task_id' => $entry->task_id,
+                'task_id' => $voidTask->id,
                 'transaction_date' => $transactionDate,
                 'description' => 'Reversal: ' . $entry->description,
                 'name' => $entry->name,

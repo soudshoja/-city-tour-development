@@ -54,6 +54,12 @@ class TaskSchema
                 'desc' => "Document or ticket reference number. For air files: Usually like T-K229-2833133219, take the last 10 digits (e.g., '2833133219'). For other documents: Look for ticket numbers, e-ticket numbers, document numbers, or confirmation numbers. May be labeled as 'Ticket No', 'E-ticket', 'Document Number', 'Confirmation Code', or similar.",
                 'example' => '2833133219',
                 'default' => '',
+            ],  
+            'original_ticket_number' => [
+                'type' => 'string',
+                'desc' => "The **original** e-ticket or document number that this transaction is linked to — used mainly for reissued or exchanged tickets. In Amadeus, this refers to the first ticket issued before any reissue or exchange. Format and extraction follow the same rule as 'ticket_number' (take the last 10 digits, e.g. '2833133219').",
+                'example' => '2833133218',
+                'default' => '',
             ],
             'gds_reference' => [
                 'type' => 'string',
@@ -167,6 +173,12 @@ class TaskSchema
                 'type' => 'string',
                 'desc' => "Primary reference code for the booking. For air files: Same as ticket_number (last 10 digits). For other documents: Main booking reference, confirmation number, or primary identifier for the reservation. It might have different labels like 'Booking Reference', 'Reservation Code', 'Confirmation Number', or 'PNR'. It also may be same as gds_reference or airline_reference. If not available, use ticket_number.",
                 'example' => '2833133219',
+                'default' => '',
+            ],
+            'original_reference' => [
+                'type' => 'string',
+                'desc' => "The **original booking reference or PNR** linked to the first issuance of the ticket or booking. In Amadeus, this would correspond to the **original PNR or Record Locator** before any reissue, exchange, or split. For non-air documents, use the first known booking reference or confirmation number related to the original document. If not available, leave blank or duplicate the 'reference' value.",
+                'example' => 'XYZ789',
                 'default' => '',
             ],
             'created_by' => [

@@ -31,7 +31,7 @@ class MyFatoorah
             'payment_id' => 'required|integer|exists:payments,id',
             'payment_gateway' => 'required|string|max:255',
             'payment_method_id' => 'required|integer|exists:payment_methods,id',
-            'invoice_partial_id' => 'nullable|array',
+            'invoice_partial_id' => 'nullable',
             'client_phone' => 'nullable|string|max:20',
         ]);
 
@@ -79,7 +79,7 @@ class MyFatoorah
 
         $userDefinedField = json_encode([
             'invoice_id'          => $request->input('invoice_id'),
-            'invoice_partial_id' => array_values($request->input('invoice_partial_id', [])),
+            'invoice_partial_id' => $request->input('invoice_partial_id'),
         ]);
 
         $companyId = $company->id;

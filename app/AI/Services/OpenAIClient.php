@@ -518,6 +518,7 @@ class OpenAIClient implements AIClientInterface
             {
                 'additional_info': 'additional info',
                 'ticket_number': '3580878589', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
+                'original_ticket_number': '3580878588', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
                 'status': 'completed'/ 'hold' / 'confirmed',
                 'price': 100.00,
                 'exchange_currency': 'KWD',
@@ -533,6 +534,7 @@ class OpenAIClient implements AIClientInterface
                 'penalty_fee': '10.00',
                 'refund_charge': '0.250+0.900',
                 'reference': 'ticket_number',
+                'original_reference': 'original_ticket_number',
                 'gds_reference' => '8D46RD',
                 'amadeus_reference' => 'KUIXNO',
                 'created_by' => 'KWIKT2619', //example of gds office id
@@ -577,6 +579,7 @@ class OpenAIClient implements AIClientInterface
             {
                 'additional_info': 'additional info',
                 'ticket_number': '3580878589', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
+                'original_ticket_number': '3580878588', //[3-digit airline code] - [10-digit ticket number] (only save the 10-digit ticket number),
                 'status': 'completed'/ 'hold' / 'confirmed',
                 'price': 100.00,
                 'exchange_currency': 'KWD',
@@ -592,6 +595,7 @@ class OpenAIClient implements AIClientInterface
                 'penalty_fee': '10.00',
                 'refund_charge': '0.250+0.900',
                 'reference': 'ticket_number',
+                'original_reference': 'original_ticket_number',
                 'gds_reference' => 'KFD5TW',
                 'amadeus_reference' => 'KFD5TW',
                 'created_by' => 'KWIKT2619', //example of gds office id

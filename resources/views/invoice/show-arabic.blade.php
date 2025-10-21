@@ -740,7 +740,7 @@
 
             console.log('full');
             // Ensure there’s only one hidden input for the 'full' payment type
-            addHiddenInput("invoice_partial_id[]", invoicePartials[0]?.id, paymentForm);
+            addHiddenInput("invoice_partial_id", invoicePartials[0]?.id, paymentForm);
         } else if (invoice.payment_type === 'partial' || invoice.payment_type === 'split') {
 
             console.log('partials');
@@ -755,10 +755,10 @@
                 } else {
                     console.log('cheked');
                     checkbox.checked = true; // Set all non-disabled checkboxes to checked by default
-                    addHiddenInput("invoice_partial_id[]", partialId, paymentForm); // Add hidden input
+                    addHiddenInput("invoice_partial_id", partialId, paymentForm); // Add hidden input
                 }
 
-                ///addHiddenInput("invoice_partial_id[]", partialId, paymentForm); // Add corresponding hidden input
+                ///addHiddenInput("invoice_partial_id", partialId, paymentForm); // Add corresponding hidden input
 
                 calculateTotal();
 
@@ -767,10 +767,10 @@
                     console.log(partialId);
                     if (event.target.checked) {
                         // Add hidden input if checkbox is checked
-                        addHiddenInput("invoice_partial_id[]", partialId, paymentForm);
+                        addHiddenInput("invoice_partial_id", partialId, paymentForm);
                     } else {
                         // Remove hidden input if checkbox is unchecked
-                        removeHiddenInput("invoice_partial_id[]", partialId, paymentForm);
+                        removeHiddenInput("invoice_partial_id", partialId, paymentForm);
                     }
 
                     calculateTotal();

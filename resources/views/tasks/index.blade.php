@@ -2118,12 +2118,18 @@
         const checkboxes = dropdown.querySelectorAll('.column-checkbox');
 
         const defaultColumns = @json($defaultColumns ?? []);
-        let visibleColumns = JSON.parse(localStorage.getItem("visibleColumns"));
+        const backendVisible = @json($visibleColumns ?? []);
+        let visibleColumns = backendVisible;
 
         if (!Array.isArray(visibleColumns) || visibleColumns.length === 0) {
-            visibleColumns = @json($visibleColumns ?? $defaultColumns);
-            localStorage.setItem("visibleColumns", JSON.stringify(visibleColumns));
+            visibleColumns = JSON.parse(localStorage.getItem("visibleColumns"));
         }
+
+        if (!Array.isArray(visibleColumns) || visibleColumns.length === 0) {
+            visibleColumns = defaultColumns;
+        }
+
+        localStorage.setItem("visibleColumns", JSON.stringify(visibleColumns));
 
         console.log("Default columns from backend:", defaultColumns);
         console.log("Visible columns being applied:", visibleColumns);
@@ -2154,6 +2160,7 @@
 
             fetch("{{ route('tasks.columns.save') }}", {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',

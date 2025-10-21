@@ -5,6 +5,15 @@
 ])
 
 <form action="{{ $action }}" method="GET" class="flex flex-1 min-w-0 items-center gap-2">
+    @foreach(request()->except($searchParam, 'page') as $key => $value)
+        @if(is_array($value))
+            @foreach($value as $v)
+                <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
+            @endforeach
+        @else
+            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+        @endif
+    @endforeach
     <div class="relative w-full lg:w-2/3">
         <input type="text" name="{{ $searchParam }}" value="{{ request($searchParam) }}" id="searchInput"
             class="block w-full rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-3 pl-4 pr-10 text-sm text-gray-900 dark:text-gray-100 focus:border-blue-600 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 ">
@@ -20,7 +29,7 @@
         </button>
     </div>
     @if(request($searchParam))
-        <button type="button" onclick="window.location='{{ $action }}'"
+        <button type="button" onclick="window.location='{{ $action }}?{{ http_build_query(request()->except($searchParam, 'page')) }}'"
             class="relative group bg-red-200 dark:bg-red-800 hover:bg-red-500 dark:hover:bg-red-600 text-black dark:text-white hover:text-white dark:hover:text-white w-9 h-9 flex items-center justify-center rounded-full 
             transition-all duration-300 opacity-100 scale-100 pointer-events-auto">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

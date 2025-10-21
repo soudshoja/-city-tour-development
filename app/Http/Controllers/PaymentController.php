@@ -176,7 +176,6 @@ class PaymentController extends Controller
     public function initiatePayment($data): JsonResponse
     {
         $invoice = $data['invoice'];
-
         $company = $invoice->agent->branch->company;
 
         if (!$company) {
@@ -186,7 +185,6 @@ class PaymentController extends Controller
         }
 
         $invoicePartialIds = $data['invoice_partial_id'] ?? [];
-
         $selectedPartials = InvoicePartial::whereIn('id', $invoicePartialIds)->get();
 
         if ($selectedPartials->isEmpty()) {
@@ -204,36 +202,52 @@ class PaymentController extends Controller
 
         $finalAmount = $data['total_amount'];
 
-        if ($invoice->payment_type === 'partial' || $invoice->payment_type === 'split') {
-            Payment::where('invoice_id', $invoice->id)
-                ->whereIn('status', ['initiate', 'pending'])
-                ->delete();
+        $existingPayment = Payment::where('invoice_id', $invoice->id)
+            ->where('status', 'initiate')
+            ->whereNotNull('payment_url')
+            ->orderByDesc('created_at')
+            ->first();
 
-            Log::info('Deleted previous uncompleted payments for partial invoice.', ['invoice_id' => $invoice->id]);
-        } else {
-            $existingPayment = Payment::where('invoice_id', $invoice->id)
-                ->whereIn('status', ['initiate', 'pending'])
-                ->whereNotNull('payment_url')
-                ->orderBy('created_at', 'desc')
-                ->first();
+        if ($existingPayment) {
+            if (
+                strtolower($existingPayment->payment_gateway) !== strtolower($data['payment_gateway']) ||
+                $existingPayment->payment_method_id != $data['payment_method']
+            ) {
+                Log::info('Payment gateway or method changed, deleting old payment.', [
+                    'old_gateway' => $existingPayment->payment_gateway,
+                    'new_gateway' => $data['payment_gateway'],
+                    'old_method' => $existingPayment->payment_method_id,
+                    'new_method' => $data['payment_method'],
+                ]);
+                $existingPayment->delete();
+            }
+            elseif (
+                $existingPayment->payment_url && 
+                $existingPayment->expiry_date && 
+                now()->lt($existingPayment->expiry_date) &&
+                !in_array(strtolower($data['payment_gateway']), ['tap', 'hesabe'])
+            ) {
+                Log::info('Reusing existing payment link.', [
+                    'invoice_id' => $invoice->id,
+                    'payment_id' => $existingPayment->id,
+                    'url' => $existingPayment->payment_url,
+                    'expires_at' => $existingPayment->expiry_date,
+                ]);
 
-            if ($existingPayment) {
-                if ($existingPayment->expiry_date && Carbon::parse($existingPayment->expiry_date)->isPast()) {
-                    Log::info('Found an expired payment link. A new one will be generated.', ['payment_id' => $existingPayment->id]);
-                    $existingPayment->delete();
-                } elseif ($existingPayment->payment_method_id != $data['payment_method']) {
-                    Log::info('Payment method changed. A new payment link will be generated.', [
-                        'old_method' => $existingPayment->payment_method_id,
-                        'new_method' => $data['payment_method'],
-                    ]);
-                    $existingPayment->delete();
-                } else {
-                    Log::info('Reusing existing payment link.', ['payment_id' => $existingPayment->id, 'url' => $existingPayment->payment_url]);
-                    return response()->json([
-                        'success' => 'Reusing existing payment link.',
-                        'url' => $existingPayment->payment_url,
-                    ]);
-                }
+                InvoicePartial::whereIn('id', $invoicePartialIds)
+                    ->update(['payment_id' => $existingPayment->id]);
+
+                return response()->json([
+                    'success' => 'Reusing existing payment link.',
+                    'url' => $existingPayment->payment_url,
+                ]);
+            }
+            else {
+                Log::info('Existing payment expired, creating new one.', [
+                    'payment_id' => $existingPayment->id,
+                    'expiry_date' => $existingPayment->expiry_date,
+                ]);
+                $existingPayment->delete();
             }
         }
 
@@ -253,13 +267,11 @@ class PaymentController extends Controller
             'agent_id' => $invoice->agent_id
         ]);
 
+        InvoicePartial::whereIn('id', $invoicePartialIds)->update(['payment_id' => $payment->id]);
+
         $paymentReference = null;
         $paymentUrl = null;
         $expiryDate = now()->addDays(2);
-
-        // if(config('app.env') === 'local'){
-        //     $data['payment_gateway'] = 'upayment'; // for testing
-        // }
 
         if (strtolower($data['payment_gateway']) === 'tap') {
 
@@ -493,12 +505,12 @@ class PaymentController extends Controller
         }
         
         if ($paymentReference && $paymentUrl) {
-
-            $payment->payment_reference = $paymentReference;
-            $payment->payment_url = $paymentUrl;
-            $payment->expiry_date = $expiryDate;
-            $payment->status = 'initiate';
-            $payment->save();
+            $payment->update([
+                'payment_reference' => $paymentReference,
+                'payment_url' => $paymentUrl,
+                'expiry_date' => $expiryDate,
+                'status' => 'initiate',
+            ]);
 
             return response()->json([
                 'success' => 'Payment initiated successfully',
@@ -1377,6 +1389,9 @@ class PaymentController extends Controller
                             ->orWhere('last_name', 'like', '%' . $search . '%')
                             ->orWhere('country_code', 'like', '%' . $search . '%')
                             ->orWhere('phone', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('myFatoorahPayment', function ($q) use ($search) {
+                        $q->where('invoice_ref', 'like', '%' . $search . '%');
                     });
             });
         }

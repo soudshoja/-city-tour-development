@@ -444,18 +444,157 @@
 
                     <!-- Invoice Payment Settings Section -->
                     <div class="mt-4">
-                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Invoice Settings</h2>
+                        <h2 class="text-lg font-semibold mb-5 text-gray-700">Invoice Settings</h2>
 
-                        <!-- Payment Type Section -->
                         <div id="paymentMethod" class="mt-4">
-                            <h2 class="text-lg font-semibold mb-3 text-gray-700">
-                                <span> Payment Type</span>
+                            <div x-data="paymentSection()" x-init="initData()" class="mb-5">
+                                <h2 class="text-lg font-semibold mb-3 text-gray-700 flex items-center justify-between">
+                                    <div>
+                                        <span>
+                                            Payment Type :
+                                            <span class="font-large text-success"
+                                                x-text="paymentType ? paymentType.charAt(0).toUpperCase() + paymentType.slice(1) : 'N/A'">
+                                            </span>
+                                        </span>
+                                    </div>
 
-                                @if ($invoice->payment_type)
-                                : <span class="font-large text-success">{{ ucfirst($invoice->payment_type) }}</span>
-                                @endif
+                                    @if ($invoice->status === 'unpaid')
+                                    <span x-show="paymentType" class="text-xs text-blue-500 ml-2 cursor-pointer" @click="showModalType = true">
+                                        (Change Type)
+                                    </span>
+                                    @elseif ($invoice->status === 'partial')
+                                    <span x-show="paymentType" class="text-xs text-blue-500 ml-2 cursor-pointer" @click="openGatewayModal()">
+                                        (Change Gateway)
+                                    </span>
+                                    @endif
+                                </h2>
 
-                            </h2>
+                                <!-- Change Payment Type Modal -->
+                                <div x-show="showModalType" x-cloak
+                                    class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50">
+
+                                    <div class="bg-white rounded-lg shadow-lg p-6 w-[28rem] border border-gray-200 space-y-5">
+                                        <div class="flex justify-between items-center">
+                                            <h2 class="text-xl font-bold text-gray-800">Change Payment Type</h2>
+                                            <button type="button" @click="showModalType = false"
+                                                class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
+                                        </div>
+
+                                        <div class="space-y-3">
+                                            <p class="text-sm text-gray-700 text-center">Are you sure you want to change payment type of this invoice?</p>
+                                        </div>
+
+                                        <form method="POST" action="{{ route('invoice.update-type') }}" class="flex justify-between items-center pt-3 w-full">
+                                            @csrf
+                                            <input type="hidden" name="invoice_id" value="{{ $invoice->id }}">
+
+                                            <button type="button"
+                                                class="text-gray-600 text-sm px-4 py-2 border rounded-full shadow-md hover:bg-gray-100"
+                                                @click="showModalType = false">
+                                                Cancel
+                                            </button>
+
+                                            <button type="submit"
+                                                class="text-white bg-blue-600 text-sm px-4 py-2 rounded-full shadow-md hover:bg-blue-700">
+                                                Confirm
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <!-- Change Payment Gateway Modal -->
+                                <div x-show="showModalGateway" x-cloak
+                                    class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50">
+                                    <div class="bg-white rounded-lg shadow-lg p-6 w-[32rem] border border-gray-200 space-y-5">
+                                        <div class="flex justify-between items-center">
+                                            <h2 class="text-xl font-bold text-gray-800">Change Payment Gateway</h2>
+                                            <button @click="showModalGateway = false"
+                                                class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
+                                        </div>
+
+                                        <div class="space-y-3">
+                                            <p class="text-sm text-gray-700">
+                                                You can change the payment gateway for each unpaid partial of this invoice.
+                                            </p>
+
+                                            @foreach ($unpaidPartial as $partial)
+                                                <form method="POST" action="{{ route('invoice.update-partial-gateway') }}" class="border border-gray-200 rounded-md p-3 mb-3">
+                                                    @csrf
+                                                    <input type="hidden" name="invoice_id" value="{{ $invoice->id }}">
+                                                    <input type="hidden" name="invoice_number" value="{{ $invoice->invoice_number }}">
+                                                    <input type="hidden" name="invoice_partial_id" value="{{ $partial->id }}">
+
+                                                    <div class="mb-2 flex justify-between items-center">
+                                                        <strong class="text-gray-800">{{ $invoice->invoice_number }}</strong>
+                                                        <span class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                            Unpaid
+                                                        </span>
+                                                    </div>
+
+                                                    <div class="mt-5 mb-5 flex justify-between">
+                                                        <span class="text-gray-700">Amount:</span>
+                                                        <span class="font-semibold">{{ $invoice->currency }} {{ number_format($partial->amount, 2) }}</span>
+                                                    </div>
+
+                                                   <!-- Gateway Selection -->
+                                                    <div class="mb-2">
+                                                        <label class="block text-sm font-medium text-gray-700 mb-1">Payment Gateway</label>
+                                                        <select 
+                                                            name="gateway" 
+                                                            id="gateway_{{ $partial->id }}" 
+                                                            class="border border-gray-300 rounded-md text-sm p-1.5 w-full"
+                                                            onchange="toggleMethod({{ $partial->id }})">
+                                                            @foreach ($paymentGateways as $gateway)
+                                                                <option value="{{ $gateway->name }}" 
+                                                                    @selected($gateway->name == $partial->payment_gateway)>
+                                                                    {{ $gateway->name }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+
+                                                    <!-- Payment Method Selection -->
+                                                    <div class="mb-4" id="method_section_{{ $partial->id }}" style="display: none;">
+                                                        <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                                                        <select name="method" class="border border-gray-300 rounded-md text-sm p-1.5 w-full">
+                                                            <option value="">Select a Method</option>
+                                                            @foreach ($paymentGateways as $gateway)
+                                                                @foreach ($gateway->methods as $method)
+                                                                    <option value="{{ $method->id }}"
+                                                                        @selected($method->id == $partial->payment_method)>
+                                                                        {{ $method->english_name }}
+                                                                    </option>
+                                                                @endforeach
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                @endforeach
+
+                                                @if(!$unpaidPartial)
+                                                    <p class="text-sm text-gray-500 italic">No unpaid partials found for this invoice.</p>
+                                                @endif
+                                            </div>
+
+                                            <!-- Footer -->
+                                            <div class="flex justify-between items-center pt-3">
+                                                <button type="button"
+                                                    class="text-gray-600 text-sm px-4 py-2 border rounded-full shadow-md hover:bg-gray-100"
+                                                    @click="showModalGateway = false">
+                                                    Close
+                                                </button>
+
+                                                <button type="submit"
+                                                    class="text-white bg-blue-600 text-sm px-4 py-2 rounded-full shadow-md hover:bg-blue-700">
+                                                    Update Gateway
+                                                </button>
+                                            </div>
+
+                                        </form>
+                                    </div>
+                                </div>
+
+                            </div>
+
                             <input type="hidden" id="paymentTypeSaved" name="payment_type_saved"
                                 value="{{ $invoice->payment_type }}">
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
@@ -675,7 +814,7 @@
                                         px-4 py-2 border border-gray-300 
                                         bg-white text-gray-700 transition gap-2 
                                         hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                        <span class="font-medium">Fully Payment</span>
+                                        <span class="font-medium">Full Payment</span>
                                     </div>
                                 </label>
 
@@ -692,7 +831,7 @@
                                         px-4 py-2 border border-gray-300 
                                         bg-white text-gray-700 transition gap-2 
                                         hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                        <span class="font-medium">Partially Payment</span>
+                                        <span class="font-medium">Partial Payment</span>
                                     </div>
                                 </label>
 
@@ -730,7 +869,7 @@
                                     </div>
                                 </label>
 
-                                <!-- Trigger Button -->
+                                <!-- Import Payment -->
                                 <label class="cursor-pointer rounded-full shadow">
                                     <input type="radio" id="payment_type_import" name="payment_type" value="import"
                                         onclick="showModal('import')" hidden class="peer" />
@@ -900,10 +1039,15 @@
                                         paymentType: '{{ $invoice->payment_type ?? '' }}',
                                         }">
                                         <div class="mt-4">
-                                            <div class="flex items-center">
+                                            <div class="flex items-center justify-between">
                                                 <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
-                                                <span x-show="paymentType !== ''" class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
-                                                    @click="window.updateGateway && window.updateGateway()">(Change)</span>
+                                                <span 
+                                                    x-show="paymentType !== ''" 
+                                                    class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
+                                                    @click="window.updateGateway && window.updateGateway()"
+                                                >
+                                                    (Change)
+                                                </span>
                                             </div>
                                             <select id="payment_gateway_option" name="payment_gateway_option"
                                                 class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
@@ -4315,5 +4459,42 @@
                 });
             }
         }
+
+        function paymentSection() {
+            return {
+                showModalType: false,
+                showModalGateway: false,
+                paymentType: '{{ $invoice->payment_type }}',
+                paymentGateways: @js($paymentGateways),
+                allPaymentMethods: @js($paymentMethods),
+                invoicePartials: [],
+
+                // 🔸 Open Gateway Modal
+                openGatewayModal() {
+                    this.showModalGateway = true;
+                },
+
+            }
+        }
+
+        function toggleMethod(partialId) {
+            const gatewaySelect = document.getElementById(`gateway_${partialId}`);
+            const methodSection = document.getElementById(`method_section_${partialId}`);
+            const selectedGateway = gatewaySelect.value.toLowerCase();
+
+            if (selectedGateway === 'myfatoorah') {
+                methodSection.style.display = 'block';
+            } else {
+                methodSection.style.display = 'none';
+            }
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('[id^="gateway_"]').forEach(select => {
+                const partialId = select.id.split('_')[1];
+                toggleMethod(partialId);
+            });
+        });
+
     </script>
+
 </x-app-layout>

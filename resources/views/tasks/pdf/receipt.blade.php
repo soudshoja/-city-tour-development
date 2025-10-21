@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="{{ asset('images/City0logo.svg') }}" />
-    <title>Payment Receipt: {{ $invoiceDetail->invoice->payment->voucher_number }}</title>
+    <title>Payment Receipt: {{ $invoiceDetail->invoice->invoice_number ?? 'N/A' }}</title>
     <style>
         :root {
             --primary-bg: #ffffff;
@@ -112,51 +112,115 @@
     <div class="container">
         <header>
             <x-application-logo
-            :companyLogo="$selectedCompany?->logo ?? asset('images/UserPic.svg')"
-            class="custom-logo-size inline-block"/>
-            <h1>Payment Receipt: <strong>{{ $invoiceDetail->invoice->payment->voucher_number }}</strong></h1>
+                :companyLogo="$selectedCompany?->logo ?? asset('images/UserPic.svg')"
+                class="custom-logo-size inline-block" />
+            <h1>Invoice Receipt: <strong>{{ $invoiceDetail->invoice->invoice_number ?? 'N/A' }}</strong></h1>
         </header>
         <main>
             <div class="section" style="text-align: center; padding: 24px;">
-                <h2 style="margin-bottom: 8px; font-size: 22px; font-weight: 700;">{{ $invoiceDetail->invoice->payment->currency }} {{ $invoiceDetail->invoice->payment->amount }}</h2>
-                <!-- <p style="margin: 0; color: var(--text-muted); font-size: 14px;">Paid on {{ $invoiceDetail->invoice->payment->payment_date }}</p> -->
+                <h2 style="margin-bottom: 8px; font-size: 22px; font-weight: 700;">KWD {{ $invoiceDetail->invoice->payment->amount ?? $invoiceDetail->invoice->amount }}</h2>
                 <p style="margin: 0; color: var(--text-muted); font-size: 14px;">
-                    Paid on {{ \Carbon\Carbon::parse($invoiceDetail->invoice->payment->payment_date)->format('d/m/Y \a\t H:i:s A') }}
+                    Paid on {{ \Carbon\Carbon::parse($invoiceDetail->invoice->payment->payment_date ?? '1/1/2025')->format('d/m/Y \a\t H:i:s A') }}
                 </p>
             </div>
-            <div class="section">
-                <h2>Payment Summary</h2>
-                <div class="data-grid">
-                    <div class="label">Payment Gateway:</div>
-                    <div class="value">{{ $invoiceDetail->invoice->payment->payment_method }}</div>
-                    <div class="label">Result:</div>
-                    <div class="value">{{ $invoiceDetail->invoice->payment->status }}</div>
-                    <div class="label">Authorization ID:</div>
-                    <div class="value">{{ $invoiceDetail->invoice->payment->tapPayment->authorization_id }}</div>
+            @if ($invoiceDetail->invoice->payment_type != 'credit')
+                <div class="section">
+                    <h2>Payment Summary</h2>
+                    <div class="data-grid">
+                        <div class="label">Payment Gateway:</div>
+                        <div class="value">{{ $invoiceDetail->invoice->payment->payment_gateway ?? 'N/A' }}</div>
+
+                        <div class="label">Status:</div>
+                        <div class="value">{{ ucfirst($invoiceDetail->invoice?->payment?->status ?? 'Paid') }} </div>
+                    </div>
                 </div>
-            </div>
-            <div class="section">
-                <h2>Reference Details</h2>
-                <div class="data-grid">
-                    <div class="label">Receipt ID:</div>
-                    <div class="value">{{ $invoiceDetail->invoice->payment->tapPayment->receipt_id }}</div>
-                    <div class="label">Merchant Track ID:</div>
-                    <div class="value">847756_flight_22909</div>
-                    <div class="label">Reference ID:</div>
-                    <div class="value">510888027013</div>
-                    <div class="label">Payment ID:</div>
-                    <div class="value">{{ $invoiceDetail->invoice->payment->payment_reference }}</div>
+            @elseif ($invoiceDetail->invoice->payment_type == 'credit')
+                <div class="section">
+                    <h2>Payment Summary</h2>
+                    <div class="data-grid">
+                        <div class="label">Payment Type:</div>
+                        <div class="value">{{ ucfirst($invoiceDetail->invoice?->payment_type) ?? 'N/A' }}</div>
+
+                        <div class="label">Status:</div>
+                        <div class="value">{{ ucfirst($invoiceDetail->invoice?->status) ?? 'N/A' }}</div>
+                    </div>
                 </div>
-            </div>
-            <div class="section">
-                <h2>Customer Contact</h2>
-                <div class="data-grid">
-                    <div class="label">Mobile Number:</div>
-                    <div class="value"><a href="https://wa.me/{{ $invoiceDetail->invoice->payment->client->phone }}">{{ $invoiceDetail->invoice->payment->client->phone }}</a></div>
+            @endif
+            @if ($invoiceDetail->invoice->payment_type != 'credit')
+                <div class="section">
+                    <h2>Reference Details</h2>
+                    <div class="data-grid">
+                        <div class="label">Customer Name:</div>
+                        <div class="value">
+                        {{ $invoiceDetail->invoice?->payment?->from
+                            ?? $invoiceDetail->invoice?->client?->name
+                            ?? trim(
+                            collect([
+                                $invoiceDetail->invoice?->client?->first_name,
+                                $invoiceDetail->invoice?->client?->middle_name,
+                                $invoiceDetail->invoice?->client?->last_name
+                            ])->filter()->join(' ')
+                            )
+                            ?? 'N/A' }}
+                        </div>
+
+                        <div class="label">Payment Receipt:</div>
+                        <div class="value">{{ ucfirst($invoiceDetail->invoice->payment?->voucher_number) ?? 'N/A' }}</div>
+
+                        <div class="label">Payment Reference:</div>
+                        <div class="value">{{ $invoiceDetail->invoice->payment?->payment_reference ?? 'N/A' }}</div>
+
+                        @if ($invoiceDetail->invoice->payment?->payment_gateway == 'Tap')
+                        <div class="label">Authorization ID:</div>
+                        <div class="value">{{ $invoiceDetail->invoice->payment->tapPayment->authorization_id ?? 'N/A' }}</div>
+                        @elseif ($invoiceDetail->invoice->payment?->payment_gateway == 'MyFatoorah')
+                        <div class="label">Invoice Reference:</div>
+                        <div class="value">{{ $invoiceDetail->invoice->payment?->myFatoorahPayment->invoice_ref ?? 'N/A' }}</div>
+                        @else
+                        <div class="label">Credit:</div>
+                        <div class="value">{{ 'N/A' }}</div>
+                        @endif
+
+                        <div class="label">Payment ID:</div>
+                        @if ($invoiceDetail->invoice->payment?->payment_gateway == 'Tap')
+                        <div class="value">{{ $invoiceDetail->invoice->payment?->tapPayment->tap_id ?? 'N/A' }}</div>
+                        @elseif ($invoiceDetail->invoice->payment?->payment_gateway == 'MyFatoorah')
+                        <div class="value">{{ $invoiceDetail->invoice->payment?->myFatoorahPayment->payment_id ?? 'N/A' }}</div>
+                        @endif
+
+                    </div>
                 </div>
-            </div>
+                <div class="section">
+                    <h2>Customer Contact</h2>
+                    <div class="data-grid">
+                        <div class="label">Mobile Number:</div>
+                        <div class="value"><a href="https://wa.me/{{ $invoiceDetail->invoice->client?->country_code}}{{ $invoiceDetail->invoice->client?->phone ?? 'N/A' }}">{{ $invoiceDetail->invoice->client?->country_code}}{{ $invoiceDetail->invoice->client?->phone ?? 'N/A' }}</a></div>
+                    </div>
+                </div>
+            @elseif ($invoiceDetail->invoice->payment_type == 'credit')
+                <div class="section">
+                    <h2>Reference Details</h2>
+                    <div class="data-grid">
+                        <div class="label">Customer Name:</div>
+                        <div class="value">
+                        {{ $invoiceDetail->invoice?->payment?->from
+                            ?? $invoiceDetail->invoice?->client?->name
+                            ?? trim(
+                            collect([
+                                $invoiceDetail->invoice?->client?->first_name,
+                                $invoiceDetail->invoice?->client?->middle_name,
+                                $invoiceDetail->invoice?->client?->last_name
+                            ])->filter()->join(' ')
+                            )
+                            ?? 'N/A' }}
+                        </div>
+                        <div class="label">Mobile Number:</div>
+                        <div class="value"><a href="https://wa.me/{{ $invoiceDetail->invoice->client?->country_code}}{{ $invoiceDetail->invoice->client?->phone ?? 'N/A' }}">{{ $invoiceDetail->invoice->client?->country_code}}{{ $invoiceDetail->invoice->client?->phone ?? 'N/A' }}</a></div>
+                    </div>
+                </div>
+            @endif
         </main>
-        <footer>
+        <footer style=" position: absolute; bottom: 0; left: 0; width: 100%; text-align: center; font-size: 14px; color: #555; padding: 20px 0;">           
             If you have any questions or concerns. Call us at <a href="https://wa.me/+96522204264">+965 22204264</a>.<br>
             Thank you for choosing us. Visit us at <a href="https://citytour.com">citytour.com</a>.
         </footer>

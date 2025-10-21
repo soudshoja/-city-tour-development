@@ -555,6 +555,7 @@ class TaskController extends Controller
             'type' => 'nullable|string',
             'supplier_id' => 'nullable|exists:suppliers,id',
             'reference' => 'required|string',
+            'original_reference' => 'nullable|string',
             'gds_reference' => 'nullable|string',
             'airline_reference' => 'nullable|string',
             'created_by' => 'nullable|string',
@@ -886,11 +887,10 @@ class TaskController extends Controller
 
         // Handle original task for non-issued statuses
         if (in_array($request->status, ['reissued', 'refund', 'void', 'emd'])) {
-            $originalTask = Task::where('reference', $request->reference)
+            $originalTask = Task::where('reference', $request->original_reference)
                 ->where('company_id', $request->company_id)
-                ->where('status', 'issued')
+                ->whereIn('status', ['issued', 'reissued'])
                 ->first();
-
             if ($originalTask) {
                 $request->merge(['original_task_id' => $originalTask->id]);
             }
@@ -4142,9 +4142,10 @@ class TaskController extends Controller
         $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
 
         $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
+        $branchIdFromJournal = $journalEntries->first()?->branch_id; 
 
         $transaction = Transaction::create([
-            'branch_id' => $originalTask->agent->branch_id,
+            'branch_id' => $originalTask->agent->branch_id ?? $branchIdFromJournal,
             'company_id' => $originalTask->company_id,
             'name' => $originalTask->client->full_name ?? null,
             'entity_id' => $originalTask->company_id,

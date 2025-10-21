@@ -912,9 +912,8 @@ class TaskController extends Controller
         if (in_array($request->status, ['reissued', 'refund', 'void', 'emd'])) {
             $originalTask = Task::where('reference', $request->reference)
                 ->where('company_id', $request->company_id)
-                ->where('status', 'issued')
+                ->whereIn('status', ['issued', 'reissued'])
                 ->first();
-
             if ($originalTask) {
                 $request->merge(['original_task_id' => $originalTask->id]);
             }

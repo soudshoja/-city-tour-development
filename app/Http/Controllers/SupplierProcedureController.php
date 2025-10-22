@@ -17,13 +17,26 @@ class SupplierProcedureController extends Controller
         ]);
 
         try{
-            SupplierProcedure::create([
+            $supplierProcedureCreated = SupplierProcedure::create([
                 'supplier_company_id' => $request->supplier_company_id,
                 'name' => $request->name,
                 'procedure' => $request->procedure,
+                'is_active' => true,
             ]);
         } catch (Exception $e){
             return redirect()->back()->with('error', 'Failed to add supplier procedure: ' . $e->getMessage());
+        }
+
+        if( $supplierProcedureCreated ){
+            $otherProcedures = SupplierProcedure::where('supplier_company_id', $request->supplier_company_id)
+                ->where('is_active', true)
+                ->where('id', '!=', $supplierProcedureCreated->id)
+                ->get();
+
+            foreach ($otherProcedures as $otherProcedure) {
+                $otherProcedure->is_active = false;
+                $otherProcedure->save();
+            }
         }
 
         return redirect()->back()->with('success', 'Supplier procedure added successfully.');

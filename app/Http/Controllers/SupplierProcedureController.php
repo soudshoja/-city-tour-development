@@ -51,4 +51,32 @@ class SupplierProcedureController extends Controller
             return redirect()->back()->with('error', 'Failed to activate procedure: ' . $e->getMessage());
         }
     }
+
+    public function show($procedureId)
+    {
+        try {
+            $procedure = SupplierProcedure::with('supplierCompany.supplier', 'supplierCompany.company')
+                ->findOrFail($procedureId);
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $procedure->id,
+                    'name' => $procedure->name,
+                    'procedure' => $procedure->procedure,
+                    'is_active' => $procedure->is_active,
+                    'created_at' => $procedure->created_at->format('M d, Y H:i'),
+                    'updated_at' => $procedure->updated_at->format('M d, Y H:i'),
+                    'supplier_name' => $procedure->supplierCompany->supplier->name ?? 'N/A',
+                    'company_name' => $procedure->supplierCompany->company->name ?? 'N/A',
+                ]
+            ]);
+            
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch procedure: ' . $e->getMessage()
+            ], 404);
+        }
+    }
 }

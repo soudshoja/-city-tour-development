@@ -133,28 +133,131 @@
 function viewProcedure(procedureId) {
     // Create a modal to show full procedure content
     const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+    modal.id = 'procedure-modal';
     modal.innerHTML = `
-        <div class="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-y-auto m-4 p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold">Procedure Details</h3>
-                <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-times"></i>
+        <div class="bg-white rounded-lg max-w-5xl max-h-[90vh] overflow-hidden m-4 shadow-2xl">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">
+                    <i class="fas fa-file-alt mr-2 text-blue-500"></i>
+                    Procedure Details
+                </h3>
+                <button onclick="closeProcedureModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
-            <div id="procedure-content-${procedureId}">
-                Loading...
+            <div class="overflow-y-auto max-h-[calc(90vh-80px)]">
+                <div id="procedure-content-${procedureId}" class="p-6">
+                    <div class="flex items-center space-x-3 text-gray-500">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Loading procedure details...</span>
+                    </div>
+                </div>
             </div>
         </div>
     `;
     
     document.body.appendChild(modal);
     
-    // You can add AJAX call here to fetch full procedure details
-    // For now, we'll just show a placeholder
-    setTimeout(() => {
-        document.getElementById(`procedure-content-${procedureId}`).innerHTML = 
-            '<p>Full procedure content would be loaded here via AJAX...</p>';
-    }, 500);
+    // Add escape key listener
+    document.addEventListener('keydown', handleEscapeKey);
+    
+    // Fetch procedure data via AJAX
+    fetch(`{{ url('supplier-procedures') }}/${procedureId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const procedure = data.data;
+                document.getElementById(`procedure-content-${procedureId}`).innerHTML = `
+                    <div class="space-y-6">
+                        <!-- Header Info -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <h4 class="font-semibold text-gray-800 mb-2 flex items-center">
+                                        <i class="fas fa-tag mr-2 text-blue-500"></i>
+                                        ${procedure.name}
+                                    </h4>
+                                    <div class="flex items-center space-x-2">
+                                        ${procedure.is_active 
+                                            ? '<span class="bg-green-100 text-green-800 text-xs px-3 py-1 rounded-full font-medium"><i class="fas fa-check-circle mr-1"></i>Active</span>'
+                                            : '<span class="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full"><i class="fas fa-clock mr-1"></i>Inactive</span>'
+                                        }
+                                    </div>
+                                </div>
+                                <div class="text-sm text-gray-600">
+                                    <div class="mb-1">
+                                        <i class="fas fa-building mr-2"></i>
+                                        <strong>Company:</strong> ${procedure.company_name}
+                                    </div>
+                                    <div class="mb-1">
+                                        <i class="fas fa-truck mr-2"></i>
+                                        <strong>Supplier:</strong> ${procedure.supplier_name}
+                                    </div>
+                                    <div class="mb-1">
+                                        <i class="fas fa-calendar-plus mr-2"></i>
+                                        <strong>Created:</strong> ${procedure.created_at}
+                                    </div>
+                                    <div>
+                                        <i class="fas fa-calendar-edit mr-2"></i>
+                                        <strong>Updated:</strong> ${procedure.updated_at}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Procedure Content -->
+                        <div>
+                            <h5 class="font-semibold text-gray-800 mb-3 flex items-center">
+                                <i class="fas fa-file-text mr-2 text-green-500"></i>
+                                Procedure Content
+                            </h5>
+                            <div class="bg-white border rounded-lg p-4 prose max-w-none">
+                                ${procedure.procedure}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                document.getElementById(`procedure-content-${procedureId}`).innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-3"></i>
+                        <p class="text-red-600 font-medium">Failed to load procedure</p>
+                        <p class="text-gray-600 text-sm">${data.message}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            document.getElementById(`procedure-content-${procedureId}`).innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-3"></i>
+                    <p class="text-red-600 font-medium">Error loading procedure</p>
+                    <p class="text-gray-600 text-sm">Please try again later.</p>
+                </div>
+            `;
+        });
 }
+
+function closeProcedureModal() {
+    const modal = document.getElementById('procedure-modal');
+    if (modal) {
+        modal.remove();
+        document.removeEventListener('keydown', handleEscapeKey);
+    }
+}
+
+function handleEscapeKey(event) {
+    if (event.key === 'Escape') {
+        closeProcedureModal();
+    }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('procedure-modal');
+    if (modal && event.target === modal) {
+        closeProcedureModal();
+    }
+});
 </script>

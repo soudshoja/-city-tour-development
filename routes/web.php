@@ -740,6 +740,7 @@ Route::group([
 ], function(){
     Route::post('/{supplierId}', [SupplierProcedureController::class, 'store'])->name('store');
     Route::patch('/{procedureId}/activate', [SupplierProcedureController::class, 'activate'])->name('activate');
+    Route::get('/{procedureId}', [SupplierProcedureController::class, 'show'])->name('show');
 });
 
 require __DIR__ . '/auth.php';

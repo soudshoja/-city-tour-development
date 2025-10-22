@@ -2,43 +2,35 @@
 
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Refund extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'refund_number',
-        'task_id',
-        'invoice_id',
         'company_id',
         'branch_id',
         'agent_id',
+        'account_id',
+        'method',
+        'reference',
         'remarks',
         'remarks_internal',
-        'airline_nett_fare',
-        'tax_refund',
-        'refund_airline_charge',
-        'original_task_profit',
-        'new_task_profit',
-        'total_nett_refund',
-        'service_charge',
         'reason',
-        'method',
-        'account_id',
-        'date',
-        'reference',
+        'total_refund_amount', // Sum of total_refund_to_client from refund_details
+        'total_refund_charge', // Sum of refund_fee_to_client + refund_task_supplier_charge from refund_details
+        'total_net_refund',    // Calculated: total_refund_amount - total_refund_charge
         'status',
+        'refund_date',
         'created_by',
-        'updated_at',
+        'updated_by',
     ];
-    
-    public function task()
+
+    public function refundDetails()
     {
-        return $this->belongsTo(Task::class, 'task_id');
-    }
-    
-    public function account()
-    {
-        return $this->belongsTo(Account::class, 'account_id');
+        return $this->hasMany(RefundDetail::class, 'refund_id');
     }
 
     public function company()
@@ -53,16 +45,36 @@ class Refund extends Model
 
     public function agent()
     {
-        return $this->belongsTo(Agent::class, 'agent_id'); // or Agent model if separate
+        return $this->belongsTo(Agent::class, 'agent_id');
     }
 
-    public function invoice()
+    public function account()
     {
-        return $this->belongsTo(Invoice::class, 'invoice_id');
+        return $this->belongsTo(Account::class, 'account_id');
     }
 
-    public function getOriginalInvoiceAttribute()
+    public function getTotalRefundAmountAttribute()
     {
-        return $this->task?->originalTask?->invoiceDetail?->invoice;
+        return $this->refundDetails()->sum('total_refund_to_client');
+    }
+
+    public function getTotalRefundChargeAttribute()
+    {
+        return $this->refundDetails()->sum('refund_fee_to_client');
+    }
+
+    public function getTotalNetRefundAttribute()
+    {
+        return $this->refundDetails()->sum('net_refund');
+    }
+
+    public function formattedStatus(): string
+    {
+        return ucfirst($this->status ?? 'pending');
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === 'completed';
     }
 }

@@ -197,7 +197,7 @@ class Task extends Model
 
     public function refundDetail()
     {
-        return $this->hasOne(Refund::class, 'task_id');
+        return $this->hasOne(RefundDetail::class, 'task_id');
     }
 
     public function agent()

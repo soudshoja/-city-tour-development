@@ -938,13 +938,10 @@
                                         });
 
                                         const anyRefund = selected.some(t => t.status === 'refund');
-                                        const canProceedRefund =
-                                            this.selectedTasks.length === 1 &&
-                                            anyRefund &&
-                                            !!selected[0].agent_id &&
-                                            selected[0].enabled &&
-                                            !selected[0].refundDetail &&
-                                            selected[0].is_complete;
+                                        const canProceedRefund = anyRefund && 
+                                            selected.every(t =>
+                                                t.agent_id && t.enabled && t.status === 'refund' && !t.refundDetail && t.is_complete
+                                            );
 
                                         const allCanCreateInvoice = !anyRefund && selected.every(t => this.canCreateInvoice(t));
                                         const showBulk = this.selectedTasks.length > 1;
@@ -964,7 +961,8 @@
                                             createBtnText.innerText = 'Proceed Refund';
                                             createBtn?.classList.remove('btn-success','hover:bg-green-600');
                                             createBtn?.classList.add('bg-red-500','hover:bg-red-600','text-white');
-                                            createBtn?.setAttribute('data-route', `/refunds/${this.selectedTasks[0]}/create`);
+                                            const ids = this.selectedTasks.join(',');
+                                            createBtn?.setAttribute('data-route', `/refunds/create?task_ids=${ids}`);
                                             createBtn?.setAttribute('data-task-status', 'refund');
                                         } else if (allCanCreateInvoice) {
                                             createBtn?.classList.remove('hidden');
@@ -991,8 +989,6 @@
                                         this.updateFloatingActions();
                                     }
                                 }" x-init="window.selectedTasksGlobal = selectedTasks" x-cloak>
-
-
                                     <table id="myTable" class="whitespace-nowrap dataTable-table">
                                         <thead>
                                             <tr>

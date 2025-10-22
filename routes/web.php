@@ -726,4 +726,11 @@ Route::group([
 Route::get('/exchange-rate/histories', [\App\Http\Controllers\CurrencyExchangeController::class, 'allHistories'])
     ->name('exchange.histories.all');
 
+Route::group([
+    'prefix' => 'iata',
+    'as' => 'iata.',
+], function(){
+    Route::post('/company-wallet', [DashboardController::class, 'iataCompanyWallet'])->name('company-wallet');
+});
+
 require __DIR__ . '/auth.php';

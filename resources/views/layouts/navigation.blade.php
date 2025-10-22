@@ -311,7 +311,7 @@
                 // Cache the data with timestamp
                 walletData = {
                     wallets: data.wallets || [],
-                    iataBalance: data.iataBalance,
+                    iataBalance: parseFloat(data.iataBalance || 0).toFixed(3),
                     walletName: data.walletName
                 };
                 walletSessionExpiry = new Date().getTime() + WALLET_SESSION_DURATION;
@@ -363,16 +363,16 @@
                                 </span>
                             </div>
                             <p class="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">
-                                ${wallet.balance || '0.00'} ${wallet.currency || ''}
+                                ${parseFloat(wallet.balance).toFixed(3) || '0.00'} ${wallet.currency || ''}
                             </p>
                         </div>
                         <div class="text-right">
                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                parseFloat(wallet.balance || 0) > 0 
+                                wallet.status === 'OPEN'
                                     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
                                     : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
                             }">
-                                ${parseFloat(wallet.balance || 0) > 0 ? 'Active' : 'Empty'}
+                                ${wallet.status || 'N/A'}
                             </span>
                         </div>
                     </div>
@@ -394,7 +394,7 @@
                             </div>
                         </div>
                         <p class="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                            ${iataBalance || '0.00'}
+                            ${iataBalance || '0.000'}
                         </p>
                         <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">
                             ${wallets.length} wallet${wallets.length !== 1 ? 's' : ''} • IATA Balance

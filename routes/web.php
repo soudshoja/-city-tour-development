@@ -46,6 +46,7 @@ use App\Http\Controllers\RefundController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ResayilController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\SupplierProcedureController;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -731,6 +732,14 @@ Route::group([
     'as' => 'iata.',
 ], function(){
     Route::post('/company-wallet', [DashboardController::class, 'iataCompanyWallet'])->name('company-wallet');
+});
+
+Route::group([
+    'prefix' => 'supplier-procedures',
+    'as' => 'supplier-procedures.',
+], function(){
+    Route::post('/{supplierId}', [SupplierProcedureController::class, 'store'])->name('store');
+    Route::patch('/{procedureId}/activate', [SupplierProcedureController::class, 'activate'])->name('activate');
 });
 
 require __DIR__ . '/auth.php';

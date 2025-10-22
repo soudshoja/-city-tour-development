@@ -17,20 +17,6 @@ class SupplierProcedure extends Model
         'is_active' => 'boolean',
     ];
 
-    protected static function boot()
-    {
-        parent::boot();
-
-        // Automatically manage the active_flag when creating/updating
-        static::creating(function ($procedure) {
-            $procedure->active_flag = $procedure->is_active ? 1 : null;
-        });
-
-        static::updating(function ($procedure) {
-            $procedure->active_flag = $procedure->is_active ? 1 : null;
-        });
-    }
-
     public function supplierCompany()
     {
         return $this->belongsTo(SupplierCompany::class);

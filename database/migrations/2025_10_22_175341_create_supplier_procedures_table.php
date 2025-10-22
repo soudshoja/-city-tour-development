@@ -17,10 +17,6 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
-
-        // MySQL-compatible solution: Use a nullable column that's only populated when active
-        DB::statement('ALTER TABLE supplier_procedures ADD COLUMN active_flag INT NULL');
-        DB::statement('CREATE UNIQUE INDEX unique_active_supplier_procedure ON supplier_procedures (supplier_company_id, active_flag)');
     }
 
     public function down(): void

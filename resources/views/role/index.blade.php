@@ -78,13 +78,41 @@
 
     <script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
     <script>
+        let currentCompany = "{{ $companyId }}";
+        let companies = "{{ $companies }}";
         let dataTable = new DataTable("#newTestTable", {
             lengthMenu: [5, 10, 20, 50, 75, 100],
             language: {
                 search: ''
             },
             layout: {
-                topStart: null,
+                topStart: [
+                    function(){
+                        let companyChangeForm = document.createElement('form');
+                        companyChangeForm.method = 'GET';
+                        companyChangeForm.action = "{{ route('role.index') }}";
+                        let select = document.createElement('select');
+                        select.name = 'company_id';
+                        select.classList.add('form-select', 'border', 'rounded', 'p-2', 'mr-2');
+
+                        let companies = @json(App\Models\Company::all());
+                        companies.forEach(function(company){
+                            let option = document.createElement('option');
+                            option.value = company.id;
+                            option.text = company.name;
+                            if(company.id == currentCompany){
+                                option.selected = true;
+                            }
+                            select.appendChild(option);
+                        });
+                        select.onchange = function(){
+                            companyChangeForm.submit();
+                        };
+                        companyChangeForm.appendChild(select);
+                        return companyChangeForm;
+                    },
+
+                ],
                 topEnd: [
                     function() {
                         let createRoleButton = document.createElement('a');

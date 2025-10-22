@@ -5,7 +5,8 @@
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
         }
-        #dt-search-0{
+
+        #dt-search-0 {
             width: 100%;
         }
     </style>
@@ -36,7 +37,7 @@
                                     @if(count($role['permissions']) > 3)
                                     <button type="button" class="text-blue-500 text-xs" @click="openModal = true">See All</button>
                                     @endif
-    
+
                                     <!-- Modal -->
                                     <div x-show="openModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-400 bg-opacity-50" x-on:keydown.escape.window="openModal = false">
                                         <div class="flex items-center justify-center min-h-screen px-4">
@@ -79,7 +80,7 @@
     <script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
     <script>
         let currentCompany = "{{ $companyId }}";
-        let companies = "{{ $companies }}";
+        let companies = {!! json_encode($companies) !!};
         let dataTable = new DataTable("#newTestTable", {
             lengthMenu: [5, 10, 20, 50, 75, 100],
             language: {
@@ -87,31 +88,30 @@
             },
             layout: {
                 topStart: [
-                    function(){
+                    function() {
+                        if(companies.length === 0){
+                            return '';
+                        }
+
                         let companyChangeForm = document.createElement('form');
                         companyChangeForm.method = 'GET';
                         companyChangeForm.action = "{{ route('role.index') }}";
                         let select = document.createElement('select');
                         select.name = 'company_id';
                         select.classList.add('form-select', 'border', 'rounded', 'p-2', 'mr-2');
-
-                        let companies = @json(App\Models\Company::all());
-                        companies.forEach(function(company){
+                        
+                        companies.forEach(function(company) {
                             let option = document.createElement('option');
                             option.value = company.id;
                             option.text = company.name;
-                            if(company.id == currentCompany){
+                            if (company.id == currentCompany) {
                                 option.selected = true;
                             }
                             select.appendChild(option);
                         });
-                        select.onchange = function(){
-                            companyChangeForm.submit();
-                        };
                         companyChangeForm.appendChild(select);
                         return companyChangeForm;
                     },
-
                 ],
                 topEnd: [
                     function() {

@@ -133,10 +133,10 @@
 function viewProcedure(procedureId) {
     // Create a modal to show full procedure content
     const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50';
+    modal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4';
     modal.id = 'procedure-modal';
     modal.innerHTML = `
-        <div class="bg-white rounded-lg max-w-5xl max-h-[90vh] overflow-hidden m-4 shadow-2xl">
+        <div class="bg-white rounded-lg w-full max-w-3xl min-h-[33vh] max-h-[90vh] overflow-hidden shadow-2xl" style="min-width: 30rem;">
             <div class="flex justify-between items-center p-6 border-b border-gray-200">
                 <h3 class="text-xl font-semibold text-gray-800">
                     <i class="fas fa-file-alt mr-2 text-blue-500"></i>
@@ -146,11 +146,42 @@ function viewProcedure(procedureId) {
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
-            <div class="overflow-y-auto max-h-[calc(90vh-80px)]">
+            <div class="overflow-y-auto" style="max-height: calc(90vh - 80px); min-height: calc(33vh - 80px);">
                 <div id="procedure-content-${procedureId}" class="p-6">
-                    <div class="flex items-center space-x-3 text-gray-500">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <span>Loading procedure details...</span>
+                    <!-- Skeleton Loader -->
+                    <div class="animate-pulse space-y-6">
+                        <!-- Header Info Skeleton -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <div class="h-6 bg-gray-300 rounded w-2/3 mb-3"></div>
+                                    <div class="h-6 bg-gray-300 rounded w-20"></div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="h-4 bg-gray-300 rounded w-full"></div>
+                                    <div class="h-4 bg-gray-300 rounded w-3/4"></div>
+                                    <div class="h-4 bg-gray-300 rounded w-5/6"></div>
+                                    <div class="h-4 bg-gray-300 rounded w-4/5"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Content Skeleton -->
+                        <div>
+                            <div class="h-6 bg-gray-300 rounded w-1/3 mb-3"></div>
+                            <div class="bg-white border rounded-lg p-4 space-y-3">
+                                <div class="h-4 bg-gray-200 rounded w-full"></div>
+                                <div class="h-4 bg-gray-200 rounded w-11/12"></div>
+                                <div class="h-4 bg-gray-200 rounded w-full"></div>
+                                <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+                                <div class="h-4 bg-gray-200 rounded w-full"></div>
+                                <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                                <div class="h-4 bg-gray-200 rounded w-full"></div>
+                                <div class="h-4 bg-gray-200 rounded w-4/5"></div>
+                                <div class="h-4 bg-gray-200 rounded w-full"></div>
+                                <div class="h-4 bg-gray-200 rounded w-2/3"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

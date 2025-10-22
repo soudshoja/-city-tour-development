@@ -224,6 +224,25 @@ class ProfileController extends Controller
         return redirect()->back()->with('success', 'Profile Successfully Updated.');
     }
 
+    public function updateIataSettings(Request $request)
+    {
+        $request->validate([
+            'iata_code' => ['nullable', 'digits:8'],
+            'iata_client_id' => ['nullable', 'string'],
+            'iata_client_secret' => ['nullable', 'string'],
+        ]);
+
+        $company = Company::where('user_id', auth()->id())->firstOrFail();
+
+        $company->update([
+            'iata_code' => $request->iata_code,
+            'iata_client_id' => $request->iata_client_id,
+            'iata_client_secret' => $request->iata_client_secret,
+        ]);
+
+        return back()->with('success', 'IATA EasyPay settings updated successfully.');
+    }
+
     /**
      * Update company profile information
      */

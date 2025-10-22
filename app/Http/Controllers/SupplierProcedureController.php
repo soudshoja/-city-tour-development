@@ -92,4 +92,35 @@ class SupplierProcedureController extends Controller
             ], 404);
         }
     }
+
+    public function destroy($procedureId)
+    {
+        try {
+            $procedure = SupplierProcedure::findOrFail($procedureId);
+            
+            // Store info for success message
+            $procedureName = $procedure->name;
+            $isActive = $procedure->is_active;
+            $supplierCompanyId = $procedure->supplier_company_id;
+            
+            // Delete the procedure
+            $procedure->delete();
+            
+            // If we deleted the active procedure, activate another one if exists
+            if ($isActive) {
+                $nextProcedure = SupplierProcedure::where('supplier_company_id', $supplierCompanyId)
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                
+                if ($nextProcedure) {
+                    $nextProcedure->update(['is_active' => true]);
+                }
+            }
+            
+            return redirect()->back()->with('success', "Procedure '{$procedureName}' has been deleted successfully.");
+            
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Failed to delete procedure: ' . $e->getMessage());
+        }
+    }
 }

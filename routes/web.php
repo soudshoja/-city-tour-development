@@ -741,6 +741,7 @@ Route::group([
     Route::post('/{supplierId}', [SupplierProcedureController::class, 'store'])->name('store');
     Route::patch('/{procedureId}/activate', [SupplierProcedureController::class, 'activate'])->name('activate');
     Route::get('/{procedureId}', [SupplierProcedureController::class, 'show'])->name('show');
+    Route::delete('/{procedureId}', [SupplierProcedureController::class, 'destroy'])->name('destroy');
 });
 
 require __DIR__ . '/auth.php';

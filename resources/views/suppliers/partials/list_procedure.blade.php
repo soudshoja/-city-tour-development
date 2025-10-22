@@ -103,6 +103,16 @@
                                                 class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-3 py-1 rounded transition-colors">
                                             <i class="fas fa-eye mr-1"></i>View
                                         </button>
+                                        
+                                        <form method="POST" action="{{ route('supplier-procedures.destroy', $procedure->id) }}" style="display: inline;">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" 
+                                                    class="bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1 rounded transition-colors"
+                                                    onclick="return confirm('Are you sure you want to delete this procedure? This action cannot be undone.')">
+                                                <i class="fas fa-trash mr-1"></i>Delete
+                                            </button>
+                                        </form>
                                     </div>
                                 </div>
                             </div>

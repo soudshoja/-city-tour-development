@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\AIService;
 use App\Models\Client;
+use App\Models\Company;
 use App\Models\OpenAi;
 use Exception;
 use Illuminate\Http\Request;
@@ -34,7 +35,7 @@ class RoleController extends Controller
 
         if($user->role_id == Role::ADMIN){
             $companyId = $request->get('company_id', 1);
-            $companies = Client::select('id', 'name')->get();
+            $companies = Company::all();
         } else if($user->role_id == Role::COMPANY){
             $companyId = $user->company->id;
         }else {

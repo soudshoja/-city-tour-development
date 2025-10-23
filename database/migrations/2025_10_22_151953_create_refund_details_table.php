@@ -23,11 +23,9 @@ return new class extends Migration
             $table->decimal('original_task_cost', 15, 3)->nullable();
             $table->decimal('original_task_profit', 15, 3)->nullable();
             $table->decimal('refund_fee_to_client', 15, 3)->default(0);
-            $table->decimal('refund_task_supplier_charge', 15, 3)->default(0);
-            // $table->decimal('refund_task_cost_price', 15, 3)->default(0);
+            $table->decimal('supplier_charge', 15, 3)->default(0);
             $table->decimal('new_task_profit', 15, 3)->default(0);
             $table->decimal('total_refund_to_client', 15, 3)->default(0);
-            $table->decimal('net_refund', 15, 3)->default(0);
             $table->text('remarks')->nullable();
             $table->timestamps();
             $table->softDeletes();

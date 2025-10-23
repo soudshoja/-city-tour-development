@@ -486,11 +486,12 @@ class RefundController extends Controller
             'client_id' => ['nullable', 'exists:clients,id'],
             'tasks' => ['required', 'array', 'min:1'],
             'tasks.*.task_id' => ['required', 'exists:tasks,id'],
+            'tasks.*.original_invoice_price' => ['required', 'numeric'],
+            'tasks.*.original_task_cost' => ['required', 'numeric'],
+            'tasks.*.original_task_profit' => ['required', 'numeric'],
             'tasks.*.refund_fee_to_client' => ['required', 'numeric'],
             'tasks.*.supplier_charge' => ['required', 'numeric'],
-            'tasks.*.original_task_profit' => ['required', 'numeric'],
             'tasks.*.new_task_profit' => ['required', 'numeric'],
-            'tasks.*.total_nett_refund_charge' => ['required', 'numeric'],
             'tasks.*.total_refund_to_client' => ['required', 'numeric'],
             'tasks.*.remarks' => ['nullable', 'string'],
             'tasks.*.payment_gateway_option' => ['nullable', 'string'],
@@ -512,7 +513,7 @@ class RefundController extends Controller
             foreach ($validatedData['tasks'] as $taskData) {
                 $totalRefundAmount += $taskData['refund_fee_to_client'];
                 $totalRefundCharge += $taskData['supplier_charge'];
-                $totalNettRefund  += $taskData['total_nett_refund_charge'];
+                $totalNettRefund  += $taskData['total_refund_to_client'];
             }
 
             $refund = Refund::create([

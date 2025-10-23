@@ -278,11 +278,9 @@ class TaskController extends Controller
                     break;
                 case 'agent_name':
                     if ($request->filled('agent_name')) {
-                        $agents = (array) $request->input('agent_name');
-                        $query->whereHas('agent', function ($q) use ($agents) {
-                            foreach ($agents as $agent) {
-                                $q->orWhere('name', 'like', '%' . $agent . '%');
-                            }
+                        $agentFilters = (array) $request->input('agent_name');
+                        $query->whereHas('agent', function ($q) use ($agentFilters) {
+                            $q->whereIn('name', $agentFilters);
                         });
                     }
                     break;

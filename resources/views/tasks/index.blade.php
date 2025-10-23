@@ -555,10 +555,6 @@
                             </div>
 
                             @unlessrole('agent')
-                            <!-- <div class="mb-4">
-                                <x-searchable-dropdown name="agent_id" :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])" placeholder="Select Agent"
-                                    label="Select an Agent" />
-                            </div> -->
                             @else
                             <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
                             @endunlessrole

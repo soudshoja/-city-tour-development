@@ -429,7 +429,7 @@ class InvoiceController extends Controller
 
         if ($invoice->status === 'paid by refund') return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
 
-        if ($invoice->refund) return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
+        if ($invoice->refundDetail) return redirect()->route('invoices.index')->withErrors(['error' => 'The selected invoice cannot be edited']);
 
         $invoiceDetails = $invoice->invoiceDetails;
         $agentId = $invoice->agent_id;

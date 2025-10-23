@@ -76,72 +76,86 @@
                             </thead>
                             <tbody>
                                 @if ($refunds->isEmpty())
-                                    <tr>
-                                        <td colspan="8" class="text-center p-3 text-sm font-semibold text-gray-500 ">
-                                            No data for now.... Create new!</td>
-                                    </tr>
+                                <tr>
+                                    <td colspan="8" class="text-center p-3 text-sm font-semibold text-gray-500 ">
+                                        No data for now.... Create new!</td>
+                                </tr>
                                 @else
-                                    @foreach ($refunds as $refund)
-                                        <tr>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $refund->refund_number }}
-                                            </td>
-                                            <!-- <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->method }}
+                                @foreach ($refunds as $refund)
+                                <tr>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $refund->refund_number }}
+                                    </td>
+                                    <!-- <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->method }}
                                             </td> -->
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $refund->task->client->full_name ?? '' }}
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ number_format($refund->total_nett_refund, 2) }} KWD
-                                            </td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $refund->remarks }}</td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ $refund->created_at }}</td>
-                                            <td class="p-3 text-sm font-semibold text-gray-500">
-                                                <span
-                                                    class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
+                                    <td class="p-3 text-sm font-semibold text-gray-500 max-w-[250px] whitespace-normal break-words">
+                                        @php
+                                        $uniqueClients = $refund->refundDetails->pluck('client.full_name')->unique()->values()->toArray();
+                                        @endphp
+                                        {{ implode(', ', $uniqueClients) }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ number_format($refund->total_nett_refund, 2) }} KWD
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $refund->remarks }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        {{ $refund->created_at }}
+                                    </td>
+                                    <td class="p-3 text-sm font-semibold text-gray-500">
+                                        <span
+                                            class="badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium
                                                         {{ $refund->status === 'completed' ? 'badge-outline-success' : '' }}
                                                         {{ $refund->status === 'processed' ? 'badge-outline-assigned' : '' }}
                                                         {{ $refund->status === 'approved' ? 'badge-outline-success' : '' }}
                                                         {{ $refund->status === 'declined' ? 'badge-outline-danger' : '' }}
                                                         {{ $refund->status === 'pending' ? 'badge-outline-warning' : '' }}
                                                         {{ $refund->status === null ? 'badge-outline-danger' : '' }}">
-                                                    {{ $refund->status === null ? 'Not Set' : ucwords($refund->status) }}
+                                            {{ $refund->status === null ? 'Not Set' : ucwords($refund->status) }}
 
-                                                </span>
-                                                @if ($refund->status !== 'completed' && $refund->invoice == null)
-                                                    <span
-                                                        class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-primary"
-                                                        onclick="confirmProcessCompleted({{ $refund->task->id }}, {{ $refund->id }})">
-                                                        Mark as Completed
-                                                    </span>
-                                                @elseif($refund->invoice)
-                                                    <span
-                                                        class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-primary">
-                                                        <a href="{{ route('invoice.show', ['companyId' => $refund->company_id, 'invoiceNumber' => $refund->invoice->invoice_number])}}">View Invoice</a>
-                                                    </span>
-                                                @endif
-                                            </td>
-                                            <td class="p-3 text-sm">
-                                                <div class="flex items-center space-x-2">
-                                                    <a data-tooltip="Edit"
-                                                        href="{{ route('refunds.edit', [$refund->task_id, $refund->id]) }}"
-                                                        class="text-sm font-medium text-blue-600 hover:underline">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="20"
-                                                            height="20" viewBox="0 0 24 24">
-                                                            <path fill="none" stroke="#00ab55" stroke-linecap="round"
-                                                                stroke-linejoin="round" stroke-width="1.5"
-                                                                d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42"
-                                                                opacity=".5" />
-                                                        </svg>
-                                                    </a>
-                                                </div>
-
-                                            </td>
-
-                                        </tr>
-                                    @endforeach
+                                        </span>
+                                        @if ($refund->status !== 'completed' && $refund->invoice == null)
+                                        <span
+                                            class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-primary"
+                                            onclick="confirmProcessCompleted({{ $refund->id }})">
+                                            Mark as Completed
+                                        </span>
+                                        @elseif($refund->invoice)
+                                        <span
+                                            class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-primary">
+                                            <a href="{{ route('invoice.show', ['companyId' => $refund->company_id, 'invoiceNumber' => $refund->invoice->invoice_number])}}">View Invoice</a>
+                                        </span>
+                                        @endif
+                                    </td>
+                                    <td class="p-3 text-sm">
+                                        <div class="flex items-center space-x-2">
+                                            <a data-tooltip-left="View Refund"
+                                                href="{{ route('refunds.show', [$refund->company_id, $refund->refund_number]) }}"
+                                                target="_blank"
+                                                class="text-sm font-medium text-blue-600 hover:underline">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                    viewBox="0 0 24 24" fill="none" stroke="#2563eb"
+                                                    stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
+                                                    <circle cx="12" cy="12" r="3" />
+                                                </svg>
+                                            </a>
+                                            <a data-tooltip-left="Edit Refund"
+                                                href="{{ route('refunds.edit', [$refund->id]) }}"
+                                                class="text-sm font-medium text-blue-600 hover:underline">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20"
+                                                    height="20" viewBox="0 0 24 24">
+                                                    <path fill="none" stroke="#00ab55" stroke-linecap="round"
+                                                        stroke-linejoin="round" stroke-width="1.5"
+                                                        d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42"
+                                                        opacity=".5" />
+                                                </svg>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
                                 @endif
                             </tbody>
                         </table>
@@ -237,21 +251,16 @@
     @include('refunds.refund-client')
     <!--./page content-->
     <script>
-        function confirmProcessCompleted(taskId, refundId) {
-            console.log(taskId, refundId);
+        function confirmProcessCompleted(refundId) {
             if (confirm('Are you sure you want to mark this refund as completed?')) {
                 if (confirm('This action cannot be undone. Do you want to proceed?')) {
-                    processCompleted(taskId, refundId);
-                } else {
-                    saveUpdate(taskId, refundId);
+                    processCompleted(refundId);
                 }
-            } else {
-                saveUpdate(taskId, refundId);
             }
         }
 
         function processCompleted(taskId, refundId) {
-            fetch(`/refunds/${taskId}/${refundId}/complete-process`, {
+            fetch(`/refunds/${refundId}/complete-process`, {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content

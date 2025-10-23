@@ -2587,8 +2587,8 @@ class PaymentController extends Controller
                         }
                         $invoice->save();
 
-                        if ($invoice->status === 'paid' && $invoice->refund && $invoice->refund->status === 'processed') {
-                            $invoice->refund->update(['status' => 'completed']);
+                        if ($invoice->status === 'paid' && $invoice->refundDetail && $invoice->refundDetail->refund->status === 'processed') {
+                            $invoice->refundDetail->refund->update(['status' => 'completed']);
                         }
                     });
 

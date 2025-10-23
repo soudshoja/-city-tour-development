@@ -15,17 +15,20 @@ class Refund extends Model
         'agent_id',
         'account_id',
         'method',
-        'reference',
         'remarks',
         'remarks_internal',
         'reason',
         'total_refund_amount', // Sum of total_refund_to_client from refund_details
         'total_refund_charge', // Sum of refund_fee_to_client + refund_task_supplier_charge from refund_details
-        'total_net_refund',    // Calculated: total_refund_amount - total_refund_charge
+        'total_nett_refund',    // Calculated: total_refund_amount - total_refund_charge
         'status',
         'refund_date',
         'created_by',
         'updated_by',
+    ];
+
+    protected $casts = [
+        'refund_date' => 'datetime',
     ];
 
     public function refundDetails()

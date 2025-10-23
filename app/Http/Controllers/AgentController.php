@@ -21,6 +21,7 @@ use App\Models\Transaction;
 use App\Models\JournalEntry;
 use App\Models\Role;
 use App\Models\SupplierCompany;
+use App\Models\BonusAgent;
 use DateTimeImmutable;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -240,7 +241,9 @@ class AgentController extends Controller
             ->get()
             ->pluck('supplier.name')
             ->toArray();
-       
+        
+        $bonuses = BonusAgent::where('agent_id', $agent->id)->get();
+
         // Return the main view with paginated data
         return view('agents.agentsShow', compact(
             'agent',
@@ -257,6 +260,7 @@ class AgentController extends Controller
             'supplierCompany',
             'totalCommission',
             'totalProfit',
+            'bonuses',
         ));
     }
 

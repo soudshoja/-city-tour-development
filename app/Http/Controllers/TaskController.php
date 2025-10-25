@@ -1286,15 +1286,26 @@ class TaskController extends Controller
 
         // Special handling for void tasks: they should process even if incomplete
         // as long as they have an original_task_id to reference
-        if (!$task->is_complete || !($task->status === 'void' && $task->original_task_id)) {
+        if ($task->status === 'void') {
+            if (!$task->original_task_id) {
+                Log::error('Cannot process financial for void task without original_task_id: ' . $task->reference, [
+                    'is_complete' => $task->is_complete,
+                    'status' => $task->status,
+                    'original_task_id' => $task->original_task_id
+                ]);
 
-            Log::error('Cannot process financial for incomplete task: ' . $task->reference, [
-                'is_complete' => $task->is_complete,
-                'status' => $task->status,
-                'original_task_id' => $task->original_task_id
-            ]);
+                throw new Exception('Cannot process financial for void task without original_task_id: ' . $task->reference);
+            }
+        } else {
+            if (!$task->is_complete) {
+                Log::error('Cannot process financial for incomplete task: ' . $task->reference, [
+                    'is_complete' => $task->is_complete,
+                    'status' => $task->status,
+                    'original_task_id' => $task->original_task_id
+                ]);
 
-            throw new Exception('Cannot process financial for task : ' . $task->reference);
+                throw new Exception('Cannot process financial for incomplete task: ' . $task->reference);
+            }
         }
 
         // Get branch_id - from agent if exists, otherwise from company's main branch
@@ -3481,6 +3492,7 @@ class TaskController extends Controller
         $serviceDates = $reservation['service']['serviceDates'] ?? null;
         $prices = $reservation['service']['prices'] ?? null;
         $status = 'issued'; // Default status
+        $pnr = $reservation['service']['pnr'] ?? null;
 
         $cancellationPolicy = [];
 

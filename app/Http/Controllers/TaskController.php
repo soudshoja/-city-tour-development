@@ -888,6 +888,7 @@ class TaskController extends Controller
         // Handle original task for non-issued statuses
         if (in_array($request->status, ['reissued', 'refund', 'void', 'emd'])) {
             $originalTask = Task::where('reference', $request->original_reference)
+                ->orWhere('reference' , $request->reference)
                 ->where('company_id', $request->company_id)
                 ->whereIn('status', ['issued', 'reissued'])
                 ->first();
@@ -1285,12 +1286,15 @@ class TaskController extends Controller
 
         // Special handling for void tasks: they should process even if incomplete
         // as long as they have an original_task_id to reference
-        if (!$task->is_complete) {
-            if ($task->status === 'void' && $task->original_task_id) {
-                Log::info('Allowing incomplete void task to process financials: ' . $task->reference . ' (has original_task_id: ' . $task->original_task_id . ')');
-            } else {
-                throw new Exception('Task is not complete. Missing required fields: ' . $this->getMissingFields($task));
-            }
+        if (!$task->is_complete || !($task->status === 'void' && $task->original_task_id)) {
+
+            Log::error('Cannot process financial for incomplete task: ' . $task->reference, [
+                'is_complete' => $task->is_complete,
+                'status' => $task->status,
+                'original_task_id' => $task->original_task_id
+            ]);
+
+            throw new Exception('Cannot process financial for task : ' . $task->reference);
         }
 
         // Get branch_id - from agent if exists, otherwise from company's main branch
@@ -1527,7 +1531,7 @@ class TaskController extends Controller
         ];
 
         foreach ($task->getRequiredColumns() as $column) {
-            if (empty($task->$column)) {
+            if (empty($task->$column) && $task->$column !== 0 && $task->$column !== '0') {
                 // Use custom message if available, otherwise use default format
                 $message = $fieldMessages[$column] ?? ucfirst(str_replace('_', ' ', $column)) . ' is required';
                 $missingFields[] = $message;
@@ -1661,7 +1665,7 @@ class TaskController extends Controller
 
     private function processVoidTask(Task $task, $branchId)
     {
-        Log::info('Check for invoice created for this task.');
+        Log::info('Tasks: ', [ 'task' => $task->toArray() ]);
 
         $originalTask = Task::find($task->original_task_id);
         if (!$originalTask) {
@@ -3275,6 +3279,9 @@ class TaskController extends Controller
             $hotel = isset($data['hotel_name']) ? Hotel::where('name', 'like', '%' . $data['hotel_name'] . '%')->first() : null;
 
             if (!$hotel) {
+
+                Log::info('Creating new hotel: ' . $data['hotel_name']);
+
                 try {
                     $hotel = Hotel::create([
                         'name' => $data['hotel_name'],
@@ -3283,6 +3290,8 @@ class TaskController extends Controller
                     Log::error('Failed to create hotel: ' . $e->getMessage());
                     throw new Exception('Failed to create hotel: ' . $e->getMessage());
                 }
+
+                Log::info('Created hotel with ID: ' . $hotel->id);
             }
 
             $hotelDetails = [

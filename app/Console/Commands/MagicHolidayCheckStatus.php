@@ -12,6 +12,8 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Date;
 
 class MagicHolidayCheckStatus extends Command
 {
@@ -64,7 +66,6 @@ class MagicHolidayCheckStatus extends Command
                     continue;
                 }
 
-
                 $voidTaskWithSameReference = Task::where('company_id', $company->id)
                     ->where('supplier_id', $supplier->id)
                     ->where('reference', $task->reference)
@@ -100,6 +101,25 @@ class MagicHolidayCheckStatus extends Command
 
                 if($responseStatus == TaskSupplierStatus::MAGIC_CANCEL->value){
                     $this->handleCancelledTask($task, $company, $supplier);
+                } elseif ($responseStatus == TaskSupplierStatus::MAGIC_CONFIRM->value) {
+                    $existingIssuedTask = Task::where('company_id', $company->id)
+                        ->where('supplier_id', $supplier->id)
+                        ->where('reference', $task->reference)
+                        ->where('status', 'issued')
+                        ->first();
+
+                    if($existingIssuedTask) {
+                        $this->info("Issued task already exists for reference " . $task->reference . ", skipping creation.");
+                        continue;
+                    }
+
+                    if (isset($data['service']['cancellationPolicy']['date'])) {
+                        $cancellationPolicyUntil = Date::createFromTimeString($data['service']['cancellationPolicy']['date']);
+                        
+                        if ($cancellationPolicyUntil->lte(Carbon::now())) {
+                            $this->createIssuedTask($task, $company, $supplier, $data);
+                        }
+                    }
                 }
             }
         }
@@ -178,6 +198,86 @@ class MagicHolidayCheckStatus extends Command
             }
         } catch (\Exception $e) {
             $this->error("Exception creating void task for {$originalTask->reference}: " . $e->getMessage());
+        }
+    }
+
+    private function createIssuedTask($originalTask, $company, $supplier, $apiData)
+    {
+        $serviceDates = $apiData['service']['serviceDates'] ?? [];
+        $paymentType = $apiData['service']['payment']['type'] ?? $originalTask->payment_type;
+        $price = $apiData['service']['prices'] ?? $originalTask->price;
+        $total = $apiData['selling']['value'] ?? $originalTask->total;
+
+        $issuedTaskData = [
+            'client_id' => $originalTask->client_id,
+            'agent_id' => $originalTask->agent_id,
+            'company_id' => $company->id,
+            'type' => $originalTask->type,
+            'status' => 'issued',
+            'supplier_status' => $apiData['service']['status'],
+            'client_name' => $originalTask->client_name,
+            'reference' => $originalTask->reference,
+            'duration' => $serviceDates['duration'] ?? $originalTask->duration,
+            'payment_type' => $paymentType,
+            'price' => $originalTask->price,
+            'tax' => $originalTask->tax,
+            'surcharge' => $originalTask->surcharge,
+            'total' => $originalTask->total,
+            'cancellation_policy' => $originalTask->cancellation_policy,
+            'cancellation_deadline' => $originalTask->cancellation_deadline,
+            'additional_info' => $originalTask->additional_info,
+            'supplier_id' => $supplier->id,
+            'venue' => $originalTask->venue,
+            'invoice_price' => $originalTask->invoice_price,
+            'voucher_status' => $originalTask->voucher_status,
+            'refund_date' => $originalTask->refund_date,
+            'issued_date' => Carbon::now(),
+            'original_task_id' => null,
+            'currency' => $originalTask->currency,
+            'original_price' => $originalTask->original_price,
+            'original_total' => $originalTask->original_total,
+            'original_tax' => $originalTask->original_tax,
+            'original_surcharge' => $originalTask->original_surcharge,
+            'original_currency' => $originalTask->original_currency,
+            'exchange_currency' => $originalTask->exchange_currency,
+            'payment_method_account_id' => $originalTask->payment_method_account_id,
+            'supplier_pay_date' => $originalTask->supplier_pay_date,
+            'enabled' => true,
+        ];
+
+        if ($originalTask->type === 'hotel' && $originalTask->hotelDetails) {
+            $issuedTaskData['task_hotel_details'] = [
+                'hotel_name' => $originalTask->hotelDetails->hotel->name,
+                'hotel_country' => $originalTask->hotelDetails->hotel_country,
+                'room_reference' => $originalTask->hotelDetails->room_reference,
+                'booking_time' => $originalTask->hotelDetails->booking_time,
+                'check_in' => $originalTask->hotelDetails->check_in,
+                'check_out' => $originalTask->hotelDetails->check_out,
+                'room_number' => $originalTask->hotelDetails->room_number,
+                'room_type' => $originalTask->hotelDetails->room_type,
+                'room_amount' => $originalTask->hotelDetails->room_amount,
+                'room_details' => $originalTask->hotelDetails->room_details,
+                'rate' => $originalTask->hotelDetails->rate,
+                'meal_type' => $originalTask->hotelDetails->meal_type,
+                'is_refundable' => $originalTask->hotelDetails->is_refundable,
+            ];
+        }
+
+        $request = new Request($issuedTaskData);
+        $taskController = new TaskController();
+
+        try {
+            $response = $taskController->store($request);
+            $responseData = json_decode($response->getContent(), true);
+
+            if ($responseData['status'] === 'success') {
+                $this->info("Created issued task for confirmed task {$originalTask->reference} - cancellation policy passed");
+                // Note: We don't change original task supplier_status here as it remains confirmed
+            } else {
+                $this->error("Failed to create issued task for {$originalTask->reference}: " . ($responseData['message'] ?? 'Unknown error'));
+            }
+        } catch (\Exception $e) {
+            $this->error("Exception creating issued task for {$originalTask->reference}: " . $e->getMessage());
         }
     }
 }

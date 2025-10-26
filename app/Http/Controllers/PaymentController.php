@@ -1402,6 +1402,8 @@ class PaymentController extends Controller
         $payments->when(data_get($filters, 'created_by'), fn($q,$v)=>$q->where('created_by',$v));
         $payments->when(data_get($filters, 'payment_gateway'), fn($q,$v)=>$q->whereIn('payment_gateway',(array)$v));
         $payments->when(data_get($filters, 'status'), fn($q,$v)=>$q->whereIn('status',(array)$v));
+        $payments->when(data_get($filters, 'date_from'), fn($q,$v)=>$q->whereDate('created_at', '>=', $v));
+        $payments->when(data_get($filters, 'date_to'), fn($q,$v)=>$q->whereDate('created_at', '<=', $v));
 
         $payments = $payments->orderBy('id', 'desc')->paginate(15)->appends($request->only('q'));
 

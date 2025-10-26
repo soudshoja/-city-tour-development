@@ -18,9 +18,9 @@ class Refund extends Model
         'remarks',
         'remarks_internal',
         'reason',
-        'total_refund_amount', // Sum of total_refund_to_client from refund_details
-        'total_refund_charge', // Sum of refund_fee_to_client + refund_task_supplier_charge from refund_details
-        'total_nett_refund',    // Calculated: total_refund_amount - total_refund_charge
+        'total_refund_amount',
+        'total_refund_charge',
+        'total_nett_refund',
         'status',
         'refund_date',
         'created_by',

@@ -11,6 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::dropIfExists('refunds');
+
         Schema::create('refunds', function (Blueprint $table) {
             $table->id();
             $table->string('refund_number')->unique();
@@ -21,7 +23,6 @@ return new class extends Migration
             $table->text('remarks')->nullable();
             $table->text('remarks_internal')->nullable();
             $table->text('reason')->nullable();
-            // $table->decimal('service_charge', 15, 3)->nullable();
             $table->decimal('total_refund_amount', 15, 3)->default(0);
             $table->decimal('total_refund_charge', 15, 3)->default(0);
             $table->decimal('total_nett_refund', 15, 3)->default(0);

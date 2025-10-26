@@ -1,13 +1,8 @@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 border border-gray-300 rounded-lg px-6 lg:px-10 py-12 bg-gray-50">
-
-    <!-- LEFT SIDE -->
     <div class="lg:col-span-2 text-left bg-slate-50 rounded-2xl p-6 lg:p-10 calculation-section">
-
-        <!-- ORIGINAL TASK -->
         <h3 class="text-lg font-semibold text-gray-800 mb-6">Original Task Calculation</h3>
 
         <div class="flex flex-col xl:flex-row xl:justify-between xl:items-center mb-8 space-y-6 xl:space-y-0 xl:space-x-6">
-
             <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
                 <label class="block font-semibold text-gray-700 mb-2">Task Selling Price</label>
                 <input readonly type="number" step="0.01"
@@ -24,7 +19,7 @@
             <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex-1">
                 <label class="block font-semibold text-gray-700 mb-2">Task Cost Price</label>
                 <input readonly type="number" step="0.01"
-                       name="tasks[{{ $loopIndex }}][original_task_cost_price]"
+                       name="tasks[{{ $loopIndex }}][original_task_cost]"
                        value="{{ number_format($invoiceDetail->supplier_price, 2, '.', '') }}"
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-medium text-gray-800">
             </div>
@@ -42,7 +37,6 @@
             </div>
         </div>
 
-        <!-- REFUND CALCULATION -->
         <h3 class="text-lg font-semibold text-gray-800 mb-6 mt-10">Refund Calculation</h3>
 
         @php
@@ -80,18 +74,14 @@
                 <div class="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-red-700 font-semibold" id="supplierChargeDisplay_{{ $loopIndex }}">
                     {{ number_format($calculatedRefundCharge, 2, '.', '') }}
                 </div>
-                <input type="hidden"  name="tasks[{{ $loopIndex }}][supplier_charge]" id="supplierChargeInput_{{ $loopIndex }}"
+                <input type="hidden" name="tasks[{{ $loopIndex }}][supplier_charge]" id="supplierChargeInput_{{ $loopIndex }}"
                     value="{{ number_format($calculatedRefundCharge, 2, '.', '') }}">
-                <input type="hidden"  name="tasks[{{ $loopIndex }}][original_task_cost]"
-                    value="{{ number_format($task->originalTask->total, 2, '.', '') }}">
             </div>
         </div>
 
     </div>
 
-    <!-- RIGHT SIDE -->
     <div class="text-right bg-gray-50 rounded-2xl p-6 lg:p-10 min-w-0">
-
         <div class="font-bold text-gray-700 mb-2">Original Task Profit</div>
         <div class="text-2xl text-blue-600 font-bold mb-6" id="originalProfit_{{ $loopIndex }}">
             {{ number_format($invoiceDetail->markup_price, 2, '.', '') }}
@@ -108,6 +98,7 @@
 
         <div class="font-bold text-gray-700 mb-2">New Profit</div>
         <div class="text-2xl text-green-600 font-bold mb-6" id="newAgentMarkup_{{ $loopIndex }}">0.00</div>
+        <input type="hidden" name="tasks[{{ $loopIndex }}][new_task_profit]" id="newAgentMarkupInput_{{ $loopIndex }}" value="0.00">
 
         <hr class="my-6">
 
@@ -116,43 +107,41 @@
                value="{{ number_format($invoiceDetail->markup_price + $calculatedRefundCharge, 2, '.', '') }}"
                class="w-full px-4 py-3 border border-indigo-300 rounded-lg bg-white text-right font-bold text-lg">
 
-        <input type="hidden" name="tasks[{{ $loopIndex }}][original_task_profit]" value="{{ number_format($invoiceDetail->markup_price, 2, '.', '') }}">
-        <input type="hidden" name="tasks[{{ $loopIndex }}][total_nett_refund_charge]" value="{{ number_format($calculatedRefundCharge, 2, '.', '') }}">
-        <input type="hidden" name="tasks[{{ $loopIndex }}][new_task_profit]" id="newAgentMarkupInput_{{ $loopIndex }}" value="0.00">
-        <input type="hidden" name="tasks[{{ $loopIndex }}][refund_fee_to_client]" value="{{ number_format($invoiceDetail->markup_price + $calculatedRefundCharge, 2, '.', '') }}">
+        <input type="hidden" name="tasks[{{ $loopIndex }}][original_task_profit]" value="{{ $invoiceDetail->markup_price }}">
+        <input type="hidden" name="tasks[{{ $loopIndex }}][total_nett_refund_charge]" value="{{ $calculatedRefundCharge }}">
+        <input type="hidden" name="tasks[{{ $loopIndex }}][refund_fee_to_client]" value="{{ $invoiceDetail->markup_price + $calculatedRefundCharge }}">
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const loopIndex = {{ $loopIndex }};
-    const supplierChargeInput = document.getElementById(`supplierChargeInput_${loopIndex}`);
-    const supplierChargeDisplay = document.getElementById(`supplierCharge_${loopIndex}`);
-    const newAgentMarkupDisplay = document.getElementById(`newAgentMarkup_${loopIndex}`);
-    const newAgentMarkupInput = document.getElementById(`newAgentMarkupInput_${loopIndex}`);
-    const invoicePriceInput = document.getElementById(`invoicePriceInput_${loopIndex}`);
-    const originalTaskProfit = parseFloat(`{{ number_format($invoiceDetail->markup_price, 2, '.', '') }}`);
+    document.addEventListener('DOMContentLoaded', function () {
+        const loopIndex = {{ $loopIndex }};
+        const supplierChargeInput = document.getElementById(`supplierChargeInput_${loopIndex}`);
+        const supplierChargeDisplay = document.getElementById(`supplierCharge_${loopIndex}`);
+        const newAgentMarkupDisplay = document.getElementById(`newAgentMarkup_${loopIndex}`);
+        const newAgentMarkupInput = document.getElementById(`newAgentMarkupInput_${loopIndex}`);
+        const invoicePriceInput = document.getElementById(`invoicePriceInput_${loopIndex}`);
+        const originalTaskProfit = parseFloat(`{{ $invoiceDetail->markup_price }}`);
 
-    function recalcNewMarkup() {
-        const supplierCharge = parseFloat(supplierChargeInput.value) || 0;
-        const totalProfit = parseFloat(invoicePriceInput.value) || 0;
-        const newAgentMarkup = totalProfit - (originalTaskProfit + supplierCharge);
+        function recalcNewMarkup() {
+            const supplierCharge = parseFloat(supplierChargeInput.value) || 0;
+            const totalProfit = parseFloat(invoicePriceInput.value) || 0;
+            const newAgentMarkup = totalProfit - (originalTaskProfit + supplierCharge);
 
-        supplierChargeDisplay.textContent = supplierCharge.toFixed(2);
-        newAgentMarkupDisplay.textContent = newAgentMarkup.toFixed(2);
-        newAgentMarkupInput.value = newAgentMarkup.toFixed(2);
+            supplierChargeDisplay.textContent = supplierCharge.toFixed(2);
+            newAgentMarkupDisplay.textContent = newAgentMarkup.toFixed(2);
+            newAgentMarkupInput.value = newAgentMarkup.toFixed(2);
 
-        // Optional color change
-        newAgentMarkupDisplay.className = newAgentMarkup >= 0
-            ? "text-2xl text-green-600 font-bold mb-6"
-            : "text-2xl text-red-600 font-bold mb-6";
+            newAgentMarkupDisplay.className = newAgentMarkup >= 0
+                ? "text-2xl text-green-600 font-bold mb-6"
+                : "text-2xl text-red-600 font-bold mb-6";
 
-        updateOverallSummary?.();
-    }
+            updateOverallSummary?.();
+        }
 
-    supplierChargeInput.addEventListener('input', recalcNewMarkup);
-    invoicePriceInput.addEventListener('input', recalcNewMarkup);
+        supplierChargeInput.addEventListener('input', recalcNewMarkup);
+        invoicePriceInput.addEventListener('input', recalcNewMarkup);
 
-    recalcNewMarkup();
-});
+        recalcNewMarkup();
+    });
 </script>

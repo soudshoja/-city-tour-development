@@ -1302,6 +1302,7 @@
                                                                                             ->whereIn('status', ['issued', 'reissued'])
                                                                                             ->where(function ($query) use ($task) {
                                                                                             $query->where('reference', $task->original_reference)
+                                                                                            ->orWhere('reference', $task->reference)
                                                                                             ->orWhere('passenger_name', $task->passenger_name);
                                                                                             })
                                                                                             ->get();

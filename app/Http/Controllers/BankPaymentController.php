@@ -13,6 +13,8 @@ use App\Models\Branch;
 use App\Models\CoaCategory;
 use App\Models\Role;
 use App\Models\Refund;
+use App\Models\Agent;
+use App\Models\BonusAgent;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 
@@ -50,8 +52,7 @@ class BankPaymentController extends Controller
             $bankPayments = Transaction::where('company_id', $companyId)
                 ->whereNotNull('name')
                 ->where('reference_number', 'like', 'PV-%')
-                ->latest()
-                ->paginate(10);
+                ->get();
 
             $totalRecords = Transaction::where('company_id', $companyId)
                 ->whereNotNull('name')
@@ -123,7 +124,7 @@ class BankPaymentController extends Controller
                 })
                 ->get();
 
-            $rootIds = Account::where('name', 'Liabilities')->pluck('id');
+            $rootIds = Account::whereIn('name', ['Liabilities', 'Expenses'])->pluck('id');
             $suppliers = Account::doesntHave('children')
                 ->with('root')
                 ->whereIn('root_id', $rootIds)
@@ -133,11 +134,18 @@ class BankPaymentController extends Controller
                 ->where('branch_id', $user->branch->id)
                 ->select('refund_number')
                 ->get();
+            
+            $bonusAccounts = Account::where('company_id', $user->company->id)
+                ->with('root')
+                ->where('label', 'like', '%bonus%')
+                ->get();
+            
+            $agents = Agent::where('branch_id', $user->branch->id)->get();        
         } else {
             return redirect()->route('dashboard')->with('error', 'Page not found.');
         }
 
-        return view('bank-payments.create', compact('accounts', 'companies', 'branches', 'suppliers', 'accpayreceives', 'lastLevelAccounts', 'refundNumbers'));
+        return view('bank-payments.create', compact('accounts', 'companies', 'branches', 'suppliers', 'accpayreceives', 'lastLevelAccounts', 'refundNumbers', 'bonusAccounts', 'agents'));
     }
 
     /**
@@ -145,6 +153,7 @@ class BankPaymentController extends Controller
      */
     public function store(Request $request)
     {
+        Log::info('Starting to create Payment Voucher',['response' => $request->all()]);
 
         if ($request->bankpaymenttype === 'PaymentByDate') {
             $bankPaymentType = 'Payment';
@@ -177,11 +186,11 @@ class BankPaymentController extends Controller
             'internal_remarks' => 'nullable|string',
             'remarks_fl' => 'nullable|string',
             'items' => 'required|array|min:1',
+            'items.*.type_selector' => 'nullable|string',
             'items.*.account_id' => ['nullable', 'exists:accounts,id'],
             'items.*.remarks' => 'nullable|string',
             'items.*.currency' => 'nullable|string',
             'items.*.exchange_rate' => 'nullable|numeric',
-            'items.*.amount' => 'nullable|numeric',
             'items.*.debit' => 'nullable|numeric',
             'items.*.credit' => 'nullable|numeric',
             'items.*.cheque_no' => 'nullable|string',
@@ -196,70 +205,208 @@ class BankPaymentController extends Controller
         try {
             DB::beginTransaction();
 
-            // Create Transaction Record
-            $transaction = Transaction::create([
-                'entity_id' => $request->company_id ?? auth()->user()->company->id,
-                'entity_type' => 'company',
-                'company_id' => $request->company_id ?? auth()->user()->company->id,
-                'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
-                'transaction_type' => 'debit',
-                'amount' => $request->bankpaymenttype === 'Refund'
-                    ? $totalNettRefund
-                    : abs($request->credit - $request->debit),
-                'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                'description' => $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
-                'description' => $request->bankpaymenttype === 'Refund'
-                    ? 'Refund to Client - ' . $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : '')
-                    : $request->remarks_create . ($request->refund_number ? ' | ' . $request->refund_number : ''),
-                'invoice_id' => null,
-                'reference_number' => $request->bankpaymentref,
-                'reference_type' => $bankPaymentType,
-                'name' => $request->pay_to,
-                'remarks_internal' => $request->internal_remarks,
-                'remarks_fl' => $request->remarks_fl,
-                'transaction_date' => now(),
-
-            ]);
-
-            // Store JournalEntries
             foreach ($request->items as $item) {
-                $accname = Account::where('id', $item['account_id'])->first();
 
-                $journalEntryRec = JournalEntry::create([
-                    'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
-                    'account_id' => $item['account_id'],
+                $amount = 0;
+                if (!empty($item['debit'])) {
+                    $amount = (float) $item['debit'];
+                } elseif (!empty($item['credit'])) {
+                    $amount = (float) $item['credit'];
+                }
+
+                $type = $item['type_selector'];
+                $accname = Account::find($item['account_id']);
+                $agent = isset($item['agent_id'])
+                    ? Agent::where('id', $item['agent_id'])->first()
+                    : null;
+
+                if ($type == 'bonus') {
+                    if ($agent) {
+                        Log::info('Starting to create Bonus Payment record for Agent', [
+                            'agent_id' => $agent->id,
+                            'agent_name' => $agent->name,
+                            'amount' => $amount,
+                        ]);
+
+                        $transaction = Transaction::create([
+                            'entity_id' => $request->company_id ?? auth()->user()->company->id,
+                            'entity_type' => 'company',
+                            'company_id' => $request->company_id ?? auth()->user()->company->id,
+                            'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
+                            'transaction_type' => !empty($item['debit']) ? 'debit' : 'credit',
+                            'amount' => $amount,
+                            'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                            'description' => 'Bonus Payment to Agent: '. $agent->name . '. Additional Remarks of ' . $request->remarks_create,
+                            'invoice_id' => null,
+                            'reference_number' => $request->bankpaymentref,
+                            'reference_type' => $bankPaymentType,
+                            'name' => $request->pay_to,
+                            'remarks_internal' => $request->internal_remarks,
+                            'remarks_fl' => $request->remarks_fl,
+                            'transaction_date' => now(),
+                        ]);
+
+                        if (!$transaction) {
+                            Log::warning('Failed to create transaction', ['item' => $item]);
+                            continue;
+                        }
+
+                        $journalEntryRec = JournalEntry::create([
+                            'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                            'account_id' => $item['account_id'],
+                            'company_id' => $request->company_id ?? auth()->user()->company->id,
+                            'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
+                            'transaction_id' => $transaction->id,
+                            'description' => $accname->name . ': ' . $agent->name . '. Additional Remarks of ' .$request->remarks_create,
+                            'debit' => $item['debit'] ?? 0,
+                            'credit' => $item['credit'] ?? 0,
+                            'balance' => $item['balance'] ?? 0,
+                            'voucher_number' => $request->bankpaymentref,
+                            'name' => $accname->name ?? '',
+                            'type' => 'payable',
+                            'currency' => $item['currency'] ?? 'KWD',
+                            'exchange_rate' => $item['exchange_rate'] ?? 1,
+                            'amount' => $amount,
+                            'cheque_no' => $item['cheque_no'] ?? '',
+                            'cheque_date' => !empty($item['cheque_date']) 
+                                ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') 
+                                : null,
+                            'bank_info' => $item['bank_name'] ?? '',
+                            'auth_no' => $item['auth_no'] ?? '',
+                            'reconciled' => $reconciledFlag ?? 0,
+                        ]);
+
+                        if (!$journalEntryRec) {
+                            Log::warning('Failed to create journal entry for account type', ['response' => $journalEntryRec]);
+                            continue;
+                        }
+
+                        if (!empty($transaction) && !empty($transaction->id)) {
+                            $bonus = BonusAgent::create([
+                                'transaction_id' => $transaction->id,
+                                'agent_id' => $agent->id ?? null,
+                                'amount' => $amount,
+                                'created_by' => auth()->user()->id,
+                            ]);
+
+                            Log::info('Successfully created Bonus record', ['response' => $bonus]);
+                        } else {
+                            Log::warning('Failed to create Bonus record');
+                            continue;
+                        }
+
+                    } else {
+                        Log::info('Starting to create Bonus Payment record');
+
+                        $transaction = Transaction::create([
+                            'entity_id' => $request->company_id ?? auth()->user()->company->id,
+                            'entity_type' => 'company',
+                            'company_id' => $request->company_id ?? auth()->user()->company->id,
+                            'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
+                            'transaction_type' => !empty($item['debit']) ? 'debit' : 'credit',
+                            'amount' => $amount,
+                            'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                            'description' => 'Bonus Payment for Account: '. $accname->name.'. Additional Remarks of ' . $request->remarks_create,
+                            'invoice_id' => null,
+                            'reference_number' => $request->bankpaymentref,
+                            'reference_type' => $bankPaymentType,
+                            'name' => $request->pay_to,
+                            'remarks_internal' => $request->internal_remarks,
+                            'remarks_fl' => $request->remarks_fl,
+                            'transaction_date' => now(),
+                        ]);
+
+                        if (!$transaction) {
+                            Log::warning('Failed to create bonus transaction', ['response' => $transaction]);
+                            continue;
+                        }
+
+                        $journalEntryRec = JournalEntry::create([
+                            'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                            'account_id' => $item['account_id'],
+                            'company_id' => $request->company_id ?? auth()->user()->company->id,
+                            'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
+                            'transaction_id' => $transaction->id,
+                            'description' =>  'Bonus Payment for Account: '. $accname->name . '. Additional Remarks of ' . $request->remarks_create,
+                            'debit' => $item['debit'] ?? 0,
+                            'credit' => $item['credit'] ?? 0,
+                            'balance' => $item['balance'] ?? 0,
+                            'voucher_number' => $request->bankpaymentref,
+                            'name' => $accname->name ?? '',
+                            'type' => 'payable',
+                            'currency' => $item['currency'] ?? 'KWD',
+                            'exchange_rate' => $item['exchange_rate'] ?? 1,
+                            'amount' => $amount,
+                            'cheque_no' => $item['cheque_no'] ?? '',
+                            'cheque_date' => !empty($item['cheque_date']) 
+                                ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') 
+                                : null,
+                            'bank_info' => $item['bank_name'] ?? '',
+                            'auth_no' => $item['auth_no'] ?? '',
+                            'reconciled' => $reconciledFlag ?? 0,
+                        ]);
+                    }
+
+                } elseif ($type == 'account') {
+                    Log::info('Starting to create Account Payment record');
+
+                    $transaction = Transaction::create([
+                    'entity_id' => $request->company_id ?? auth()->user()->company->id,
+                    'entity_type' => 'company',
                     'company_id' => $request->company_id ?? auth()->user()->company->id,
                     'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
-                    'transaction_id' => $transaction->id,
-                    'description' => $request->bankpaymenttype === 'Refund'
-                        ? 'Refund - ' . $item['remarks']
-                        : $item['remarks'],
-                    'debit' => $item['debit'] ?? 0,
-                    'credit' => $item['credit'] ?? 0,
-                    'balance' => $item['balance'] ?? 0,
-                    'voucher_number' => $request->bankpaymentref,
-                    'name' => $accname->name ?? '',
-                    'type' => 'payable',
-                    'currency' => $item['currency'] ?? '',
-                    'exchange_rate' => $item['exchange_rate'] ?? 0,
-                    'amount' => $item['amount'] ?? 0,
-                    'cheque_no' => $item['cheque_no'] ?? '',
-                    'cheque_date' => $item['cheque_date'] ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') : null,
-                    'bank_info' => $item['bank_name'] ?? '',
-                    'auth_no' => $item['auth_no'] ?? '',
-                    'reconciled' => $reconciledFlag,
-                ]);
+                    'transaction_type' => !empty($item['debit']) ? 'debit' : 'credit',
+                    'amount' => $amount,
+                    'date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                    'description' => 'Payment Voucher for Account: '. $accname->name . '. Additional Remarks of ' . $request->remarks_create,
+                    'invoice_id' => null,
+                    'reference_number' => $request->bankpaymentref,
+                    'reference_type' => $bankPaymentType,
+                    'name' => $request->pay_to,
+                    'remarks_internal' => $request->internal_remarks,
+                    'remarks_fl' => $request->remarks_fl,
+                    'transaction_date' => now(),
+                    ]);
 
-                // Update selected journal entries 
+                    if (!$transaction) {
+                        Log::warning('Failed to create transaction', ['item' => $item]);
+                        continue;
+                    }
 
+                    $journalEntryRec = JournalEntry::create([
+                        'transaction_date' => \Carbon\Carbon::parse($request->docdate)->format('Y-m-d H:i:s'),
+                        'account_id' => $item['account_id'],
+                        'company_id' => $request->company_id ?? auth()->user()->company->id,
+                        'branch_id' => $request->branch_id ?? auth()->user()->branch->id,
+                        'transaction_id' => $transaction->id,
+                        'description' =>  'Payment Voucher for Account: '. $accname->name . '. Additional Remarks of ' . $request->remarks_create,
+                        'debit' => $item['debit'] ?? 0,
+                        'credit' => $item['credit'] ?? 0,
+                        'balance' => $item['balance'] ?? 0,
+                        'voucher_number' => $request->bankpaymentref,
+                        'name' => $accname->name ?? '',
+                        'type' => 'payable',
+                        'currency' => $item['currency'] ?? 'KWD',
+                        'exchange_rate' => $item['exchange_rate'] ?? 1,
+                        'amount' => $amount,
+                        'cheque_no' => $item['cheque_no'] ?? '',
+                        'cheque_date' => !empty($item['cheque_date']) 
+                            ? \Carbon\Carbon::parse($item['cheque_date'])->format('Y-m-d H:i:s') 
+                            : null,
+                        'bank_info' => $item['bank_name'] ?? '',
+                        'auth_no' => $item['auth_no'] ?? '',
+                        'reconciled' => $reconciledFlag ?? 0,
+                    ]);
+                }
+                
                 if (!empty($item['transaction_id'])) {
                     $ids = array_filter(array_map('trim', explode(',', $item['transaction_id'])));
-                    $selectedJournalEntryIds = array_unique(array_map('intval', $ids));
+                    $selectedIds = array_unique(array_map('intval', $ids));
 
-                    if (!empty($selectedJournalEntryIds)) {
+                    if (!empty($selectedIds)) {
                         JournalEntry::where('company_id', auth()->user()->company->id)
                             ->where('branch_id', auth()->user()->branch->id)
-                            ->whereIn('id', $selectedJournalEntryIds)
+                            ->whereIn('id', $selectedIds)
                             ->where('reconciled', '!=', 2)
                             ->update([
                                 'reconciled' => 1,
@@ -275,6 +422,7 @@ class BankPaymentController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
         }
+
     }
 
 

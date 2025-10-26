@@ -1423,21 +1423,53 @@
                                                                                                 class="border border-gray-300 p-2 rounded-md w-full">
                                                                                         </div>
                                                                                     </div>
-                                                                                    <!-- Payment Method -->
+
+                                                                                    <!-- Payment Method & Issued Date-->
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                                        <div class="flex-1 min-w-0">
-                                                                                            <label for="payment_method" class="block text-sm font-medium text-gray-700">Payment Method</label>
-                                                                                            <div class="w-full">
-                                                                                                <select name="payment_method_account_id"
-                                                                                                    id="payment_method_account_id_{{ $task->id }}"
-                                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                                                    <option value="">Select Payment Method</option>
-                                                                                                    @foreach($paymentMethod as $method)
-                                                                                                    <option value="{{ $method->id }}" {{ $task->payment_method_account_id == $method->id ? 'selected' : ''}}>{{ $method->name }}</option>
-                                                                                                    @endforeach
-                                                                                                </select>
-                                                                                            </div>
-                                                                                        </div>
+                                                                                        <div class="flex-1 min-w-0 space-y-3">
+    <!-- Payment Method Type -->
+    <label for="payment_method_type_{{ $task->id }}" class="block text-sm font-medium text-gray-700">
+        Payment Method Type
+    </label>
+    <div class="w-full">
+        <select name="payment_method_type" id="payment_method_type_{{ $task->id }}"
+            class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
+            onchange="handlePaymentTypeChange({{ $task->id }})">
+
+            <option value="" {{ empty($task->payment_method_type) ? 'selected' : '' }} disabled>
+                Select Payment Method Type
+            </option>
+
+            <option value="como" {{ $task->payment_method_type === 'como' ? 'selected' : '' }}>
+                Como Travel & Tourism
+            </option>
+
+            <option value="citytravelers" {{ $task->payment_method_type === 'citytravelers' ? 'selected' : '' }}>
+                City Travelers
+            </option>
+        </select>
+    </div>
+
+    <!-- Payment Method -->
+    <div id="payment_method_wrapper_{{ $task->id }}">
+        <label for="payment_method_account_id_{{ $task->id }}" class="block text-sm font-medium text-gray-700">
+            Payment Method
+        </label>
+        <div class="w-full">
+            <select name="payment_method_account_id" id="payment_method_account_id_{{ $task->id }}"
+                class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
+                onchange="console.log('Selected Payment Method ID:', this.value)">
+                <option value="">Select Payment Method</option>
+                @foreach($paymentMethod as $method)
+                    <option value="{{ $method->id }}" {{ $task->payment_method_account_id == $method->id ? 'selected' : '' }}>
+                        {{ $method->name }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+    </div>
+</div>
+
                                                                                         @if (empty($task->supplier_pay_date))
                                                                                         <div class="flex-1 min-w-0 required-input">
                                                                                             <label for="supplier_pay_date"
@@ -4090,4 +4122,70 @@
     });
     // Render on page load
     renderActiveFilters();
+
+    function togglePaymentMethod(taskId) {
+        const typeSelect = document.getElementById(`payment_method_type_${taskId}`);
+        const methodWrapper = document.getElementById(`payment_method_wrapper_${taskId}`);
+        if (!typeSelect || !methodWrapper) return;
+
+        // Hide by default if COMO or empty
+        if (typeSelect.value === 'como' || typeSelect.value === '') {
+            methodWrapper.classList.add('hidden');
+        } else {
+            methodWrapper.classList.remove('hidden');
+        }
+    }
+
+    // 🔹 Ensure it works both on page load and dynamically opened modals
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('[id^="payment_method_type_"]').forEach(select => {
+            const taskId = select.id.split('_').pop();
+            togglePaymentMethod(taskId);
+
+            // Recheck whenever dropdown changes
+            select.addEventListener('change', () => togglePaymentMethod(taskId));
+        });
+    });
+
+     function handlePaymentTypeChange(taskId) {
+        const typeSelect = document.getElementById(`payment_method_type_${taskId}`);
+        const methodWrapper = document.getElementById(`payment_method_wrapper_${taskId}`);
+        const methodSelect = document.getElementById(`payment_method_account_id_${taskId}`);
+
+        console.log("Payment Type Changed:", typeSelect.value);
+
+        if (typeSelect.value === 'como') {
+            // Hide payment method dropdown
+            methodWrapper.classList.add('hidden');
+
+            // Automatically set payment method to 'COMO'
+            const comoOption = [...methodSelect.options].find(opt => 
+                opt.textContent.trim().toLowerCase().includes('como')
+            );
+
+            if (comoOption) {
+                methodSelect.value = comoOption.value;
+                console.log("Auto-selected COMO method:", comoOption.textContent);
+            } else {
+                methodSelect.value = "";
+                console.warn("No 'Como' payment method found in dropdown!");
+            }
+
+        } else if (typeSelect.value === 'citytravelers') {
+            // Show payment method dropdown
+            methodWrapper.classList.remove('hidden');
+            console.log("Now showing citytravelers payment method selector");
+        } else {
+            // Reset
+            methodWrapper.classList.add('hidden');
+            methodSelect.value = "";
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('[id^="payment_method_type_"]').forEach(select => {
+            const taskId = select.id.split('_').pop();
+            handlePaymentTypeChange(taskId);
+        });
+    });
 </script>

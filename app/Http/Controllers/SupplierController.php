@@ -438,40 +438,6 @@ class SupplierController extends Controller
 
         $data = json_encode($data);
 
-        // test
-
-        // $apiUrl = config('services.open-ai.url');
-        // $apiKey = config('services.open-ai.key');
-
-        // $url = $apiUrl . '/chat/completions';
-        // $header = [
-        //     'Authorization: Bearer ' . config('services.open-ai.key'),
-        //     'Content-Type: application/json',
-        // ];
-
-        // $message = [
-        //     [
-        //         'role' => 'user',
-        //         'content' => 'Please respond with JSON format',
-        //     ]
-        // ];
-
-        // $data = [
-        //     'model' => config('services.open-ai.model'),
-        //     'messages' => $message,
-        //     'response_format' => [
-        //         'type' => 'json_object',
-        //     ]
-        // ];
-
-        // $response = Http::timeout(120)->withHeaders([
-        //     'Authorization' => 'Bearer ' . $apiKey,
-        //     'Content-Type' => 'application/json',
-        // ])->post($url, $data);
-
-        //end test
-
-
         switch ($method) {
             case 'GET':
 

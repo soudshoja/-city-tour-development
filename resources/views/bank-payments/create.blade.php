@@ -209,11 +209,9 @@
                         <table class="table table-bordered bank-payment-table mt-10 w-full">
                             <thead class="table-light">
                                 <tr>
-                                    <th>A/C</th>
-                                    <th>Remarks</th>
+                                    <th colspan="2">Type</th>
                                     <th>Currency</th>
                                     <th>Exchange Rate</th>
-                                    <th>Amount</th>
                                     <th>Debit</th>
                                     <th>Credit</th>
                                     <th>Cheque No</th>
@@ -366,10 +364,12 @@
         </div>
     </div>
 
-
     <script>
         const suppliers = @json($suppliers);
         const lastLevelAccounts = @json($lastLevelAccounts);
+        const bonusAccounts = @json($bonusAccounts);
+        const agents = @json($agents);
+        console.log("Loaded agents:", agents); // check browser console, should print array
 
         let items = [];
 
@@ -388,10 +388,8 @@
                     ac_code: "",
                     account_id: "",
                     transaction_id: "",
-                    remarks: "",
                     currency: "KWD",
                     exchange_rate: 1.0,
-                    amount: 0,
                     debit: 0,
                     credit: 0,
                     cheque_no: "",
@@ -401,6 +399,9 @@
                     auth_no: "",
                     balance: 0,
                     type_reference_id: "",
+                    type_selector: "none",
+                    bonus_ac_code: "", 
+                    agent_id: "",
                 };
 
                 items.push(item);
@@ -435,7 +436,7 @@
             };
 
             window.updateField = function(index, field, value) {
-                if (["debit", "credit", "amount", "exchange_rate", "balance"].includes(field)) {
+                if (["debit", "credit", "exchange_rate", "balance"].includes(field)) {
                     items[index][field] = parseFloat(value).toFixed(2) || "0.00";
                     items[index][field] = parseFloat(items[index][field]); // Convert back to number
                 } else {
@@ -461,11 +462,8 @@
                 updateDifference(totalDifference);
             }
 
-
             function selectedAccName(input, index) {
                 const selectedText = input.value.trim();
-
-                // Match format: [CODE] NAME
                 const match = selectedText.match(/^\[(.+?)\]\s+(.+)$/);
                 if (!match) {
                     items[index].ac_code = null;
@@ -476,7 +474,6 @@
 
                 const selectedCode = match[1];
                 const selectedName = match[2];
-
                 const acc = lastLevelAccounts.find(a => a.code === selectedCode && a.name === selectedName);
 
                 if (acc) {
@@ -489,10 +486,70 @@
                     document.getElementById(`selectedAccName_${index}`).innerText = '';
                     document.getElementById(`account_id_${index}`).value = '';
                 }
+
+                renderTable();
             }
+            window.selectedAccName = selectedAccName;
 
+            function handleAgentChange(select, index) {
+                const selectedId = select.value;
+                const selectedText = select.options[select.selectedIndex].text.trim();
 
-            window.selectedAccName = selectedAccName; // Make function globally available
+                items[index].agent_id = selectedId;
+
+                console.log("Selected Agent ID:", selectedId);
+                console.log("Selected Agent Name:", selectedText);
+            }
+            window.handleAgentChange = handleAgentChange;
+
+            function selectedBonusName(input, index) {
+                const selectedText = input.value.trim();
+                const match = selectedText.match(/^\[(.+?)\]\s+(.+)$/);
+
+                if (!match) {
+                    items[index].bonus_ac_code = null;
+                    items[index].account_id = null;
+                    items[index].showAgent = false;
+                    document.getElementById(`selectedBonusAccName_${index}`).innerText = '';
+                    document.getElementById(`account_id_${index}`).value = '';
+                    renderTable();
+                    return;
+                }
+
+                const selectedCode = match[1];
+                const selectedName = match[2];
+                const bonusAcc = bonusAccounts.find(
+                    bAcc => bAcc.code === selectedCode && bAcc.name === selectedName
+                );
+
+                if (bonusAcc) {
+                    items[index].bonus_ac_code = bonusAcc.id;
+                    items[index].account_id = bonusAcc.id;
+                    items[index].type_selector = 'bonus';
+
+                    const label = bonusAcc.label?.toLowerCase() || '';
+                    const accName = bonusAcc.name?.toLowerCase() || '';
+
+                    items[index].showAgent = label === 'bonus' && accName.includes('agent');
+
+                    document.getElementById(`selectedBonusAccName_${index}`).innerText =
+                        `[${bonusAcc.root ? bonusAcc.root.name : 'No Root'}] [${bonusAcc.code}] ${bonusAcc.name}`;
+                    document.getElementById(`account_id_${index}`).value = bonusAcc.id;
+                } else {
+                    items[index].bonus_ac_code = null;
+                    items[index].account_id = null;
+                    items[index].showAgent = false;
+                    document.getElementById(`selectedBonusAccName_${index}`).innerText = '';
+                    document.getElementById(`account_id_${index}`).value = '';
+                }
+
+                console.log("Full bonusAcc object:", bonusAcc);
+                console.log("Label:", bonusAcc?.label || "(none)");
+                console.log("Show agent field:", items[index].showAgent);
+
+                renderTable();
+            }
+            window.selectedBonusName = selectedBonusName;
 
             function updateDifference(value) {
                 let differenceElement = document.getElementById("total_difference");
@@ -512,6 +569,11 @@
                 }
             }
 
+            window.toggleTypeInput = function(select, index) {
+                items[index].type_selector = select.value;
+                renderTable();
+            };
+
             function renderTable() {
                 paymentTable.innerHTML = "";
                 items.forEach((item, index) => {
@@ -526,29 +588,122 @@
                         `[${selectedAcc.root ? selectedAcc.root.name : 'No Root'}] [${selectedAcc.code}] ${selectedAcc.name}` :
                         '';
 
+                    const isBonusAccountsArray = Array.isArray(bonusAccounts) && bonusAccounts.length > 0;
+                    const bonusOptions = isBonusAccountsArray ? bonusAccounts.map(bAcc =>
+                        `<option value="[${bAcc.code}] ${bAcc.name}">[${bAcc.root ? bAcc.root.name : 'No Root'}] [${bAcc.code}] ${bAcc.name}</option>`
+                    ).join('') : '';
+
+                    const selectedBonusAcc = bonusAccounts ? bonusAccounts.find(bAcc => bAcc.id == item.bonus_ac_code) : null;
+                    const selectedBonusAccDisplay = selectedBonusAcc ?
+                        `[${selectedBonusAcc.root ? selectedBonusAcc.root.name : 'No Root'}] [${selectedBonusAcc.code}] ${selectedBonusAcc.name}` :
+                        '';
 
                     row.innerHTML = `
-                    <td>
-                        <input required list="accountList_${index}" 
-                            class="form-control form-control-sm" 
-                            name="items[${index}][ac_code]" 
-                            value="${selectedAcc ? `[${selectedAcc.code}] ${selectedAcc.name}` : ''}" 
-                            placeholder="Search..."
-                            oninput="selectedAccName(this, ${index})">
+                    <td colspan="2" style="min-width:300px;">
+                        <div style="display: flex; gap: 8px;">
+                            <!-- Type Selector -->
+                            <select required class="form-control form-control-sm" 
+                                name="items[${index}][type_selector]" 
+                                onchange="toggleTypeInput(this, ${index})" 
+                                style="flex: 0 0 120px;">
+                                <option value="none" ${item.type_selector === 'none' ? 'selected' : ''}>Choose a Type</option>
+                                <option value="account" ${item.type_selector === 'account' ? 'selected' : ''}>Account</option>
+                                <option value="refund" ${item.type_selector === 'refund' ? 'selected' : ''}>Refund</option>
+                                <option value="bonus" ${item.type_selector === 'bonus' ? 'selected' : ''}>Bonus</option>
+                            </select>
 
-                        <datalist id="accountList_${index}">
-                            ${accountOptions}
-                        </datalist>
+                            <!-- Dynamic Input Next to Selector -->
+                            <div id="typeInput_${index}" style="flex: 1 1 8%;">
+                                ${
+                                    item.type_selector === 'none'
+                                    ? `
+                                        <input required type="text" class="form-control form-control-sm"
+                                            name="items[${index}][manual_entry]"
+                                            value="${item.manual_entry || ''}"
+                                            placeholder="Select a Type First..."
+                                            readonly>
+                                    `
+                                    : item.type_selector === 'account'
+                                    ? `
+                                        <input required list="accountList_${index}" 
+                                            class="form-control form-control-sm" 
+                                            name="items[${index}][ac_code]" 
+                                            value="${selectedAcc ? `[${selectedAcc.code}] ${selectedAcc.name}` : ''}" 
+                                            placeholder="Search..."
+                                            oninput="selectedAccName(this, ${index})">
 
-                        <small id="selectedAccName_${index}" class="text-muted">
-                            ${selectedAccDisplay}
-                        </small>
+                                        <datalist id="accountList_${index}">
+                                            ${accountOptions}
+                                        </datalist>
 
-                        <input type="hidden" name="items[${index}][account_id]" id="account_id_${index}" value="${selectedAcc ? selectedAcc.id : ''}">
-                        <input type="hidden" name="items[${index}][transaction_id]" value="${item.transaction_id}">
+                                        <small id="selectedAccName_${index}" class="text-muted">
+                                            ${selectedAccDisplay}
+                                        </small>
 
+                                        
+                                        <input type="hidden" name="items[${index}][account_id]" 
+                                            id="account_id_${index}" 
+                                            value="${selectedAcc ? selectedAcc.id : ''}">
+                                        <input type="hidden" name="items[${index}][transaction_id]" 
+                                            value="${item.transaction_id}">
+                                        
+                                    `
+                                    : item.type_selector === 'bonus'
+                                    ? `
+                                        <input required list="bonusAccountList_${index}" 
+                                            class="form-control form-control-sm" 
+                                            name="items[${index}][bonus_ac_code]" 
+                                            value="${selectedBonusAcc ? `[${selectedBonusAcc.code}] ${selectedBonusAcc.name}` : ''}" 
+                                            placeholder="Search Bonus Account..."
+                                            oninput="selectedBonusName(this, ${index})">
+
+                                        <datalist id="bonusAccountList_${index}">
+                                            ${bonusOptions}
+                                        </datalist>
+
+                                        <small id="selectedBonusAccName_${index}" class="text-muted">
+                                            ${selectedBonusAccDisplay}
+                                        </small>
+
+                                        <input type="hidden" name="items[${index}][account_id]" 
+                                            id="account_id_${index}" 
+                                            value="${selectedBonusAcc ? selectedBonusAcc.id : ''}">
+
+                                        <input type="hidden" name="items[${index}][transaction_id]" 
+                                            value="${item.transaction_id || ''}">
+
+                                        ${
+                                            item.showAgent
+                                            ? `
+                                                <div style="margin-top:20px;">
+                                                    <label class="text-xs font-weight-bold mb-1 text-left">Agent</label>
+                                                    <select required class="form-control form-control-sm"
+                                                        name="items[${index}][agent_id]"
+                                                        onchange="handleAgentChange(this, ${index})">
+                                                        <option value="">Select an Agent </option>
+                                                        ${agents ? agents.map(agent => `
+                                                            <option value="${agent.id}" ${item.agent_id == agent.id ? 'selected' : ''}>
+                                                                ${agent.name}
+                                                            </option>
+                                                        `).join('') : ''}
+                                                    </select>
+                                                </div>
+                                            `
+                                            : ''
+                                        }
+                                    `
+                                    : item.type_selector === 'refund'
+                                    ? `
+                                        <input required type="text" class="form-control form-control-sm"
+                                            name="items[${index}][refund_ref]"
+                                            value="${item.refund_ref || ''}"
+                                            placeholder="Enter Refund Reference">
+                                    `
+                                    : ''
+                                }
+                            </div>
+                        </div>
                     </td>
-                    <td style="vertical-align: top;"><input required type="text" class="form-control form-control-sm" name="items[${index}][remarks]" value="${item.remarks}" oninput="updateField(${index}, 'remarks', this.value)"></td>
                     <td style="vertical-align: top;">
                         <select required class="form-control form-control-sm text-left" name="items[${index}][currency]" onchange="updateField(${index}, 'currency', this.value)">
                             <option ${item.currency === "KWD" ? "selected" : ""}>KWD</option>
@@ -557,7 +712,6 @@
                         </select>
                     </td>
                     <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm" name="items[${index}][exchange_rate]" value="${item.exchange_rate}" oninput="updateField(${index}, 'exchange_rate', this.value)"></td>
-                    <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm" name="items[${index}][amount]" value="${item.amount}" oninput="updateField(${index}, 'amount', this.value)"></td>
                     <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm debit-input" name="items[${index}][debit]" value="${item.debit}" oninput="updateField(${index}, 'debit', this.value)"></td>
                     <td style="vertical-align: top;"><input required type="number" step="0.01" class="form-control form-control-sm credit-input" name="items[${index}][credit]" value="${item.credit}" oninput="updateField(${index}, 'credit', this.value)"></td>
                     <td style="vertical-align: top;"><input type="text" class="form-control form-control-sm" name="items[${index}][cheque_no]" value="${item.cheque_no}" oninput="updateField(${index}, 'cheque_no', this.value)"></td>
@@ -1013,7 +1167,6 @@
                         remarks: `Reconciliation from ${lastSearchFrom} to ${lastSearchTo}`,
                         currency: "KWD",
                         exchange_rate: 1.0,
-                        amount: 0,
                         debit: netDebit,
                         credit: 0,
                         cheque_no: "",

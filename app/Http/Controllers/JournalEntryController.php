@@ -34,7 +34,7 @@ class JournalEntryController extends Controller
             ->whereDate('transaction_date', '>=', $dateFrom)
             ->whereDate('transaction_date', '<=', $dateTo)
             ->orderBy('transaction_date', 'asc')
-            ->paginate(15);
+            ->get();
 
         // Optional: apply custom transformation (like calculating running balance)
         $journalEntries = $this->getJournalEntries($journalEntries);

@@ -27,6 +27,7 @@ use App\Models\Invoice;
 use App\Models\Task;
 use Carbon\Carbon;
 use App\Http\Controllers\AgentController;
+use App\Models\BonusAgent;
 use Intervention\Image\Drivers\Gd\Modifiers\DrawEllipseModifier;
 use Intervention\Image\Facades\Image;
 
@@ -35,11 +36,11 @@ class ProfileController extends Controller
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request)
+   public function edit(Request $request)
     {
         $user = $request->user();
         $month = $request->input('month') ? Carbon::parse($request->input('month'))->startOfMonth() : now()->startOfMonth();
-        $viewType = $request->input('view_type', 'invoice'); // Default to invoice-based view
+        $viewType = $request->input('view_type', 'invoice');
 
         $phone = null;
         $email = $user->email;
@@ -47,6 +48,8 @@ class ProfileController extends Controller
         $totalCommission = 0;
         $totalProfit = 0;
 
+        $filterBonus = now()->startOfMonth();
+        $bonuses = collect();
 
         switch ($user->role->id) {
             case Role::COMPANY:
@@ -63,7 +66,7 @@ class ProfileController extends Controller
 
             case Role::AGENT:
                 $profile = Agent::where('user_id', $user->id)->first();
-                $phone = $profile?->phone_number; // different column name
+                $phone = $profile?->phone_number;
                 $typeId = $profile?->type_id;
                 $company = $user->agent->branch->company;
 
@@ -76,27 +79,32 @@ class ProfileController extends Controller
                     if (in_array($typeId, [2, 3, 4])) {
                         $totalCommission = number_format($stored->total_commission, 2);
                     }
-
                     $totalProfit = number_format($stored->total_profit, 2);
-                   
                 } else {
                     $summary = app(AgentController::class)->calculateMonthlySummary($profile, $month);
-
                     if (in_array($typeId, [2, 3, 4])) {
                         $totalCommission = number_format($summary['commission'], 2);
                     }
-
                     $totalProfit = number_format($summary['profit'], 2);
                 }
 
                 $commissionData = $this->getAgentCommissions($profile->id, $month, $viewType);
-                
-                // Use totals from commission data (for current page/filtered data)
+
                 $totalProfit = number_format($commissionData['totalProfit'], 2);
                 if (in_array($typeId, [2, 3, 4])) {
                     $totalCommission = number_format($commissionData['totalCommission'], 2);
                 }
 
+                $filterBonusMonth = (int) request('filter_month', now()->month);
+                $filterBonusYear  = (int) request('filter_year', now()->year);
+                $filterBonus = Carbon::createFromDate($filterBonusYear, $filterBonusMonth, 1)->startOfMonth();
+
+                $bonuses = BonusAgent::where('agent_id', $profile->id)
+                    ->whereMonth('created_at', $filterBonus->month)
+                    ->whereYear('created_at', $filterBonus->year)
+                    ->with('transaction')
+                    ->orderByDesc('created_at')
+                    ->get();
                 break;
 
             default:
@@ -116,6 +124,8 @@ class ProfileController extends Controller
             'month' => $month,
             'companyLogo' => $companyLogo,
             'viewType' => $viewType,
+            'hasBonus' => $bonuses ?? false,
+            'filterBonus' => $filterBonus,
         ]);
     }
 

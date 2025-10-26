@@ -21,6 +21,7 @@ use App\Models\Transaction;
 use App\Models\JournalEntry;
 use App\Models\Role;
 use App\Models\SupplierCompany;
+use App\Models\BonusAgent;
 use DateTimeImmutable;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -240,8 +241,21 @@ class AgentController extends Controller
             ->get()
             ->pluck('supplier.name')
             ->toArray();
-       
-        // Return the main view with paginated data
+        
+        $filterBonusMonth = (int) request('filter_month', now()->month);
+        $filterBonusYear  = (int) request('filter_year', now()->year);
+
+        $filterBonus = Carbon::createFromDate($filterBonusYear, $filterBonusMonth, 1)->startOfMonth();
+
+        $bonuses = BonusAgent::where('agent_id', $agent->id)
+            ->whereMonth('created_at', $filterBonus->month)
+            ->whereYear('created_at', $filterBonus->year)
+            ->with('transaction')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $clientCount = Client::where('agent_id', $agent->id)->count();
+
         return view('agents.agentsShow', compact(
             'agent',
             'agentType',
@@ -257,6 +271,9 @@ class AgentController extends Controller
             'supplierCompany',
             'totalCommission',
             'totalProfit',
+            'bonuses',
+            'clientCount',
+            'filterBonus',
         ));
     }
 

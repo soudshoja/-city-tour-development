@@ -31,28 +31,33 @@
             </div>
 
             @php
-            $tabs = [
-                ['label' => 'Account Information', 'value' => 'Account', 'icon' => 'user'],
-                ['label' => 'Change Password', 'value' => 'Security', 'icon' => 'shield'],
-                ['label' => 'IATA Settings', 'value' => 'Iata', 'icon' => 'globe'],
-            ];
+                $tabs = [
+                    ['label' => 'Account Information', 'value' => 'Account', 'icon' => 'user'],
+                    ['label' => 'Change Password', 'value' => 'Security', 'icon' => 'shield'],
+                    ['label' => 'IATA Settings', 'value' => 'Iata', 'icon' => 'globe'],
+                ];
 
-            $typeId = optional($user->agent)->type_id;
-            if ($user->role_id == 4 && $typeId) {
-            if (in_array($typeId, [1, 2])) {
-            $tabs[] = ['label' => $typeId == 1 ? 'Profit' : 'Commission', 'value' => 'Commission', 'icon' => 'hand-money'];
-            } elseif (in_array($typeId, [3, 4])) {
-            $tabs[] = ['label' => 'Commission & Profit', 'value' => 'Commission', 'icon' => 'hand-money'];
-            }
-            }
+                $typeId = optional($user->agent)->type_id;
+                if ($user->role_id == 4 && $typeId) {
+                if (in_array($typeId, [1, 2])) {
+                $tabs[] = ['label' => $typeId == 1 ? 'Profit' : 'Commission', 'value' => 'Commission', 'icon' => 'hand-money'];
+                } elseif (in_array($typeId, [3, 4])) {
+                $tabs[] = ['label' => 'Commission & Profit', 'value' => 'Commission', 'icon' => 'hand-money'];
+                }
+                }
 
-            $tabs = array_merge($tabs, [
+                if($hasBonus && $hasBonus->isNotEmpty())
+                    $tabs[] = ['label' => 'Bonus', 'value' => 'Bonus', 'icon' => 'credit-card'];
+                
+
+            @endphp
+
+            <!-- $tabs = array_merge($tabs, [
             ['label' => 'Payment', 'value' => 'Payment', 'icon' => 'credit-card'],
             ['label' => 'Invoices', 'value' => 'Invoices', 'icon' => 'file-text'],
             ['label' => 'Orders', 'value' => 'Orders', 'icon' => 'shopping-cart'],
             ['label' => 'Documentation', 'value' => 'Documentation', 'icon' => 'book-open'],
-            ]);
-            @endphp
+            ]); -->
 
             <div class="bg-white p-5 grid grid-cols-6 gap-3" x-data="{
                 tab: new URLSearchParams(window.location.search).get('tab') || 'Account',
@@ -157,11 +162,12 @@
                         <p class="text-gray-700 text-sm">@include('profile.partials.commission-list')</p>
                     </div>
 
-                    <div x-show="tab === 'Payment'" x-cloak>
-                        <p class="text-gray-700 text-sm">This is the Payment section.</p>
-                    </div>
-
-                    <div x-show="tab === 'Invoices'" x-cloak>
+                    @if ($hasBonus) 
+                        <div x-show="tab === 'Bonus'" x-cloak>
+                            <p class="text-gray-700 text-sm">@include('profile.partials.bonus-list')</p>
+                        </div>
+                    @endif
+                    <!-- <div x-show="tab === 'Invoices'" x-cloak>
                         <p class="text-gray-700 text-sm">This is the Invoices section.</p>
                     </div>
 
@@ -171,7 +177,7 @@
 
                     <div x-show="tab === 'Documentation'" x-cloak>
                         <p class="text-gray-700 text-sm">This is the Documentation section.</p>
-                    </div>
+                    </div> -->
                 </div>
             </div>
         </div>

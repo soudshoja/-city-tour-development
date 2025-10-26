@@ -81,8 +81,13 @@ class Invoice extends Model
         $this->save();
     }
 
-    public function refundDetail()
+    public function origRefundDetails() // Viewing the original invoice
     {
         return $this->hasMany(RefundDetail::class, 'invoice_id');
+    }
+
+    public function refundDetails() // Viewing the refund invoice
+    {
+        return $this->hasMany(RefundDetail::class, 'refund_invoice_id');
     }
 }

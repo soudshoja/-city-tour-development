@@ -13,18 +13,16 @@ class RefundDetail extends Model
         'refund_id',
         'task_id',
         'invoice_id', // Link to the specific invoice this task's original belongs to
-        'refund_invoice_id',
+        'refund_invoice_id', // Link to the specific invoice this refund task belongs to
         'client_id',
         'task_description',
-        'original_invoice_price', //(Original selling price of this specific task)
-        'original_task_cost', //(Original cost price of this specific task)
-        'original_task_profit', //(Original profit of this specific task)
-        'refund_fee_to_client', //(Specific fee charged to client for this task's refund)
-        'refund_task_supplier_charge', //(Supplier charges for refunding this specific task)
-        // 'refund_task_cost_price', //(Adjusted cost price for the refunded task, if applicable)
-        'new_task_profit', //(Adjusted profit for this specific task after refund)
-        'total_refund_to_client', //(Total amount to be refunded to client for this specific task)
-        'net_refund', //(Calculated net refund for this specific task)
+        'original_invoice_price',
+        'original_task_cost',
+        'original_task_profit',
+        'refund_fee_to_client',
+        'supplier_charge',
+        'new_task_profit',
+        'total_refund_to_client',
         'remarks',
     ];
 

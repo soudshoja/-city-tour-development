@@ -44,4 +44,9 @@ class SupplierCompany extends Pivot
         return $this->hasMany(SupplierCredential::class);
     }
 
+    public function procedures()
+    {
+        return $this->hasMany(SupplierProcedure::class, 'supplier_company_id');
+    }
+
 }

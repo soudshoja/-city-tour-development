@@ -46,6 +46,7 @@ use App\Http\Controllers\RefundController;
 use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ResayilController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\SupplierProcedureController;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -56,6 +57,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::patch('/profile/iata', [ProfileController::class, 'updateIataSettings'])->name('profile.iata.update');
 
     Route::prefix('profile/password')->name('profile.password.')->group(function () {
         Route::post('/request', [ProfileController::class, 'requestPasswordUpdate'])->name('request-update');
@@ -724,5 +726,22 @@ Route::group([
 
 Route::get('/exchange-rate/histories', [\App\Http\Controllers\CurrencyExchangeController::class, 'allHistories'])
     ->name('exchange.histories.all');
+
+Route::group([
+    'prefix' => 'iata',
+    'as' => 'iata.',
+], function(){
+    Route::post('/company-wallet', [DashboardController::class, 'iataCompanyWallet'])->name('company-wallet');
+});
+
+Route::group([
+    'prefix' => 'supplier-procedures',
+    'as' => 'supplier-procedures.',
+], function(){
+    Route::post('/{supplierId}', [SupplierProcedureController::class, 'store'])->name('store');
+    Route::patch('/{procedureId}/activate', [SupplierProcedureController::class, 'activate'])->name('activate');
+    Route::get('/{procedureId}', [SupplierProcedureController::class, 'show'])->name('show');
+    Route::delete('/{procedureId}', [SupplierProcedureController::class, 'destroy'])->name('destroy');
+});
 
 require __DIR__ . '/auth.php';

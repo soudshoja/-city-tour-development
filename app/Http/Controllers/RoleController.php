@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\AIService;
 use App\Models\Client;
+use App\Models\Company;
 use App\Models\OpenAi;
 use Exception;
 use Illuminate\Http\Request;
@@ -29,31 +30,26 @@ class RoleController extends Controller
         Gate::authorize('viewAny', Role::class);
 
         $user = Auth::user();
+        $companyId = 1;
+        $companies = collect();
 
-        if(!($user->role_id == Role::ADMIN || $user->role_id == Role::COMPANY )){
+        if($user->role_id == Role::ADMIN){
+            $companyId = $request->get('company_id', 1);
+            $companies = Company::all();
+        } else if($user->role_id == Role::COMPANY){
+            $companyId = $user->company->id;
+        }else {
             return abort(403, 'Unauthorized action.');
         }
-
-        $companyId = $request->company_id ?? $user->company->id;
 
         $roles = $this->getAllRole($companyId);
         $user = Auth::user();
-        // Log::info('Debugging User Permissions:', [
-        //     'roles' => $user->getRoleNames(),
-        //     'permissions' => $user->getAllPermissions()->pluck('name'),
-        //     'view_companies' => $user->can('viewAny', App\Models\Company::class),
-        //     'view_branches' => $user->can('viewAny', App\Models\Branch::class),
-        //     'view_agents' => $user->can('viewAny', App\Models\Agent::class),
-        //     'has_permission_web' => $user->can('view company', 'web'),
-        //     'has_permission_api' => $user->can('view company', 'api'),
-        //     'guard' => auth()->guard()->name,
-        //     'user' => auth()->user(),
-        // ]);
 
-        if ($user->role_id == Role::AGENT) {
-            return abort(403, 'Unauthorized action.');
-        }
-        return view('role.index', compact('roles'));
+        return view('role.index', compact(
+            'roles',
+            'companyId',
+            'companies'
+        ));
     }
 
     public function create()

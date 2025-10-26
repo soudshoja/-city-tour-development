@@ -249,7 +249,13 @@
                                 <div class="uppercase text-xs text-gray-500 mb-1">Extra Services</div>
                                 <ul class="list-disc pl-5 space-y-1 text-gray-800">
                                 @foreach($extras as $svc)
+                                    @if(is_array($svc))
+                                    @foreach($svc as $value)
+                                    <li>{{ $value }}</li>
+                                    @endforeach
+                                    @else
                                     <li>{{ $svc }}</li>
+                                    @endif
                                 @endforeach
                                 </ul>
                             </div>
@@ -273,6 +279,8 @@
                     </div>
                 </section>
             </div>
+
+            <x-supplier-procedure :supplierId="$tasks->first()->supplier_id" :companyId="$tasks->first()->company_id"/>
 
             @if($tasks->count() > 1)
             <section class="page-break-inside-avoid card p-5">

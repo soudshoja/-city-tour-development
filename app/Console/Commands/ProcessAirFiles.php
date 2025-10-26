@@ -769,6 +769,7 @@ class ProcessAirFiles extends Command
                 $this->logger->info("Task status is {$taskData['status']}. Checking original task for reference: {$taskData['reference']}");
 
                 $originalTask = Task::where('reference', $taskData['original_reference'])
+                    ->orWhere('reference', $taskData['reference'])
                     ->whereIn('status', ['issued', 'reissued'])
                     ->first();
 

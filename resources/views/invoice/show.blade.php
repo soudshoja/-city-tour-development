@@ -522,7 +522,7 @@
                 @csrf
 
                 <input type="hidden" id="totalAmountInput" name="total_amount"
-                    value="{{ number_format( (isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount')), 2) }}">
+                    value="{{ isset($totalGatewayFee['finalAmount']) ? $totalGatewayFee['finalAmount'] : $invoice->sub_amount) - abs($checkUtilizeCredit->sum('amount') }}">
                 <input type="hidden" name="client_email" value="{{ $invoice->client->email }}">
                 <input type="hidden" name="client_name" value="{{ $invoice->client->full_name }}">
                 <input type="hidden" name="client_phone" value="{{ $invoice->client->phone }}">

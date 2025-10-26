@@ -103,5 +103,10 @@ class Supplier extends Model
     {
         return $this->hasMany(TaskRules::class);
     }
+
+    public function procedures()
+    {
+        return $this->hasMany(SupplierProcedure::class);
+    }
     
 }

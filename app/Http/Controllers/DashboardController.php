@@ -14,7 +14,9 @@ use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\SupplierCompany;
 use App\Models\Task;
+use App\Services\IataEasyPayService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
@@ -23,6 +25,16 @@ class DashboardController extends Controller
     {
         $serializedData = [];
 
+        if (Auth::user()->role_id == Role::COMPANY) {
+            $company = Company::where('user_id', Auth::id())->first();
+        } elseif (Auth::user()->role_id == Role::ACCOUNTANT) {
+            $company = Auth()->user()?->accountant?->branch?->company;
+        } else {
+            $company = null;
+        }
+
+        $walletData = $this->getCompanyWallets($company);
+        extract($walletData);
 
         if (Auth::user()->role_id == Role::ADMIN) {
             $dashboardData =  $this->adminDashboard();
@@ -70,6 +82,10 @@ class DashboardController extends Controller
                 'totalReceivable' => $childAccountReceivable['balance'],
                 'totalBank' =>  $totalBank['balance'],
                 'gatewayReceivable' =>  $gatewayReceivable['balance'],
+                'wallets' => $wallets,
+                'iataWalletName' => $iataWalletName,
+                'iataBalance' => $iataBalance,
+                'iataErrorMessage' => $iataErrorMessage,
             ];
 
         } elseif (Auth::user()->role_id == Role::AGENT) {
@@ -94,11 +110,60 @@ class DashboardController extends Controller
                 'pieChartNumbers' => $dashboardData['companiesSales'],
                 'pieChartLabels'  => $dashboardData['companiesNames'],
                 'pieChartColors'  => $this->generateColors($dashboardData['companies']->count()),
+                'wallets' => $wallets,
+                'iataWalletName' => $iataWalletName,
+                'iataBalance' => $iataBalance,
+                'iataErrorMessage' => $iataErrorMessage,
             ];
         }
 
 
         return view('dashboard', $serializedData);
+    }
+
+    private function getCompanyWallets($company)
+    {
+        $wallets = collect();
+        $iataBalance = 0;
+        $walletName = 'N/A';
+        $error = null;
+
+        try {
+            if (!$company || !$company->iata_code || !$company->iata_client_id || !$company->iata_client_secret) {
+                Log::warning('Missing IATA credentials for company ID: ' . ($company->id ?? 'N/A'));
+                throw new \Exception('Missing IATA credentials. Please update your company profile with the IATA Code, Client ID, and Client Secret.');
+            }
+
+            $service = new IataEasyPayService(
+                $company->iata_client_id,
+                $company->iata_client_secret
+            );
+
+            $data = $service->getWalletBalanceByCompany($company->iata_code, 'KWD');
+
+            Log::info('IATA wallet data retrieved for company ID ' . $company->id . ': ' . json_encode($data));
+
+            $wallets = collect($data['wallets'] ?? [])->where('status', 'OPEN')->values();
+            $iataBalance = $wallets->sum('balance');
+            $walletName = $wallets->pluck('name')->join(', ');
+
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+        }
+
+        Log::info('Returning data' , [
+            'wallets' => $wallets,
+            'iataBalance' => $iataBalance,
+            'iataWalletName' => $walletName,
+            'iataErrorMessage' => $error,
+        ]);
+
+        return [
+            'wallets' => $wallets,
+            'iataBalance' => $iataBalance,
+            'iataWalletName' => $walletName,
+            'iataErrorMessage' => $error,
+        ];
     }
 
     public function adminDashboard()
@@ -344,5 +409,27 @@ class DashboardController extends Controller
 
     }
 
+    public function iataCompanyWallet(Request $request)
+    {
+        Log::info('Received request for IATA company wallet: ' . $request->company_id);
+        $request->validate([
+            'company_id' => 'required|exists:companies,id',
+        ]);
+        Log::info('Fetching IATA company wallet for company ID: ' . $request->company_id);
+        
+        $company = Company::find($request->company_id);
+
+        $response =  $this->getCompanyWallets($company);
+        extract($response);
+
+        Log::info('IATA company wallet response: ', $response);
+
+        return response()->json([
+            'wallets' => $wallets,
+            'iataBalance' => $iataBalance,
+            'walletName' => $iataWalletName,
+            'error' => $iataErrorMessage,
+        ]);
+    }
     
 };

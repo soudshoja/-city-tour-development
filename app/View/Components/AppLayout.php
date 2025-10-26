@@ -2,11 +2,15 @@
 
 namespace App\View\Components;
 
+use App\Models\Company;
 use App\Models\Currency;
 use App\Models\CurrencyExchange;
 use App\Models\Role;
+use App\Services\IataEasyPayService;
+use Exception;
 use Illuminate\View\Component;
 use Illuminate\View\View;
+use Throwable;
 
 class AppLayout extends Component
 {
@@ -17,29 +21,41 @@ class AppLayout extends Component
     {
         $user = auth()->user();
         $color = null;
+        $companyId = null;
 
         if($user->role_id == Role::ADMIN) {
             $color = 'bg-koromiko-300';
+            $companyId = 1;
         } elseif($user->role_id == Role::COMPANY) {
             $color = 'bg-blue-500';
+            $companyId = $user->company->id;
         } elseif($user->role_id == Role::BRANCH) {
             $color = 'bg-brown-500';
+            $companyId = $user->branch->company->id;
         } elseif($user->role_id == Role::AGENT) {
             $color = 'bg-purple-500';
+            $companyId = $user->agent->branch->company->id;
         } elseif($user->role_id == Role::ACCOUNTANT) {
             $color = 'bg-red-500';
+            $companyId = $user->accountant->branch->company->id;
         } else {
             $color = 'bg-gray-500';
+            $companyId = 1;
         }
 
         $currencyExchange = $this->currencySidebar();
+
+        // $walletData = $this->getCompanyWallets($user->company);
+        // extract($walletData);
+
 
         return view('components.layouts.app', [
             'color' => $color,
             'allIso' => $currencyExchange['all_iso'],
             'base' => $currencyExchange['base'],
             'exchange' => $currencyExchange['exchange'],
-            'currencies' => $currencyExchange['currencies']
+            'currencies' => $currencyExchange['currencies'],
+            'companyId' => $companyId,
         ]);
     }
 
@@ -72,6 +88,40 @@ class AppLayout extends Component
             'exchange' => $exchange,
             'all_iso' => $allIso,
             'currencies' => $currencies
+        ];
+    }
+
+    private function getCompanyWallets(Company $company)
+    {
+        $wallets = collect();
+        $iataBalance = 0;
+        $walletName = 'N/A';
+        $error = null;
+
+        try {
+            if (!$company || !$company->iata_code || !$company->iata_client_id || !$company->iata_client_secret) {
+                throw new Exception('Missing IATA credentials. Please update your company profile with the IATA Code, Client ID, and Client Secret.');
+            }
+
+            $service = new IataEasyPayService(
+                $company->iata_client_id,
+                $company->iata_client_secret
+            );
+
+            $data = $service->getWalletBalanceByCompany($company->iata_code, 'KWD');
+            $wallets = collect($data['wallets'] ?? [])->where('status', 'OPEN')->values();
+            $iataBalance = $wallets->sum('balance');
+            $walletName = $wallets->pluck('name')->join(', ');
+
+        } catch (Throwable $e) {
+            $error = $e->getMessage();
+        }
+
+        return [
+            'wallets' => $wallets,
+            'iataBalance' => $iataBalance,
+            'iataWalletName' => $walletName,
+            'iataErrorMessage' => $error,
         ];
     }
 }

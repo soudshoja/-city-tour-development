@@ -123,7 +123,7 @@
                 <div class="relative w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
                     @if(Auth::check())
                     <!-- Authenticated User -->
-                    <div x-data="{ open: false }" class="relative">
+                    <div x-data="profileDropdown()" class="relative">
                         <!-- Profile Image -->
                         <div @click="open = !open" class="w-full h-full object-cover cursor-pointer">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
@@ -133,25 +133,54 @@
                         </div>
 
                         <!-- Dropdown Menu -->
-                        <div x-cloak x-show="open" @click.away="open = false" class="absolute top-14 right-0 w-64 mt-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10">
+                        <div x-cloak x-show="open" @click.away="open = false" class="absolute top-14 right-0 w-80 mt-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-10">
                             <!-- User Information & Profile -->
                             <a href="{{ route('profile.edit') }}">
-                                <div class="flex items-center p-2 border-b border-gray-200 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-700 hover:rounded-t">
-                                    <div class="w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-full shadow-sm">
-                                        <svg class="w-6 h-6 rounded-full" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                <div class="flex items-center p-4 border-b border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200">
+                                    <div class="w-12 h-12 flex items-center justify-center bg-gray-200 dark:bg-gray-700 rounded-full shadow-sm">
+                                        <svg class="w-6 h-6 text-gray-600 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                             <path fill="currentColor" d="M12 13c2.396 0 4.575.694 6.178 1.671c.8.49 1.484 1.065 1.978 1.69c.486.616.844 1.352.844 2.139c0 .845-.411 1.511-1.003 1.986c-.56.45-1.299.748-2.084.956c-1.578.417-3.684.558-5.913.558s-4.335-.14-5.913-.558c-.785-.208-1.524-.506-2.084-.956C3.41 20.01 3 19.345 3 18.5c0-.787.358-1.523.844-2.139c.494-.625 1.177-1.2 1.978-1.69C7.425 13.694 9.605 13 12 13" class="duoicon-primary-layer" />
                                             <path fill="currentColor" d="M12 2c3.849 0 6.255 4.167 4.33 7.5A5 5 0 0 1 12 12c-3.849 0-6.255-4.167-4.33-7.5A5 5 0 0 1 12 2" class="duoicon-secondary-layer" opacity=".3" />
                                         </svg>
                                     </div>
 
-                                    <div class="ml-3">
-                                        <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ Auth::user()->name }}
-                                            <span class="ml-1 text-green-500 text-xs bg-green-200 dark:bg-green-700 py-0.5 px-1 rounded">Pro</span>
+                                    <div class="ml-3 flex-1">
+                                        <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ Auth::user()->name }}
+                                            <span class="ml-1 text-green-600 text-xs bg-green-100 dark:bg-green-800 dark:text-green-300 py-0.5 px-2 rounded-full font-medium">Pro</span>
                                         </h4>
-                                        <p class="text-xs text-gray-500 dark:text-gray-300 mt-1">See Your Profile here</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">View your profile</p>
                                     </div>
                                 </div>
                             </a>
+
+                            <!-- IATA Wallet Information -->
+                            <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-750 border-b border-gray-200 dark:border-gray-600">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h5 class="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+                                        <svg class="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                            <path fill="currentColor" d="M21 7.28V5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-2.28A2 2 0 0 0 22 15V9a2 2 0 0 0-1-1.72M20 15H12V9h8zM5 19V5h14v2H12a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h7v2z"/>
+                                            <circle fill="currentColor" cx="16" cy="12" r="1.5"/>
+                                        </svg>
+                                        IATA Company Wallet
+                                    </h5>
+                                    
+                                    <!-- Reload Button -->
+                                    <button 
+                                        id="reload-wallet-btn" 
+                                        onclick="reloadWalletData()" 
+                                        class="flex items-center px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors duration-200"
+                                        title="Reload wallet data">
+                                        <svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                            <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                                        </svg>
+                                        Reload
+                                    </button>
+                                </div>
+                                
+                                <div id="iata-info" class="space-y-2">
+                                    <!-- Initial content will be loaded by checkAndLoadWalletData() -->
+                                </div>
+                            </div>
 
                             <!-- Dropdown Links -->
                             <div>
@@ -198,11 +227,202 @@
 </header>
 
 <script>
+    let walletData = null;
+    let walletSessionExpiry = null;
+    const WALLET_SESSION_DURATION = 60000;
+
     $(document).ready(function() {
         $('#menu-icon').click(function() {
             $('#responsiveMenu').toggle();
         });
     });
+
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('profileDropdown', () => ({
+            open: false,
+            init() {
+                this.$watch('open', (value) => {
+                    if (value === true) {
+                        checkAndLoadWalletData();
+                    }
+                });
+            }
+        }));
+    });
+
+    function checkAndLoadWalletData() {
+        const now = new Date().getTime();
+        
+        if (walletData && walletSessionExpiry && now < walletSessionExpiry) {
+            displayWalletData(walletData);
+        } else {
+            iataCompanyWallet();
+        }
+    }
+
+    function reloadWalletData() {
+        walletData = null;
+        walletSessionExpiry = null;
+        iataCompanyWallet();
+    }
+
+    function iataCompanyWallet() {
+        const url = "{{ route('iata.company-wallet') }}";
+        let companyId = "{{ $companyId }}";
+        const iataInfo = document.getElementById('iata-info');
+        const reloadBtn = document.getElementById('reload-wallet-btn');
+
+        // Show loading state and disable reload button
+        iataInfo.innerHTML = `
+            <div class="flex items-center justify-center py-2">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Loading...</span>
+            </div>
+        `;
+        
+        if (reloadBtn) {
+            reloadBtn.disabled = true;
+            reloadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    'company_id': companyId
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('IATA Company Wallet Data:', data);
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Cache the data with timestamp
+                walletData = {
+                    wallets: data.wallets || [],
+                    iataBalance: parseFloat(data.iataBalance || 0).toFixed(3),
+                    walletName: data.walletName
+                };
+                walletSessionExpiry = new Date().getTime() + WALLET_SESSION_DURATION;
+
+                // Display the data
+                displayWalletData(walletData);
+            })
+            .catch(error => {
+                console.error('Error fetching IATA Company Wallet:', error);
+                
+                const iataInfo = document.getElementById('iata-info');
+                iataInfo.innerHTML = `
+                    <div class="text-center py-4">
+                        <svg class="mx-auto h-8 w-8 text-red-400 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                        </svg>
+                        <p class="text-sm text-red-600 dark:text-red-400 font-medium">Failed to load wallet</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">${error.message || 'Please try again later'}</p>
+                    </div>
+                `;
+            })
+            .finally(() => {
+                const reloadBtn = document.getElementById('reload-wallet-btn');
+                if (reloadBtn) {
+                    reloadBtn.disabled = false;
+                    reloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            });
+    }
+
+    function displayWalletData(data) {
+        const iataInfo = document.getElementById('iata-info');
+        const { wallets, iataBalance, walletName } = data;
+
+        if (wallets.length > 0) {
+            const now = new Date().getTime();
+            
+            const walletsHtml = wallets.map(wallet => `
+                <div class="bg-white dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1">
+                            <div class="flex items-center">
+                                <svg class="w-4 h-4 text-gray-500 dark:text-gray-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M21 7.28V5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-2.28A2 2 0 0 0 22 15V9a2 2 0 0 0-1-1.72M20 15H12V9h8zM5 19V5h14v2H12a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h7v2z"/>
+                                    <circle fill="currentColor" cx="16" cy="12" r="1.5"/>
+                                </svg>
+                                <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    ${wallet.name || wallet.wallet_name || 'Wallet'}
+                                </span>
+                            </div>
+                            <p class="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">
+                                ${parseFloat(wallet.balance).toFixed(3) || '0.00'} ${wallet.currency || ''}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                wallet.status === 'OPEN'
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                            }">
+                                ${wallet.status || 'N/A'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            iataInfo.innerHTML = `
+                <div class="space-y-3">
+                    <!-- Company Total (IATA Balance) -->
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                </svg>
+                                <span class="text-sm font-semibold text-blue-800 dark:text-blue-200 uppercase tracking-wider">
+                                    Total Company Balance
+                                </span>
+                            </div>
+                        </div>
+                        <p class="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                            ${iataBalance || '0.000'}
+                        </p>
+                        <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                            ${wallets.length} wallet${wallets.length !== 1 ? 's' : ''} • IATA Balance
+                        </p>
+                    </div>
+                    
+                    <!-- Individual Wallets -->
+                    <div class="space-y-2">
+                        <h6 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1">
+                            Individual Wallets
+                        </h6>
+                        <div class="space-y-2 max-h-32 overflow-y-auto">
+                            ${walletsHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            iataInfo.innerHTML = `
+                <div class="text-center py-4">
+                    <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">No wallet data available</p>
+                </div>
+            `;
+        }
+    }
 </script>
 
 

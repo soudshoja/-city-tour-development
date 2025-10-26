@@ -32,8 +32,9 @@
 
             @php
             $tabs = [
-            ['label' => 'Account Information', 'value' => 'Account', 'icon' => 'user'],
-            ['label' => 'Change Password', 'value' => 'Security', 'icon' => 'shield'],
+                ['label' => 'Account Information', 'value' => 'Account', 'icon' => 'user'],
+                ['label' => 'Change Password', 'value' => 'Security', 'icon' => 'shield'],
+                ['label' => 'IATA Settings', 'value' => 'Iata', 'icon' => 'globe'],
             ];
 
             $typeId = optional($user->agent)->type_id;
@@ -94,6 +95,13 @@
                         </svg>
                         @break
 
+                        @case('globe')
+                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path fill="currentColor"
+                                d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10s10-4.477 10-10S17.523 2 12 2zm0 2c1.657 0 3.156.5 4.396 1.355C15.597 7.678 13.929 9 12 9c-1.93 0-3.598-1.322-4.396-3.645A7.937 7.937 0 0 1 12 4zm-8 8c0-.686.087-1.351.25-1.982C5.418 11.37 7.552 13 10 13v2c-2.448 0-4.582-1.63-5.75-2.982zM12 20c-1.657 0-3.156-.5-4.396-1.355C8.403 16.322 10.071 15 12 15c1.93 0 3.598 1.322 4.396 3.645A7.937 7.937 0 0 1 12 20zm8-8c0 .686-.087 1.351-.25 1.982C18.582 12.63 16.448 11 14 11V9c2.448 0 4.582 1.63 5.75 2.982z"/>
+                        </svg>
+                        @break
+
                         @case('hand-money')
                         <img class="w-5 h-5" src="https://img.icons8.com/external-smashingstocks-mixed-smashing-stocks/68/external-commission-digital-marketing-smashingstocks-mixed-smashing-stocks.png" />
                         @break
@@ -139,6 +147,10 @@
 
                     <div x-show="tab === 'Security'" x-cloak>
                         @include('profile.password.update-password-form')
+                    </div>
+
+                    <div x-show="tab === 'Iata'" x-cloak>
+                        @include('profile.partials.iata-settings-form')
                     </div>
 
                     <div x-show="tab === 'Commission'" x-cloak>

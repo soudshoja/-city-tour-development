@@ -143,12 +143,23 @@ class SupplierController extends Controller
         $filteredTasks = $supplier->tasks;
         $payableAccount = $supplier->payableAccount ?? null;
 
+        $supplierCompany = collect();
+
+        if ($companyId) {
+            $supplierCompany = \App\Models\SupplierCompany::where('supplier_id', $supplier->id)
+                ->where('company_id', $companyId)
+                ->where('is_active', true)
+                ->first();
+        }
+
         return view('suppliers.show', compact(
             'supplier',
             'JournalEntry',
             'currencies',
             'filteredTasks',
-            'payableAccount'
+            'payableAccount',
+            'companyId',
+            'supplierCompany'
         ));
     }
 

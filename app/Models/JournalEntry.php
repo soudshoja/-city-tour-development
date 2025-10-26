@@ -81,7 +81,6 @@ class JournalEntry extends Model
     {
         return $this->belongsTo(Account::class,'account_id');
     }
-
     
     public function invoice()
     {
@@ -107,12 +106,23 @@ class JournalEntry extends Model
     {
         return $this->belongsTo(Branch::class, 'branch_id');
     } 
- 
 
     public function company()
     {
         return $this->belongsTo(Company::class, 'company_id');
     } 
   
+    public function agent()
+    {
+        return $this->hasOneThrough(
+            Agent::class,
+            Task::class,
+            'id',
+            'id',
+            'task_id',
+            'agent_id'
+        );
+
+    }
 
 }

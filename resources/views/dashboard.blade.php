@@ -77,52 +77,103 @@
             </div>
         @endif
         @if (!empty($wallets) && count($wallets) > 0)
-            <div class="mt-8">
-                <div class="mb-2">
-                    <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">IATA EasyPay Wallets</h2>
-                    <div class="inline-flex items-center gap-2 text-sm px-3 py-1 text-emerald-700 dark:text-emerald-300">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        <span>Open balance:</span>
-                        <strong class="text-emerald-700 dark:text-emerald-300">{{ number_format($iataBalance, 3) }}</strong> KWD
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                    @foreach ($wallets as $wallet)
-                        <div class="group relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 shadow-md transition-all duration-200 bg-emerald-50 dark:bg-emerald-950/40">
-                            <div class="p-4 flex flex-col justify-between h-full">
-                                <div class="flex items-start justify-between">
-                                    <div>
-                                        <p class="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Wallet</p>
-                                        <h3 class="text-base font-bold text-slate-800 dark:text-slate-100 leading-tight">
-                                            {{ $wallet['name'] }}
-                                        </h3>
-                                    </div>
-                                    <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                                        OPEN
-                                    </span>
-                                </div>
-                                <div class="mt-3 flex items-end justify-between">
-                                    <div>
-                                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Available</p>
-                                        <p class="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-                                            {{ number_format($wallet['balance'], 3) }}
-                                            <span class="text-[13px] font-medium text-slate-500 dark:text-slate-400">{{ $wallet['currency'] }}</span>
-                                        </p>
-                                    </div>
-                                    <div class="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                                        <svg class="w-4 h-4 text-emerald-700 dark:text-emerald-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path d="M12 8v8m4-4H8"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
+             <div class="mt-8 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md shadow-sm p-6">
+    <div class="flex flex-wrap justify-start items-start gap-0">
+        {{-- IATA EasyPay Wallets --}}
+        <div class="flex-1 min-w-[45%]">
+            <div class="mb-3">
+                <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">IATA EasyPay Wallets</h2>
+                <div class="inline-flex items-center gap-2 text-sm px-3 py-1 text-emerald-700 dark:text-emerald-300">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <span>Open balance:</span>
+                    <strong class="text-emerald-700 dark:text-emerald-300">{{ number_format($iataBalance, 3) }}</strong> KWD
                 </div>
             </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-1 gap-0">
+                @foreach ($wallets as $wallet)
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-emerald-50 dark:bg-emerald-950/40 shadow-sm p-4">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <p class="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Wallet</p>
+                                <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">{{ $wallet['name'] }}</h3>
+                            </div>
+                            <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                OPEN
+                            </span>
+                        </div>
+                        <div class="mt-3 flex items-end justify-between">
+                            <div>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">Available</p>
+                                <p class="text-xl font-bold text-slate-900 dark:text-slate-100">
+                                    {{ number_format($wallet['balance'], 3) }}
+                                    <span class="text-[13px] font-medium text-slate-500 dark:text-slate-400">{{ $wallet['currency'] }}</span>
+                                </p>
+                            </div>
+                            <div class="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                                <svg class="w-4 h-4 text-emerald-700 dark:text-emerald-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M12 8v8m4-4H8"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Jazeera Airways Credit --}}
+        <div class="flex-1 min-w-[45%] ml-0 md:ml-8">
+            <div class="mb-3">
+                <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">Jazeera Airways Credit</h2>
+                <div class="inline-flex items-center gap-2 text-sm px-3 py-1 text-sky-700 dark:text-sky-300">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <span>Amount to Pay:</span>
+                    <strong class="text-sky-700 dark:text-sky-300">{{ $jazeeraCredit->sum('balance') }}</strong> KWD
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-1 gap-0">
+                @foreach ($jazeeraCredit as $credit)
+                    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-sky-50 dark:bg-sky-950/40 shadow-sm p-4">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <p class="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">Account</p>
+                                <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">{{ $credit->name }}</h3>
+                            </div>
+                            <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                                Active
+                            </span>
+                        </div>
+                        <div class="mt-3 flex items-end justify-between">
+                            <div>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">Spent</p>
+                                <p class="text-xl font-bold text-slate-900 dark:text-slate-100">
+                                    {{ number_format($credit->balance, 3) }}
+                                    <span class="text-[13px] font-medium text-slate-500 dark:text-slate-400">{{ $credit->currency ?? 'KWD' }}</span>
+                                </p>
+                            </div>
+                            <div class="w-8 h-8 flex items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900/30">
+                                <svg class="w-4 h-4 text-sky-700 dark:text-sky-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M12 8v8m4-4H8"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+</div>
         @endif
 
         {{-- <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3 mt-3">

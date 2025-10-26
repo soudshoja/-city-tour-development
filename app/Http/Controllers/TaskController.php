@@ -141,7 +141,10 @@ class TaskController extends Controller
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
 
-        $paymentMethod = Account::where('parent_id', 39)->get();
+        $paymentMethod = Account::where('parent_id', 39)
+                        ->where('name', 'not like', '%Como%')
+                        ->get();
+
         if ($search = $request->query('q')) {
             $searchTerm = '%' . strtolower($search) . '%';
             $query->where(function ($q) use ($searchTerm) {

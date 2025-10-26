@@ -242,9 +242,20 @@ class AgentController extends Controller
             ->pluck('supplier.name')
             ->toArray();
         
-        $bonuses = BonusAgent::where('agent_id', $agent->id)->get();
+        $filterBonusMonth = (int) request('filter_month', now()->month);
+        $filterBonusYear  = (int) request('filter_year', now()->year);
 
-        // Return the main view with paginated data
+        $filterBonus = Carbon::createFromDate($filterBonusYear, $filterBonusMonth, 1)->startOfMonth();
+
+        $bonuses = BonusAgent::where('agent_id', $agent->id)
+            ->whereMonth('created_at', $filterBonus->month)
+            ->whereYear('created_at', $filterBonus->year)
+            ->with('transaction')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $clientCount = Client::where('agent_id', $agent->id)->count();
+
         return view('agents.agentsShow', compact(
             'agent',
             'agentType',
@@ -261,6 +272,8 @@ class AgentController extends Controller
             'totalCommission',
             'totalProfit',
             'bonuses',
+            'clientCount',
+            'filterBonus',
         ));
     }
 

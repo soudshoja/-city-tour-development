@@ -5,6 +5,13 @@
             -webkit-appearance: none;
             margin: 0;
         }
+
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: none !important;
+        }
     </style>
     <div>
         <!-- Breadcrumbs -->
@@ -24,10 +31,10 @@
 
         <!-- Agent Section -->
         @if($bonuses->isNotEmpty())
-            <div class="mt-5 flex flex-col md:flex-row gap-5">
-                <!-- Agent Details Section (1/3 width, compact height) -->
+           <div class="mt-5 flex flex-col md:flex-row gap-5">
+                <!-- Agent Details Section -->
                 <div class="w-1/3">
-                    <div class="h-[280px] bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900 
+                    <div class="h-[300px] bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900 
                                 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 flex flex-col justify-between">
                         
                         <div>
@@ -36,7 +43,7 @@
                                     <x-application-logo class="h-12 w-12 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-700" />
                                     <div>
                                         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ $agent->name }}</h2>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $agent->branch->company->name }}</p>
+                                        <p class="text-md text-gray-500 dark:text-gray-400">{{ $agent->branch->company->name }}</p>
                                     </div>
                                 </div>
                                 <button onclick="EditAgentDetails()" data-tooltip="Edit Agent Details" data-tooltip-placement="top"
@@ -61,19 +68,19 @@
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-500">Clients</p>
-                                    <p class="text-sm font-semibold text-blue-600">{{ $clients->count() }}</p>
+                                    <p class="text-sm font-semibold text-blue-600">{{ $clientCount }}</p>
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-y-1 text-xs mt-3">
+                            <div class="grid grid-cols-2 gap-y-1 text-sm mt-3">
                                 <span class="text-gray-500 dark:text-gray-400">Email</span>
                                 <a href="mailto:{{ $agent->email }}" 
-                                class="text-right text-gray-800 dark:text-gray-100 hover:text-blue-600 transition">
+                                    class="text-right text-gray-800 dark:text-gray-100 hover:text-blue-600 transition">
                                     {{ $agent->email }}
                                 </a>
                                 <span class="text-gray-500 dark:text-gray-400">Phone</span>
                                 <a href="tel:{{ $agent->phone_number }}" 
-                                class="text-right text-gray-800 dark:text-gray-100 hover:text-blue-600 transition">
+                                    class="text-right text-gray-800 dark:text-gray-100 hover:text-blue-600 transition">
                                     {{ $agent->phone_number }}
                                 </a>
                                 <span class="text-gray-500 dark:text-gray-400">Branch</span>
@@ -85,60 +92,96 @@
                     </div>
                 </div>
 
-                <!-- Bonus Section (2/3 width, same height, scrollable table) -->
+                <!-- Bonus Section -->
                 <div class="w-2/3">
-                    <div class="h-[280px] panel p-6 flex flex-col text-left rounded-lg shadow-lg bg-white dark:bg-gray-900">
+                    <div class="h-[300px] panel p-6 flex flex-col text-left rounded-lg shadow-lg bg-white dark:bg-gray-900">
+                        
                         <div class="flex justify-between items-center mb-4">
-                            <h5 class="text-base font-semibold dark:text-white-light">
-                                <span class="text-blue-600 dark:text-blue-400">Bonus</span> Records
+                            <h5 class="text-lg font-semibold dark:text-white-light">
+                                Bonus Records
                             </h5>
+
+                            <form method="GET" action="{{ route('agents.show', $agent->id) }}"
+                                class="flex items-center gap-3 bg-white/60 dark:bg-gray-800/40 backdrop-blur-md px-4 py-2 rounded-full shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
+
+                                <div class="relative">
+                                    <select name="filter_month" onchange="this.form.submit()"
+                                        class="appearance-none text-sm bg-transparent border-none focus:ring-0 dark:text-gray-100 text-gray-700 cursor-pointer pr-5">
+                                        @foreach(range(1, 12) as $m)
+                                            <option value="{{ $m }}" {{ request('filter_month', now()->month) == $m ? 'selected' : '' }}>
+                                                {{ \Carbon\Carbon::create()->month($m)->format('F') }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <span class="text-gray-400 text-sm">/</span>
+
+                                <div class="relative">
+                                    <select name="filter_year" onchange="this.form.submit()"
+                                        class="appearance-none text-sm bg-transparent border-none focus:ring-0 dark:text-gray-100 text-gray-700 cursor-pointer pr-5">
+                                        @foreach(range(now()->year, now()->year - 5) as $y)
+                                            <option value="{{ $y }}" {{ request('filter_year', now()->year) == $y ? 'selected' : '' }}>
+                                                {{ $y }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </form>
                         </div>
 
-                        <!-- Summary Row -->
-                        <div class="mb-3 flex items-center justify-between">
-                            <span class="text-xs font-medium text-gray-600 dark:text-gray-400">Total Bonus</span>
+                        <div class="mb-4 flex items-center justify-between">
+                            <span class="text-md font-medium text-gray-600 dark:text-gray-400">Total Bonus</span>
                             <div class="text-right leading-tight">
-                                <p class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ number_format($bonuses->sum('amount'), 2) }} KWD</p>
-                                <p class="text-[10px] text-gray-500 dark:text-gray-400">Updated at: 
-                                    <span class="text-blue-600 dark:text-blue-400">{{ now()->format('M Y') }}</span>
+                                <p class="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                    {{ number_format($bonuses->sum('amount'), 2) }} KWD
+                                </p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    Last updated:
+                                    <span class="text-blue-600 dark:text-blue-400">{{ now()->format('jS M Y') }}</span>
                                 </p>
                             </div>
                         </div>
 
-                        <!-- Scrollable Table -->
-                        <div class="flex-1 overflow-y-auto custom-scrollbar rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800 mt-5">
-                            <table class="w-full text-xs">
+                        <div class="flex-1 overflow-y-auto custom-scrollbar rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800">
+                            <table class="w-full text-sm">
                                 <thead class="sticky top-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900/90">
                                     <tr>
-                                        <th class="py-2 px-4 text-left font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-[10px]">Payment Ref</th>
-                                        <th class="py-2 px-4 text-left font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-[10px]">Description</th>
-                                        <th class="py-2 px-4 text-right font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-[10px]">Amount</th>
-                                        <th class="py-2 px-4 text-right font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-[10px]">Created At</th>
+                                        <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-[11px]">Payment Ref</th>
+                                        <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-[11px]">Description</th>
+                                        <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-[11px]">Amount</th>
+                                        <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-[11px]">Created At</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($bonuses as $bonus)
-                                    <tr class="group transition-all duration-200 hover:bg-blue-50/60 dark:hover:bg-blue-900/40">
-                                        <td class="py-2 px-4 text-gray-800 dark:text-gray-100 font-medium">{{ $bonus->transaction?->reference_number }}</td>
-                                        <td class="py-2 px-4 text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100">{{ $bonus->transaction?->description }}</td>
-                                        <td class="py-2 px-4 text-right font-semibold text-gray-900 dark:text-gray-100">{{ number_format($bonus->amount, 2) }}</td>
-                                        <td class="py-2 px-4 text-right font-semibold text-gray-900 dark:text-gray-100">{{ $bonus->created_at->format('M d, Y') }}</td>
+                                    @forelse($bonuses as $bonus)
+                                    <tr class="transition-all duration-200 hover:bg-blue-100 dark:hover:bg-blue-700">
+                                        <td class="py-2 px-4 text-gray-700 dark:text-gray-500 font-medium">{{ $bonus->transaction?->reference_number }}</td>
+                                        <td class="py-2 px-4 text-gray-700 dark:text-gray-500">{{ $bonus->transaction?->description }}</td>
+                                        <td class="py-2 px-4 text-right font-semibold text-gray-700 dark:text-gray-500">{{ number_format($bonus->amount, 2) }}</td>
+                                        <td class="py-2 px-4 text-right font-semibold text-gray-700 dark:text-gray-500">{{ $bonus->created_at->format('d M Y') }}</td>
                                     </tr>
-                                    @endforeach
+                                    @empty
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4 text-gray-500 dark:text-gray-400 italic">
+                                            No bonus record found for this month.
+                                        </td>
+                                    </tr>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+
             </div>
         @else
-        <!-- Agent Details Section full-width -->
+        <!-- Agent Details Section -->
             <div class="w-full">
                 <div class="h-[310px] bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900 
                             rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 flex flex-col justify-between">
                     
                     <div>
-                        <!-- Header -->
                         <div class="flex items-center justify-between mb-5">
                             <div class="flex items-center gap-4">
                                 <x-application-logo class="h-14 w-14 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-700" />
@@ -158,7 +201,6 @@
                             </button>
                         </div>
 
-                        <!-- Stats Row -->
                         <div class="flex justify-around border-y border-gray-200 dark:border-gray-700 py-3 text-center">
                             <div>
                                 <p class="text-sm text-gray-500">Paid Invoices</p>
@@ -170,11 +212,10 @@
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500">Clients</p>
-                                <p class="text-base font-semibold text-blue-600">{{ $clients->count() }}</p>
+                                <p class="text-base font-semibold text-blue-600">{{ $clientCount }}</p>
                             </div>
                         </div>
 
-                        <!-- Info Grid -->
                         <div class="grid grid-cols-2 gap-y-2 text-sm mt-4">
                             <span class="text-gray-600 dark:text-gray-400">Email</span>
                             <a href="mailto:{{ $agent->email }}" 
@@ -194,8 +235,6 @@
                     </div>
                 </div>
             </div>
-
-
         @endif
         <!-- End of Agent Section -->
 
@@ -306,38 +345,45 @@
                 @if($clients->isEmpty())
                 <p class="text-gray-600">No clients for this agent.</p>
                 @else
-                <div class="max-h-72 overflow-y-auto custom-scrollbar">
-                    <table class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700">
-                        <thead>
+                <div class="max-h-72 overflow-y-auto custom-scrollbar flex-1 rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800">
+                    <table class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 w-full rounded-lg overflow-hidden">
+                        <thead class="sticky top-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900/90">
                             <tr>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Client Name</th>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Paid (KWD)</th>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Pending (KWD)</th>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Email</th>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Phone</th>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Address</th>
-                                <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Actions</th>
+                                <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Client Name</th>
+                                <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Email</th>
+                                <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Phone</th>
+                                <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Address</th>
+                                <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Paid</th>
+                                <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Pending</th>
+                                <th class="py-2 px-4 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($clients as $client)
-                            <tr>
-                                <td class="py-4 px-6 border-b">{{ $client->full_name }}</td>
-                                <td class="py-4 px-6 border-b">
-                                    <x-paid>
-                                        {{ $client->paid }}
-                                    </x-paid>
+                            <tr class="transition-all duration-200 hover:bg-blue-100 dark:hover:bg-blue-700">
+                                
+                                <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">
+                                    {{ $client->full_name }}
                                 </td>
-                                <td class="py-4 px-6 border-b">
-                                    <x-unpaid>
-                                        {{ $client->unpaid }}
-                                    </x-unpaid>
+                                <td class="py-4 px-6 text-gray-700 dark:text-gray-500 border-b border-gray-200 dark:border-gray-700">{{ $client->email }}</td>
+                                <td class="py-4 px-6 text-gray-700 dark:text-gray-500 border-b border-gray-200 dark:border-gray-700">{{ $client->country_code }}{{ $client->phone }}</td>
+                                <td class="py-4 px-6 text-gray-700 dark:text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                                    {{ ucwords(strtolower($client->address ?? 'Not Set')) }}
                                 </td>
-                                <td class="py-4 px-6 border-b">{{ $client->email }}</td>
-                                <td class="py-4 px-6 border-b">{{ $client->phone }}</td>
-                                <td class="py-4 px-6 border-b">{{ $client->address ?? 'Not Set' }}</td>
-                                <td class="py-4 px-6 border-b">
-                                    <a href="{{ url('/clients/' . $client->id) }}" class="text-blue-500">View</a>
+                                <td class="py-4 px-6 border-b border-gray-200 dark:border-gray-700">
+                                    <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
+                                        bg-green-100 text-green-700 ring-1 ring-green-500 shadow-none focus:outline-none focus:ring-0">
+                                        {{ number_format($client->paid, 2) }} KWD
+                                    </span>
+                                </td>
+                                <td class="py-4 px-6 border-b border-gray-200 dark:border-gray-700">
+                                    <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
+                                        bg-yellow-100 text-yellow-700 ring-1 ring-yellow-400 shadow-none focus:outline-none focus:ring-0">
+                                        {{ number_format($client->unpaid, 2) }} KWD
+                                    </span>
+                                </td>
+                                <td class="py-4 px-6 border-b border-gray-200 dark:border-gray-700">
+                                    <a href="{{ url('/clients/' . $client->id) }}" class="text-blue-500 hover:underline">View</a>
                                 </td>
                             </tr>
                             @endforeach
@@ -363,46 +409,52 @@
 
                 <!-- Right: Filter -->
                 <form method="GET"
-                    class="ml-auto flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg">
+                    class="ml-auto flex items-center gap-3 bg-white/60 dark:bg-gray-800/40 backdrop-blur-md px-4 py-2 rounded-full shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
+
                     <div class="relative">
                         <input type="month" id="month" name="month"
                             value="{{ request('month', now()->format('Y-m')) }}"
-                            class="px-3 py-1.5 text-sm rounded-lg w-42 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            class="appearance-none bg-transparent border-none text-sm text-gray-700 dark:text-gray-100 focus:ring-0 cursor-pointer">
                     </div>
 
                     <button type="submit"
-                        class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition">
+                        class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-1.5 rounded-full transition">
                         <i class="fas fa-filter mr-1"></i> Filter
                     </button>
 
                     @if(request()->has('month'))
                         <a href="{{ url()->current() }}"
-                            class="bg-red-100 hover:bg-red-300 text-red-800 text-sm font-medium px-4 py-1.5 rounded-lg transition">
+                            class="bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-sm font-medium px-4 py-1.5 rounded-full transition">
                             <i class="fas fa-times mr-1"></i> Clear
                         </a>
                     @endif
                 </form>
             </div>
-            <div class="mb-5 mt-5 items-center justify-center flex gap-6 flex-wrap shadow-sm">
-                <div class="flex-1 min-w-[200px] bg-green-100 text-green-700 px-4 py-2 text-center rounded-md shadow">
-                    <p>Total Client Paid</p>
-                    <p class="text-lg font-bold">{{ $totalPaid }} KWD</p>
+
+            <div class="mt-5 mb-5 flex flex-wrap justify-center items-center gap-5">
+                <div class="flex-1 min-w-[220px] bg-green-600 text-white px-4 py-3 rounded-lg shadow-sm">
+                    <p class="text-sm opacity-80">Total Client Paid</p>
+                    <p class="text-xl font-bold">{{ $totalPaid }} KWD</p>
                 </div>
-                <div class="flex-1 min-w-[200px] bg-red-100 text-red-700 px-4 py-2 text-center rounded-md shadow">
-                    <p>Total Client Outstanding</p>
-                    <p class="text-lg font-bold">{{ $totalOutstanding }} KWD</p>
+
+                <div class="flex-1 min-w-[220px] bg-red-600 text-white px-4 py-3 rounded-lg shadow-sm">
+                    <p class="text-sm opacity-80">Total Client Outstanding</p>
+                    <p class="text-xl font-bold">{{ $totalOutstanding }} KWD</p>
                 </div>
+
                 @if($agent->type_id != 1)
-                <div class="flex-1 min-w-[200px] bg-yellow-100 text-yellow-700 px-4 py-2 text-center rounded-md shadow">
-                    <p>Total Commission</p>
-                    <p class="text-lg font-bold">{{ $totalCommission }} KWD</p>
+                <div class="flex-1 min-w-[220px] bg-yellow-500 text-gray-900 px-4 py-3 rounded-lg shadow-sm">
+                    <p class="text-sm opacity-80">Total Commission</p>
+                    <p class="text-xl font-bold">{{ $totalCommission }} KWD</p>
                 </div>
                 @endif
-                <div class="flex-1 min-w-[200px] bg-blue-100 text-blue-800 px-4 py-2 text-center rounded-md shadow">
-                    <p>Total Profit</p>
-                    <p class="text-lg font-bold">{{ $totalProfit }} KWD</p>
+
+                <div class="flex-1 min-w-[220px] bg-blue-600 text-white px-4 py-3 rounded-lg shadow-sm">
+                    <p class="text-sm opacity-80">Total Profit</p>
+                    <p class="text-xl font-bold">{{ $totalProfit }} KWD</p>
                 </div>
             </div>
+  
             <div>
                 @if($invoices->isEmpty() && request()->has('month'))
                     <p class="font-semibold text-gray-600">No invoices found for {{ \Carbon\Carbon::parse(request('month'))->format('F Y') }}.</p>
@@ -410,55 +462,61 @@
                 @elseif($invoices->isEmpty())
                 <p class="text-gray-600">No invoices for this agent.</p>
                 @else
-                <div class="max-h-100 overflow-y-auto custom-scrollbar" x-data="{ openRow: null }">
-                    <table class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700">
-                        <thead>
+                <div class="max-h-100 overflow-y-auto custom-scrollbar flex-1 rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800" x-data="{ openRow: null }">
+                    <table class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 w-full rounded-lg overflow-hidden">
+                        <thead class="sticky top-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900/90">
                             <tr class="text-center">
-                                <th class="py-3 px-6 font-semibold text-gray-600 border-b">Invoice Number</th>
-                                <th class="py-3 px-6 font-semibold text-gray-600 border-b">Invoice Date</th>
-                                <th class="py-3 px-6 font-semibold text-gray-600 border-b">Status</th>
-                                <th class="py-3 px-6 font-semibold text-gray-600 border-b">Tasks Count</th>
+                                <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Invoice Number</th>
+                                <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Invoice Date</th>
+                                <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Status</th>
+                                <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Tasks Count</th>
                                 @if(in_array($agent->type_id, [2, 3, 4]))
-                                <th class="py-3 px-6 font-semibold text-gray-600 border-b">Commission (KWD)</th>
+                                <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Commission (KWD)</th>
                                 @endif
-                                <th class="py-3 px-6 font-semibold text-gray-600 border-b">Profit (KWD)</th>
-                                <th class="py-3 px-6 font-semibold text-gray-600 border-b">Client</th>
-                                <th class="py-3 px-6 font-semibold text-gray-600 border-b">Actions</th>
+                                <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Profit (KWD)</th>
+                                <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Client</th>
+                                <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($invoices as $invoice)
-                                <tr class="cursor-pointer text-center"
-                                    :class="openRow === {{ $invoice->id }} ? 'bg-blue-50 hover:bg-gray-50 dark:bg-blue-900 hover:dark:bg-blue-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'" 
+                                <tr class="cursor-pointer text-center transition-all duration-200 
+                                    hover:bg-blue-100 dark:hover:bg-blue-700 text-gray-700 dark:text-gray-200"
+                                    :class="openRow === {{ $invoice->id }} 
+                                        ? 'bg-blue-50 dark:bg-blue-900' 
+                                        : ''"
                                     @click="openRow === {{ $invoice->id }} ? openRow = null : openRow = {{ $invoice->id }}">
-                                    <td class="py-4 px-6 border-b">
+
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">
                                         <a href="{{ route('invoice.details', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number]) }}"
                                             class="text-blue-500 hover:underline" @click.stop target="_blank"> {{ $invoice->invoice_number }}
                                         </a>
                                     </td>
-                                    <td class="py-4 px-6 border-b">{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('d-m-Y') }}</td>
-                                    <td class="py-4 px-6 border-b">
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('d-m-Y') }}</td>
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">
                                         @if($invoice->status == 'paid')
-                                        <x-paid>
-                                            {{ $invoice->status }}
-                                        </x-paid>
+                                            <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
+                                                bg-green-100 text-green-700 ring-1 ring-green-500 shadow-none focus:outline-none focus:ring-0">
+                                                {{ ucfirst($invoice->status) }}
+                                            </span>
                                         @else
-                                        <x-unpaid>
-                                            {{ $invoice->status }}
-                                        </x-unpaid>
+                                            <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
+                                                bg-red-100 text-red-700 ring-1 ring-red-400 shadow-none focus:outline-none focus:ring-0">
+                                                {{ ucfirst($invoice->status) }}
+                                            </span>
                                         @endif
                                     </td>
-                                    <td class="py-4 px-6 border-b">{{ $invoice->task_count }}</td>
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">{{ $invoice->task_count }}</td>
                                     @if(in_array($agent->type_id, [2, 3, 4]))
-                                    <td class="py-4 px-6 border-b text-green-700 font-semibold">
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700 text-green-700 font-semibold">
                                         {{ $invoice->total_commission }}
                                     </td>
                                     @endif
-                                    <td class="py-4 px-6 border-b text-blue-700 font-semibold">
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700 text-blue-700 font-semibold">
                                         {{ $invoice->total_profit }}
                                     </td>
-                                    <td class="py-4 px-6 border-b">{{ $invoice->client->full_name }}</td>
-                                    <td class="py-4 px-6 border-b">
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">{{ $invoice->client->full_name }}</td>
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">
                                         <a href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}" class="text-blue-500 hover:underline" @click.stop target="_blank">View</a>
                                     </td>
                                 </tr>
@@ -498,27 +556,38 @@
 
         <!-- Task Section -->
         <div class="mt-5 panel">
-            <div class="mb-5 flex justify-between">
+             <div class="mb-5 flex justify-between items-center">
+                <!-- Left side -->
                 <h5 class="text-lg font-semibold dark:text-white-light">
                     <span class="customBlueColor">Tasks</span> List
                 </h5>
-                <div class="flex gap-2 w-96">
-                    <x-paid class="relative group">
-                        {{$taskInvoiced}} Invoiced
-                        <div class="absolute right-0 -top-11 bg-gray-900 border-black rounded-md p-2 invisible group-hover:visible">
-                            <p class="font-normal">Task that invoiced</p>
+
+                <!-- Right side badges -->
+                <div class="flex gap-2 items-center">
+                    <!-- Invoiced -->
+                    <div class="relative group inline-flex items-center px-3 py-1 text-sm font-medium rounded-full
+                                bg-green-100 text-green-700 ring-1 ring-green-400 cursor-default">
+                        {{ $taskInvoiced }} Invoiced
+                        <div class="absolute right-0 -top-11 bg-gray-900 text-gray-100 text-sm rounded-md px-3 py-2 
+                                    invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 
+                                    shadow-lg w-48 z-10">
+                            Task that invoiced
                         </div>
-                    </x-paid>
-                    <x-unpaid class="relative group">
-                        {{$taskNotInvoiced}} Not Invoiced
-                        <div class="absolute right-0 -top-11 bg-gray-900 border-black rounded-md p-2 invisible group-hover:visible w-60 z-10">
-                            <p class="font-normal ">Task that not invoiced yet</p>
+                    </div>
+
+                    <!-- Not Invoiced -->
+                    <div class="relative group inline-flex items-center px-3 py-1 text-sm font-medium rounded-full
+                                bg-red-100 text-red-700 ring-1 ring-red-400 cursor-default">
+                        {{ $taskNotInvoiced }} Not Invoiced
+                        <div class="absolute right-0 -top-11 bg-gray-900 text-gray-100 text-sm rounded-md px-3 py-2 
+                                    invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 
+                                    shadow-lg w-60 z-10">
+                            Task that not invoiced yet
                         </div>
-                    </x-unpaid>
+                    </div>
                 </div>
-                <!-- add an icon here -->
             </div>
-            <!-- tasks Section -->
+
             <div class="mt-5">
                 <div class="">
                     @if($tasks->isEmpty())
@@ -526,25 +595,25 @@
                         <p class="text-gray-600">No tasks for this agent.</p>
                     </div>
                     @else
-                    <div class="max-h-98 overflow-y-auto custom-scrollbar">
-                        <table class="min-w-full bg-white border border-gray-300">
-                            <thead>
-                                <tr class="">
-                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Task Name
+                    <div class="max-h-98 overflow-y-auto custom-scrollbar flex-1 rounded-lg bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm ring-1 ring-gray-100 dark:ring-gray-800">
+                        <table class="min-w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 w-full rounded-lg overflow-hidden">
+                            <thead class= "sticky top-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900/90">
+                                <tr>
+                                    <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Task Name
                                     </th>
-                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Task Date
+                                    <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Task Date
                                     </th>
-                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Status</th>
-                                    <th class="py-3 px-6 text-left font-semibold text-gray-600 border-b">Client</th>
+                                    <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Status</th>
+                                    <th class="py-3 px-6 text-center font-semibold text-gray-800 dark:text-gray-200 uppercase tracking-wide text-sm">Client</th>
                                 </tr>
                             </thead>
                             <tbody class="overflow-auto">
                                 @foreach($tasks as $task)
-                                <tr class="{{ $task->invoiceDetail !== null ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700' }}">
-                                    <td class="py-4 px-6 border-b border-gray-300"> {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}</td>
-                                    <td class="py-4 px-6 border-b border-gray-300">{{ $task->created_at }}</td>
-                                    <td class="py-4 px-6 border-b border-gray-300">{{ $task->status }}</td>
-                                    <td class="py-4 px-6 border-b border-gray-300">{{ $task->client !== null ? $task->client->full_name : $task->client_name ?? 'Not Set' }}</td>
+                                <tr class="{{ $task->invoiceDetail !== null ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700' }} transition-all duration-200 hover:bg-blue-100 dark:hover:bg-blue-700 text-center">
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700"> {{ $task->reference }}-{{ $task->additional_info }} {{ $task->venue }}</td>
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">{{ $task->created_at }}</td>
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">{{ ucfirst($task->status) }}</td>
+                                    <td class="py-4 px-6 text-gray-800 dark:text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700">{{ $task->client !== null ? $task->client->full_name : $task->client_name ?? 'Not Set' }}</td>
                                 </tr>
                                 @endforeach
                             </tbody>

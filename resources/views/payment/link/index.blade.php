@@ -1,7 +1,4 @@
 <x-app-layout>
-    @push('styles')
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    @endpush
     
     <div class="min-h-screen flex flex-col">
         <div class="flex-1 pb-16">
@@ -503,7 +500,6 @@
 
             </div>
             
-            <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
             <script>
                 document.addEventListener("DOMContentLoaded", function() {
                     const dateFromInput = document.getElementById('date_from');

@@ -31,7 +31,7 @@ class RunAutoBilling extends Command
 
     public function handle()
     {
-        $startTime = microtime(true);
+        $commandStart = microtime(true);
         $now = Carbon::now('Asia/Kuala_Lumpur')->format('H:i');
 
         $this->info("🕒 Running AutoBilling at {$now}");
@@ -64,15 +64,20 @@ class RunAutoBilling extends Command
                 $matchType = $rule->created_by ? 'created_by' : ($rule->issued_by ? 'issued_by' : 'agent_id');
                 $matchValue = $rule->{$matchType} ?? 'N/A';
 
-                $msg = "Processing Rule #{$rule->id} for {$clientName} [{$matchType}: {$matchValue}]";
+                $msg = "Processing Rule #{$rule->id} for {$clientName} [{$matchType}: {$matchValue}]\n";
                 $bar->setMessage($msg);
                 $bar->advance();
                 Log::info("[AutoBilling] {$msg}");
+
+                $invoiceTime = Carbon::parse(Carbon::now()->format('Y-m-d') . ' ' . $rule->invoice_time_system);
+                $startTime = $invoiceTime->copy()->subDay();
+                $endTime = $invoiceTime->copy();
 
                 $query = Task::query()
                     ->where('company_id', $rule->company_id)
                     ->where('client_id', $rule->client_id)
                     ->whereDoesntHave('invoiceDetail')
+                    ->whereBetween('created_at', [$startTime, $endTime])
                     ->where(function ($q) use ($rule) {
                         if ($rule->created_by) {
                             $q->where('created_by', $rule->created_by);
@@ -325,7 +330,7 @@ class RunAutoBilling extends Command
         }
 
         $bar->finish();
-        $duration = round(microtime(true) - $startTime, 2);
+        $duration = round(microtime(true) - $commandStart, 2);
 
         $this->newLine();
         $this->info("✅ AutoBilling completed for {$rules->count()} rule(s) in {$duration}s.");

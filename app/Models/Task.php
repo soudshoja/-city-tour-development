@@ -113,7 +113,7 @@ class Task extends Model
         $isComplete = true;
 
         foreach ($this->requiredColumn as $column) {
-            if (empty($this->$column)) {
+            if (empty($this->$column) && $this->$column !== 0 && $this->$column !== '0') {
                 $isComplete = false;
                 break;
             }

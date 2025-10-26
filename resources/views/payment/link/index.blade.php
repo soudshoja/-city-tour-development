@@ -1,4 +1,5 @@
 <x-app-layout>
+    
     <div class="min-h-screen flex flex-col">
         <div class="flex-1 pb-16">
             <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
@@ -22,6 +23,16 @@
                             :action="route('payment.link.index')"
                             searchParam="q"
                             placeholder="Quick search for payments" />
+                        
+                        <div class="shrink-0 flex items-center gap-2">
+                            <span class="text-sm font-medium text-gray-700 whitespace-nowrap">Select a date:</span>
+                            <input type="text" 
+                                id="payment-date-range" 
+                                class="border-gray-300 rounded-full shadow-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2 text-sm cursor-pointer"
+                                style="min-width: 240px;"
+                                placeholder="Choose date range">
+                        </div>
+
                         <button @click="openFilters = !openFilters"
                             class="shrink-0 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-sm text-amber-800 ring-1 ring-amber-200 hover:bg-amber-200 transition">
                             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,6 +46,22 @@
                             @endif
                         </button>
                     </div>
+                    
+                    <!-- Hidden form to submit date filters -->
+                    <form id="date-filter-form" action="{{ route('payment.link.index') }}" method="GET" class="hidden">
+                        <input type="hidden" name="q" value="{{ request('q') }}" />
+                        <input type="hidden" name="filter[date_from]" id="date_from" value="{{ data_get($filters, 'date_from') }}">
+                        <input type="hidden" name="filter[date_to]" id="date_to" value="{{ data_get($filters, 'date_to') }}">
+                        @foreach(request()->except(['filter', 'q']) as $key => $value)
+                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                        @endforeach
+                        @foreach(request('filter', []) as $filterKey => $filterValue)
+                            @if(!in_array($filterKey, ['date_from', 'date_to']))
+                                <input type="hidden" name="filter[{{ $filterKey }}]" value="{{ $filterValue }}">
+                            @endif
+                        @endforeach
+                    </form>
+
                     <div x-show="openFilters" x-cloak x-transition
                         class="mt-3 rounded-xl border border-gray-200 bg-gray-50/70 shadow-sm">
                         <div class="flex items-center justify-between gap-2 border-b border-dashed border-gray-200 px-4 py-3">
@@ -45,6 +72,8 @@
                         </div>
                         <form action="{{ route('payment.link.index') }}" method="GET" class="px-4 pt-4">
                             <input type="hidden" name="q" value="{{ request('q') }}" />
+                            <input type="hidden" name="filter[date_from]" value="{{ data_get($filters, 'date_from') }}">
+                            <input type="hidden" name="filter[date_to]" value="{{ data_get($filters, 'date_to') }}">
 
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                                 <x-searchable-dropdown
@@ -470,4 +499,41 @@
                 <x-pagination :data="$payments" />
 
             </div>
+            
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    const dateFromInput = document.getElementById('date_from');
+                    const dateToInput = document.getElementById('date_to');
+                    const dateFilterForm = document.getElementById('date-filter-form');
+                    const dateFrom = dateFromInput ? dateFromInput.value : '';
+                    const dateTo = dateToInput ? dateToInput.value : '';
+                    
+                    const dateRangeInput = document.getElementById('payment-date-range');
+                    if (dateRangeInput) {
+                        const fp = flatpickr("#payment-date-range", {
+                            mode: "range",
+                            dateFormat: "Y-m-d",
+                            defaultDate: (dateFrom && dateTo) ? [dateFrom, dateTo] : null,
+                            onChange: function(selectedDates, dateStr, instance) {
+                                if (selectedDates.length === 2) {
+                                    dateFromInput.value = instance.formatDate(selectedDates[0], 'Y-m-d');
+                                    dateToInput.value = instance.formatDate(selectedDates[1], 'Y-m-d');
+                                    
+                                    // Auto-submit the form when date range is selected
+                                    setTimeout(() => {
+                                        dateFilterForm.submit();
+                                    }, 100);
+                                } else if (selectedDates.length === 0) {
+                                    // Clear dates and submit when cleared
+                                    dateFromInput.value = '';
+                                    dateToInput.value = '';
+                                    setTimeout(() => {
+                                        dateFilterForm.submit();
+                                    }, 100);
+                                }
+                            }
+                        });
+                    }
+                });
+            </script>
 </x-app-layout>

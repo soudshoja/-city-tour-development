@@ -1,11 +1,4 @@
 <x-app-layout>
-
-    <head>
-        <!-- filepath: c:\laravel\city-tour\resources\views\tasks\index.blade.php -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-        <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-        <meta name="csrf-token" content="{{ csrf_token() }}">
-    </head>
     <style>
         #myTable>thead>tr>th:first-child {
             position: sticky;
@@ -1309,6 +1302,7 @@
                                                                                             ->whereIn('status', ['issued', 'reissued'])
                                                                                             ->where(function ($query) use ($task) {
                                                                                             $query->where('reference', $task->original_reference)
+                                                                                            ->orWhere('reference', $task->reference)
                                                                                             ->orWhere('passenger_name', $task->passenger_name);
                                                                                             })
                                                                                             ->get();

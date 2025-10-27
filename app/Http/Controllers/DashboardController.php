@@ -37,7 +37,7 @@ class DashboardController extends Controller
         $walletData = $this->getCompanyWallets($company);
         extract($walletData);
 
-        $jazeeraCredit = JournalEntry::where('account_id', 1363)->get();
+        $jazeeraCredit = JournalEntry::where('name', 'Jazeera Airways Credit')->get();
 
         if (Auth::user()->role_id == Role::ADMIN) {
             $dashboardData = $this->adminDashboard();

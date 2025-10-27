@@ -19,6 +19,8 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained('companies')->onDelete('cascade');
             $table->foreignId('branch_id')->nullable()->constrained('branches')->nullOnDelete();
             $table->foreignId('agent_id')->nullable()->constrained('agents')->nullOnDelete();
+            $table->foreignId('invoice_id')->constrained('invoices')->onDelete('cascade');
+            $table->foreignId('refund_invoice_id')->nullable()->constrained('invoices')->onDelete('cascade');
             $table->enum('method', ['Cash', 'Bank', 'Online', 'Credit'])->nullable();
             $table->text('remarks')->nullable();
             $table->text('remarks_internal')->nullable();

@@ -12,8 +12,6 @@ class RefundDetail extends Model
     protected $fillable = [
         'refund_id',
         'task_id',
-        'invoice_id', // Link to the specific invoice this task's original belongs to
-        'refund_invoice_id', // Link to the specific invoice this refund task belongs to
         'client_id',
         'task_description',
         'original_invoice_price',
@@ -36,18 +34,8 @@ class RefundDetail extends Model
         return $this->belongsTo(Task::class, 'task_id');
     }
 
-    public function invoice()
-    {
-        return $this->belongsTo(Invoice::class, 'invoice_id');
-    }
-
     public function client()
     {
         return $this->belongsTo(Client::class, 'client_id');
-    }
-
-    public function refundInvoice()
-    {
-        return $this->belongsTo(Invoice::class, 'refund_invoice_id');
     }
 }

@@ -15,8 +15,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('refund_id')->constrained('refunds')->onDelete('cascade');
             $table->foreignId('task_id')->constrained('tasks')->onDelete('cascade');
-            $table->foreignId('invoice_id')->constrained('invoices')->onDelete('cascade');
-            $table->foreignId('refund_invoice_id')->nullable()->constrained('invoices')->onDelete('cascade');
             $table->foreignId('client_id')->constrained('clients')->onDelete('cascade');
             $table->string('task_description')->nullable();
             $table->decimal('original_invoice_price', 15, 3)->nullable();

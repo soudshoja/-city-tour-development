@@ -1054,7 +1054,7 @@ class InvoiceController extends Controller
                 $hasUnpaid = $invoice->invoicePartials()->where('status', 'unpaid')->exists();
                 $invoice->status = $hasUnpaid ? 'unpaid' : 'paid';
 
-                if ($type === 'split') {
+                if (in_array($type, ['partial', 'split'])) {
                     $hasPaid = $invoice->invoicePartials()->where('status', 'paid')->exists();
                 
                     if ($hasPaid && $hasUnpaid) {

@@ -1,9 +1,5 @@
 <x-app-layout>
-
-    <!-- page title -->
     <div class="flex justify-between items-center gap-5 my-3 ">
-
-
         <div class="flex items-center gap-5 ">
             <h2 class="text-3xl font-bold">Refunds</h2>
             <div data-tooltip="number of refunds"
@@ -11,9 +7,8 @@
                 <span class="text-xl font-bold text-white">{{ $totalRefunds }}</span>
             </div>
         </div>
-        <!-- add new refund & refresh page -->
         <div class="flex items-center gap-5">
-            <div data-tooltip="Reload"
+            <div data-tooltip-left="Reload"
                 class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                     <path fill="currentColor"
@@ -23,27 +18,16 @@
                         opacity=".5" />
                 </svg>
             </div>
-
         </div>
-
-
     </div>
-    <!-- ./page title -->
 
-    <!-- page content -->
     <div class="tableCon">
         <div class="content-70">
-            <!-- Table  -->
             <div class="panel oxShadow rounded-lg">
-                <!--  search icon -->
                 <div class="relative">
-                    <!-- Search Input -->
                     <input type="text" placeholder="Find fast and search here..."
                         class="form-input h-11 rounded-full bg-white shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] placeholder:tracking-wider"
                         id="searchInput">
-
-
-                    <!-- Search Button with SVG Icon -->
                     <button type="button"
                         class="btn DarkBGcolor absolute inset-y-0 m-auto flex h-9 w-9 items-center justify-center rounded-full p-0 right-1"
                         id="searchButton">
@@ -55,17 +39,14 @@
                         </svg>
                     </button>
                 </div>
-                <!-- ./search icon -->
 
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
-                    <!-- table -->
                     <div class="dataTable-container h-max">
                         <table id="myTable" class="table-hover whitespace-nowrap dataTable-table">
                             <thead>
                                 <tr>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Refund Number</th>
-                                    <!-- <th class="p-3 text-left text-md font-bold text-gray-500">Method</th> -->
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Client</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Total Refund</th>
                                     <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
@@ -86,8 +67,6 @@
                                     <td class="p-3 text-sm font-semibold text-gray-500">
                                         {{ $refund->refund_number }}
                                     </td>
-                                    <!-- <td class="p-3 text-sm font-semibold text-gray-500">{{ $refund->method }}
-                                            </td> -->
                                     <td class="p-3 text-sm font-semibold text-gray-500 max-w-[250px] whitespace-normal break-words">
                                         @php
                                         $uniqueClients = $refund->refundDetails->pluck('client.full_name')->unique()->values()->toArray();
@@ -161,10 +140,7 @@
                         </table>
 
                     </div>
-                    <!-- ./table -->
 
-
-                    <!-- pagination -->
                     <div class="dataTable-bottom justify-center">
                         <nav class="dataTable-pagination">
                             <ul class="dataTable-pagination-list flex gap-2 mt-4">
@@ -180,7 +156,6 @@
                                         </svg>
                                     </a>
                                 </li>
-                                <!-- Dynamic page numbers will be injected here -->
                                 <li class="pager" id="nextPage">
                                     <a href="#">
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -194,62 +169,14 @@
                                     </a>
                                 </li>
                             </ul>
-
-
                         </nav>
                     </div>
-                    <!-- ./pagination -->
                 </div>
             </div>
-
-            <!-- ./Table  -->
-
         </div>
-        <!-- right -->
-        <div class="content-30 hidden">
-
-            <div class="flex lg:flex-col md:flex-row justify-center text-center gap-5">
-                <!-- customize -->
-                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                        <path fill="#333333"
-                            d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
-                    </svg>
-                    <span class="text-sm">Customize</span>
-                </button>
-                <!-- ./customize -->
-
-                <!-- filter -->
-                <button class="flex px-5 py-3 gap-2 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
-                    </svg>
-                    <span class="text-sm">Filter</span>
-                </button>
-                <!-- ./filter -->
-
-                <!-- export -->
-                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path fill="#333333"
-                            d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
-                    </svg>
-                    <span class="text-sm">Export</span>
-                </button>
-                <!-- ./export -->
-            </div>
-            <div class="mt-5 ">
-                <!-- display details here-->
-                <div id="refundDetails" class="panel w-full xl:mt-0 rounded-lg h-auto hidden"></div>
-                <!-- display details here-->
-
-            </div>
-        </div>
-        <!-- ./right -->
     </div>
 
     @include('refunds.refund-client')
-    <!--./page content-->
     <script>
         function confirmProcessCompleted(refundId) {
             if (confirm('Are you sure you want to mark this refund as completed?')) {

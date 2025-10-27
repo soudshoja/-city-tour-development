@@ -107,8 +107,8 @@
         <div class="flex justify-between items-center mb-10">
             <div class="text-right">
                 <h1 class="text-2xl font-bold text-gray-800">فاتورة</h1>
-                @if ($invoice->refundDetails->isNotEmpty())
-                    <p class="text-sm text-gray-600">تم إنشاء الفاتورة من استرداد {{ $invoice->refundDetails->first()->refund->refund_number }}</p>
+                @if ($invoice->refund->isNotEmpty())
+                    <p class="text-sm text-gray-600">تم إنشاء الفاتورة من استرداد {{ $invoice->refund->first()->refund_number }}</p>
                 @endif
                 <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
                 <p class="text-sm text-gray-600">التاريخ: {{ $invoice->created_at->format('d M, Y') }}</p>
@@ -470,15 +470,15 @@
         <!-- Totals Section -->
         <div class="flex mb-8">
             <div class="w-1/3 text-sm">
-                @if ($invoice->refundDetails->isNotEmpty() && $invoice->refundDetails->first()->invoice)
+                @if ($invoice->refund->isNotEmpty() && $invoice->refund->first()->originalInvoice)
                     <div class="flex justify-between py-2 border-b border-gray-200">
                         <span>
                             Original Invoice
                             <span class="text-xs text-gray-500">
-                                ({{ $invoice->refundDetails->first()->invoice->invoice_number }})
+                                ({{ $invoice->refund->first()->originalInvoice->invoice_number }})
                             </span>
                         </span>
-                        <span>{{ number_format($invoice->refundDetails->first()->invoice->amount, 2) }}</span>
+                        <span>{{ number_format($invoice->refund->first()->originalInvoice->amount, 2) }}</span>
                     </div>
                 @endif
                 <div class="flex justify-between py-2 border-b border-gray-200">

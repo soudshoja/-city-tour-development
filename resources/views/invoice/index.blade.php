@@ -308,9 +308,9 @@
                                         </a>
                                         @endif
                                         @endcan
-                                        @if ($invoice->refundDetails->isNotEmpty())
+                                        @if ($invoice->refund->isNotEmpty())
                                         <a data-tooltip="View/Edit Refund"
-                                            href="{{ route('refunds.edit', [$invoice->refundDetails->first()->refund_id]) }}" class="text-sm font-medium text-blue-600 hover:underline">
+                                            href="{{ route('refunds.edit', [$invoice->refund->first()->id]) }}" class="text-sm font-medium text-blue-600 hover:underline">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20"
                                                 height="20" viewBox="0 0 24 24">
                                                 <path fill="none" stroke="#00ab55"
@@ -502,7 +502,7 @@
                                         @endif
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        @if ($invoice->refundDetails->isNotEmpty())
+                                        @if ($invoice->refund->isNotEmpty())
                                         <span class="relative inline-flex cursor-default" data-tooltip="Invoice Refund">
                                             <span class="badge badge-outline-success">{{ $invoice->status }}</span>
                                         </span>

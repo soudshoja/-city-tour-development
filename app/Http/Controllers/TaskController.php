@@ -75,6 +75,7 @@ class TaskController extends Controller
 
         $query = Task::with('agent.branch', 'client', 'invoiceDetail.invoice', 'refundDetail', 'originalTask', 'linkedTask');
         $suppliers = Supplier::with('companies');
+        $companyId = null;
 
         if ($user->role_id == Role::ADMIN) {
             $clients = Client::all();
@@ -82,6 +83,7 @@ class TaskController extends Controller
             $fullClients = Client::all();
             $suppliers = $suppliers->get();
         } elseif ($user->role_id == Role::COMPANY) {
+            $companyId = $user->company->id;
             $branches = Branch::where('company_id', $user->company->id)->get();
             $agents = Agent::with('branch')->whereIn('branch_id', $branches->pluck('id'))->get();
             $agentsId = $agents->pluck('id');
@@ -141,10 +143,42 @@ class TaskController extends Controller
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
 
-        $paymentMethod = Account::where('parent_id', 39)
-                        ->where('name', 'not like', '%Como%')
-                        ->get();
+        $liabilities = Account::where('name', 'Liabilities')
+            ->where('company_id', $companyId)
+            ->first();
 
+        $creditorsAccount = Account::where('name', 'Creditors')
+            ->where('company_id', $companyId)
+            ->where('root_id', $liabilities->id)
+            ->first();
+
+        if (!$creditorsAccount) {
+            Log::error('Creditors account not found for company ID: ' . $companyId);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Creditors account not found for company ID: ' . $companyId,
+            ], 404);
+        }
+
+        $listOfCreditors = $creditorsAccount->children()->get()
+            ->mapToGroups(function ($account) {
+                $group = stripos($account->name, 'Como') !== false ? 'Como Travel' : 'City Travelers';
+
+                return [
+                    $group => [
+                        'id' => $account->id,
+                        'name' => $account->name,
+                        'parent_id' => $account->parent_id,
+                        'company_id' => $account->company_id,
+                        'code' => $account->code,
+                    ],
+                ];
+            })
+            ->toArray();
+
+        //dd($listOfCreditors);
+
+        $paymentMethod = Account::where('parent_id', 39)->get();
         if ($search = $request->query('q')) {
             $searchTerm = '%' . strtolower($search) . '%';
             $query->where(function ($q) use ($searchTerm) {
@@ -240,7 +274,7 @@ class TaskController extends Controller
             'created-by',
             'issued-by',
             'branch-name',
-            'invoice'
+            'invoice',
         ];
 
         foreach ($filterable as $field) {
@@ -440,6 +474,7 @@ class TaskController extends Controller
             'allTypes',
             'defaultColumns',
             'currencies',
+            'listOfCreditors'
         ));
     }
 
@@ -2201,6 +2236,7 @@ class TaskController extends Controller
 
     public function update(Request $request, $id)
     {
+        // dd($request->all());
         $task = Task::findOrFail($id);
         $rules = [
             'reference' => 'nullable|string',

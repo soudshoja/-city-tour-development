@@ -3,9 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Enums\InvoiceStatus;
+use InvalidArgumentException;
 
 class Invoice extends Model
 {
@@ -37,6 +38,19 @@ class Invoice extends Model
         'is_client_credit',
         'external_url',
     ];
+
+    public static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($invoice) {
+            $validStatuses = array_column(InvoiceStatus::cases(), 'value');
+
+            if (!in_array($invoice->status, $validStatuses, true)) {
+                throw new InvalidArgumentException("Invalid invoice status: {$invoice->status}");
+            }
+        });
+    }
 
     public function client()
     {
@@ -74,20 +88,20 @@ class Invoice extends Model
         return $this->hasMany(Transaction::class);
     }
 
+    public function originalRefunds() // refunds that refer to this invoice as the *original invoice*
+    {
+        return $this->hasMany(Refund::class, 'invoice_id');
+    }
+
+    public function refund() // refunds that use this invoice as the *refund invoice*
+    {
+        return $this->hasMany(Refund::class, 'refund_invoice_id');
+    }
+
     public function recalculateTotal()
     {
         $this->amount = $this->invoiceDetails()->sum('task_price');
         $this->sub_amount = $this->invoiceDetails()->sum('task_price');
         $this->save();
-    }
-
-    public function origRefundDetails() // Viewing the original invoice
-    {
-        return $this->hasMany(RefundDetail::class, 'invoice_id');
-    }
-
-    public function refundDetails() // Viewing the refund invoice
-    {
-        return $this->hasMany(RefundDetail::class, 'refund_invoice_id');
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -13,7 +14,8 @@ class Refund extends Model
         'company_id',
         'branch_id',
         'agent_id',
-        'account_id',
+        'invoice_id',
+        'refund_invoice_id',
         'method',
         'remarks',
         'remarks_internal',
@@ -33,7 +35,17 @@ class Refund extends Model
 
     public function refundDetails()
     {
-        return $this->hasMany(RefundDetail::class, 'refund_id');
+        return $this->hasMany(RefundDetail::class, 'refund_id', 'id');
+    }
+
+    public function originalInvoice()
+    {
+        return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
+
+    public function refundInvoice()
+    {
+        return $this->belongsTo(Invoice::class, 'refund_invoice_id');
     }
 
     public function company()
@@ -49,26 +61,6 @@ class Refund extends Model
     public function agent()
     {
         return $this->belongsTo(Agent::class, 'agent_id');
-    }
-
-    public function account()
-    {
-        return $this->belongsTo(Account::class, 'account_id');
-    }
-
-    public function getTotalRefundAmountAttribute()
-    {
-        return $this->refundDetails()->sum('total_refund_to_client');
-    }
-
-    public function getTotalRefundChargeAttribute()
-    {
-        return $this->refundDetails()->sum('refund_fee_to_client');
-    }
-
-    public function getTotalNetRefundAttribute()
-    {
-        return $this->refundDetails()->sum('net_refund');
     }
 
     public function formattedStatus(): string

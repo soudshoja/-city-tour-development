@@ -146,7 +146,13 @@
         supplierChargeInput.addEventListener('input', calculateFromRefundFee);
         newProfitInput.addEventListener('input', calculateFromNewProfit);
 
-        // initial run (auto-fill if empty)
         setTimeout(calculateFromRefundFee, 150);
+
+        setTimeout(() => {
+            if (typeof updateOverallSummary === 'function') {
+                updateOverallSummary();
+            }
+            window.dispatchEvent(new Event('refundTaskReady'));
+        }, 400);
     });
 </script>

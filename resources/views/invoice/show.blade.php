@@ -91,18 +91,18 @@
         {{ session('error') }}
     </div>
     @endif
-    @if (in_array($invoice->status, ['paid', 'paid by refund']))
-    <div
-        class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 flex items-center text-white rounded-lg">
-        <div class="flex items-center justify-between text-white">
+    @if (in_array($invoice->status, ['paid', 'paid by refund', 'refunded']))
+        <div class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 text-white rounded-lg">
             <p class="text-3xl">PAID</p>
-            <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
+            @if ($invoice->status === 'paid')
+                <p class="text-sm">This invoice has been fully paid</p>
+            @elseif ($invoice->status === 'paid by refund')
+                <p class="text-sm">This invoice has been settled through an adjustment from a refund invoice</p>
+            @elseif ($invoice->status === 'refunded')
+                <p class="text-sm">This invoice has already been refunded to the client</p>
+            @endif
         </div>
-    </div>
-
-
-    @endif
-    @if ($invoice->status === 'partial')
+    @elseif ($invoice->status === 'partial')
     <div class="max-w-4xl mx-auto rounded-lg border border-yellow-300 bg-yellow-100 p-6 flex items-center rounded-lg">
         <div class="flex items-center gap-2 text-yellow-800">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -118,9 +118,6 @@
         <div class="flex justify-between items-center mb-10">
             <div class="text-left">
                 <h1 class="text-2xl font-bold text-gray-800">INVOICE</h1>
-                @if ($invoice->refund->isNotEmpty())
-                    <p class="text-sm text-gray-600">Generated from Refund {{ $invoice->refund->first()->refund_number }}</p>
-                @endif
                 <p class="text-sm text-gray-600">{{ $invoice->invoice_number }}</p>
                 <p class="text-sm text-gray-600">Date: {{ $invoice->created_at->format('d M, Y') }}</p>
             </div>
@@ -435,17 +432,6 @@
         <!-- Totals Section -->
         <div class="flex justify-end mb-8">
             <div class="w-1/3 text-sm">
-                @if ($invoice->refund->isNotEmpty() && $invoice->refund->first()->originalInvoice)
-                    <div class="flex justify-between py-2 border-b border-gray-200">
-                        <span>
-                            Original Invoice
-                            <span class="text-xs text-gray-500">
-                                ({{ $invoice->refund->first()->originalInvoice->invoice_number }})
-                            </span>
-                        </span>
-                        <span>{{ number_format($invoice->refund->first()->originalInvoice->amount, 2) }}</span>
-                    </div>
-                @endif
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Subtotal:</span>
                     <span>{{ number_format($invoice->sub_amount, 2) }}</span>

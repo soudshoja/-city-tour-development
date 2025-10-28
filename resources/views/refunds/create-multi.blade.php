@@ -139,6 +139,7 @@
 
             @foreach($tasks as $task)
                 <div class="task-refund-section bg-gray-50 border p-6 mt-8 rounded-lg shadow-sm">
+                    <input type="hidden" class="refund-status" value="{{ strtolower($task->originalTask->invoiceDetail->invoice->status) }}">
                     <h3 class="text-xl font-bold mb-4">Refund Task #{{ $task->reference }}</h3>
                     <input type="hidden" name="tasks[{{ $loop->index }}][task_id]" value="{{ $task->id }}">
 
@@ -234,56 +235,70 @@
                 </div>
             @endforeach
         </form>
-
-        <script>
-            function updateOverallSummary() {
-                let totalNetRefund = 0;
-                let totalCharges = 0;
-
-                document.querySelectorAll(".task-refund-section").forEach(section => {
-                    const statusText = section.querySelector(".text-green-700, .text-red-800")?.textContent.toLowerCase().trim() || '';
-                    const isPaid = statusText.includes('paid') && !statusText.includes('unpaid');
-                    const isUnpaid = statusText.includes('unpaid') || statusText.includes('partial');
-                    const totalRefundToClientInput = section.querySelector('[name*="[total_refund_to_client]"]');
-                    const invoicePriceInput = section.querySelector('[name*="[invoice_price]"]');
-
-                    if (isPaid) {
-                        if (totalRefundToClientInput) {
-                            totalNetRefund += parseFloat(totalRefundToClientInput.value) || 0;
-                        }
-                    } else if (isUnpaid) {
-                        if (invoicePriceInput) {
-                            totalCharges += parseFloat(invoicePriceInput.value) || 0;
-                        }
-                    }
-                });
-
-                const overallSummaryDisplay = document.getElementById("overall-summary-display");
-                if (totalNetRefund > 0) {
-                    overallSummaryDisplay.textContent = `Total Refund to Client: ${totalNetRefund.toFixed(2)}`;
-                    overallSummaryDisplay.classList.remove('text-red-500');
-                    overallSummaryDisplay.classList.add('text-green-600');
-                } else if (totalCharges > 0) {
-                    overallSummaryDisplay.textContent = `Total Charges to Collect: ${totalCharges.toFixed(2)}`;
-                    overallSummaryDisplay.classList.remove('text-green-600');
-                    overallSummaryDisplay.classList.add('text-red-500');
-                } else {
-                    overallSummaryDisplay.textContent = `Total: 0.00`;
-                    overallSummaryDisplay.classList.remove('text-green-600', 'text-red-500');
-                }
-            }
-
-            document.addEventListener('DOMContentLoaded', () => {
-                setTimeout(updateOverallSummary, 300);
-            });
-
-            document.addEventListener('input', e => {
-                const name = e.target.name || '';
-                if (name.includes('[refund_fee_to_client]') || name.includes('[new_task_profit]') ||
-                    name.includes('[total_refund_to_client]') || name.includes('[invoice_price]') || name.includes('[supplier_charge]')) {
-                    updateOverallSummary();
-                }
-            });
-        </script>
     </div>
+    <script>
+        function updateOverallSummary() {
+            let totalNetRefund = 0;
+            let totalCharges = 0;
+
+            document.querySelectorAll(".task-refund-section").forEach(section => {
+                const status = section.querySelector('.refund-status')?.value || 'unpaid';
+                const isPaid = status === 'paid';
+                const isUnpaid = status === 'unpaid' || status === 'partial';
+                const totalRefundToClientInput = section.querySelector('[name*="[total_refund_to_client]"]');
+
+                if (isPaid) {
+                    if (totalRefundToClientInput) {
+                        totalNetRefund += parseFloat(totalRefundToClientInput.value) || 0;
+                    }
+                } else if (isUnpaid) {
+                    if (totalRefundToClientInput) {
+                        totalCharges += parseFloat(totalRefundToClientInput.value) || 0;
+                    }
+                }
+            });
+
+            const overallSummaryDisplay = document.getElementById("overall-summary-display");
+            if (totalNetRefund > 0) {
+                overallSummaryDisplay.innerHTML = `
+                    <div class="inline-flex items-center justify-end text-green-700">
+                        <span class="text-2xl font-extrabold">Total Refund to Client: ${totalNetRefund.toFixed(2)} KWD</span>
+                    </div>`;
+                overallSummaryDisplay.className =
+                    "transition-all duration-300 ease-in-out text-right mb-6 p-5 rounded-xl border-2 border-green-300 bg-green-50 shadow-sm";
+            } else if (totalCharges > 0) {
+                overallSummaryDisplay.innerHTML = `
+                    <div class="inline-flex items-center justify-end text-red-600">
+                        <span class="text-xl font-extrabold">Total Charges to Collect: ${totalCharges.toFixed(2)} KWD</span>
+                    </div>`;
+                overallSummaryDisplay.className =
+                    "transition-all duration-300 ease-in-out text-right mb-6 p-5 rounded-xl border-2 border-red-300 bg-red-50 shadow-sm";
+            } else {
+                overallSummaryDisplay.innerHTML = `
+                    <span class="text-gray-600 text-xl italic">No refund or charges calculated yet.</span>`;
+                overallSummaryDisplay.className =
+                    "transition-all duration-300 ease-in-out text-right mb-6 p-5 rounded-xl border bg-gray-50 shadow-sm";
+            }
+        }
+
+        window.addEventListener('refundTaskReady', function () {
+            if (typeof updateOverallSummary === 'function') {
+                updateOverallSummary();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof updateOverallSummary === 'function') {
+                updateOverallSummary();
+            }
+        });
+
+        document.addEventListener('input', e => {
+            const name = e.target.name || '';
+            if (name.includes('[refund_fee_to_client]') || name.includes('[new_task_profit]') ||
+                name.includes('[total_refund_to_client]') || name.includes('[supplier_charge]')) {
+                updateOverallSummary();
+            }
+        });
+    </script>
 </x-app-layout>

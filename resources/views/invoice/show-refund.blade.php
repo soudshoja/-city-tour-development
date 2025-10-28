@@ -339,6 +339,22 @@
         <div class="flex flex-col md:flex-row justify-between items-end gap-6 border-t pt-6 mt-8 mb-10">
             <div class="flex justify-end md:justify-start w-full md:w-auto">
                 @if ($invoice->status !== 'paid')
+                    <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}" method="POST" onsubmit="showSpinner()">
+                        @csrf
+                        <input type="hidden" name="client_id" id="clientid" value="{{ $invoice->client->id }}">
+                        <input type="hidden" name="invoiceNumber" value="{{ $invoice->invoice_number }}">
+
+                        <button id="submitButton" type="submit"
+                            class="city-light-yellow hover:text-[#004c9e] rounded-full flex items-center justify-center peer-checked:ring-2 peer-checked:ring-blue-500 peer-checked:bg-blue-100 px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 transition gap-2 hover:bg-[#f7b14f] hover:shadow-xl hover:text-white">
+                            <span id="buttonText">Send Invoice To Client</span>
+                            <span id="spinner" class="hidden ml-2">
+                                <svg class="w-4 h-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 0-8-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
+                                </svg>
+                            </span>
+                        </button>
+                    </form>
                     <form id="paymentForm" action="{{ route('payment.create', ['companyId' => $companyId, 'invoiceNumber' => $invoice->invoice_number]) }}"
                         method="POST">
                         @csrf

@@ -50,14 +50,25 @@
              {{ session('error') }}
          </div>
      @endif
-     @if ($invoicePartial->status === 'paid')
-         <div
-             class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 flex items-center text-white rounded-lg">
-             <div class="flex items-center justify-between text-white">
-                 <p class="text-3xl">PAID</p>
-                 <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
-             </div>
-         </div>
+    @if (in_array($invoice->status, ['paid', 'paid by refund', 'refunded']))
+        <div class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 text-white rounded-lg">
+            <p class="text-3xl">PAID</p>
+            @if ($invoice->status === 'paid')
+                <p class="text-sm">This invoice has been fully paid</p>
+            @elseif ($invoice->status === 'paid by refund')
+                <p class="text-sm">This invoice has been settled through an adjustment from a refund invoice</p>
+            @elseif ($invoice->status === 'refunded')
+                <p class="text-sm">This invoice has already been refunded to the client</p>
+            @endif
+        </div>
+    @elseif ($invoicePartial->status === 'paid')
+        <div
+            class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 flex items-center text-white rounded-lg">
+            <div class="flex items-center justify-between text-white">
+                <p class="text-3xl">PAID</p>
+                <h5 class="text-2xl ltr:mr-auto rtl:mr-auto"></h5>
+            </div>
+        </div>
      @endif
      <div class="max-w-4xl mx-auto p-8 bg-white shadow-lg rounded-lg">
         <div class="flex justify-between items-center mb-10">
@@ -176,7 +187,7 @@
 
          <!-- Payment Details -->
          <div class="mb-8 inline-flex gap-2">
-             @if ($invoicePartial->status === 'unpaid')
+             @if ($invoicePartial->status === 'unpaid' && !in_array($invoice->status, ['paid', 'paid by refund', 'refunded']))
                  @if (auth()->check())
                      <form action="{{ route('resayil.share-partial-link') }}" method="POST">
                          @csrf

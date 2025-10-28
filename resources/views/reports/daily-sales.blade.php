@@ -556,8 +556,12 @@
                             <span class="text-gray-500">N/A</span>
                             @endif
                         </td>
-                        <td>{{ $refund->invoice?->client?->full_name ?? $refund->task?->client?->full_name ?? 'N/A' }}</td>
-                        <td>{{ $refund->invoice?->agent?->name ?? $refund->task?->agent?->name ?? 'N/A' }}</td>
+                        @php
+                            $firstDetail = $refund->refundDetails->first();
+                            $firstTask = $firstDetail?->task;
+                        @endphp
+                        <td>{{ $refund->invoice?->client?->full_name ?? $firstTask?->client?->full_name ?? 'N/A' }}</td>
+                        <td>{{ $refund->invoice?->agent?->name ?? $firstTask?->agent?->name ?? 'N/A' }}</td>
                         <td>{{ $refund->refund_type }}</td>
                         <td>{{ number_format($refund->total_nett_refund, 3) }}</td>
                         <td>
@@ -565,7 +569,7 @@
                             <a href="{{ $refund->links['view_refund_inv'] }}" class="text-blue-500 font-medium hover:text-blue-600 hover:underline" target="_blank"
                                 onclick="event.stopPropagation()">{{ $refund->refund_invoice_number }}</a>
                             <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold
-                                    {{ $refund->original_invoice_status === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
+                                    {{ $refund->refund_invoice_status === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
                                         : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200' }}">
                                 {{ ucfirst($refund->refund_invoice_status) }}
                             </span>
@@ -580,36 +584,56 @@
                         <td colspan="8" class="p-0">
                             <div class="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
                                 <div class="grid gap-4 lg:grid-cols-12 text-sm">
-                                    <div class="lg:col-span-3 space-y-2">
-
-                                        <div>
-                                            <div class="text-xs text-gray-500 dark:text-gray-400">Method</div>
-                                            <div class="font-medium">{{ $refund->method }}</div>
-                                        </div>
-                                        <div>
-                                            <div class="text-xs text-gray-500 dark:text-gray-400">Reference</div>
-                                            <div class="font-medium">{{ $refund->reference }}</div>
-                                        </div>
+                                    <div class="lg:col-span-12 space-y-4">
+                                        @foreach($refund->refundDetails as $detail)
+                                            <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-4">
+                                                <div class="flex flex-wrap items-center justify-between mb-3">
+                                                    <div>
+                                                        <div class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                                                            Task #{{ $detail->task?->reference ?? '—' }}
+                                                        </div>
+                                                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                                                            {{ ucfirst($detail->task?->type) }}
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-sm text-gray-500 dark:text-gray-400">
+                                                        Client: <span class="font-medium">{{ $detail->task?->client?->full_name ?? 'N/A' }}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                                                    <div>
+                                                        <div class="text-[11px] uppercase text-gray-500 dark:text-gray-400">Original Invoice Price</div>
+                                                        <div class="font-semibold">{{ number_format($detail->original_invoice_price ?? 0, 3) }}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div class="text-[11px] uppercase text-gray-500 dark:text-gray-400">Original Task Cost</div>
+                                                        <div class="font-semibold">{{ number_format($detail->original_task_cost ?? 0, 3) }}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div class="text-[11px] uppercase text-gray-500 dark:text-gray-400">Original Profit</div>
+                                                        <div class="font-semibold text-blue-600">{{ number_format($detail->original_task_profit ?? 0, 3) }}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div class="text-[11px] uppercase text-gray-500 dark:text-gray-400">Refund Fee to Client</div>
+                                                        <div class="font-semibold">{{ number_format($detail->refund_fee_to_client ?? 0, 3) }}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div class="text-[11px] uppercase text-gray-500 dark:text-gray-400">Supplier Charge</div>
+                                                        <div class="font-semibold text-rose-600">{{ number_format($detail->supplier_charge ?? 0, 3) }}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div class="text-[11px] uppercase text-gray-500 dark:text-gray-400">New Profit</div>
+                                                        <div class="font-semibold text-emerald-600">{{ number_format($detail->new_task_profit ?? 0, 3) }}</div>
+                                                    </div>
+                                                    <div class="sm:col-span-2">
+                                                        <div class="text-[11px] uppercase text-gray-600 dark:text-gray-300">Total Refund to Client</div>
+                                                        <div class="text-lg font-bold">{{ number_format($detail->total_refund_to_client ?? 0, 3) }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
                                     </div>
-                                    <div class="lg:col-span-5 grid sm:grid-cols-2 gap-3">
-                                        <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
-                                            <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Original Invoice Price</div>
-                                            <div class="font-semibold">{{ number_format($refund->airline_nett_fare, 3) }}</div>
-                                        </div>
-                                        <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
-                                            <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Original Task Cost</div>
-                                            <div class="font-semibold">{{ number_format($refund->task->originalTask->total, 3) }}</div>
-                                        </div>
-                                        <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
-                                            <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Original Profit</div>
-                                            <div class="font-semibold text-blue-600">{{ number_format($refund->original_task_profit, 3) }}</div>
-                                        </div>
-                                        <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
-                                            <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Refund Fee to Client</div>
-                                            <div class="font-semibold">{{ number_format($refund->service_charge, 3) }}</div>
-                                        </div>
-                                    </div>
-                                    <div class="lg:col-span-4 grid sm:grid-cols-2 gap-3">
+                                    <!-- <div class="lg:col-span-4 grid sm:grid-cols-2 gap-3">
                                         <div class="rounded-md border border-gray-200 dark:border-gray-700 bg-white/60 dark:bg-gray-800/60 p-3">
                                             <div class="text-[11px] tracking-wide uppercase text-gray-500 dark:text-gray-400">Supplier Charge</div>
                                             <div class="font-semibold text-rose-600">{{ number_format($refund->refund_airline_charge, 3) }}</div>
@@ -622,7 +646,7 @@
                                             <div class="text-[11px] tracking-wide uppercase text-gray-600 dark:text-gray-300">Total Refund</div>
                                             <div class="text-lg font-bold">{{ number_format($refund->total_nett_refund, 3) }}</div>
                                         </div>
-                                    </div>
+                                    </div> -->
                                 </div>
                             </div>
                         </td>

@@ -1008,19 +1008,15 @@ class TaskController extends Controller
             // Process financial transactions immediately if task is complete (regardless of agent assignment)
             // This ensures company liability to supplier is tracked immediately
             // Special case: Void tasks should ALWAYS process financials if they have an original_task_id
-            $shouldProcessFinancials = $offline && $task->is_complete || $task->status !== 'confirmed' || ($task->status == 'void' && $task->original_task_id);
+            $isZeroTotalSupplier = (str_contains($supplierName, 'trendy travel') || str_contains($supplierName, 'alam al raya travel')) && empty((float) $task->total);
+            $shouldProcessFinancials = ($offline && $task->is_complete || $task->status !== 'confirmed' || ($task->status == 'void' && $task->original_task_id)) && !$isZeroTotalSupplier;
 
             if ($shouldProcessFinancials) {
                 $supplierName = strtolower(optional($task->supplier)->name ?? '');
-                $isZeroTotalSupplier = (str_contains($supplierName, 'trendy travel') || str_contains($supplierName, 'alam al raya travel')) && empty((float) $task->total);
 
-                if ($isZeroTotalSupplier) {
-                    Log::info("Skipping financial processing for zero-total supplier: {$task->supplier->name} | ref: {$task->reference}");
-                } else {
-                    $reason = $task->is_complete ? 'complete task' : 'void task with original_task_id';
-                    Log::info("Processing financial transactions for {$reason}: " . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
-                    $this->processTaskFinancial($task);
-                }
+                $reason = $task->is_complete ? 'complete task' : 'void task with original_task_id';
+                Log::info("Processing financial transactions for {$reason}: " . $task->reference . ' (agent_id: ' . ($task->agent_id ?? 'none') . ')');
+                $this->processTaskFinancial($task);
             } else {
                 Log::warning('Financial processing skipped for task: ' . $task->reference . ' - reason: ' . ($offline ? 'incomplete' : 'not offline supplier') . ' - status: ' . $task->status);
             }
@@ -1298,10 +1294,15 @@ class TaskController extends Controller
             }
         } else {
             if (!$task->is_complete) {
+
+                //get missing field that caused incomplete task from getMissingFields method
+                $missingFields = $this->getMissingFields($task);
+
                 Log::error('Cannot process financial for incomplete task: ' . $task->reference, [
                     'is_complete' => $task->is_complete,
                     'status' => $task->status,
-                    'original_task_id' => $task->original_task_id
+                    'original_task_id' => $task->original_task_id,
+                    'missing_fields' => $missingFields
                 ]);
 
                 throw new Exception('Cannot process financial for incomplete task: ' . $task->reference);
@@ -1542,7 +1543,7 @@ class TaskController extends Controller
         ];
 
         foreach ($task->getRequiredColumns() as $column) {
-            if (empty($task->$column) && $task->$column !== 0 && $task->$column !== '0') {
+            if (empty($task->$column) && $task->$column != 0 && $task->$column != '0') {
                 // Use custom message if available, otherwise use default format
                 $message = $fieldMessages[$column] ?? ucfirst(str_replace('_', ' ', $column)) . ' is required';
                 $missingFields[] = $message;

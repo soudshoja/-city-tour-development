@@ -14,6 +14,11 @@ return [
             'timeout'   => (int) env('ANYLLM_TIMEOUT', 45),
             'slug'     => env('ANYLLM_SLUG', 'default-workspace'),
         ],
+        'openwebui' => [
+            'key' => env('OPENWEBUI_API_KEY'),
+            'url' => env('OPENWEBUI_API_URL', 'http://localhost:3000/api'),
+            'model' => env('OPENWEBUI_MODEL', 'city-tour-staging'),
+        ],
         // Add more providers as needed
     ],
 ];

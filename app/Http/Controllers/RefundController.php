@@ -635,34 +635,25 @@ class RefundController extends Controller
             'type' => 'refund',
         ]);
 
-        $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
+        $accountReceivable = Account::where('name', 'Accounts Receivable')
             ->where('company_id', $companyId)
             ->first();
 
-        $clientAdvance = Account::where('name', 'Client')
+        $clientAccount = Account::where('name', 'Clients')
             ->where('company_id', $companyId)
-            ->where('root_id', $liabilitiesAccount->id)
+            ->where('parent_id', $accountReceivable->id)
             ->first();
-
-        $paymentGateway = Account::where('name', 'Payment Gateway')
-            ->where('company_id', $companyId)
-            ->where('parent_id', $clientAdvance->id)
-            ->first();
-
-        if (!$paymentGateway) {
-            throw new \RuntimeException("Payment Gateway account not found for company {$companyId}.");
-        }
 
         JournalEntry::create([
             'transaction_id' => $transaction->id,
             'company_id' => $companyId,
             'branch_id' => $branchId,
-            'account_id' => $paymentGateway->id,
+            'account_id' => $clientAccount->id,
             'transaction_date' => $refund->refund_date,
             'description' => "Invoice refund for (Assets): " . $refund->refundDetails->first()->invoice,
             'debit' => 0,
             'credit' => $originalTotal,
-            'name' => $paymentGateway->name,
+            'name' => $clientAccount->name,
             'type' => 'refund',
         ]);
 
@@ -670,12 +661,12 @@ class RefundController extends Controller
             'transaction_id' => $transaction->id,
             'company_id' => $companyId,
             'branch_id' => $branchId,
-            'account_id' => $paymentGateway->id,
+            'account_id' => $clientAccount->id,
             'transaction_date' => $refund->refund_date,
             'description' => "Invoice refund for (Assets): " . $refund->refundDetails->first()->invoice,
             'debit' => $refundCharge,
             'credit' => 0,
-            'name' => $paymentGateway->name,
+            'name' => $clientAccount->name,
             'type' => 'refund',
         ]);
 
@@ -683,12 +674,12 @@ class RefundController extends Controller
             'transaction_id' => $transaction->id,
             'company_id' => $companyId,
             'branch_id' => $branchId,
-            'account_id' => $paymentGateway->id,
+            'account_id' => $clientAccount->id,
             'transaction_date' => $refund->refund_date,
             'description' => "Invoice refund for (Assets): " . $refund->refundDetails->first()->invoice,
             'debit' => 0,
             'credit' => $amountOwed,
-            'name' => $paymentGateway->name,
+            'name' => $clientAccount->name,
             'type' => 'refund',
         ]);
 

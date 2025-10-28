@@ -211,20 +211,29 @@
                         @include('refunds.partial.paid-invoice-section', [
                             'task' => $task,
                             'invoiceDetail' => $task->originalTask->invoiceDetail,
-                            'loopIndex' => $loop->index
+                            'loopIndex' => $loop->index,
+                            'refundDetail' => null,
+                            'isEditing' => false,
+                            'isReadOnly' => false,
                         ])
                     @elseif ($task->originalTask?->invoiceDetail?->invoice?->status === 'unpaid')
                         @include('refunds.partial.unpaid-invoice-section', [
                             'task' => $task,
                             'invoiceDetail' => $task->originalTask->invoiceDetail,
-                            'loopIndex' => $loop->index
+                            'loopIndex' => $loop->index,
+                            'refundDetail' => null,
+                            'isEditing' => false,
+                            'isReadOnly' => false,
                         ])
                     @else
                         {{-- For partial, credit, or other cases --}}
                         @include('refunds.partial.unpaid-invoice-section', [
                             'task' => $task,
                             'invoiceDetail' => $task->originalTask->invoiceDetail,
-                            'loopIndex' => $loop->index
+                            'loopIndex' => $loop->index,
+                            'refundDetail' => null,
+                            'isEditing' => false,
+                            'isReadOnly' => false,
                         ])
                     @endif
                     <div class="mt-4">

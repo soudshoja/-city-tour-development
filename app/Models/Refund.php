@@ -43,7 +43,7 @@ class Refund extends Model
         return $this->belongsTo(Invoice::class, 'invoice_id');
     }
 
-    public function refundInvoice()
+    public function invoice()
     {
         return $this->belongsTo(Invoice::class, 'refund_invoice_id');
     }

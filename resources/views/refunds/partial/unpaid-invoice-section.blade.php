@@ -143,5 +143,12 @@
         invoicePriceInput.addEventListener('input', recalcNewMarkup);
 
         recalcNewMarkup();
+
+        setTimeout(() => {
+            if (typeof updateOverallSummary === 'function') {
+                updateOverallSummary();
+            }
+            window.dispatchEvent(new Event('refundTaskReady'));
+        }, 400);
     });
 </script>

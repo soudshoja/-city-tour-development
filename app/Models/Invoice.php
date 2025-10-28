@@ -88,14 +88,18 @@ class Invoice extends Model
         return $this->hasMany(Transaction::class);
     }
 
-    public function originalRefunds() // refunds that refer to this invoice as the *original invoice*
+    public function originalRefunds()
     {
+        // Refunds that refer to this invoice as the *original invoice*
+        // → one invoice can have many refunds
         return $this->hasMany(Refund::class, 'invoice_id');
     }
 
-    public function refund() // refunds that use this invoice as the *refund invoice*
+    public function refund()
     {
-        return $this->hasMany(Refund::class, 'refund_invoice_id');
+        // Refund that uses this invoice as the *refund invoice*
+        // → one refund invoice is linked to one refund record only
+        return $this->hasOne(Refund::class, 'refund_invoice_id');
     }
 
     public function recalculateTotal()

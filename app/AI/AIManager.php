@@ -5,6 +5,7 @@ namespace App\AI;
 use App\AI\Contracts\AIClientInterface;
 use App\AI\Services\OpenAIClient;
 use App\AI\Services\AnythingLLMClient;
+use App\AI\Services\OpenWebUIClient;
 use App\AI\Support\AIResponse;
 use App\Models\Supplier;
 use Exception;
@@ -25,6 +26,7 @@ class AIManager
         return match ($provider) {
             'openai' => new OpenAIClient(),
             'anythingllm' => new AnythingLLMClient(),
+            'openwebui' => new OpenWebUIClient(),
             default => throw new Exception("Unsupported AI provider: {$provider}")
         };
     }

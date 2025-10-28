@@ -381,7 +381,7 @@ class OpenWebUIClient implements AIClientInterface
     {
         try {
             // Build the comprehensive extraction prompt similar to OpenAI
-            $fullPrompt = $this->buildExtractionPrompt($extractionPrompt);
+            $fullPrompt = "Get Booking Details From The Document.\n\n";
 
             // IMPORTANT: Use the files parameter correctly with RAG
             $payload = [

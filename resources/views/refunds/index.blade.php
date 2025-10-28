@@ -94,7 +94,7 @@
                                             {{ $refund->status === null ? 'Not Set' : ucwords($refund->status) }}
 
                                         </span>
-                                        @if (!$refund->refundInvoice && $refund->status !== 'completed')
+                                        @if (!$refund->invoice && $refund->status !== 'completed')
                                         <span
                                             class="cursor-pointer ml-2 badge whitespace-nowrap px-2 py-1 rounded text-sm font-medium badge-outline-primary"
                                             onclick="confirmProcessCompleted({{ $refund->id }})">

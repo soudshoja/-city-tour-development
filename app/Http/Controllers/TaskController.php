@@ -2163,29 +2163,68 @@ class TaskController extends Controller
         ], 201);
     }
 
-    public function show($id)
+   public function show($id)
     {
-        $task = Task::with(['agent.branch', 'client', 'flightDetails.countryFrom',  'flightDetails.countryTo', 'hotelDetails.hotel', 'supplier'])->withoutGlobalScope('enabled')->findOrFail($id);
+        $task = Task::with([
+            'agent.branch', 
+            'client', 
+            'flightDetails.countryFrom',  
+            'flightDetails.countryTo', 
+            'hotelDetails.hotel', 
+            'insuranceDetails',
+            'visaDetails',
+            'supplier'
+        ])->withoutGlobalScope('enabled')->findOrFail($id);
 
         if (!$task) {
             return response()->json(['error' => 'Task not found'], 404);
         }
 
         if ($task->flightDetails) {
-            $task['country_from'] = $task->flightDetails->countryFrom->name;
-            $task['country_to'] = $task->flightDetails->countryTo->name;
+            $task['country_from'] = $task->flightDetails->countryFrom?->name;
+            $task['country_to'] = $task->flightDetails->countryTo?->name;
             $task['description'] = $task['country_from'] . ' ---> ' . $task['country_to'];
-        } elseif ($task->hotelDetails) {
-            $task['hotel_name'] = $task->hotelDetails->hotel->name;
-            $task['hotel_country'] = $task->hotelDetails->hotel->country;
+        }
+        elseif ($task->hotelDetails) {
+            $task['hotel_name'] = $task->hotelDetails->hotel?->name;
+            $task['hotel_country'] = $task->hotelDetails->hotel?->country;
             $task['description'] = $task['hotel_name'] . '/' . $task['hotel_country'];
-        } else {
+        }
+        else {
             $task['description'] = 'No description';
         }
 
+        // Convert relationship names to snake_case for frontend consistency
+        // and wrap single items in arrays for frontend iteration
+        $taskArray = $task->toArray();
+        
+        // Convert single objects to arrays for frontend
+        if (isset($taskArray['flight_details']) && $taskArray['flight_details']) {
+            $taskArray['flight_details'] = [$taskArray['flight_details']];
+        } else {
+            $taskArray['flight_details'] = [];
+        }
+        
+        if (isset($taskArray['hotel_details']) && $taskArray['hotel_details']) {
+            $taskArray['hotel_details'] = [$taskArray['hotel_details']];
+        } else {
+            $taskArray['hotel_details'] = [];
+        }
+        
+        if (isset($taskArray['visa_details']) && $taskArray['visa_details']) {
+            $taskArray['visa_details'] = [$taskArray['visa_details']];
+        } else {
+            $taskArray['visa_details'] = [];
+        }
+        
+        if (isset($taskArray['insurance_details']) && $taskArray['insurance_details']) {
+            $taskArray['insurance_details'] = [$taskArray['insurance_details']];
+        } else {
+            $taskArray['insurance_details'] = [];
+        }
 
         // Return the task data as JSON for the modal to load dynamically
-        return response()->json($task, 200);
+        return response()->json($taskArray, 200);
     }
 
     public function edit($id)

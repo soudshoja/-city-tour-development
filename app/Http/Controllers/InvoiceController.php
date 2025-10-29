@@ -1442,32 +1442,68 @@ class InvoiceController extends Controller
 
         // Booking account (Income)
         try {
-            $detailsAccount = Account::where('name', 'like', $task['type'] == 'flight' ? 'Flight Booking%' : '%Hotel Booking%')
+            $bookingAccountName = ucfirst($task->type) . ' Booking Revenue';
+            $detailsAccount = Account::where('name', 'like', '%' . $bookingAccountName . '%')
                 ->where('company_id', $task->company_id)
                 ->first();
 
-            if ($detailsAccount) {
-                JournalEntry::create([
-                    'transaction_id' => $transactionId,
-                    'branch_id' => $task->agent->branch_id ?? null,
-                    'company_id' => $task->company_id ?? null,
-                    'account_id' => $detailsAccount->id,
-                    'task_id' => $task->id ?? null,    
-                    'agent_id' => $task->agent_id ?? $invoice->agent_id,
-                    'invoice_id' => $invoiceId,
-                    'invoice_detail_id' => $invoiceDetailId,
-                    'transaction_date' => $invoice->invoice_date,
-                    'description' => 'Invoice created for (Income): ' . $task['reference'],
-                    'debit' => 0,
-                    'credit' => $task->invoiceDetail->task_price,
-                    'balance' => $detailsAccount->balance ?? 0,
-                    'name' => $detailsAccount->name,
-                    'type' => 'payable',
-                    'currency' => $task->currency ?? 'USD',
-                    'exchange_rate' => $task->exchange_rate ?? 1.00,
-                    'amount' => $task->invoiceDetail->task_price,
+            
+            if (!$detailsAccount) {
+                Log::info("Booking revenue account '{$bookingAccountName}' not found. Creating it now...");
+
+                $directIncomeParent = Account::where('name', 'like', '%Direct Income%')
+                    ->where('company_id', $task->company_id)
+                    ->first();
+
+                $lastRevenue = Account::where('parent_id', $directIncomeParent->id)
+                    ->where('company_id', $task->company_id)
+                    ->orderByDesc('code')
+                    ->first();
+
+                $lastCode = (int)($lastRevenue?->code ?? 4110);
+                $nextCode = $lastCode + 5;
+
+                $detailsAccount = Account::create([
+                    'code' => str_pad($nextCode, 4, '0', STR_PAD_LEFT),
+                    'name' => $bookingAccountName,
+                    'company_id' => $task->company_id,
+                    'root_id' => $directIncomeParent->root_id,
+                    'parent_id' => $directIncomeParent->id,
+                    'branch_id' => $task->agent->branch_id,
+                    'account_type' => 'income',
+                    'report_type' => Account::REPORT_TYPES['PROFIT_LOSS'],
+                    'level' => $directIncomeParent->level + 1,
+                    'is_group' => 0,
+                    'disabled' => 0,
+                    'actual_balance' => 0.00,
+                    'budget_balance' => 0.00,
+                    'variance' => 0.00,
+                    'currency' => $task->currency ?? 'KWD',
                 ]);
+
+                Log::info("Auto-created new booking revenue account '{$bookingAccountName}' ({$detailsAccount->code}) for company {$companyId}");
             }
+
+            JournalEntry::create([
+                'transaction_id' => $transactionId,
+                'branch_id' => $task->agent->branch_id,
+                'company_id' => $task->company_id,
+                'account_id' => $detailsAccount->id,
+                'task_id' => $task->id ?? null,
+                'agent_id' => $task->agent_id ?? $invoice->agent_id,
+                'invoice_id' => $invoiceId,
+                'invoice_detail_id' => $invoiceDetailId,
+                'transaction_date' => $invoice->invoice_date,
+                'description' => 'Invoice created for (Income): ' . $task->reference,
+                'debit' => 0,
+                'credit' => $task->invoiceDetail->task_price,
+                'balance' => $detailsAccount->balance ?? 0,
+                'name' => $detailsAccount->name,
+                'type' => 'payable',
+                'currency' => $task->currency ?? 'KWD',
+                'exchange_rate' => $task->exchange_rate ?? 1.00,
+                'amount' => $task->invoiceDetail->task_price,
+            ]);
         } catch (\Exception $e) {
             Log::error('Income Entry Error: ' . $e->getMessage(), ['invoice_id' => $invoiceId]);
             return response()->json([

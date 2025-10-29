@@ -2101,7 +2101,7 @@
              x-transition:leave-end="opacity-0"
              @click.self="showTaskModal = false"
              @keydown.escape.window="showTaskModal = false"
-             class="fixed inset-0 z-[10001] flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black bg-opacity-90 backdrop-blur-sm">
+             class="fixed inset-0 z-[10001] flex items-center justify-center bg-gray-500 bg-opacity-50 backdrop-blur-sm">
             
             <!-- Modal Content -->
             <div x-transition:enter="transition ease-out duration-300 transform"

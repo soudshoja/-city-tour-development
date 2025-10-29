@@ -4,7 +4,7 @@
             <!-- Original Task (Cost Price) -->
             <div>
                 <label class="block text-gray-700 font-semibold">Original Task (Cost Price)</label>
-                <input readonly type="number" step="0.01" name="tasks[{{ $loopIndex }}][original_task_cost]" value="{{ number_format($invoiceDetail->task_price - $invoiceDetail->markup_price, 2, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                <input readonly type="number" step="0.01" name="tasks[{{ $loopIndex }}][original_task_cost]" value="{{ number_format($invoiceDetail->task_price - $invoiceDetail->markup_price, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
             </div>
 
             <!-- Original Task Profit -->
@@ -12,7 +12,7 @@
                 <label class="block text-gray-700 font-semibold">Original Task Profit</label>
                 <div class="flex items-center">
                     <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
-                    <input readonly type="number" step="0.01" name="tasks[{{ $loopIndex }}][original_task_profit]" value="{{ number_format($invoiceDetail->markup_price, 2, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                    <input readonly type="number" step="0.01" name="tasks[{{ $loopIndex }}][original_task_profit]" value="{{ number_format($invoiceDetail->markup_price, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
                 </div>
             </div>
 
@@ -21,7 +21,7 @@
                 <label class="block text-gray-700 font-semibold">Original Task Selling Price</label>
                 <div class="flex items-center">
                     <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path></svg>
-                    <input readonly type="number" step="0.01" name="tasks[{{ $loopIndex }}][original_invoice_price]" value="{{ number_format($invoiceDetail->task_price, 2, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                    <input readonly type="number" step="0.01" name="tasks[{{ $loopIndex }}][original_invoice_price]" value="{{ number_format($invoiceDetail->task_price, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
                 </div>
             </div>
 
@@ -41,7 +41,7 @@
                 <label class="block text-gray-700 font-semibold mb-2">Supplier Charges</label>
                 <div class="flex items-center">
                     <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4"></path></svg>
-                    <input readonly type="number" step="0.01" name="tasks[{{ $loopIndex }}][supplier_charge]" value="{{ number_format($invoiceDetail->task_price - $invoiceDetail->markup_price - $task->total, 2, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                    <input readonly type="number" step="0.01" name="tasks[{{ $loopIndex }}][supplier_charge]" value="{{ number_format($invoiceDetail->task_price - $invoiceDetail->markup_price - $task->total, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
                 </div>
             </div>
 
@@ -59,7 +59,7 @@
             <!-- Refund Task (Cost Price) -->
             <div>
                 <label class="block text-gray-700 font-semibold mb-2">Refund Task (Cost Price)</label>
-                <input readonly type="number" step="0.01" name="tasks[{{ $loopIndex }}][refund_task_cost_price]" value="{{ number_format($task->total, 2, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                <input readonly type="number" step="0.01" name="tasks[{{ $loopIndex }}][refund_task_cost_price]" value="{{ number_format($task->total, 3, '.', '') }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
             </div>
 
             <!-- New Profit (repeated for layout) -->

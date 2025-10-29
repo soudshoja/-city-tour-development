@@ -462,13 +462,19 @@
                                 class="text-blue-500 underline" target="_blank">{{ $partial->payment->voucher_number }}
                             </a>
                         </td>
-                        <td class="px-4 py-2 border">{{ $partial->payment->payment_reference ?? 'N/A' }}</td>
+                        <td class="px-4 py-2 border">
+                            @if ($partial->payment->payment_gateway === 'MyFatoorah')
+                                {{ $partial->payment->myfatoorahPayment->invoice_ref ?? $partial->payment->myfatoorahPayment->payload['Data']['InvoiceReference'] ?? 'N/A' }}
+                            @else
+                                {{ $partial->payment->payment_reference ?? 'N/A' }}
+                            @endif
+                        </td>
                         <td class="px-4 py-2 border">
                             {{ $partial->payment ? \Carbon\Carbon::parse($partial->payment->payment_date)->format('d M, Y H:i') : \Carbon\Carbon::parse($partial->updated_at)->format('d M, Y H:i') }}
                         </td>
                         <td class="px-4 py-2 border">{{ $partial->payment_gateway }}</td>
                         <td class="px-4 py-2 border">
-                            {{ number_format($partial->amount ?? 0, 2) }}
+                            {{ number_format($partial->amount ?? 0, 3) }}
                         </td>
                     </tr>
                     @endforeach

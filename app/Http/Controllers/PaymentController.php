@@ -1709,13 +1709,16 @@ class PaymentController extends Controller
         $authorizationId = null;
 
         if ($fatoorahPayment) {
+            $invoiceRef = $fatoorahPayment->invoice_ref ?? null;
             $payloadData = $fatoorahPayment->payload;
-            
-            if (is_array($payloadData) && isset($payloadData['Data'])) {
-                $invoiceRef = $payloadData['Data']['InvoiceReference'] ?? 'N/A';
-                $transactions = $payloadData['Data']['InvoiceTransactions'] ?? [];
+
+            if (empty($invoiceRef) && is_array($payloadData) && isset($payloadData['Data'])) {
+                $invoiceRef = $payloadData['Data']['InvoiceReference'] ?? null;
+            }
+            if (is_array($payloadData) && isset($payloadData['Data']['InvoiceTransactions'])) {
+                $transactions = $payloadData['Data']['InvoiceTransactions'];
                 if (!empty($transactions)) {
-                    $authorizationId = $transactions[0]['AuthorizationId'] ?? 'N/A';
+                    $authorizationId = $transactions[0]['AuthorizationId'] ?? null;
                 }
             }
         }

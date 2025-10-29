@@ -1693,14 +1693,14 @@ class ReportController extends Controller
         $creditSum = (clone $partials)->where('invoice_partials.payment_gateway', 'credit')->sum('invoice_partials.amount');
         $gatewaySum = (clone $partials)->whereNotIn('invoice_partials.payment_gateway', ['cash', 'credit'])->sum('invoice_partials.amount');
 
-        $refunds = Refund::whereBetween('date', [$from, $to])
+        $refunds = Refund::whereBetween('refund_date', [$from, $to])
             ->where(function ($q) use ($companyId, $agentIds) {
                 $q->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId))
-                    ->orWhereHas('task.agent.branch.company', fn($q) => $q->where('id', $companyId));
+                    ->orWhereHas('refundDetails.task.agent.branch.company', fn($q) => $q->where('id', $companyId));
                 if ($agentIds) {
                     $q->where(function ($qq) use ($agentIds) {
                         $qq->whereHas('invoice', fn($q) => $q->whereIn('agent_id', $agentIds))
-                            ->orWhereHas('task', fn($q) => $q->whereIn('agent_id', $agentIds));
+                            ->orWhereHas('refundDetails.task', fn($q) => $q->whereIn('agent_id', $agentIds));
                     });
                 }
             })
@@ -2039,26 +2039,27 @@ class ReportController extends Controller
     private function rangeSalesRefunds(int $companyId, Carbon $from, Carbon $to, $agentIds)
     {
         return Refund::with([
-            'invoice.agent',
+            'invoice.agent.branch.company',
             'invoice.client',
-            'task.agent.branch.company',
-            'task.originalTask.invoiceDetail.invoice',
+            'refundDetails.task.agent.branch.company',
+            'refundDetails.task.originalTask.invoiceDetail.invoice',
         ])
-            ->whereBetween('date', [$from, $to])
+            ->whereBetween('refund_date', [$from, $to])
             ->where(function ($q) use ($companyId, $agentIds) {
                 $q->whereHas('invoice.agent.branch.company', fn($q) => $q->where('id', $companyId))
-                    ->orWhereHas('task.agent.branch.company', fn($q) => $q->where('id', $companyId));
+                    ->orWhereHas('refundDetails.task.agent.branch.company', fn($q) => $q->where('id', $companyId));
 
                 if (!empty($agentIds)) {
                     $q->where(function ($qq) use ($agentIds) {
                         $qq->whereHas('invoice', fn($q) => $q->whereIn('agent_id', $agentIds))
-                            ->orWhereHas('task', fn($q) => $q->whereIn('agent_id', $agentIds));
+                            ->orWhereHas('refundDetails.task', fn($q) => $q->whereIn('agent_id', $agentIds));
                     });
                 }
             })
             ->get()
             ->map(function ($refund) {
-                $original  = $refund->task?->originalTask?->invoiceDetail?->invoice;
+                $firstDetail = $refund->refundDetails->first();
+                $original = $firstDetail?->task?->originalTask?->invoiceDetail?->invoice;
                 $refundInv = $refund->invoice;
 
                 $refund->refund_type = $original?->status === 'paid' ? 'Credit to Client' : 'Client Owes';
@@ -2068,7 +2069,7 @@ class ReportController extends Controller
                 $refund->refund_invoice_status = $refundInv?->status;
 
                 $refund->links = [
-                    'view_refund' => route('refunds.edit', ['task' => $refund->task->id, 'refund' => $refund->id]),
+                    'view_refund' => route('refunds.edit', ['refund' => $refund->id]),
                     'view_original' => $original ? route('invoice.details', ['companyId' => $original->agent->branch->company_id, 'invoiceNumber' => $original->invoice_number]) : null,
                     'view_refund_inv' => $refundInv ? route('invoice.show', ['companyId' => $refundInv->agent->branch->company_id, 'invoiceNumber' => $refundInv->invoice_number]) : null,
                 ];

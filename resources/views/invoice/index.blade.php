@@ -308,9 +308,9 @@
                                         </a>
                                         @endif
                                         @endcan
-                                        @if ($invoice->refund)
+                                        @if ($invoice->refund && $invoice->status !== 'paid')
                                         <a data-tooltip="View/Edit Refund"
-                                            href="{{ route('refunds.edit', [$invoice->refund->task_id, $invoice->refund->id]) }}" class="text-sm font-medium text-blue-600 hover:underline">
+                                            href="{{ route('refunds.edit', [$invoice->refund->id]) }}" class="text-sm font-medium text-blue-600 hover:underline">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="20"
                                                 height="20" viewBox="0 0 24 24">
                                                 <path fill="none" stroke="#00ab55"
@@ -335,7 +335,7 @@
                                             </svg>
                                         </a>
                                         @endif
-                                        @if ($invoice->status === 'paid')
+                                        @if (($invoice->status === 'paid' && !$invoice->refund) || $invoice->status === 'paid by refund')
                                         <div x-data="{ viewVoucherModal_{{ $invoice->id }}: false }" class="group">
                                             <div data-tooltip="View Voucher">
                                                 <svg @click="viewVoucherModal_{{ $invoice->id }} = true"
@@ -399,7 +399,7 @@
                                                                     </div>
                                                                     <div class="border-t-2 border-dashed border-gray-400"></div>
                                                                     <div class="grid grid-cols-1 sm:grid-cols-2 text-sm gap-y-2 gap-x-10 text-gray-800">
-                                                                        <div><strong>Name:</strong> {{ $invoiceDetail->task->client->full_name }}</div>
+                                                                        <div><strong>Name:</strong> {{ $invoiceDetail->task->client?->full_name ?? 'N/A' }}</div>
                                                                         <div><strong>Flight:</strong> {{ $invoiceDetail->task->flightDetails->flight_number ?? 'N/A' }}</div>
                                                                         <div><strong>Date:</strong> {{ $invoiceDetail->task->flightDetails->readable_departure_time ?? 'N/A' }}</div>
                                                                         <div><strong>Reference:</strong> {{ $invoiceDetail->task->reference }}</div>
@@ -502,11 +502,7 @@
                                         @endif
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
-                                        @if ($invoice->refund)
-                                        <span class="relative inline-flex cursor-default" data-tooltip="Invoice Refund">
-                                            <span class="badge badge-outline-success">{{ $invoice->status }}</span>
-                                        </span>
-                                        @elseif (in_array($invoice->status, ['paid']))
+                                        @if (in_array($invoice->status, ['paid', 'refunded']))
                                          <a href="{{ route('tasks.pdf.receipt', ['taskId' => $invoiceDetail->task->id]) }}" target="_blank"> 
                                             <span class="badge badge-outline-success">{{ $invoice->status }}</span>
                                          </a> 

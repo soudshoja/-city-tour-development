@@ -1,44 +1,51 @@
 <?php
 
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Refund extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'refund_number',
-        'task_id',
-        'invoice_id',
         'company_id',
         'branch_id',
         'agent_id',
+        'invoice_id',
+        'refund_invoice_id',
+        'method',
         'remarks',
         'remarks_internal',
-        'airline_nett_fare',
-        'tax_refund',
-        'refund_airline_charge',
-        'original_task_profit',
-        'new_task_profit',
-        'total_nett_refund',
-        'service_charge',
         'reason',
-        'method',
-        'account_id',
-        'date',
-        'reference',
+        'total_refund_amount',
+        'total_refund_charge',
+        'total_nett_refund',
         'status',
+        'refund_date',
         'created_by',
-        'updated_at',
+        'updated_by',
     ];
-    
-    public function task()
+
+    protected $casts = [
+        'refund_date' => 'datetime',
+    ];
+
+    public function refundDetails()
     {
-        return $this->belongsTo(Task::class, 'task_id');
+        return $this->hasMany(RefundDetail::class, 'refund_id', 'id');
     }
-    
-    public function account()
+
+    public function originalInvoice()
     {
-        return $this->belongsTo(Account::class, 'account_id');
+        return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class, 'refund_invoice_id');
     }
 
     public function company()
@@ -53,16 +60,16 @@ class Refund extends Model
 
     public function agent()
     {
-        return $this->belongsTo(Agent::class, 'agent_id'); // or Agent model if separate
+        return $this->belongsTo(Agent::class, 'agent_id');
     }
 
-    public function invoice()
+    public function formattedStatus(): string
     {
-        return $this->belongsTo(Invoice::class, 'invoice_id');
+        return ucfirst($this->status ?? 'pending');
     }
 
-    public function getOriginalInvoiceAttribute()
+    public function isCompleted(): bool
     {
-        return $this->task?->originalTask?->invoiceDetail?->invoice;
+        return $this->status === 'completed';
     }
 }

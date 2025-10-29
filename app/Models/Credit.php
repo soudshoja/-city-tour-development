@@ -35,7 +35,7 @@ class Credit extends Model
         parent::boot();
 
         static::creating(function ($credit) {
-            in_array($credit->type, [self::INVOICE, self::TOPUP, self::INVOICE_REFUND]) or
+            in_array($credit->type, [self::INVOICE, self::TOPUP, self::INVOICE_REFUND, self::REFUND]) or
                 throw new InvalidArgumentException("Invalid credit type: {$credit->type}");
         });
     }

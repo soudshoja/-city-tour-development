@@ -435,14 +435,15 @@ Route::middleware(['auth'])->group(function () {
         'as' => 'refunds.',
     ], function () {
         Route::get('/', [RefundController::class, 'index'])->name('index');
-        Route::get('/{task}/create', [RefundController::class, 'create'])->name('create');
+        Route::get('/create', [RefundController::class, 'create'])->name('create');
         Route::post('/', [RefundController::class, 'store'])->name('store');
         Route::post('/unpaid-invoice', [RefundController::class, 'storeForUnpaidInvoice'])->name('store-unpaid');
-        Route::get('/{task}/{refund}/edit', [RefundController::class, 'edit'])->name('edit');
-        Route::put('/{task}/{refund}', [RefundController::class, 'update'])->name('update');
-        Route::post('/{task}/{refund}/complete-process', [RefundController::class, 'complete_process'])->name('complete_process');
+        Route::get('/{refund}/edit', [RefundController::class, 'edit'])->name('edit');
+        Route::put('/{refund}', [RefundController::class, 'update'])->name('update');
+        Route::post('/{refund}/complete-process', [RefundController::class, 'complete_process'])->name('complete_process');
         Route::get('/{refundClientId}/complete', [RefundController::class, 'completeRefundClient'])->name('refund-client.complete');
         Route::delete('/{refundClientId}', [RefundController::class, 'deleteRefundClient'])->name('refund-client.delete');
+        Route::get('/{companyId}/{refundNumber}', [RefundController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
     });
 
 

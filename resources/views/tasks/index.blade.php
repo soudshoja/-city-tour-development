@@ -555,10 +555,6 @@
                             </div>
 
                             @unlessrole('agent')
-                            <!-- <div class="mb-4">
-                                <x-searchable-dropdown name="agent_id" :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])" placeholder="Select Agent"
-                                    label="Select an Agent" />
-                            </div> -->
                             @else
                             <input type="hidden" name="agent_id" value="{{ Auth()->user()->agent->id }}">
                             @endunlessrole
@@ -905,22 +901,17 @@
                                     },
                                     updateFloatingActions() {
                                         const floating = document.getElementById('floatingActions');
-                                        const createBtn = document.getElementById('createInvoiceBtn');
-                                        const createBtnText = document.getElementById('createInvoiceBtnText');
+                                        const invoiceBtn = document.getElementById('createInvoiceBtn');
+                                        const refundBtn = document.getElementById('proceedRefundBtn');
 
-                                        const resetButton = () => {
-                                            createBtn?.classList.add('hidden');
-                                            createBtn?.setAttribute('disabled', 'disabled');
-                                            createBtnText.innerText = 'Create Invoice';
-                                            createBtn?.classList.remove('bg-red-500','hover:bg-red-600','text-white');
-                                            createBtn?.classList.add('btn-success','hover:bg-green-600');
-                                            createBtn?.setAttribute('data-route', this.originalInvoiceRoute);
-                                            createBtn?.removeAttribute('data-task-status'); 
+                                        const hideButtons = () => {
+                                            invoiceBtn?.classList.add('hidden');
+                                            refundBtn?.classList.add('hidden');
                                         };
 
                                         if (this.selectedTasks.length === 0) {
                                             floating?.classList.add('hidden');
-                                            resetButton();
+                                            hideButtons();
                                             return;
                                         }
 
@@ -937,52 +928,45 @@
                                             };
                                         });
 
-                                        const anyRefund = selected.some(t => t.status === 'refund');
-                                        const canProceedRefund =
-                                            this.selectedTasks.length === 1 &&
-                                            anyRefund &&
-                                            !!selected[0].agent_id &&
-                                            selected[0].enabled &&
-                                            !selected[0].refundDetail &&
-                                            selected[0].is_complete;
+                                        const ids = this.selectedTasks.join(',');
 
-                                        const allCanCreateInvoice = !anyRefund && selected.every(t => this.canCreateInvoice(t));
-                                        const showBulk = this.selectedTasks.length > 1;
-                                        const shouldShow = canProceedRefund || allCanCreateInvoice || showBulk;
+                                        const canCreateInvoice = selected.every(t => this.canCreateInvoice(t));
+                                        const canProceedRefund = selected.every(t =>
+                                            t.status === 'refund' && t.is_complete && !t.refundDetail && t.agent_id && t.enabled
+                                        );
+
+                                        const shouldShow = canCreateInvoice || canProceedRefund || this.selectedTasks.length > 1;
 
                                         if (!shouldShow) {
                                             floating?.classList.add('hidden');
-                                            resetButton();
+                                            hideButtons();
                                             return;
                                         }
 
                                         floating?.classList.remove('hidden');
+                                        hideButtons();
+
+                                        if (canCreateInvoice) {
+                                            invoiceBtn?.classList.remove('hidden');
+                                            invoiceBtn?.setAttribute('data-route', `/invoices/create?task_ids=${ids}`);
+                                        }
 
                                         if (canProceedRefund) {
-                                            createBtn?.classList.remove('hidden');
-                                            createBtn?.removeAttribute('disabled');
-                                            createBtnText.innerText = 'Proceed Refund';
-                                            createBtn?.classList.remove('btn-success','hover:bg-green-600');
-                                            createBtn?.classList.add('bg-red-500','hover:bg-red-600','text-white');
-                                            createBtn?.setAttribute('data-route', `/refunds/${this.selectedTasks[0]}/create`);
-                                            createBtn?.setAttribute('data-task-status', 'refund');
-                                        } else if (allCanCreateInvoice) {
-                                            createBtn?.classList.remove('hidden');
-                                            createBtn?.removeAttribute('disabled');
-                                            createBtnText.innerText = 'Create Invoice';
-                                            createBtn?.classList.remove('bg-red-500','hover:bg-red-600','text-white');
-                                            createBtn?.classList.add('btn-success','hover:bg-green-600');
-                                            createBtn?.setAttribute('data-route', this.originalInvoiceRoute);
-                                            createBtn?.setAttribute('data-task-status', 'invoice');
+                                            refundBtn?.classList.remove('hidden');
+                                            refundBtn?.setAttribute('data-route', `/refunds/create?task_ids=${ids}`);
+                                        }
+
+                                        const bulkEditBtn = document.querySelector('[x-show=\'selectedTasks.length > 1\']');
+                                        if (this.selectedTasks.length > 1) {
+                                            bulkEditBtn?.classList.remove('hidden');
                                         } else {
-                                            resetButton();
+                                            bulkEditBtn?.classList.add('hidden');
                                         }
                                     },
                                     canCreateInvoice(task) {
                                         if (!task.agent_id) return false;
                                         return task.enabled && (
-                                            (task.status === 'refund' && !task.refundDetail && task.is_complete) ||
-                                            (task.status !== 'refund' && !task.invoiceDetail)
+                                            (task.status === 'refund' && task.is_complete) || (task.status !== 'refund' && !task.invoiceDetail)
                                         );
                                     },
                                     clearSelectedTasks() {
@@ -991,8 +975,6 @@
                                         this.updateFloatingActions();
                                     }
                                 }" x-init="window.selectedTasksGlobal = selectedTasks" x-cloak>
-
-
                                     <table id="myTable" class="whitespace-nowrap dataTable-table">
                                         <thead>
                                             <tr>
@@ -1120,8 +1102,8 @@
                                             : !$task->refundDetail && $task->is_complete && $task->agent_id;
                                             @endphp
                                             <tr class="taskRow task-row 
-                                                {{ ($task->invoiceDetail || $task->refundDetail) ? '!cursor-not-allowed' : 'cursor-pointer' }}"
-                                                @click="{{ (!$task->invoiceDetail && !$task->refundDetail) ? "toggleTaskSelection($task->id)" : '' }}"
+                                                {{ ($task->invoiceDetail) ? '!cursor-not-allowed' : 'cursor-pointer' }}"
+                                                @click="{{ (!$task->invoiceDetail) ? "toggleTaskSelection($task->id)" : '' }}"
                                                 x-show="{{ $key }} < shown" x-cloak
                                                 :class="selectedTasks.includes({{ $task->id }}) ? 'selected' : ''"
                                                 data-agent-id="{{ $task->agent_id }}"
@@ -2005,32 +1987,34 @@
                                         </div>
                                     </div>
 
-                                    <div id="floatingActions"
-                                        class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-10 p-3">
+                                <div id="floatingActions"
+                                    class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-10 p-3">
                                         <div class="flex justify-between gap-5 items-center h-full">
                                             <button id="createInvoiceBtn" data-route="{{ route('invoices.create') }}" type="button"
-                                                class="flex px-5 py-3 gap-3 btn-success hover:bg-green-600 rounded-lg shadow-sm items-center transition-colors duration-200">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                    viewBox="0 0 24 24">
+                                                class="hidden flex px-5 py-3 gap-3 btn-success hover:bg-green-600 rounded-lg shadow-sm items-center transition-colors duration-200">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
                                                     <path fill="#ffffff"
                                                         d="M2 12c0-2.8 1.6-5.2 4-6.3V3.5C2.5 4.8 0 8.1 0 12s2.5 7.2 6 8.5v-2.2c-2.4-1.1-4-3.5-4-6.3m13-9c-5 0-9 4-9 9s4 9 9 9s9-4 9-9s-4-9-9-9m5 10h-4v4h-2v-4h-4v-2h4V7h2v4h4z" />
                                                 </svg>
-                                                <span id="createInvoiceBtnText" class="text-sm">Create Invoice</span>
+                                                <span class="text-sm">Create Invoice</span>
+                                            </button>
+                                            <button id="proceedRefundBtn" data-route="{{ route('refunds.create') }}" type="button"
+                                                class="hidden flex px-5 py-3 gap-3 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-sm items-center transition-colors duration-200">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                                    <path fill="currentColor" d="M13 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7V3Zm2 5v8h-2V8h2Z" />
+                                                </svg>
+                                                <span class="text-sm">Proceed Refund</span>
                                             </button>
                                         </div>
                                         <div class="flex justify-between gap-5 items-center h-full">
-                                            <button type="button"
-                                                x-show="selectedTasks.length > 1"
-                                                @click="showBulkEditModal = true"
+                                            <button type="button" x-show="selectedTasks.length > 1" @click="showBulkEditModal = true"
                                                 class="flex px-5 py-3 gap-3 bg-yellow-500 hover:bg-yellow-600 rounded-lg shadow-sm items-center transition-colors duration-200">
-
                                                 <span class="text-sm text-white">Bulk Edit</span>
                                             </button>
                                         </div>
                                         <div id="closeTaskFloatingActions" @click="clearSelectedTasks()"
                                             class="flex cursor-pointer items-center justify-center">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                viewBox="0 0 12 12">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 12 12">
                                                 <path fill="#E53935"
                                                     d="M1.757 10.243a6.001 6.001 0 1 1 8.488-8.486a6.001 6.001 0 0 1-8.488 8.486M6 4.763l-2-2L2.763 4l2 2l-2 2L4 9.237l2-2l2 2L9.237 8l-2-2l2-2L8 2.763Z" />
                                             </svg>
@@ -2218,27 +2202,23 @@
             saveColumnPreferences();
         });
 
-        const createInvoiceBtn = document.getElementById('createInvoiceBtn');
-        if (createInvoiceBtn) {
-            createInvoiceBtn.replaceWith(createInvoiceBtn.cloneNode(true)); // Remove all previous listeners
-        }
+        ['createInvoiceBtn', 'proceedRefundBtn'].forEach(btnId => {
+            const btn = document.getElementById(btnId);
+            if (btn) btn.replaceWith(btn.cloneNode(true));
+        });
 
-        document.getElementById('createInvoiceBtn')?.addEventListener('click', function() {
+        document.getElementById('createInvoiceBtn')?.addEventListener('click', function () {
             const selectedTasks = window.selectedTasksGlobal ?? [];
+            if (selectedTasks.length === 0) return alert('No task selected.');
+            const route = this.getAttribute('data-route');
+            window.location.href = route;
+        });
 
-            console.log('Selected tasks:', selectedTasks);
-
-            if (selectedTasks.length > 0) {
-                const taskStatus = this.getAttribute('data-task-status');
-                if (taskStatus === 'refund') {
-                    window.location.href = this.getAttribute('data-route');
-                } else {
-                    const url = `/invoices/create?task_ids=${selectedTasks.join(',')}`;
-                    window.location.href = url;
-                }
-            } else {
-                alert('No task selected.');
-            }
+        document.getElementById('proceedRefundBtn')?.addEventListener('click', function () {
+            const selectedTasks = window.selectedTasksGlobal ?? [];
+            if (selectedTasks.length === 0) return alert('No task selected.');
+            const route = this.getAttribute('data-route');
+            window.location.href = route;
         });
 
         // Add event listeners to close modals when clicked outside or on close buttons

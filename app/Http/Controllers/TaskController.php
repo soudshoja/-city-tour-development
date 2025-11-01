@@ -34,6 +34,7 @@ use App\Models\Payment;
 use App\Models\FileUpload;
 use App\Models\SystemLog;
 use App\Models\AutoBilling;
+use App\Models\Wallet;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -175,8 +176,6 @@ class TaskController extends Controller
                 ];
             })
             ->toArray();
-
-        //dd($listOfCreditors);
 
         $paymentMethod = Account::where('parent_id', 39)->get();
         if ($search = $request->query('q')) {
@@ -596,6 +595,7 @@ class TaskController extends Controller
             'airline_reference' => 'nullable|string',
             'created_by' => 'nullable|string',
             'issued_by' => 'nullable|string',
+            'iata_number' => 'nullable|string',
             'status' => 'required|string',
             'supplier_status' => 'nullable|string',
             'price' => 'nullable|numeric',
@@ -1057,6 +1057,192 @@ class TaskController extends Controller
                 Log::warning('Financial processing skipped for task: ' . $task->reference . ' - reason: ' . ($offline ? 'incomplete' : 'not offline supplier') . ' - status: ' . $task->status);
             }
 
+            $issuedBy = $task->issued_by;
+            $iataNumber = $task->iata_number;
+
+            $wallet = Wallet::where('iata_number', $task->iata_number)->first();
+
+            $liabilities = Account::where('name', 'like', '%Liabilities%')
+                ->value('id');
+            Log::info('Liabilities ID', ['id' => $liabilities]);
+
+            $accountPayable = Account::where('name', 'like', '%Accounts Payable%')
+                ->where('parent_id', $liabilities)
+                ->value('id');
+            Log::info('accountPayable ID', ['id' => $accountPayable]);
+
+            $creditors = Account::where('name', 'like', '%Creditors%')
+                ->where('root_id', $liabilities)
+                ->where('parent_id', $accountPayable)
+                ->value('id');
+            Log::info('creditors ID', ['id' => $creditors]);
+
+            if ($iataNumber) {
+                Log::info('IATA Number existed. Starting to automate');
+
+                if ($task->supplier_id == '2') {
+                    if ($issuedBy == 'KWIKT211N' && $iataNumber == '42230215') {
+                        Log::info('Issued By City Travelers: ', [
+                            'issued_by' => $issuedBy,
+                            'iata_number' => $iataNumber,
+                        ]);
+
+                        $payment_method_account_id = Account::where('name', 'like', '%City Travelers (EasyPay)%')
+                        ->where('root_id', $liabilities)
+                        ->where('parent_id', $creditors)
+                        ->value('id');
+                        
+                        $task->update([
+                            'payment_method_account_id' => $payment_method_account_id
+                        ]);
+
+                        $response = $this->updateJournalPaymentMethod($task, $payment_method_account_id);
+                        Log::info('response', [
+                            'data' => $response
+                        ]);
+                        if (!$response instanceof JsonResponse) {
+                            Log::error('Response from updateJournalPaymentMethod is not a JsonResponse', [
+                                'task_id' => $task->id,
+                                'expected_type' => JsonResponse::class, 
+                                'actual_type' => is_object($response) ? get_class ($response) : gettype($response)
+                            ]);
+
+                            throw new Exception('Failed to update payment method journal entries');
+                        }
+
+                        if ($response->getData(true)['status'] !== 'success') {
+                            Log::error('Failed to update payment method journal entries', [
+                                'task_id' => $task->id,
+                                'error_message' => $response->getData()->message
+                            ]);
+
+                            throw new Exception('Failed to update payment method journal entries: ' . $response->getData()->message);
+                        }
+
+                        $wallet = Wallet::where('iata_number', $iataNumber)
+                            ->latest('created_at')
+                            ->first();
+
+                        if ($wallet) {
+                            $openingBalance = $wallet->closing_balance ?? $wallet->wallet_balance;
+                        }
+
+                        $closingBalance = $openingBalance - $task->total;
+
+                        Wallet::create([
+                            'iata_number'     => $iataNumber,
+                            'currency'        => $task->exchange_currency ?? 'KWD',
+                            'opening_balance' => $openingBalance,
+                            'task_amount'     => $task->total,
+                            'closing_balance' => $closingBalance,
+                        ]);
+
+                        Log::info("Wallet record created for task ID {$task->id}", [
+                            'opening_balance' => $openingBalance,
+                            'task_amount' => $task->total,
+                            'closing_balance' => $closingBalance
+                        ]);
+                        
+                    } elseif ($issuedBy == 'KWIKT2843') {
+                        Log::info('Issued By Como Travel: ', [
+                            'issued_by' => $issuedBy,
+                            'iata_number' => $iataNumber,
+                        ]);
+
+                        $payment_method_account_id = Account::where('name', 'like', '%Como Travel & Tourism%')->value('id');
+
+                        $response = $this->updateJournalPaymentMethod($task, $payment_method_account_id);
+                        Log::info('response', [
+                            'data' => $response
+                        ]);
+                        if (!$response instanceof JsonResponse) {
+                            Log::error('Response from updateJournalPaymentMethod is not a JsonResponse', [
+                                'task_id' => $task->id,
+                                'expected_type' => JsonResponse::class, 
+                                'actual_type' => is_object($response) ? get_class ($response) : gettype($response)
+                            ]);
+
+                            throw new Exception('Failed to update payment method journal entries');
+                        }
+
+                        if ($response->getData(true)['status'] !== 'success') {
+                            Log::error('Failed to update payment method journal entries', [
+                                'task_id' => $task->id,
+                                'error_message' => $response->getData()->message
+                            ]);
+
+                            throw new Exception('Failed to update payment method journal entries: ' . $response->getData()->message);
+                        }
+                    }
+                } elseif ($task->supplier_id == '29' || $task->supplier_id == '38' || $task->supplier_id == '39') {
+                    Log::info('NDC Suppliers detected. Starting the process to automate payment method into using IATA City Travelers (EasyPay)');
+
+                    $payment_method_account_id = Account::where('name', 'like', '%City Travelers (EasyPay)%')
+                    ->where('root_id', $liabilities)
+                    ->where('parent_id', $creditors)
+                    ->value('id');
+                    
+                    $task->update([
+                        'payment_method_account_id' => $payment_method_account_id
+                    ]);
+
+                    $response = $this->updateJournalPaymentMethod($task, $payment_method_account_id);
+                    Log::info('response', [
+                        'data' => $response
+                    ]);
+                    if (!$response instanceof JsonResponse) {
+                        Log::error('Response from updateJournalPaymentMethod is not a JsonResponse', [
+                            'task_id' => $task->id,
+                            'expected_type' => JsonResponse::class, 
+                            'actual_type' => is_object($response) ? get_class ($response) : gettype($response)
+                        ]);
+
+                        throw new Exception('Failed to update payment method journal entries');
+                    }
+
+                    if ($response->getData(true)['status'] !== 'success') {
+                        Log::error('Failed to update payment method journal entries', [
+                            'task_id' => $task->id,
+                            'error_message' => $response->getData()->message
+                        ]);
+
+                        throw new Exception('Failed to update payment method journal entries: ' . $response->getData()->message);
+                    }
+
+                    $wallet = Wallet::where('iata_number', $iataNumber)
+                        ->latest('created_at')
+                        ->first();
+
+                    if ($wallet) {
+                        $openingBalance = $wallet->closing_balance ?? $wallet->wallet_balance;
+                    }
+
+                    $closingBalance = $openingBalance - $task->total;
+
+                    Wallet::create([
+                        'iata_number'     => $iataNumber,
+                        'currency'        => $task->exchange_currency ?? 'KWD',
+                        'opening_balance' => $openingBalance,
+                        'task_amount'     => $task->total,
+                        'closing_balance' => $closingBalance,
+                    ]);
+
+                    Log::info("Wallet record created for task ID {$task->id}", [
+                        'opening_balance' => $openingBalance,
+                        'task_amount' => $task->total,
+                        'closing_balance' => $closingBalance
+                    ]);
+                } 
+
+                $this->storeNotification([
+                    'user_id' => $task->agent->id,
+                    'title' => 'IATA City Travelers (EasyPay) successfully deducted',
+                    'message' => 'IATA City Travelers (EasyPay) balance has deducted KWD ' . $task->total . ' for task ID: ' . $task->id,
+                ]);
+            } else {
+                Log::info('No IATA wallet detected. Skipping the automation');
+            }
+            
             DB::commit();
 
             return response()->json([
@@ -4677,7 +4863,7 @@ class TaskController extends Controller
                 'name' => $paymentMethodAccount->name,
                 'description' => 'Update payment account for: ' . $task->reference,
                 'reference_type' => 'Payment',
-                'transaction_date' => $task->supplier_pay_date ?? $task->issued_date,
+                'transaction_date' => $task->supplier_pay_date ?? $task->issued_date ?? $task->created_at,
             ]);
 
             Log::info('Created new transaction for task ID: ' . $task->id . ' with ID: ' . $transaction->id);
@@ -4691,7 +4877,7 @@ class TaskController extends Controller
                 'debit' => 0,
                 'credit' => $task->total,
                 'balance' => $task->total,
-                'transaction_date' => $task->supplier_pay_date ?? $task->issued_date,
+                'transaction_date' => $task->supplier_pay_date ?? $task->issued_date ?? $task->created_at,
                 'description' => 'Update For Whom to Pay: ' . $task->reference,
                 'name' => $paymentMethodAccount->name,
                 'type' => 'payable',

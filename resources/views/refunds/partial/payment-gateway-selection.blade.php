@@ -11,7 +11,7 @@
         <select id="payment_gateway_option" name="payment_gateway_option"
             class="border border-gray-300 p-2 rounded w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             onchange="updatePaymentMethods()">
-            <option value="">Select a Payment Gateway</option>
+            <option value="" disabled selected>Select a Payment Gateway</option>
             @if(isset($paymentGateways))
             @foreach ($paymentGateways as $gateway)
 

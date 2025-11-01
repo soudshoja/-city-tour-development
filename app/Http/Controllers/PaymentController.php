@@ -55,6 +55,7 @@ use App\Models\Role;
 use App\Models\Credit;
 use App\Models\Company;
 use App\Models\MyFatoorahPayment;
+use App\Models\Refund;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Gate;
@@ -1708,13 +1709,16 @@ class PaymentController extends Controller
         $authorizationId = null;
 
         if ($fatoorahPayment) {
+            $invoiceRef = $fatoorahPayment->invoice_ref ?? null;
             $payloadData = $fatoorahPayment->payload;
-            
-            if (is_array($payloadData) && isset($payloadData['Data'])) {
-                $invoiceRef = $payloadData['Data']['InvoiceReference'] ?? 'N/A';
-                $transactions = $payloadData['Data']['InvoiceTransactions'] ?? [];
+
+            if (empty($invoiceRef) && is_array($payloadData) && isset($payloadData['Data'])) {
+                $invoiceRef = $payloadData['Data']['InvoiceReference'] ?? null;
+            }
+            if (is_array($payloadData) && isset($payloadData['Data']['InvoiceTransactions'])) {
+                $transactions = $payloadData['Data']['InvoiceTransactions'];
                 if (!empty($transactions)) {
-                    $authorizationId = $transactions[0]['AuthorizationId'] ?? 'N/A';
+                    $authorizationId = $transactions[0]['AuthorizationId'] ?? null;
                 }
             }
         }
@@ -3033,6 +3037,8 @@ class PaymentController extends Controller
                     $invoice->paid_date = now();
                     $invoice->save();
 
+                    $this->completeRefundIfApplicable($payment);
+
                     $chargeRecord = Charge::where('name', 'LIKE', '%Tap%')->where('company_id', $payment->invoice->agent->branch->company->id)->first();
                     $bankPaymentFee = Account::find($chargeRecord->acc_fee_bank_id);
                     $tapAccount = Account::find($chargeRecord->acc_fee_id);
@@ -3281,23 +3287,24 @@ class PaymentController extends Controller
                     $payment->status = 'completed';
                     $payment->save();
 
-                    // if (!empty($partialId) && $payment->invoice_id) {
-                    //     $partial = InvoicePartial::where('invoice_id', $payment->invoice_id)
-                    //         ->where('id', $partialId)
-                    //         ->first();
+                    $this->completeRefundIfApplicable($payment);
+
+                    if (!empty($partialId) && $payment->invoice_id) {
+                        $partial = InvoicePartial::where('invoice_id', $payment->invoice_id)
+                            ->where('id', $partialId)
+                            ->first();
                     
-                    //     if ($partial) {
-                    //         $partial->status = 'paid';
-                    //         $partial->payment_id = $payment->id;
-                    //         $partial->amount = $payment->amount;
-                    //         $partial->save();
+                        if ($partial) {
+                            $partial->status = 'paid';
+                            $partial->payment_id = $payment->id;
+                            $partial->save();
                     
-                    //         Log::info('MF Webhook: updated invoice partial to paid', [
-                    //             'invoice_id' => $payment->invoice_id,
-                    //             'partial_id' => $partialId,
-                    //         ]);
-                    //     }
-                    // }
+                            Log::info('MF Webhook: updated invoice partial to paid', [
+                                'invoice_id' => $payment->invoice_id,
+                                'partial_id' => $partialId,
+                            ]);
+                        }
+                    }
 
                     $invoiceData = data_get($payload, 'Data.Invoice', []);
                     $transactionData = data_get($payload, 'Data.Transaction', []);
@@ -4780,7 +4787,25 @@ class PaymentController extends Controller
             'payment_gateway' => 'Hesabe',
             'payment_method_id' => $paymentMethodId,
         ]);
-    }   
+    }
+
+    protected function completeRefundIfApplicable(Payment $payment)
+    {
+        $invoice = $payment->invoice;
+
+        if ($invoice) {
+            $refund = Refund::where('refund_invoice_id', $invoice->id)->first();
+
+            if ($refund && $refund->status !== 'completed') {
+                $refund->update(['status' => 'completed']);
+
+                Log::info('Refund automatically marked as completed (by invoice link)', [
+                    'refund_id' => $refund->id,
+                    'refund_invoice_id' => $invoice->id,
+                ]);
+            }
+        }
+    }
 
     private function publicReceiptNotice(
         Payment $payment,

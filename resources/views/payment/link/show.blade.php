@@ -118,16 +118,20 @@
                     <td class="py-3 px-4 text-right">{{ $payment->paymentMethod->english_name ?? '-' }}</td>
                 </tr>
                 @endif
-                @if($payment->payment_gateway !== 'Tabby' && $payment->payment_reference != '')
-                        <tr>
-                            @if ($payment->payment_gateway !== 'MyFatoorah')
-                                <td class="py-3 px-4">Payment Reference</td>
-                            @elseif ($payment->invoice_reference == '' && $payment->auth_code == '')
+                @if(!empty($payment->payment_reference))
+                    <tr>
+                        @if ($payment->payment_gateway === 'MyFatoorah')
+                            @if(empty($payment->invoice_reference) && empty($payment->auth_code) && empty($invoiceRef))
                                 <td class="py-3 px-4">Invoice ID</td>
+                            @else
+                                <td class="py-3 px-4">Payment Reference</td>
                             @endif
-                            <td class="py-3 px-4 text-right">{{ $payment->payment_reference }}</td>
-                        </tr>
-                    @if($payment->payment_gateway === 'MyFatoorah' && $payment->status === 'completed')
+                        @else
+                            <td class="py-3 px-4">Payment Reference</td>
+                        @endif
+                        <td class="py-3 px-4 text-right">{{ $payment->payment_reference }}</td>
+                    </tr>
+                    @if($payment->payment_gateway === 'MyFatoorah' && $payment->status === 'completed' && !empty($invoiceRef))
                         <tr>
                             <td class="py-3 px-4">Invoice Reference</td>
                             <td class="py-3 px-4 text-right">{{ $invoiceRef }}</td>

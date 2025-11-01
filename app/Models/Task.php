@@ -113,7 +113,7 @@ class Task extends Model
         $isComplete = true;
 
         foreach ($this->requiredColumn as $column) {
-            if (empty($this->$column) && $this->$column !== 0 && $this->$column !== '0') {
+            if (empty($this->$column) && $this->$column != 0 && $this->$column != '0') {
                 $isComplete = false;
                 break;
             }
@@ -197,7 +197,7 @@ class Task extends Model
 
     public function refundDetail()
     {
-        return $this->hasOne(Refund::class, 'task_id');
+        return $this->hasOne(RefundDetail::class, 'task_id');
     }
 
     public function agent()

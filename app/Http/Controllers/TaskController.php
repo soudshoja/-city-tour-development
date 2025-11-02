@@ -285,12 +285,14 @@ class TaskController extends Controller
                     }
                     break;
                 case 'supplier':
-                    if ($request->filled('supplier')) {
-                        $suppliers = (array) $request->input('supplier');
-                        $query->whereHas('supplier', function ($q) use ($suppliers) {
-                            foreach ($suppliers as $supplier) {
-                                $q->orWhere('name', 'like', '%' . $supplier . '%');
-                            }
+                    $supplierFilters = (array) $request->input('supplier', $request->input('supplier[]', []));
+                    if (!empty($supplierFilters)) {
+                        $query->whereHas('supplier', function ($q) use ($supplierFilters) {
+                            $q->where(function ($subQ) use ($supplierFilters) {
+                                foreach ($supplierFilters as $supplier) {
+                                    $subQ->orWhere('name', 'like', '%' . $supplier . '%');
+                                }
+                            });
                         });
                     }
                     break;

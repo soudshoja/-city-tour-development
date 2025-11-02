@@ -2688,9 +2688,7 @@
     window.allTaskTypes = @json($allTypes ?? []);
 
     window.companySuppliers = @json($suppliers->pluck('name')->all());
-    window.SUPPLIERS = @json(
-        $suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name, 'has_hotel' => $s->has_hotel])
-    );
+    window.SUPPLIERS = @json($suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name, 'has_hotel' => $s->has_hotel]));
 
     document.addEventListener('alpine:init', () => {
         Alpine.store('dropdown', {
@@ -4328,13 +4326,72 @@
     }
     // Open modal
     document.getElementById('toggleFilters').onclick = () => {
-        document.getElementById('filterModal').classList.add('active');
+        // Load existing filters from URL if filterRows is empty
         if (filterRows.length === 0) {
-            filterRows.push({
-                column: Object.keys(filterConfig.columns)[0],
-                value: ''
+            const params = new URLSearchParams(window.location.search);
+            
+            // Handle date-range fields
+            Object.entries(filterConfig.columns).forEach(([key, col]) => {
+                if (col.type === 'date-range') {
+                    const from = params.get(`${key}_from`);
+                    const to = params.get(`${key}_to`);
+                    if (from || to) {
+                        filterRows.push({
+                            column: key,
+                            value: {
+                                from: from || '',
+                                to: to || ''
+                            }
+                        });
+                    }
+                }
             });
+
+            // Handle status[] and status (avoid duplicates)
+            const statusValues = [
+                ...params.getAll('status[]'),
+                ...params.getAll('status'),
+                ...Array.from(params.keys())
+                .filter(k => k.startsWith('status['))
+                .map(k => params.get(k))
+            ].filter((v, i, arr) => arr.indexOf(v) === i);
+
+            statusValues.forEach(val => {
+                filterRows.push({
+                    column: 'status',
+                    value: val
+                });
+            });
+
+            // Handle other filters (including array filters)
+            Object.entries(filterConfig.columns).forEach(([key, col]) => {
+                if (col.type !== 'date-range' && key !== 'status') {
+                    const values = [
+                        ...params.getAll(`${key}[]`),
+                        ...params.getAll(key)
+                    ].filter((v, i, arr) => arr.indexOf(v) === i);
+
+                    values.forEach(val => {
+                        if (val !== '') {
+                            filterRows.push({
+                                column: key,
+                                value: val
+                            });
+                        }
+                    });
+                }
+            });
+
+            // If still no filters, add an empty row
+            if (filterRows.length === 0) {
+                filterRows.push({
+                    column: Object.keys(filterConfig.columns)[0],
+                    value: ''
+                });
+            }
         }
+        
+        document.getElementById('filterModal').classList.add('active');
         renderFilterRows();
     };
     // Close modal
@@ -4387,19 +4444,25 @@
             });
         });
 
-        // Handle other filters (skip status/status[])
-        for (const [key, value] of params.entries()) {
-            if (
-                Object.keys(filterConfig.columns).includes(key) &&
-                filterConfig.columns[key].type !== 'date-range' &&
-                key !== 'status' && key !== 'status[]'
-            ) {
-                filterRows.push({
-                    column: key,
-                    value
+        // Handle other filters (including array filters)
+        Object.entries(filterConfig.columns).forEach(([key, col]) => {
+            if (col.type !== 'date-range' && key !== 'status') {
+                // Get all values for this key (array or single)
+                const values = [
+                    ...params.getAll(`${key}[]`),
+                    ...params.getAll(key)
+                ].filter((v, i, arr) => arr.indexOf(v) === i);
+
+                values.forEach(val => {
+                    if (val !== '') {
+                        filterRows.push({
+                            column: key,
+                            value: val
+                        });
+                    }
                 });
             }
-        }
+        });
 
         if (filterRows.length === 0) {
             filterRows.push({

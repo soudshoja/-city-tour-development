@@ -308,31 +308,124 @@
         </div>
     </div>
 
-    <div class="my-6 p-4 grid bg-white rounded-md shadow-md w-full overflow-x-auto">
-        <p class="font-semibold">Supplier Policy</p>
-        @include('suppliers.partials.add_procedure')
-        @include('suppliers.partials.list_procedure', ['companyId' => $companyId, 'supplierCompany' => $supplierCompany])
-    </div>
+    <div class="space-y-6 mt-6">
+        <div class="bg-white rounded-md shadow-md p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center">Supplier Details</h2>
+                <div class="flex flex-wrap gap-2">
+                    @if($supplier->has_flight)
+                    <span class="px-2 py-1 text-xs bg-sky-100 text-sky-700 rounded-full border border-sky-300 flex items-center gap-1">
+                        <i class="fa-solid fa-plane"></i> Flight
+                    </span>
+                    @endif
+                    @if($supplier->has_hotel)
+                    <span class="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full border border-yellow-300 flex items-center gap-1">
+                        <i class="fa-solid fa-bed"></i> Hotel
+                    </span>
+                    @endif
+                    @if($supplier->has_visa)
+                    <span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full border border-green-300 flex items-center gap-1">
+                        <i class="fa-solid fa-passport"></i> Visa
+                    </span>
+                    @endif
+                    @if($supplier->has_insurance)
+                    <span class="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full border border-purple-300 flex items-center gap-1">
+                        <i class="fa-solid fa-shield-heart"></i> Insurance
+                    </span>
+                    @endif
+                    @if($supplier->has_car)
+                    <span class="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded-full border border-orange-300 flex items-center gap-1">
+                        <i class="fa-solid fa-car"></i> Car
+                    </span>
+                    @endif
+                    @if($supplier->has_tour)
+                    <span class="px-2 py-1 text-xs bg-pink-100 text-pink-700 rounded-full border border-pink-300 flex items-center gap-1">
+                        <i class="fa-solid fa-map-location-dot"></i> Tour
+                    </span>
+                    @endif
+                </div>
+            </div>
+            <div class="grid md:grid-cols-2 gap-6 text-sm text-gray-700">
+                <div class="space-y-2">
+                    <p><i class="fa-regular fa-id-badge text-blue-500 w-5 inline-block"></i>
+                        <strong>Name:</strong> {{ $supplier->name ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-user-tie text-blue-500 w-5 inline-block"></i>
+                        <strong>Contact Person:</strong> {{ $supplier->contact_person ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-regular fa-envelope text-blue-500 w-5 inline-block"></i>
+                        <strong>Email:</strong> {{ $supplier->email ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-phone text-blue-500 w-5 inline-block"></i>
+                        <strong>Phone:</strong> {{ $supplier->phone ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-map-marker-alt text-blue-500 w-5 inline-block"></i>
+                        <strong>Address:</strong> {{ $supplier->address ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-city text-blue-500 w-5 inline-block"></i>
+                        <strong>City:</strong> {{ $supplier->city ?? 'Not Set' }}
+                    </p>
+                </div>
 
-    <div class="body p-6 bg-white border-b border-gray-200 rounded-md shadow-md my-2">
-        <div class="font-semibold text-lg">
-            Supplier Details
+                <div class="space-y-2">
+                    <p><i class="fa-solid fa-location-dot text-blue-500 w-5 inline-block"></i>
+                        <strong>State:</strong> {{ $supplier->state ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-mail-bulk text-blue-500 w-5 inline-block"></i>
+                        <strong>Postal Code:</strong> {{ $supplier->postal_code ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-flag text-blue-500 w-5 inline-block"></i>
+                        <strong>Country:</strong> {{ $supplier->country->name ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-file-contract text-blue-500 w-5 inline-block"></i>
+                        <strong>Payment Terms:</strong> {{ $supplier->payment_terms ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-lock text-blue-500 w-5 inline-block"></i>
+                        <strong>Auth Type:</strong> {{ ucfirst($supplier->auth_type) }}
+                    </p>
+                    <p><i class="fa-solid fa-clipboard-check text-blue-500 w-5 inline-block"></i>
+                        <strong>Manual Supplier:</strong> {{ $supplier->is_manual ? 'Yes' : 'No' }}
+                    </p>
+                </div>
+            </div>
         </div>
-        <div class="supplier-details">
-            <div class="overflow-hidden">
-                <div>{{ $supplier->name }}</div>
-                <div>{{ $supplier->contact_person }}</div>
-                <div>{{ $supplier->email }}</div>
-                <div>{{ $supplier->phone }}</div>
-                <div>{{ $supplier->address }}</div>
-                <div>{{ $supplier->city }}</div>
-            </div>
-            <div class="overflow-hidden">
-                <div>{{ $supplier->state }}</div>
-                <div>{{ $supplier->postal_code }}</div>
-                <div>{{ $supplier->country->name }}</div>
-                <div>{{ $supplier->payment_terms }}</div>
-            </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">Auto Extra Surcharge</h2>
+            @if ($supplierCompany && $supplierCompany->autoSurcharges->count())
+                <div class="overflow-hidden border border-gray-200 rounded-lg divide-y divide-gray-100">
+                    @foreach($supplierCompany->autoSurcharges as $surcharge)
+                        <div class="flex justify-between items-center px-4 py-3 hover:bg-blue-50 transition duration-150 ease-in-out">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center justify-center bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                    {{ strtoupper(substr($surcharge->label, 0, 2)) }}
+                                </span>
+                                <span class="text-gray-800 font-medium">{{ ucwords(str_replace('_', ' ', $surcharge->label)) }}</span>
+                            </div>
+                            <span class="text-right text-blue-700 font-semibold text-sm tracking-wide">
+                                {{ number_format($surcharge->amount, 3) }}
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="text-sm text-gray-500 italic">No surcharges added for this supplier</div>
+                @if(Auth()->user()->role_id == \App\Models\Role::COMPANY 
+                    || Auth()->user()->role_id == \App\Models\Role::BRANCH 
+                    || Auth()->user()->role_id == \App\Models\Role::ACCOUNTANT)
+                    
+                    <div class="text-sm text-amber-700 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>To request a new surcharge, please contact your system administrator.</span>
+                    </div>
+                @endif
+            @endif
+        </div>
+
+        <div class="bg-white rounded-md shadow-md p-5">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Supplier Policy</h2>
+            @include('suppliers.partials.add_procedure')
+            @include('suppliers.partials.list_procedure', ['companyId' => $companyId, 'supplierCompany' => $supplierCompany])
         </div>
     </div>
     <script>

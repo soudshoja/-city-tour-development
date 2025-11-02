@@ -2066,6 +2066,7 @@
         <!-- Task View Modal -->
     <div x-data="{ 
         showTaskModal: false, 
+        showTaxPopup: false,
         taskData: null, 
         loading: false,
         error: null,
@@ -2244,8 +2245,8 @@
 
                             <!-- Financial Card -->
                             <div class="group relative bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 shadow-lg hover:shadow-2xl transition-all duration-300 border border-emerald-400 hover:scale-105 transform">
-                                <div class="absolute inset-0 bg-black/5 rounded-2xl"></div>
-                                <div class="relative">
+                                <div class="absolute inset-0 bg-black/5 rounded-2xl pointer-events-none"></div>
+                                <div class="relative z-10">
                                     <div class="flex items-center mb-3">
                                         <div class="bg-white/20 backdrop-blur-sm rounded-xl p-2.5 shadow-lg">
                                             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2254,16 +2255,27 @@
                                         </div>
                                         <h4 class="ml-3 font-bold text-white text-lg">Financial Details</h4>
                                     </div>
-                                    <div class="space-y-2">
-                                        <div class="flex items-center justify-between bg-white/10 backdrop-blur-sm p-3 rounded-xl hover:bg-white/20 transition-colors">
+                                    <div class="space-y-2" style="position: relative; z-index: 100;">
+                                        <div class="flex items-center justify-between bg-white/10 p-3 rounded-xl hover:bg-white/20 transition-colors">
                                             <span class="text-base text-white/90 font-medium">Price:</span>
                                             <span x-text="taskData?.price ? Number(taskData.price).toFixed(3) + ' KWD' : 'N/A'" class="text-base font-bold text-white"></span>
                                         </div>
-                                        <div class="flex items-center justify-between bg-white/10 backdrop-blur-sm p-3 rounded-xl hover:bg-white/20 transition-colors">
+                                        <button type="button"
+                                             @click="showTaxPopup = true; console.log('Tax popup opened', 'tax:', taskData?.tax, 'taxes_record:', taskData?.taxes_record);"
+                                             :disabled="!taskData?.tax && (!taskData?.taxes_record || (Array.isArray(taskData?.taxes_record) && taskData.taxes_record.length === 0))"
+                                             :class="(taskData?.tax || (taskData?.taxes_record && (!Array.isArray(taskData?.taxes_record) || taskData.taxes_record.length > 0))) ? 'cursor-pointer hover:bg-white/30 hover:shadow-lg' : 'cursor-not-allowed opacity-50'"
+                                             class="w-full flex items-center justify-between bg-white/10 p-3 rounded-xl transition-all duration-200 border-0 text-left relative"
+                                             style="z-index: 999 !important; position: relative;"
+                                             :title="(taskData?.tax || (taskData?.taxes_record && (!Array.isArray(taskData?.taxes_record) || taskData.taxes_record.length > 0))) ? 'Click to view tax details' : 'No tax information available'">
                                             <span class="text-base text-white/90 font-medium">Tax:</span>
-                                            <span x-text="taskData?.tax ? Number(taskData.tax).toFixed(3) + ' KWD' : 'N/A'" class="text-base font-bold text-white"></span>
-                                        </div>
-                                        <div class="flex items-center justify-between bg-white/10 backdrop-blur-sm p-3 rounded-xl hover:bg-white/20 transition-colors">
+                                            <div class="flex items-center gap-2">
+                                                <span x-text="taskData?.tax ? Number(taskData.tax).toFixed(3) + ' KWD' : 'N/A'" class="text-base font-bold text-white"></span>
+                                                <svg x-show="taskData?.tax || taskData?.taxes_record" x-cloak class="w-5 h-5 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                            </div>
+                                        </button>
+                                        <div class="flex items-center justify-between bg-white/10 p-3 rounded-xl hover:bg-white/20 transition-colors">
                                             <span class="text-base text-white/90 font-medium">Surcharge:</span>
                                             <span x-text="taskData?.surcharge ? Number(taskData.surcharge).toFixed(3) + ' KWD' : 'N/A'" class="text-base font-bold text-white"></span>
                                         </div>
@@ -2297,7 +2309,7 @@
                                 </div>
                                 <div x-show="taskData?.supplier_pay_date" class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow">
                                     <span class="text-sm text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Pay Date</span>
-                                    <p x-text="taskData?.supplier_pay_date" class="mt-2 text-base font-bold text-gray-900 dark:text-white font-mono"></p>
+                                    <p x-text="taskData?.supplier_pay_date ? taskData.supplier_pay_date.split('T')[0] : ''" class="mt-2 text-base font-bold text-gray-900 dark:text-white font-mono"></p>
                                 </div>
                             </div>
                         </div>
@@ -2566,6 +2578,104 @@
                             <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
                             </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tax Details Popup -->
+        <div x-show="showTaxPopup" 
+             x-cloak
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             @click.self="showTaxPopup = false"
+             @keydown.escape.window="showTaxPopup = false"
+             class="fixed inset-0 z-[10002] flex items-center justify-center bg-gray-900 bg-opacity-75 backdrop-blur-sm">
+            
+            <!-- Tax Popup Content -->
+            <div x-transition:enter="transition ease-out duration-300 transform"
+                 x-transition:enter-start="opacity-0 scale-95 -translate-y-4"
+                 x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-200 transform"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden border-2 border-emerald-500">
+                
+                <!-- Popup Header -->
+                <div class="relative bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4">
+                    <div class="absolute inset-0 bg-grid-pattern opacity-10"></div>
+                    <div class="relative flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="bg-white/20 backdrop-blur-sm rounded-xl p-2 shadow-lg">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-white tracking-tight">Tax Breakdown</h3>
+                                <p class="text-sm text-emerald-100">Detailed tax information</p>
+                            </div>
+                        </div>
+                        <button @click="showTaxPopup = false" 
+                                class="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-xl p-2 transition-all duration-200 hover:rotate-90 transform">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Popup Body -->
+                <div class="p-6 overflow-y-auto max-h-[calc(80vh-140px)] bg-gray-50 dark:bg-gray-900" x-init="console.log('Popup body loaded. taskData:', taskData, 'taxes_record:', taskData?.taxes_record)">
+                    <!-- Total Tax Summary -->
+                    <div class="mb-6 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-4 shadow-lg">
+                        <div class="flex items-center justify-between">
+                            <span class="text-lg text-white/90 font-semibold">Total Tax:</span>
+                            <span x-text="taskData?.tax ? Number(taskData.tax).toFixed(3) + ' KWD' : 'N/A'" class="text-2xl font-black text-white drop-shadow-lg"></span>
+                        </div>
+                    </div>
+
+
+                    <!-- Tax Records -->
+                    <div x-show="taskData?.taxes_record && taskData.taxes_record.toString().trim() !== ''" class="space-y-3">
+                        <h4 class="text-lg font-bold text-gray-800 dark:text-white mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+                                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+                            </svg>
+                            Tax Breakdown
+                        </h4>
+                        
+                        <!-- Display Raw Value -->
+                        <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md border-l-4 border-emerald-500">
+                            <pre x-text="taskData.taxes_record" class="text-base font-mono text-gray-900 dark:text-white whitespace-pre-wrap break-words"></pre>
+                        </div>
+                    </div>
+
+                    <!-- No Tax Records Message -->
+                    <div x-show="!taskData?.taxes_record || taskData.taxes_record.toString().trim() === ''" 
+                         class="text-center py-8">
+                        <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full mb-4">
+                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                            </svg>
+                        </div>
+                        <p class="text-gray-500 dark:text-gray-400 font-medium">No detailed tax breakdown available</p>
+                        <p x-show="taskData?.tax" class="text-sm text-gray-400 dark:text-gray-500 mt-2">Only total tax amount is recorded for this task</p>
+                    </div>
+                </div>
+
+                <!-- Popup Footer -->
+                <div class="bg-gray-100 dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex justify-end">
+                        <button @click="showTaxPopup = false" 
+                                class="px-6 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold transform hover:scale-105">
+                            Close
                         </button>
                     </div>
                 </div>

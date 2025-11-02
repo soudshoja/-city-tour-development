@@ -50,12 +50,14 @@ use Illuminate\Support\Facades\Log;
 use iio\libmergepdf\Merger;
 use iio\libmergepdf\Driver\Fpdi2Driver;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 
 class TaskController extends Controller
 {
     use NotificationTrait, Converter, CurrencyExchangeTrait;
 
-    public function index(Request $request)
+    public function index(Request $request) : View | RedirectResponse
     {
         Gate::authorize('viewAny', Task::class);
         $user = Auth::user();
@@ -108,6 +110,7 @@ class TaskController extends Controller
             $query->whereIn('agent_id', $agentsId)->where('company_id', $user->company_id);
             $suppliers = $suppliers->activeForCompany($user->company_id)->get();
         } elseif ($user->role_id == Role::AGENT) {
+            $companyId = $user->agent->branch->company->id;
             $agents = Agent::with('branch')->where('id', $user->agent->id)->get();
             $clients = Client::where('agent_id', $user->agent->id)->get();
             $fullClients = Client::where(function ($q) use ($user) {
@@ -144,10 +147,19 @@ class TaskController extends Controller
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
 
+        if(!$companyId){
+            return redirect()->back()->with('error', 'Company not found for the user.');
+        }
+
         $liabilities = Account::where('name', 'Liabilities')
             ->where('company_id', $companyId)
             ->first();
 
+        if (!$liabilities) {
+            Log::error('Liabilities account not found for company ID: ' . $companyId);
+            return redirect()->back()->with('error', 'Liabilities account not found. Please contact the administrator.');
+        }
+        
         $creditorsAccount = Account::where('name', 'Creditors')
             ->where('company_id', $companyId)
             ->where('root_id', $liabilities->id)
@@ -155,10 +167,7 @@ class TaskController extends Controller
 
         if (!$creditorsAccount) {
             Log::error('Creditors account not found for company ID: ' . $companyId);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Creditors account not found for company ID: ' . $companyId,
-            ], 404);
+            return redirect()->back()->with('error', 'Creditors account not found. Please contact the administrator.');
         }
 
         $listOfCreditors = $creditorsAccount->children()->get()

@@ -15,6 +15,7 @@ use App\Models\Supplier;
 use App\Models\SupplierCompany;
 use App\Models\SupplierCredential;
 use App\Models\Task;
+use App\Models\AutoSurcharge;
 use DateTime;
 use Exception;
 use Generator;
@@ -34,6 +35,8 @@ use Illuminate\Validation\ValidationException;
 use App\Exports\SupplierTasksExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 
 class SupplierController extends Controller
 {
@@ -51,6 +54,17 @@ class SupplierController extends Controller
             $suppliers = Supplier::with(['companies' => function ($query) {
                 $query->where('is_active', true);
             }])->get();
+        
+            foreach ($suppliers as $supplier) {
+                foreach ($supplier->companies as $company) {
+                    if ($company->pivot) {
+                        $company->pivot->setRelation(
+                            'autoSurcharges',
+                            AutoSurcharge::where('supplier_company_id', $company->pivot->id)->get()
+                        );
+                    }
+                }
+            }
         } elseif ($user->role_id == Role::COMPANY) {
             $suppliers = Supplier::with(['credentials', 'companies'])
                 ->activeForCompany($user->company->id)
@@ -265,6 +279,8 @@ class SupplierController extends Controller
             'country_id' => 'required|exists:countries,id',
             'is_online' => 'exclude_unless:has_hotel,on|boolean',
             'is_manual' => 'nullable|boolean',
+            'surcharge_label.*.*' => 'nullable|string|max:100',
+            'surcharge_amount.*.*' => 'nullable|numeric|min:0',
         ]);
 
         $supplier = Supplier::findOrFail($id);
@@ -297,7 +313,39 @@ class SupplierController extends Controller
 
             if ($oldName !== $newName) {
                 Account::where('name', 'LIKE', "%{$oldName}%")->update(['name' => $newName]);
-            }       
+            }
+
+            if ($request->has('surcharge_label')) {
+                foreach ($request->surcharge_label as $pivotId => $labels) {
+                    foreach ($labels as $index => $label) {
+                        $amount = $request->surcharge_amount[$pivotId][$index] ?? 0;
+                        $label = trim(str_replace(' ', '_', strtolower($label)));
+
+                        if (!$label) continue; // skip empty label rows
+                        if ($amount < 0) $amount = 0; // ensure no negative
+
+                        AutoSurcharge::updateOrCreate(
+                            ['supplier_company_id' => $pivotId, 'label' => $label],
+                            ['amount' => $amount]
+                        );
+
+                        if (!Schema::hasColumn('tasks', $label)) {
+                            Schema::table('tasks', function (Blueprint $table) use ($label) {
+                                $table->decimal($label, 10, 3)->nullable()->after('penalty_fee');
+                            });
+                        }
+
+                        $supplierCompany = SupplierCompany::find($pivotId);
+                        if ($supplierCompany) {
+                            Task::where('supplier_id', $supplierCompany->supplier_id)
+                                ->where('company_id', $supplierCompany->company_id)
+                                ->whereDoesntHave('invoiceDetail')
+                                ->whereNull($label)
+                                ->update([$label => $amount]);
+                        }
+                    }
+                }
+            }
         });
 
         return redirect()->back()->with('success', 'Supplier updated successfully.');

@@ -189,6 +189,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{suppliersId}/export-pdf', [SupplierController::class, 'exportPdf'])->name('suppliers.export.pdf');
         Route::post('/store', [SupplierController::class, 'store'])->name('store');
         Route::put('/update/{id}', [SupplierController::class, 'update'])->name('update');
+        Route::post('/{supplierCompany}/update-surcharges', [SupplierController::class, 'updateSurcharges'])->name('update.surcharges');
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
         Route::get('/total-ledger/{supplierId}/date/{endDate}', [SupplierController::class, 'getTotalDebitCredit'])->name('total-ledger');
         Route::get('/magic/get', [SupplierController::class, 'getMagicHoliday'])->name('magic.get');

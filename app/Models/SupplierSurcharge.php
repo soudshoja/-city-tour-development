@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class AutoSurcharge extends Model
+class SupplierSurcharge extends Model
 {
     protected $fillable = ['supplier_company_id', 'label', 'amount'];
 

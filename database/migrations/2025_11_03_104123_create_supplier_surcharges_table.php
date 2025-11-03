@@ -11,13 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('auto_surcharges', function (Blueprint $table) {
+        Schema::create('supplier_surcharges', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('supplier_company_id');
             $table->string('label', 100);
             $table->decimal('amount', 10, 3);
             $table->timestamps();
-            $table->foreign('supplier_company_id')->references('id')->on('supplier_companies')->onDelete('cascade');
+
+            $table->foreign('supplier_company_id')
+                ->references('id')
+                ->on('supplier_companies')
+                ->onDelete('cascade');
+
+            $table->unique(['supplier_company_id', 'label']);
+            $table->comment('Stores defined auto surcharges for each supplier company');
         });
     }
 
@@ -26,6 +33,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('auto_surcharges');
+        Schema::dropIfExists('supplier_surcharges');
     }
 };

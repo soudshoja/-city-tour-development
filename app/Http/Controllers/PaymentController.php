@@ -2467,9 +2467,16 @@ class PaymentController extends Controller
 
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
 
-                if ($payment->status === 'completed') {
+                if ($payment->invoice == null && $payment->status === 'completed') {
                     Log::info('Callback ignored: payment already completed', ['payment_id' => $payment->id]);
                     return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+                }
+
+                if($payment->invoice){
+                    if($payment->invoice->status === 'paid'){
+                        Log::info('Callback ignored: invoice already paid', ['invoice_id' => $payment->invoice->id]);
+                        return redirect()->to($receiptInfo['url'])->with('success', 'Invoice already paid.');
+                    }
                 }
 
                 if ($process === 'topup') {
@@ -2879,10 +2886,18 @@ class PaymentController extends Controller
 
             $partialId = $response['metadata']['invoice_partial_id'] ?? null;
 
-            if ($payment->status === 'completed') {
+            $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+            if ($payment->invoice == null && $payment->status === 'completed') {
                 Log::info('Callback ignored: already completed', ['payment_id' => $paymentId]);
-                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
                 return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
+
+            if ($payment->invoice) {
+                if ($payment->invoice->status == 'paid') {
+                    Log::info('Callback ignored: invoice already paid', ['invoice_id' => $payment->invoice->id]);
+                    return redirect()->to($receiptInfo['url'])->with('success', 'Invoice already paid.');
+                }
             }
 
             if ($response['status'] !== 'CAPTURED') {
@@ -3452,10 +3467,18 @@ class PaymentController extends Controller
             $process = $payment->invoice ? 'invoice' : 'topup';
             $partialId = $request->input('invoice_partial_id') ?? null;
 
-            if ($payment->status === 'completed') {
+            if ($payment->invoice == null && $payment->status === 'completed') {
                 Log::info('Callback ignored: payment already completed', ['payment_id' => $payment->id]);
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
                 return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
+
+            if ($payment->invoice) {
+                if ($payment->invoice->status == 'paid') {
+                    Log::info('Callback ignored: invoice already paid', ['invoice_id' => $payment->invoice->id]);
+                    $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+                    return redirect()->to($receiptInfo['url'])->with('success', 'Invoice already paid.');
+                }
             }
 
             $uPayment = new UPayment();

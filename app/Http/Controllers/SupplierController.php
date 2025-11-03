@@ -14,8 +14,9 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Models\Supplier;
 use App\Models\SupplierCompany;
 use App\Models\SupplierCredential;
+use App\Models\SystemLog;
 use App\Models\Task;
-use App\Models\AutoSurcharge;
+use App\Models\SupplierSurcharge;
 use DateTime;
 use Exception;
 use Generator;
@@ -45,7 +46,7 @@ class SupplierController extends Controller
     public function index(Request $request)
     {
         Gate::authorize('viewAny', Supplier::class);
-        $user = auth()->user();
+        $user = Auth::user();
 
         $suppliers = Supplier::all();
 
@@ -54,13 +55,13 @@ class SupplierController extends Controller
             $suppliers = Supplier::with(['companies' => function ($query) {
                 $query->where('is_active', true);
             }])->get();
-        
+
             foreach ($suppliers as $supplier) {
                 foreach ($supplier->companies as $company) {
                     if ($company->pivot) {
                         $company->pivot->setRelation(
-                            'autoSurcharges',
-                            AutoSurcharge::where('supplier_company_id', $company->pivot->id)->get()
+                            'supplierSurcharges',
+                            SupplierSurcharge::where('supplier_company_id', $company->pivot->id)->get()
                         );
                     }
                 }
@@ -281,12 +282,12 @@ class SupplierController extends Controller
             'is_manual' => 'nullable|boolean',
             'surcharge_label.*.*' => 'nullable|string|max:100',
             'surcharge_amount.*.*' => 'nullable|numeric|min:0',
+            'deleted_surcharges' => 'nullable|string',
         ]);
 
         $supplier = Supplier::findOrFail($id);
         $oldName = $supplier->name;
         $newName = $request->string('name')->trim();
-
         $hasHotel = $request->has('has_hotel');
         $isOnline = $hasHotel ? (int)$request->boolean('is_online') : 0;
 
@@ -311,44 +312,181 @@ class SupplierController extends Controller
                 'is_manual' => $request->boolean('is_manual'),
             ]);
 
-            if ($oldName !== $newName) {
+            if (strcasecmp(trim($oldName), trim($newName)) !== 0) {
                 Account::where('name', 'LIKE', "%{$oldName}%")->update(['name' => $newName]);
+
+                SystemLog::create([
+                    'user_id' => Auth::id(),
+                    'model' => 'supplier',
+                    'current_value' => $oldName,
+                    'new_value' => $newName,
+                    'remarks' => "Supplier name updated from '{$oldName}' to '{$newName}'",
+                ]);
             }
+
 
             if ($request->has('surcharge_label')) {
                 foreach ($request->surcharge_label as $pivotId => $labels) {
-                    foreach ($labels as $index => $label) {
+                    $supplierCompany = SupplierCompany::find($pivotId);
+                    if (!$supplierCompany) continue;
+
+                    foreach ($labels as $index => $labelRaw) {
+                        $label = trim($labelRaw);
                         $amount = $request->surcharge_amount[$pivotId][$index] ?? 0;
-                        $label = trim(str_replace(' ', '_', strtolower($label)));
+                        if (!$label) continue;
 
-                        if (!$label) continue; // skip empty label rows
-                        if ($amount < 0) $amount = 0; // ensure no negative
+                        $oldLabel = $request->old_surcharge_label[$pivotId][$index] ?? null;
+                        $isRenamed = $oldLabel && $oldLabel !== $label;
 
-                        AutoSurcharge::updateOrCreate(
-                            ['supplier_company_id' => $pivotId, 'label' => $label],
-                            ['amount' => $amount]
-                        );
+                        if ($isRenamed) {
+                            $surcharge = SupplierSurcharge::where('supplier_company_id', $pivotId)
+                                ->where('label', $oldLabel)
+                                ->first();
 
-                        if (!Schema::hasColumn('tasks', $label)) {
-                            Schema::table('tasks', function (Blueprint $table) use ($label) {
-                                $table->decimal($label, 10, 3)->nullable()->after('penalty_fee');
-                            });
-                        }
+                            if ($surcharge) {
+                                $oldAmount = $surcharge->amount;
+                                $surcharge->update(['label' => $label, 'amount' => $amount]);
 
-                        $supplierCompany = SupplierCompany::find($pivotId);
-                        if ($supplierCompany) {
-                            Task::where('supplier_id', $supplierCompany->supplier_id)
-                                ->where('company_id', $supplierCompany->company_id)
-                                ->whereDoesntHave('invoiceDetail')
-                                ->whereNull($label)
-                                ->update([$label => $amount]);
+                                SystemLog::create([
+                                    'user_id' => Auth::id(),
+                                    'model' => 'supplier_surcharges',
+                                    'current_value' => "{$oldLabel} ({$oldAmount})",
+                                    'new_value' => "{$label} ({$amount})",
+                                    'remarks' => "Renamed and/or updated surcharge for supplier_company_id {$pivotId}",
+                                ]);
+                            }
+                        } else {
+                            $surcharge = SupplierSurcharge::updateOrCreate(
+                                ['supplier_company_id' => $pivotId, 'label' => $label],
+                                ['amount' => $amount]
+                            );
+
+                            $logMessage = $surcharge->wasRecentlyCreated
+                                ? "Added new surcharge '{$label}' ({$amount}) for supplier_company_id {$pivotId}"
+                                : "Updated surcharge '{$label}' amount to {$amount} for supplier_company_id {$pivotId}";
+
+                            SystemLog::create([
+                                'user_id' => Auth::id(),
+                                'model' => 'supplier_surcharges',
+                                'current_value' => $surcharge->wasRecentlyCreated ? '-' : $surcharge->getOriginal('amount'),
+                                'new_value' => $amount,
+                                'remarks' => $logMessage,
+                            ]);
                         }
                     }
+
+                    $totalSurcharge = SupplierSurcharge::where('supplier_company_id', $pivotId)->sum('amount');
+
+                    Task::where('supplier_id', $supplierCompany->supplier_id)
+                        ->where('company_id', $supplierCompany->company_id)
+                        ->whereDoesntHave('invoiceDetail')
+                        ->update(['supplier_surcharge' => $totalSurcharge]);
+
+                    SystemLog::create([
+                        'user_id' => Auth::id(),
+                        'model' => 'tasks',
+                        'current_value' => '-',
+                        'new_value' => $totalSurcharge,
+                        'remarks' => "Updated all tasks (no invoice) for supplier_company_id {$pivotId} with total surcharge {$totalSurcharge}",
+                    ]);
                 }
+            }
+
+            if ($request->filled('deleted_surcharges')) {
+                $deletedIds = array_filter(explode(',', $request->deleted_surcharges));
+
+                SupplierSurcharge::whereIn('id', $deletedIds)->delete();
+
+                SystemLog::create([
+                    'user_id' => Auth::id(),
+                    'model' => 'supplier_surcharges',
+                    'current_value' => implode(',', $deletedIds),
+                    'new_value' => '-',
+                    'remarks' => "Admin deleted surcharges with IDs: " . implode(', ', $deletedIds),
+                ]);
             }
         });
 
         return redirect()->back()->with('success', 'Supplier updated successfully.');
+    }
+
+    public function updateSurcharges($supplierCompanyId, Request $request)
+    {
+        $user = Auth::user();
+        if (!in_array($user->role_id, [Role::COMPANY, Role::BRANCH, Role::ACCOUNTANT])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $supplierCompany = SupplierCompany::findOrFail($supplierCompanyId);
+
+        $request->validate([
+            'surcharge_label.*' => 'required|string|max:100',
+            'surcharge_amount.*' => 'required|numeric|min:0',
+            'deleted_surcharges' => 'nullable|string',
+        ]);
+
+        DB::transaction(function () use ($supplierCompany, $request, $user) {
+            foreach ($request->surcharge_label as $index => $label) {
+                $amount = $request->surcharge_amount[$index];
+                $id = $request->surcharge_id[$index] ?? null;
+
+                if ($id) {
+                    $surcharge = SupplierSurcharge::find($id);
+                    if ($surcharge) {
+                        $oldLabel = $surcharge->label;
+                        $oldAmount = $surcharge->amount;
+
+                        $surcharge->update([
+                            'label' => $label,
+                            'amount' => $amount,
+                        ]);
+
+                        SystemLog::create([
+                            'user_id' => $user->id,
+                            'model' => 'supplier_surcharges',
+                            'current_value' => "{$oldLabel} ({$oldAmount})",
+                            'new_value' => "{$label} ({$amount})",
+                            'remarks' => "Company updated surcharge '{$oldLabel}' → '{$label}' ({$amount}) for supplier_company_id {$supplierCompany->id}",
+                        ]);
+                    }
+                } else {
+                    $surcharge = SupplierSurcharge::create([
+                        'supplier_company_id' => $supplierCompany->id,
+                        'label' => $label,
+                        'amount' => $amount,
+                    ]);
+
+                    SystemLog::create([
+                        'user_id' => $user->id,
+                        'model' => 'supplier_surcharges',
+                        'current_value' => '-',
+                        'new_value' => "{$label} ({$amount})",
+                        'remarks' => "Company added new surcharge '{$label}' ({$amount}) for supplier_company_id {$supplierCompany->id}",
+                    ]);
+                }
+            }
+
+            if ($request->filled('deleted_surcharges')) {
+                $deletedIds = array_filter(explode(',', $request->deleted_surcharges));
+                SupplierSurcharge::whereIn('id', $deletedIds)->delete();
+
+                SystemLog::create([
+                    'user_id' => $user->id,
+                    'model' => 'supplier_surcharges',
+                    'current_value' => implode(',', $deletedIds),
+                    'new_value' => '-',
+                    'remarks' => "Company deleted surcharges with IDs: " . implode(', ', $deletedIds),
+                ]);
+            }
+
+            $totalSurcharge = SupplierSurcharge::where('supplier_company_id', $supplierCompany->id)->sum('amount');
+            Task::where('supplier_id', $supplierCompany->supplier_id)
+                ->where('company_id', $supplierCompany->company_id)
+                ->whereDoesntHave('invoiceDetail')
+                ->update(['supplier_surcharge' => $totalSurcharge]);
+        });
+
+        return back()->with('success', 'Surcharges updated successfully.');
     }
 
     public function getTotalDebitCredit($supplierId, $endDate)

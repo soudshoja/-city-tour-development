@@ -390,35 +390,56 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">Auto Extra Surcharge</h2>
-            @if ($supplierCompany && $supplierCompany->autoSurcharges->count())
-                <div class="overflow-hidden border border-gray-200 rounded-lg divide-y divide-gray-100">
-                    @foreach($supplierCompany->autoSurcharges as $surcharge)
-                        <div class="flex justify-between items-center px-4 py-3 hover:bg-blue-50 transition duration-150 ease-in-out">
-                            <div class="flex items-center gap-2">
-                                <span class="inline-flex items-center justify-center bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="ttext-lg font-semibold text-gray-800">Auto Extra Surcharge</h2>
+                <span class="text-xs text-gray-500">Manage additional surcharges applied to supplier tasks</span>
+            </div>
+            @if ($supplierCompany && $supplierCompany->supplierSurcharges->count())
+                <form action="{{ route('suppliers.update.surcharges', $supplierCompany->id) }}" method="POST" class="space-y-4">
+                    @csrf
+                    <div id="surcharge-container" class="divide-y divide-gray-100 rounded-lg border border-gray-200 overflow-hidden bg-gray-50/30">
+                        @foreach($supplierCompany->supplierSurcharges as $index => $surcharge)
+                            <input type="hidden" name="surcharge_id[]" value="{{ $surcharge->id }}">
+                            <div class="flex items-center gap-3 px-4 py-3 bg-white hover:bg-blue-50 transition duration-150 ease-in-out" data-surcharge-id="{{ $surcharge->id }}">
+                                <span class="inline-flex items-center justify-center bg-blue-100 text-blue-700 text-xs font-bold w-7 h-7 rounded-full">
                                     {{ strtoupper(substr($surcharge->label, 0, 2)) }}
                                 </span>
-                                <span class="text-gray-800 font-medium">{{ ucwords(str_replace('_', ' ', $surcharge->label)) }}</span>
+                                <input type="text" name="surcharge_label[]" value="{{ $surcharge->label }}" 
+                                    class="flex-1 border-gray-300 focus:border-blue-400 focus:ring focus:ring-blue-200 text-sm rounded-md px-3 py-1.5"
+                                    placeholder="Enter surcharge name" />
+                                <input type="number" step="0.001" name="surcharge_amount[]" value="{{ $surcharge->amount }}" 
+                                    class="w-28 border-gray-300 focus:border-blue-400 focus:ring focus:ring-blue-200 text-sm rounded-md px-2 py-1.5 text-right font-medium text-blue-700" 
+                                    placeholder="0.000" />
+                                <button type="button" class="text-gray-400 hover:text-red-500" onclick="removeSurchargeRow(this)" title="Remove">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
                             </div>
-                            <span class="text-right text-blue-700 font-semibold text-sm tracking-wide">
-                                {{ number_format($surcharge->amount, 3) }}
-                            </span>
-                        </div>
-                    @endforeach
-                </div>
-            @else
-                <div class="text-sm text-gray-500 italic">No surcharges added for this supplier</div>
-                @if(Auth()->user()->role_id == \App\Models\Role::COMPANY 
-                    || Auth()->user()->role_id == \App\Models\Role::BRANCH 
-                    || Auth()->user()->role_id == \App\Models\Role::ACCOUNTANT)
-                    
-                    <div class="text-sm text-amber-700 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mt-3">
-                        <i class="fa-solid fa-circle-info"></i>
-                        <span>To request a new surcharge, please contact your system administrator.</span>
+                        @endforeach
                     </div>
-                @endif
+                    <div class="flex justify-between items-center mt-5">
+                        <p class="text-xs text-gray-500 italic">
+                            *Updating surcharges will automatically update all non-invoiced related tasks.
+                        </p>
+                        <div class="flex items-center gap-3">
+                            <button type="button" onclick="addSurchargeRow()" class="bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium text-xs px-3 py-1.5 rounded-lg transition">
+                                + Add Surcharge
+                            </button>
+                            <input type="hidden" id="deleted_surcharges" name="deleted_surcharges" value="">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-4 py-2 rounded-lg shadow-sm transition">
+                                <i class="fa-solid fa-save mr-1"></i> Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            @else
+                <div class="text-sm text-gray-500 italic">
+                    No surcharges added for this supplier
+                </div>
             @endif
         </div>
 
@@ -463,6 +484,47 @@
                 });
             });
         });
+
+        function addSurchargeRow() {
+            const container = document.getElementById('surcharge-container');
+            const newRow = document.createElement('div');
+            newRow.className = 'flex items-center gap-3 px-4 py-3 bg-white hover:bg-blue-50 transition duration-150 ease-in-out';
+            newRow.innerHTML = `
+                <input type="hidden" name="surcharge_id[]" value="">
+                <span class="inline-flex items-center justify-center bg-gray-200 text-gray-600 text-xs font-bold w-7 h-7 rounded-full">--</span>
+                <input type="text" name="surcharge_label[]" value="" 
+                    class="flex-1 border-gray-300 focus:border-blue-400 focus:ring focus:ring-blue-200 text-sm rounded-md px-3 py-1.5"
+                    placeholder="Enter surcharge name" />
+                <input type="number" step="0.001" name="surcharge_amount[]" value="" 
+                    class="w-28 border-gray-300 focus:border-blue-400 focus:ring focus:ring-blue-200 text-sm rounded-md px-2 py-1.5 text-right font-medium text-blue-700" 
+                    placeholder="0.000" />
+                <button type="button" class="text-gray-400 hover:text-red-500" onclick="removeSurchargeRow(this)" title="Remove">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            `;
+
+            container.appendChild(newRow);
+        }
+
+        function removeSurchargeRow(button) {
+            const row = button.closest('div[data-surcharge-id]');
+            const id = row ? row.getAttribute('data-surcharge-id') : null;
+            const input = document.getElementById('deleted_surcharges');
+
+            if (id) {
+                const current = input.value ? input.value.split(',') : [];
+                if (!current.includes(id)) {
+                    current.push(id);
+                    input.value = current.join(',');
+                }
+            }
+
+            row.style.transition = 'opacity 0.3s';
+            row.style.opacity = '0';
+            setTimeout(() => row.remove(), 300);
+        }
     </script>
     <script>
         document.getElementById('export-pdf-btn').addEventListener('click', function() {

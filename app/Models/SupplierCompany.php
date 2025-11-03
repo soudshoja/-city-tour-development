@@ -49,8 +49,8 @@ class SupplierCompany extends Pivot
         return $this->hasMany(SupplierProcedure::class, 'supplier_company_id');
     }
 
-    public function autoSurcharges()
+    public function supplierSurcharges()
     {
-        return $this->hasMany(AutoSurcharge::class, 'supplier_company_id');
+        return $this->hasMany(SupplierSurcharge::class, 'supplier_company_id');
     }
 }

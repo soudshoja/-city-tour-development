@@ -722,9 +722,11 @@
                                                             </button>
                                                         </div>
                                                         <div class="p-4 space-y-3" id="company-surcharge-{{ $company->pivot->id }}">
-                                                            @if($company->pivot && $company->pivot->autoSurcharges->isNotEmpty())
-                                                                @foreach($company->pivot->autoSurcharges as $surcharge)
-                                                                    <div class="flex items-center gap-3 bg-white border border-gray-200 rounded-md px-3 py-2 hover:border-blue-400 transition">
+                                                            @if($company->pivot && $company->pivot->supplierSurcharges->isNotEmpty())
+                                                                @foreach($company->pivot->supplierSurcharges as $surcharge)
+                                                                    <div class="flex items-center gap-3 bg-white border border-gray-200 rounded-md px-3 py-2 hover:border-blue-400 transition" data-surcharge-id="{{ $surcharge->id }}">
+                                                                        <input type="hidden" name="surcharge_id[]" value="{{ $surcharge->id }}">
+                                                                        <input type="hidden" name="old_surcharge_label[{{ $company->pivot->id }}][]" value="{{ $surcharge->label }}">
                                                                         <input type="text" name="surcharge_label[{{ $company->pivot->id }}][]"
                                                                             value="{{ $surcharge->label }}"
                                                                             placeholder="Label Name"
@@ -733,9 +735,9 @@
                                                                             value="{{ $surcharge->amount }}" min="0" step="0.001"
                                                                             placeholder="Amount"
                                                                             class="w-36 border border-gray-300 rounded-md px-3 py-1.5 text-sm text-right focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition" />
-                                                                        <button type="button"
+                                                                        <button type="button" 
                                                                             class="text-gray-400 hover:text-red-500"
-                                                                            onclick="this.closest('div').remove()"
+                                                                            onclick="removeSurchargeRow(this)"
                                                                             title="Remove">
                                                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
                                                                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -753,7 +755,7 @@
                                                 @endforeach
                                             </div>
                                         </div>
-
+                                        <input type="hidden" id="deleted_surcharges" name="deleted_surcharges" value="">
                                         <div class="mt-5 flex items-center justify-between">
                                             <button type="button"
                                                 @click="editSuppliers = false"
@@ -776,7 +778,6 @@
                 @endif
             </tbody>
         </table>
-
     </div>
     @else
     <div class="max-h-160 overflow-y-auto custom-scrollbar">
@@ -852,6 +853,7 @@
             wrapper.classList.add('flex', 'items-center', 'gap-3', 'bg-white', 'border', 'border-gray-200', 'rounded-md', 'px-3', 'py-2', 'hover:border-blue-400', 'transition');
 
             wrapper.innerHTML = `
+                <input type="hidden" name="old_surcharge_label[${supplierCompanyId}][]" value="">
                 <input type="text" name="surcharge_label[${supplierCompanyId}][]" placeholder="Label Name"
                     class="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition" />
                 <input type="number" name="surcharge_amount[${supplierCompanyId}][]" placeholder="Amount" step="0.001"
@@ -865,6 +867,21 @@
                 </button>
             `;
             container.appendChild(wrapper);
+        }
+        function removeSurchargeRow(button) {
+            const row = button.closest('div[data-surcharge-id]');
+            if (row) {
+                const surchargeId = row.getAttribute('data-surcharge-id');
+                if (surchargeId) {
+                    const input = document.getElementById('deleted_surcharges');
+                    const existing = input.value ? input.value.split(',') : [];
+                    existing.push(surchargeId);
+                    input.value = existing.join(',');
+                }
+                row.remove();
+            } else {
+                button.closest('div').remove();
+            }
         }
     </script>
     <!-- <script>

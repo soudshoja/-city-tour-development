@@ -46,6 +46,7 @@ class Task extends Model
         'surcharge',
         'original_surcharge',
         'penalty_fee',
+        'supplier_surcharge',
         'taxes_record',
         'total',
         'original_total',
@@ -95,7 +96,7 @@ class Task extends Model
     // protected static function boot()
     // {
     //     parent::boot();
-        
+
     //     static::creating(function ($task) {
     //         if (!empty($task->status)) {
     //             $task->status = strtolower(str_replace(' ', '_', $task->status));
@@ -133,7 +134,7 @@ class Task extends Model
 
     public function getFormattedDateAttribute()
     {
-        if($this->issued_date === null) {
+        if ($this->issued_date === null) {
             return null;
         }
         return $this->issued_date->format('d-m-Y');
@@ -141,7 +142,7 @@ class Task extends Model
 
     public function getFormattedDateTimeAttribute()
     {
-        if($this->issued_date === null) {
+        if ($this->issued_date === null) {
             return null;
         }
         return $this->issued_date->format('d-m-Y H:i');
@@ -157,7 +158,7 @@ class Task extends Model
         return Attribute::make(
             set: function ($value) {
                 if (empty($value)) return null;
-    
+
                 // Parse the ISO8601 (with offset) but DO NOT change timezone. Just format to 'Y-m-d H:i:s' to fit MySQL DATETIME.
                 $dt = Carbon::parse($value);
                 return $dt->format('Y-m-d H:i:s');
@@ -215,6 +216,12 @@ class Task extends Model
         return $this->belongsTo(Supplier::class, 'supplier_id');
     }
 
+    public function supplierCompany()
+    {
+        return $this->belongsTo(SupplierCompany::class, 'supplier_id', 'supplier_id')
+            ->where('company_id', '=', $this->company_id);
+    }
+
     public function originalTask()
     {
         return $this->belongsTo(Task::class, 'original_task_id');
@@ -234,7 +241,8 @@ class Task extends Model
     {
         return $this->belongsTo(Company::class, 'company_id');
     }
-     public function supplierOnline()
+
+    public function supplierOnline()
     {
         return $this->belongsTo(Supplier::class);
     }

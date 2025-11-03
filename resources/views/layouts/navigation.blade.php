@@ -154,10 +154,10 @@
                             </a>
 
                             <!-- IATA Wallet Information -->
-                            <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-750 border-b border-gray-200 dark:border-gray-600">
+                            <div class="p-4 bg-gradient-to-r from-green-50 to-teal-50 dark:from-gray-800 dark:to-gray-750 border-b border-gray-200 dark:border-gray-600">
                                 <div class="flex items-center justify-between mb-2">
                                     <h5 class="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center">
-                                        <svg class="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <svg class="w-4 h-4 mr-2 text-green-600 dark:text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                             <path fill="currentColor" d="M21 7.28V5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-2.28A2 2 0 0 0 22 15V9a2 2 0 0 0-1-1.72M20 15H12V9h8zM5 19V5h14v2H12a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h7v2z"/>
                                             <circle fill="currentColor" cx="16" cy="12" r="1.5"/>
                                         </svg>
@@ -168,7 +168,7 @@
                                     <button 
                                         id="reload-wallet-btn" 
                                         onclick="reloadWalletData()" 
-                                        class="flex items-center px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors duration-200"
+                                        class="flex items-center px-2 py-1 text-xs font-medium text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors duration-200"
                                         title="Reload wallet data">
                                         <svg class="w-3 h-3 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                             <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
@@ -180,6 +180,19 @@
                                 <div id="iata-info" class="space-y-2">
                                     <!-- Initial content will be loaded by checkAndLoadWalletData() -->
                                 </div>
+                            </div>
+                            <div id="jazeera-section" class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-750 border-b border-gray-200 dark:border-gray-600">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h5 class="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center">
+                                        <svg class="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                            <path fill="currentColor" d="M21 7.28V5c0-1.1-.9-2-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-2.28A2 2 0 0 0 22 15V9a2 2 0 0 0-1-1.72M20 15H12V9h8zM5 19V5h14v2H12a2 2 0 0 0-2 2v6c0 1.1.9 2 2 2h7v2z"/>
+                                            <circle fill="currentColor" cx="16" cy="12" r="1.5"/>
+                                        </svg>
+                                        Jazeera Airways Credit
+                                    </h5>
+                                </div>
+
+                                <div id="jazeera-info" class="space-y-2"></div>
                             </div>
 
                             <!-- Dropdown Links -->
@@ -382,21 +395,21 @@
             iataInfo.innerHTML = `
                 <div class="space-y-3">
                     <!-- Company Total (IATA Balance) -->
-                    <div class="bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                    <div class="bg-gradient-to-r from-green-50 to-teal-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-lg p-4 border border-green-200 dark:border-green-800">
                         <div class="flex items-center justify-between mb-2">
                             <div class="flex items-center">
-                                <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                <svg class="w-5 h-5 text-green-600 dark:text-green-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                     <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                                 </svg>
-                                <span class="text-sm font-semibold text-blue-800 dark:text-blue-200 uppercase tracking-wider">
+                                <span class="text-sm font-semibold text-green-800 dark:text-green-200 uppercase tracking-wider">
                                     Total Company Balance
                                 </span>
                             </div>
                         </div>
-                        <p class="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                        <p class="text-2xl font-bold text-green-900 dark:text-green-100">
                             ${iataBalance || '0.000'}
                         </p>
-                        <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        <p class="text-xs text-green-600 dark:text-green-400 mt-1">
                             ${wallets.length} wallet${wallets.length !== 1 ? 's' : ''} • IATA Balance
                         </p>
                     </div>
@@ -423,6 +436,106 @@
             `;
         }
     }
+
+    function reloadJazeeraData() {
+    console.log('Reload Jazeera Airways Credit data');
+    creditData = null;
+    JazeeraAirwaysCredit();
+}
+
+function JazeeraAirwaysCredit() {
+    const section = document.getElementById('jazeera-section');
+    const creditInfo = document.getElementById('jazeera-info');
+
+    // 1️⃣ If data variable itself is missing → hide section entirely (not implemented yet)
+    if (typeof data === 'undefined' || data === null) {
+        if (section) section.classList.add('hidden');
+        return;
+    }
+
+    // 2️⃣ If data exists but is empty → show fallback message
+    if (!data.length) {
+        if (section) section.classList.remove('hidden');
+        creditInfo.innerHTML = `
+            <div class="text-center py-4">
+                <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 
+                    10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    No Jazeera credit data available
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    // 3️⃣ If valid data exists → show total
+    section.classList.remove('hidden');
+    const total = data.reduce((sum, entry) => sum + parseFloat(entry.balance || 0), 0).toFixed(3);
+    creditInfo.innerHTML = `
+        <div class="flex flex-col items-center py-2">
+            <p class="text-lg font-semibold text-sky-700 dark:text-sky-300">${total} KWD</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Total Credit Spent</p>
+        </div>
+    `;
+}
+
+document.addEventListener('DOMContentLoaded', JazeeraAirwaysCredit);
+
+// Optional: API-based display hook
+function displayJazeeraData(data) {
+    const section = document.getElementById('jazeera-section');
+    const jazeeraInfo = document.getElementById('jazeera-info');
+    const { records = [], total = 0 } = data;
+
+    if (!section || !jazeeraInfo) return;
+
+    if (!records.length) {
+        // keep visible if empty due to API error
+        section.classList.remove('hidden');
+        jazeeraInfo.innerHTML = `
+            <div class="text-center py-4">
+                <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 
+                    10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    No Jazeera credit data available
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    // ✅ Show valid data
+    section.classList.remove('hidden');
+    jazeeraInfo.innerHTML = `
+        <div class="space-y-3">
+            <div class="bg-gradient-to-r from-sky-50 to-blue-100 dark:from-sky-900/30 dark:to-blue-900/30 rounded-lg p-4 border border-sky-200 dark:border-sky-800">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 text-sky-600 dark:text-sky-400 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M12 2l3.09 6.26L22 9.27l-5 4.87 
+                            1.18 6.88L12 17.77l-6.18 3.25L7 14.14 
+                            2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                        <span class="text-sm font-semibold text-sky-800 dark:text-sky-200 uppercase tracking-wider">
+                            Total Credit Spent
+                        </span>
+                    </div>
+                </div>
+                <p class="text-2xl font-bold text-sky-900 dark:text-sky-100">
+                    ${parseFloat(total).toFixed(3)} KWD
+                </p>
+                <p class="text-xs text-sky-600 dark:text-sky-400 mt-1">
+                    ${records.length} record${records.length !== 1 ? 's' : ''} • Spent Credit
+                </p>
+            </div>
+        </div>
+    `;
+}
+
 </script>
 
 

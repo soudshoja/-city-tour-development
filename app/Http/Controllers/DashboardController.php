@@ -14,6 +14,7 @@ use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\SupplierCompany;
 use App\Models\Task;
+use App\Models\JournalEntry;
 use App\Services\IataEasyPayService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -36,8 +37,10 @@ class DashboardController extends Controller
         $walletData = $this->getCompanyWallets($company);
         extract($walletData);
 
+        $jazeeraCredit = JournalEntry::where('name', 'Jazeera Airways Credit')->get();
+
         if (Auth::user()->role_id == Role::ADMIN) {
-            $dashboardData =  $this->adminDashboard();
+            $dashboardData = $this->adminDashboard();
 
             $serializedData = [
                 'companies' => $dashboardData['companies'],
@@ -48,23 +51,21 @@ class DashboardController extends Controller
                 'pieChartNumbers' => $dashboardData['companiesSales'],
                 'pieChartLabels' => $dashboardData['companiesNames'],
                 'pieChartColors' => $this->generateColors($dashboardData['companies']->count()),
+                'wallets' => $wallets,
+                'iataWalletName' => $iataWalletName,
+                'iataBalance' => $iataBalance,
+                'iataErrorMessage' => $iataErrorMessage,
+                'jazeeraCredit' => $jazeeraCredit, 
             ];
 
         } elseif (Auth::user()->role_id == Role::COMPANY) {
-            
             $dashboardData = $this->companyDashboard();
-
             $reportController = new ReportController();
 
             $childAccountsPayable = $reportController->getPayableSupplier();
-            $payableSupplier = $childAccountsPayable;
-
             $childAccountReceivable = $reportController->getReceivable();
-
             $totalBank = $reportController->getTotalBank();
-
             $gatewayReceivable = $reportController->getGatewayReceivable();
-
             $profitAgentWise = $reportController->getProfitAgent();
 
             $serializedData = [
@@ -77,23 +78,25 @@ class DashboardController extends Controller
                 'pieChartNumbers' => $dashboardData['branchesSales'],
                 'pieChartLabels' => $dashboardData['branches']->pluck('name'),
                 'pieChartColors' => $this->generateColors($dashboardData['branches']->count()),
-                'payableSupplier' => $payableSupplier,
+                'payableSupplier' => $childAccountsPayable,
                 'profitAgentWise' => $profitAgentWise['sumProfitAgent'],
                 'totalReceivable' => $childAccountReceivable['balance'],
-                'totalBank' =>  $totalBank['balance'],
-                'gatewayReceivable' =>  $gatewayReceivable['balance'],
+                'totalBank' => $totalBank['balance'],
+                'gatewayReceivable' => $gatewayReceivable['balance'],
                 'wallets' => $wallets,
                 'iataWalletName' => $iataWalletName,
                 'iataBalance' => $iataBalance,
                 'iataErrorMessage' => $iataErrorMessage,
+                'jazeeraCredit' => $jazeeraCredit, 
             ];
 
         } elseif (Auth::user()->role_id == Role::AGENT) {
             return $this->agentDashboard();
+
         } elseif (Auth::user()->role_id == Role::BRANCH) {
             return $this->branchDashboard();
+
         } elseif (Auth::user()->role_id == Role::ACCOUNTANT) {
-            
             $dashboardData = $this->accountantDasboard();
 
             $serializedData = [
@@ -106,17 +109,17 @@ class DashboardController extends Controller
                 'branches'          => $dashboardData['branches'],
                 'agents'            => $dashboardData['agents'],
                 'clients'           => $dashboardData['clients'],
-                'pieChartTitle'   => 'Companies Sales',
-                'pieChartNumbers' => $dashboardData['companiesSales'],
-                'pieChartLabels'  => $dashboardData['companiesNames'],
-                'pieChartColors'  => $this->generateColors($dashboardData['companies']->count()),
-                'wallets' => $wallets,
-                'iataWalletName' => $iataWalletName,
-                'iataBalance' => $iataBalance,
-                'iataErrorMessage' => $iataErrorMessage,
+                'pieChartTitle'     => 'Companies Sales',
+                'pieChartNumbers'   => $dashboardData['companiesSales'],
+                'pieChartLabels'    => $dashboardData['companiesNames'],
+                'pieChartColors'    => $this->generateColors($dashboardData['companies']->count()),
+                'wallets'           => $wallets,
+                'iataWalletName'    => $iataWalletName,
+                'iataBalance'       => $iataBalance,
+                'iataErrorMessage'  => $iataErrorMessage,
+                'jazeeraCredit'     => $jazeeraCredit, 
             ];
         }
-
 
         return view('dashboard', $serializedData);
     }

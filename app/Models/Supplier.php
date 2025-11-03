@@ -11,12 +11,12 @@ class Supplier extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 
+        'name',
         'auth_type',
         'is_manual',
         'has_hotel',
         'has_flight',
-        'has_visa',         
+        'has_visa',
         'has_insurance',
         'has_tour',
         'has_cruise',
@@ -61,7 +61,7 @@ class Supplier extends Model
     {
         return $this->belongsToMany(Company::class, 'supplier_companies')
             ->using(SupplierCompany::class)
-            ->withPivot('is_active');
+            ->withPivot('id', 'is_active');
     }
 
     public function credentials()
@@ -108,5 +108,4 @@ class Supplier extends Model
     {
         return $this->hasMany(SupplierProcedure::class);
     }
-    
 }

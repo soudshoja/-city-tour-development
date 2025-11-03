@@ -64,7 +64,7 @@ class MyFatoorah
 
         $paymentMethod = PaymentMethod::findOrFail($paymentMethodId);
 
-        $customerName = $invoice->client->full_name ?? 'Customer';
+        $customerName = $payment->client->full_name ?? 'Customer';
 
         if (strpos($customerName, '/') !== false) {
             $customerName = trim(explode('/', $customerName)[0]);
@@ -90,7 +90,7 @@ class MyFatoorah
         $executePayload = [
             "PaymentMethodId"     => $paymentMethod->myfatoorah_id,
             "InvoiceValue"        => $request->input('final_amount'),
-            "CustomerName"        => $customerName,
+            "CustomerName"        => $request->client_name,
             "CustomerEmail"       => $companyEmail,
             "MobileCountryCode"   => $client->country_code ?? '+965',
             "CustomerMobile"      => $clientPhone,

@@ -2471,7 +2471,6 @@ class TaskController extends Controller
 
     public function update(Request $request, $id)
     {
-        // dd($request->all());
         $task = Task::findOrFail($id);
         $rules = [
             'reference' => 'nullable|string',

@@ -109,6 +109,8 @@ class MyFatoorah
             ],
         ];
 
+        Log::info('MyFatoorah: ExecutePayment payload', ['payload' => $executePayload]);
+
         $executeResponse = Http::withHeaders([
             'Authorization' => "Bearer $apiKey",
             'Content-Type' => 'application/json',

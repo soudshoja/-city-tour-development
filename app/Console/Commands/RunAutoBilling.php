@@ -18,6 +18,7 @@ use App\Models\JournalEntry;
 use App\Services\ChargeService;
 use App\Http\Controllers\ResayilController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Traits\EmailNotificationTrait;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -26,6 +27,8 @@ use Illuminate\Support\Facades\DB;
 
 class RunAutoBilling extends Command
 {
+    use EmailNotificationTrait;
+
     protected $signature = 'autobill:generate-invoices {--dry-run : Show eligible/ineligible tasks without creating invoices}';
     protected $description = 'Automatically generate invoices for all active AutoBilling rules at their scheduled times.';
 
@@ -77,7 +80,7 @@ class RunAutoBilling extends Command
                     ->where('company_id', $rule->company_id)
                     ->where('client_id', $rule->client_id)
                     ->whereDoesntHave('invoiceDetail')
-                    ->whereBetween('created_at', [$startTime, $endTime])
+                    ->whereBetween('supplier_pay_date', [$startTime, $endTime])
                     ->where(function ($q) use ($rule) {
                         if ($rule->created_by) {
                             $q->where('created_by', $rule->created_by);
@@ -307,6 +310,25 @@ class RunAutoBilling extends Command
 
                 $this->line("\n ✅ Invoice #{$invoiceNumber} created for {$clientName} ({$tasks->count()} eligible task[s])");
 
+                $this->storeNotificationWithEmail([
+                    'type' => 'autobill',
+                    'user_id'=> $rule->company->user_id,
+                    'title' => 'AutoBill Invoice Generated',
+                    'message' => "Invoice #{$invoiceNumber} successfully created for {$clientName} ({$tasks->count()} task[s]).\n\n"
+                        . "View Invoice: " . route('invoice.show', ['companyId' => $rule->company_id, 'invoiceNumber' => $invoiceNumber]),
+                    'clientName' => $clientName,
+                    'invoiceNumber' => $invoiceNumber,
+                    'amount' => number_format($invoice->amount, 3),
+                    'currency' => $invoice->currency,
+                    'taskCount' => $tasks->count(),
+                    'taskRefs' => $tasks->pluck('reference')->toArray(),
+                    'invoiceLink' => route('invoice.show', [
+                        'companyId' => $rule->company_id,
+                        'invoiceNumber' => $invoiceNumber,
+                    ]),
+                    'company' => $rule->company,
+                ]);
+
                 if ($rule->auto_send_whatsapp) {
                     try {
                         $resayil = new ResayilController();
@@ -325,6 +347,16 @@ class RunAutoBilling extends Command
             } catch (Exception $e) {
                 DB::rollBack();
                 $this->error("\n ❌ Error in Rule #{$rule->id}: {$e->getMessage()}");
+
+                $this->storeNotificationWithEmail([
+                    'type' => 'autobill',
+                    'user_id'=> $rule->company->user_id,
+                    'title' => 'AutoBill Invoice Failed Generated',
+                    'message' => "AutoBilling failed for {$clientName} (Rule #{$rule->id}).\n" . "Please review the AutoBilling log for more details.",
+                    'clientName' => $clientName,
+                    'errorMessage' => $e->getMessage(),
+                    'company' => $rule->company,
+                ]);
                 Log::error("[AutoBilling] Rule {$rule->id} error: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             }
         }

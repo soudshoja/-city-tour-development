@@ -308,31 +308,145 @@
         </div>
     </div>
 
-    <div class="my-6 p-4 grid bg-white rounded-md shadow-md w-full overflow-x-auto">
-        <p class="font-semibold">Supplier Policy</p>
-        @include('suppliers.partials.add_procedure')
-        @include('suppliers.partials.list_procedure', ['companyId' => $companyId, 'supplierCompany' => $supplierCompany])
-    </div>
+    <div class="space-y-6 mt-6">
+        <div class="bg-white rounded-md shadow-md p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center">Supplier Details</h2>
+                <div class="flex flex-wrap gap-2">
+                    @if($supplier->has_flight)
+                    <span class="px-2 py-1 text-xs bg-sky-100 text-sky-700 rounded-full border border-sky-300 flex items-center gap-1">
+                        <i class="fa-solid fa-plane"></i> Flight
+                    </span>
+                    @endif
+                    @if($supplier->has_hotel)
+                    <span class="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full border border-yellow-300 flex items-center gap-1">
+                        <i class="fa-solid fa-bed"></i> Hotel
+                    </span>
+                    @endif
+                    @if($supplier->has_visa)
+                    <span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full border border-green-300 flex items-center gap-1">
+                        <i class="fa-solid fa-passport"></i> Visa
+                    </span>
+                    @endif
+                    @if($supplier->has_insurance)
+                    <span class="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full border border-purple-300 flex items-center gap-1">
+                        <i class="fa-solid fa-shield-heart"></i> Insurance
+                    </span>
+                    @endif
+                    @if($supplier->has_car)
+                    <span class="px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded-full border border-orange-300 flex items-center gap-1">
+                        <i class="fa-solid fa-car"></i> Car
+                    </span>
+                    @endif
+                    @if($supplier->has_tour)
+                    <span class="px-2 py-1 text-xs bg-pink-100 text-pink-700 rounded-full border border-pink-300 flex items-center gap-1">
+                        <i class="fa-solid fa-map-location-dot"></i> Tour
+                    </span>
+                    @endif
+                </div>
+            </div>
+            <div class="grid md:grid-cols-2 gap-6 text-sm text-gray-700">
+                <div class="space-y-2">
+                    <p><i class="fa-regular fa-id-badge text-blue-500 w-5 inline-block"></i>
+                        <strong>Name:</strong> {{ $supplier->name ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-user-tie text-blue-500 w-5 inline-block"></i>
+                        <strong>Contact Person:</strong> {{ $supplier->contact_person ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-regular fa-envelope text-blue-500 w-5 inline-block"></i>
+                        <strong>Email:</strong> {{ $supplier->email ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-phone text-blue-500 w-5 inline-block"></i>
+                        <strong>Phone:</strong> {{ $supplier->phone ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-map-marker-alt text-blue-500 w-5 inline-block"></i>
+                        <strong>Address:</strong> {{ $supplier->address ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-city text-blue-500 w-5 inline-block"></i>
+                        <strong>City:</strong> {{ $supplier->city ?? 'Not Set' }}
+                    </p>
+                </div>
 
-    <div class="body p-6 bg-white border-b border-gray-200 rounded-md shadow-md my-2">
-        <div class="font-semibold text-lg">
-            Supplier Details
+                <div class="space-y-2">
+                    <p><i class="fa-solid fa-location-dot text-blue-500 w-5 inline-block"></i>
+                        <strong>State:</strong> {{ $supplier->state ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-mail-bulk text-blue-500 w-5 inline-block"></i>
+                        <strong>Postal Code:</strong> {{ $supplier->postal_code ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-flag text-blue-500 w-5 inline-block"></i>
+                        <strong>Country:</strong> {{ $supplier->country->name ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-file-contract text-blue-500 w-5 inline-block"></i>
+                        <strong>Payment Terms:</strong> {{ $supplier->payment_terms ?? 'Not Set' }}
+                    </p>
+                    <p><i class="fa-solid fa-lock text-blue-500 w-5 inline-block"></i>
+                        <strong>Auth Type:</strong> {{ ucfirst($supplier->auth_type) }}
+                    </p>
+                    <p><i class="fa-solid fa-clipboard-check text-blue-500 w-5 inline-block"></i>
+                        <strong>Manual Supplier:</strong> {{ $supplier->is_manual ? 'Yes' : 'No' }}
+                    </p>
+                </div>
+            </div>
         </div>
-        <div class="supplier-details">
-            <div class="overflow-hidden">
-                <div>{{ $supplier->name }}</div>
-                <div>{{ $supplier->contact_person }}</div>
-                <div>{{ $supplier->email }}</div>
-                <div>{{ $supplier->phone }}</div>
-                <div>{{ $supplier->address }}</div>
-                <div>{{ $supplier->city }}</div>
+
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="ttext-lg font-semibold text-gray-800">Auto Extra Surcharge</h2>
+                <span class="text-xs text-gray-500">Manage additional surcharges applied to supplier tasks</span>
             </div>
-            <div class="overflow-hidden">
-                <div>{{ $supplier->state }}</div>
-                <div>{{ $supplier->postal_code }}</div>
-                <div>{{ $supplier->country->name }}</div>
-                <div>{{ $supplier->payment_terms }}</div>
-            </div>
+            @if ($supplierCompany && $supplierCompany->supplierSurcharges->count())
+                <form action="{{ route('suppliers.update.surcharges', $supplierCompany->id) }}" method="POST" class="space-y-4">
+                    @csrf
+                    <div id="surcharge-container" class="divide-y divide-gray-100 rounded-lg border border-gray-200 overflow-hidden bg-gray-50/30">
+                        @foreach($supplierCompany->supplierSurcharges as $index => $surcharge)
+                            <input type="hidden" name="surcharge_id[]" value="{{ $surcharge->id }}">
+                            <div class="flex items-center gap-3 px-4 py-3 bg-white hover:bg-blue-50 transition duration-150 ease-in-out" data-surcharge-id="{{ $surcharge->id }}">
+                                <span class="inline-flex items-center justify-center bg-blue-100 text-blue-700 text-xs font-bold w-7 h-7 rounded-full">
+                                    {{ strtoupper(substr($surcharge->label, 0, 2)) }}
+                                </span>
+                                <input type="text" name="surcharge_label[]" value="{{ $surcharge->label }}" 
+                                    class="flex-1 border-gray-300 focus:border-blue-400 focus:ring focus:ring-blue-200 text-sm rounded-md px-3 py-1.5"
+                                    placeholder="Enter surcharge name" />
+                                <input type="number" step="0.001" name="surcharge_amount[]" value="{{ $surcharge->amount }}" 
+                                    class="w-28 border-gray-300 focus:border-blue-400 focus:ring focus:ring-blue-200 text-sm rounded-md px-2 py-1.5 text-right font-medium text-blue-700" 
+                                    placeholder="0.000" />
+                                <button type="button" class="text-gray-400 hover:text-red-500" onclick="removeSurchargeRow(this)" title="Remove">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="flex justify-between items-center mt-5">
+                        <p class="text-xs text-gray-500 italic">
+                            *Updating surcharges will automatically update all non-invoiced related tasks.
+                        </p>
+                        <div class="flex items-center gap-3">
+                            <button type="button" onclick="addSurchargeRow()" class="bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium text-xs px-3 py-1.5 rounded-lg transition">
+                                + Add Surcharge
+                            </button>
+                            <input type="hidden" id="deleted_surcharges" name="deleted_surcharges" value="">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-4 py-2 rounded-lg shadow-sm transition">
+                                <i class="fa-solid fa-save mr-1"></i> Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            @else
+                <div class="text-sm text-gray-500 italic">
+                    No surcharges added for this supplier
+                </div>
+            @endif
+        </div>
+
+        <div class="bg-white rounded-md shadow-md p-5">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Supplier Policy</h2>
+            @include('suppliers.partials.add_procedure')
+            @include('suppliers.partials.list_procedure', ['companyId' => $companyId, 'supplierCompany' => $supplierCompany])
         </div>
     </div>
     <script>
@@ -370,6 +484,47 @@
                 });
             });
         });
+
+        function addSurchargeRow() {
+            const container = document.getElementById('surcharge-container');
+            const newRow = document.createElement('div');
+            newRow.className = 'flex items-center gap-3 px-4 py-3 bg-white hover:bg-blue-50 transition duration-150 ease-in-out';
+            newRow.innerHTML = `
+                <input type="hidden" name="surcharge_id[]" value="">
+                <span class="inline-flex items-center justify-center bg-gray-200 text-gray-600 text-xs font-bold w-7 h-7 rounded-full">--</span>
+                <input type="text" name="surcharge_label[]" value="" 
+                    class="flex-1 border-gray-300 focus:border-blue-400 focus:ring focus:ring-blue-200 text-sm rounded-md px-3 py-1.5"
+                    placeholder="Enter surcharge name" />
+                <input type="number" step="0.001" name="surcharge_amount[]" value="" 
+                    class="w-28 border-gray-300 focus:border-blue-400 focus:ring focus:ring-blue-200 text-sm rounded-md px-2 py-1.5 text-right font-medium text-blue-700" 
+                    placeholder="0.000" />
+                <button type="button" class="text-gray-400 hover:text-red-500" onclick="removeSurchargeRow(this)" title="Remove">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            `;
+
+            container.appendChild(newRow);
+        }
+
+        function removeSurchargeRow(button) {
+            const row = button.closest('div[data-surcharge-id]');
+            const id = row ? row.getAttribute('data-surcharge-id') : null;
+            const input = document.getElementById('deleted_surcharges');
+
+            if (id) {
+                const current = input.value ? input.value.split(',') : [];
+                if (!current.includes(id)) {
+                    current.push(id);
+                    input.value = current.join(',');
+                }
+            }
+
+            row.style.transition = 'opacity 0.3s';
+            row.style.opacity = '0';
+            setTimeout(() => row.remove(), 300);
+        }
     </script>
     <script>
         document.getElementById('export-pdf-btn').addEventListener('click', function() {

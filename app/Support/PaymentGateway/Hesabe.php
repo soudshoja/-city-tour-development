@@ -104,12 +104,14 @@ class Hesabe
             'data' => $encryptedData,
         ];
 
+        Log::info('Hesabe: CheckoutPayment payload', ['payload' => $hesabePayload]);
+
         $checkoutResponse = Http::withHeaders([
             'accessCode' => $accessCode,
             'Accept' => 'application/json',
         ])->post("$baseUrl/checkout", $hesabePayload);
         
-        Log::info();
+        Log::info('Hesabe: CheckoutPayment response', ['response' => $checkoutResponse->body()]);
         
         if (!$checkoutResponse->successful()) {
             return response()->json(['error' => 'CheckoutPayment failed.'], 500);

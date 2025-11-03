@@ -54,6 +54,7 @@ class AirFileParser
                 'original_reference' => $this->extractStatus() === 'void' ? $this->extractReference() : $this->extractOriginalReference(),
                 'created_by' => $this->extractCreatedBy(),
                 'issued_by' => $this->extractIssuedBy(),
+                'iata_number' => $this->extractIataNumber(),
                 'type' => 'flight', // Always flight for AIR files
                 'agent_name' => $this->extractAgentName(),
                 'agent_email' => $this->extractAgentEmail(),
@@ -101,6 +102,7 @@ class AirFileParser
                 'original_reference' => $this->extractStatus() === 'void' ? $reference : $this->extractOriginalReference(),
                 'created_by' => $this->extractCreatedBy(),
                 'issued_by' => $this->extractIssuedBy(),
+                'iata_number' => $this->extractIataNumber(),
                 'type' => 'flight', // Always flight for AIR files
                 'agent_name' => $this->extractAgentName(),
                 'agent_email' => $this->extractAgentEmail(),
@@ -953,6 +955,36 @@ class AirFileParser
             }
 
             return $lastKwiktPart ?: end($parts); // Return last KWIKT part or fallback to last part
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract IATA wallet number (after last GDS office ID as it is for issued_by)
+     */
+    private function extractIataNumber()
+    {
+        $match = $this->findLine('/^MUC1A\s+(.+?)(?:;+)?$/');
+        if (!$match) {
+            return null;
+        }
+
+        // Split the line into parts by semicolon
+        $parts = array_filter(explode(';', $match[1]), fn($part) => trim($part) !== '');
+
+        $lastKwiktIndex = null;
+
+        // Find the index of the last KWIKT
+        foreach ($parts as $index => $part) {
+            if (strpos($part, 'KWIKT') !== false) {
+                $lastKwiktIndex = $index;
+            }
+        }
+
+        // Return the part immediately after the last KWIKT
+        if ($lastKwiktIndex !== null && isset($parts[$lastKwiktIndex + 1])) {
+            return $parts[$lastKwiktIndex + 1];
         }
 
         return null;

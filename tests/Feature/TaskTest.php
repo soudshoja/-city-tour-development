@@ -19,8 +19,10 @@ use App\Models\Transaction;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
 use App\Models\Payment;
+use App\Models\Permission;
 use App\Models\TaskFlightDetail;
 use App\Models\TaskHotelDetail;
+use Database\Seeders\CoaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\DB;
@@ -33,35 +35,122 @@ class TaskTest extends TestCase
 
     protected $companyUser;
     protected $company;
+    protected $branchUser;
+    protected $admin;
+    protected $country;
+    protected $supplier;
+    protected $branch;
+    protected $agentUser;
+    protected $agent;
+    protected $client;
+    protected $hotel;
+    protected $assetsAccount;
+    protected $accountsReceivableAccount;
+    protected $clientsAccount;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->artisan('db:seed', ['--class' => 'PermissionSeeder']);
+
+        $adminRole = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $companyRole = Role::firstOrCreate(['name' => 'company', 'guard_name' => 'web']);
+        $branchRole = Role::firstOrCreate(['name' => 'branch', 'guard_name' => 'web']);
+        $agentRole = Role::firstOrCreate(['name' => 'agent', 'guard_name' => 'web']);
+        $accountantRole = Role::firstOrCreate(['name' => 'accountant', 'guard_name' => 'web']);
+
+        // Admin permissions (IDs 7-70)
+        $adminPermissions = [
+            'create task', 'view task', 'update task', 'delete task',
+            'create supplier', 'view supplier', 'update supplier', 'delete supplier',
+            'create company', 'view company', 'update company', 'delete company',
+            'create branch', 'view branch', 'update branch', 'delete branch',
+            'create agent', 'view agent', 'update agent', 'delete agent',
+            'create invoice', 'view invoice', 'update invoice', 'delete invoice',
+            'create client', 'view client', 'update client', 'delete client',
+            'create currency exchange', 'view currency exchange', 'update currency exchange', 'delete currency exchange',
+            'view credit', 'view payment', 'view refund',
+            'view reconcile report', 'view profit loss', 'view settlement', 'view creditors'
+        ];
+        $adminRole->givePermissionTo($adminPermissions);
+
+        // Company permissions (IDs 1-12, 17-70, 71)
+        $companyPermissions = [
+            'create task', 'view task', 'update task', 'delete task',
+            'create supplier', 'view supplier', 'update supplier', 'delete supplier',
+            'create branch', 'view branch', 'update branch', 'delete branch',
+            'create agent', 'view agent', 'update agent', 'delete agent',
+            'create invoice', 'view invoice', 'update invoice', 'delete invoice',
+            'create client', 'view client', 'update client', 'delete client',
+            'create currency exchange', 'view currency exchange', 'update currency exchange', 'delete currency exchange',
+            'view credit', 'view payment', 'view refund',
+            'view reconcile report', 'view profit loss', 'view settlement', 'view creditors', 'view daily sales'
+        ];
+        $companyRole->givePermissionTo($companyPermissions);
+
+        // Agent permissions (IDs 9-12, 21-24, 29-35, 39-42, 48, 50-51, 56-59, 61, 64-66)
+        $agentPermissions = [
+            'create task', 'view task', 'update task', 'delete task',
+            'create invoice', 'view invoice', 'update invoice', 'delete invoice',
+            'view agent', 'update agent',
+            'create client', 'view client', 'update client', 'delete client',
+            'view currency exchange', 'view credit', 'view payment', 'view refund'
+        ];
+        $agentRole->givePermissionTo($agentPermissions);
+
+        // Accountant permissions (IDs 22-23, 29-38, 40, 48-51, 61-62, 67-71)
+        $accountantPermissions = [
+            'view invoice', 'update invoice',
+            'view agent',
+            'view currency exchange', 'update currency exchange',
+            'view reconcile report', 'view profit loss', 'view settlement', 'view creditors', 'view daily sales'
+        ];
+        $accountantRole->givePermissionTo($accountantPermissions);
+
+        $this->admin = User::factory()->create(['role_id' => Role::ADMIN]);
+        $this->admin->assignRole('admin');
         
-        // Create company user
         $this->companyUser = User::factory()->create([
             'role_id' => Role::COMPANY,
             'name' => 'Company User',
             'email' => 'company@test.com'
         ]);
 
-        // Create test company
+        $this->country = Country::factory()->create();
+
         $this->company = Company::factory()->create([
             'name' => 'Test Company',
             'status' => 1,
-            'user_id' => $this->companyUser->id
+            'user_id' => $this->companyUser->id,
+            'country_id' => $this->country->id,
         ]);
 
-        // Update company user with company_id
-        $this->companyUser->update(['company_id' => $this->company->id]);
+        $this->companyUser->assignRole('company');
 
-        // Create necessary roles
-        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web', 'company_id' => $this->company->id]);
-        Role::firstOrCreate(['name' => 'company', 'guard_name' => 'web', 'company_id' => $this->company->id]);
-        Role::firstOrCreate(['name' => 'branch', 'guard_name' => 'web', 'company_id' => $this->company->id]);
-        Role::firstOrCreate(['name' => 'agent', 'guard_name' => 'web', 'company_id' => $this->company->id]);
+        CoaSeeder::run($this->company->id);
+
+        $this->branchUser = User::create([
+            'name' => 'Branch User',
+            'email' => 'branch@yahoo.com',
+            'password' => bcrypt('password123'),
+            'role_id' => Role::BRANCH,
+            'company_id' => $this->company->id,
+            'country_id' => $this->country->id,
+        ]);
+
+        $this->branch = Branch::create([
+            'name' => 'Main Branch',
+            'address' => '123 Main St',
+            'city' => 'Metropolis',
+            'country_id' => $this->country->id,
+            'phone' => '+1234567890',
+            'email' => 'branch@yahoo.com',
+            'user_id' => $this->branchUser->id,
+            'company_id' => $this->company->id,
+        ]);
+
+        $this->branchUser->assignRole('branch');
 
         AgentType::factory()->create([
             'id' => 1,
@@ -83,57 +172,47 @@ class TaskTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-    }
 
-    private function createAdminUser(): User
-    {
-        $admin = User::factory()->create(['role_id' => Role::ADMIN]);
-        $admin->assignRole('admin');
-        return $admin;
-    }
+        $this->agentUser = User::factory()->create(['role_id' => Role::AGENT]);
+        $this->agent = Agent::factory()->create([
+            'user_id' => $this->agentUser->id,
+            'branch_id' => $this->branch->id,
+            'type_id' => 1
+        ]);
 
-    private function createCompanyUser(): User
-    {
-        return User::factory()->create(['role_id' => Role::COMPANY]);
+        $this->agentUser->assignRole('agent');
+
+        $this->supplier = Supplier::factory()->create(['country_id' => $this->country->id]);
+
+        $this->client = Client::factory()->create(['agent_id' => $this->agent->id]);
+
+        $this->hotel = Hotel::create([
+            'name' => 'Test Hotel',
+            'address' => '123 Test Street',
+            'city' => 'Test City',
+            'country' => $this->country->name,
+            'phone' => '+1234567890',
+            'email' => 'test@hotel.com',
+            'rating' => 4,
+        ]);
+
+        $this->clientsAccount = Account::where('company_id', $this->company->id)
+            ->where('name', 'Clients')
+            ->first();
     }
 
     public function test_admin_can_soft_delete_simple_task()
     {
-        $admin = $this->createAdminUser();
-
-        $country = Country::factory()->create();
-        
-        $userCompany = User::factory()->create(['role_id' => Role::COMPANY]);
-        $company = Company::factory()->create([
-            'user_id' => $userCompany->id,
-            'country_id' => $country->id,
-        ]);
-        
-        $branch = Branch::factory()->create([
-            'user_id' => $userCompany->id,
-            'company_id' => $company->id,
-        ]);
-        
-        $userAgent = User::factory()->create(['role_id' => Role::AGENT]);
-        $agent = Agent::factory()->create([
-            'user_id' => $userAgent->id,
-            'branch_id' => $branch->id,
-            'type_id' => 1
-        ]);
-        
-        $client = Client::factory()->create(['agent_id' => $agent->id]);
-        $supplier = Supplier::factory()->create(['country_id' => $country->id]);
-        
         $task = Task::factory()->create([
-            'company_id' => $company->id,
-            'agent_id' => $agent->id,
-            'client_id' => $client->id,
-            'supplier_id' => $supplier->id,
+            'company_id' => $this->company->id,
+            'agent_id' => $this->agent->id,
+            'client_id' => $this->client->id,
+            'supplier_id' => $this->supplier->id,
             'reference' => 'TEST-REF-001',
             'total' => 1000.00
         ]);
 
-        $this->actingAs($admin);
+        $this->actingAs($this->admin);
 
         $response = $this->delete(route('tasks.destroy', $task->id));
 
@@ -157,17 +236,14 @@ class TaskTest extends TestCase
 
     public function test_non_admin_cannot_delete_task()
     {
-        $companyUser = $this->createCompanyUser();
-
-        $company = Company::factory()->create([
-            'user_id' => $companyUser->id,
-        ]);
-        
         $task = Task::factory()->create([
-            'company_id' => $company->id
+            'company_id' => $this->company->id,
+            'agent_id' => $this->agent->id,
+            'client_id' => $this->client->id,
+            'supplier_id' => $this->supplier->id,
         ]);
 
-        $this->actingAs($companyUser);
+        $this->actingAs($this->companyUser);
 
         $response = $this->delete(route('tasks.destroy', $task->id));
 
@@ -181,9 +257,7 @@ class TaskTest extends TestCase
 
     public function test_admin_cannot_delete_nonexistent_task()
     {
-        $admin = $this->createAdminUser();
-
-        $this->actingAs($admin);
+        $this->actingAs($this->admin);
 
         // Call destroy method with non-existent task ID
         $response = $this->delete(route('tasks.destroy', 99999));
@@ -193,23 +267,13 @@ class TaskTest extends TestCase
 
     public function test_destroy_task_without_related_data()
     {
-        $admin = $this->createAdminUser();
-        
-        $country = Country::factory()->create();
-        $userCompany = User::factory()->create(['role_id' => Role::COMPANY]);
-        $company = Company::factory()->create([
-            'user_id' => $userCompany->id,
-            'country_id' => $country->id,
-        ]);
-        $supplier = Supplier::factory()->create(['country_id' => $country->id]);
-        
         $task = Task::factory()->create([
-            'company_id' => $company->id,
-            'supplier_id' => $supplier->id,
+            'company_id' => $this->company->id,
+            'supplier_id' => $this->supplier->id,
             'reference' => 'SIMPLE-TASK-001'
         ]);
 
-        $this->actingAs($admin);
+        $this->actingAs($this->admin);
 
         $response = $this->delete(route('tasks.destroy', $task->id));
 
@@ -221,56 +285,27 @@ class TaskTest extends TestCase
 
     public function test_admin_can_soft_delete_task_with_invoices()
     {
-        $admin = $this->createAdminUser();
-        
-        $country = Country::factory()->create();
-        $userCompany = User::factory()->create(['role_id' => Role::COMPANY]);
-        $company = Company::factory()->create([
-            'user_id' => $userCompany->id,
-            'country_id' => $country->id,
-        ]);
-        
-        $branch = Branch::factory()->create([
-            'user_id' => $userCompany->id,
-            'company_id' => $company->id,
-        ]);
-
-        $userAgent = User::factory()->create(['role_id' => Role::AGENT]);
-        $agent = Agent::factory()->create([
-            'user_id' => $userAgent->id,
-            'branch_id' => $branch->id,
-            'type_id' => 1
-        ]);
-        
-        $supplier = Supplier::factory()->create(['country_id' => $country->id]);
-
-        $client = Client::factory()->create([
-            'agent_id' => $agent->id
-        ]);
-        
         $task = Task::factory()->create([
-            'company_id' => $company->id,
-            'client_id' => $client->id,
-            'agent_id' => $agent->id,
-            'supplier_id' => $supplier->id,
+            'company_id' => $this->company->id,
+            'client_id' => $this->client->id,
+            'agent_id' => $this->agent->id,
+            'supplier_id' => $this->supplier->id,
             'reference' => 'TEST-REF-001',
             'total' => 1000.00,
             'type' => 'flight',
         ]);
 
-        $country = Country::factory()->create();
-
         // Create related data
         TaskFlightDetail::factory()->create([
             'task_id' => $task->id,
-            'country_id_to' => $country->id,
-            'country_id_from' => $country->id
+            'country_id_to' => $this->country->id,
+            'country_id_from' => $this->country->id
         ]);
 
         $invoice = Invoice::factory()->create([
             'client_id' => $task->client_id,
             'agent_id' => $task->agent_id,
-            'country_id' => $country->id,
+            'country_id' => $this->country->id,
             'invoice_number' => 'INV-001',
             'sub_amount' => 1000.00,
             'amount' => 1000.00
@@ -282,8 +317,7 @@ class TaskTest extends TestCase
             'invoice_id' => $invoice->id,
         ]);
 
-
-        $this->actingAs($admin);
+        $this->actingAs($this->admin);
 
         $response = $this->delete(route('tasks.destroy', $task->id));
 
@@ -316,38 +350,12 @@ class TaskTest extends TestCase
 
     public function test_admin_can_soft_delete_task_with_all_related_data()
     {
-        // Create admin role and user
-        $admin = $this->createAdminUser();
-        
-        // Create basic dependencies
-        $country = Country::factory()->create();
-        $userCompany = User::factory()->create(['role_id' => Role::COMPANY]);
-        $company = Company::factory()->create([
-            'user_id' => $userCompany->id,
-            'country_id' => $country->id,
-        ]);
-        
-        $branch = Branch::factory()->create([
-            'user_id' => $userCompany->id,
-            'company_id' => $company->id,
-        ]);
-
-        $userAgent = User::factory()->create(['role_id' => Role::AGENT]);
-        $agent = Agent::factory()->create([
-            'user_id' => $userAgent->id,
-            'branch_id' => $branch->id,
-            'type_id' => 1
-        ]);
-        
-        $supplier = Supplier::factory()->create(['country_id' => $country->id]);
-        $client = Client::factory()->create(['agent_id' => $agent->id]);
-        
         // Create task
         $task = Task::factory()->create([
-            'company_id' => $company->id,
-            'client_id' => $client->id,
-            'agent_id' => $agent->id,
-            'supplier_id' => $supplier->id,
+            'company_id' => $this->company->id,
+            'client_id' => $this->client->id,
+            'agent_id' => $this->agent->id,
+            'supplier_id' => $this->supplier->id,
             'reference' => 'COMPLEX-TASK-001',
             'total' => 2500.00,
             'type' => 'flight',
@@ -356,32 +364,21 @@ class TaskTest extends TestCase
         // 1. Create TaskFlightDetail
         $flightDetail = TaskFlightDetail::factory()->create([
             'task_id' => $task->id,
-            'country_id_to' => $country->id,
-            'country_id_from' => $country->id
-        ]);
-
-        // Create Hotel for TaskHotelDetail
-        $hotel = Hotel::create([
-            'name' => 'Test Hotel',
-            'address' => '123 Test Street',
-            'city' => 'Test City',
-            'country' => $country->name,
-            'phone' => '+1234567890',
-            'email' => 'test@hotel.com',
-            'rating' => 4,
+            'country_id_to' => $this->country->id,
+            'country_id_from' => $this->country->id
         ]);
 
         // 2. Create TaskHotelDetail
         $hotelDetail = TaskHotelDetail::factory()->create([
             'task_id' => $task->id,
-            'hotel_id' => $hotel->id,
+            'hotel_id' => $this->hotel->id,
         ]);
 
         // 3. Create Invoice
         $invoice = Invoice::factory()->create([
-            'client_id' => $client->id,
-            'agent_id' => $agent->id,
-            'country_id' => $country->id,
+            'client_id' => $this->client->id,
+            'agent_id' => $this->agent->id,
+            'country_id' => $this->country->id,
             'invoice_number' => 'INV-COMPLEX-001',
             'sub_amount' => 2500.00,
             'amount' => 2500.00
@@ -396,11 +393,11 @@ class TaskTest extends TestCase
 
         // 5. Create Payment related to invoice
         $payment = Payment::factory()->create([
-            'agent_id' => $agent->id,
-            'client_id' => $client->id,
+            'agent_id' => $this->agent->id,
+            'client_id' => $this->client->id,
             'invoice_id' => $invoice->id,
-            'created_by' => $admin->id,
-            'account_id' => null, // Assuming no account is linked for simplicity
+            'created_by' => $this->admin->id,
+            'account_id' => null,
             'amount' => 1500.00,
             'payment_date' => now(),
         ]);
@@ -408,77 +405,30 @@ class TaskTest extends TestCase
         // 6. Create Transaction related to invoice
         $invoiceTransaction = Transaction::create([
             'invoice_id' => $invoice->id,
-            'company_id' => $company->id,
-            'entity_id' => $company->id,
+            'company_id' => $this->company->id,
+            'entity_id' => $this->company->id,
             'entity_type' => 'company',
             'amount' => 2500.00,
             'transaction_type' => 'credit',
             'status' => 'completed',
-            'user_id' => $admin->id,
+            'user_id' => $this->admin->id,
             'description' => 'Invoice transaction',
             'currency' => 'USD',
         ]);
 
-        // Create Account for JournalEntry (Accounts Receivable - Clients)
-        // First create the parent "Assets" account
-        $assetsAccount = Account::create([
-            'code' => '1000',
-            'name' => 'Assets',
-            'level' => 1,
-            'parent_id' => null,
-            'root_id' => null,
-            'company_id' => $company->id,
-            'account_type' => null,
-            'report_type' => 'balance sheet',
-            'actual_balance' => 0,
-            'budget_balance' => 0,
-            'variance' => 0,
-        ]);
-
-        // Create "Accounts Receivable" account
-        $accountsReceivableAccount = Account::create([
-            'code' => '1350',
-            'name' => 'Accounts Receivable',
-            'level' => 2,
-            'parent_id' => $assetsAccount->id,
-            'root_id' => $assetsAccount->id,
-            'company_id' => $company->id,
-            'account_type' => null,
-            'report_type' => 'balance sheet',
-            'actual_balance' => 0,
-            'budget_balance' => 0,
-            'variance' => 0,
-        ]);
-
-        // Create "Clients" account under Accounts Receivable
-        $clientsAccount = Account::create([
-            'code' => '1351',
-            'name' => 'Clients',
-            'level' => 3,
-            'parent_id' => $accountsReceivableAccount->id,
-            'root_id' => $assetsAccount->id,
-            'company_id' => $company->id,
-            'client_id' => $client->id, // Link to specific client
-            'account_type' => null,
-            'report_type' => 'balance sheet',
-            'actual_balance' => 0,
-            'budget_balance' => 0,
-            'variance' => 0,
-        ]);
-
-        // 7. Create JournalEntry related to task (using proper Accounts Receivable account)
+        // 7. Create JournalEntry related to task
         $journalEntry = JournalEntry::create([
             'task_id' => $task->id,
-            'company_id' => $company->id,
-            'branch_id' => $branch->id, // Add branch_id
-            'account_id' => $clientsAccount->id, // Use the Clients account
+            'company_id' => $this->company->id,
+            'branch_id' => $this->branch->id,
+            'account_id' => $this->clientsAccount->id,
             'transaction_date' => now(),
             'description' => 'Client receivable for task booking',
-            'name' => 'Client Receivable Entry', // Required field
-            'debit' => 2500.00, // Debit to Accounts Receivable (asset increases)
+            'name' => 'Client Receivable Entry',
+            'debit' => 2500.00,
             'credit' => 0,
             'balance' => 2500.00,
-            'amount' => 2500.00, // Add amount field
+            'amount' => 2500.00,
             'type' => 'debit',
             'currency' => 'USD',
             'exchange_rate' => 1.0,
@@ -486,10 +436,10 @@ class TaskTest extends TestCase
 
         // 8. Create Transaction related to journal entry
         $journalTransaction = Transaction::create([
-            'company_id' => $company->id,
-            'entity_id' => $company->id,
+            'company_id' => $this->company->id,
+            'entity_id' => $this->company->id,
             'entity_type' => 'company',
-            'branch_id' => $branch->id,
+            'branch_id' => $this->branch->id,
             'amount' => 2500.00,
             'transaction_type' => 'debit',
             'description' => 'Transaction for client receivable',
@@ -500,7 +450,7 @@ class TaskTest extends TestCase
         $journalEntry->update(['transaction_id' => $journalTransaction->id]);
 
         // Authenticate as admin
-        $this->actingAs($admin);
+        $this->actingAs($this->admin);
 
         // Call destroy method
         $response = $this->delete(route('tasks.destroy', $task->id));
@@ -547,38 +497,24 @@ class TaskTest extends TestCase
         $this->assertNotNull($trashedInvoice->deleted_at);
 
         // Assert that non-task related data is preserved (client, agent, company, etc.)
-        $this->assertDatabaseHas('clients', ['id' => $client->id]);
-        $this->assertDatabaseHas('agents', ['id' => $agent->id]);
-        $this->assertDatabaseHas('companies', ['id' => $company->id]);
-        $this->assertDatabaseHas('countries', ['id' => $country->id]);
-        $this->assertDatabaseHas('suppliers', ['id' => $supplier->id]);
+        $this->assertDatabaseHas('clients', ['id' => $this->client->id]);
+        $this->assertDatabaseHas('agents', ['id' => $this->agent->id]);
+        $this->assertDatabaseHas('companies', ['id' => $this->company->id]);
+        $this->assertDatabaseHas('countries', ['id' => $this->country->id]);
+        $this->assertDatabaseHas('suppliers', ['id' => $this->supplier->id]);
     }
 
     public function test_company_tasks_index_is_isolated_per_company()
     {
-        $country   = Country::factory()->create();
-        $supplierA = Supplier::factory()->create(['country_id' => $country->id]);
-        $supplierB = Supplier::factory()->create(['country_id' => $country->id]);
-
-        $branchA = Branch::factory()->create([
-            'user_id'    => $this->companyUser->id,
-            'company_id' => $this->company->id,
-        ]);
-        $agentAUser = User::factory()->create(['role_id' => Role::AGENT]);
-        $agentA = Agent::factory()->create([
-            'user_id'   => $agentAUser->id,
-            'branch_id' => $branchA->id,
-            'type_id'   => 1,
-        ]);
-        $clientA = Client::factory()->create(['agent_id' => $agentA->id]);
-
+        // Company A uses the setup entities
         Task::factory()->count(3)->create([
             'company_id' => $this->company->id,
-            'agent_id'   => $agentA->id,
-            'client_id'  => $clientA->id,
-            'supplier_id' => $supplierA->id,
+            'agent_id'   => $this->agent->id,
+            'client_id'  => $this->client->id,
+            'supplier_id' => $this->supplier->id,
         ]);
 
+        // Company B - create separate entities for isolation test
         $companyBUser = User::factory()->create(['role_id' => Role::COMPANY]);
         $companyB = Company::factory()->create(['user_id' => $companyBUser->id]);
         $branchB = Branch::factory()->create([
@@ -592,6 +528,7 @@ class TaskTest extends TestCase
             'type_id'   => 1,
         ]);
         $clientB = Client::factory()->create(['agent_id' => $agentB->id]);
+        $supplierB = Supplier::factory()->create(['country_id' => $this->country->id]);
 
         Task::factory()->count(2)->create([
             'company_id' => $companyB->id,
@@ -617,49 +554,53 @@ class TaskTest extends TestCase
 
     public function test_agent_sees_only_own_and_unassigned_tasks_in_same_company()
     {
-        $country   = Country::factory()->create();
-        $supplierA = Supplier::factory()->create(['country_id' => $country->id]);
-        $supplierB = Supplier::factory()->create(['country_id' => $country->id]);
+        // Create unassigned task in company A
+        Task::factory()->create([
+            'company_id' => $this->company->id,
+            'agent_id' => null,
+            'supplier_id' => $this->supplier->id
+        ]);
 
-        $companyAUser = User::factory()->create(['role_id' => Role::COMPANY]);
-        $companyA = Company::factory()->create(['user_id' => $companyAUser->id]);
-        $branchA  = Branch::factory()->create(['company_id' => $companyA->id, 'user_id' => $companyAUser->id]);
-
-        $agentUserA = User::factory()->create(['role_id' => Role::AGENT]);
-        $agentA = Agent::factory()->create(['user_id' => $agentUserA->id, 'branch_id' => $branchA->id, 'type_id' => 1]);
-        Task::factory()->create(['company_id' => $companyA->id, 'agent_id' => null, 'supplier_id' => $supplierA->id]);
-
+        // Create company B with its own unassigned task
         $companyBUser = User::factory()->create(['role_id' => Role::COMPANY]);
         $companyB = Company::factory()->create(['user_id' => $companyBUser->id]);
-        Task::factory()->create(['company_id' => $companyB->id, 'agent_id' => null, 'supplier_id' => $supplierB->id]);
+        $supplierB = Supplier::factory()->create(['country_id' => $this->country->id]);
+        Task::factory()->create([
+            'company_id' => $companyB->id,
+            'agent_id' => null,
+            'supplier_id' => $supplierB->id
+        ]);
 
-        $roleAgent = SpatieRole::firstOrCreate(['name' => 'agent', 'guard_name' => 'web']);
-        $roleAgent->givePermissionTo('view task');
-        $agentUserA->assignRole($roleAgent);
-        $this->actingAs($agentUserA);
+        $this->actingAs($this->agentUser);
 
         $response = $this->followingRedirects()->get(route('tasks.index', ['invoiced' => 0, 'view_type' => 'invoice']));
         $response->assertOk()->assertViewIs('tasks.index')->assertViewHas('tasks');
         $tasks = $response->viewData('tasks');
 
         foreach (($tasks instanceof \Illuminate\Pagination\LengthAwarePaginator ? $tasks->items() : $tasks) as $task) {
-            $this->assertEquals($companyA->id, $task->company_id);
-            $this->assertTrue($task->agent_id === $agentA->id || is_null($task->agent_id));
+            $this->assertEquals($this->company->id, $task->company_id);
+            $this->assertTrue($task->agent_id === $this->agent->id || is_null($task->agent_id));
         }
     }
 
     public function test_task_search_is_company_scoped()
     {
-        $country   = Country::factory()->create();
-        $supplierA = Supplier::factory()->create(['country_id' => $country->id]);
-        $supplierB = Supplier::factory()->create(['country_id' => $country->id]);
-
         $this->actingAs($this->companyUser);
-        Task::factory()->create(['company_id' => $this->company->id, 'passenger_name' => 'Unique Zed', 'supplier_id' => $supplierA->id]);
+        Task::factory()->create([
+            'company_id' => $this->company->id,
+            'passenger_name' => 'Unique Zed',
+            'supplier_id' => $this->supplier->id
+        ]);
 
-        $companyUser = User::factory()->create(['role_id' => Role::COMPANY]);
-        $company = Company::factory()->create(['user_id' => $companyUser->id]);
-        Task::factory()->create(['company_id' => $company->id, 'passenger_name' => 'Unique Zed', 'supplier_id' => $supplierB->id]);
+        // Create Company B with same passenger name for isolation test
+        $companyBUser = User::factory()->create(['role_id' => Role::COMPANY]);
+        $companyB = Company::factory()->create(['user_id' => $companyBUser->id]);
+        $supplierB = Supplier::factory()->create(['country_id' => $this->country->id]);
+        Task::factory()->create([
+            'company_id' => $companyB->id,
+            'passenger_name' => 'Unique Zed',
+            'supplier_id' => $supplierB->id
+        ]);
 
         $roleCompany = SpatieRole::firstOrCreate(['name' => 'company', 'guard_name' => 'web']);
         $roleCompany->givePermissionTo('view task');
@@ -677,14 +618,20 @@ class TaskTest extends TestCase
 
     public function test_pagination_does_not_leak_cross_company_tasks()
     {
-        $country   = Country::factory()->create();
-        $supplierA = Supplier::factory()->create(['country_id' => $country->id]);
-        $supplierB = Supplier::factory()->create(['country_id' => $country->id]);
-
         $this->actingAs($this->companyUser);
-        Task::factory()->count(35)->create(['company_id' => $this->company->id, 'supplier_id' => $supplierA->id]);
-        $company = Company::factory()->create(['user_id' => User::factory()->create(['role_id'=>Role::COMPANY])->id]);
-        Task::factory()->count(5)->create(['company_id' => $company->id, 'supplier_id' => $supplierB->id]);
+        Task::factory()->count(35)->create([
+            'company_id' => $this->company->id,
+            'supplier_id' => $this->supplier->id
+        ]);
+        
+        // Create Company B for isolation test
+        $companyBUser = User::factory()->create(['role_id'=>Role::COMPANY]);
+        $companyB = Company::factory()->create(['user_id' => $companyBUser->id]);
+        $supplierB = Supplier::factory()->create(['country_id' => $this->country->id]);
+        Task::factory()->count(5)->create([
+            'company_id' => $companyB->id,
+            'supplier_id' => $supplierB->id
+        ]);
 
         $roleCompany = SpatieRole::firstOrCreate(['name' => 'company', 'guard_name' => 'web']);
         $roleCompany->givePermissionTo('view task');

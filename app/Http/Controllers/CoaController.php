@@ -24,6 +24,7 @@ use App\Models\Role;
 use App\Models\Sequence;
 use App\Models\SupplierCompany;
 use App\Models\Task;
+use App\Enums\CoaLabel;
 use App\Models\Transaction;
 use Exception;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -98,7 +99,19 @@ class CoaController extends Controller
         // $expenses = $this->getExpenses();
         // $equities = $this->getEquity();
 
-        return view('coa.index', compact('assets',  'liabilities', 'incomes', 'expenses', 'equities', 'invoices', 'clients', 'suppliers', 'branches', 'agents'));
+        return view('coa.index', [
+            'assets'      => $assets,
+            'liabilities' => $liabilities,
+            'incomes'     => $incomes,
+            'expenses'    => $expenses,
+            'equities'    => $equities,
+            'invoices'    => $invoices,
+            'clients'     => $clients,
+            'suppliers'   => $suppliers,
+            'branches'    => $branches,
+            'agents'      => $agents,
+            'labelType'   => CoaLabel::cases(),
+        ]);
     }
 
     public function addCategory(Request $request)
@@ -110,6 +123,7 @@ class CoaController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:255',
+            'label' => 'nullable|in:' . implode(',', CoaLabel::getValues()),
             'level' => 'required|integer',
             'root_id' => 'required|integer',
             'parent_id' => 'required|integer',
@@ -133,6 +147,7 @@ class CoaController extends Controller
             $category = new Account();
             $category->name = $request->name;
             $category->code = $request->code;
+            $category->label = $request->label;
             $category->level = $request->level;
             $category->parent_id = $request->parent_id;
             $category->variance = 0;

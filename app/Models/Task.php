@@ -31,6 +31,7 @@ class Task extends Model
         'airline_reference',
         'created_by',
         'issued_by',
+        'iata_number',
         'issued_date',
         'expiry_date',
         'duration',

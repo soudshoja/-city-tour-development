@@ -193,6 +193,12 @@ class TaskSchema
                 'example' => 'Italy',
                 'default' => '',
             ],
+            'iata_number' => [
+                'type' => 'string',
+                'desc' => "IATA wallet number",
+                'example' => '42230215',
+                'default' => '',
+            ],
             'type' => [
                 'type' => 'string',
                 'desc' => "Service type of the booking. For air files: Always 'flight'. For other documents: Determine from content - 'flight' for airline tickets, 'hotel' for accommodation, 'car' for rentals, 'package' for combinations, etc. Refer to available types: $taskTypes.",

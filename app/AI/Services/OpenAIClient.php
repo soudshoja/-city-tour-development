@@ -989,6 +989,7 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "      \"reference\": \"main reference number\",\n";
         $prompt .= "      \"created_by\": \"agent/office code\",\n";
         $prompt .= "      \"issued_by\": \"issuing agent/office\",\n";
+        $prompt .= "      \"issued_by\": \"IATA wallet\", \n";
         $prompt .= "      \"type\": \"flight/hotel/package\",\n";
         $prompt .= "      \"agent_name\": \"agent name\",\n";
         $prompt .= "      \"agent_email\": \"agent email\",\n";

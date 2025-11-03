@@ -132,6 +132,20 @@
                             <input type="text" name="code" required placeholder="Enter code"
                                 class="w-full border rounded text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300">
                         </div>
+                        <div class="mb-4">
+                            <label for="label" class="block text-sm font-medium mb-1">Label</label>
+                            <select name="label" id="label"
+                                class="w-full border border-slate-300 rounded-md p-2 dark:bg-slate-900 dark:text-slate-100">
+                                
+                                {{-- Default placeholder option --}}
+                                <option value="" disabled selected>Select a label</option>
+
+                                @foreach ($labelType as $label)
+                                    <option value="{{ $label->value }}">{{ ucfirst(strtolower($label->name)) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <!-- <div class="mb-4" x-data x-init="new TomSelect($refs.accountType, { closeAfterSelect: true, hideSelected: true, create: false })">
                             <label class="block text-sm font-medium mb-1">
                                 Account Type<span class="text-red-500"> *</span>

@@ -1405,21 +1405,38 @@
                                                                                                 class="border border-gray-300 p-2 rounded-md w-full">
                                                                                         </div>
                                                                                     </div>
-                                                                                    <!-- Payment Method -->
+
+                                                                                    <!-- Payment Method & Issued Date-->
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
-                                                                                        <div class="flex-1 min-w-0">
-                                                                                            <label for="payment_method" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                                                        <div id="payment_method_wrapper_{{ $task->id }}">
+                                                                                            <label for="payment_method_account_id_{{ $task->id }}" class="block text-sm font-medium text-gray-700">
+                                                                                                Payment Method
+                                                                                            </label>
                                                                                             <div class="w-full">
                                                                                                 <select name="payment_method_account_id"
                                                                                                     id="payment_method_account_id_{{ $task->id }}"
-                                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full">
-                                                                                                    <option value="">Select Payment Method</option>
-                                                                                                    @foreach($paymentMethod as $method)
-                                                                                                    <option value="{{ $method->id }}" {{ $task->payment_method_account_id == $method->id ? 'selected' : ''}}>{{ $method->name }}</option>
+                                                                                                    class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
+                                                                                                    onchange="console.log('Selected Payment Method ID:', this.value)">
+                                                                                                    
+                                                                                                    <option value="" disabled {{ empty($task->payment_method_account_id) ? 'selected' : '' }}>
+                                                                                                        Select Payment Method
+                                                                                                    </option>
+                                                                                                    
+                                                                                                    @foreach($listOfCreditors as $groupName => $accounts)
+                                                                                                        <optgroup label="{{ $groupName }}">
+                                                                                                            @foreach($accounts as $method)
+                                                                                                                <option value="{{ $method['id'] }}"
+                                                                                                                    {{ $task->payment_method_account_id == $method['id'] ? 'selected' : '' }}>
+                                                                                                                    {{ $method['name'] }}
+                                                                                                                </option>
+                                                                                                            @endforeach
+                                                                                                        </optgroup>
                                                                                                     @endforeach
                                                                                                 </select>
                                                                                             </div>
                                                                                         </div>
+
+
                                                                                         @if (empty($task->supplier_pay_date))
                                                                                         <div class="flex-1 min-w-0 required-input">
                                                                                             <label for="supplier_pay_date"

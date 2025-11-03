@@ -838,7 +838,7 @@ class PaymentController extends Controller
 
     public function importFromInvoice(Request $request) : JsonResponse
     {
-        Log::info('Starting to import MyFatoorah payment from invoice');
+        Log::info('Starting to import payment from invoice');
         
         $gateway = strtolower($request->input('gateway'));
 
@@ -1103,8 +1103,8 @@ class PaymentController extends Controller
             }
 
             if ($payment->payment_gateway === 'MyFatoorah') {
-                $fatoorahPayload = session()->pull('fatoorah_import');
-                Log::info('MyFatoorah Payload from session', [
+                $fatoorahPayload = $data ?? session()->pull('fatoorah_import');
+                Log::info('MyFatoorah Payload', [
                     'fatoorah_payload' => $fatoorahPayload,
                 ]);
 
@@ -1126,13 +1126,13 @@ class PaymentController extends Controller
                 }
 
             } elseif ($payment->payment_gateway === 'Hesabe') {
-                $hesabePayload = session()->pull('hesabe_import');
+                $hesabePayload = $data ?? session()->pull('hesabe_import');
 
                 if (is_string($hesabePayload)) {
                     $hesabePayload = json_decode($hesabePayload, true);
                 }
 
-                Log::info('Hesabe Payload from session', ['hesabePayload' => $hesabePayload]);
+                Log::info('Hesabe Payload', ['hesabePayload' => $hesabePayload]);
 
                 if (!$hesabePayload) {
                     Log::error('Hesabe payload not found in session');

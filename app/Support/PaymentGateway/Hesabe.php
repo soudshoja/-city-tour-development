@@ -65,11 +65,6 @@ class Hesabe
 
         $orderReference = $request->input('invoice_number');
         $paymentMethodId = $request->input('payment_method_id');
-        $customerName = $invoice->client->first_name ?? 'Customer';
-
-        if (strpos($customerName, '/') !== false) {
-            $customerName = trim(explode('/', $customerName)[0]);
-        }
 
         $clientPhone = $data['client_phone'] ?? '50000000';
 

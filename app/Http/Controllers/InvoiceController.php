@@ -1118,9 +1118,12 @@ class InvoiceController extends Controller
                             $transaction->id,
                             $invoice->client->full_name,
                         );
+                        $response = json_decode($response->getContent(), true);
+
                         Log::info('Journal entry response', ['response' => $response]);
-                        if ($response['status'] == 'error') {
-                            throw new \Exception($response['message']);
+
+                        if(!$response['success']){
+                            throw new Exception('Failed to create journal entry: ' . ($response['message'] ?? 'Unknown error'));
                         }
                     }
                 } else {
@@ -1336,7 +1339,7 @@ class InvoiceController extends Controller
         $invoiceDetailId,
         $transactionId,
         $clientName,
-    ) {
+    ) : JsonResponse {
         Log::info('addJournalEntry method called', [
             'task_id' => $task->id ?? null,
             'invoice_id' => $invoiceId,
@@ -1481,7 +1484,7 @@ class InvoiceController extends Controller
                     'currency' => $task->currency ?? 'KWD',
                 ]);
 
-                Log::info("Auto-created new booking revenue account '{$bookingAccountName}' ({$detailsAccount->code}) for company {$companyId}");
+                Log::info("Auto-created new booking revenue account '{$bookingAccountName}' ({$detailsAccount->code}) for company {$task->company_id}");
             }
 
             JournalEntry::create([
@@ -1613,7 +1616,10 @@ class InvoiceController extends Controller
             ]);
         }
 
-        return ['status' => 'success'];
+        return response()->json([
+            'success' => true,
+            'message' => 'Journal entries created successfully!',
+        ]);
     }
 
     /**

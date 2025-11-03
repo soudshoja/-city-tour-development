@@ -13,9 +13,9 @@ deployment:
     - chmod -R 775 storage
     - chmod -R 775 bootstrap/cache
 
-    - php artisan down
-
     - ~/composer.phar install --no-dev --prefer-dist
+
+    - php artisan down
 
     - php artisan migrate --force
 

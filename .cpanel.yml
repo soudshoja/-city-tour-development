@@ -13,18 +13,12 @@ deployment:
     - chmod -R 775 storage
     - chmod -R 775 bootstrap/cache
 
-    # Put the application in maintenance mode
-    - /usr/local/bin/php artisan down
+    - php artisan down
 
-    # Install Composer dependencies (CORRECTED PATH)
-    # - /usr/local/bin/php /opt/cpanel/composer/bin/composer install --no-dev --prefer-dist
-    - /usr/local/bin/php ~/composer.phar install --no-dev --prefer-dist
+    - ~/composer.phar install --no-dev --prefer-dist
 
-    # # Run database migrations
-    - /usr/local/bin/php artisan migrate --force
+    - php artisan migrate --force
 
-    # # Clear caches and optimize (optional but recommended)
-    - /usr/local/bin/php artisan optimize:clear
+    - php artisan optimize:clear
 
-    # Take the application out of maintenance mode
-    - /usr/local/bin/php artisan up
+    - php artisan up

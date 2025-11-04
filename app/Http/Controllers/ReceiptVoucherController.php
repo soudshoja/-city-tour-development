@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvoiceReceiptStatus;
+use App\Enums\InvoiceReceiptType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -1603,9 +1605,12 @@ class ReceiptVoucherController extends Controller
             ]);
 
             $invoiceReceipt = InvoiceReceipt::create([
+                'type' => InvoiceReceiptType::INVOICE,
                 'invoice_id'     => $invoiceId,
                 'transaction_id' => $transaction->id,
                 'amount'         => $amount,
+                'status' => InvoiceReceiptStatus::PENDING,
+                'is_used' => true,
             ]);
 
             if (!$invoiceReceipt) {

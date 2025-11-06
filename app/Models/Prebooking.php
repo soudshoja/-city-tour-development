@@ -43,4 +43,9 @@ class Prebooking extends Model
         'price_breakdown' => 'array',
         'taxes' => 'array',
     ];
+
+    public function hotel()
+    {
+        return $this->belongsTo(Hotel::class);
+    }
 }

@@ -289,18 +289,7 @@ type Hotel {
 }
 
 input FullB2CBookingInput {
-    telephone: String!
-    hotel: String!
-    city: String
-    checkIn: Date!
-    checkOut: Date!
-    occupancy: Mixed!
-    roomCount: Int
-    boardBasis: String
-    nonRefundable: Boolean
-    country_code: String!
     phone: String!
-    notes: String
     payment_gateway: String
     payment_method: String
     email: String

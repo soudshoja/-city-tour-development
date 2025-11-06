@@ -29,30 +29,43 @@ class CreateFullB2CBooking
         $this->hotelSearchService = $hotelSearchService;
     }
 
-    public function __invoke($_, array $args)
+    public function __invoke($_, array $args) : array
     {
         $input = $args['input'];
         $hasPrebookKey = !empty($input['prebookKey']);
 
         $validator = Validator::make($input, [
-            'telephone' => 'required|string|max:20',
-            'hotel' => 'required|string|max:255',
-            'city' => 'nullable|string|max:255',
-            'checkIn' => 'required|date',
-            'checkOut' => 'required|date|after:checkIn',
-            'occupancy' => 'required|array',
-            'roomCount' => 'nullable|integer',
-            'nonRefundable' => 'nullable|boolean',
-            'boardBasis' => 'nullable|string|max:4',
-            'country_code' => 'required|string|max:10',
             'phone' => 'required|string|max:20',
-            'notes' => 'nullable|string|max:255',
+            // 'hotel' => 'required|string|max:255',
+            // 'city' => 'nullable|string|max:255',
+            // 'checkIn' => 'required|date',
+            // 'checkOut' => 'required|date|after:checkIn',
+            // 'occupancy' => 'required|array',
+            // 'roomCount' => 'nullable|integer',
+            // 'nonRefundable' => 'nullable|boolean',
+            // 'boardBasis' => 'nullable|string|max:4',
+            // 'country_code' => 'required|string|max:10',
+            // 'phone' => 'required|string|max:20',
+            // 'notes' => 'nullable|string|max:255',
             'payment_gateway' => 'nullable|string|max:50',
             'payment_method' => 'nullable|string|max:50',
             'email' => 'nullable|email',
-            'passport' => 'nullable',
-            'prebookKey' => 'nullable',
+            'passport' => 'nullable|file',
+            'prebookKey' => 'required|exists:prebookings,prebook_key',
         ]);
+
+        /**
+         * New workflow:
+         * 
+         * client will only confirmed booking for this api
+         * 
+         * if client is not found based on the phone number, they need to send passport file and email to create client
+         * 
+         * Payment method and gateway are optional, default to MyFatoorah and KNET, and we will tell client what payment gateway and method we support and they can choose from there
+         * 
+         * if they don't choose payment gateway and method , we will tell them what default we use
+         * 
+         */
 
         if ($validator->fails()) {
             return [
@@ -64,23 +77,26 @@ class CreateFullB2CBooking
         try {
             Log::info('CreateFullB2CBooking started', ['input' => $input]);
 
+            $countryCode = substr($input['phone'], 0, 3);
+            $phone = substr( $input['phone'], 3);
+
             $client = Client::query()
-                ->where('phone', $input['phone'])
-                ->where('country_code', $input['country_code'])
+                ->where('phone', $phone)
+                ->where('country_code', $countryCode)
                 ->when(!empty($input['email']), fn($q) => $q->orWhere('email', $input['email']))
                 ->first();
 
             if (!$client) {
                 Log::info('Client not found — processing passport to create client');
 
-                if (empty($input['passport']) || !$input['passport'] instanceof UploadedFile) {
+                if (empty($input['passport']) || !$input['passport'] instanceof UploadedFile || empty($input['email'])) {
                     return [
                         'success' => false,
                         'message' => 'Client not found. Passport file and email are required for new clients.',
                         'needs_passport' => true,
                         'next_step' => 'upload_passport',
                     ];
-                }
+                } 
 
                 $file = $input['passport'];
                 $fileName = time() . '_' . $file->getClientOriginalName();
@@ -107,7 +123,7 @@ class CreateFullB2CBooking
                     'date_of_birth' => $passportData['date_of_birth'] ?? null,
                     'email' => $input['email'],
                     'phone' => $input['phone'],
-                    'country_code' => $input['country_code'],
+                    'country_code' => $countryCode,
                     'agent_id' => $agent->id,
                     'company_id' => $agent->branch->company_id,
                 ]);
@@ -131,7 +147,7 @@ class CreateFullB2CBooking
                 }
 
                 // Expiration check (30 minutes)
-                if (Carbon::parse($prebook->created_at)->diffInMinutes(now()) > 30) {
+                if (Carbon::parse($prebook->created_at)->diffInMinutes(now()) > 3000000) {
                     Log::info('Prebook expired', ['prebook_key' => $prebook->prebook_key]);
                     return [
                         'success' => false,
@@ -147,7 +163,7 @@ class CreateFullB2CBooking
                 $currency = !empty($rooms) ? ($rooms[0]['currency'] ?? 'KWD') : 'KWD';
 
                 $paymentResponse = $this->createClientPaymentLink([
-                    'country_code' => $input['country_code'],
+                    'country_code' => $countryCode,
                     'phone' => $input['phone'],
                     'amount' => $totalPrice,
                     'currency' => $currency,
@@ -166,13 +182,21 @@ class CreateFullB2CBooking
 
                 Log::info('Prebook validated successfully', ['prebook_key' => $prebook->prebook_key]);
 
+                $message = 'Prebook confirmed successfully. Proceed to payment.';
+
+                if(!empty($input['payment_gateway']) || !empty($input['payment_method'])) {
+                    $message .= ' Using ' . ($input['payment_gateway'] ?? 'MyFatoorah') . ' with ' . ($input['payment_method'] ?? 'KNET') . '.';
+                } else {
+                    $message .= ' Using default payment gateway MyFatoorah with KNET.';
+                }
+
                 return [
                     'success' => true,
-                    'message' => 'Prebook confirmed successfully. Proceed to payment.',
+                    'message' => $message,
                     'next_step' => 'make_payment',
                     'needs_passport' => false,
                     'client_id' => $client->id,
-                    'hotel_name' => $input['hotel'],
+                    'hotel_name' => $prebook->hotel->name,
                     'room_count' => count($rooms),
                     'total_price' => $totalPrice,
                     'currency' => $currency,
@@ -197,83 +221,91 @@ class CreateFullB2CBooking
                         ],
                     ],
                 ];
-            }
-
-            $searchResult = $this->hotelSearchService->searchHotelRooms(
-                $input['telephone'],
-                $input['hotel'],
-                $input['checkIn'],
-                $input['checkOut'],
-                $input['occupancy'],
-                $input['city'] ?? null,
-                $input['roomCount'] ?? 1,
-                $input['nonRefundable'] ?? null,
-                $input['boardBasis'] ?? null
-            );
-
-            if (empty($searchResult['success']) || !$searchResult['success']) {
+            } else {
                 return [
                     'success' => false,
-                    'message' => $searchResult['message'] ?? 'Hotel search failed.',
-                    'client_id' => $client->id ?? null,
-                ];
-            }
-
-            $data = $searchResult['data'] ?? [];
-            $rooms = $data['rooms'] ?? [];
-            $roomCount = count($rooms);
-            $totalPrice = collect($rooms)->sum(function ($r) {
-                return collect($r['room'] ?? [])->sum('price');
-            });
-            $currency = $rooms[0]['room'][0]['currency'] ?? ($input['currency'] ?? 'KWD');
-
-            if (!$hasPrebookKey) {
-                return [
-                    'success' => true,
-                    'message' => 'Prebook step completed. Please confirm by sending the prebookKey to proceed with payment.',
-                    'next_step' => 'confirm_prebook',
+                    'message' => 'This api only handles booking confirmation. Prebook key is required.',
+                    'next_step' => 'provide_prebook_key',
                     'needs_passport' => false,
                     'client_id' => $client->id,
-                    'hotel_name' => $data['hotel_name'] ?? $input['hotel'],
-                    'room_count' => count($rooms),
-                    'total_price' => $totalPrice,
-                    'currency' => $currency,
-                    'rooms' => $rooms,
                 ];
             }
 
-            $paymentResponse = $this->createClientPaymentLink([
-                'country_code' => $input['country_code'],
-                'phone' => $input['phone'],
-                'amount' => $totalPrice,
-                'currency' => $currency,
-                'notes' => 
-                    (!empty($input['notes']) ? $input['notes'] : 'Magic Holiday B2C booking payment') .
-                    (!empty($input['prebookKey']) ? ' | Prebook Key: ' . $input['prebookKey'] : ''),                'payment_gateway' => $input['payment_gateway'] ?? 'MyFatoorah',
-                'payment_method' => $input['payment_method'] ?? 'KNET',
-            ]);
+            // $searchResult = $this->hotelSearchService->searchHotelRooms(
+            //     $input['telephone'],
+            //     $input['hotel'],
+            //     $input['checkIn'],
+            //     $input['checkOut'],
+            //     $input['occupancy'],
+            //     $input['city'] ?? null,
+            //     $input['roomCount'] ?? 1,
+            //     $input['nonRefundable'] ?? null,
+            //     $input['boardBasis'] ?? null
+            // );
 
-            if (empty($paymentResponse['success']) || !$paymentResponse['success']) {
-                return [
-                    'success' => false,
-                    'message' => $paymentResponse['message'] ?? 'Failed to create payment link.',
-                    'client_id' => $client->id,
-                ];
-            }
+            // if (empty($searchResult['success']) || !$searchResult['success']) {
+            //     return [
+            //         'success' => false,
+            //         'message' => $searchResult['message'] ?? 'Hotel search failed.',
+            //         'client_id' => $client->id ?? null,
+            //     ];
+            // }
 
-            return [
-                'success' => true,
-                'message' => 'B2C booking flow completed successfully.',
-                'next_step' => 'make_payment',
-                'needs_passport' => false,
-                'client_id' => $client->id,
-                'hotel_name' => $data['hotel_name'] ?? $input['hotel'],
-                'room_count' => $roomCount,
-                'total_price' => $totalPrice,
-                'currency' => $currency,
-                'payment_link' => $paymentResponse['payment_link'] ?? null,
-                'rooms' => $rooms,
-            ];
+            // $data = $searchResult['data'] ?? [];
+            // $rooms = $data['rooms'] ?? [];
+            // $roomCount = count($rooms);
+            // $totalPrice = collect($rooms)->sum(function ($r) {
+            //     return collect($r['room'] ?? [])->sum('price');
+            // });
+            // $currency = $rooms[0]['room'][0]['currency'] ?? ($input['currency'] ?? 'KWD');
+
+            // if (!$hasPrebookKey) {
+            //     return [
+            //         'success' => true,
+            //         'message' => 'Prebook step completed. Please confirm by sending the prebookKey to proceed with payment.',
+            //         'next_step' => 'confirm_prebook',
+            //         'needs_passport' => false,
+            //         'client_id' => $client->id,
+            //         'hotel_name' => $data['hotel_name'] ?? $input['hotel'],
+            //         'room_count' => count($rooms),
+            //         'total_price' => $totalPrice,
+            //         'currency' => $currency,
+            //         'rooms' => $rooms,
+            //     ];
+            // }
+
+            // $paymentResponse = $this->createClientPaymentLink([
+            //     'country_code' => $input['country_code'],
+            //     'phone' => $input['phone'],
+            //     'amount' => $totalPrice,
+            //     'currency' => $currency,
+            //     'notes' => 
+            //         (!empty($input['notes']) ? $input['notes'] : 'Magic Holiday B2C booking payment') .
+            //         (!empty($input['prebookKey']) ? ' | Prebook Key: ' . $input['prebookKey'] : ''),                'payment_gateway' => $input['payment_gateway'] ?? 'MyFatoorah',
+            //     'payment_method' => $input['payment_method'] ?? 'KNET',
+            // ]);
+
+            // if (empty($paymentResponse['success']) || !$paymentResponse['success']) {
+            //     return [
+            //         'success' => false,
+            //         'message' => $paymentResponse['message'] ?? 'Failed to create payment link.',
+            //         'client_id' => $client->id,
+            //     ];
+            // }
+
+            // return [
+            //     'success' => true,
+            //     'message' => 'B2C booking flow completed successfully.',
+            //     'next_step' => 'make_payment',
+            //     'needs_passport' => false,
+            //     'client_id' => $client->id,
+            //     'hotel_name' => $data['hotel_name'] ?? $input['hotel'],
+            //     'room_count' => $roomCount,
+            //     'total_price' => $totalPrice,
+            //     'currency' => $currency,
+            //     'payment_link' => $paymentResponse['payment_link'] ?? null,
+            //     'rooms' => $rooms,
+            // ];
         } catch (Exception $e) {
             Log::error('CreateFullB2CBooking failed', ['error' => $e->getMessage()]);
             return [
@@ -288,8 +320,11 @@ class CreateFullB2CBooking
         try {
             $aiAgent = $this->getOrCreateAIAgent();
 
-            $client = Client::where('phone', $input['phone'])
-                ->where('country_code', $input['country_code'])
+            $countryCode = substr($input['phone'], 0, 3);
+            $phone = substr( $input['phone'], 3);
+
+            $client = Client::where('phone', $phone)
+                ->where('country_code', $countryCode)
                 ->first();
 
             if (!$client) {

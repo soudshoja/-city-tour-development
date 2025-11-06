@@ -168,7 +168,7 @@ class PaymentController extends Controller
         return redirect($response['url']);
     }
 
-    private function generateVoucherNumber($sequence)
+    public function generateVoucherNumber($sequence)
     {
         $year = now()->year;
         return sprintf('VOU-%s-%05d', $year, $sequence);
@@ -838,6 +838,7 @@ class PaymentController extends Controller
 
     public function importFromInvoice(Request $request) : JsonResponse
     {
+        Log::info('Starting to import payment from invoice');
         Log::info('Starting to import payment from invoice');
         
         $gateway = strtolower($request->input('gateway'));
@@ -2476,6 +2477,9 @@ class PaymentController extends Controller
                         $invoice->paid_date = now();
                         $invoice->save();
 
+                        if ($invoice->status === 'paid' && $invoice->refund && $invoice->refund->status === 'processed') {
+                            $invoice->refund->update(['status' => 'completed']);
+                        }
                         Log::info('Invoice status updated to paid for completed payment', ['invoice_id' => $invoice->id]);
                     }
 
@@ -2891,7 +2895,7 @@ class PaymentController extends Controller
                     ]);
                 }
             });
-
+            
             $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
             $this->storeNotification([
                 'user_id' => $receiptInfo['agent']->user_id,
@@ -2905,6 +2909,31 @@ class PaymentController extends Controller
                 $receiptInfo['message']
             );
 
+            if ($payment['status'] == 'CAPTURED') {
+                $checkNotes = $payment->notes;
+                if (str_contains($checkNotes, 'Prebook Key')) {
+                    preg_match('/PB-[A-Za-z0-9]+/', $checkNotes, $match);
+                    $prebookKey = $match[0] ?? null;
+                    if ($prebookKey) {
+                        try {
+                            $wsHotelController = new WhatsAppHotelController;
+                            $response = $wsHotelController->hotelBookingDetails($payment);
+                            $apiResponse = $response->getData(true);
+
+                            if (!empty($apiResponse['success']) && $apiResponse['success'] === true) {
+                                return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful and booking confirmed!');
+                            }
+
+                            Log::warning('Hotel booking API responded with failure', ['response' => $apiResponse]);
+                            return redirect()->route('payment.failed')->with('error', $apiResponse['message'] ?? 'Booking API failed.');
+                        } catch (\Throwable $e) {
+                            Log::error('Hotel booking API crashed', ['error' => $e->getMessage()]);
+                            return redirect()->route('payment.failed')->with('error', 'Booking process failed: ' . $e->getMessage());
+                        }
+                    }
+                }
+            }
+            
             return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
 
         } catch (\Throwable $e) {

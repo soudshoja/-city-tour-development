@@ -19,6 +19,8 @@ deployment:
 
     - php artisan migrate --force
 
+    - php artisan lighthouse:cache
+
     - php artisan optimize:clear
 
     - php artisan up

@@ -4681,14 +4681,17 @@ class InvoiceController extends Controller
             $message
         );
 
+        $agentPhoneNumber = app()->environment() == 'production' ? $task->agent->country_code . $task->agent->phone_number : env('PHONE_LOCAL', '+60193058463');
+        $clientPhoneNumber = app()->environment() == 'production' ? $task->client->country_code . $task->client->phone : env('PHONE_LOCAL', '+60193058463');
+
         $n8nResponse = Http::post(env('N8N_WEBHOOK_TEST_URL'), [
             'success' => true,
             'agent' => [
-                'phone_number' => $task->agent->country_code . $task->agent->phone_number,
+                'phone_number' => $agentPhoneNumber,
                 'message' => $message,
             ],
             'client' => [
-                'phone_number' => $task->client->country_code . $task->client->phone,
+                'phone_number' => $clientPhoneNumber,
                 'name' => $task->client->full_name,
             ],
             'invoice' => [

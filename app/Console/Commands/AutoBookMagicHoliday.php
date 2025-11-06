@@ -454,9 +454,11 @@ class AutoBookMagicHoliday extends Command
         if($data['agent']){
             $agent = $data['agent']['model'];
 
+            $agentPhoneNumber = app()->environment() == 'production' ? $agent->country_code . $agent->phone_number : env('PHONE_LOCAL', '+60193058463');
+
             $requestToN8n['agent'] = [
                 'name' => $agent->name,
-                'phone_number' => $agent->country_code . $agent->phone_number,
+                'phone_number' => $agentPhoneNumber,
                 'message' => $data['agent']['message']
             ];
 
@@ -471,9 +473,11 @@ class AutoBookMagicHoliday extends Command
         if($data['client']){
             $client = $data['client']['model'];
 
+            $clientPhoneNumber = app()->environment() == 'production' ? $client->country_code . $client->phone : env('PHONE_LOCAL', '+60193058463');
+
             $requestToN8n['client'] = [
                 'name' => $client->full_name,
-                'phone_number' => $client->country_code . $client->phone,
+                'phone_number' => $clientPhoneNumber,
                 'message' => $data['client']['message']
             ];
         }

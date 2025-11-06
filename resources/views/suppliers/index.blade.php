@@ -102,7 +102,7 @@
                             :items="$countries->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
                             placeholder="Select Country" />
                     </div>
-                   
+
                     @php($supplier = $supplier ?? new \App\Models\Supplier())
                     <div x-data="{
                             hasHotel: {{ $supplier->has_hotel ? 'true' : 'false' }},
@@ -417,7 +417,7 @@
                             </svg>
                         </button>
                         <div x-show="editSuppliers" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50">
-                            <div @click.away="editSuppliers = false"class="bg-white w-1/2 max-h-[90vh] overflow-y-auto rounded-md shadow-md custom-scrollbar">
+                            <div @click.away="editSuppliers = false" class="bg-white w-1/2 max-h-[90vh] overflow-y-auto rounded-md shadow-md custom-scrollbar">
                                 <div class="sticky top-0 bg-white z-10 p-5 border-b border-gray-200 flex items-start justify-between">
                                     <div>
                                         <h1 class="text-lg md:text-xl font-semibold text-gray-900">Edit Supplier</h1>
@@ -708,54 +708,95 @@
                                             <label class="block text-sm font-medium text-gray-700 mb-2">Auto Extra Surcharge</label>
                                             <div id="auto-surcharge-wrapper" class="space-y-4">
                                                 @foreach($supplier->companies as $company)
-                                                    <div class="border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100/60 transition-colors duration-200 shadow-sm">
-                                                        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-100 rounded-t-lg">
-                                                            <h3 class="font-semibold text-gray-800 text-base">{{ $company->name }}</h3>
-                                                            <button type="button"
-                                                                class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                                                                onclick="addSurchargeRow({{ $company->pivot->id }})">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                                                                    stroke="currentColor" class="w-4 h-4">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                                                                </svg>
-                                                                Add Label
-                                                            </button>
-                                                        </div>
-                                                        <div class="p-4 space-y-3" id="company-surcharge-{{ $company->pivot->id }}">
-                                                            @if($company->pivot && $company->pivot->supplierSurcharges->isNotEmpty())
-                                                                @foreach($company->pivot->supplierSurcharges as $surcharge)
-                                                                    <div class="flex items-center gap-3 bg-white border border-gray-200 rounded-md px-3 py-2 hover:border-blue-400 transition" data-surcharge-id="{{ $surcharge->id }}">
-                                                                        <input type="hidden" name="surcharge_id[]" value="{{ $surcharge->id }}">
-                                                                        <input type="hidden" name="old_surcharge_label[{{ $company->pivot->id }}][]" value="{{ $surcharge->label }}">
-                                                                        <input type="text" name="surcharge_label[{{ $company->pivot->id }}][]"
-                                                                            value="{{ $surcharge->label }}"
-                                                                            placeholder="Label Name"
-                                                                            class="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition" />
-                                                                        <input type="number" name="surcharge_amount[{{ $company->pivot->id }}][]"
-                                                                            value="{{ $surcharge->amount }}" min="0" step="0.001"
-                                                                            placeholder="Amount"
-                                                                            class="w-36 border border-gray-300 rounded-md px-3 py-1.5 text-sm text-right focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition" />
-                                                                        <button type="button" 
-                                                                            class="text-gray-400 hover:text-red-500"
-                                                                            onclick="removeSurchargeRow(this)"
-                                                                            title="Remove">
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                                    d="M6 18L18 6M6 6l12 12" />
-                                                                            </svg>
-                                                                        </button>
-                                                                    </div>
-                                                                @endforeach
-                                                            @else
-                                                                <div class="text-sm text-gray-500 italic">No surcharges yet — click “Add Label” to create one.</div>
-                                                            @endif
-                                                        </div>
+                                                <div class="border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100/60 transition-colors duration-200 shadow-sm">
+                                                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-100 rounded-t-lg">
+                                                        <h3 class="font-semibold text-gray-800 text-base">{{ $company->name }}</h3>
+                                                        <button type="button"
+                                                            class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                                                            onclick="addSurchargeRow({{ $company->pivot->id }})">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                                                stroke="currentColor" class="w-4 h-4">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                                                            </svg>
+                                                            Add Label
+                                                        </button>
                                                     </div>
+                                                    <div class="p-4 space-y-3" id="company-surcharge-{{ $company->pivot->id }}">
+                                                        @if($company->pivot && $company->pivot->supplierSurcharges->isNotEmpty())
+                                                        @foreach($company->pivot->supplierSurcharges as $surcharge)
+                                                        <div
+                                                            x-data="{ chargeMode: '{{ $surcharge->charge_mode }}' }"
+                                                            class="border border-gray-200 rounded-lg p-3 mb-2 bg-white shadow-sm surcharge-row-wrapper"
+                                                            data-surcharge-id="{{ $surcharge->id }}">
+                                                            <div class="flex items-center gap-3">
+                                                                <input type="hidden" name="surcharge_id[{{ $company->pivot->id }}][]" value="{{ $surcharge->id }}">
+                                                                <input type="text" name="surcharge_label[{{ $company->pivot->id }}][{{ $surcharge->id ?? 'new_' . uniqid() }}]"
+                                                                    value="{{ $surcharge->label }}"
+                                                                    placeholder="Label"
+                                                                    class="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                                                                <input type="number" name="surcharge_amount[{{ $company->pivot->id }}][{{ $surcharge->id ?? 'new_' . uniqid()}}]"
+                                                                    value="{{ $surcharge->amount }}" min="0" step="0.001" placeholder="Amount"
+                                                                    class="w-32 border border-gray-300 rounded-md px-3 py-1.5 text-sm text-right focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                                                                <button type="button" class="text-gray-400 hover:text-red-500" onclick="removeSurchargeRow(this)" title="Remove">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
+                                                            <div class="mt-2 flex items-center flex-wrap gap-x-3 gap-y-1 text-sm">
+                                                                <label class="text-gray-700 whitespace-nowrap">Charge Mode:</label>
+                                                                <select name="charge_mode[{{ $company->pivot->id }}][{{ $surcharge->id ?? 'new_' . uniqid() }}]"
+                                                                    x-model="chargeMode" class="min-w-[8rem] border border-gray-300 rounded-md px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400">
+                                                                    <option value="task">Task-wise</option>
+                                                                    <option value="reference">Reference-wise</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="mt-3 flex flex-wrap items-center gap-4">
+                                                                @foreach(['issued','reissued','confirmed','refund','void'] as $status)
+                                                                <label class="flex items-center text-xs gap-2 text-gray-700">
+                                                                    <input type="checkbox" value="1" name="is_{{ $status }}[{{ $company->pivot->id }}][{{ $surcharge->id }}]"
+                                                                        {{ $surcharge->{'is_'.$status} ? 'checked' : '' }}
+                                                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                                    {{ ucfirst(str_replace('_', ' ', $status)) }}
+                                                                </label>
+                                                                @endforeach
+                                                            </div>
+                                                            <div x-show="chargeMode === 'reference'" x-cloak class="mt-4 border-t pt-3 reference-section">
+                                                                <h4 class="text-sm font-semibold text-gray-800 flex items-center justify-between">
+                                                                    Reference Rules
+                                                                    <button type="button" class="text-blue-600 text-xs hover:text-blue-700 flex items-center gap-1"
+                                                                        onclick="addReferenceRow(this)">
+                                                                        + Add Reference
+                                                                    </button>
+                                                                </h4>
+                                                                <div class="mt-2 space-y-2" id="reference-list-{{ $surcharge->id ?? 'new_' . uniqid() }}">
+                                                                    @foreach($surcharge->references as $reference)
+                                                                    <div class="flex flex-wrap items-center gap-2 border border-gray-200 rounded-md px-2 py-1 bg-gray-50">
+                                                                        <input type="text" name="reference[{{ $surcharge->id ?? 'new_' . uniqid() }}][]" value="{{ $reference->reference }}"
+                                                                            placeholder="Reference"
+                                                                            class="flex-1 border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+                                                                        <select name="charge_behavior[{{ $surcharge->id ?? 'new_' . uniqid() }}][]"
+                                                                            class="min-w-[9rem] border border-gray-300 rounded-md px-2 py-1 text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400">
+                                                                            <option value="single" {{ $reference->charge_behavior === 'single' ? 'selected' : '' }}>Charge Once</option>
+                                                                            <option value="repetitive" {{ $reference->charge_behavior === 'repetitive' ? 'selected' : '' }}>Charge Repeatedly</option>
+                                                                        </select>
+                                                                        <button type="button" class="text-red-500 hover:text-red-600" onclick="this.closest('div').remove()">✕</button>
+                                                                    </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        @endforeach
+                                                        @else
+                                                        <div class="text-sm text-gray-500 italic">No surcharges yet — click “Add Label” to create one.</div>
+                                                        @endif
+                                                    </div>
+                                                </div>
                                                 @endforeach
                                             </div>
                                         </div>
-                                        <input type="hidden" id="deleted_surcharges" name="deleted_surcharges" value="">
+                                        <input type="hidden" id="deleted_surcharges_{{ $supplier->id }}" name="deleted_surcharges" value="">
                                         <div class="mt-5 flex items-center justify-between">
                                             <button type="button"
                                                 @click="editSuppliers = false"
@@ -823,7 +864,7 @@
     </div>
     @endrole
     <script>
-        const searchInput   = document.getElementById('searchInput');
+        const searchInput = document.getElementById('searchInput');
         const suppliersData = document.getElementById('suppliersData');
         const tbody = document.getElementById('suppliersTable');
         const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -849,97 +890,113 @@
 
         function addSurchargeRow(supplierCompanyId) {
             const container = document.getElementById('company-surcharge-' + supplierCompanyId);
-            const wrapper = document.createElement('div');
-            wrapper.classList.add('flex', 'items-center', 'gap-3', 'bg-white', 'border', 'border-gray-200', 'rounded-md', 'px-3', 'py-2', 'hover:border-blue-400', 'transition');
+            const key = 'new_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
 
+            const wrapper = document.createElement('div');
+            wrapper.className = 'border border-gray-200 rounded-lg p-3 mb-2 bg-white shadow-sm surcharge-row-wrapper';
+            wrapper.dataset.surchargeKey = key;
+            wrapper.setAttribute('x-data', "{ chargeMode: 'task' }");
             wrapper.innerHTML = `
-                <input type="hidden" name="old_surcharge_label[${supplierCompanyId}][]" value="">
-                <input type="text" name="surcharge_label[${supplierCompanyId}][]" placeholder="Label Name"
-                    class="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition" />
-                <input type="number" name="surcharge_amount[${supplierCompanyId}][]" placeholder="Amount" step="0.001"
-                    class="w-36 border border-gray-300 rounded-md px-3 py-1.5 text-sm text-right focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition" />
-                <button type="button" class="text-gray-400 hover:text-red-500" onclick="this.closest('div').remove()" title="Remove">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+                <div class="flex items-center gap-3">
+                    <input type="hidden" name="surcharge_id[${supplierCompanyId}][]">
+                    <input type="text" name="surcharge_label[${supplierCompanyId}][${key}]" placeholder="Label Name"
+                        class="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                    <input type="number" name="surcharge_amount[${supplierCompanyId}][${key}]" placeholder="Amount" step="0.001"
+                        class="w-32 border border-gray-300 rounded-md px-3 py-1.5 text-sm text-right focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                    <button type="button" class="text-gray-400 hover:text-red-500" onclick="removeSurchargeRow(this)">✕</button>
+                </div>
+                <div class="mt-2 flex items-center flex-wrap gap-x-3 gap-y-1 text-sm">
+                    <label class="text-gray-700 whitespace-nowrap">Charge Mode:</label>
+                    <select name="charge_mode[${supplierCompanyId}][${key}]" x-model="chargeMode"
+                        class="min-w-[8rem] border border-gray-300 rounded-md px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400">
+                        <option value="task">Task-wise</option>
+                        <option value="reference">Reference-wise</option>
+                    </select>
+                </div>
+                <div class="mt-3 flex flex-wrap items-center gap-4">
+                    ${['issued','reissued','confirmed','refund','void'].map(status => `
+                        <label class="flex items-center text-xs gap-2 text-gray-700">
+                            <input type="checkbox" name="is_${status}[${supplierCompanyId}][${key}]" value="1"
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            ${status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                        </label>
+                    `).join('')}
+                </div>
+                <div class="mt-4 border-t pt-3 reference-section" x-show="chargeMode === 'reference'" x-cloak>
+                    <h4 class="text-sm font-semibold text-gray-800 flex items-center justify-between">
+                        Reference Rules
+                        <button type="button" class="text-blue-600 text-xs hover:text-blue-700 flex items-center gap-1" onclick="addReferenceRow(this)">
+                            + Add Reference
+                        </button>
+                    </h4>
+                    <div class="mt-2 space-y-2" id="reference-list-${key}"></div>
+                </div>
             `;
             container.appendChild(wrapper);
         }
+
+        function addReferenceRow(button) {
+            const row = button.closest('.surcharge-row-wrapper');
+            if (!row) return;
+            const key = row.dataset.surchargeId || row.dataset.surchargeKey;
+            const list = document.getElementById(`reference-list-${key}`);
+            if (!key || !list) return;
+
+            const div = document.createElement('div');
+            div.className = 'flex flex-wrap items-center gap-2 border border-gray-200 rounded-md px-2 py-1 bg-gray-50';
+            div.innerHTML = `
+                <input type="text" name="reference[${key}][]" placeholder="Reference" class="flex-1 border border-gray-300 rounded-md px-2 py-1 text-sm">
+                <select name="charge_behavior[${key}][]" class="min-w-[9rem] border border-gray-300 rounded-md px-2 py-1 text-xs">
+                <option value="single">Charge Once</option>
+                <option value="repetitive">Charge Repeatedly</option>
+                </select>
+                <button type="button" class="text-red-500 hover:text-red-600" onclick="this.closest('div').remove()">✕</button>
+            `;
+            list.appendChild(div);
+        }
+
         function removeSurchargeRow(button) {
-            const row = button.closest('div[data-surcharge-id]');
-            if (row) {
-                const surchargeId = row.getAttribute('data-surcharge-id');
-                if (surchargeId) {
-                    const input = document.getElementById('deleted_surcharges');
+            const row = button.closest('.surcharge-row-wrapper');
+            if (!row) return;
+
+            const surchargeId = row.dataset.surchargeId;
+            if (surchargeId) {
+                const form = button.closest('form');
+                const input = form?.querySelector('input[name="deleted_surcharges"]');
+                if (input) {
                     const existing = input.value ? input.value.split(',') : [];
-                    existing.push(surchargeId);
+                    if (!existing.includes(surchargeId)) {
+                        existing.push(surchargeId);
+                    }
                     input.value = existing.join(',');
                 }
-                row.remove();
-            } else {
-                button.closest('div').remove();
             }
+
+            row.remove();
         }
+
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('referenceManager', () => ({
+                addReference(surchargeId) {
+                    const list = document.getElementById(`reference-list-${surchargeId}`);
+                    if (!list) return;
+
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center gap-2 border border-gray-200 rounded-md px-2 py-1 bg-gray-50';
+                    div.innerHTML = `
+                        <input type="text" name="reference[${surchargeId}][]" placeholder="Reference"
+                            class="flex-1 border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+                        <label class="flex items-center text-xs gap-1">
+                            <input type="checkbox" name="combine_reference_ref[${surchargeId}][]" 
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            Combine
+                        </label>
+                        <button type="button" class="text-red-500 hover:text-red-600" 
+                            onclick="this.closest('div').remove()">✕</button>
+                    `;
+                    list.appendChild(div);
+                },
+            }));
+        });
     </script>
-    <!-- <script>
-        const searchInput = document.getElementById('searchInput');
-        const suppliersData = document.getElementById('suppliersData');
-        const suppliers = @json($suppliers);
-
-        searchInput.addEventListener('input', (e) => {
-
-            const searchValue = e.target.value;
-            const filteredSuppliers = suppliers.filter(supplier => supplier.name.toLowerCase().includes(searchValue.toLowerCase()));
-            suppliersData.innerText = filteredSuppliers.length;
-            const suppliersTable = document.getElementById('suppliersTable');
-            const basedUrl = @json(config('app.url'));
-
-            suppliersTable.innerHTML = '';
-            filteredSuppliers.forEach(supplier => {
-
-                let showUrl = basedUrl + '/suppliers/' + supplier.id;
-                let url = basedUrl + '/suppliers/' + supplier.route + '/index';
-
-                const tr = document.createElement('tr');
-                tr.classList.add('hover:bg-gray-200', 'dark:hover:bg-gray-600');
-                tr.innerHTML = `
-                    <td class="px-4 py-2 border dark:border-gray-600 cursor-pointer">
-                        <a href="${showUrl}">
-                            <span class="font-bold">» ${supplier.name}</span><br>
-                        </a>
-                    </td>
-                    <td class="px-4 py-2 border dark:border-gray-600 text-center space-x-2">
-                        <button class="bg-green-500 text-white px-2 py-1 rounded">Activate</button>
-                        <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Deactivate</button>
-                        ${supplier.named_route ? `<a href="${url}" class="bg-gray-300 text-gray-700 px-2 py-1 rounded">Configure</a>` : ''}
-                    </td>
-                `;
-                suppliersTable.appendChild(tr);
-            });
-        });
-
-        const supplierSelect = document.getElementById('supplier');
-        const basicInput = document.querySelector('.basic-input');
-        const oauthInput = document.querySelector('.oauth-input');
-
-        supplierSelect.addEventListener('change', (e) => {
-            const supplier = JSON.parse(e.target.selectedOptions[0].getAttribute('data-supplier'));
-            const authMethod = supplier.auth_type
-            let type = document.getElementById('supplier_company_type');
-
-            console.log(type);
-            type.value = authMethod;
-            console.log(type);
-            if (authMethod === 'basic') {
-                basicInput.classList.remove('hidden');
-                oauthInput.classList.add('hidden');
-            } else {
-                basicInput.classList.add('hidden');
-                oauthInput.classList.remove('hidden');
-            }
-        });
-    </script> -->
 </x-app-layout>

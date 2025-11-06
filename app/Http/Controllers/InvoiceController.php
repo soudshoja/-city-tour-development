@@ -39,6 +39,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 
 class InvoiceController extends Controller
@@ -4679,7 +4680,31 @@ class InvoiceController extends Controller
             $task->agent->country_code,
             $message
         );
-        
+
+        $n8nResponse = Http::post(env('N8N_WEBHOOK_TEST_URL'), [
+            'success' => true,
+            'agent' => [
+                'phone_number' => $task->agent->country_code . $task->agent->phone_number,
+                'message' => $message,
+            ],
+            'client' => [
+                'phone_number' => $task->client->country_code . $task->client->phone,
+                'name' => $task->client->full_name,
+            ],
+            'invoice' => [
+                'invoice_number' => $invoice->invoice_number,
+                'amount' => $invoice->amount,
+                'currency' => $invoice->currency,
+                'status' => $invoice->status,
+            ]
+        ]);
+
+        Log::info('N8N Webhook Response', [
+            'status' => $n8nResponse->status(),
+            'body' => $n8nResponse->body(),
+        ]);
+
+
         Log::info('Auto Invoice Generated Successfully', [
             'task_id' => $task->id,
             'payment_id' => $payment->id,

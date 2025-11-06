@@ -1010,7 +1010,12 @@ class WhatsAppHotelController extends Controller
                 ], 404);
             }
 
-            $client = Client::where('phone', $request->phone_number)->get();
+            $countryCode = substr($request->phone_number, 0, 3);
+            $phone = substr($request->phone_number, 3);
+
+            $client = Client::where('phone', $phone)
+                ->where('country_code', $countryCode)
+                ->get();
 
             if ($client->count() > 1) {
                 $client = null; // we just make it null to cater to b2b process

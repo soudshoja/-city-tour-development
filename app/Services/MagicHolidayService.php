@@ -87,8 +87,6 @@ class MagicHolidayService
             ->accept('application/json')
             ->{$method}($this->baseUrl . $endpoint, $method === 'get' ? $params : $payload);
 
-      
-
         $responseData = [
             'status' => $response->status(),
             'data' => $response->json(),
@@ -557,6 +555,22 @@ class MagicHolidayService
                 $response['headers']['X-RateLimit-Remaining'][0] ?? null,
                 $response['headers']['X-RateLimit-Reset'][0] ?? null
             );
+        }
+
+        return $response;
+    }
+
+    public function cancelReservation(int $reservationId)
+    {
+        $scopes = ['write:reservations'];
+        $this->applyRequestSpacing();
+
+        $response = $this->request('delete', '/reservationsApi/v1/reservations/' . $reservationId, $scopes);
+
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
         }
 
         return $response;

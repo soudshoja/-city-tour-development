@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use App\Http\Traits\HttpRequestTrait;
+use App\Http\Traits\NotificationTrait;
 use App\Models\Payment;
 use App\Models\Prebooking;
 use App\Models\Client;
@@ -19,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 
 class AutoBookMagicHoliday extends Command
 {
+    use NotificationTrait;
     // protected $magicHolidayService;
 
     // public function __construct()
@@ -123,6 +125,9 @@ class AutoBookMagicHoliday extends Command
                             'payload'    => $bookingParams['payload'],
                         ]);
 
+                        $client = $payment->client;
+                        $agent = $payment->agent;
+
                         if (isset($bookingResponse['status']) && $bookingResponse['status'] === 200) {
                             $this->info("✓ SUCCESS: Payment {$payment->id} booked successfully with Magic Holiday");
                             
@@ -157,6 +162,22 @@ class AutoBookMagicHoliday extends Command
                                 'supplier_booking_id' => $reservationId,
                                 'response' => $bookingResponse
                             ]);
+
+                            $data = [
+                                'client' => [
+                                    'model' => $client,
+                                    'message' => "Hotel booking successful for Payment ID: {$payment->id}, Booking ID: {$hotelBooking->id}, Supplier Ref: {$reservationId}"
+                                ],
+                                'agent' => [
+                                    'model' => $agent,
+                                    'message' => "Hotel booking successful for your client {$client->full_name}. Payment ID: {$payment->id}, Booking ID: {$hotelBooking->id}, Supplier Ref: {$reservationId}"
+                                ],
+                                'payment' => [
+                                    'model' => $payment,
+                                ]
+                            ];
+
+                            $this->notifyUser($data);
                             
                             $this->info("  → Hotel Booking ID: {$hotelBooking->id}, Supplier Ref: {$reservationId}");
                             
@@ -170,6 +191,19 @@ class AutoBookMagicHoliday extends Command
                                 'response' => $bookingResponse
                             ]);
                             $failedCount++;
+
+                            $data = [
+                                'client' => [
+                                    'model' => $client,
+                                    'message' => "Hotel booking FAILED for Payment ID: {$payment->id}. Please contact support."
+                                ],
+                                'agent' => [
+                                    'model' => $agent,
+                                    'message' => "Hotel booking FAILED for your client {$client->full_name} (Payment ID: {$payment->id}). Please investigate."
+                                ]
+                            ];
+
+                            $this->notifyUser($data);
                         }
 
                     } catch (Exception $e) {
@@ -180,6 +214,20 @@ class AutoBookMagicHoliday extends Command
                             'trace' => $e->getTraceAsString()
                         ]);
                         $failedCount++;
+
+                        $data = [
+                            'client' => [
+                                'model' => $client,
+                                'message' => "Hotel booking FAILED for Payment ID: {$payment->id}. Please contact support."
+                            ],
+                            'agent' => [
+                                'model' => $agent,
+                                'message' => "Hotel booking FAILED for your client {$client->full_name} (Payment ID: {$payment->id}). Please investigate."
+                            ]
+                        ];
+
+                        $this->notifyUser($data);
+
                         continue; // Continue to next payment
                     }
                 }
@@ -397,6 +445,75 @@ class AutoBookMagicHoliday extends Command
             'resultToken'   => $resultToken,
             'payload'       => $payload,
         ];
+    }
+
+    private function notifyUser(array $data): void
+    {
+        $requestToN8n = [];
+
+        if($data['agent']){
+            $agent = $data['agent']['model'];
+
+            $requestToN8n['agent'] = [
+                'name' => $agent->name,
+                'phone_number' => $agent->country_code . $agent->phone_number,
+                'message' => $data['agent']['message']
+            ];
+
+            $this->storeNotification([
+                'user_id' => $agent->user_id,
+                'title' => 'Hotel Booking Notification',
+                'message' => $data['agent']['message'],
+                'type' => 'booking_notification',
+            ]);
+        }
+
+        if($data['client']){
+            $client = $data['client']['model'];
+
+            $requestToN8n['client'] = [
+                'name' => $client->full_name,
+                'phone_number' => $client->country_code . $client->phone,
+                'message' => $data['client']['message']
+            ];
+        }
+
+        if($data['payment']){
+            $payment = $data['payment']['model'];
+
+            $requestToN8n['payment'] = [
+                'voucher_number' => $payment->voucher_number,
+                'amount' => $payment->amount,
+                'currency' => $payment->currency,
+                'status' => $payment->status,
+            ];
+        }
+
+        if($data['invoice']){
+            $invoice = $data['invoice']['model'];
+
+            $requestToN8n['invoice'] = [
+                'invoice_number' => $invoice->invoice_number,
+                'amount' => $invoice->amount,
+                'currency' => $invoice->currency,
+                'status' => $invoice->status,
+            ];
+        }
+
+        try {
+            Log::info('Notifying to n8n about client ', $requestToN8n);
+
+            $response = Http::post(env('N8N_WEBHOOK_TEST_URL'), $requestToN8n);
+
+            Log::info('n8n response for client notification', [
+                'response' => $response->json(),
+            ]);
+        } catch (Exception $e) {
+            Log::error('Error notifying user via n8n', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
     }
 }
 

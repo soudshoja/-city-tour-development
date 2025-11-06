@@ -14,6 +14,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\WhatsAppHotelController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SupplierController;
+use App\Services\MagicHolidayService;
 
 Route::post('/login2', [MobileController::class, 'login2']);
 Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
@@ -135,6 +136,7 @@ Route::group([
     'prefix' => 'magic-holiday',
 ], function(){
     Route::post('/access-token', [WhatsAppHotelController::class, 'getAccessToken'])->name('magic-holiday.access-token');
+    Route::delete('/reservation/{reservationId}', [MagicHolidayService::class, 'cancelReservation'])->name('magic-holiday.cancel-reservation');
 });
 
 require __DIR__ . '/auth.php';

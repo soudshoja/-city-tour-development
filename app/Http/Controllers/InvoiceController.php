@@ -4546,5 +4546,151 @@ class InvoiceController extends Controller
 
         return [ 'success' => 'Invoice agent successfully changed.' ];
     }
+
+    private function getInvoiceNumberGenerated($companyId): string {
+        $invoiceSequence = InvoiceSequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);
+        $currentSequence = $invoiceSequence->current_sequence;
+        $invoiceNumber = $this->generateInvoiceNumber($currentSequence);
+        $invoiceSequence->current_sequence++;
+        $invoiceSequence->save();
+
+        return $invoiceNumber;
+    }
+
+    public function autoGenerateInvoice(Task $task, Payment $payment) : array {
+
+        Log::info('Starting Auto Invoice Generation', [
+            'task_id' => $task->id,
+            'payment_id' => $payment->id,
+        ]);
+
+        try{
+            DB::transaction(function () use ($task, $payment, &$invoice) {
+                
+                $invoice = Invoice::create([
+                    'invoice_number' => $this->getInvoiceNumberGenerated($task->company_id),
+                    'agent_id' => $task->agent_id,
+                    'client_id' => $task->client_id,
+                    'company_id' => $task->company_id,
+                    'sub_amount' => $payment->amount,
+                    'amount' => $payment->amount + $payment->service_charge,
+                    'currency' => $payment->currency,
+                    'status' => 'paid',
+                    'payment_type' => 'full',
+                    'paid_date' => $payment->payment_date,
+                    'is_client_credit' => false,
+                    'invoice_date' => $task->supplier_pay_date,
+                    'due_date' => $task->supplier_pay_date,
+                ]);
+    
+                $invoiceDetail = InvoiceDetail::create([
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'task_id' => $task->id,
+                    'task_description' => $task->description,
+                    'task_remark' => $task->remark,
+                    'client_notes' => $task->notes,
+                    'task_price' => $payment->amount + $payment->service_charge,
+                    'supplier_price' => $task->total,
+                    'markup_price' => ($payment->amount + $payment->service_charge) - $task->total,
+                    'paid' => true,
+                ]);
+
+                $charge = Charge::where('name', $payment->payment_gateway)->first();
+
+                $invoicePartial = InvoicePartial::create([
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'client_id' => $invoice->client_id,
+                    'service_charge' => $payment->service_charge,
+                    'amount' => $payment->amount,
+                    'status' => 'paid',
+                    'expiry_date' => $invoice->due_date,
+                    'type' => 'full',
+                    'payment_gateway' => $payment->payment_gateway,
+                    'payment_method' => $payment->payment_method_id,
+                    'payment_id' => $payment->id,
+                    'charge_id' => $charge ? $charge->id : null,
+                ]);
+
+                $payment->invoice_id = $invoice->id;
+                $payment->save();
+
+                $transaction = Transaction::create([
+                    'company_id' => $task->company_id,
+                    'branch_id' => $task->agent->branch_id,
+                    'entity_id' => $task->company_id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'credit',
+                    'amount' => $invoice->amount,
+                    'description' => 'Invoice: ' . $invoice->invoice_number . ' - Auto Generated from Payment',
+                    'invoice_id' => $invoice->id,
+                    'payment_id' => $payment->id,
+                    'reference_type' => 'Invoice',
+                    'transaction_date' => $invoice->invoice_date,
+                ]);
+
+                $response = $this->addJournalEntry(
+                    $task,
+                    $invoice->id,
+                    $invoiceDetail->id,
+                    $transaction->id,
+                    $invoice->client->full_name,
+                );
+
+                $responseData = json_decode($response->getContent(), true);
+
+                if ($responseData['success'] == false) {
+                    throw new Exception($responseData['message']);
+                }
+
+                Log::info('Auto Invoice Generation - Transaction and Journal Entries created', [
+                    'invoice_id' => $invoice->id,
+                    'transaction_id' => $transaction->id,
+                    'payment_id' => $payment->id,
+                ]);
+            });
+
+        } catch (Exception $e){
+
+            Log::error('Auto Invoice Generation Failed: ' . $e->getMessage(), [
+                'task_id' => $task->id,
+                'payment_id' => $payment->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Auto invoice generation failed. Please try again later.'
+            ];
+        }
+
+        $url = route('invoice.show', ['companyId' => $task->company_id, 'invoiceNumber' => $invoice->invoice_number]);
+        $message = "An invoice (" . $invoice->invoice_number . ") for ". $task->supplier->name . "'s task with reference of " . $task->reference . " for client " . $task->client->full_name . " has been automatically generated and PAID.\n\n" . $url;
+
+        $this->storeNotification([
+            'user_id' => $task->agent->user_id,
+            'title' => 'Invoice Generated',
+            'message' => $message,
+        ]);
+
+        (new ResayilController())->message(
+            $task->agent->phone_number,
+            $task->agent->country_code,
+            $message
+        );
+        
+        Log::info('Auto Invoice Generated Successfully', [
+            'task_id' => $task->id,
+            'payment_id' => $payment->id,
+            'invoice_id' => $invoice->id ?? null,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => 'Invoice generated successfully.',
+            'invoice_id' => $invoice->id ?? null,
+        ];
+    }
 }
 

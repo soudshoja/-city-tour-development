@@ -21,7 +21,13 @@ class Prebooking extends Model
         'duration',
         'autocancel_date',
         'cancel_policy',
-        'remarks'
+        'remarks',
+        'service_dates',
+        'package',
+        'payment_methods',
+        'booking_options',
+        'price_breakdown',
+        'taxes',
     ];
 
     protected $casts = [
@@ -29,6 +35,12 @@ class Prebooking extends Model
         'autocancel_date' => 'datetime',
         'cancel_policy' => 'array',
         'remarks' => 'array',
-        'rooms' => 'array'
+        'rooms' => 'array',
+        'service_dates' => 'array',
+        'package' => 'array',
+        'payment_methods' => 'array',
+        'booking_options' => 'array',
+        'price_breakdown' => 'array',
+        'taxes' => 'array',
     ];
 }

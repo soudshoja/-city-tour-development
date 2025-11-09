@@ -686,7 +686,7 @@ class SupplierController extends Controller
             ]);
         }
 
-        $key = 'magic_holiday_client_credential_' . $credential->client_id . '_' . implode('_', $scopes);
+        $key = 'magic_holiday_access_token_' . $credential->client_id . '_' . implode('_', $scopes);
         $ttl = 60 * 60 * 24; // seconds * minutes * hours (1 day)
 
         return Cache::remember($key, $ttl, function () use ($scopes, $credential) {

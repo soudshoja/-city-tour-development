@@ -4703,7 +4703,7 @@ class InvoiceController extends Controller
             'task' => [
                 'reference' => $task->reference,
                 'description' => $task->description,
-                'hotel_voucher' => route('task.pdf.hotel', ['taskId' => $task->id]),
+                'hotel_voucher' => route('tasks.pdf.hotel',  $task->id),
             ],
         ]);
 

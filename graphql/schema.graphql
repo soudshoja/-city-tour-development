@@ -277,8 +277,9 @@ input GetFilteredHotelsInput {
 }
 
 type Hotel {
-  indexName: String
+  index: String
   name: String
+  address: String
   stars: Int
   recommended: Boolean
   specialDeal: Boolean
@@ -295,14 +296,29 @@ input FullB2CBookingInput {
     email: String
     passport: Upload
     prebookKey: String
+    first_name: String
+    middle_name: String
+    last_name: String
+}
+
+type PaymentMethodOption {
+    code: String
+    name: String
+}
+
+type PaymentGatewayOption {
+    id: ID
+    name: String
+    type: String
+    methods: [PaymentMethodOption]
 }
 
 type FullB2CBookingResponse {
     success: Boolean!
     message: String!
     next_step: String
-    needs_passport: Boolean
     client_id: ID
+    available_gateways: [PaymentGatewayOption]
     hotel_name: String
     room_count: Int
     total_price: Float

@@ -162,6 +162,9 @@ class AutoBookMagicHoliday extends Command
                                 'response' => $bookingResponse
                             ]);
 
+                            $payment->is_book = true;
+                            $payment->save();
+
                             $data = [
                                 'client' => [
                                     'model' => $client,
@@ -252,6 +255,7 @@ class AutoBookMagicHoliday extends Command
 
         $paidPayments = Payment::where('notes', 'like', '%PB-%')
             ->where('status', 'completed')
+            ->where('is_book', false)
             ->get();
         return $paidPayments;
     }

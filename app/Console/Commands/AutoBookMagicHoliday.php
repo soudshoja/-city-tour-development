@@ -77,8 +77,8 @@ class AutoBookMagicHoliday extends Command
                 $skippedCount = 0;
 
                 foreach ($paidPayments as $payment) {
-                    $client = collect();
-                    $agent = collect();
+                    $client = null;
+                    $agent = null;
 
                     try {
                         $prebookKey = $this->getPrebookKey($payment);
@@ -169,7 +169,7 @@ class AutoBookMagicHoliday extends Command
                                 ],
                                 'agent' => [
                                     'model' => $agent,
-                                    'message' => "Hotel booking successful for your client {$client->full_name}. Payment ID: {$payment->id}, Booking ID: {$hotelBooking->id}, Supplier Ref: {$reservationId}"
+                                    'message' => "Hotel booking successful for your client " . ($client?->full_name ?? 'Unknown Client') . ". Payment ID: {$payment->id}, Booking ID: {$hotelBooking->id}, Supplier Ref: {$reservationId}"
                                 ],
                                 'payment' => [
                                     'model' => $payment,
@@ -198,7 +198,7 @@ class AutoBookMagicHoliday extends Command
                                 ],
                                 'agent' => [
                                     'model' => $agent,
-                                    'message' => "Hotel booking FAILED for your client {$client->full_name} (Payment ID: {$payment->id}). Please investigate."
+                                    'message' => "Hotel booking FAILED for your client " . ($client?->full_name ?? 'Unknown Client') . " (Payment ID: {$payment->id}). Please investigate."
                                 ]
                             ];
 
@@ -220,7 +220,7 @@ class AutoBookMagicHoliday extends Command
                             ],
                             'agent' => [
                                 'model' => $agent,
-                                'message' => "Hotel booking FAILED for your client {$client->full_name} (Payment ID: {$payment->id}). Please investigate."
+                                'message' => "Hotel booking FAILED for your client " . ($client?->full_name ?? 'Unknown Client') . " (Payment ID: {$payment->id}). Please investigate."
                             ]
                         ];
 
@@ -449,26 +449,26 @@ class AutoBookMagicHoliday extends Command
     {
         $requestToN8n = [];
 
-        if ($data['agent']) {
-            $agent = $data['agent']['model'];
+        // if (!empty($data['agent']['model'])) {
+        //     $agent = $data['agent']['model'];
 
-            $agentPhoneNumber = app()->environment() == 'production' ? $agent->country_code . $agent->phone_number : env('PHONE_LOCAL', '+60193058463');
+        //     $agentPhoneNumber = app()->environment() == 'production' ? $agent->country_code . $agent->phone_number : env('PHONE_LOCAL', '+60193058463');
 
-            $requestToN8n['agent'] = [
-                'name' => $agent->name,
-                'phone_number' => $agentPhoneNumber,
-                'message' => $data['agent']['message']
-            ];
+        //     $requestToN8n['agent'] = [
+        //         'name' => $agent->name,
+        //         'phone_number' => $agentPhoneNumber,
+        //         'message' => $data['agent']['message']
+        //     ];
 
-            $this->storeNotification([
-                'user_id' => $agent->user_id,
-                'title' => 'Hotel Booking Notification',
-                'message' => $data['agent']['message'],
-                'type' => 'booking_notification',
-            ]);
-        }
+        //     $this->storeNotification([
+        //         'user_id' => $agent->user_id,
+        //         'title' => 'Hotel Booking Notification',
+        //         'message' => $data['agent']['message'],
+        //         'type' => 'booking_notification',
+        //     ]);
+        // }
 
-        if ($data['client']) {
+        if (!empty($data['client']['model'])) {
             $client = $data['client']['model'];
 
             $clientPhoneNumber = app()->environment() == 'production' ? $client->country_code . $client->phone : env('PHONE_LOCAL', '+60193058463');
@@ -480,7 +480,7 @@ class AutoBookMagicHoliday extends Command
             ];
         }
 
-        if ($data['payment']) {
+        if (!empty($data['payment']['model'])) {
             $payment = $data['payment']['model'];
 
             $requestToN8n['payment'] = [
@@ -491,7 +491,7 @@ class AutoBookMagicHoliday extends Command
             ];
         }
 
-        if ($data['invoice']) {
+        if (!empty($data['invoice']['model'])) {
             $invoice = $data['invoice']['model'];
 
             $requestToN8n['invoice'] = [

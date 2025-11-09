@@ -4686,10 +4686,10 @@ class InvoiceController extends Controller
 
         $n8nResponse = Http::post(env('N8N_WEBHOOK_TEST_URL'), [
             'success' => true,
-            'agent' => [
-                'phone_number' => $agentPhoneNumber,
-                'message' => $message,
-            ],
+            // 'agent' => [
+            //     'phone_number' => $agentPhoneNumber,
+            //     'message' => $message,
+            // ],
             'client' => [
                 'phone_number' => $clientPhoneNumber,
                 'name' => $task->client->full_name,
@@ -4699,7 +4699,12 @@ class InvoiceController extends Controller
                 'amount' => $invoice->amount,
                 'currency' => $invoice->currency,
                 'status' => $invoice->status,
-            ]
+            ],
+            'task' => [
+                'reference' => $task->reference,
+                'description' => $task->description,
+                'hotel_voucher' => route('task.pdf.hotel', ['taskId' => $task->id]),
+            ],
         ]);
 
         Log::info('N8N Webhook Response', [

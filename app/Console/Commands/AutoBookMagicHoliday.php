@@ -298,7 +298,7 @@ class AutoBookMagicHoliday extends Command
         $offerIndex = $prebookData->offer_index;
         $resultToken = $prebookData->result_token;
 
-        $clientRef = (string) Str::uuid();
+        $clientRef = $prebookData->prebook_key;
         $availabilityToken = $prebookData->availability_token;
 
         $client = Client::where('id', $payment->client_id)->first();

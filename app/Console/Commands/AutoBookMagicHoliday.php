@@ -23,18 +23,18 @@ class AutoBookMagicHoliday extends Command
     use NotificationTrait;
     // protected $magicHolidayService;
 
-    protected $logger;
-
-    public function __construct()
-    {
-        $this->logger = Log::channel('magic_holidays');
-    }
-
     protected $signature = 'n8n:book-reservation
                             {--dry-run : Dry Run mode will make no changes to database}
                             {--proceed : Skip dry run mode, make changes to database}';
 
     protected $description = 'Book Magic Holiday reservation with paid payment link from n8n';
+    protected $logger;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->logger = Log::channel('magic_holidays');
+    }
 
     public function handle()
     {

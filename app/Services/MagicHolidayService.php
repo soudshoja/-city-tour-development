@@ -323,12 +323,12 @@ class MagicHolidayService
         return $response;
     }
 
-    public function getSearchResults(string $srk, string $resultsToken)
+    public function getSearchResults(string $srk, string $resultsToken, array $queryParams = [])
     {
         $scopes = ['read:hotels-search'];
         $this->applyRequestSpacing();
-        
-        $params = ['token' => $resultsToken];
+
+        $params = array_merge(['token' => $resultsToken], $queryParams);
         $response = $this->request('get', "/hotels/v1/search/results/$srk", $scopes, $params, []);
         
         if (isset($response['headers'])) {

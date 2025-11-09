@@ -30,14 +30,9 @@ class AutoBookMagicHoliday extends Command
     protected $description = 'Book Magic Holiday reservation with paid payment link from n8n';
     protected $logger;
 
-    public function __construct()
-    {
-        parent::__construct();
-        $this->logger = Log::channel('magic_holidays');
-    }
-
     public function handle()
     {
+        $this->logger = Log::channel('magic_holidays');
         $dryRun = $this->option('dry-run');
         $proceed = $this->option('proceed');
 

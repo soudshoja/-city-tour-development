@@ -1272,8 +1272,10 @@ class TaskController extends Controller
                     ]);
                 } 
 
+                $company = Company::find($task->company_id);
+
                 $this->storeNotification([
-                    'user_id' => $task->agent->id,
+                    'user_id' => $company->user_id,
                     'title' => 'IATA City Travelers (EasyPay) successfully deducted',
                     'message' => 'IATA City Travelers (EasyPay) balance has deducted KWD ' . $task->total . ' for task ID: ' . $task->id,
                 ]);

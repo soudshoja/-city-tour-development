@@ -24,6 +24,8 @@ class Task extends Model
         'supplier_status',
         'original_task_id',
         'client_name',
+        'client_ref',
+        'is_n8n_booking',
         'passenger_name',
         'reference',
         'original_reference',

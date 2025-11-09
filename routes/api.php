@@ -14,6 +14,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\WhatsAppHotelController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SupplierController;
+use App\Services\MagicHolidayService;
 
 Route::post('/login2', [MobileController::class, 'login2']);
 Route::post('/verifytwofa', [MobileController::class, 'verifytwofa']);
@@ -114,6 +115,7 @@ Route::prefix('/whatsapp/hotel')->group(function () {
     Route::post('/store-book', [WhatsAppHotelController::class, 'storeBooking']);
     Route::post('/delete-booking-request', [WhatsAppHotelController::class, 'deleteBookingRequest']);
     Route::post('/time-left', [WhatsappHotelController::class, 'temporaryOffersTimeLeft']);
+    Route::get('/booking-details', [WhatsAppHotelController::class, 'hotelBookingDetails']);
 
     Route::group([
         'prefix' => 'step',
@@ -129,5 +131,12 @@ Route::prefix('/whatsapp/hotel')->group(function () {
 Route::post('/hesabe/transaction-enquiry', [PaymentController::class, 'hesabeTransactionEnquiry'])->name('hesabe.transaction.enquiry');
 
 Route::post('/magic/webhook/callback', [SupplierController::class, 'magicReserveWebhookCallback'])->name('magic-webhook-callback')->withoutMiddleware(['auth']);
+
+Route::group([
+    'prefix' => 'magic-holiday',
+], function(){
+    Route::post('/access-token', [WhatsAppHotelController::class, 'getAccessToken'])->name('magic-holiday.access-token');
+    Route::delete('/reservation/{reservationId}', [MagicHolidayService::class, 'cancelReservation'])->name('magic-holiday.cancel-reservation');
+});
 
 require __DIR__ . '/auth.php';

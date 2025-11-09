@@ -1,0 +1,328 @@
+"A datetime string with format `Y-m-d H:i:s`, e.g. `2018-05-23 13:43:32`."
+scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+
+"A date string with format `Y-m-d`, e.g. `2025-11-01`."
+scalar Date @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\Date")
+
+"Mixed scalar type for flexible JSON data."
+scalar Mixed @scalar(class: "App\\GraphQL\\Scalars\\MixedScalar")
+
+"ISO 8601 datetime string (supports timezone, e.g. 2025-07-09T19:00:00+03:00)"
+scalar ISODateTime @scalar(class: "App\\GraphQL\\Scalars\\ISODateTimeScalar")
+
+"Scalar for file uploads via multipart/form-data"
+scalar Upload @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\Upload")
+
+"Indicates what fields are available at the top level of a query operation."
+type Query {
+    "Find a single user by an identifying attribute."
+    user(
+        "Search by primary key."
+        id: ID @eq @rules(apply: ["prohibits:email", "required_without:email"])
+
+        "Search by email address."
+        email: String @eq @rules(apply: ["prohibits:id", "required_without:id", "email"])
+    ): User @find
+
+    "List multiple users."
+    users(
+        "Filters by name. Accepts SQL LIKE wildcards `%` and `_`."
+        name: String @where(operator: "like")
+    ): [User!]! @paginate(defaultCount: 10)
+
+    "Search for hotel rooms with the cheapest price and prebook details."
+    searchHotelRooms(input: HotelSearchInput!): HotelSearchResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\SearchHotelRooms")
+}
+
+"Input for searching hotel rooms"
+input HotelSearchInput {
+    "Customer telephone number (used to identify agent/company)"
+    telephone: String!
+
+    "Hotel name to search (partial match supported)"
+    hotel: String!
+
+    "City name to narrow down search (optional, partial match supported)"
+    city: String
+
+    "Check-in date (format: YYYY-MM-DD)"
+    checkIn: Date!
+
+    "Check-out date (format: YYYY-MM-DD)"
+    checkOut: Date!
+
+    "Number of cheapest rooms to prebook (default: 1)"
+    roomCount: Int = 1
+
+    "Filter rooms by refundable type — true = non-refundable only, false = refundable only"
+    nonRefundable: Boolean
+
+    "Filter by board basis codes (e.g., RO, BB, HB)"
+    boardBasis: String
+
+    "Occupancy configuration defining how many adults and children per room"
+    occupancy: Mixed!
+}
+
+"Response for hotel room search"
+type HotelSearchResponse {
+    "Whether the search was successful"
+    success: Boolean!
+
+    "Message describing the result"
+    message: String
+
+    "Search result data (null if unsuccessful)"
+    data: HotelSearchData
+}
+
+"Hotel search result data"
+type HotelSearchData {
+    "Customer telephone"
+    telephone: String!
+
+    "Hotel name"
+    hotel_name: String!
+
+    "Total rooms returned"
+    room_count: Int!
+
+    "List of cheapest rooms with details and prebook info"
+    rooms: [RoomResult!]!
+}
+
+"Room details with prebook information"
+type RoomResult {
+    room: [RoomDetails!]!
+    prebook: PrebookDetails
+}
+
+"Room details"
+type RoomDetails {
+    "Room name/type"
+    room_name: String!
+
+    "Board basis (e.g., BB, HB, FB, AI)"
+    board_basis: String!
+
+    "Whether the room is non-refundable"
+    non_refundable: Boolean!
+
+    "Price"
+    price: Float!
+
+    "Currency code"
+    currency: String!
+
+    "Room info"
+    info: String
+
+    "Occupancy details (JSON array)"
+    occupancy: Mixed
+}
+
+"Pre-booking details"
+type PrebookDetails {
+    prebookKey: String
+    serviceDates: Mixed
+    package: Mixed
+    paymentMethods: Mixed
+    bookingOptions: Mixed
+    autocancelDate: String
+    cancelPolicy: Mixed
+    priceBreakdown: Mixed
+    remarks: Mixed
+    taxes: Mixed
+}
+
+"Account of a person who uses this application."
+type User {
+    "Unique primary key."
+    id: ID!
+
+    "Non-unique name."
+    name: String!
+
+    "Unique email address."
+    email: String!
+
+    "When the email was verified."
+    email_verified_at: DateTime
+
+    "When the account was created."
+    created_at: DateTime!
+
+    "When the account was last updated."
+    updated_at: DateTime!
+}
+
+"Indicates what fields are available for mutations."
+type Mutation {
+    "Stores magic holiday prebook data including availability, cancellation policies, and additional remarks."
+    storePrebook(input: StorePrebookInput!): StorePrebookResponse!
+        @field(resolver: "App\\GraphQL\\Mutations\\StorePrebook")
+
+    createFullB2CBooking(input: FullB2CBookingInput!): FullB2CBookingResponse!
+        @field(resolver: "App\\GraphQL\\Mutations\\CreateFullB2CBooking")
+    
+    getFilteredHotels(input: GetFilteredHotelsInput!): GetHotelsByCityPayload
+    @field(resolver: "App\\GraphQL\\Mutations\\GetFilteredHotels")
+
+}
+
+"Input data for storing a prebook details"
+input StorePrebookInput {
+    telephone: String!
+    availability_token: String!
+    srk: String!
+    package_token: String!
+    hotel_id: Int!
+    offer_index: String!
+    result_token: String!
+    rooms: [PrebookRoomInput!]!
+    checkin: Date!
+    checkout: Date!
+    duration: Int
+    autocancel_date: ISODateTime
+    cancel_policy: Mixed
+    remarks: Mixed
+    service_dates: Mixed
+    package: Mixed
+    payment_methods: Mixed
+    booking_options: Mixed
+    price_breakdown: Mixed
+    taxes: Mixed
+}
+
+"Room details input for prebook storage"
+input PrebookRoomInput {
+    room_token: String!
+    room_name: String!
+    board_basis: String!
+    non_refundable: Boolean
+    price: Float!
+    currency: String!
+    occupancy: Mixed
+}
+
+"Response for storing a prebook"
+type StorePrebookResponse {
+    success: Boolean!
+    prebook_key: String
+    prebooking_id: ID
+    message: String
+}
+
+type Price {
+    value: Float
+    currency: String
+}
+
+type BoardBasis {
+    code: String
+    price: Price
+}
+
+type nonRefundable {
+    code: String
+    price: Price
+}
+
+type GetHotelsByCityPayload {
+    success: Boolean!
+    message: String
+    hotels: [Hotel]
+}
+
+input OccupancyInput {
+    leaderNationality: Int
+    rooms: [RoomInput]
+}
+
+input RoomInput {
+    adults: Int
+    childrenAges: [Int]
+}
+
+input PriceInput {
+    value: Float
+    currency: String
+}
+
+input Filters {
+  classification: [Int]
+  name: String
+  minPrice: PriceInput
+  maxPrice: PriceInput
+}
+
+input DestinationInput {
+    city: CityInput!
+}
+
+input CityInput {
+    name: String
+}
+
+input GetFilteredHotelsInput {
+  destination: DestinationInput!
+  checkin: String
+  checkout: String
+  occupancy: OccupancyInput
+  sellingChannel: String
+  language: String
+  timeout: Int
+  filters: Filters
+}
+
+type Hotel {
+  index: String
+  name: String
+  address: String
+  stars: Int
+  recommended: Boolean
+  specialDeal: Boolean
+  price: Price
+  boardBasis: [BoardBasis]
+  nonRefundable: [BoardBasis]
+  rateTags: [String]
+}
+
+input FullB2CBookingInput {
+    phone: String!
+    payment_gateway: String
+    payment_method: String
+    email: String
+    passport: Upload
+    prebookKey: String
+    first_name: String
+    middle_name: String
+    last_name: String
+}
+
+type PaymentMethodOption {
+    code: String
+    name: String
+}
+
+type PaymentGatewayOption {
+    id: ID
+    name: String
+    type: String
+    methods: [PaymentMethodOption]
+}
+
+type FullB2CBookingResponse {
+    success: Boolean!
+    message: String!
+    next_step: String
+    client_id: ID
+    available_gateways: [PaymentGatewayOption]
+    hotel_name: String
+    room_count: Int
+    total_price: Float
+    currency: String
+    payment_link: String
+    rooms: [RoomResult]
+}

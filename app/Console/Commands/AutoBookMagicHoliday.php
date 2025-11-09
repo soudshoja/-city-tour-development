@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Console\Commands;
 
@@ -23,11 +23,12 @@ class AutoBookMagicHoliday extends Command
     use NotificationTrait;
     // protected $magicHolidayService;
 
-    // public function __construct()
-    // {
-    //     parent::__construct();
-    //     $this->magicHolidayService = app(MagicHolidayService::class);
-    // }
+    protected $logger;
+
+    public function __construct()
+    {
+        $this->logger = Log::channel('magic_holidays');
+    }
 
     protected $signature = 'n8n:book-reservation
                             {--dry-run : Dry Run mode will make no changes to database}
@@ -48,7 +49,7 @@ class AutoBookMagicHoliday extends Command
 
         try {
             $paidPayments = $this->getPaidPayments();
-            Log::info("Found {$paidPayments->count()} paid payment link with Prebook Key");
+            $this->logger->info("Found {$paidPayments->count()} paid payment link with Prebook Key");
 
             if ($paidPayments->isEmpty()) {
                 $this->info('No payment found that needs processing');
@@ -81,16 +82,19 @@ class AutoBookMagicHoliday extends Command
                 $skippedCount = 0;
 
                 foreach ($paidPayments as $payment) {
+                    $client = collect();
+                    $agent = collect();
+
                     try {
                         $prebookKey = $this->getPrebookKey($payment);
-                        
+
                         $this->info("Processing payment ID: {$payment->id} with prebook key: {$prebookKey}");
-                        
+
                         $bookingParams = $this->hotelBookingParameter($payment, $prebookKey);
 
                         if (!$bookingParams['success']) {
                             $this->warn("Failed to prepare booking params for payment {$payment->id}: {$bookingParams['message']}");
-                            Log::warning('Booking params preparation failed', [
+                            $this->logger->warning('Booking params preparation failed', [
                                 'payment_id' => $payment->id,
                                 'prebook_key' => $prebookKey,
                                 'error' => $bookingParams['message']
@@ -104,7 +108,7 @@ class AutoBookMagicHoliday extends Command
 
                         if (!$companyId) {
                             $this->warn("Payment {$payment->id} has no company_id (agent->branch->company relationship missing), skipping booking");
-                            Log::warning('Payment has no company_id through agent relationship', [
+                            $this->logger->warning('Payment has no company_id through agent relationship', [
                                 'payment_id' => $payment->id,
                                 'prebook_key' => $prebookKey,
                                 'agent_id' => $payment->agent_id,
@@ -121,7 +125,7 @@ class AutoBookMagicHoliday extends Command
                             'srk'        => $bookingParams['srk'],
                             'hotelId'    => $bookingParams['hotelIndex'],
                             'offerIndex' => $bookingParams['offerIndex'],
-                            'resultToken'=> $bookingParams['resultToken'],
+                            'resultToken' => $bookingParams['resultToken'],
                             'payload'    => $bookingParams['payload'],
                         ]);
 
@@ -130,17 +134,17 @@ class AutoBookMagicHoliday extends Command
 
                         if (isset($bookingResponse['status']) && $bookingResponse['status'] === 200) {
                             $this->info("✓ SUCCESS: Payment {$payment->id} booked successfully with Magic Holiday");
-                            
+
                             // Get prebooking record
                             $prebooking = Prebooking::where('prebook_key', $prebookKey)->first();
-                            
+
                             // Extract booking data from response
                             $bookingData = $bookingResponse['data'] ?? [];
                             $reservationId = $bookingData['id'] ?? null;
                             $bookingStatus = $bookingData['status'] ?? 'confirmed';
                             $bookingPrice = $bookingData['price']['value'] ?? ($bookingData['selling']['value'] ?? 0);
                             $bookingCurrency = $bookingData['price']['currency'] ?? ($bookingData['selling']['currency'] ?? 'KWD');
-                            
+
                             // Create HotelBooking record
                             $hotelBooking = HotelBooking::create([
                                 'prebook_id' => $prebooking?->id,
@@ -153,8 +157,8 @@ class AutoBookMagicHoliday extends Command
                                 'currency' => $bookingCurrency,
                                 'booking_time' => now(),
                             ]);
-                            
-                            Log::info('Magic Holiday booking successful', [
+
+                            $this->logger->info('Magic Holiday booking successful', [
                                 'payment_id' => $payment->id,
                                 'prebook_key' => $prebookKey,
                                 'company_id' => $companyId,
@@ -178,13 +182,13 @@ class AutoBookMagicHoliday extends Command
                             ];
 
                             $this->notifyUser($data);
-                            
+
                             $this->info("  → Hotel Booking ID: {$hotelBooking->id}, Supplier Ref: {$reservationId}");
-                            
+
                             $successCount++;
                         } else {
                             $this->error("✗ FAILED: Payment {$payment->id} booking failed - Status: " . ($bookingResponse['status'] ?? 'unknown'));
-                            Log::error('Magic Holiday booking failed', [
+                            $this->logger->error('Magic Holiday booking failed', [
                                 'payment_id' => $payment->id,
                                 'prebook_key' => $prebookKey,
                                 'company_id' => $companyId,
@@ -205,10 +209,9 @@ class AutoBookMagicHoliday extends Command
 
                             $this->notifyUser($data);
                         }
-
                     } catch (Exception $e) {
                         $this->error("✗ EXCEPTION: Payment {$payment->id} failed with error: " . $e->getMessage());
-                        Log::error('Exception during booking process', [
+                        $this->logger->error('Exception during booking process', [
                             'payment_id' => $payment->id,
                             'error' => $e->getMessage(),
                             'trace' => $e->getTraceAsString()
@@ -242,7 +245,7 @@ class AutoBookMagicHoliday extends Command
                 $this->newLine();
             }
         } catch (Exception $e) {
-            Log::error('Error processing payments: ' . $e->getMessage());
+            $this->logger->error('Error processing payments: ' . $e->getMessage());
             $this->error('Error: ' . $e->getMessage());
             return 1;
         }
@@ -250,23 +253,23 @@ class AutoBookMagicHoliday extends Command
 
     private function getPaidPayments()
     {
-        Log::info('Starting to get paid payment with Prebook Key');
+        $this->logger->info('Starting to get paid payment with Prebook Key');
 
         $paidPayments = Payment::where('notes', 'like', '%PB-%')
-                        ->where('status', 'completed')
-                        ->get(); 
+            ->where('status', 'completed')
+            ->get();
         return $paidPayments;
     }
 
-    private function getPrebookKey($paidPayments) 
+    private function getPrebookKey($paidPayments)
     {
-        Log::info('Start to get the prebook key from paid payment');
+        $this->logger->info('Start to get the prebook key from paid payment');
 
         preg_match('/PB-[A-Za-z0-9]+/', $paidPayments->notes, $match);
         $prebookKey = $match[0] ?? null;
 
         if (!$prebookKey) {
-            Log::info('No Prebook Key found in payment notes');
+            $this->logger->info('No Prebook Key found in payment notes');
             return response()->json([
                 'success' => false,
                 'message' => 'No Prebook Key found in payment notes',
@@ -276,20 +279,20 @@ class AutoBookMagicHoliday extends Command
         return $prebookKey;
     }
 
-    private function hotelBookingParameter($payment, $prebookKey) : array
+    private function hotelBookingParameter($payment, $prebookKey): array
     {
-        Log::info('Starting create request parameter for reservation at Magic Holiday');
+        $this->logger->info('Starting create request parameter for reservation at Magic Holiday');
         $prebookData = Prebooking::where('prebook_key', $prebookKey)->first();
 
         if (!$prebookData) {
-            Log::info('No Prebook data found for this key', ['key' => $prebookKey]);
+            $this->logger->info('No Prebook data found for this key', ['key' => $prebookKey]);
             return [
                 'success' => false,
                 'message' => 'No Prebook data found for this key',
             ];
         }
 
-        Log::info('Prebook data from system database', ['data' => $prebookData]);
+        $this->logger->info('Prebook data from system database', ['data' => $prebookData]);
 
         $srk = $prebookData->srk;
         $hotelIndex = $prebookData->hotel_id;
@@ -300,9 +303,9 @@ class AutoBookMagicHoliday extends Command
         $availabilityToken = $prebookData->availability_token;
 
         $client = Client::where('id', $payment->client_id)->first();
-        
+
         if (!$client) {
-            Log::error('Client not found', ['client_id' => $payment->client_id]);
+            $this->logger->error('Client not found', ['client_id' => $payment->client_id]);
             return [
                 'success' => false,
                 'message' => 'Client not found',
@@ -315,7 +318,7 @@ class AutoBookMagicHoliday extends Command
         $rooms = $prebookData->rooms ?? [];
 
         if (empty($rooms)) {
-            Log::error('No rooms found in prebook data', ['prebook_key' => $prebookKey]);
+            $this->logger->error('No rooms found in prebook data', ['prebook_key' => $prebookKey]);
             return [
                 'success' => false,
                 'message' => 'No rooms found in prebook data',
@@ -326,25 +329,25 @@ class AutoBookMagicHoliday extends Command
         $roomsPayload = [];
         $serviceDates = is_string($prebookData->service_dates) ? json_decode($prebookData->service_dates, true) : $prebookData->service_dates;
         $checkInDate = $serviceDates['startDate'] ?? $prebookData->checkin;
-        
+
         foreach ($rooms as $index => $room) {
             $roomToken = $room['room_token'] ?? null;
             $occupancy = $room['occupancy'] ?? ($packageRooms[$index]['occupancy'] ?? null);
 
             if (!$roomToken) {
-                Log::warning('Room token missing for room index', ['index' => $index]);
+                $this->logger->warning('Room token missing for room index', ['index' => $index]);
                 continue;
             }
 
             if (!$occupancy) {
-                Log::warning('Occupancy data missing for room index', ['index' => $index]);
+                $this->logger->warning('Occupancy data missing for room index', ['index' => $index]);
                 continue;
             }
 
             $adults = $occupancy['adults'] ?? 0;
             $childrenAges = $occupancy['childrenAges'] ?? [];
 
-            Log::info('Building room payload', [
+            $this->logger->info('Building room payload', [
                 'room_index' => $index,
                 'room_token' => $roomToken,
                 'adults' => $adults,
@@ -354,11 +357,11 @@ class AutoBookMagicHoliday extends Command
 
             // Build travelers array for this room
             $travelers = [];
-            
+
             // Add adult travelers
             for ($adultNum = 0; $adultNum < $adults; $adultNum++) {
                 $isLead = ($adultNum === 0); // First adult is the lead
-                
+
                 $travelers[] = [
                     'reference' => $client->id . '-adult-' . $adultNum,
                     'type' => 'adult',
@@ -378,7 +381,7 @@ class AutoBookMagicHoliday extends Command
                 // Calculate birthdate based on child's age and check-in date
                 $checkIn = Carbon::parse($checkInDate);
                 $birthDate = $checkIn->copy()->subYears($childAge)->format('Y-m-d');
-                
+
                 $travelers[] = [
                     'reference' => $client->id . '-child-' . $childIndex,
                     'type' => 'child',
@@ -388,8 +391,8 @@ class AutoBookMagicHoliday extends Command
                     'lastName' => $client->last_name,
                     'birthDate' => $birthDate,
                 ];
-                
-                Log::info('Added child traveler', [
+
+                $this->logger->info('Added child traveler', [
                     'child_index' => $childIndex,
                     'child_age' => $childAge,
                     'check_in_date' => $checkInDate,
@@ -401,8 +404,8 @@ class AutoBookMagicHoliday extends Command
                 'packageRoomToken' => $roomToken,
                 'travelers' => $travelers,
             ];
-            
-            Log::info('Room payload built', [
+
+            $this->logger->info('Room payload built', [
                 'room_index' => $index,
                 'total_travelers' => count($travelers),
                 'adult_count' => $adults,
@@ -411,7 +414,7 @@ class AutoBookMagicHoliday extends Command
         }
 
         if (empty($roomsPayload)) {
-            Log::error('Failed to build any room payloads', ['prebook_key' => $prebookKey]);
+            $this->logger->error('Failed to build any room payloads', ['prebook_key' => $prebookKey]);
             return [
                 'success' => false,
                 'message' => 'Failed to build room payloads',
@@ -430,7 +433,7 @@ class AutoBookMagicHoliday extends Command
             'agentRef' => 'Booking via API',
         ];
 
-        Log::info('Final Payload Request', [
+        $this->logger->info('Final Payload Request', [
             'prebook_key' => $prebookKey,
             'total_rooms' => count($roomsPayload),
             'payload' => $payload
@@ -451,7 +454,7 @@ class AutoBookMagicHoliday extends Command
     {
         $requestToN8n = [];
 
-        if($data['agent']){
+        if ($data['agent']) {
             $agent = $data['agent']['model'];
 
             $agentPhoneNumber = app()->environment() == 'production' ? $agent->country_code . $agent->phone_number : env('PHONE_LOCAL', '+60193058463');
@@ -470,7 +473,7 @@ class AutoBookMagicHoliday extends Command
             ]);
         }
 
-        if($data['client']){
+        if ($data['client']) {
             $client = $data['client']['model'];
 
             $clientPhoneNumber = app()->environment() == 'production' ? $client->country_code . $client->phone : env('PHONE_LOCAL', '+60193058463');
@@ -482,7 +485,7 @@ class AutoBookMagicHoliday extends Command
             ];
         }
 
-        if($data['payment']){
+        if ($data['payment']) {
             $payment = $data['payment']['model'];
 
             $requestToN8n['payment'] = [
@@ -493,7 +496,7 @@ class AutoBookMagicHoliday extends Command
             ];
         }
 
-        if($data['invoice']){
+        if ($data['invoice']) {
             $invoice = $data['invoice']['model'];
 
             $requestToN8n['invoice'] = [
@@ -505,19 +508,18 @@ class AutoBookMagicHoliday extends Command
         }
 
         try {
-            Log::info('Notifying to n8n about client ', $requestToN8n);
+            $this->logger->info('Notifying to n8n about client ', $requestToN8n);
 
             $response = Http::post(env('N8N_WEBHOOK_TEST_URL'), $requestToN8n);
 
-            Log::info('n8n response for client notification', [
+            $this->logger->info('n8n response for client notification', [
                 'response' => $response->json(),
             ]);
         } catch (Exception $e) {
-            Log::error('Error notifying user via n8n', [
+            $this->logger->error('Error notifying user via n8n', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
         }
     }
 }
-

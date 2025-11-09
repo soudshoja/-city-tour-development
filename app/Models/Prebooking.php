@@ -28,6 +28,8 @@ class Prebooking extends Model
         'booking_options',
         'price_breakdown',
         'taxes',
+        'payment_id',
+        'payment_link',
     ];
 
     protected $casts = [

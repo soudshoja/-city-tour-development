@@ -114,9 +114,7 @@ class HotelSearchService
     {
         $normalizedHotelName = trim(str_replace(',', '', $bookingData['hotel_name']));
 
-        $existing = RequestBookingRoom::where('phone_number', $telephone)
-            ->whereRaw('REPLACE(hotel, ",", "") = ?', [$normalizedHotelName])
-            ->first();
+        $existing = RequestBookingRoom::where('phone_number', $telephone)->first();
 
         $newData = [
             'hotel' => $normalizedHotelName,
@@ -133,9 +131,40 @@ class HotelSearchService
                 'telephone' => $telephone,
                 'hotel' => $normalizedHotelName
             ]);
-        } elseif ($existing->only(array_keys($newData)) != $newData) {
+            return;
+        }
+
+        $existingData = [
+            'hotel' => trim(str_replace(',', '', $existing->hotel)),
+            'city_id' => $existing->city_id,
+            'city' => $existing->city,
+            'check_in' => $existing->check_in ? $existing->check_in->format('Y-m-d') : null,
+            'check_out' => $existing->check_out ? $existing->check_out->format('Y-m-d') : null,
+            'occupancy' => is_array($existing->occupancy) ? $existing->occupancy : json_decode($existing->occupancy ?? '[]', true),
+        ];
+
+        $changed = false;
+
+        if (
+            $existingData['hotel'] !== $newData['hotel'] ||
+            $existingData['city_id'] !== $newData['city_id'] ||
+            $existingData['city'] !== $newData['city'] ||
+            $existingData['check_in'] !== $newData['check_in'] ||
+            $existingData['check_out'] !== $newData['check_out'] ||
+            json_encode($existingData['occupancy']) !== json_encode($newData['occupancy'])
+        ) {
+            $changed = true;
+        }
+
+        if ($changed) {
             $existing->update($newData);
-            $this->logger->info('Updated booking request', [
+            $this->logger->info('Updated booking request (changes detected)', [
+                'telephone' => $telephone,
+                'old' => $existingData,
+                'new' => $newData
+            ]);
+        } else {
+            $this->logger->info('Booking request unchanged, skipping update', [
                 'telephone' => $telephone,
                 'hotel' => $normalizedHotelName
             ]);
@@ -904,6 +933,8 @@ class HotelSearchService
                             'non_refundable' => (bool)$room['offered_room']->non_refundable,
                             'price' => (float)$room['offered_room']->price,
                             'currency' => $room['offered_room']->currency,
+                            'info' => $offered->info ?? null,
+                            'occupancy' => !empty($room['offered_room']->occupancy) ? json_decode($room['offered_room']->occupancy, true) : null,
                         ])->values()->all(),
                         'prebook' => [
                             'prebookKey' => $storePrebookResponse['prebook_key'] ?? null,
@@ -952,12 +983,17 @@ class HotelSearchService
 
             $message = $e->getMessage();
 
+            $isPrebookError = str_contains($message, 'Prebooking failed') || str_contains($message, 'availability');
+
             $message = preg_replace('/^An error occurred during hotel search:\s*/', '', $message);
             $message = preg_replace('/^Prebooking failed:\s*/', '', $message);
             $message = preg_replace('/^API request failed:\s*/', '', $message);
 
             if (preg_match('/"detail":"([^"]+)"/', $message, $m)) {
                 $message = $m[1];
+            }
+            if ($isPrebookError) {
+                $message = "Prebooking step failed: " . ucfirst($message);
             }
 
             return [

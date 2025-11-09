@@ -28,6 +28,8 @@ class Prebooking extends Model
         'booking_options',
         'price_breakdown',
         'taxes',
+        'payment_id',
+        'payment_link',
     ];
 
     protected $casts = [
@@ -46,6 +48,6 @@ class Prebooking extends Model
 
     public function hotel()
     {
-        return $this->belongsTo(Hotel::class);
+        return $this->belongsTo(MapHotel::class);
     }
 }

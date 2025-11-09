@@ -114,6 +114,25 @@ class CreateFullB2CBooking
                 ->first();
 
             if (!$client) {
+                $clientValidator = Validator::make($input, [
+                    'passport' => 'nullable|file',
+                    'first_name' => 'required_without:passport|string|filled',
+                    'email' => 'required_without:passport|email|filled',
+                    'phone' => 'required_without:passport|string|max:20|filled',
+                ], [
+                    'first_name.required_without' => 'Client first name is required.',
+                    'email.required_without' => 'Client email is required.',
+                    'phone.required_without' => 'Client phone number is required.',
+                ]);
+
+                if ($clientValidator->fails()) {
+                    return [
+                        'success' => false,
+                        'message' => 'Client creation failed: ' . $clientValidator->errors()->first(),
+                        'next_step' => 'create_client',
+                    ];
+                }
+
                 Log::info('Client not found — creating new one via passport or manual details');
 
                 if (!empty($input['passport']) && $input['passport'] instanceof UploadedFile) {
@@ -413,14 +432,6 @@ class CreateFullB2CBooking
             $client = Client::where('phone', $phone)
                 ->where('country_code', $countryCode)
                 ->first();
-
-            if (!$client) {
-                Log::info('Client not found for payment creation');
-                return [
-                    'success' => false,
-                    'message' => 'Client not found. Please upload passport to create CRM.',
-                ];
-            }
 
             $companyId = $aiAgent->branch->company_id;
             $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);

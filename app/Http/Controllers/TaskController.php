@@ -3808,10 +3808,9 @@ class TaskController extends Controller
                 ];
             }
 
-            if($clientRef && str_contains($clientRef, 'PB-')){
-
+            if($clientRef && str_contains(strtolower($clientRef), 'pb-')){
                 $agentInDB = Agent::where('name', 'AI Agent')
-                    ->whereHas('branch_id', function ($query) use ($companyId) {
+                    ->whereHas('branch', function ($query) use ($companyId) {
                         $query->where('company_id', $companyId);
                     })->first();
 

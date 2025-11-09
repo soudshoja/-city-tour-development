@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
+use Error;
 use Exception;
 
 class CreateFullB2CBooking
@@ -432,6 +433,13 @@ class CreateFullB2CBooking
             $client = Client::where('phone', $phone)
                 ->where('country_code', $countryCode)
                 ->first();
+
+            if (!$client) {
+                return [
+                    'success' => false,
+                    'message' => 'Client not found. Please ensure the phone number and country code are correct.',
+                ];
+            }
 
             $companyId = $aiAgent->branch->company_id;
             $voucherSequence = Sequence::firstOrCreate(['company_id' => $companyId], ['current_sequence' => 1]);

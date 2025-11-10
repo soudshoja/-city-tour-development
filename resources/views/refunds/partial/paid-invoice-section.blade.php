@@ -76,7 +76,7 @@
                 <label class="block text-gray-700 font-semibold mb-2">Total Refund to Client</label>
                 <div class="flex items-center">
                     <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14M5 14h14"></path></svg>
-                    <input readonly type="number" step="0.01" name="tasks[{{ $loopIndex }}][total_refund_to_client]" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                    <input type="number" step="0.01" name="tasks[{{ $loopIndex }}][total_refund_to_client]" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
                 </div>
             </div>
             <input type="hidden" name="tasks[{{ $loopIndex }}][total_nett_refund_charge]" value="0" class="total-net-refund-charge">
@@ -109,18 +109,18 @@
 
             // ✅ Auto-fill only once when the page first loads
             if (!initialized && (refundFeeRaw === "" || parseFloat(refundFeeRaw) === 0)) {
-                refundFeeToClientInput.value = supplierCharge.toFixed(2);
+                refundFeeToClientInput.value = supplierCharge.toFixed(3);
                 initialized = true;
             }
 
             const refundFee = safeParse(refundFeeToClientInput.value);
             const newProfit = refundFee - supplierCharge;
-            newProfitInput.value = newProfit.toFixed(2);
-            newProfitDisplay.value = newProfit.toFixed(2);
+            newProfitInput.value = newProfit.toFixed(3);
+            newProfitDisplay.value = newProfit.toFixed(3);
 
             const totalRefund = refundCost - newProfit;
-            totalRefundToClientInput.value = totalRefund.toFixed(2);
-            totalNetRefundChargeInput.value = totalRefund.toFixed(2);
+            totalRefundToClientInput.value = totalRefund.toFixed(3);
+            totalNetRefundChargeInput.value = totalRefund.toFixed(3);
 
             if (typeof updateOverallSummary === 'function') {
                 updateOverallSummary();
@@ -133,12 +133,32 @@
             const refundCost = safeParse(refundTaskCostPriceInput.value);
 
             const refundFee = supplierCharge + newProfit;
-            refundFeeToClientInput.value = refundFee.toFixed(2);
-            newProfitDisplay.value = newProfit.toFixed(2);
+            refundFeeToClientInput.value = refundFee.toFixed(3);
+            newProfitDisplay.value = newProfit.toFixed(3);
 
             const totalRefund = refundCost - newProfit;
-            totalRefundToClientInput.value = totalRefund.toFixed(2);
-            totalNetRefundChargeInput.value = totalRefund.toFixed(2);
+            totalRefundToClientInput.value = totalRefund.toFixed(3);
+            totalNetRefundChargeInput.value = totalRefund.toFixed(3);
+
+            if (typeof updateOverallSummary === 'function') {
+                updateOverallSummary();
+            }
+        }
+
+        function calculateFromRefundToClient() {
+            const totalRefundToClient = safeParse(totalRefundToClientInput.value);
+            const refundTaskCost = safeParse(refundTaskCostPriceInput.value);
+
+            let newProfit = totalRefundToClient - refundTaskCost;
+
+            newProfit = newProfit * -1;
+
+            newProfitInput.value = newProfit.toFixed(3);
+            newProfitDisplay.value = newProfit.toFixed(3);
+
+            const supplierCharge = safeParse(supplierChargeInput.value);
+            const refundFee = supplierCharge + newProfit;
+            refundFeeToClientInput.value = refundFee.toFixed(3);
 
             if (typeof updateOverallSummary === 'function') {
                 updateOverallSummary();
@@ -152,6 +172,7 @@
 
         supplierChargeInput.addEventListener('input', calculateFromRefundFee);
         newProfitInput.addEventListener('input', calculateFromNewProfit);
+        totalRefundToClientInput.addEventListener('input', calculateFromRefundToClient);
 
         setTimeout(calculateFromRefundFee, 150);
 

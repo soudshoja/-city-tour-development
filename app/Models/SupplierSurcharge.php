@@ -12,6 +12,7 @@ class SupplierSurcharge extends Model
         'label',
         'amount',
         'charge_mode',
+        'charge_behavior',
         'is_refund',
         'is_issued',
         'is_reissued',
@@ -34,7 +35,7 @@ class SupplierSurcharge extends Model
 
     public function references()
     {
-        return $this->hasMany(SupplierSurchargeReference::class, 'supplier_surcharge_id', 'id');
+        return $this->hasMany(SupplierSurchargeReference::class, 'supplier_surcharge_id');
     }
 
     // Smart helper: no need to prepend "is_", for checking inside code or loops

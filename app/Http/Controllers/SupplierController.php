@@ -314,124 +314,152 @@ class SupplierController extends Controller
                 LoggingHelper::log('supplier', $oldName, $newName, "Supplier name updated from '{$oldName}' to '{$newName}'");
             }
 
-            if ($request->has('surcharge_label')) {
-                foreach ($request->surcharge_label as $pivotId => $labels) {
-                    $supplierCompany = SupplierCompany::find($pivotId);
-                    if (!$supplierCompany) continue;
+           if ($request->has('surcharge_label')) {
+    foreach ($request->surcharge_label as $pivotId => $labels) {
+        $supplierCompany = SupplierCompany::find($pivotId);
+        if (!$supplierCompany) continue;
 
-                    foreach ($labels as $surchargeKey => $labelRaw) {
-                        $label = trim($labelRaw);
-                        if (!$label) continue;
+        foreach ($labels as $surchargeKey => $labelRaw) {
+            $label = trim($labelRaw);
+            if (!$label) continue;
 
-                        $surchargeId = is_numeric($surchargeKey) ? $surchargeKey : null;
-                        $amount = $request->surcharge_amount[$pivotId][$surchargeKey] ?? 0;
-                        $chargeMode = $request->charge_mode[$pivotId][$surchargeKey] ?? 'task';
+            $surchargeId = is_numeric($surchargeKey) ? $surchargeKey : null;
+            $amount = $request->surcharge_amount[$pivotId][$surchargeKey] ?? 0;
+            $chargeMode = $request->charge_mode[$pivotId][$surchargeKey] ?? 'task';
 
-                        $statusFlags = [
-                            'is_refund' => isset($request->is_refund[$pivotId][$surchargeKey]),
-                            'is_issued' => isset($request->is_issued[$pivotId][$surchargeKey]),
-                            'is_reissued' => isset($request->is_reissued[$pivotId][$surchargeKey]),
-                            'is_void' => isset($request->is_void[$pivotId][$surchargeKey]),
-                            'is_confirmed' => isset($request->is_confirmed[$pivotId][$surchargeKey]),
-                        ];
+            // ✅ Only assign charge_behavior if reference mode
+            $chargeBehavior = null;
+            if ($chargeMode === 'reference') {
+                $chargeBehavior = $request->charge_behavior[$surchargeKey][0]
+                    ?? $request->charge_behavior[$pivotId][$surchargeKey][0]
+                    ?? 'single';
+            }
 
-                        if ($surchargeId && SupplierSurcharge::where('id', $surchargeId)->exists()) {
-                            $surcharge = SupplierSurcharge::find($surchargeId);
-                            $surcharge->update(array_merge([
-                                'label' => $label,
-                                'amount' => $amount,
-                                'charge_mode' => $chargeMode,
-                            ], $statusFlags));
-                        } else {
-                            $surcharge = SupplierSurcharge::create([
-                                'supplier_company_id' => $pivotId,
-                                'label' => $label,
-                                'amount' => $amount,
-                                'charge_mode' => $chargeMode,
-                                'is_refund' => isset($request->is_refund[$pivotId][$surchargeKey]),
-                                'is_issued' => isset($request->is_issued[$pivotId][$surchargeKey]),
-                                'is_reissued' => isset($request->is_reissued[$pivotId][$surchargeKey]),
-                                'is_void' => isset($request->is_void[$pivotId][$surchargeKey]),
-                                'is_confirmed' => isset($request->is_confirmed[$pivotId][$surchargeKey]),
-                            ]);
-                        }
+            $statusFlags = [
+                'is_refund'    => isset($request->is_refund[$pivotId][$surchargeKey]),
+                'is_issued'    => isset($request->is_issued[$pivotId][$surchargeKey]),
+                'is_reissued'  => isset($request->is_reissued[$pivotId][$surchargeKey]),
+                'is_void'      => isset($request->is_void[$pivotId][$surchargeKey]),
+                'is_confirmed' => isset($request->is_confirmed[$pivotId][$surchargeKey]),
+            ];
 
-                        if ($chargeMode === 'reference') {
-                            $references = $request->reference[$surchargeKey] ?? [];
+            // ✅ Prepare common data
+            $data = [
+                'label'        => $label,
+                'amount'       => $amount,
+                'charge_mode'  => $chargeMode,
+            ] + $statusFlags;
 
-                            foreach ($references as $refIndex => $refValue) {
-                                if (!trim($refValue)) continue;
+            if ($chargeBehavior !== null) {
+                $data['charge_behavior'] = $chargeBehavior;
+            }
 
-                                SupplierSurchargeReference::updateOrCreate(
-                                    [
-                                        'supplier_surcharge_id' => $surcharge->id,
-                                        'reference' => trim($refValue),
-                                    ],
-                                    [
-                                        'charge_behavior' => $request->charge_behavior[$surchargeKey][$refIndex] ?? 'single',
-                                    ]
-                                );
-                            }
+            // ✅ Create or update surcharge
+            if ($surchargeId && SupplierSurcharge::where('id', $surchargeId)->exists()) {
+                $surcharge = SupplierSurcharge::find($surchargeId);
+                $surcharge->update($data);
+            } else {
+                $surcharge = SupplierSurcharge::create(array_merge([
+                    'supplier_company_id' => $pivotId,
+                ], $data));
+            }
 
-                            $existingRefs = collect($references)->filter()->values();
-                            SupplierSurchargeReference::where('supplier_surcharge_id', $surcharge->id)
-                                ->whereNotIn('reference', $existingRefs)
-                                ->delete();
-                        }
+            // ✅ Handle references (if mode is reference)
+            if ($chargeMode === 'reference') {
+                $references = $request->reference[$surchargeKey] ?? [];
 
-                        $changedStatuses = [];
-                        foreach ($statusFlags as $flag => $value) {
-                            $old = $surcharge->getOriginal($flag);
-                            if ((bool)$old !== (bool)$value) {
-                                $changedStatuses[] = "{$flag}: " . ($old ? 'true' : 'false') . " → " . ($value ? 'true' : 'false');
-                            }
-                        }
+                foreach ($references as $refIndex => $refValue) {
+                    if (!trim($refValue)) continue;
 
-                        if ($changedStatuses) {
-                            LoggingHelper::log('supplier_surcharges', $surcharge->getOriginal(), $surcharge->getAttributes(), "Status flags changed for '{$label}': " . implode(', ', $changedStatuses));
-                        }
+                    SupplierSurchargeReference::updateOrCreate(
+                        [
+                            'supplier_surcharge_id' => $surcharge->id,
+                            'reference'             => trim($refValue),
+                        ],
+                        [
+                            'is_charged' => false,
+                        ]
+                    );
+                }
+
+                $existingRefs = collect($references)->filter()->values();
+                SupplierSurchargeReference::where('supplier_surcharge_id', $surcharge->id)
+                    ->whereNotIn('reference', $existingRefs)
+                    ->delete();
+            }
+
+            // ✅ Log changes
+            $changedStatuses = [];
+            foreach ($statusFlags as $flag => $value) {
+                $old = $surcharge->getOriginal($flag);
+                if ((bool)$old !== (bool)$value) {
+                    $changedStatuses[] = "{$flag}: " . ($old ? 'true' : 'false') . " → " . ($value ? 'true' : 'false');
+                }
+            }
+
+            if ($changedStatuses) {
+                LoggingHelper::log(
+                    'supplier_surcharges',
+                    $surcharge->getOriginal(),
+                    $surcharge->getAttributes(),
+                    "Status flags changed for '{$label}': " . implode(', ', $changedStatuses)
+                );
+            }
+        }
+
+        // ✅ Recalculate total for each task
+        $tasksQuery = Task::where('supplier_id', $supplierCompany->supplier_id)
+            ->where('company_id', $supplierCompany->company_id)
+            ->whereDoesntHave('invoiceDetail');
+
+        $tasks = $tasksQuery->get();
+
+        foreach ($tasks as $task) {
+            $totalSurcharge = 0;
+            $surcharges = SupplierSurcharge::with('references')
+                ->where('supplier_company_id', $pivotId)
+                ->get();
+
+            foreach ($surcharges as $surcharge) {
+                if ($surcharge->charge_mode === 'task') {
+                    if ($surcharge->canChargeForStatus($task->status)) {
+                        $totalSurcharge += $surcharge->amount;
                     }
+                } elseif ($surcharge->charge_mode === 'reference') {
+                    foreach ($surcharge->references as $ref) {
+                        if ($task->reference !== $ref->reference) continue;
 
-                    $tasksQuery = Task::where('supplier_id', $supplierCompany->supplier_id)
-                        ->where('company_id', $supplierCompany->company_id)
-                        ->whereDoesntHave('invoiceDetail');
-
-                    $tasks = $tasksQuery->get();
-
-                    foreach ($tasks as $task) {
-                        $totalSurcharge = 0;
-
-                        $surcharges = SupplierSurcharge::where('supplier_company_id', $pivotId)->get();
-
-                        foreach ($surcharges as $surcharge) {
-                            if ($surcharge->charge_mode === 'task') {
-                                if ($surcharge->canChargeForStatus($task->status)) {
-                                    $totalSurcharge += $surcharge->amount;
-                                }
-                            } elseif ($surcharge->charge_mode === 'reference') {
-                                foreach ($surcharge->references as $ref) {
-                                    if ($task->reference !== $ref->reference) continue;
-
-                                    if ($ref->canBeCharged()) {
-                                        $totalSurcharge += $surcharge->amount;
-
-                                        if ($ref->charge_behavior === 'single') {
-                                            $ref->markAsCharged();
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
+                        $canCharge = true;
+                        if ($surcharge->charge_behavior === 'single' && $ref->is_charged) {
+                            $canCharge = false;
                         }
 
-                        $previousSurcharge = $task->supplier_surcharge;
-                        $task->update(['supplier_surcharge' => $totalSurcharge]);
-                        if ($previousSurcharge != $totalSurcharge) {
-                            LoggingHelper::log('tasks', $previousSurcharge, $totalSurcharge, "Updated task ID {$task->id} (status: {$task->status}) with new total surcharge {$totalSurcharge}");
+                        if ($canCharge) {
+                            $totalSurcharge += $surcharge->amount;
+
+                            if ($surcharge->charge_behavior === 'single') {
+                                $ref->markAsCharged();
+                                break;
+                            }
                         }
                     }
                 }
             }
+
+            $previousSurcharge = $task->supplier_surcharge;
+            $task->update(['supplier_surcharge' => $totalSurcharge]);
+            if ($previousSurcharge != $totalSurcharge) {
+                LoggingHelper::log(
+                    'tasks',
+                    $previousSurcharge,
+                    $totalSurcharge,
+                    "Updated task ID {$task->id} (status: {$task->status}) with new total surcharge {$totalSurcharge}"
+                );
+            }
+        }
+    }
+}
+
 
             if ($request->filled('deleted_surcharges')) {
                 $deletedIds = array_filter(explode(',', $request->deleted_surcharges));

@@ -723,71 +723,72 @@
                                                     </div>
                                                     <div class="p-4 space-y-3" id="company-surcharge-{{ $company->pivot->id }}">
                                                         @if($company->pivot && $company->pivot->supplierSurcharges->isNotEmpty())
-                                                        @foreach($company->pivot->supplierSurcharges as $surcharge)
-                                                        <div
-                                                            x-data="{ chargeMode: '{{ $surcharge->charge_mode }}' }"
-                                                            class="border border-gray-200 rounded-lg p-3 mb-2 bg-white shadow-sm surcharge-row-wrapper"
-                                                            data-surcharge-id="{{ $surcharge->id }}">
-                                                            <div class="flex items-center gap-3">
-                                                                <input type="hidden" name="surcharge_id[{{ $company->pivot->id }}][]" value="{{ $surcharge->id }}">
-                                                                <input type="text" name="surcharge_label[{{ $company->pivot->id }}][{{ $surcharge->id ?? 'new_' . uniqid() }}]"
-                                                                    value="{{ $surcharge->label }}"
-                                                                    placeholder="Label"
-                                                                    class="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
-                                                                <input type="number" name="surcharge_amount[{{ $company->pivot->id }}][{{ $surcharge->id ?? 'new_' . uniqid()}}]"
-                                                                    value="{{ $surcharge->amount }}" min="0" step="0.001" placeholder="Amount"
-                                                                    class="w-32 border border-gray-300 rounded-md px-3 py-1.5 text-sm text-right focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
-                                                                <button type="button" class="text-gray-400 hover:text-red-500" onclick="removeSurchargeRow(this)" title="Remove">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                            <div class="mt-2 flex items-center flex-wrap gap-x-3 gap-y-1 text-sm">
-                                                                <label class="text-gray-700 whitespace-nowrap">Charge Mode:</label>
-                                                                <select name="charge_mode[{{ $company->pivot->id }}][{{ $surcharge->id ?? 'new_' . uniqid() }}]"
-                                                                    x-model="chargeMode" class="min-w-[8rem] border border-gray-300 rounded-md px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400">
-                                                                    <option value="task">Task-wise</option>
-                                                                    <option value="reference">Reference-wise</option>
-                                                                </select>
-                                                            </div>
-                                                            <div class="mt-3 flex flex-wrap items-center gap-4">
-                                                                @foreach(['issued','reissued','confirmed','refund','void'] as $status)
-                                                                <label class="flex items-center text-xs gap-2 text-gray-700">
-                                                                    <input type="checkbox" value="1" name="is_{{ $status }}[{{ $company->pivot->id }}][{{ $surcharge->id }}]"
-                                                                        {{ $surcharge->{'is_'.$status} ? 'checked' : '' }}
-                                                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                                                    {{ ucfirst(str_replace('_', ' ', $status)) }}
-                                                                </label>
-                                                                @endforeach
-                                                            </div>
-                                                            <div x-show="chargeMode === 'reference'" x-cloak class="mt-4 border-t pt-3 reference-section">
-                                                                <h4 class="text-sm font-semibold text-gray-800 flex items-center justify-between">
-                                                                    Reference Rules
-                                                                    <button type="button" class="text-blue-600 text-xs hover:text-blue-700 flex items-center gap-1"
-                                                                        onclick="addReferenceRow(this)">
-                                                                        + Add Reference
+                                                            @foreach($company->pivot->supplierSurcharges as $surcharge)
+                                                            <div
+                                                                x-data="{ chargeMode: '{{ $surcharge->charge_mode }}' }"
+                                                                class="border border-gray-200 rounded-lg p-3 mb-2 bg-white shadow-sm surcharge-row-wrapper"
+                                                                data-surcharge-id="{{ $surcharge->id }}">
+                                                                <div class="flex items-center gap-3">
+                                                                    <input type="hidden" name="surcharge_id[{{ $company->pivot->id }}][]" value="{{ $surcharge->id }}">
+                                                                    <input type="text" name="surcharge_label[{{ $company->pivot->id }}][{{ $surcharge->id ?? 'new_' . uniqid() }}]"
+                                                                        value="{{ $surcharge->label }}"
+                                                                        placeholder="Label"
+                                                                        class="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                                                                    <input type="number" name="surcharge_amount[{{ $company->pivot->id }}][{{ $surcharge->id ?? 'new_' . uniqid()}}]"
+                                                                        value="{{ $surcharge->amount }}" min="0" step="0.001" placeholder="Amount"
+                                                                        class="w-32 border border-gray-300 rounded-md px-3 py-1.5 text-sm text-right focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                                                                    <button type="button" class="text-gray-400 hover:text-red-500" onclick="removeSurchargeRow(this)" title="Remove">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                                        </svg>
                                                                     </button>
-                                                                </h4>
-                                                                <div class="mt-2 space-y-2" id="reference-list-{{ $surcharge->id ?? 'new_' . uniqid() }}">
-                                                                    @foreach($surcharge->references as $reference)
-                                                                    <div class="flex flex-wrap items-center gap-2 border border-gray-200 rounded-md px-2 py-1 bg-gray-50">
-                                                                        <input type="text" name="reference[{{ $surcharge->id ?? 'new_' . uniqid() }}][]" value="{{ $reference->reference }}"
-                                                                            placeholder="Reference"
-                                                                            class="flex-1 border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400">
+                                                                </div>
+                                                                <div class="mt-2 flex items-center flex-wrap gap-x-3 gap-y-1 text-sm mt-8">
+                                                                    <label class="text-gray-700 whitespace-nowrap">Charge Mode:</label>
+                                                                    <select name="charge_mode[{{ $company->pivot->id }}][{{ $surcharge->id ?? 'new_' . uniqid() }}]"
+                                                                        x-model="chargeMode" class="min-w-[8rem] border border-gray-300 rounded-md px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400">
+                                                                        <option value="task">Task-wise</option>
+                                                                        <option value="reference">Reference-wise</option>
+                                                                    </select>
+                                                                </div>
+
+                                                                <!-- Task Rule Section -->
+                                                                <div x-show="chargeMode === 'task'" x-cloak class="mt-4 border-t pt-3">
+                                                                    <div class="flex flex-wrap items-center justify-between">
+                                                                        <h4 class="text-sm font-semibold text-gray-800 mb-2 md:mb-0">
+                                                                            Task Rules
+                                                                        </h4>
+
+                                                                        <div class="flex flex-wrap items-center gap-3 rounded-md px-3 py-1.5">
+                                                                            @foreach(['issued','reissued','confirmed','refund','void'] as $status)
+                                                                            <label class="flex items-center text-xs gap-1 text-gray-700 whitespace-nowrap">
+                                                                                <input type="checkbox" value="1" name="is_{{ $status }}[{{ $company->pivot->id }}][{{ $surcharge->id }}]"
+                                                                                    {{ $surcharge->{'is_'.$status} ? 'checked' : '' }}
+                                                                                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                                                {{ ucfirst(str_replace('_', ' ', $status)) }}
+                                                                            </label>
+                                                                            @endforeach
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div class="flex items-center justify-between mt-4 border-t pt-3 reference-section" x-show="chargeMode === 'reference'" x-cloak>
+                                                                    <h4 class="text-sm font-semibold text-gray-800 mr-3">
+                                                                        Reference Rules
+                                                                    </h4>
+
+                                                                    <div class="flex items-center gap-2" id="reference-list-{{ $surcharge->id ?? 'new_' . uniqid() }}">
+
                                                                         <select name="charge_behavior[{{ $surcharge->id ?? 'new_' . uniqid() }}][]"
                                                                             class="min-w-[9rem] border border-gray-300 rounded-md px-2 py-1 text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400">
-                                                                            <option value="single" {{ $reference->charge_behavior === 'single' ? 'selected' : '' }}>Charge Once</option>
-                                                                            <option value="repetitive" {{ $reference->charge_behavior === 'repetitive' ? 'selected' : '' }}>Charge Repeatedly</option>
+                                                                            <option value="single" {{ $surcharge->charge_behavior === 'single' ? 'selected' : '' }}>Charge Once</option>
+                                                                            <option value="repetitive" {{ $surcharge->charge_behavior === 'repetitive' ? 'selected' : '' }}>Charge Repeatedly</option>
                                                                         </select>
-                                                                        <button type="button" class="text-red-500 hover:text-red-600" onclick="this.closest('div').remove()">✕</button>
                                                                     </div>
-                                                                    @endforeach
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                        @endforeach
+                                                            @endforeach
                                                         @else
                                                         <div class="text-sm text-gray-500 italic">No surcharges yet — click “Add Label” to create one.</div>
                                                         @endif
@@ -896,42 +897,70 @@
             wrapper.className = 'border border-gray-200 rounded-lg p-3 mb-2 bg-white shadow-sm surcharge-row-wrapper';
             wrapper.dataset.surchargeKey = key;
             wrapper.setAttribute('x-data', "{ chargeMode: 'task' }");
+
             wrapper.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <input type="hidden" name="surcharge_id[${supplierCompanyId}][]">
-                    <input type="text" name="surcharge_label[${supplierCompanyId}][${key}]" placeholder="Label Name"
+                    <input type="hidden" name="surcharge_id[${supplierCompanyId}][]" value="">
+                    <input type="text" name="surcharge_label[${supplierCompanyId}][${key}]"
+                        placeholder="Label"
                         class="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
-                    <input type="number" name="surcharge_amount[${supplierCompanyId}][${key}]" placeholder="Amount" step="0.001"
+                    <input type="number" name="surcharge_amount[${supplierCompanyId}][${key}]"
+                        min="0" step="0.001" placeholder="Amount"
                         class="w-32 border border-gray-300 rounded-md px-3 py-1.5 text-sm text-right focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
-                    <button type="button" class="text-gray-400 hover:text-red-500" onclick="removeSurchargeRow(this)">✕</button>
+                    <button type="button" class="text-gray-400 hover:text-red-500" onclick="removeSurchargeRow(this)" title="Remove">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
-                <div class="mt-2 flex items-center flex-wrap gap-x-3 gap-y-1 text-sm">
+
+                <!-- Charge Mode -->
+                <div class="mt-2 flex items-center flex-wrap gap-x-3 gap-y-1 text-sm mt-8">
                     <label class="text-gray-700 whitespace-nowrap">Charge Mode:</label>
-                    <select name="charge_mode[${supplierCompanyId}][${key}]" x-model="chargeMode"
+                    <select name="charge_mode[${supplierCompanyId}][${key}]" 
+                        x-model="chargeMode"
                         class="min-w-[8rem] border border-gray-300 rounded-md px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400">
                         <option value="task">Task-wise</option>
                         <option value="reference">Reference-wise</option>
                     </select>
                 </div>
-                <div class="mt-3 flex flex-wrap items-center gap-4">
-                    ${['issued','reissued','confirmed','refund','void'].map(status => `
-                        <label class="flex items-center text-xs gap-2 text-gray-700">
-                            <input type="checkbox" name="is_${status}[${supplierCompanyId}][${key}]" value="1"
-                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            ${status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                        </label>
-                    `).join('')}
+
+                <!-- Task Rule Section -->
+                <div x-show="chargeMode === 'task'" x-cloak class="mt-4 border-t pt-3">
+                    <div class="flex flex-wrap items-center justify-between">
+                        <h4 class="text-sm font-semibold text-gray-800 mb-2 md:mb-0">
+                            Task Rules
+                        </h4>
+                        <div class="flex flex-wrap items-center gap-3 rounded-md px-3 py-1.5">
+                            ${['issued','reissued','confirmed','refund','void'].map(status => `
+                                <label class="flex items-center text-xs gap-1 text-gray-700 whitespace-nowrap">
+                                    <input type="checkbox" value="1" name="is_${status}[${supplierCompanyId}][${key}]"
+                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    ${status.charAt(0).toUpperCase() + status.slice(1)}
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
                 </div>
-                <div class="mt-4 border-t pt-3 reference-section" x-show="chargeMode === 'reference'" x-cloak>
-                    <h4 class="text-sm font-semibold text-gray-800 flex items-center justify-between">
+
+                <!-- Reference Rule Section -->
+                <div class="flex items-center justify-between mt-4 border-t pt-3 reference-section"
+                    x-show="chargeMode === 'reference'" x-cloak>
+                    <h4 class="text-sm font-semibold text-gray-800 mr-3">
                         Reference Rules
-                        <button type="button" class="text-blue-600 text-xs hover:text-blue-700 flex items-center gap-1" onclick="addReferenceRow(this)">
-                            + Add Reference
-                        </button>
                     </h4>
-                    <div class="mt-2 space-y-2" id="reference-list-${key}"></div>
+
+                    <div class="flex items-center gap-2" id="reference-list-${key}">
+                        <select name="charge_behavior[${key}][]"
+                            class="min-w-[9rem] border border-gray-300 rounded-md px-2 py-1 text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400">
+                            <option value="single">Charge Once</option>
+                            <option value="repetitive">Charge Repeatedly</option>
+                        </select>
+                    </div>
                 </div>
             `;
+
             container.appendChild(wrapper);
         }
 
@@ -945,7 +974,6 @@
             const div = document.createElement('div');
             div.className = 'flex flex-wrap items-center gap-2 border border-gray-200 rounded-md px-2 py-1 bg-gray-50';
             div.innerHTML = `
-                <input type="text" name="reference[${key}][]" placeholder="Reference" class="flex-1 border border-gray-300 rounded-md px-2 py-1 text-sm">
                 <select name="charge_behavior[${key}][]" class="min-w-[9rem] border border-gray-300 rounded-md px-2 py-1 text-xs">
                 <option value="single">Charge Once</option>
                 <option value="repetitive">Charge Repeatedly</option>

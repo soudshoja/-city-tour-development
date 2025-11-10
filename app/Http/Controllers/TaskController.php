@@ -37,6 +37,7 @@ use App\Models\SystemLog;
 use App\Models\AutoBilling;
 use App\Models\HotelBooking;
 use App\Models\Wallet;
+use App\Models\SupplierSurchargeReference;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -642,8 +643,6 @@ class TaskController extends Controller
             'supplier_pay_date' => 'nullable|date',
         ]);
 
-        Log::info('debug jap', ['request' => $request->all()]);
-
         if ($request->exchange_currency !== 'KWD') {
             $request->merge([
                 'exchange_currency' => 'KWD',
@@ -1014,31 +1013,76 @@ class TaskController extends Controller
 
                 if ($supplierCompany) {
                     $totalSurcharge = 0;
-                    $surcharges = SupplierSurcharge::with('references')->where('supplier_company_id', $supplierCompany->id)->get();
+
+                    $surcharges = SupplierSurcharge::with('references')
+                        ->where('supplier_company_id', $supplierCompany->id)
+                        ->get();
 
                     foreach ($surcharges as $surcharge) {
+                        Log::info('Processing surcharge', [
+                            'mode' => $surcharge->charge_mode,
+                            'amount' => $surcharge->amount,
+                            'reference_count' => $surcharge->references->count(),
+                        ]);
+
                         if ($surcharge->charge_mode === 'task') {
                             if ($surcharge->canChargeForStatus($task->status)) {
+                                Log::info('Adding task surcharge', [
+                                    'amount' => $surcharge->amount,
+                                    'status' => $task->status,
+                                ]);
                                 $totalSurcharge += $surcharge->amount;
                             }
-                        } elseif ($surcharge->charge_mode === 'reference') {
-                            foreach ($surcharge->references as $ref) {
-                                if ($task->reference !== $ref->reference) continue;
+                        }
 
-                                if ($ref->canBeCharged()) {
-                                    $totalSurcharge += $surcharge->amount;
+                        if ($surcharge->charge_mode === 'reference') {
+                            $response = SupplierSurchargeReference::createSurchargeRecord($task, $surcharge);
+                            Log::info('Successfully created surcharge reference record');
 
-                                    if ($ref->charge_behavior === 'single') {
-                                        $ref->markAsCharged();
-                                        break;
-                                    }
+                            if (!$response) {
+                                Log::error('Failed to create reference surcharge record');
+                            }
+
+                            Log::info('Checking reference', [
+                                'ref_id' => $response->id,
+                                'ref_value' => $response->reference,
+                                'is_charged' => $response->is_charged,
+                                'behavior' => $surcharge->charge_behavior,
+                            ]);
+
+                            $canCharge = $response->canBeCharged($surcharge->charge_behavior);
+
+                            if ($canCharge) {
+                                $totalSurcharge += $surcharge->amount;
+                                Log::info('Added reference surcharge', [
+                                    'ref_value' => $response->reference,
+                                    'amount' => $surcharge->amount,
+                                    'total' => $totalSurcharge,
+                                ]);
+
+                                if ($surcharge->charge_behavior === 'single') {
+                                    $response->markAsCharged();
+                                    Log::info('Marked reference as charged', [
+                                        'ref_value' => $response->reference,
+                                    ]);
                                 }
+                            } else {
+                                Log::info('Skipped reference surcharge (already charged)', [
+                                    'ref_value' => $response->reference,
+                                ]);
                             }
                         }
                     }
 
+                    Log::info('Total surcharge computed', [
+                        'task_id' => $task->id,
+                        'total' => $totalSurcharge,
+                    ]);
+
                     if ($totalSurcharge > 0) {
-                        $task->update(['supplier_surcharge' => $totalSurcharge]);
+                        $task->update([
+                            'supplier_surcharge' => $totalSurcharge,
+                        ]);
                     }
                 }
             }

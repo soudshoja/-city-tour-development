@@ -9,7 +9,6 @@ class SupplierSurchargeReference extends Model
     protected $fillable = [
         'supplier_surcharge_id',
         'reference',
-        'charge_behavior',
         'is_charged',
     ];
 
@@ -27,8 +26,36 @@ class SupplierSurchargeReference extends Model
         $this->update(['is_charged' => true]);
     }
 
-    public function canBeCharged(): bool
+    public function canBeCharged(string $behavior = 'single'): bool
     {
-        return $this->charge_behavior === 'repetitive' || !$this->is_charged;
+        if ($this->is_charged) {
+            return false;
+        }
+
+        if ($behavior === 'repetitive') {
+            return true;
+        }
+
+        return !$this->is_charged;
     }
+
+
+   public static function createSurchargeRecord($task, $surcharge)
+{
+    // Check if this reference already exists
+    $existing = self::where('supplier_surcharge_id', $surcharge->id)
+        ->where('reference', $task->reference)
+        ->first();
+
+    if ($existing) {
+        return $existing; // don't recreate or reset
+    }
+
+    return self::create([
+        'supplier_surcharge_id' => $surcharge->id,
+        'reference' => $task->reference,
+        'is_charged' => false,
+    ]);
+}
+
 }

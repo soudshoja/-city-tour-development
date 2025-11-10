@@ -162,6 +162,9 @@ class AutoBookMagicHoliday extends Command
                                 'response' => $bookingResponse
                             ]);
 
+                            $payment->is_book = true;
+                            $payment->save();
+
                             $data = [
                                 'client' => [
                                     'model' => $client,
@@ -252,6 +255,7 @@ class AutoBookMagicHoliday extends Command
 
         $paidPayments = Payment::where('notes', 'like', '%PB-%')
             ->where('status', 'completed')
+            ->where('is_book', false)
             ->get();
         return $paidPayments;
     }
@@ -294,7 +298,7 @@ class AutoBookMagicHoliday extends Command
         $offerIndex = $prebookData->offer_index;
         $resultToken = $prebookData->result_token;
 
-        $clientRef = (string) Str::uuid();
+        $clientRef = $prebookData->prebook_key;
         $availabilityToken = $prebookData->availability_token;
 
         $client = Client::where('id', $payment->client_id)->first();
@@ -488,6 +492,7 @@ class AutoBookMagicHoliday extends Command
                 'amount' => $payment->amount,
                 'currency' => $payment->currency,
                 'status' => $payment->status,
+                'url' => route('payment.link.show' , ['companyId' => $payment->agent->branch->company_id , 'paymentId' => $payment->voucher_number]),
             ];
         }
 

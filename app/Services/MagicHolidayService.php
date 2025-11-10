@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Prebooking;
 use App\Models\SupplierCredential;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -39,9 +41,13 @@ class MagicHolidayService
         }
     }
 
-    protected function getAccessToken(array $scopes = [])
+    public function getAccessToken(array $scopes = [])
     {
-        return Cache::remember('magic_holiday_access_token', 10, function () use ($scopes) {
+        $key = 'magic_holiday_access_token_' . $this->clientId . '_' . implode('_', $scopes);
+
+        $ttl = 60 * 60 * 24; // seconds * minutes * hours (1 day)
+
+        return Cache::remember($key , $ttl, function () use ($scopes) {
             $response = Http::asForm()->post($this->tokenUrl, [
                 'grant_type' => 'client_credentials',
                 'client_id' => $this->clientId,
@@ -62,20 +68,49 @@ class MagicHolidayService
         });
     }
 
-    protected function request($scopes = [], $method, $endpoint, $params = [], $payload = [])
+    protected function request(string $method, string $endpoint, array $scopes = [], array $params = [], array $payload = [])
     {
         $token = $this->getAccessToken($scopes);
 
+        $this->logger->info('Magic Holiday API Request', [
+            'method' => strtoupper($method),
+            'endpoint' => $this->baseUrl . $endpoint,
+            'params' => $params,
+            'payload' => $payload,
+        ]);
+
+        if($method === 'post' && !empty($params)){
+            $endpoint .= '?' . http_build_query($params);
+        }
+
         $response = Http::withToken($token)
+            ->accept('application/json')
             ->{$method}($this->baseUrl . $endpoint, $method === 'get' ? $params : $payload);
 
+        $responseData = [
+            'status' => $response->status(),
+            'data' => $response->json(),
+            'headers' => $response->headers(),
+        ];
+
+        $this->logger->info('Magic Holiday API Response', [
+            'method' => strtoupper($method),
+            'endpoint' => $endpoint,
+            'status' => $response->status(),
+            'success' => $response->successful(),
+            'data' => $response->json(),
+        ]);
+
         if ($response->successful()) {
-            return [
-                'status' => $response->status(),
-                'data' => $response->json(),
-                'headers' => $response->headers(),
-            ];
+            return $responseData;
         }
+
+        $this->logger->error('Magic Holiday API Error', [
+            'method' => strtoupper($method),
+            'endpoint' => $endpoint,
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ]);
 
         throw new Exception("API request failed: " . $response->body());
     }
@@ -114,7 +149,7 @@ class MagicHolidayService
 
         $this->applyRequestSpacing();
 
-        $response = $this->request($scopes,'get', $url);
+        $response = $this->request('get', $url, $scopes);
 
         if(!isset($response['status']) ?? $response['status'] !== 200){
             $this->logger->error('Failed to fetch single reservation from Magic Holiday API', [
@@ -160,7 +195,7 @@ class MagicHolidayService
 
         $this->applyRequestSpacing();
 
-        $response = $this->request(['read:mapping'],'get', '/mapping/v1' . $mapping, $params);
+        $response = $this->request('get', '/mapping/v1' . $mapping, ['read:mapping'], $params);
 
         if (isset($response['headers'])) {
             $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
@@ -238,6 +273,107 @@ class MagicHolidayService
     public function bookHotel(array $bookingData)
     {
         return $this->request('post', '/bookings', [], $bookingData);
+    }
+
+    public function startHotelSearch(array $searchParams)
+    {
+        $scopes = ['read:hotels-search'];
+        $this->applyRequestSpacing();
+        
+        $response = $this->request('post', '/hotels/v1/search/start', $scopes, [], $searchParams);
+        
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
+        }
+        
+        return $response;
+    }
+
+    public function checkSearchProgress(string $progressToken)
+    {
+        $scopes = ['read:hotels-search'];
+        $this->applyRequestSpacing();
+        
+        $response = $this->request('get', '/hotels/v1/search/progress', $scopes, ['token' => $progressToken], []);
+        
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
+        }
+        
+        return $response;
+    }
+
+    public function getSearchSummary(string $progressToken)
+    {
+        $scopes = ['read:hotels-search'];
+        $this->applyRequestSpacing();
+        
+        $response = $this->request('get', '/hotels/v1/search/progress/summary', $scopes, ['token' => $progressToken], []);
+        
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
+        }
+        
+        return $response;
+    }
+
+    public function getSearchResults(string $srk, string $resultsToken, array $queryParams = [])
+    {
+        $scopes = ['read:hotels-search'];
+        $this->applyRequestSpacing();
+
+        $params = array_merge(['token' => $resultsToken], $queryParams);
+        $response = $this->request('get', "/hotels/v1/search/results/$srk", $scopes, $params, []);
+        
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
+        }
+        
+        return $response;
+    }
+
+    public function getHotelOffers(string $srk, int $hotelIndex, string $resultsToken)
+    {
+        $scopes = ['read:hotels-search'];
+        $this->applyRequestSpacing();
+        
+        $params = ['token' => $resultsToken];
+        $response = $this->request('get', "/hotels/v1/search/results/$srk/hotels/$hotelIndex/offers", $scopes, $params, []);
+        
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
+        }
+        
+        return $response;
+    }
+
+    public function prebookHotel(string $srk, int $hotelId, string $offerIndex, string $packageToken, array $roomTokens, string $resultsToken)
+    {
+        $scopes = ['read:hotels-search'];
+        $this->applyRequestSpacing();
+        
+        $endpoint = "/hotels/v1/search/results/{$srk}/hotels/{$hotelId}/offers/{$offerIndex}/availability";
+        
+        $params = ['token' => $resultsToken];
+        $response = $this->request('post', $endpoint, $scopes, $params, ['packageToken' => $packageToken, 'roomTokens' => $roomTokens]);
+        
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
+        }
+        
+        return $response;
     }
 
     protected function applyRequestSpacing(): void
@@ -326,4 +462,118 @@ class MagicHolidayService
         
         $this->logger->debug('Updated rate limit info', $rateLimitInfo);
     }
+
+    public function findByCity(array $payload)
+    {
+        $scopes = ['read:hotels-search'];
+        $this->applyRequestSpacing();
+
+        $response = $this->request(
+            'post',
+            '/hotels/v1/search/start',
+            $scopes,
+            [],
+            $payload
+        );
+
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
+        }
+
+        return $response;
+    }
+
+    public function storeBooking(array $payload)
+    {        
+        $this->logger->info('Hit the API for Magic Holiday booking',  $payload);
+        $srk        = $payload['srk'];
+        $hotelId    = $payload['hotelId'];
+        $offerIndex = $payload['offerIndex'];
+        $resultsToken = $payload['resultToken'];
+        $bookingPayload = $payload['payload'];
+
+        if (app()->environment() !== 'production') {
+            $prebooking = Prebooking::where('srk', $srk)
+                ->where('hotel_id', $hotelId)
+                ->where('offer_index', $offerIndex)
+                ->first();
+
+            if (!$prebooking) {
+                $this->logger->error('Prebooking not found', compact('srk', 'hotelId', 'offerIndex'));
+                return [
+                    'status' => 404,
+                    'data' => ['error' => 'Prebooking not found']
+                ];
+            }
+
+            $rooms = $prebooking->rooms ?? [];
+            $nonRefundable = false;
+
+            foreach ($rooms as $room) {
+                if (isset($room['non_refundable']) && $room['non_refundable'] === true) {
+                    $nonRefundable = true;
+                    break;
+                }
+            }
+
+            if ($nonRefundable) {
+                $this->logger->warning('Attempted non-refundable booking in non-production', compact('srk', 'hotelId', 'offerIndex'));
+                return [
+                    'status' => 400,
+                    'data' => ['error' => 'Non-refundable booking not allowed in non-production']
+                ];
+            }
+        }
+
+        $this->applyRequestSpacing();
+
+        $scopes = ['write:hotels-book'];
+
+        $url = "/hotels/v1/search/results/{$srk}/hotels/{$hotelId}/offers/{$offerIndex}/book";
+
+        $this->logger->info('Proceeding with booking request', [
+            'url' => $url,
+            'payload' => $bookingPayload
+        ]);
+
+        $params = [
+            'token' => $resultsToken
+        ];
+
+        $response = $this->request(
+            'post',
+            $url,
+            $scopes,
+            $params,
+            $bookingPayload
+        );
+
+        if (isset($response['headers'])) {
+            $this->updateRateLimitInfo(
+                $response['headers']['X-RateLimit-Remaining'][0] ?? null,
+                $response['headers']['X-RateLimit-Reset'][0] ?? null
+            );
+        }
+
+        return $response;
+    }
+
+    public function cancelReservation(int $reservationId)
+    {
+        $scopes = ['write:reservations'];
+        $this->applyRequestSpacing();
+
+        $response = $this->request('delete', '/reservationsApi/v1/reservations/' . $reservationId, $scopes);
+
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
+        }
+
+        return $response;
+    }
+
 }

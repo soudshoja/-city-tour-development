@@ -78,9 +78,10 @@ class RunAutoBilling extends Command
 
                 $query = Task::query()
                     ->where('company_id', $rule->company_id)
+                    ->whereIn('status', ['issued', 'reissued', 'void'])
                     ->where('client_id', $rule->client_id)
                     ->whereDoesntHave('invoiceDetail')
-                    ->whereBetween('supplier_pay_date', [$startTime, $endTime])
+                    ->whereBetween('created_at', [$startTime, $endTime])
                     ->where(function ($q) use ($rule) {
                         if ($rule->created_by) {
                             $q->where('created_by', $rule->created_by);
@@ -212,6 +213,8 @@ class RunAutoBilling extends Command
                     $totalAmount += $task->invoice_price;
                 }
 
+                $invoiceDate = $tasks[0]->supplier_pay_date ?? $tasks[0]->issued_date;
+
                 $invoice = Invoice::create([
                     'invoice_number' => $invoiceNumber,
                     'agent_id' => $task->agent_id,
@@ -222,8 +225,8 @@ class RunAutoBilling extends Command
                     'currency' => 'KWD',
                     'status' => 'unpaid',
                     'payment_type' => 'full',
-                    'invoice_date' => now($rule->timezone),
-                    'due_date' => now($rule->timezone)->addDays(3),
+                    'invoice_date' => $invoiceDate,
+                    'due_date' => $invoiceDate->copy()->addDays(3),
                 ]);
 
                 $transaction = Transaction::create([

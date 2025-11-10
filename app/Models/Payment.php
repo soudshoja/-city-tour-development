@@ -113,4 +113,9 @@ class Payment extends Model
     {
         return $this->hasMany(Credit::class, 'payment_id');
     }
+
+    public function hotelBooking()
+    {
+        return $this->hasOne(HotelBooking::class, 'payment_id');
+    }
 }

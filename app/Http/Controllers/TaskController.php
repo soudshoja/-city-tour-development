@@ -35,6 +35,7 @@ use App\Models\Payment;
 use App\Models\FileUpload;
 use App\Models\SystemLog;
 use App\Models\AutoBilling;
+use App\Models\HotelBooking;
 use App\Models\Wallet;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -1074,6 +1075,32 @@ class TaskController extends Controller
                 $this->saveVisaDetails($request->task_visa_details, $task->id);
             }
 
+            $supplierMagicHoliday = Supplier::where('name', 'Magic Holiday')->first();
+
+            if($task->client_ref && $supplierMagicHoliday && $task->supplier_id == $supplierMagicHoliday->id){
+
+                $hotelBooking = HotelBooking::where('client_ref', $task->client_ref)->first();
+
+                if($hotelBooking){
+                    $payment = $hotelBooking->payment;
+
+                    $task->is_n8n_booking = true;
+                    $task->enabled = true;
+                    $task->client_id = $payment->client_id;
+                    $task->client_name = $payment->client->full_name;
+                    $task->agent_id = $payment->agent_id;
+
+                    $task->save();
+
+                    $generateInvoiceResponse = app(InvoiceController::class)->autoGenerateInvoice($task, $payment);
+
+                    Log::info('Auto-generated invoice for n8n hotel booking task: ' . $task->reference, $generateInvoiceResponse);
+                } else {
+                    Log::warning('No HotelBooking found for Magic Holiday task with client_ref: ' . $task->client_ref);
+                }
+
+            }
+
             // Set enabled status: task must be complete AND have an agent assigned
             if ($task->is_complete && $task->agent_id && $task->client) {
                 $task->enabled = true;
@@ -1283,8 +1310,10 @@ class TaskController extends Controller
                     ]);
                 }
 
+                $company = Company::find($task->company_id);
+
                 $this->storeNotification([
-                    'user_id' => $task->agent->id,
+                    'user_id' => $company->user_id,
                     'title' => 'IATA City Travelers (EasyPay) successfully deducted',
                     'message' => 'IATA City Travelers (EasyPay) balance has deducted KWD ' . $task->total . ' for task ID: ' . $task->id,
                 ]);
@@ -3802,6 +3831,7 @@ class TaskController extends Controller
         $prices = $reservation['service']['prices'] ?? null;
         $status = 'issued'; // Default status
         $pnr = $reservation['service']['pnr'] ?? null;
+        $clientRef = $reservation['clientRef'] ?? null;
 
         $cancellationPolicy = [];
 
@@ -3816,10 +3846,19 @@ class TaskController extends Controller
                 ];
             }
 
-            $agentInDB = Agent::where('name', $agent['name'])
-                ->orWhere('email', 'like', $agent['email'])
-                ->orWhere('phone_number', 'like', $agent['telephone'])
-                ->first();
+            if($clientRef && str_contains(strtolower($clientRef), 'pb-')){
+                $agentInDB = Agent::where('name', 'AI Agent')
+                    ->whereHas('branch', function ($query) use ($companyId) {
+                        $query->where('company_id', $companyId);
+                    })->first();
+
+            } else {
+                $agentInDB = Agent::where('name', $agent['name'])
+                    ->orWhere('email', 'like', $agent['email'])
+                    ->orWhere('phone_number', 'like', $agent['telephone'])
+                    ->first();
+            }
+
 
             if ($agentInDB) {
                 $agentId = $agentInDB->id;
@@ -3930,6 +3969,7 @@ class TaskController extends Controller
                 'status' => $status,
                 'supplier_status' => $supplierStatus,
                 'client_name' => $clientName,
+                'client_ref' => $reservation['clientRef'] ?? null,
                 'reference' => (string)$reservation['id'] ?? null,
                 'duration' => $serviceDates['duration'] ?? null,
                 'payment_type' => $reservation['service']['payment']['type'] ?? null,

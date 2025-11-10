@@ -19,7 +19,7 @@ trait EmailNotificationTrait
             if (!empty($data['email'])) {
                 $toEmail = $data['email'];
             } elseif (app()->environment('local')) {
-                $toEmail = 'thclown12@gmail.com';
+                $toEmail = env('EMAIL_LOCAL', 'it@alphia.net');
             } else {
                 $toEmail = 'shoja@citytravelers.co';
             }

@@ -4667,18 +4667,19 @@ class InvoiceController extends Controller
         }
 
         $url = route('invoice.show', ['companyId' => $task->company_id, 'invoiceNumber' => $invoice->invoice_number]);
-        $message = "An invoice (" . $invoice->invoice_number . ") for ". $task->supplier->name . "'s task with reference of " . $task->reference . " for client " . $task->client->full_name . " has been automatically generated and PAID.\n\n" . $url;
+        $agentMessage = "An invoice (" . $invoice->invoice_number . ") for ". $task->supplier->name . "'s task with reference of " . $task->reference . " for client " . $task->client->full_name . " has been automatically generated and PAID.\n\n" . $url;
+        $clientMessage = "Dear " . $task->client->full_name . ",\n\nYour invoice (" . $invoice->invoice_number . ") for the task with reference of " . $task->reference . " has been generated and PAID.\n\n" . $url;
 
         $this->storeNotification([
             'user_id' => $task->agent->user_id,
             'title' => 'Invoice Generated',
-            'message' => $message,
+            'message' => $agentMessage,
         ]);
 
         (new ResayilController())->message(
             $task->agent->phone_number,
             $task->agent->country_code,
-            $message
+            $agentMessage
         );
 
         $agentPhoneNumber = app()->environment() == 'production' ? $task->agent->country_code . $task->agent->phone_number : env('PHONE_LOCAL', '+60193058463');
@@ -4686,20 +4687,27 @@ class InvoiceController extends Controller
 
         $n8nResponse = Http::post(env('N8N_WEBHOOK_TEST_URL'), [
             'success' => true,
-            'agent' => [
-                'phone_number' => $agentPhoneNumber,
-                'message' => $message,
-            ],
+            // 'agent' => [
+            //     'phone_number' => $agentPhoneNumber,
+            //     'message' => $message,
+            // ],
             'client' => [
                 'phone_number' => $clientPhoneNumber,
                 'name' => $task->client->full_name,
+                'message' => $clientMessage,
             ],
             'invoice' => [
                 'invoice_number' => $invoice->invoice_number,
                 'amount' => $invoice->amount,
                 'currency' => $invoice->currency,
                 'status' => $invoice->status,
-            ]
+                'url' => $url,
+            ],
+            'task' => [
+                'reference' => $task->reference,
+                'description' => $task->description,
+                'hotel_voucher' => route('tasks.pdf.hotel',  $task->id),
+            ],
         ]);
 
         Log::info('N8N Webhook Response', [

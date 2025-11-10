@@ -3795,6 +3795,7 @@ class TaskController extends Controller
         $prices = $reservation['service']['prices'] ?? null;
         $status = 'issued'; // Default status
         $pnr = $reservation['service']['pnr'] ?? null;
+        $clientRef = $reservation['clientRef'] ?? null;
 
         $cancellationPolicy = [];
 
@@ -3809,10 +3810,19 @@ class TaskController extends Controller
                 ];
             }
 
-            $agentInDB = Agent::where('name', $agent['name'])
-                ->orWhere('email', 'like', $agent['email'])
-                ->orWhere('phone_number', 'like', $agent['telephone'])
-                ->first();
+            if($clientRef && str_contains(strtolower($clientRef), 'pb-')){
+                $agentInDB = Agent::where('name', 'AI Agent')
+                    ->whereHas('branch', function ($query) use ($companyId) {
+                        $query->where('company_id', $companyId);
+                    })->first();
+
+            } else {
+                $agentInDB = Agent::where('name', $agent['name'])
+                    ->orWhere('email', 'like', $agent['email'])
+                    ->orWhere('phone_number', 'like', $agent['telephone'])
+                    ->first();
+            }
+
 
             if ($agentInDB) {
                 $agentId = $agentInDB->id;

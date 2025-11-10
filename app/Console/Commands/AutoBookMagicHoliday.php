@@ -492,6 +492,7 @@ class AutoBookMagicHoliday extends Command
                 'amount' => $payment->amount,
                 'currency' => $payment->currency,
                 'status' => $payment->status,
+                'url' => route('payment.link.show' , ['companyId' => $payment->agent->branch->company_id , 'paymentId' => $payment->voucher_number]),
             ];
         }
 

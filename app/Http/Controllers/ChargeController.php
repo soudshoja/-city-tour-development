@@ -134,6 +134,13 @@ class ChargeController extends Controller
     {
         Gate::authorize('create', Charge::class);
 
+        if (Auth::user()->role->id !== Role::ADMIN) {
+            $systemGateways = ['Tap', 'MyFatoorah', 'UPayment', 'Hesabe'];
+            if (in_array($request->name, $systemGateways)) {
+                return redirect()->route('charges.index')->withErrors(['name' => 'System gateways can only be added by administrators.']);
+            }
+        }
+
         // Fetch COA for Payment Gateway Fee (Expenses)   
         $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')->first();
 
@@ -245,9 +252,10 @@ class ChargeController extends Controller
                 'can_charge_invoice' => $request->has('can_charge_invoice') ? 1 : 0,
                 'is_active' => $request->has('is_active') ? $request->boolean('is_active') : true,
                 'can_generate_link' => $request->has('can_generate_link') ? $request->boolean('can_generate_link') : true,
-                // 'auth_type' => $request->get('auth_type'),
-                // 'base_url' => $request->get('base_url'),
                 'api_key' => $request->get('api_key'),
+                'is_system_default' => false,
+                'can_be_deleted' => true,
+                'enabled_by' => Auth::user()->role->id == Role::ADMIN ? 'admin' : 'company',
             ]);
 
             // Commit the transaction
@@ -314,6 +322,33 @@ class ChargeController extends Controller
     {
         Gate::authorize('update', Charge::class);
 
+        $charge = Charge::findOrFail($id);
+        
+        if ($charge->is_system_default && Auth::user()->role->id !== Role::ADMIN) {
+            $request->validate([
+                'self_charge' => 'nullable|numeric',
+                'extra_charge' => 'nullable|numeric',
+                'description' => 'nullable|string|max:255',
+            ]);
+
+            try {
+                DB::beginTransaction();
+
+                $charge->update([
+                    'self_charge' => $request->get('self_charge'),
+                    'extra_charge' => $request->get('extra_charge') ?? 0,
+                    'description' => $request->get('description'),
+                ]);
+
+                DB::commit();
+
+                return redirect()->route('charges.index')->with('success', 'Gateway charges updated successfully!');
+            } catch (Exception $e) {
+                DB::rollBack();
+                return redirect()->back()->withInput()->with('error', $e->getMessage());
+            }
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:255',
@@ -322,13 +357,6 @@ class ChargeController extends Controller
             'amount' => 'required|numeric',
             'extra_charge' => 'nullable|numeric',
             'self_charge' => 'nullable|numeric',
-            // 'is_auto_paid' => 'nullable|boolean',
-            // 'has_url' => 'nullable|boolean',
-            // 'can_change_invoice' => 'nullable|boolean',
-            // 'is_active' => 'nullable|boolean',
-            // 'can_generate_link' => 'nullable|boolean',
-            // 'auth_type' => 'required|in:basic,oauth',
-            // 'base_url'    => 'nullable|url',
             'api_key'     => 'nullable|string',
         ]);
 
@@ -336,8 +364,6 @@ class ChargeController extends Controller
 
         try {
             DB::beginTransaction();
-
-            $charge = Charge::findOrFail($id);
 
             $charge->update([
                 'name' => $request->get('name'),
@@ -347,18 +373,6 @@ class ChargeController extends Controller
                 'paid_by' => $request->get('paid_by'),
                 'description' => $request->get('description'),
                 'charge_type' => $request->get('charge_type'),
-                // 'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
-                // 'has_url' => $request->has('has_url') ? 1 : 0,
-                // 'can_change_invoice' => $request->has('can_change_invoice') ? 1 : 0,
-                // 'is_active' => $request->has('is_active') ? 1 : 0,
-                // 'can_generate_link' => $request->has('can_generate_link') ? 1 : 0,
-                // 'auth_type' => $request->get('auth_type'),
-                // 'base_url'    => $request->get('base_url'),
-                // 'api_key'    => $request->get('api_key'),
-
-                //'acc_bank_id' => $request->get('acc_bank_id'),
-                // 'acc_fee_id' => $request->get('acc_fee_id'),
-                // 'acc_fee_bank_id' => $request->get('acc_fee_bank_id'),
             ]);
 
 
@@ -433,10 +447,19 @@ class ChargeController extends Controller
     public function destroy($id)
     {
         try {
+            $charge = Charge::findOrFail($id);
+
+            if (!$charge->can_be_deleted) {
+                return redirect()->route('charges.index')->with('error', 'System gateway cannot be deleted.');
+            }
+
+            if ($charge->is_system_default && Auth::user()->role->id !== Role::ADMIN) {
+                return redirect()->route('charges.index')->with('error', 'You do not have permission to delete system gateways.');
+            }
+
             DB::beginTransaction();
 
-            $charges = Charge::findOrFail($id);
-            $charges->delete();
+            $charge->delete();
 
             DB::commit();
 
@@ -486,6 +509,19 @@ class ChargeController extends Controller
 
         if (!$charge) {
             return redirect()->route('charges.index')->with('error', 'Charge not found.');
+        }
+
+        if ($charge->is_system_default && Auth::user()->role->id !== Role::ADMIN) {
+            try{
+                $charge->update([
+                    'is_active' => $request->has('is_active') ? 1 : 0,
+                ]);
+            } catch (Exception $e) {
+                Log::error('Failed to update charge status', ['error' => $e->getMessage()]);
+                return redirect()->back()->withInput()->with('error', 'Something went wrong while updating gateway status.');
+            }
+
+            return redirect()->route('charges.index')->with('success', 'Gateway status updated.');
         }
 
         try{

@@ -153,22 +153,8 @@ class AgentController extends Controller
         $monthlyOutstanding = 0;
 
         foreach ($allInvoices as $invoice) {
-            if ($agent->type_id == 2) {
                 $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
             
-                $invoiceCommission = 0;
-                if (in_array($agent->type_id, [2, 3, 4])) {
-                    foreach ($invoice->invoiceDetails as $detail) {
-                        $commissionEntries = $detail->JournalEntrys()
-                            ->where('account_id', $commissionAccountId)
-                            ->get();
-                        $invoiceCommission += ($commissionEntries->sum('credit') - $commissionEntries->sum('debit')) - 0.35;
-                    }
-                }
-            } else {
-                $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
-            
-                // Calculate net commission from journal entries linked to invoice details (credits - debits)
                 $invoiceCommission = 0;
                 if (in_array($agent->type_id, [2, 3, 4])) {
                     foreach ($invoice->invoiceDetails as $detail) {
@@ -178,7 +164,6 @@ class AgentController extends Controller
                         $invoiceCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
                     }
                 }
-            }
             
             $monthlyProfit += $invoiceProfit;
             $monthlyCommission += $invoiceCommission;
@@ -206,47 +191,17 @@ class AgentController extends Controller
 
         // Process each paginated invoice for display
         foreach ($invoices as $invoice) {
-            if ($agent->type_id == 1) {
-                // Calculate total profit for this invoice: markup_price + invoice_charge
-                $invoiceProfit = ($invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0)) - 0.35;
-                
-                // Calculate net commission from journal entries linked to invoice details (credits - debits)
-                $invoiceCommission = 0;
-                if (in_array($agent->type_id, [2, 3, 4])) {
-                    foreach ($invoice->invoiceDetails as $detail) {
-                        $commissionEntries = $detail->JournalEntrys()
-                            ->where('account_id', $commissionAccountId)
-                            ->get();
-                        $invoiceCommission += ($commissionEntries->sum('credit') - $commissionEntries->sum('debit')) - 0.35;
-                    }
-                }
-            } else if ($agent->type_id == 2) {
-                // Calculate total profit for this invoice: markup_price + invoice_charge
-                $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
-                
-                // Calculate net commission from journal entries linked to invoice details (credits - debits)
-                $invoiceCommission = 0;
-                if (in_array($agent->type_id, [2, 3, 4])) {
-                    foreach ($invoice->invoiceDetails as $detail) {
-                        $commissionEntries = $detail->JournalEntrys()
-                            ->where('account_id', $commissionAccountId)
-                            ->get();
-                        $invoiceCommission += ($commissionEntries->sum('credit') - $commissionEntries->sum('debit')) - 0.35;
-                    }
-                }
-            } else {
-                // Calculate total profit for this invoice: markup_price + invoice_charge
-                $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
-                
-                // Calculate net commission from journal entries linked to invoice details (credits - debits)
-                $invoiceCommission = 0;
-                if (in_array($agent->type_id, [2, 3, 4])) {
-                    foreach ($invoice->invoiceDetails as $detail) {
-                        $commissionEntries = $detail->JournalEntrys()
-                            ->where('account_id', $commissionAccountId)
-                            ->get();
-                        $invoiceCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
-                    }
+            // Calculate total profit for this invoice: markup_price + invoice_charge
+            $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
+            
+            // Calculate net commission from journal entries linked to invoice details (credits - debits)
+            $invoiceCommission = 0;
+            if (in_array($agent->type_id, [2, 3, 4])) {
+                foreach ($invoice->invoiceDetails as $detail) {
+                    $commissionEntries = $detail->JournalEntrys()
+                        ->where('account_id', $commissionAccountId)
+                        ->get();
+                    $invoiceCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
                 }
             }
 

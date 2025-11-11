@@ -134,11 +134,9 @@ class ChargeController extends Controller
     {
         Gate::authorize('create', Charge::class);
 
-        if (Auth::user()->role->id !== Role::ADMIN) {
-            $systemGateways = ['Tap', 'MyFatoorah', 'UPayment', 'Hesabe'];
-            if (in_array($request->name, $systemGateways)) {
-                return redirect()->route('charges.index')->withErrors(['name' => 'System gateways can only be added by administrators.']);
-            }
+        $systemGateways = ['Tap', 'MyFatoorah', 'UPayment', 'Hesabe'];
+        if (in_array($request->name, $systemGateways)) {
+            Gate::authorize('createSystemGateway', Charge::class);
         }
 
         // Fetch COA for Payment Gateway Fee (Expenses)   
@@ -320,11 +318,43 @@ class ChargeController extends Controller
 
     public function update(Request $request, $id)
     {
-        Gate::authorize('update', Charge::class);
-
         $charge = Charge::findOrFail($id);
         
-        if ($charge->is_system_default && Auth::user()->role->id !== Role::ADMIN) {
+        Gate::authorize('update', $charge);
+        
+        if (Gate::allows('updateAll', $charge)) {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'nullable|string|max:255',
+                'paid_by' => 'required',
+                'charge_type' => 'required',
+                'amount' => 'required|numeric',
+                'extra_charge' => 'nullable|numeric',
+                'self_charge' => 'nullable|numeric',
+                'api_key'     => 'nullable|string',
+            ]);
+
+            try {
+                DB::beginTransaction();
+
+                $charge->update([
+                    'name' => $request->get('name'),
+                    'amount' => $request->get('amount'),
+                    'extra_charge' => $request->get('extra_charge') ?? 0,
+                    'self_charge' => $request->get('self_charge'),
+                    'paid_by' => $request->get('paid_by'),
+                    'description' => $request->get('description'),
+                    'charge_type' => $request->get('charge_type'),
+                ]);
+
+                DB::commit();
+
+                return redirect()->route('charges.index')->with('success', 'Charges updated successfully!');
+            } catch (Exception $e) {
+                DB::rollBack();
+                return redirect()->back()->withInput()->with('error', $e->getMessage());
+            }
+        } elseif (Gate::allows('updateLimited', $charge)) {
             $request->validate([
                 'self_charge' => 'nullable|numeric',
                 'extra_charge' => 'nullable|numeric',
@@ -349,99 +379,7 @@ class ChargeController extends Controller
             }
         }
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:255',
-            'paid_by' => 'required',
-            'charge_type' => 'required',
-            'amount' => 'required|numeric',
-            'extra_charge' => 'nullable|numeric',
-            'self_charge' => 'nullable|numeric',
-            'api_key'     => 'nullable|string',
-        ]);
-
-        Log::info($request->all());
-
-        try {
-            DB::beginTransaction();
-
-            $charge->update([
-                'name' => $request->get('name'),
-                'amount' => $request->get('amount'),
-                'extra_charge' => $request->get('extra_charge') ?? 0,
-                'self_charge' => $request->get('self_charge'),
-                'paid_by' => $request->get('paid_by'),
-                'description' => $request->get('description'),
-                'charge_type' => $request->get('charge_type'),
-            ]);
-
-
-            // // Fetch COA for Payment Gateway Fee (Expenses)  
-            // $coaPaymentGateway = Account::where('name', 'Payment Gateway Charges')->first(); // Query if the account exists
-
-            // // Check if child account exists for Payment Gateway Charges
-            // $childCoaPaymentGateway = Account::where('parent_id', $coaPaymentGateway ? $coaPaymentGateway->id : null)
-            //     ->where('name', 'like', '%' . $request->get('name') . '%')
-            //     ->first(); 
-
-            // // Create new account for Payment Gateway Fee if not found
-            // if (!$childCoaPaymentGateway) {
-
-            //     // Create new Payment Gateway Fee account
-            //     $coaPaymentGateway = Account::create([
-            //         'name' => $request->name,
-            //         'parent_id' => $coaPaymentGateway->id,
-            //         'company_id' => Auth::user()->company->id,
-            //         'branch_id' => Auth::user()->branch_id,
-            //         'account_type' => 'expense',
-            //         'report_type' => 'profit loss',
-            //         'level' => 4,
-            //         'is_group' => 0,
-            //         'disabled' => 0,
-            //         'actual_balance' => 0.00,
-            //         'budget_balance' => 0.00,
-            //         'variance' => 0.00,
-            //         'currency' => 'KWD',
-            //     ]);
-            // }
-
-            // // Fetch COA for Payment Gateway (Assets)  
-            // $coaPaymentGatewayBankAcc = Account::where('name', 'Payment Gateway')->first(); // Query if the account exists
-
-            // // Check if child account exists for Payment Gateway Bank Account
-            // $childCoaPaymentGatewayBankAcc = Account::where('parent_id', $coaPaymentGatewayBankAcc ? $coaPaymentGatewayBankAcc->id : null)
-            //     ->where('name', 'like', '%' . $request->get('name') . '%')
-            //     ->first(); 
-
-            // // Create new account for Payment Gateway Bank if not found
-            // if (!$childCoaPaymentGatewayBankAcc) {
-
-            //     // Create new Payment Gateway Bank account
-            //     $coaPaymentGatewayBankAcc = Account::create([
-            //         'name' => $request->name,
-            //         'parent_id' => $coaPaymentGatewayBankAcc,
-            //         'company_id' => Auth::user()->company->id,
-            //         'branch_id' => Auth::user()->branch_id,
-            //         'account_type' => 'asset',
-            //         'report_type' => 'balance sheet',
-            //         'level' => 4,
-            //         'is_group' => 0,
-            //         'disabled' => 0,
-            //         'actual_balance' => 0.00,
-            //         'budget_balance' => 0.00,
-            //         'variance' => 0.00,
-            //         'currency' => 'KWD',
-            //     ]);
-            // }
-
-            // Commit the transaction
-            DB::commit();
-
-            return redirect()->route('charges.index')->with('success', 'Charges updated successfully!');
-        } catch (Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->withInput()->with('error', $e->getMessage());
-        }
+        return redirect()->route('charges.index')->with('error', 'You do not have permission to update this gateway.');
     }
 
     public function destroy($id)
@@ -449,13 +387,7 @@ class ChargeController extends Controller
         try {
             $charge = Charge::findOrFail($id);
 
-            if (!$charge->can_be_deleted) {
-                return redirect()->route('charges.index')->with('error', 'System gateway cannot be deleted.');
-            }
-
-            if ($charge->is_system_default && Auth::user()->role->id !== Role::ADMIN) {
-                return redirect()->route('charges.index')->with('error', 'You do not have permission to delete system gateways.');
-            }
+            Gate::authorize('delete', $charge);
 
             DB::beginTransaction();
 
@@ -496,22 +428,42 @@ class ChargeController extends Controller
 
     public function updateCredentials(Request $request, $id)
     {
-        $request->validate([
-            'api_key'     => 'required|string',
-            'is_auto_paid' => 'nullable|boolean',
-            'has_url' => 'nullable|boolean',
-            'can_charge_invoice' => 'nullable|boolean',
-            'is_active' => 'nullable|boolean',
-            'can_generate_link' => 'nullable|boolean',
-        ]);
-
         $charge = Charge::findOrFail($id);
 
         if (!$charge) {
             return redirect()->route('charges.index')->with('error', 'Charge not found.');
         }
 
-        if ($charge->is_system_default && Auth::user()->role->id !== Role::ADMIN) {
+        if (Gate::allows('updateCredentials', $charge)) {
+            $request->validate([
+                'api_key'     => 'required|string',
+                'is_auto_paid' => 'nullable|boolean',
+                'has_url' => 'nullable|boolean',
+                'can_charge_invoice' => 'nullable|boolean',
+                'is_active' => 'nullable|boolean',
+                'can_generate_link' => 'nullable|boolean',
+            ]);
+
+            try{
+                $charge->update([
+                    'api_key' => $request->get('api_key'),
+                    'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
+                    'has_url' => $request->has('has_url') ? 1 : 0,
+                    'can_charge_invoice' => $request->has('can_charge_invoice') ? 1 : 0,
+                    'is_active' => $request->has('is_active') ? 1 : 0,
+                    'can_generate_link' => $request->has('can_generate_link') ? 1 : 0,
+                ]);
+            } catch (Exception $e) {
+                Log::error('Failed to update charge credentials', ['error' => $e->getMessage()]);
+                return redirect()->back()->withInput()->with('error', 'Something went wrong while updating credentials.');
+            }
+
+            return redirect()->route('charges.index')->with('success', 'Gateway credentials updated.');
+        } elseif (Gate::allows('toggleActive', $charge)) {
+            $request->validate([
+                'is_active' => 'nullable|boolean',
+            ]);
+
             try{
                 $charge->update([
                     'is_active' => $request->has('is_active') ? 1 : 0,
@@ -524,22 +476,6 @@ class ChargeController extends Controller
             return redirect()->route('charges.index')->with('success', 'Gateway status updated.');
         }
 
-        try{
-            $charge->update([
-                'api_key' => $request->get('api_key'),
-                'is_auto_paid' => $request->has('is_auto_paid') ? 1 : 0,
-                'has_url' => $request->has('has_url') ? 1 : 0,
-                'can_charge_invoice' => $request->has('can_charge_invoice') ? 1 : 0,
-                'is_active' => $request->has('is_active') ? 1 : 0,
-                'can_generate_link' => $request->has('can_generate_link') ? 1 : 0,
-            ]);
-        } catch (Exception $e) {
-
-            Log::error('Failed to update charge credentials', ['error' => $e->getMessage()]);
-
-            return redirect()->back()->withInput()->with('error', 'Something went wrong while updating credentials.');
-        }
-
-        return redirect()->route('charges.index')->with('success', 'Gateway credentials updated.');
+        return redirect()->route('charges.index')->with('error', 'You do not have permission to update this gateway.');
     }
 }

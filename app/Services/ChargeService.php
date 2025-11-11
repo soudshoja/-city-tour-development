@@ -304,4 +304,75 @@ class ChargeService
             gatewayFee: $selfChargeAmount,
         );
     }
+
+    public static function getFee(string $gatewayName, float $amount, int $methodCode, int $companyId, string $currency = 'KWD'): array
+    {
+        $method = PaymentMethod::where('id', $methodCode)
+            ->where('company_id', $companyId)
+            ->where('type', $gatewayName)
+            ->first();
+
+        if (!$method) {
+            Log::warning('Payment method not found', [
+                'method_code' => $methodCode,
+                'gateway' => $gatewayName,
+                'company_id' => $companyId
+            ]);
+            return self::standardReturn(
+                finalAmount: $amount,
+                fee: 0,
+                paidBy: null,
+                netReceived: $amount
+            );
+        }
+
+        $paidBy = $method->paid_by;
+        $apiServiceCharge = $method->service_charge ?? 0;
+        
+        $selfChargeValue = $method->self_charge ?? $method->service_charge ?? 0;
+        $selfChargeType = $method->charge_type ?? 'Flat Rate';
+        
+        $selfChargeAmount = 0;
+        if ($selfChargeValue > 0) {
+            $selfChargeAmount = ceil(self::calculateChargeAmount($amount, $selfChargeValue, $selfChargeType));
+        }
+
+        $totalFee = 0;
+        if ($paidBy === 'Client') {
+            $totalFee = $selfChargeAmount;
+        }
+
+        $finalAmount = $amount + $totalFee;
+        $netReceived = $amount - $totalFee;
+
+        Log::info('Gateway charge calculated via getFee', [
+            'gateway' => $gatewayName,
+            'amount' => $amount,
+            'currency' => $currency,
+            'method_code' => $methodCode,
+            'company_id' => $companyId,
+            'using_self_charge' => !is_null($method->self_charge),
+            'api_service_charge' => $apiServiceCharge,
+            'self_charge_value' => $selfChargeValue,
+            'self_charge_amount' => $selfChargeAmount,
+            'self_charge_type' => $selfChargeType,
+            'total_fee' => $totalFee,
+            'finalAmount' => $finalAmount,
+            'netReceived' => $netReceived,
+            'paid_by' => $paidBy,
+            'gatewayFee' => $selfChargeAmount,
+        ]);
+
+        return self::standardReturn(
+            finalAmount: $finalAmount,
+            fee: $totalFee,
+            paidBy: $paidBy,
+            netReceived: $netReceived,
+            chargeType: $method->charge_type,
+            selfChargeType: $method->self_charge_type,
+            selfCharge: $method->self_charge,
+            apiServiceCharge: $apiServiceCharge,
+            gatewayFee: $selfChargeAmount,
+        );
+    }
 }

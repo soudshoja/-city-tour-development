@@ -479,6 +479,23 @@ class InvoiceController extends Controller
             ->where('type', 'hesabe')
             ->get();
 
+        $tapMethods = PaymentMethod::where('is_active', true)
+            ->where('company_id', $invoice->agent->branch->company_id)
+            ->where('type', 'tap')
+            ->get();
+
+        $gatewayMethods = [];
+        foreach ($paymentGateways as $gateway) {
+            $methods = PaymentMethod::where('is_active', true)
+                ->where('company_id', $invoice->agent->branch->company_id)
+                ->where('type', $gateway->name)
+                ->get();
+            
+            if ($methods->isNotEmpty()) {
+                $gatewayMethods[strtolower($gateway->name)] = $methods;
+            }
+        }
+
         $invoiceDate = $invoice->invoice_date;
         $invprice = $invoice->amount;
         $dueDate =  $invoice->due_date;
@@ -595,6 +612,8 @@ class InvoiceController extends Controller
             'myFatoorahMethods',
             'uPaymentMethods',
             'hesabeMethods',
+            'tapMethods',
+            'gatewayMethods',
             'can_import',
             'receiptVoucher',
             'unpaidPartial',

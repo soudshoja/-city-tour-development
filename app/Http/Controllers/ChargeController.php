@@ -18,24 +18,41 @@ use Illuminate\Support\Facades\Gate;
 
 class ChargeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         Gate::authorize('viewAny', Charge::class);
 
-        if (Auth::user()->role->id == Role::COMPANY) {
-            $totalCharges = Charge::where('company_id', Auth::user()->company->id)->count();
-            $charges = Charge::where('company_id', Auth::user()->company->id)->get();
+        $companyId = null;
+
+        if(Auth::user()->role->id == Role::ADMIN){
+            $companyId = $request->company_id ?? 1;
+            $totalCharges = Charge::where('company_id', $companyId)->count();
+            $charges = Charge::where('company_id', $companyId)->get();
+        } else if (Auth::user()->role->id == Role::COMPANY) {
+            $companyId = Auth::user()->company->id;
+            $totalCharges = Charge::where('company_id', $companyId)->count();
+            $charges = Charge::where('company_id', $companyId)->get();
         } elseif (Auth::user()->role->id == Role::BRANCH) {
-            return redirect()->route('dashboard')->with('error', 'You do not have permission to view charges.');
-            $totalCharges = Charge::where('branch_id', Auth::user()->branch->id)->count();
-            $charges = Charge::where('branch_id', Auth::user()->branch->id)->get();
+            $companyId = Auth::user()->branch->company_id;
+            $totalCharges = Charge::where('company_id', $companyId)->count();
+            $charges = Charge::where('company_id', $companyId)->get();
         } elseif (Auth::user()->role->id == Role::ACCOUNTANT) {
-            $totalCharges = Charge::where('company_id', Auth::user()->accountant->branch->company->id)->count();
-            $charges = Charge::where('company_id', Auth::user()->accountant->branch->company->id)->get();
+            $companyId = Auth::user()->accountant->branch->company_id;
+            $totalCharges = Charge::where('company_id', $companyId)->count();
+            $charges = Charge::where('company_id', $companyId)->get();
         } else {
             return redirect()->route('dashboard')->with('error', 'You do not have permission to view charges.');
             // $totalCharges = 0;
             // $charges = collect();
+        }
+
+        if($companyId === null){
+            Log::warning('Company ID is null for user trying to access charges', [
+                'user_id' => Auth::user()->id,
+                'role_id' => Auth::user()->role->id,
+            ]);
+
+            return redirect()->route('dashboard')->with('error', 'You do not have permission to view charges.');
         }
 
         // $inactiveCharges = [];
@@ -48,7 +65,11 @@ class ChargeController extends Controller
         //     }
         // }
 
-        return view('charges.index', compact('charges', 'totalCharges'));
+        return view('charges.index', compact(
+            'charges',
+            'totalCharges',
+            'companyId'
+        ));
     }
 
 

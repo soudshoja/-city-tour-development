@@ -45,11 +45,11 @@ class TapPaymentMethodSeeder extends Seeder
 
         // Define standard payment methods (redirect flow)
         $standardMethods = [
-            // Cards - International
+            // Cards - International (all use src_card source)
             [
-                'code' => 'tap_visa',
-                'arabic_name' => 'فيزا',
-                'english_name' => 'Visa',
+                'code' => 'src_card',
+                'arabic_name' => 'بطاقات ائتمانية',
+                'english_name' => 'Credit/Debit Cards',
                 'type' => 'Tap',
                 'currency' => 'KWD', // Multi-currency support
                 'is_active' => true,
@@ -57,41 +57,13 @@ class TapPaymentMethodSeeder extends Seeder
                 'service_charge' => 2.5,
                 'self_charge' => 0,
                 'paid_by' => 'Client',
-                'description' => 'Visa cards - Standard redirect flow',
-                'image' => null,
-            ],
-            [
-                'code' => 'tap_mastercard',
-                'arabic_name' => 'ماستركارد',
-                'english_name' => 'Mastercard',
-                'type' => 'Tap',
-                'currency' => 'KWD',
-                'is_active' => true,
-                'charge_type' => 'Percent',
-                'service_charge' => 2.5,
-                'self_charge' => 0,
-                'paid_by' => 'Client',
-                'description' => 'Mastercard - Standard redirect flow',
-                'image' => null,
-            ],
-            [
-                'code' => 'tap_amex',
-                'arabic_name' => 'أمريكان إكسبريس',
-                'english_name' => 'American Express',
-                'type' => 'Tap',
-                'currency' => 'KWD',
-                'is_active' => true,
-                'charge_type' => 'Percent',
-                'service_charge' => 3.0,
-                'self_charge' => 0,
-                'paid_by' => 'Client',
-                'description' => 'American Express - Standard redirect flow',
+                'description' => 'All international cards (Visa, Mastercard, Amex) - Source: src_card - Standard redirect flow',
                 'image' => null,
             ],
             
             // Kuwait
             [
-                'code' => 'tap_knet',
+                'code' => 'src_knet',
                 'arabic_name' => 'كي نت',
                 'english_name' => 'KNET',
                 'type' => 'Tap',
@@ -105,7 +77,7 @@ class TapPaymentMethodSeeder extends Seeder
                 'image' => null,
             ],
             [
-                'code' => 'tap_deema',
+                'code' => 'src_deema',
                 'arabic_name' => 'ديمة',
                 'english_name' => 'Deema BNPL',
                 'type' => 'Tap',
@@ -121,7 +93,7 @@ class TapPaymentMethodSeeder extends Seeder
             
             // Saudi Arabia
             [
-                'code' => 'tap_mada',
+                'code' => 'src_mada',
                 'arabic_name' => 'مدى',
                 'english_name' => 'MADA',
                 'type' => 'Tap',
@@ -137,7 +109,7 @@ class TapPaymentMethodSeeder extends Seeder
             
             // Bahrain
             [
-                'code' => 'tap_benefit',
+                'code' => 'src_benefit',
                 'arabic_name' => 'بنفت',
                 'english_name' => 'BENEFIT',
                 'type' => 'Tap',
@@ -153,7 +125,7 @@ class TapPaymentMethodSeeder extends Seeder
             
             // Qatar
             [
-                'code' => 'tap_qpay',
+                'code' => 'src_qpay',
                 'arabic_name' => 'كيو باي',
                 'english_name' => 'QPay (NAPS)',
                 'type' => 'Tap',
@@ -169,7 +141,7 @@ class TapPaymentMethodSeeder extends Seeder
             
             // Egypt
             [
-                'code' => 'tap_fawry',
+                'code' => 'src_fawry',
                 'arabic_name' => 'فوري',
                 'english_name' => 'Fawry',
                 'type' => 'Tap',
@@ -185,7 +157,7 @@ class TapPaymentMethodSeeder extends Seeder
             
             // Digital Wallets
             [
-                'code' => 'tap_apple_pay',
+                'code' => 'src_apple_pay',
                 'arabic_name' => 'أبل باي',
                 'english_name' => 'Apple Pay',
                 'type' => 'Tap',
@@ -199,7 +171,7 @@ class TapPaymentMethodSeeder extends Seeder
                 'image' => null,
             ],
             [
-                'code' => 'tap_samsung_pay',
+                'code' => 'src_samsung_pay',
                 'arabic_name' => 'سامسونج باي',
                 'english_name' => 'Samsung Pay',
                 'type' => 'Tap',
@@ -247,7 +219,7 @@ class TapPaymentMethodSeeder extends Seeder
         }
 
         $this->command->info("Created {$createdCount} Tap payment methods for " . $companies->count() . " companies.");
-        $this->command->info("\nStandard methods seeded: KNET, MADA, BENEFIT, QPay, Deema, Fawry, Visa, Mastercard, Amex, Apple Pay, Samsung Pay");
+        $this->command->info("\nStandard methods seeded: Credit/Debit Cards (Visa/Mastercard/Amex), KNET, MADA, BENEFIT, QPay, Deema, Fawry, Apple Pay, Samsung Pay");
         $this->command->newLine();
         $this->command->warn('⚠️  DEFERRED IMPLEMENTATIONS:');
         $this->command->line('');

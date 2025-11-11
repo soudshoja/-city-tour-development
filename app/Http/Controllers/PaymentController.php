@@ -281,6 +281,7 @@ class PaymentController extends Controller
                 'invoice_id' => $invoice->id,
                 'invoice_number' => $invoice->invoice_number,
                 'payment_id' => $payment->id,
+                'payment_method_id' => $data['payment_method'],
                 'payment_gateway' => $payment->payment_gateway,
                 'invoice_partial_id' => $data['invoice_partial_id'],
                 'description' => 'Payment for invoice: ' . $invoice->id,

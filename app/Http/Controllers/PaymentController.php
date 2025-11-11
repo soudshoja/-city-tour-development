@@ -294,19 +294,16 @@ class PaymentController extends Controller
             logger('response', ['response' => $response]);
 
             if (isset($response['errors'])) {
-                return response()->json(['error' => $response['errors'][0]['description']], 500);
+                return response()->json(['error' => $response['errors'][0]['description'] ?? 'Payment failed'], 500);
+            }
+
+            if (isset($response['status']) && $response['status'] === 'FAILED') {
+                $errorMessage = $response['gateway']['response']['message'] ?? $response['response']['message'] ?? 'Payment failed';
+                return response()->json(['error' => $errorMessage], 500);
             }
 
             $paymentReference = $response['id'];
             $paymentUrl = $response['transaction']['url'];
-
-            // $payment->status = 'initiate';
-            // $payment->save();
-
-            // return response()->json([
-            //     'success' => 'Payment initiated successfully',
-            //     'url' => $response['transaction']['url'],
-            // ]);
 
         } else if (strtolower($data['payment_gateway']) === 'myfatoorah') {
 

@@ -579,7 +579,7 @@ class ProfileController extends Controller
                     $commissionEntries = $detail->JournalEntrys()
                         ->where('account_id', $commissionAccountId)
                         ->get();
-                    $totalCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
+                    $totalCommission += ($commissionEntries->sum('credit') - $commissionEntries->sum('debit')) - 0.35;
                 }
             }
         }
@@ -597,7 +597,7 @@ class ProfileController extends Controller
                     $commissionEntries = $detail->JournalEntrys()
                         ->where('account_id', $commissionAccountId)
                         ->get();
-                    $totalCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
+                    $totalCommission += ($commissionEntries->sum('credit') - $commissionEntries->sum('debit')) - 0.35;
                 }
             }
 
@@ -675,7 +675,7 @@ class ProfileController extends Controller
                     ->get();
                 
                 if ($commissionEntries) {
-                    $netCommission = $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
+                    $netCommission = ($commissionEntries->sum('credit') - $commissionEntries->sum('debit')) - 0.35;
                     $totalCommission += $netCommission;
                 }
             }
@@ -697,7 +697,7 @@ class ProfileController extends Controller
                 ->where('account_id', $commissionAccountId)
                 ->get();
             
-            $netCommission = $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
+            $netCommission = ($commissionEntries->sum('credit') - $commissionEntries->sum('debit')) - 0.35;
             
             // Get profit for this specific task: markup_price + proportional invoice_charge
             $taskProfit = $entry->invoiceDetail?->markup_price ?? 0;

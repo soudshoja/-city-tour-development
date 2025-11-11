@@ -373,13 +373,13 @@
                                 <td class="py-4 px-6 border-b border-gray-200 dark:border-gray-700">
                                     <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
                                         bg-green-100 text-green-700 ring-1 ring-green-500 shadow-none focus:outline-none focus:ring-0">
-                                        {{ number_format($client->paid, 2) }} KWD
+                                        {{ number_format((float)$client->paid, 2) }} KWD
                                     </span>
                                 </td>
                                 <td class="py-4 px-6 border-b border-gray-200 dark:border-gray-700">
                                     <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
                                         bg-yellow-100 text-yellow-700 ring-1 ring-yellow-400 shadow-none focus:outline-none focus:ring-0">
-                                        {{ number_format($client->unpaid, 2) }} KWD
+                                        {{ number_format((float)$client->unpaid, 2) }} KWD
                                     </span>
                                 </td>
                                 <td class="py-4 px-6 border-b border-gray-200 dark:border-gray-700">

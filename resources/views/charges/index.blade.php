@@ -253,7 +253,7 @@
                                         </td>
                                         <td class="p-3 bg-gray-100 sticky right-0 z-10">
                                             <div class="relative group inline-block">
-                                                <button @click.stop="editCredsModal = {{ $charge->id }}" class="text-blue-600 hover:text-blue-800" title="API Settings">
+                                                <button @click.stop="editCredsModal = {{ $charge->id }}" class="text-blue-600 hover:text-blue-800" >
                                                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                         <path fill-rule="evenodd" clip-rule="evenodd"
                                                             d="M12 8.25C9.92894 8.25 8.25 9.92893 8.25 12C8.25 14.0711 9.92894 15.75 12 15.75C14.0711 15.75 15.75 14.0711 15.75 12C15.75 9.92893 14.0711 8.25 12 8.25ZM9.75 12C9.75 10.7574 10.7574 9.75 12 9.75C13.2426 9.75 14.25 10.7574 14.25 12C14.25 13.2426 13.2426 14.25 12 14.25C10.7574 14.25 9.75 13.2426 9.75 12Z"
@@ -337,7 +337,6 @@
                                             <div class="relative group inline-block">
                                                 <button @click.stop="editChildModal = {{ $method->id }}" class="text-blue-600 hover:text-blue-800">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <title>Edit</title>
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                             d="M15.232 5.232l3.536 3.536M9 11l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 14.5H9v-3.5z" />
                                                     </svg>
@@ -496,54 +495,51 @@
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->description }}</td>
                                         <td class="p-3 text-sm sticky right-0 bg-white z-10">
                                             <div class="flex items-center gap-3">
-                                            <!-- Edit Button -->
-                                            <div class="relative group inline-block">
-                                                <button
-                                                    @click.stop="editParentModal = {{ $charge->id }}"
-                                                    class="text-blue-600 hover:text-blue-800">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <title>Edit</title>
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M15.232 5.232l3.536 3.536M9 11l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 14.5H9v-3.5z" />
-                                                    </svg>
-                                                </button>
-                                                <div class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
-                                                    Edit
-                                                </div>
-                                            </div>
-
-                                            <!-- Delete Button -->
-                                            @if($charge->can_be_deleted)
-                                            <div class="relative group inline-block">
-                                                <form method="POST" action="{{ route('charges.destroy', $charge->id)}}" onsubmit="return confirm('Are you sure?')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-800">
+                                                <!-- Edit Button -->
+                                                <div class="relative group inline-block">
+                                                    <button
+                                                        @click.stop="editParentModal = {{ $charge->id }}"
+                                                        class="text-blue-600 hover:text-blue-800">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <title>Delete</title>
+                                                            <title>Edit</title>
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                d="M15.232 5.232l3.536 3.536M9 11l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 14.5H9v-3.5z" />
+                                                        </svg>
+                                                    </button>
+                                                    <div class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
+                                                        Edit
+                                                    </div>
+                                                </div>
+
+                                                <!-- Delete Button -->
+                                                @if($charge->can_be_deleted)
+                                                <div class="relative group inline-block">
+                                                    <form method="POST" action="{{ route('charges.destroy', $charge->id)}}" onsubmit="return confirm('Are you sure?')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-red-600 hover:text-red-800">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <title>Delete</title>
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a2 2 0 00-2-2H9a2 2 0 00-2 2m12 0H3" />
+                                                            </svg>
+                                                        </button>
+                                                    </form>
+                                                    <div class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
+                                                        Delete
+                                                    </div>
+                                                </div>
+                                                @else
+                                                <div class="relative group inline-block">
+                                                    <button type="button" class="text-gray-400 cursor-not-allowed"  disabled>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <title>System gateway cannot be deleted</title>
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a2 2 0 00-2-2H9a2 2 0 00-2 2m12 0H3" />
                                                         </svg>
                                                     </button>
-                                                </form>
-                                                <div class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
-                                                    Delete
                                                 </div>
-                                            </div>
-                                            @else
-                                            <div class="relative group inline-block">
-                                                <button type="button" class="text-gray-400 cursor-not-allowed" disabled>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <title>Delete</title>
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a2 2 0 00-2-2H9a2 2 0 00-2 2m12 0H3" />
-                                                    </svg>
-                                                </button>
-                                                <div class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10 whitespace-nowrap">
-                                                    System gateway cannot be deleted
-                                                </div>
-                                            </div>
-                                            @endif
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>

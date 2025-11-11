@@ -866,7 +866,7 @@ class InvoiceController extends Controller
             'amount' => 'required',
             'type' => 'required|string',
             'invoiceNumber' => 'required|string',
-            'gateway' => 'required|string',
+            'gateway' => 'required|exists:charges,name',
             'method' => 'nullable|string',
             // 'credit' => 'nullable|boolean',
             'external_url' => 'nullable|url',
@@ -945,54 +945,16 @@ class InvoiceController extends Controller
             }
 
             $gatewayFee = 0;
-
-            if (strtolower($gateway) === 'myfatoorah' && $method) {
-                try {
-                    $gatewayFee = ChargeService::FatoorahCharge($amount, $method, $companyId);
-                } catch (Exception $e) {
-                    Log::error('FatoorahCharge exception during partial save', [
-                        'message' => $e->getMessage(),
-                        'paymentMethod' => $method,
-                        'company_id' => $companyId,
-                    ]);
-                    $gatewayFee = null;
-                }
-            } elseif (strtolower($gateway) === 'hesabe' && $method) {
-                try {
-                    $gatewayFee = ChargeService::HesabeCharge($amount, $method, $companyId);
-                } catch (Exception $e) {
-                    Log::error('HesabeCharge exception during partial save', [
-                        'message' => $e->getMessage(),
-                        'paymentMethod' => $method,
-                        'company_id' => $companyId,
-                    ]);
-                    $gatewayFee = null;
-                }
-            } else if (strtolower($gateway) === 'tap') {
-                $gatewayFee = ChargeService::TapCharge([
-                    'amount' => $amount,
-                    'client_id' => $invoice->client_id,
-                    'agent_id' => $invoice->agent_id,
-                    'currency' => $invoice->currency
-                ], $gateway);
-            } else if (strtolower($gateway) === 'upayment') {
-                $uPaymentmethods = PaymentMethod::where('is_active', true)
-                    ->where('company_id', $companyId)
-                    ->where('type', 'upayment')
-                    ->get();
-
-                if ($uPaymentmethods) {
-                    foreach ($uPaymentmethods as $methods) {
-                        $gatewayFee = ChargeService::UPaymentCharge(
-                            $amount,
-                            $methods->id,
-                            $companyId
-                        )['fee'] ?? 0;
-                    }
-                }
-            }
+            
+            $gatewayFee = ChargeService::getFee(
+                gatewayName: $gateway,
+                amount: $amount,
+                methodCode: $method,
+                companyId: $companyId
+            );
 
             $status = 'unpaid';
+
             try {
                 switch ($gateway) {
                     case 'Tabby':

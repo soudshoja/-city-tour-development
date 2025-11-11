@@ -208,8 +208,8 @@
                                 this.createModal = false;
                             }
                         }">
-                        <div class="dataTable-container h-max">
-                            <table id="myTable" class="table-hover whitespace-nowrap dataTable-table w-full" x-data="{ open: {} }">
+                        <div class="dataTable-container h-max overflow-x-auto">
+                            <table id="myTable" class="table-hover whitespace-nowrap dataTable-table w-full relative" x-data="{ open: {} }">
                                 <thead>
                                     <tr>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Charge Name</th>
@@ -225,7 +225,7 @@
                                         <th class="p-3 text-left text-md font-bold text-gray-500">External URL</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Generate Link</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
-                                        <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500 sticky right-0 bg-white z-10">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -251,7 +251,7 @@
                                                 @endif
                                             </div>
                                         </td>
-                                        <td class="p-3 bg-gray-100">
+                                        <td class="p-3 bg-gray-100 sticky right-0 z-10">
                                             <div class="relative group inline-block">
                                                 <button @click.stop="editCredsModal = {{ $charge->id }}" class="text-blue-600 hover:text-blue-800" title="API Settings">
                                                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -333,7 +333,7 @@
                                         <td class="p-3 text-sm text-gray-600">
                                             {{ $method->description ? $method->description : 'Not Set' }}
                                         </td>
-                                        <td class="p-3 text-sm text-gray-600">
+                                        <td class="p-3 text-sm text-gray-600 sticky right-0 bg-white z-10">
                                             <div class="relative group inline-block">
                                                 <button @click.stop="editChildModal = {{ $method->id }}" class="text-blue-600 hover:text-blue-800">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -494,7 +494,8 @@
                                             @endif
                                         </td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->description }}</td>
-                                        <td class="p-3 text-sm flex items-center gap-3">
+                                        <td class="p-3 text-sm sticky right-0 bg-white z-10">
+                                            <div class="flex items-center gap-3">
                                             <!-- Edit Button -->
                                             <div class="relative group inline-block">
                                                 <button
@@ -543,6 +544,7 @@
                                                 </div>
                                             </div>
                                             @endif
+                                            </div>
                                         </td>
                                     </tr>
                                     @endif

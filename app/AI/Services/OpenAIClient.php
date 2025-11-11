@@ -1124,24 +1124,6 @@ class OpenAIClient implements AIClientInterface
             }
         }
 
-        // Process each task for reference number validation (similar to extractAirFiles)
-        foreach ($decodedResponse['result'] as &$task) {
-            // Validate and fix reference numbers if needed
-            if (!isset($task['reference']) || empty($task['reference'])) {
-                // Use ticket_number as reference if reference is missing
-                $task['reference'] = $task['ticket_number'] ?? '';
-            }
-
-            // Basic reference number validation for PDFs (less strict than air files)
-            if (!empty($task['reference'])) {
-                $checkResponse = $this->checkReferenceNumber($task['reference']);
-                if ($checkResponse['status'] === 'error') {
-                    // For PDFs, if reference doesn't match air file format, keep it as is
-                    Log::warning('PDF reference number format differs from air file format: ' . $task['reference']);
-                }
-            }
-        }
-
         return [
             'status' => 'success',
             'message' => 'Data extracted successfully',
@@ -1608,6 +1590,8 @@ class OpenAIClient implements AIClientInterface
         $prompt .= "- SUPPLIER-SPECIFIC HINTS (SMILE HOLIDAYS):\n";
         $prompt .= "  • For Smile Holidays proforma/invoices that have a 'Pax' column, copy that value into tasks.additional_info, e.g., 'Pax: 1'.\n";
         $prompt .= "  • ADDITIONAL REQUESTS → ROOM DETAILS: If the document contains 'Additional Requests', 'Special Instructions', 'Remarks' or similar booking notes, append a concise version to task_hotel_details[*].room_details (for single-room bookings append to that room; for multi-room bookings, either repeat for each room or put it into tasks.additional_info with room labels).\n";
+        $prompt .= "- SUPPLIER-SPECIFIC HINTS (EMIRATES):\n";
+        $prompt .= "  • For Emirates supplier, find the reference by looking Itinerary for Record Locator. Not Emirates Record Locator. that is supplier specific reference.\n";
         $prompt .= "- Return the result in this JSON format:\n\n";
 
         $prompt .= "{\n";

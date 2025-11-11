@@ -13,6 +13,17 @@
         </div>
         <!-- add new charge & refresh page -->
         <div class="flex items-center gap-5">
+            @if(auth()->user()->hasRole('admin'))
+            <select
+                onchange="window.location='{{ route('charges.index') }}?company_id='+this.value"
+                name="company_id" id="company_id" class="px-4 py-2 border border-gray-300 rounded-full bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-sm font-medium text-gray-700 cursor-pointer">
+                @foreach(App\Models\Company::all() as $company)
+                <option value="{{ $company->id }}" {{ $companyId == $company->id ? 'selected' : '' }}>
+                    {{ $company->name }}
+                </option>
+                @endforeach
+            </select>
+            @endif
             <div data-tooltip-left="Reload"
                 class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
@@ -109,7 +120,7 @@
                                     <div class="w-1/2">
                                         <div class="flex items-center">
                                             <input type="checkbox" name="is_active" id="is_active" value="1" checked
-                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                             <label for="is_active" class="ml-2 text-sm font-medium text-gray-700">Active</label>
                                         </div>
                                         <p class="text-xs text-gray-500 mt-1">If unchecked, gateway will be saved but inactive</p>
@@ -117,7 +128,7 @@
                                     <div class="w-1/2">
                                         <div class="flex items-center">
                                             <input type="checkbox" name="can_generate_link" id="can_generate_link" value="1" checked
-                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                             <label for="can_generate_link" class="ml-2 text-sm font-medium text-gray-700">Can Generate Link</label>
                                         </div>
                                         <p class="text-xs text-gray-500 mt-1">Allow customers to pay invoices using this gateway</p>
@@ -184,8 +195,7 @@
                                 this.editCredsModal = null;
                                 this.createModal = false;
                             }
-                        }"
-                        >
+                        }">
                         <div class="dataTable-container h-max">
                             <table id="myTable" class="table-hover whitespace-nowrap dataTable-table w-full" x-data="{ open: {} }">
                                 <thead>
@@ -250,9 +260,9 @@
                                         <td class="p-3 text-sm text-gray-600">{{ $method->charge_type }}</td>
                                         <td class="p-3 text-sm">
                                             @if($charge->is_active && $method->is_active)
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
                                             @else
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Inactive</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Inactive</span>
                                             @endif
                                         </td>
                                         <td class="p-3 text-sm text-gray-600">
@@ -293,9 +303,9 @@
                                         </td>
                                         <td class="p-3 text-sm">
                                             @if($charge->can_generate_link)
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Allowed</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Allowed</span>
                                             @else
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Disabled</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Disabled</span>
                                             @endif
                                         </td>
                                         <td class="p-3 text-sm text-gray-600">
@@ -362,14 +372,14 @@
                                                         <label class="block text-sm font-medium">Paid By</label>
                                                         <select name="paid_by" value="{{ $method->paid_by }}" class="w-full border px-3 py-2 rounded-full">
                                                             <option value="Company" @selected(old('paid_by', $method->paid_by) === 'Company')>Company</option>
-                                                            <option value="Client"  @selected(old('paid_by', $method->paid_by) === 'Client')>Client</option>
+                                                            <option value="Client" @selected(old('paid_by', $method->paid_by) === 'Client')>Client</option>
                                                         </select>
                                                     </div>
                                                     <div class="w-1/2">
                                                         <label class="block text-sm font-medium">Charge Type</label>
                                                         <select name="charge_type" value="{{ $method->charge_type }}" class="w-full border px-3 py-2 rounded-full">
                                                             <option value="Flat Rate" @selected(old('charge_type', $method->charge_type) === 'Flat Rate')>Flat Rate</option>
-                                                            <option value="Percent"   @selected(old('charge_type', $method->charge_type) === 'Percent')>Percent</option>
+                                                            <option value="Percent" @selected(old('charge_type', $method->charge_type) === 'Percent')>Percent</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -382,7 +392,7 @@
                                                     <div class="flex items-center">
                                                         <input type="checkbox" name="is_active" value="1" id="is_active_{{ $charge->id }}"
                                                             @checked(old('is_active', (bool)$method->is_active))
-                                                            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                         <label class="ml-2 text-sm font-medium text-gray-700">Active</label>
                                                     </div>
                                                     <p class="text-xs text-gray-500 mt-1">If unchecked, gateway will be saved but inactive</p>
@@ -413,9 +423,9 @@
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->charge_type }}</td>
                                         <td class="p-3 text-sm">
                                             @if($charge->is_active)
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
                                             @else
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Inactive</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Inactive</span>
                                             @endif
                                         </td>
                                         <td class="p-3 text-sm text-gray-600">
@@ -456,9 +466,9 @@
                                         </td>
                                         <td class="p-3 text-sm">
                                             @if($charge->can_generate_link)
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Allowed</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Allowed</span>
                                             @else
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Disabled</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Disabled</span>
                                             @endif
                                         </td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->description }}</td>
@@ -509,7 +519,7 @@
 
                                             <div class="overflow-y-auto px-8 pb-8 [scrollbar-gutter:stable]">
                                                 <form action="{{ route('charges.update', $charge->id) }}" method="POST">
-                                                    @method('PUT') 
+                                                    @method('PUT')
                                                     @csrf
 
                                                     <div class="mb-4">
@@ -538,14 +548,14 @@
                                                             <label class="block text-sm font-medium">Paid By</label>
                                                             <select name="paid_by" value="{{ $charge->paid_by }}" class="w-full border px-3 py-2 rounded-full">
                                                                 <option value="Company" @selected(old('paid_by', $charge->paid_by) === 'Company')>Company</option>
-                                                                <option value="Client"  @selected(old('paid_by', $charge->paid_by) === 'Client')>Client</option>
+                                                                <option value="Client" @selected(old('paid_by', $charge->paid_by) === 'Client')>Client</option>
                                                             </select>
                                                         </div>
                                                         <div class="w-1/2">
                                                             <label class="block text-sm font-medium">Charge Type</label>
                                                             <select name="charge_type" value="{{ $charge->charge_type }}" class="w-full border px-3 py-2 rounded-full">
                                                                 <option value="Flat Rate" @selected(old('charge_type', $charge->charge_type) === 'Flat Rate')>Flat Rate</option>
-                                                                <option value="Percent"   @selected(old('charge_type', $charge->charge_type) === 'Percent')>Percent</option>
+                                                                <option value="Percent" @selected(old('charge_type', $charge->charge_type) === 'Percent')>Percent</option>
                                                             </select>
                                                         </div>
                                                     </div>
@@ -592,7 +602,7 @@
                                                             <div class="flex items-center">
                                                                 <input type="checkbox" name="is_active" value="1" id="is_active_{{ $charge->id }}"
                                                                     @checked(old('is_active', (bool)$charge->is_active))
-                                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                                 <label class="ml-2 text-sm font-medium text-gray-700">Active</label>
                                                             </div>
                                                             <p class="text-xs text-gray-500 mt-1">If unchecked, gateway will be saved but inactive</p>
@@ -601,7 +611,7 @@
                                                             <div class="flex items-center">
                                                                 <input type="checkbox" name="can_generate_link" value="1" id="can_generate_link_{{ $charge->id }}"
                                                                     @checked(old('can_generate_link', (bool)$charge->can_generate_link))
-                                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                                 <label class="ml-2 text-sm font-medium text-gray-700">Can Generate Link</label>
                                                             </div>
                                                             <p class="text-xs text-gray-500 mt-1">Allow customers to pay invoices using this gateway</p>
@@ -614,7 +624,7 @@
                                                             <div class="flex items-center">
                                                                 <input type="checkbox" name="is_auto_paid" value="1" id="is_auto_paid_{{ $charge->id }}"
                                                                     @checked(old('is_auto_paid', (bool)$charge->is_auto_paid))
-                                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                                 <label class="ml-2 text-sm font-medium text-gray-700">Auto Payment</label>
                                                             </div>
                                                             <p class="text-xs text-gray-500 mt-1">Invoice will be automatically paid</p>
@@ -623,7 +633,7 @@
                                                             <div class="flex items-center">
                                                                 <input type="checkbox" name="has_url" value="1" id="has_url_{{ $charge->id }}"
                                                                     @checked(old('has_url', (bool)$charge->has_url))
-                                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                                 <label class="ml-2 text-sm font-medium text-gray-700">External URL</label>
                                                             </div>
                                                             <p class="text-xs text-gray-500 mt-1">Can put external payment gateway URL</p>
@@ -632,7 +642,7 @@
                                                             <div class="flex items-center">
                                                                 <input type="checkbox" name="can_charge_invoice" value="1" id="can_charge_invoice_{{ $charge->id }}"
                                                                     @checked(old('can_charge_invoice', (bool)$charge->can_charge_invoice))
-                                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                                 <label class="ml-2 text-sm font-medium text-gray-700">Invoice Charge</label>
                                                             </div>
                                                             <p class="text-xs text-gray-500 mt-1">Allow charging additional fees on invoices</p>

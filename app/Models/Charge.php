@@ -19,7 +19,7 @@ class Charge extends Model
         'api_key',
         'paid_by',
         'amount',
-        'extra_charge', //Not yet being used
+        'extra_charge',
         'self_charge',
         'is_active',
         'can_generate_link',
@@ -31,7 +31,10 @@ class Charge extends Model
         'acc_fee_bank_id',
         'is_auto_paid',
         'has_url',
-        'can_charge_invoice', // New column added for invoice charge capability
+        'can_charge_invoice',
+        'is_system_default',
+        'can_be_deleted',
+        'enabled_by',
     ];
 
     protected $casts = [
@@ -40,6 +43,8 @@ class Charge extends Model
         'is_auto_paid' => 'boolean',
         'has_url' => 'boolean',
         'can_charge_invoice' => 'boolean',
+        'is_system_default' => 'boolean',
+        'can_be_deleted' => 'boolean',
     ];
 
     public function getAmountAttribute($value)

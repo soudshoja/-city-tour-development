@@ -555,10 +555,10 @@ class HotelSearchService
         ]);
 
         $rooms = [];
-        $leaderNationality = $input['occupancy']['leaderNationality'] ?? 1;
+        $leaderNationality = $occupancy['leaderNationality'] ?? 1;
 
         if (!empty($input['occupancy']['rooms'])) {
-            $roomsString = $input['occupancy']['rooms'];
+            $roomsString = $occupancy['rooms'];
             $rooms = $this->parseRoomsString($roomsString);
         }
 

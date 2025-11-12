@@ -79,8 +79,9 @@ class CreateFullB2CBooking
         try {
             Log::info('CreateFullB2CBooking started', ['input' => $input]);
 
-            $countryCode = substr($input['phone'], 0, 3);
-            $phone = substr($input['phone'], 3);
+            preg_match('/^(\+\d{1,4})(\d+)$/', $input['phone'], $matches);
+            $countryCode = $matches[1] ?? '+000';
+            $phone = $matches[2] ?? $input['phone'];
 
             if (!$hasPrebookKey) {
                 return [
@@ -169,7 +170,7 @@ class CreateFullB2CBooking
                     ]);
 
                     Log::info('Client created from passport', ['client_id' => $client->id]);
-                } elseif (!empty($input['first_name']) && !empty($input['last_name']) && !empty($input['email']) && !empty($phone) && !empty($countryCode)) {
+                } elseif (!empty($input['first_name']) && !empty($input['email']) && !empty($input['phone'])) {
                     $agent = $this->getOrCreateAIAgent();
 
                     $client = Client::create([
@@ -444,8 +445,9 @@ class CreateFullB2CBooking
         try {
             $aiAgent = $this->getOrCreateAIAgent();
 
-            $countryCode = substr($input['phone'], 0, 3);
-            $phone = substr($input['phone'], 3);
+            preg_match('/^(\+\d{1,4})(\d+)$/', $input['phone'], $matches);
+            $countryCode = $matches[1] ?? '+000';
+            $phone = $matches[2] ?? $input['phone'];
 
             $client = Client::where('phone', $phone)
                 ->where('country_code', $countryCode)

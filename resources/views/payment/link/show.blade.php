@@ -112,7 +112,7 @@
                     <td class="py-3 px-4">Payment Gateway</td>
                     <td class="py-3 px-4 text-right">{{ $payment->payment_gateway }}</td>
                 </tr>
-                @if($payment->payment_gateway === 'MyFatoorah')
+                @if($payment->paymentMethod)
                 <tr>
                     <td class="py-3 px-4">Payment Method</td>
                     <td class="py-3 px-4 text-right">{{ $payment->paymentMethod->english_name ?? '-' }}</td>

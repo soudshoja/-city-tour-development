@@ -1835,7 +1835,7 @@ class PaymentController extends Controller
 
         if (strtolower($paymentGateway) === 'tap') {
             $tap = new Tap();
-            $paymentMethod = $payment->paymentMethod->id;
+            $paymentMethod = $payment->paymentMethod ? $payment->paymentMethod->id : null;
 
             $chargeResult = ChargeService::getFee(
                 gatewayName: 'Tap',

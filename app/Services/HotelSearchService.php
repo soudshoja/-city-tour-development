@@ -548,6 +548,29 @@ class HotelSearchService
         ?bool $nonRefundable = null,
         ?string $boardBasis = null
     ): array {
+        // occupancy['rooms'] now come as a string, need to turn it into an array , example: "[{\"adults\":2,\"childrenAges\":[5,7]},{\"adults\":1,\"childrenAges\":[]}]"
+
+        $this->logger->info('Decoding occupancy rooms data', [
+            'occupancy_rooms_raw' => $occupancy['rooms'] ?? null,
+        ]);
+
+        if (is_string($occupancy['rooms'] ?? null)) {
+            $decodedRooms = json_decode($occupancy['rooms'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedRooms)) {
+                $occupancy['rooms'] = $decodedRooms;
+            } else {
+                $this->logger->error('Failed to decode occupancy rooms JSON', [
+                    'occupancy_rooms' => $occupancy['rooms'],
+                    'json_error' => json_last_error_msg(),
+                ]);
+                throw new Exception('Invalid occupancy rooms format');
+            }
+        }
+
+        $this->logger->info("After decoding, occupancy rooms data", [
+            'occupancy_rooms' => $occupancy['rooms'] ?? null,
+        ]);
+
         try {
             $this->logger->info('Starting hotel room search flow', [
                 'telephone' => $telephone,

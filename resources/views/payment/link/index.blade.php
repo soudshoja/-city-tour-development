@@ -155,7 +155,7 @@
                                 <th class="p-3 text-left font-medium whitespace-nowrap">Created By</th>
                                 <th class="p-3 text-left font-medium whitespace-nowrap">Reference</th>
                                 <th class="p-3 text-left font-medium whitespace-nowrap">Status</th>
-                                <th class="p-3 text-left font-medium whitespace-nowrap">Actions</th>
+                                <th class="p-3 text-left font-medium whitespace-nowrap sticky right-0 bg-gray-100 shadow-[-2px_0_4px_rgba(0,0,0,0.1)]">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -185,7 +185,7 @@
                                     $gateway = $payment->payment_gateway ?? 'N/A';
                                     $method = $payment->paymentMethod->english_name ?? null;
                                     @endphp
-                                    {{ $gateway === 'MyFatoorah' && $method ? "$gateway - $method" : $gateway }}
+                                    {{ $method ? "$gateway - $method" : $gateway }}
                                 </td>
                                 <td class="px-3 py-2 text-sm break-words max-w-[350px]">
                                     {{ $payment->notes ?? 'No Notes' }}
@@ -254,11 +254,12 @@
                                         {{ ucfirst($payment->status) }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-2 whitespace-nowrap relative text-sm">
+                                <td class="px-3 py-2 whitespace-nowrap relative text-sm sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.1)]">
                                     <div x-data="{ open: false, editPaymentLink: false }" @keydown.escape.window="open = false; editPaymentLink = false" class="relative flex items-center justify-center h-full">
                                         <button @click="open = !open" x-ref="button" @click.outside="open = false" class="p-1 rounded hover:bg-gray-100">
                                             <svg class="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M10 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM10 13a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM10 20a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
+                
                                             </svg>
                                         </button>
                                         <template x-teleport="body">

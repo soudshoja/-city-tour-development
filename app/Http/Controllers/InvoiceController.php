@@ -454,7 +454,10 @@ class InvoiceController extends Controller
         $selectedAgent = $invoice->agent;
         $selectedClient = $invoice->client;
 
-        $paymentGateways = Charge::with('methods')->where('is_active', true)->get();
+        $paymentGateways = Charge::with(['methods' => function ($query) use ($invoice) {
+            $query->where('is_active', true);
+        }])->where('is_active', true)->get();
+        
         $invoiceGateways = Charge::where('is_active', true)
             ->where('can_generate_link', true)
             ->get();
@@ -463,100 +466,67 @@ class InvoiceController extends Controller
             ->where('can_charge_invoice', true)
             ->get();
 
-        $paymentMethods = PaymentMethod::where('is_active', true)->get();
-
-        $myFatoorahMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $invoice->agent->branch->company_id)
-            ->where('type', 'myfatoorah')
-            ->get();
-
-        $uPaymentMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $invoice->agent->branch->company_id)
-            ->where('type', 'upayment')
-            ->get();
-
-        $hesabeMethods = PaymentMethod::where('is_active', true)
-            ->where('type', 'hesabe')
-            ->get();
-
-        $tapMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $invoice->agent->branch->company_id)
-            ->where('type', 'tap')
-            ->get();
-
-        $gatewayMethods = [];
-        foreach ($paymentGateways as $gateway) {
-            $methods = PaymentMethod::where('is_active', true)
-                ->where('company_id', $invoice->agent->branch->company_id)
-                ->where('type', $gateway->name)
-                ->get();
-            
-            if ($methods->isNotEmpty()) {
-                $gatewayMethods[strtolower($gateway->name)] = $methods;
-            }
-        }
-
         $invoiceDate = $invoice->invoice_date;
         $invprice = $invoice->amount;
         $dueDate =  $invoice->due_date;
 
+        // Calculate gateway fees for each gateway and its methods
         foreach ($paymentGateways as $gateway) {
-            // Only set self_charge to amount if both are null or self_charge is explicitly null
-            // but don't override self_charge if it has a value (including 0)
-            if (strtolower($gateway->name) === 'myfatoorah') {
-                foreach ($myFatoorahMethods as $method) {
-                    if ($method->company_id == $invoice->agent->branch->company_id && $method->type == 'myfatoorah') {
-                        try {
-                            $method->gateway_fee = ChargeService::FatoorahCharge($invprice, $method->id, $invoice->agent->branch->company_id)['fee'] ?? 0;
-                        } catch (Exception $e) {
-                            Log::error('FatoorahCharge exception', [
-                                'message' => $e->getMessage(),
-                                'paymentMethod' => $method->id,
-                                'company_id' => $invoice->agent->branch->company_id,
-                            ]);
-                            $method->gateway_fee = 0;
-                        }
+            $companyId = $invoice->agent->branch->company_id;
+            
+            // Filter methods for this company
+            $companyMethods = $gateway->methods->where('company_id', $companyId);
+            
+            if ($companyMethods->isNotEmpty()) {
+                // Gateway has payment methods - calculate fee for each method
+                foreach ($companyMethods as $method) {
+                    try {
+                        $result = ChargeService::getFee(
+                            gatewayName: $gateway->name,
+                            amount: $invprice,
+                            methodCode: $method->id,
+                            companyId: $companyId,
+                            currency: $invoice->currency
+                        );
+                        $method->gateway_fee = $result['gatewayFee'] ?? 0;
+                    } catch (Exception $e) {
+                        Log::error('getFee exception for method', [
+                            'gateway' => $gateway->name,
+                            'message' => $e->getMessage(),
+                            'paymentMethod' => $method->id,
+                            'company_id' => $companyId,
+                        ]);
+                        $method->gateway_fee = 0;
                     }
-                }
-            } elseif (strtolower($gateway->name) === 'hesabe') {
-                foreach ($hesabeMethods as $method) {
-                    if ($method->company == $invoice->agent->branch->company && $method->type == 'hesabe') {
-                        try {
-                            $method->gateway_fee = ChargeService::HesabeCharge($invprice, $method->id, $invoice->agent->branch->company_id)['fee'] ?? 0;
-                        } catch (Exception $e) {
-                            Log::error('HesabeCharge exception', [
-                                'message' => $e->getMessage(),
-                                'paymentMethod' => $method->id,
-                                'company_id' => $invoice->agent->branch->company_id,
-                            ]);
-                            $method->gateway_fee = 0;
-                        }
-                    }
-                }
-            } else if (strtolower($gateway->name) === 'tap') {
-                $gateway->gateway_fee = ChargeService::TapCharge([
-                    'amount' => $invprice,
-                    'client_id' => $invoice->client_id,
-                    'agent_id' => $invoice->agent_id,
-                    'currency' => $invoice->currency
-                ], $gateway->name)['fee'] ?? 0;
-            } else if (strtolower($gateway->name) === 'upayment') {
-                $uPaymentmethods = PaymentMethod::where('is_active', true)
-                    ->where('company_id', $invoice->agent->branch->company_id)
-                    ->where('type', 'upayment')
-                    ->get();
-
-                foreach ($uPaymentmethods as $method) {
-                    $gateway->gateway_fee = ChargeService::UPaymentCharge(
-                        $invprice,
-                        $method->id,
-                        $invoice->agent->branch->company_id
-                    )['fee'] ?? 0;
                 }
             } else {
-                $gateway->gateway_fee = 0;
+                // No payment methods - calculate gateway-level fee
+                try {
+                    $result = ChargeService::getFee(
+                        gatewayName: $gateway->name,
+                        amount: $invprice,
+                        methodCode: null,
+                        companyId: $companyId,
+                        currency: $invoice->currency
+                    );
+                    $gateway->gateway_fee = $result['gatewayFee'] ?? 0;
+                } catch (Exception $e) {
+                    Log::error('getFee exception for gateway', [
+                        'gateway' => $gateway->name,
+                        'message' => $e->getMessage(),
+                        'company_id' => $companyId,
+                    ]);
+                    $gateway->gateway_fee = 0;
+                }
             }
         }
+
+        // Create a flat collection of all payment methods with their fees for the frontend
+        // Only include methods for the current company
+        $companyId = $invoice->agent->branch->company_id;
+        $paymentMethods = $paymentGateways->pluck('methods')->flatten()->filter(function($method) use ($companyId) {
+            return $method->company_id == $companyId || $method->company_id === null;
+        });
 
         $appUrl = config('app.url');
 
@@ -609,11 +579,6 @@ class InvoiceController extends Controller
             'creditUsed',
             'invoiceExpireDefault',
             'companyId',
-            'myFatoorahMethods',
-            'uPaymentMethods',
-            'hesabeMethods',
-            'tapMethods',
-            'gatewayMethods',
             'can_import',
             'receiptVoucher',
             'unpaidPartial',

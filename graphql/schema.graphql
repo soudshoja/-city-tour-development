@@ -237,7 +237,7 @@ type GetHotelsByCityPayload {
 
 input OccupancyInput {
     leaderNationality: Int
-    rooms: [RoomInput]
+    rooms: String
 }
 
 input RoomInput {
@@ -251,7 +251,7 @@ input PriceInput {
 }
 
 input Filters {
-  classification: [Int]
+  classification: String
   name: String
   minPrice: PriceInput
   maxPrice: PriceInput

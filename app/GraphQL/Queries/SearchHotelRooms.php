@@ -35,6 +35,7 @@ class SearchHotelRooms
             'nonRefundable' => 'nullable|boolean',
             'boardBasis' => 'nullable|string|max:4',
             'occupancy' => 'required|array',
+            'occupancy.rooms' => 'required|string',
         ], [
             'telephone.required' => 'Telephone number is required.',
             'hotel.required' => 'Hotel name is required.',
@@ -42,6 +43,8 @@ class SearchHotelRooms
             'checkIn.after_or_equal' => 'Check-in date must be today or later.',
             'checkOut.required' => 'Check-out date is required.',
             'checkOut.after' => 'Check-out date must be after check-in date.',
+            'occupancy.required' => 'Occupancy details are required.',
+            'occupancy.rooms.required' => 'Rooms must be specified in occupancy.',
         ]);
 
         if ($validator->fails()) {

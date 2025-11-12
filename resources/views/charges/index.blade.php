@@ -253,7 +253,7 @@
                                         </td>
                                         <td class="p-3 bg-gray-100 sticky right-0 z-10">
                                             <div class="relative group inline-block">
-                                                <button @click.stop="editCredsModal = {{ $charge->id }}" class="text-blue-600 hover:text-blue-800" >
+                                                <button @click.stop="editCredsModal = {{ $charge->id }}" class="text-blue-600 hover:text-blue-800">
                                                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                         <path fill-rule="evenodd" clip-rule="evenodd"
                                                             d="M12 8.25C9.92894 8.25 8.25 9.92893 8.25 12C8.25 14.0711 9.92894 15.75 12 15.75C14.0711 15.75 15.75 14.0711 15.75 12C15.75 9.92893 14.0711 8.25 12 8.25ZM9.75 12C9.75 10.7574 10.7574 9.75 12 9.75C13.2426 9.75 14.25 10.7574 14.25 12C14.25 13.2426 13.2426 14.25 12 14.25C10.7574 14.25 9.75 13.2426 9.75 12Z"
@@ -381,7 +381,7 @@
                                                     </div>
                                                     <div class="w-1/2">
                                                         <label class="block text-sm font-medium">API Service Charge</label>
-                                                        <input type="text" name="service_charge" value="{{ $method->service_charge }}" class="w-full border px-3 py-2 rounded-full" readonly>
+                                                        <input type="text" name="service_charge" value="{{ $method->service_charge }}" class="w-full border px-3 py-2 rounded-full">
                                                     </div>
                                                 </div>
                                                 <div class="mb-4">
@@ -531,7 +531,7 @@
                                                 </div>
                                                 @else
                                                 <div class="relative group inline-block">
-                                                    <button type="button" class="text-gray-400 cursor-not-allowed"  disabled>
+                                                    <button type="button" class="text-gray-400 cursor-not-allowed" disabled>
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <title>System gateway cannot be deleted</title>
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -564,46 +564,22 @@
                                                     @method('PUT')
                                                     @csrf
 
-                                                    @if($charge->is_system_default && !auth()->user()->hasRole('admin'))
-                                                    <!-- Limited Edit for Company Users on System Gateways -->
+                                                    @if(auth()->user()->hasRole('admin'))
+                                                    <div class="mb-4">
+                                                        <label class="block text-sm font-medium">Name</label>
+                                                        <input type="text" name="name" value="{{ $charge->name }}" class="w-full border px-3 py-2 rounded-full" />
+                                                    </div>
+                                                    @else
                                                     <div class="mb-4">
                                                         <label class="block text-sm font-medium">Name</label>
                                                         <input type="text" value="{{ $charge->name }}" class="w-full border px-3 py-2 rounded-full bg-gray-100 cursor-not-allowed" readonly />
                                                         <p class="text-xs text-gray-500 mt-1">System gateway name cannot be changed</p>
                                                     </div>
+                                                    @endif
 
                                                     <div class="mb-4">
                                                         <label class="block text-sm font-medium">API Service Charge</label>
-                                                        <input type="text" value="{{ $charge->amount }}" class="w-full border px-3 py-2 rounded-full bg-gray-100 cursor-not-allowed" readonly>
-                                                        <p class="text-xs text-gray-500 mt-1">Contact administrator to modify</p>
-                                                    </div>
-
-                                                    <div class="mb-4">
-                                                        <label class="block text-sm font-medium">Self Charge</label>
-                                                        <input type="number" name="self_charge" value="{{ $charge->self_charge }}" class="w-full border px-3 py-2 rounded-full" placeholder="Enter self charge amount (optional)">
-                                                        <p class="text-xs text-gray-500 mt-1">Override the gateway service charge</p>
-                                                    </div>
-
-                                                    <div class="mb-4">
-                                                        <label class="block text-sm font-medium">Extra Charge (KWD)</label>
-                                                        <input type="number" name="extra_charge" value="{{ $charge->extra_charge }}" class="w-full border px-3 py-2 rounded-full" />
-                                                    </div>
-
-                                                    <div class="mb-4">
-                                                        <label class="block text-sm font-medium">Description</label>
-                                                        <input type="text" name="description" value="{{ $charge->description }}" class="w-full border px-3 py-2 rounded-full" />
-                                                    </div>
-
-                                                    @else
-                                                    <!-- Full Edit for Admin or Custom Gateways -->
-                                                    <div class="mb-4">
-                                                        <label class="block text-sm font-medium">Name</label>
-                                                        <input type="text" name="name" value="{{ $charge->name }}" class="w-full border px-3 py-2 rounded-full" />
-                                                    </div>
-
-                                                    <div class="mb-4">
-                                                        <label class="block text-sm font-medium">Service Charge</label>
-                                                        <input type="text" name="amount" value="{{ $charge->amount }}" class="w-full border px-3 py-2 rounded-full">
+                                                        <input type="text" value="{{ $charge->amount }}" name="amount" class="w-full border px-3 py-2 rounded-full bg-white-100">
                                                     </div>
 
                                                     <div class="mb-4">
@@ -611,6 +587,7 @@
                                                         <input type="number" name="self_charge" value="{{ $charge->self_charge }}" class="w-full border px-3 py-2 rounded-full" placeholder="Enter self charge amount (optional)">
                                                         <p class="text-xs text-gray-500 mt-1">If set, this will override the gateway amount</p>
                                                     </div>
+
 
                                                     <div class="mb-4">
                                                         <label class="block text-sm font-medium">Extra Charge (KWD)</label>
@@ -634,10 +611,13 @@
                                                         </div>
                                                     </div>
 
+                                                    @if(auth()->user()->hasRole('admin'))
+
                                                     <div class="mb-4">
                                                         <label class="block text-sm font-medium">Description</label>
                                                         <input type="text" name="description" value="{{ $charge->description }}" class="w-full border px-3 py-2 rounded-full" />
                                                     </div>
+
                                                     @endif
 
                                                     <div class="flex justify-between items-center mt-6">
@@ -673,19 +653,13 @@
                                                         <input type="text" class="w-full border px-3 py-2 rounded-full bg-gray-200" value="{{ $charge->name }}" readonly>
                                                     </div>
 
-                                                    @if($charge->is_system_default && !auth()->user()->hasRole('admin'))
-                                                    <!-- Limited Access for Company Users on System Gateways -->
-                                                    <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                                        <div class="flex items-start">
-                                                            <svg class="w-5 h-5 text-yellow-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                                            </svg>
-                                                            <div>
-                                                                <p class="text-sm font-medium text-yellow-800">Restricted Access</p>
-                                                                <p class="text-xs text-yellow-700 mt-1">Only administrators can modify API keys for system gateways. You can only enable/disable the gateway.</p>
-                                                            </div>
-                                                        </div>
+                                                    @if($charge->is_system_default)
+                                                    <div class="mb-4">
+                                                        <label class="block text-sm font-medium">API Key</label>
+                                                        <textarea name="api_key" id="api_key_{{ $charge->id }}" class="w-full border px-3 py-2 rounded-md resize-y min-h-[6rem]"
+                                                            placeholder="Provide new key to replace existing">{{ old('api_key', $charge->api_key) }}</textarea>
                                                     </div>
+                                                    @endif
 
                                                     <div class="mb-6">
                                                         <div class="flex items-center">
@@ -697,24 +671,10 @@
                                                         <p class="text-xs text-gray-500 mt-1">Enable or disable this gateway for your company</p>
                                                     </div>
 
-                                                    @else
-                                                    <!-- Full Access for Admin or Custom Gateways -->
-                                                    <div class="mb-4">
-                                                        <label class="block text-sm font-medium">API Key</label>
-                                                        <textarea name="api_key" id="api_key_{{ $charge->id }}" class="w-full border px-3 py-2 rounded-md resize-y min-h-[6rem]"
-                                                            placeholder="Provide new key to replace existing">{{ old('api_key', $charge->api_key) }}</textarea>
-                                                    </div>
+                                                    @if(auth()->user()->hasRole('admin') || !$charge->is_system_default)
 
                                                     <div class="mb-6 flex gap-4">
-                                                        <div class="w-1/2">
-                                                            <div class="flex items-center">
-                                                                <input type="checkbox" name="is_active" value="1" id="is_active_{{ $charge->id }}"
-                                                                    @checked(old('is_active', (bool)$charge->is_active))
-                                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-                                                                <label class="ml-2 text-sm font-medium text-gray-700">Active</label>
-                                                            </div>
-                                                            <p class="text-xs text-gray-500 mt-1">If unchecked, gateway will be saved but inactive</p>
-                                                        </div>
+
                                                         <div class="w-1/2">
                                                             <div class="flex items-center">
                                                                 <input type="checkbox" name="can_generate_link" value="1" id="can_generate_link_{{ $charge->id }}"
@@ -774,33 +734,5 @@
                 </div>
             </div>
         </div>
-        <!-- <div class="content-30 hidden">
-            <div class="flex lg:flex-col md:flex-row justify-center text-center gap-5">
-                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                        <path fill="#333333"
-                            d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
-                    </svg>
-                    <span class="text-sm">Customize</span>
-                </button>
-                <button class="flex px-5 py-3 gap-2 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
-                    </svg>
-                    <span class="text-sm">Filter</span>
-                </button>
-                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path fill="#333333"
-                            d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
-                    </svg>
-                    <span class="text-sm">Export</span>
-                </button>
-            </div>
-            <div class="mt-5 ">
-                <div id="chargeDetails" class="panel w-full xl:mt-0 rounded-lg h-auto hidden"></div>
-
-            </div>
-        </div> -->
     </div>
 </x-app-layout>

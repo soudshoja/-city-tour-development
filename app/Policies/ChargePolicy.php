@@ -127,7 +127,7 @@ class ChargePolicy
      */
     public function updateCredentials(User $user, Charge $charge): bool
     {
-        if ($user->hasRole('admin')) {
+        if ($user->hasRole('admin') || $user->hasRole('company')) {
             return true;
         }
 
@@ -135,7 +135,7 @@ class ChargePolicy
             return false;
         }
 
-        return $user->hasRole('company') || $user->hasRole('agent');
+        return false;
     }
 
     /**

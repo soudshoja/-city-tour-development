@@ -68,9 +68,15 @@ class GetFilteredHotels
 
             $this->logger->info("Before decode classification", ['classification' => $input['filters']['classification'] ?? null]);
 
+            $classificationArray = [];
             if (isset($input['filters']['classification'])) {
                 if (is_string($input['filters']['classification'])) {
-                    $classificationArray = array_map('intval', array_map('trim', explode(',', $input['filters']['classification'])));
+                    $decoded = json_decode($input['filters']['classification'], true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $classificationArray = array_map('intval', $decoded);
+                    } else {
+                        $classificationArray = array_map('intval', array_map('trim', explode(',', $input['filters']['classification'])));
+                    }
                 } elseif (is_array($input['filters']['classification'])) {
                     $classificationArray = array_map('intval', $input['filters']['classification']);
                 } else {
@@ -78,8 +84,7 @@ class GetFilteredHotels
                 }
             }
 
-            $this->logger->info("After decode classification", ['classification' => $classificationArray ?? null]);
-
+            $this->logger->info("After decode classification", ['classification' => $classificationArray]);
 
             $this->logger->info("Before decode occupancy rooms", ['rooms' => $input['occupancy']['rooms'] ?? null]);
             $rooms = [];

@@ -760,50 +760,23 @@ class InvoiceController extends Controller
 
         $gatewayFee = 0;
 
-        if (strtolower($validated['gateway']) === 'myfatoorah' &&  strtolower($validated['gateway']) === 'hesabe' && $validated['method']) {
-            try {
-                $gatewayFee = ChargeService::FatoorahCharge($validated['amount'], $validated['method'], $companyId);
-            } catch (\Exception $e) {
-                Log::error('FatoorahCharge exception during partial save', [
-                    'message' => $e->getMessage(),
-                    'paymentMethod' => $validated['method'],
-                    'company_id' => $companyId,
-                ]);
-                $gatewayFee = null;
-            }
-        } elseif (strtolower($validated['gateway']) === 'hesabe' && $validated['method']) {
-            try {
-                $gatewayFee = ChargeService::HesabeCharge($validated['amount'], $validated['method'], $companyId);
-            } catch (Exception $e) {
-                Log::error('HesabeCharge exception during partial save', [
-                    'message' => $e->getMessage(),
-                    'paymentMethod' => $validated['method'],
-                    'company_id' => $companyId,
-                ]);
-                $gatewayFee = null;
-            }
-        } else if (strtolower($validated['gateway']) === 'tap') {
-            $gatewayFee = ChargeService::TapCharge([
-                'amount' => $validated['amount'],
-                'client_id' => $invoice->client_id,
-                'agent_id' => $invoice->agent_id,
-                'currency' => $invoice->currency
-            ], $validated['gateway']);
-        } else if (strtolower($validated['gateway']) === 'upayment') {
-            $uPaymentmethods = PaymentMethod::where('is_active', true)
-                ->where('company_id', $companyId)
-                ->where('type', 'upayment')
-                ->get();
-
-            if ($uPaymentmethods) {
-                foreach ($uPaymentmethods as $method) {
-                    $gatewayFee = ChargeService::UPaymentCharge(
-                        $validated['amount'],
-                        $method->id,
-                        $companyId
-                    )['fee'] ?? 0;
-                }
-            }
+        try {
+            $result = ChargeService::getFee(
+                gatewayName: $validated['gateway'],
+                amount: $validated['amount'],
+                methodCode: $validated['method'] ?? null,
+                companyId: $companyId,
+                currency: $invoice->currency
+            );
+            $gatewayFee = $result;
+        } catch (Exception $e) {
+            Log::error('getFee exception in updatePaymentGateway', [
+                'gateway' => $validated['gateway'],
+                'message' => $e->getMessage(),
+                'paymentMethod' => $validated['method'] ?? null,
+                'company_id' => $companyId,
+            ]);
+            $gatewayFee = ['fee' => 0, 'gatewayFee' => 0];
         }
 
         if ($invoice) {
@@ -1880,28 +1853,20 @@ class InvoiceController extends Controller
                 if ($partial->status !== 'paid') {
                     $gatewayFee = [];
                     try {
-                        if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
-                            $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
-                        } elseif (strtolower($partial->payment_gateway) === 'tap') {
-                            $gatewayFee = ChargeService::TapCharge([
-                                'amount'    => $partial->amount,
-                                'client_id' => $invoice->client_id,
-                                'agent_id'  => $invoice->agent_id,
-                                'currency'  => $invoice->currency,
-                            ], $partial->payment_gateway);
-                        } elseif (strtolower($partial->payment_gateway) === 'upayment') {
-                            $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
-                        } elseif (strtolower($partial->payment_gateway) === 'hesabe') {
-                            $gatewayFee = ChargeService::HesabeCharge($partial->amount, $partial->payment_method, $companyId);
-                        } elseif (strtolower($partial->payment_gateway) === 'upayment') {
-                            $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
-                        }
+                        $gatewayFee = ChargeService::getFee(
+                            gatewayName: $partial->payment_gateway,
+                            amount: $partial->amount,
+                            methodCode: $partial->payment_method ?? null,
+                            companyId: $companyId,
+                            currency: $invoice->currency
+                        );
                     } catch (\Exception $e) {
-                        Log::error('ChargeService exception', [
+                        Log::error('ChargeService getFee exception in show', [
                             'message' => $e->getMessage(),
                             'gateway' => $partial->payment_gateway,
                             'company_id' => $companyId,
                         ]);
+                        $gatewayFee = ['fee' => 0, 'gatewayFee' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
                     }
                     $partial->service_charge = $gatewayFee['fee'] ?? 0.00;
                     $partial->save();
@@ -1996,26 +1961,20 @@ class InvoiceController extends Controller
                 if ($partial->status !== 'paid') {
                     $gatewayFee = [];
                     try {
-                        if (strtolower($partial->payment_gateway) === 'myfatoorah' && $partial->payment_method) {
-                            $gatewayFee = ChargeService::FatoorahCharge($partial->amount, $partial->payment_method, $companyId);
-                        } else if (strtolower($partial->payment_gateway) === 'tap') {
-                            $gatewayFee = ChargeService::TapCharge([
-                                'amount'    => $partial->amount,
-                                'client_id' => $invoice->client_id,
-                                'agent_id'  => $invoice->agent_id,
-                                'currency'  => $invoice->currency,
-                            ], $partial->payment_gateway);
-                        } else if (strtolower($partial->payment_gateway) === 'upayment') {
-                            $gatewayFee = ChargeService::UPaymentCharge($partial->amount, $partial->payment_method, $companyId);
-                        } else if (strtolower($partial->payment_gateway) === 'hesabe') {
-                            $gatewayFee = ChargeService::HesabeCharge($partial->amount, $partial->payment_method, $companyId);
-                        }
+                        $gatewayFee = ChargeService::getFee(
+                            gatewayName: $partial->payment_gateway,
+                            amount: $partial->amount,
+                            methodCode: $partial->payment_method ?? null,
+                            companyId: $companyId,
+                            currency: $invoice->currency
+                        );
                     } catch (Exception $e) {
-                        Log::error('ChargeService exception', [
+                        Log::error('ChargeService getFee exception in showArabic', [
                             'message' => $e->getMessage(),
                             'gateway' => $partial->payment_gateway,
                             'company_id' => $companyId,
                         ]);
+                        $gatewayFee = ['fee' => 0, 'gatewayFee' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
                     }
                     $partial->service_charge = $gatewayFee['fee'];
                     $partial->save();

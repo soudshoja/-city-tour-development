@@ -1061,7 +1061,7 @@
                                         </div>
 
                                         <div
-                                            :class="selectedGateway === 'MyFatoorah' || selectedGateway === 'Hesabe' ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' : 'block'">
+                                            class="block">
 
                                             @foreach($paymentGateways as $gateway)
                                                 @php
@@ -1073,7 +1073,8 @@
                                                         <label for="payment-method-{{ strtolower($gateway->name) }}" class="block text-sm font-medium text-gray-700">Payment Method</label>
                                                         <select name="payment_method" id="payment_method_full"
                                                             class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" 
-                                                            x-model="selectedMethod">
+                                                            x-model="selectedMethod"
+                                                            @change="calculateSubtotal()">
                                                             @if($companyMethods->count() > 1)
                                                             <option value="">Select Payment Method</option>
                                                             @endif
@@ -2708,41 +2709,23 @@
             const invoiceChargeElement = document.getElementById('invoice_charge');
             const invoiceCharge = invoiceChargeElement ? parseFloat(invoiceChargeElement.value) || 0 : 0;
 
-            // Get service charge from selected payment gateway
             let serviceCharge = 0;
             const selectedGateway = document.getElementById('payment_gateway_option')?.value;
             let selectedPaymentMethod = document.getElementById('payment_method_full')?.value;
 
-            console.log('calculateSubtotal - selectedGateway:', selectedGateway);
-            console.log('calculateSubtotal - selectedPaymentMethod:', selectedPaymentMethod);
-
             if (selectedGateway) {
-                // Find the selected charge/gateway
                 const selectedCharge = charges.find(charge => charge.name === selectedGateway);
                 
-                console.log('calculateSubtotal - selectedCharge:', selectedCharge);
-                
                 if (selectedCharge) {
-                    // Check if this charge has payment methods
                     const gatewayKey = gwKey(selectedGateway);
                     const gatewayMethods = methodsByGateway[gatewayKey] || [];
                     
-                    console.log('calculateSubtotal - gatewayKey:', gatewayKey);
-                    console.log('calculateSubtotal - gatewayMethods:', gatewayMethods);
-                    console.log('calculateSubtotal - methodsByGateway:', methodsByGateway);
-                    
-                    // If gateway has methods and one is selected, use the method's fee
                     if (gatewayMethods.length > 0 && selectedPaymentMethod) {
                         const method = paymentMethods.find(m => m.id === parseInt(selectedPaymentMethod));
-                        console.log('calculateSubtotal - found method:', method);
                         serviceCharge = method ? (method.gateway_fee || 0) : 0;
                     } else {
-                        // If gateway has no methods, use the charge-level fee
-                        console.log('calculateSubtotal - using gateway level fee');
                         serviceCharge = selectedCharge.gateway_fee || 0;
                     }
-                    
-                    console.log('calculateSubtotal - serviceCharge:', serviceCharge);
                 }
             }
 
@@ -2789,8 +2772,6 @@
             const netTotal = document.getElementById('netTotal');
             if (netTotal) netTotal.value = netTotals.toFixed(2);
         }
-
-        document.getElementById('payment_method_full')?.addEventListener('change', calculateSubtotal);
 
         function renderItems() {
             const tbody = itemsBody;

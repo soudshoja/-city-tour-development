@@ -90,13 +90,13 @@ class GetFilteredHotels
                 $rooms = $this->parseRoomsString($roomsString);
             }
 
+            $this->logger->info("After decode occupancy rooms", ['rooms' => $rooms]);
+
             if (empty($rooms)) {
                 $rooms = [
                     ['adults' => 2, 'childrenAges' => []]
                 ];
             }
-
-            $this->logger->info("After decode occupancy rooms", ['rooms' => $rooms]);
 
             $occupancyPayload = [
                 'leaderNationality' => $leaderNationality,

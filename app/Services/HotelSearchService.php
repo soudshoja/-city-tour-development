@@ -557,7 +557,7 @@ class HotelSearchService
         $rooms = [];
         $leaderNationality = $occupancy['leaderNationality'] ?? 1;
 
-        if (!empty($input['occupancy']['rooms'])) {
+        if (!empty($occupancy['rooms'])) {
             $roomsString = $occupancy['rooms'];
             $rooms = $this->parseRoomsString($roomsString);
         }
@@ -566,13 +566,10 @@ class HotelSearchService
             'occupancy_rooms' => $rooms,
         ]);
 
-
-        $occupancyPayload = [
+        $occupancy = [
             'leaderNationality' => $leaderNationality,
             'rooms' => $rooms
         ];
-
-
 
         try {
             $this->logger->info('Starting hotel room search flow', [
@@ -672,7 +669,7 @@ class HotelSearchService
                     ],
                     'checkIn' => $checkIn,
                     'checkOut' => $checkOut,
-                    'occupancy' => $occupancyPayload,
+                    'occupancy' => $occupancy,
                     'filters' => [
                         'name' => $hotelData['hotel_name'],
                     ],

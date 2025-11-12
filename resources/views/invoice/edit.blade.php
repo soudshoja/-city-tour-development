@@ -1061,26 +1061,32 @@
                                         </div>
 
                                         <div
-                                            :class="selectedGateway === 'MyFatoorah' || selectedGateway === 'Hesabe' ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' : 'block'">
+                                            class="block">
 
-                                            @foreach($gatewayMethods as $gatewayName => $methods)
-                                            <template x-if="selectedGateway.toLowerCase() === '{{ $gatewayName }}'">
-                                                <div class="mt-4" x-cloak x-transition>
-                                                    <label for="payment-method-{{ $gatewayName }}" class="block text-sm font-medium text-gray-700">Payment Method</label>
-                                                    <select name="payment_method" id="payment_method_full"
-                                                        class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" 
-                                                        x-model="selectedMethod">
-                                                        @if($methods->count() > 1)
-                                                        <option value="">Select Payment Method</option>
-                                                        @endif
-                                                        @foreach ($methods as $method)
-                                                        <option value="{{ $method->id }}" {{ $selectedMethod == $method->id ? 'selected' : '' }}>
-                                                            {{ $method->english_name }}
-                                                        </option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                            </template>
+                                            @foreach($paymentGateways as $gateway)
+                                                @php
+                                                    $companyMethods = $gateway->methods->where('company_id', $invoice->agent->branch->company_id);
+                                                @endphp
+                                                @if($companyMethods->isNotEmpty())
+                                                <template x-if="selectedGateway.toLowerCase() === '{{ strtolower($gateway->name) }}'">
+                                                    <div class="mt-4" x-cloak x-transition>
+                                                        <label for="payment-method-{{ strtolower($gateway->name) }}" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                        <select name="payment_method" id="payment_method_full"
+                                                            class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                                                            x-model="selectedMethod"
+                                                            @change="calculateSubtotal()">
+                                                            @if($companyMethods->count() > 1)
+                                                            <option value="">Select Payment Method</option>
+                                                            @endif
+                                                            @foreach ($companyMethods as $method)
+                                                            <option value="{{ $method->id }}" {{ $selectedMethod == $method->id ? 'selected' : '' }}>
+                                                                {{ $method->english_name }}
+                                                            </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                </template>
+                                                @endif
                                             @endforeach
                                         </div>
                                         <input type="hidden" name="payment_method" :value="selectedMethod">
@@ -2104,6 +2110,12 @@
 
             // Setup invoice ID input listener
             invoiceIdInput.addEventListener('input', checkInvoiceId);
+
+            // Calculate subtotal after all initialization is complete
+            // Use setTimeout to ensure all DOM elements are fully rendered
+            setTimeout(() => {
+                calculateSubtotal();
+            }, 100);
         });
 
         // Set initial states
@@ -2702,30 +2714,34 @@
             const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.task_price) || 0), 0);
             const invoiceChargeElement = document.getElementById('invoice_charge');
             const invoiceCharge = invoiceChargeElement ? parseFloat(invoiceChargeElement.value) || 0 : 0;
-            const paymentMethods = @json($paymentMethods);
 
             let serviceCharge = 0;
             const selectedGateway = document.getElementById('payment_gateway_option')?.value;
             let selectedPaymentMethod = document.getElementById('payment_method_full')?.value;
 
             if (selectedGateway) {
-                const key = gwKey(selectedGateway);
-                const methods = methodsByGateway[key] || [];
+                const selectedCharge = charges.find(charge => charge.name === selectedGateway);
                 
-                if (methods.length > 0 && selectedPaymentMethod) {
-                    const method = methods.find(m => m.id === parseInt(selectedPaymentMethod));
-                    serviceCharge = method ? (method.gateway_fee || 0) : 0;
-                } else {
-                    const selectedCharge = charges.find(charge => charge.name === selectedGateway);
-                    serviceCharge = selectedCharge ? (selectedCharge.gateway_fee || 0) : 0;
+                if (selectedCharge) {
+                    const gatewayKey = gwKey(selectedGateway);
+                    const gatewayMethods = methodsByGateway[gatewayKey] || [];
+                    
+                    if (gatewayMethods.length > 0 && selectedPaymentMethod) {
+                        const method = paymentMethods.find(m => m.id === parseInt(selectedPaymentMethod));
+                        serviceCharge = method ? (method.fee || 0) : 0;
+                    } else {
+                        serviceCharge = selectedCharge.fee || 0;
+                    }
                 }
             }
 
             const finalAmount = subtotal + serviceCharge;
             const finalTotal = finalAmount + invoiceCharge;
 
+            // Update all display elements
             document.getElementById('subTotalDisplay').textContent = `${subtotal.toFixed(2)}`;
 
+            // Update service charge display
             const serviceChargeDisplayElement = document.getElementById('serviceChargeDisplay');
             const serviceChargeDisplayRow = document.getElementById('service_charge_display_row');
             if (serviceChargeDisplayElement) {
@@ -2735,6 +2751,7 @@
                 serviceChargeDisplayRow.style.display = serviceCharge > 0 ? 'flex' : 'none';
             }
 
+            // Update final amount display (subtotal + service charge)
             const finalAmountDisplayElement = document.getElementById('finalAmountDisplay');
             const finalAmountDisplayRow = document.getElementById('final_amount_display_row');
             if (finalAmountDisplayElement) {
@@ -2761,8 +2778,6 @@
             const netTotal = document.getElementById('netTotal');
             if (netTotal) netTotal.value = netTotals.toFixed(2);
         }
-
-        document.getElementById('payment_method_full')?.addEventListener('change', calculateSubtotal);
 
         function renderItems() {
             const tbody = itemsBody;
@@ -4452,20 +4467,7 @@
             const gatewaySelect = document.getElementById(`gateway_${partialId}`);
             const methodSection = document.getElementById(`method_section_${partialId}`);
             const selectedGateway = gatewaySelect.value.toLowerCase();
-
-            if (selectedGateway === 'myfatoorah') {
-                methodSection.style.display = 'block';
-            } else {
-                methodSection.style.display = 'none';
-            }
         }
-        document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('[id^="gateway_"]').forEach(select => {
-                const partialId = select.id.split('_')[1];
-                toggleMethod(partialId);
-            });
-        });
-
-    </script>
+        </script>
 
 </x-app-layout>

@@ -1749,14 +1749,20 @@ class PaymentController extends Controller
                     'gatewayFee' => 0,
                 ];
 
-                if(strtolower($payment->payment_gateway) === 'myfatoorah'){
-                    $tempChargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
-                } else if(strtolower($payment->payment_gateway) === 'tap'){
-                    $tempChargeResult = ChargeService::TapCharge($chargeData, $companyId);
-                } else if(strtolower($payment->payment_gateway) === 'upayment'){
-                    $tempChargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
-                } else if(strtolower($payment->payment_gateway) === 'hesabe') {
-                    $tempChargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+                try {
+                    $tempChargeResult = ChargeService::getFee(
+                        gatewayName: $payment->payment_gateway,
+                        amount: $payment->amount,
+                        methodCode: $payment->payment_method_id ?? null,
+                        companyId: $companyId,
+                        currency: $payment->currency
+                    );
+                } catch (Exception $e) {
+                    Log::error('getFee exception in paymentShowLink', [
+                        'gateway' => $payment->payment_gateway,
+                        'message' => $e->getMessage(),
+                        'payment_id' => $payment->id,
+                    ]);
                 }
 
                 $gatewayFee = $tempChargeResult['fee'] ?? 0;
@@ -1772,14 +1778,21 @@ class PaymentController extends Controller
 
             $chargeResult = [];
             
-            if(strtolower($payment->payment_gateway) === 'tap'){
-                $chargeResult = ChargeService::TapCharge($chargeData, 'Tap');
-            } else if (strtolower($payment->payment_gateway) === 'upayment'){
-                $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
-            } else if(strtolower($payment->payment_gateway) === 'myfatoorah'){
-                $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
-            } else if(strtolower($payment->payment_gateway) === 'hesabe') {
-                $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+            try {
+                $chargeResult = ChargeService::getFee(
+                    gatewayName: $payment->payment_gateway,
+                    amount: $payment->amount,
+                    methodCode: $payment->payment_method_id ?? null,
+                    companyId: $companyId,
+                    currency: $payment->currency
+                );
+            } catch (Exception $e) {
+                Log::error('getFee exception in paymentShowLink (unpaid)', [
+                    'gateway' => $payment->payment_gateway,
+                    'message' => $e->getMessage(),
+                    'payment_id' => $payment->id,
+                ]);
+                $chargeResult = ['fee' => 0, 'finalAmount' => $payment->amount, 'paid_by' => 'Company'];
             }
 
             $gatewayFee = $chargeResult['fee'] ?? 0;
@@ -1822,7 +1835,7 @@ class PaymentController extends Controller
 
         if (strtolower($paymentGateway) === 'tap') {
             $tap = new Tap();
-            $paymentMethod = $payment->paymentMethod->id;
+            $paymentMethod = $payment->paymentMethod ? $payment->paymentMethod->id : null;
 
             $chargeResult = ChargeService::getFee(
                 gatewayName: 'Tap',
@@ -4507,14 +4520,21 @@ class PaymentController extends Controller
 
                 $tempChargeResult = [];
 
-                if(strtolower($payment->payment_gateway) === 'myfatoorah') {
-                    $tempChargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
-                } elseif (strtolower($payment->payment_gateway) === 'tap') {
-                    $tempChargeResult = ChargeService::TapCharge($chargeData, 'Tap');
-                } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
-                    $tempChargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
-                } elseif (strtolower($payment->payment_gateway) === 'upayment') {
-                    $tempChargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+                try {
+                    $tempChargeResult = ChargeService::getFee(
+                        gatewayName: $payment->payment_gateway,
+                        amount: $payment->amount,
+                        methodCode: $payment->payment_method_id ?? null,
+                        companyId: $companyId,
+                        currency: $payment->currency
+                    );
+                } catch (Exception $e) {
+                    Log::error('getFee exception in paymentShowLinkArabic', [
+                        'gateway' => $payment->payment_gateway,
+                        'message' => $e->getMessage(),
+                        'payment_id' => $payment->id,
+                    ]);
+                    $tempChargeResult = ['fee' => 0];
                 }
 
                 $gatewayFee = $tempChargeResult['fee'] ?? 0;
@@ -4535,14 +4555,21 @@ class PaymentController extends Controller
 
             $chargeResult = [];
 
-            if(strtolower($payment->payment_gateway) === 'myfatoorah') {
-                $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
-            } elseif (strtolower($payment->payment_gateway) === 'tap') {
-                $chargeResult = ChargeService::TapCharge($chargeData, 'Tap');
-            } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
-                $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
-            } elseif (strtolower($payment->payment_gateway) === 'upayment') {
-                $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+            try {
+                $chargeResult = ChargeService::getFee(
+                    gatewayName: $payment->payment_gateway,
+                    amount: $payment->amount,
+                    methodCode: $payment->payment_method_id ?? null,
+                    companyId: $companyId,
+                    currency: $payment->currency
+                );
+            } catch (Exception $e) {
+                Log::error('getFee exception in paymentShowLinkArabic (unpaid)', [
+                    'gateway' => $payment->payment_gateway,
+                    'message' => $e->getMessage(),
+                    'payment_id' => $payment->id,
+                ]);
+                $chargeResult = ['fee' => 0, 'finalAmount' => $payment->amount, 'paid_by' => 'Company'];
             }
 
             $gatewayFee = $chargeResult['fee'] ?? 0;

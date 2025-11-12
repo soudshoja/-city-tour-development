@@ -262,7 +262,11 @@ class CreateFullB2CBooking
             }
 
             $rooms = $prebook->rooms ?? [];
-            $totalPrice = collect($rooms)->sum('price');
+            $roomsWithMarkup = collect($rooms)->map(function ($room) {
+                $room['price'] = ceil($room['price'] * 1.2);
+                return $room;
+            })->values()->all();
+            $totalPrice = ceil(collect($roomsWithMarkup)->sum('price'));
             $currency = !empty($rooms) ? ($rooms[0]['currency'] ?? 'KWD') : 'KWD';
 
             $paymentResponse = $this->createClientPaymentLink([
@@ -311,7 +315,7 @@ class CreateFullB2CBooking
                 'payment_link' => $paymentResponse['payment_link'] ?? null,
                 'rooms' => [
                     [
-                        'room' => $rooms,
+                        'room' => $roomsWithMarkup,
                         'prebook' => [
                             'prebookKey' => $prebook->prebook_key,
                             'serviceDates' => is_string($prebook->service_dates) ? json_decode($prebook->service_dates, true) : $prebook->service_dates,

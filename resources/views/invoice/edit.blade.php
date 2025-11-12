@@ -2110,6 +2110,12 @@
 
             // Setup invoice ID input listener
             invoiceIdInput.addEventListener('input', checkInvoiceId);
+
+            // Calculate subtotal after all initialization is complete
+            // Use setTimeout to ensure all DOM elements are fully rendered
+            setTimeout(() => {
+                calculateSubtotal();
+            }, 100);
         });
 
         // Set initial states
@@ -2722,9 +2728,9 @@
                     
                     if (gatewayMethods.length > 0 && selectedPaymentMethod) {
                         const method = paymentMethods.find(m => m.id === parseInt(selectedPaymentMethod));
-                        serviceCharge = method ? (method.gateway_fee || 0) : 0;
+                        serviceCharge = method ? (method.fee || 0) : 0;
                     } else {
-                        serviceCharge = selectedCharge.gateway_fee || 0;
+                        serviceCharge = selectedCharge.fee || 0;
                     }
                 }
             }
@@ -4462,13 +4468,6 @@
             const methodSection = document.getElementById(`method_section_${partialId}`);
             const selectedGateway = gatewaySelect.value.toLowerCase();
         }
-        document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('[id^="gateway_"]').forEach(select => {
-                const partialId = select.id.split('_')[1];
-                toggleMethod(partialId);
-            });
-        });
-
-    </script>
+        </script>
 
 </x-app-layout>

@@ -1975,6 +1975,12 @@ class PaymentController extends Controller
                 ],
             ];
 
+            Log::info('MyFatoorah ExecutePayment request', [
+                'payload' => $executePayload,
+                'api_key' => $apiKey,
+                'base_url' => $baseUrl,
+            ]);
+
             $executeResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
                 'Content-Type' => 'application/json',

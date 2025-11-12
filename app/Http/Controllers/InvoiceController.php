@@ -823,7 +823,7 @@ class InvoiceController extends Controller
             'amount' => 'required',
             'type' => 'required|string',
             'invoiceNumber' => 'required|string',
-            'gateway' => 'required|exists:charges,name',
+            'gateway' => 'required',
             'method' => 'nullable|string',
             // 'credit' => 'nullable|boolean',
             'external_url' => 'nullable|url',

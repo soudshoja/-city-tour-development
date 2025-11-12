@@ -488,7 +488,7 @@ class InvoiceController extends Controller
                             companyId: $companyId,
                             currency: $invoice->currency
                         );
-                        $method->gateway_fee = $result['gatewayFee'] ?? 0;
+                        $method->fee = $result['fee'] ?? 0;
                     } catch (Exception $e) {
                         Log::error('getFee exception for method', [
                             'gateway' => $gateway->name,
@@ -496,7 +496,7 @@ class InvoiceController extends Controller
                             'paymentMethod' => $method->id,
                             'company_id' => $companyId,
                         ]);
-                        $method->gateway_fee = 0;
+                        $method->fee = 0;
                     }
                 }
             } else {
@@ -509,14 +509,14 @@ class InvoiceController extends Controller
                         companyId: $companyId,
                         currency: $invoice->currency
                     );
-                    $gateway->gateway_fee = $result['gatewayFee'] ?? 0;
+                    $gateway->fee = $result['fee'] ?? 0;
                 } catch (Exception $e) {
                     Log::error('getFee exception for gateway', [
                         'gateway' => $gateway->name,
                         'message' => $e->getMessage(),
                         'company_id' => $companyId,
                     ]);
-                    $gateway->gateway_fee = 0;
+                    $gateway->fee = 0;
                 }
             }
         }
@@ -786,7 +786,7 @@ class InvoiceController extends Controller
                 'new_gateway' => $validated['gateway'],
                 'new_method' => $validated['method'] ?? null,
                 'new_amount' => $validated['amount'],
-                'gateway_fee' => $gatewayFee['fee'] ?? 0,
+                'fee' => $gatewayFee['fee'] ?? 0,
             ]);
 
             $invoice->update([

@@ -965,7 +965,12 @@ class HotelSearchService
                             'package' => [
                                 'status' => $prebookResponse['package']['status'] ?? null,
                                 'complete' => $prebookResponse['package']['complete'] ?? null,
-                                'price' => $prebookResponse['package']['price'] ?? [],
+                                'price' => [
+                                    'selling' => [
+                                        'value' => isset($prebookResponse['package']['price']['selling']['value']) ? ceil($prebookResponse['package']['price']['selling']['value'] * 1.2) : null,
+                                        'currency' => $prebookResponse['package']['price']['selling']['currency'] ?? 'KWD',
+                                    ],
+                                ],
                                 'rate' => $prebookResponse['package']['rate'] ?? [],
                                 'packageRooms' => array_map(function ($room) {
                                     return [

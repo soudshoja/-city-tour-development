@@ -323,7 +323,20 @@ class CreateFullB2CBooking
                             'package' => [
                                 'status' => (is_string($prebook->package) ? json_decode($prebook->package, true)['status'] ?? null : $prebook->package['status'] ?? null),
                                 'complete' => (is_string($prebook->package) ? json_decode($prebook->package, true)['complete'] ?? null : $prebook->package['complete'] ?? null),
-                                'price' => (is_string($prebook->package) ? json_decode($prebook->package, true)['price'] ?? [] : $prebook->package['price'] ?? []),
+                                'price' => (is_string($prebook->package)
+                                    ? array_merge(json_decode($prebook->package, true)['price'] ?? [], [
+                                        'selling' => [
+                                            'value' => ceil(json_decode($prebook->package, true)['price']['selling']['value'] ?? 0),
+                                            'currency' => json_decode($prebook->package, true)['price']['selling']['currency'] ?? 'KWD',
+                                        ],
+                                    ])
+                                    : array_merge($prebook->package['price'] ?? [], [
+                                        'selling' => [
+                                            'value' => ceil(($prebook->package['price']['selling']['value'] ?? 0) * 1.2),
+                                            'currency' => $prebook->package['price']['selling']['currency'] ?? 'KWD',
+                                        ],
+                                    ])
+                                ),
                                 'rate' => (is_string($prebook->package) ? json_decode($prebook->package, true)['rate'] ?? [] : $prebook->package['rate'] ?? []),
                                 'packageRooms' => array_map(function ($room) {
                                     return [

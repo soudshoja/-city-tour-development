@@ -554,22 +554,22 @@ class HotelSearchService
             'occupancy_rooms_raw' => $occupancy['rooms'] ?? null,
         ]);
 
-        if (is_string($occupancy['rooms'] ?? null)) {
-            $decodedRooms = json_decode($occupancy['rooms'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedRooms)) {
-                $occupancy['rooms'] = $decodedRooms;
-            } else {
-                $this->logger->error('Failed to decode occupancy rooms JSON', [
-                    'occupancy_rooms' => $occupancy['rooms'],
-                    'json_error' => json_last_error_msg(),
-                ]);
-                throw new Exception('Invalid occupancy rooms format');
-            }
+        $rooms = [];
+        $leaderNationality = $occupancy['leaderNationality'] ?? 1;
+
+        if (!empty($occupancy['rooms'])) {
+            $roomsString = $occupancy['rooms'];
+            $rooms = $this->parseRoomsString($roomsString);
         }
 
         $this->logger->info("After decoding, occupancy rooms data", [
-            'occupancy_rooms' => $occupancy['rooms'] ?? null,
+            'occupancy_rooms' => $rooms,
         ]);
+
+        $occupancy = [
+            'leaderNationality' => $leaderNationality,
+            'rooms' => $rooms
+        ];
 
         try {
             $this->logger->info('Starting hotel room search flow', [
@@ -579,7 +579,7 @@ class HotelSearchService
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
                 'room_count_requested' => $roomCount,
-                'occupancy_rooms_count' => count($occupancy['rooms'] ?? []),
+                'occupancy_rooms_count' => count($rooms),
             ]);
 
             $checkIn = date('Y-m-d', strtotime($checkIn));
@@ -1024,5 +1024,52 @@ class HotelSearchService
                 'message' => trim($message)
             ];
         }
+    }
+
+    protected function parseRoomsString(string $roomsString): array
+    {
+        $this->logger->info('Parsing rooms string', ['raw_string' => $roomsString]);
+
+        $normalizedString = str_replace("'", '"', $roomsString);
+
+        $decoded = json_decode($normalizedString, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            if (isset($decoded[0]) && is_array($decoded[0]) && isset($decoded[0]['adults'])) {
+                $this->logger->info('Rooms string decoded successfully', ['decoded' => $decoded]);
+                return $decoded;
+            }
+        }
+
+        $normalizedString = trim($normalizedString);
+
+        if (preg_match('/^\[(.*)\]$/', $normalizedString, $matches)) {
+            $inner = $matches[1];
+            $parts = preg_split('/\]\s*,\s*\[/', $inner);
+
+            $rooms = [];
+            foreach ($parts as $part) {
+                $part = trim($part);
+
+                if (str_starts_with($part, '{') && str_ends_with($part, '}')) {
+                    $room = json_decode($part, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($room)) {
+                        $rooms[] = $room;
+                    }
+                }
+            }
+
+            if (!empty($rooms)) {
+                $this->logger->info('Rooms string parsed successfully', ['parsed' => $rooms]);
+                return $rooms;
+            }
+        }
+
+        $this->logger->error('Failed to parse rooms string', [
+            'raw_string' => $roomsString,
+            'normalized_string' => $normalizedString,
+            'json_error' => json_last_error_msg()
+        ]);
+
+        return [];
     }
 }

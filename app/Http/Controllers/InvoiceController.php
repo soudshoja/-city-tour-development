@@ -1671,7 +1671,9 @@ class InvoiceController extends Controller
         if ($user->role_id == Role::ADMIN) {
             $agents = $agents->get();
         } else if ($user->role_id == Role::COMPANY) {
-            $agents = $agents->where('branch_id', $user->company->branches->pluck('id'))->get();
+            $agents = $agents->whereHas('branch', function ($q) use ($user) {
+                $q->where('company_id', $user->company->id);
+            })->get();
         } else if ($user->role_id == Role::BRANCH) {
             $agents = $agents->where('branch_id', $user->branch->id)->get();
         } else if ($user->role_id == Role::AGENT) {

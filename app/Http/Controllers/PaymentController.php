@@ -1493,24 +1493,22 @@ class PaymentController extends Controller
         $invoices = Invoice::all();
         $payments = Payment::all();
         $currencies = Currency::all();
-        $paymentGateways = Charge::where('can_generate_link', true)
-            ->where('is_active', true)->get();
+        
+        $paymentGateways = Charge::with('methods')->where('is_active', true)->get();
 
-        $myFatoorahMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $companyId)
-            ->where('type', 'myfatoorah')
-            ->get();
+        $paymentMethods = PaymentMethod::where('is_active', true)->get();
 
-        $uPaymentMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $companyId)
-            ->where('type', 'upayment')
-            ->get();
-
-        $hesabeMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $companyId)
-            ->where('type', 'hesabe')
-            ->get();
-        /* $paymentMethods = PaymentMethod::where('is_active', true)->get(); */
+        $gatewayMethods = [];
+        foreach ($paymentGateways as $gateway) {
+            $methods = PaymentMethod::where('is_active', true)
+                ->where('company_id', $companyId)
+                ->where('type', $gateway->name)
+                ->get();
+            
+            if ($methods->isNotEmpty()) {
+                $gatewayMethods[strtolower($gateway->name)] = $methods;
+            }
+        }
 
         if ($user->role_id == Role::AGENT) {
             $companyId = $user->agent->branch->company_id;
@@ -1532,9 +1530,8 @@ class PaymentController extends Controller
             'invoices',
             'currencies',
             'paymentGateways',
-            'myFatoorahMethods',
-            'hesabeMethods',
-            'uPaymentMethods',
+            'paymentMethods',
+            'gatewayMethods',
             'can_import'
         ));
     }
@@ -1825,13 +1822,16 @@ class PaymentController extends Controller
 
         if (strtolower($paymentGateway) === 'tap') {
             $tap = new Tap();
+            $paymentMethod = $payment->paymentMethod->id;
 
-            $chargeResult = ChargeService::TapCharge([
-                'amount' => $payment->amount,
-                'currency' => $payment->currency,
-                'client_id' => $payment->client_id,
-                'agent_id' => $payment->agent_id
-            ], 'Tap');
+            $chargeResult = ChargeService::getFee(
+                gatewayName: 'Tap',
+                amount: $payment->amount,
+                methodCode: $paymentMethod,
+                companyId: $payment->agent->branch->company_id,
+                currency: $payment->currency,
+            );
+
             $finalAmount = $chargeResult['finalAmount'];
 
             $requestTap = new Request([
@@ -1841,6 +1841,7 @@ class PaymentController extends Controller
                 'voucher_number' => $payment->voucher_number,
                 'payment_id' => $payment->id,
                 'payment_gateway' => $paymentGateway,
+                'payment_method_id' => $paymentMethod,
                 'description' => 'Payment for' . $payment->voucher_number,
                 'process' => $process,
             ]);

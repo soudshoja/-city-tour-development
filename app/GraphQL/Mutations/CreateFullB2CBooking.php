@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Sequence;
 use App\Models\Charge;
+use App\Models\Country;
 use App\Services\HotelSearchService;
 use App\Http\Controllers\PaymentController;
 use Illuminate\Http\UploadedFile;
@@ -79,9 +80,19 @@ class CreateFullB2CBooking
         try {
             Log::info('CreateFullB2CBooking started', ['input' => $input]);
 
-            preg_match('/^(\+\d{1,4})(\d+)$/', $input['phone'], $matches);
-            $countryCode = $matches[1] ?? '+000';
-            $phone = $matches[2] ?? $input['phone'];
+            $codes = Country::pluck('dialing_code')->toArray();
+            usort($codes, fn($a, $b) => strlen($b) <=> strlen($a));
+
+            $countryCode = '+000';
+            $phone = $input['phone'];
+
+            foreach ($codes as $code) {
+                if (str_starts_with($input['phone'], $code)) {
+                    $countryCode = $code;
+                    $phone = substr($input['phone'], strlen($code));
+                    break;
+                }
+            }
 
             if (!$hasPrebookKey) {
                 return [
@@ -445,9 +456,19 @@ class CreateFullB2CBooking
         try {
             $aiAgent = $this->getOrCreateAIAgent();
 
-            preg_match('/^(\+\d{1,4})(\d+)$/', $input['phone'], $matches);
-            $countryCode = $matches[1] ?? '+000';
-            $phone = $matches[2] ?? $input['phone'];
+            $codes = Country::pluck('dialing_code')->toArray();
+            usort($codes, fn($a, $b) => strlen($b) <=> strlen($a));
+
+            $countryCode = '+000';
+            $phone = $input['phone'];
+
+            foreach ($codes as $code) {
+                if (str_starts_with($input['phone'], $code)) {
+                    $countryCode = $code;
+                    $phone = substr($input['phone'], strlen($code));
+                    break;
+                }
+            }
 
             $client = Client::where('phone', $phone)
                 ->where('country_code', $countryCode)

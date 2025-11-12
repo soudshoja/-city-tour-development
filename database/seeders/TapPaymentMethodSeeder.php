@@ -63,7 +63,7 @@ class TapPaymentMethodSeeder extends Seeder
             
             // Kuwait
             [
-                'code' => 'src_knet',
+                'code' => 'src_kw.knet',
                 'arabic_name' => 'كي نت',
                 'english_name' => 'KNET',
                 'type' => 'Tap',
@@ -93,7 +93,7 @@ class TapPaymentMethodSeeder extends Seeder
             
             // Saudi Arabia
             [
-                'code' => 'src_mada',
+                'code' => 'src_sa.mada',
                 'arabic_name' => 'مدى',
                 'english_name' => 'MADA',
                 'type' => 'Tap',
@@ -109,7 +109,7 @@ class TapPaymentMethodSeeder extends Seeder
             
             // Bahrain
             [
-                'code' => 'src_benefit',
+                'code' => 'src_bh.benefit',
                 'arabic_name' => 'بنفت',
                 'english_name' => 'BENEFIT',
                 'type' => 'Tap',
@@ -125,7 +125,7 @@ class TapPaymentMethodSeeder extends Seeder
             
             // Qatar
             [
-                'code' => 'src_qpay',
+                'code' => 'src_qa.qpay',
                 'arabic_name' => 'كيو باي',
                 'english_name' => 'QPay (NAPS)',
                 'type' => 'Tap',

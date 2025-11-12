@@ -319,7 +319,7 @@ class ChargeController extends Controller
     public function update(Request $request, $id)
     {
         $charge = Charge::findOrFail($id);
-        
+     
         Gate::authorize('update', $charge);
         
         if (Gate::allows('updateAll', $charge)) {
@@ -356,6 +356,10 @@ class ChargeController extends Controller
             }
         } elseif (Gate::allows('updateLimited', $charge)) {
             $request->validate([
+                'api_key'     => 'nullable|string',
+                'amount' => 'nullable|numeric',
+                'paid_by' => 'required',
+                'charge_type' => 'required',
                 'self_charge' => 'nullable|numeric',
                 'extra_charge' => 'nullable|numeric',
                 'description' => 'nullable|string|max:255',
@@ -365,6 +369,10 @@ class ChargeController extends Controller
                 DB::beginTransaction();
 
                 $charge->update([
+                    'api_key'     => $request->get('api_key'),
+                    'amount' => $request->get('amount'),
+                    'paid_by' => $request->get('paid_by'),
+                    'charge_type' => $request->get('charge_type'),
                     'self_charge' => $request->get('self_charge'),
                     'extra_charge' => $request->get('extra_charge') ?? 0,
                     'description' => $request->get('description'),
@@ -436,7 +444,7 @@ class ChargeController extends Controller
 
         if (Gate::allows('updateCredentials', $charge)) {
             $request->validate([
-                'api_key'     => 'required|string',
+                'api_key'     => 'nullable|string',
                 'is_auto_paid' => 'nullable|boolean',
                 'has_url' => 'nullable|boolean',
                 'can_charge_invoice' => 'nullable|boolean',

@@ -401,7 +401,6 @@
                                 <select name="payment_method" id="payment-method-{{ $gatewayName }}"
                                     class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                     @if($methods->count() > 1)
-                                    <option value="" disabled selected>Select Payment Method</option>
                                     @endif
                                     @foreach ($methods as $method)
                                     <option value="{{ $method->id }}" {{ old('payment_method') == $method->id ? 'selected' : '' }}>

@@ -548,6 +548,29 @@ class HotelSearchService
         ?bool $nonRefundable = null,
         ?string $boardBasis = null
     ): array {
+        // occupancy['rooms'] now come as a string, need to turn it into an array , example: "[{\"adults\":2,\"childrenAges\":[5,7]},{\"adults\":1,\"childrenAges\":[]}]"
+
+        $this->logger->info('Decoding occupancy rooms data', [
+            'occupancy_rooms_raw' => $occupancy['rooms'] ?? null,
+        ]);
+
+        $rooms = [];
+        $leaderNationality = $occupancy['leaderNationality'] ?? 1;
+
+        if (!empty($occupancy['rooms'])) {
+            $roomsString = $occupancy['rooms'];
+            $rooms = $this->parseRoomsString($roomsString);
+        }
+
+        $this->logger->info("After decoding, occupancy rooms data", [
+            'occupancy_rooms' => $rooms,
+        ]);
+
+        $occupancy = [
+            'leaderNationality' => $leaderNationality,
+            'rooms' => $rooms
+        ];
+
         try {
             $this->logger->info('Starting hotel room search flow', [
                 'telephone' => $telephone,
@@ -556,7 +579,7 @@ class HotelSearchService
                 'check_in' => $checkIn,
                 'check_out' => $checkOut,
                 'room_count_requested' => $roomCount,
-                'occupancy_rooms_count' => count($occupancy['rooms'] ?? []),
+                'occupancy_rooms_count' => count($rooms),
             ]);
 
             $checkIn = date('Y-m-d', strtotime($checkIn));
@@ -931,7 +954,7 @@ class HotelSearchService
                             'room_name' => $room['offered_room']->room_name,
                             'board_basis' => $room['offered_room']->board_basis,
                             'non_refundable' => (bool)$room['offered_room']->non_refundable,
-                            'price' => (float)$room['offered_room']->price,
+                            'price' => ceil($room['offered_room']->price * 1.2), // apply 20% markup
                             'currency' => $room['offered_room']->currency,
                             'info' => $offered->info ?? null,
                             'occupancy' => !empty($room['offered_room']->occupancy) ? json_decode($room['offered_room']->occupancy, true) : null,
@@ -942,7 +965,12 @@ class HotelSearchService
                             'package' => [
                                 'status' => $prebookResponse['package']['status'] ?? null,
                                 'complete' => $prebookResponse['package']['complete'] ?? null,
-                                'price' => $prebookResponse['package']['price'] ?? [],
+                                'price' => [
+                                    'selling' => [
+                                        'value' => isset($prebookResponse['package']['price']['selling']['value']) ? ceil($prebookResponse['package']['price']['selling']['value'] * 1.2) : null,
+                                        'currency' => $prebookResponse['package']['price']['selling']['currency'] ?? 'KWD',
+                                    ],
+                                ],
                                 'rate' => $prebookResponse['package']['rate'] ?? [],
                                 'packageRooms' => array_map(function ($room) {
                                     return [
@@ -1001,5 +1029,52 @@ class HotelSearchService
                 'message' => trim($message)
             ];
         }
+    }
+
+    protected function parseRoomsString(string $roomsString): array
+    {
+        $this->logger->info('Parsing rooms string', ['raw_string' => $roomsString]);
+
+        $normalizedString = str_replace("'", '"', $roomsString);
+
+        $decoded = json_decode($normalizedString, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            if (isset($decoded[0]) && is_array($decoded[0]) && isset($decoded[0]['adults'])) {
+                $this->logger->info('Rooms string decoded successfully', ['decoded' => $decoded]);
+                return $decoded;
+            }
+        }
+
+        $normalizedString = trim($normalizedString);
+
+        if (preg_match('/^\[(.*)\]$/', $normalizedString, $matches)) {
+            $inner = $matches[1];
+            $parts = preg_split('/\]\s*,\s*\[/', $inner);
+
+            $rooms = [];
+            foreach ($parts as $part) {
+                $part = trim($part);
+
+                if (str_starts_with($part, '{') && str_ends_with($part, '}')) {
+                    $room = json_decode($part, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($room)) {
+                        $rooms[] = $room;
+                    }
+                }
+            }
+
+            if (!empty($rooms)) {
+                $this->logger->info('Rooms string parsed successfully', ['parsed' => $rooms]);
+                return $rooms;
+            }
+        }
+
+        $this->logger->error('Failed to parse rooms string', [
+            'raw_string' => $roomsString,
+            'normalized_string' => $normalizedString,
+            'json_error' => json_last_error_msg()
+        ]);
+
+        return [];
     }
 }

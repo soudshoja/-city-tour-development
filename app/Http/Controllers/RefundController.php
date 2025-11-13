@@ -865,18 +865,37 @@ class RefundController extends Controller
         Log::info("Cleaned up old transactions and journal entries for refund {$refund->refund_number}");
     }
 
-    public function complete_process(Refund $refund)
+    public function completeProcess(Refund $refund)
     {
-        $refundDetails = $refund->refundDetails()->with('task.agent')->get();
+        Log::info('Hit completeProcess()', ['refund_id' => $refund->id]);
+
+        $refundDetails = $refund->refundDetails()->with('task.agent', 'refund')->get();
+        Log::info('Fetched refund details', [
+            'count' => $refundDetails->count(),
+            'refund_details' => $refundDetails
+        ]);
 
         if ($refundDetails->isEmpty()) {
+            Log::warning('Refund has no linked tasks', ['refund_id' => $refund->id]);
             return back()->with('error', 'No tasks linked to this refund.');
         }
 
         try {
             foreach ($refundDetails as $detail) {
+                Log::info('Processing refund detail', ['detail_id' => $detail->id]);
+
                 $taskRec = $detail->task;
-                if (!$taskRec) continue;
+                if (!$taskRec) {
+                    Log::warning('Task not found for refund detail', ['detail_id' => $detail->id]);
+                    continue;
+                }
+
+                Log::info('Task found', [
+                    'task_id' => $taskRec->id,
+                    'company_id' => $taskRec->company_id,
+                    'agent_id' => $taskRec->agent->id ?? null,
+                    'all_data' => $detail
+                ]);
 
                 $transaction = Transaction::create([
                     'entity_id' => $taskRec->company_id,
@@ -884,16 +903,19 @@ class RefundController extends Controller
                     'company_id' => $taskRec->company_id,
                     'branch_id' => $taskRec->agent->branch_id,
                     'transaction_type' => 'debit',
-                    'amount' => $refund->new_task_profit,
+                    'amount' => $detail->new_task_profit,
                     'description' => 'Adjusted Profit - Refund (' . $refund->refund_number . ')',
                     'reference_type' => 'Refund',
                     'reference_number' => $refund->refund_number,
                     'name' => $taskRec->client_name,
                     'remarks_internal' => $refund->remarks_internal,
-                    'transaction_date' => $refund->date,
+                    'transaction_date' => $refund->refund_date,
                 ]);
+                Log::info('Transaction created', ['transaction_id' => $transaction->id]);
 
                 $incomeIndirectIncome = Account::where('name', 'LIKE', '%Expenses%')->first();
+                Log::info('Fetched incomeIndirectIncome', ['id' => $incomeIndirectIncome->id ?? null]);
+
                 $accountSupplierRefundIncome = 'Refund Clearing / Payable Allocation';
 
                 $supplierRefundIncome = Account::firstOrCreate(
@@ -918,11 +940,13 @@ class RefundController extends Controller
                         'currency' => 'KWD',
                     ]
                 );
+                Log::info('Supplier Refund Income Account', ['account_id' => $supplierRefundIncome->id]);
 
                 $incomeIndirectLiability = Account::where('name', 'LIKE', '%Refund Payable%')
                     ->where('company_id', $taskRec->company_id)
                     ->where('root_id', 2)
                     ->first();
+                Log::info('Fetched incomeIndirectLiability', ['id' => $incomeIndirectLiability->id ?? null]);
 
                 $accountSupplierRefundLiability = 'Clients';
 
@@ -948,48 +972,59 @@ class RefundController extends Controller
                         'currency' => 'KWD',
                     ]
                 );
+                Log::info('Supplier Refund Liability Account', ['account_id' => $supplierRefundLiability->id]);
 
-                JournalEntry::create([
-                    'transaction_date' => $refund->date,
+                $journal1 = JournalEntry::create([
+                    'transaction_date' => $refund->refund_date,
                     'transaction_id' => $transaction->id,
                     'company_id' => $taskRec->company_id,
                     'branch_id' => $taskRec->agent->branch_id,
                     'account_id' => $supplierRefundIncome->id,
                     'description' => $refund->refund_number . ' - ' . $supplierRefundIncome->name . '',
-                    'debit' => $refund->new_task_profit,
+                    'debit' => $detail->new_task_profit,
                     'credit' => 0,
                     'voucher_number' => $refund->id,
                     'name' => $supplierRefundIncome->name,
                     'type' => 'refund',
                 ]);
+                Log::info('Journal entry (debit) created', ['journal_id' => $journal1->id]);
 
-                JournalEntry::create([
-                    'transaction_date' => $refund->date,
+                $journal2 = JournalEntry::create([
+                    'transaction_date' => $refund->refund_date,
                     'transaction_id' => $transaction->id,
                     'company_id' => $taskRec->company_id,
                     'branch_id' => $taskRec->agent->branch_id,
                     'account_id' => $supplierRefundLiability->id,
                     'description' => $refund->refund_number . ' - ' . $supplierRefundLiability->name . '',
                     'debit' => 0,
-                    'credit' => $refund->new_task_profit,
+                    'credit' => $detail->new_task_profit,
                     'voucher_number' => $refund->id,
                     'name' => $supplierRefundLiability->name,
                     'type' => 'refund',
                 ]);
+                Log::info('Journal entry (credit) created', ['journal_id' => $journal2->id]);
 
-                Credit::create([
+                $credit = Credit::create([
                     'company_id'  => $taskRec->company_id,
                     'client_id'   => $taskRec->client_id,
-                    'task_id'   => $taskRec->id,
+                    'task_id'     => $taskRec->id,
                     'type'        => 'Refund',
                     'description' => $refund->refund_number . ': Refund for ' . $supplierRefundLiability->name,
-                    'amount'      => $refund->new_task_profit,
+                    'amount'      => $detail->new_task_profit,
                 ]);
+                Log::info('Credit created', ['credit_id' => $credit->id]);
             }
 
             $refund->update(['status' => 'completed']);
+            Log::info('Refund status updated to completed', ['refund_id' => $refund->id]);
+
             return redirect()->route('refunds.index')->with('success', 'Refund processed successfully.');
         } catch (\Exception $e) {
+            Log::error('Error in completeProcess()', [
+                'refund_id' => $refund->id,
+                'error_message' => $e->getMessage(),
+                'stack' => $e->getTraceAsString(),
+            ]);
             return redirect()->route('refunds.index')->with('error', 'Refund processing failed.');
         }
     }

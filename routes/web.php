@@ -441,7 +441,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/unpaid-invoice', [RefundController::class, 'storeForUnpaidInvoice'])->name('store-unpaid');
         Route::get('/{refund}/edit', [RefundController::class, 'edit'])->name('edit');
         Route::put('/{refund}', [RefundController::class, 'update'])->name('update');
-        Route::post('/{refund}/complete-process', [RefundController::class, 'complete_process'])->name('complete_process');
+        Route::post('/{refund}/complete-process', [RefundController::class, 'completeProcess'])->name('complete_process');
         Route::get('/{refundClientId}/complete', [RefundController::class, 'completeRefundClient'])->name('refund-client.complete');
         Route::delete('/{refundClientId}', [RefundController::class, 'deleteRefundClient'])->name('refund-client.delete');
         Route::get('/{companyId}/{refundNumber}', [RefundController::class, 'show'])->name('show')->withoutMiddleware(['auth']);

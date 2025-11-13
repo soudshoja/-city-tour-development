@@ -491,7 +491,7 @@ class CreateFullB2CBooking
             } else {
                 $paymentMethod = PaymentMethod::where('is_active', true)
                     ->where('type', strtolower($input['payment_gateway']))
-                    ->where('english_name', 'LIKE', '%' . strtolower($input['payment_method']) . '%')
+                    ->where('english_name', 'LIKE', $input['payment_method'])
                     ->first();
             }
 

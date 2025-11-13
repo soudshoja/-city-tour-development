@@ -178,24 +178,43 @@
 
     @include('refunds.refund-client')
     <script>
-        function confirmProcessCompleted(refundId) {
-            if (confirm('Are you sure you want to mark this refund as completed?')) {
-                if (confirm('This action cannot be undone. Do you want to proceed?')) {
-                    processCompleted(refundId);
-                }
+    function confirmProcessCompleted(refundId) {
+        if (confirm('Are you sure you want to mark this refund as completed?')) {
+            if (confirm('This action cannot be undone. Do you want to proceed?')) {
+                processCompleted(refundId);
             }
         }
+    }
 
-        function processCompleted(taskId, refundId) {
-            fetch(`/refunds/${refundId}/complete-process`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    }
-                })
-                .then(response => response.ok ? window.location.href = '/refunds' : alert('Something went wrong.'))
-                .catch(() => alert('Error processing refund.'));
-            console.log(taskId, refundId);
-        }
-    </script>
+    function processCompleted(refundId) {
+        // Optional: show console log for debugging
+        console.log("Processing refund with ID:", refundId);
+
+        fetch(`/refunds/${refundId}/complete-process`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            credentials: 'same-origin' // ✅ ensures cookies/session are sent
+        })
+        .then(async response => {
+            if (response.ok) {
+                // ✅ refund processed successfully
+                alert('Refund process completed successfully!');
+                window.location.href = '/refunds';
+            } else {
+                // ❌ handle errors gracefully
+                const text = await response.text();
+                console.error('Server response:', text);
+                alert('Something went wrong. Check console for details.');
+            }
+        })
+        .catch(error => {
+            console.error('Error processing refund:', error);
+            alert('Error processing refund. Please try again.');
+        });
+    }
+</script>
+
 </x-app-layout>

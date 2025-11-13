@@ -489,7 +489,10 @@ class CreateFullB2CBooking
             if (empty($input['payment_method'])) {
                 $paymentMethod = null;
             } else {
-                $paymentMethod = PaymentMethod::where([['type', strtolower($input['payment_gateway'])], ['english_name', $input['payment_method']]])->first();
+                $paymentMethod = PaymentMethod::where('is_active', true)
+                    ->where('type', strtolower($input['payment_gateway']))
+                    ->where('english_name', strtolower($input['payment_method']))
+                    ->first();
             }
 
             $marginPrice = (0.2 * ($input['amount'])) + $input['amount'];

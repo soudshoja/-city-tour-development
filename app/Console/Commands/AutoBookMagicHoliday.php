@@ -202,6 +202,9 @@ class AutoBookMagicHoliday extends Command
                                 'agent' => [
                                     'model' => $agent,
                                     'message' => "Hotel booking FAILED for your client " . ($client?->full_name ?? 'Unknown Client') . " (Payment ID: {$payment->id}). Please investigate."
+                                ],
+                                'payment' => [
+                                    'model' => $payment,
                                 ]
                             ];
 
@@ -224,6 +227,9 @@ class AutoBookMagicHoliday extends Command
                             'agent' => [
                                 'model' => $agent,
                                 'message' => "Hotel booking FAILED for your client " . ($client?->full_name ?? 'Unknown Client') . " (Payment ID: {$payment->id}). Please investigate."
+                            ],
+                            'payment' => [
+                                'model' => $payment,
                             ]
                         ];
 
@@ -504,6 +510,7 @@ class AutoBookMagicHoliday extends Command
                 'amount' => $invoice->amount,
                 'currency' => $invoice->currency,
                 'status' => $invoice->status,
+                'url' => route('invoice.show' , ['companyId' => $invoice->company_id , 'invoiceNumber' => $invoice->invoice_number]),
             ];
         }
 

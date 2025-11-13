@@ -15,11 +15,11 @@ class Charge extends Model
         'name',
         'type',
         'description',
-        'auth_type',
+        // 'auth_type',
         'api_key',
         'paid_by',
         'amount',
-        'extra_charge', //Not yet being used
+        'extra_charge',
         'self_charge',
         'is_active',
         'can_generate_link',
@@ -31,7 +31,10 @@ class Charge extends Model
         'acc_fee_bank_id',
         'is_auto_paid',
         'has_url',
-        'can_charge_invoice', // New column added for invoice charge capability
+        'can_charge_invoice',
+        'is_system_default',
+        'can_be_deleted',
+        'enabled_by',
     ];
 
     protected $casts = [
@@ -40,6 +43,8 @@ class Charge extends Model
         'is_auto_paid' => 'boolean',
         'has_url' => 'boolean',
         'can_charge_invoice' => 'boolean',
+        'is_system_default' => 'boolean',
+        'can_be_deleted' => 'boolean',
     ];
 
     public function getAmountAttribute($value)
@@ -80,6 +85,62 @@ class Charge extends Model
     public function methods()
     {
         return $this->hasMany(PaymentMethod::class, 'charge_id');
+    }
+
+    /**
+     * Check if this gateway has API implementation in code
+     * 
+     * This is a TECHNICAL CHECK (not business logic):
+     * - Returns TRUE if code exists in app/Support/PaymentGateway/ or app/Services/
+     * - Returns FALSE if gateway is custom/not implemented
+     * 
+     * Use Cases:
+     * 1. Before attempting to generate payment links
+     * 2. Validating if ChargeService methods exist for this gateway
+     * 3. Showing/hiding API settings buttons in UI
+     * 
+     * Combined with can_generate_link (database field):
+     * - hasApiImplementation() = Technical capability (code exists?)
+     * - can_generate_link = Business permission (enabled by admin?)
+     * 
+     * Implementation locations to check:
+     * - InvoiceController@show (line ~1926-1972) - Check before link generation
+     * - InvoiceController@split (line ~2146-2175) - Validate before ChargeService call
+     * - PaymentController@paymentShowLink (line ~1771-1794) - Recalculate fees safely
+     * - PaymentController@paymentStoreLinkProcess (line ~1617-1630) - Validate before processing
+     * - charges/index.blade.php - Conditionally show API settings button
+     * 
+     * @return bool True if API implementation exists in code
+     */
+    public function hasApiImplementation(): bool
+    {
+        $implementedGateways = ['Tap', 'MyFatoorah', 'Hesabe', 'UPayment'];
+        return in_array($this->name, $implementedGateways, true);
+    }
+
+    /**
+     * Check if payment link can be generated (combined validation)
+     * 
+     * This combines both technical and business checks:
+     * - Technical: Does code implementation exist?
+     * - Business: Is link generation enabled for this gateway?
+     * 
+     * Recommended usage pattern:
+     * ```php
+     * if (!$charge->canGeneratePaymentLink()) {
+     *     if (!$charge->hasApiImplementation()) {
+     *         return "Gateway not supported by system";
+     *     }
+     *     return "Link generation disabled for this gateway";
+     * }
+     * // Proceed with link generation
+     * ```
+     * 
+     * @return bool True if both technical capability exists AND business permission granted
+     */
+    public function canGeneratePaymentLink(): bool
+    {
+        return $this->hasApiImplementation() && $this->can_generate_link;
     }
 
     protected static ?int $resolvedCompanyId = null;

@@ -275,12 +275,12 @@ class MagicHolidayService
         return $this->request('post', '/bookings', [], $bookingData);
     }
 
-    public function startHotelSearch(array $searchParams)
+    public function startHotelSearch(array $payload)
     {
         $scopes = ['read:hotels-search'];
         $this->applyRequestSpacing();
-        
-        $response = $this->request('post', '/hotels/v1/search/start', $scopes, [], $searchParams);
+
+        $response = $this->request('post', '/hotels/v1/search/start', $scopes, [], $payload);
         
         if (isset($response['headers'])) {
             $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;

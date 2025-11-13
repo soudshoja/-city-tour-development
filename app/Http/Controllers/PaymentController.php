@@ -281,6 +281,7 @@ class PaymentController extends Controller
                 'invoice_id' => $invoice->id,
                 'invoice_number' => $invoice->invoice_number,
                 'payment_id' => $payment->id,
+                'payment_method_id' => $data['payment_method'],
                 'payment_gateway' => $payment->payment_gateway,
                 'invoice_partial_id' => $data['invoice_partial_id'],
                 'description' => 'Payment for invoice: ' . $invoice->id,
@@ -293,19 +294,16 @@ class PaymentController extends Controller
             logger('response', ['response' => $response]);
 
             if (isset($response['errors'])) {
-                return response()->json(['error' => $response['errors'][0]['description']], 500);
+                return response()->json(['error' => $response['errors'][0]['description'] ?? 'Payment failed'], 500);
+            }
+
+            if (isset($response['status']) && $response['status'] === 'FAILED') {
+                $errorMessage = $response['gateway']['response']['message'] ?? $response['response']['message'] ?? 'Payment failed';
+                return response()->json(['error' => $errorMessage], 500);
             }
 
             $paymentReference = $response['id'];
             $paymentUrl = $response['transaction']['url'];
-
-            // $payment->status = 'initiate';
-            // $payment->save();
-
-            // return response()->json([
-            //     'success' => 'Payment initiated successfully',
-            //     'url' => $response['transaction']['url'],
-            // ]);
 
         } else if (strtolower($data['payment_gateway']) === 'myfatoorah') {
 
@@ -1495,24 +1493,22 @@ class PaymentController extends Controller
         $invoices = Invoice::all();
         $payments = Payment::all();
         $currencies = Currency::all();
-        $paymentGateways = Charge::where('can_generate_link', true)
-            ->where('is_active', true)->get();
+        
+        $paymentGateways = Charge::with('methods')->where('is_active', true)->get();
 
-        $myFatoorahMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $companyId)
-            ->where('type', 'myfatoorah')
-            ->get();
+        $paymentMethods = PaymentMethod::where('is_active', true)->get();
 
-        $uPaymentMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $companyId)
-            ->where('type', 'upayment')
-            ->get();
-
-        $hesabeMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $companyId)
-            ->where('type', 'hesabe')
-            ->get();
-        /* $paymentMethods = PaymentMethod::where('is_active', true)->get(); */
+        $gatewayMethods = [];
+        foreach ($paymentGateways as $gateway) {
+            $methods = PaymentMethod::where('is_active', true)
+                ->where('company_id', $companyId)
+                ->where('type', $gateway->name)
+                ->get();
+            
+            if ($methods->isNotEmpty()) {
+                $gatewayMethods[strtolower($gateway->name)] = $methods;
+            }
+        }
 
         if ($user->role_id == Role::AGENT) {
             $companyId = $user->agent->branch->company_id;
@@ -1534,9 +1530,8 @@ class PaymentController extends Controller
             'invoices',
             'currencies',
             'paymentGateways',
-            'myFatoorahMethods',
-            'hesabeMethods',
-            'uPaymentMethods',
+            'paymentMethods',
+            'gatewayMethods',
             'can_import'
         ));
     }
@@ -1754,14 +1749,20 @@ class PaymentController extends Controller
                     'gatewayFee' => 0,
                 ];
 
-                if(strtolower($payment->payment_gateway) === 'myfatoorah'){
-                    $tempChargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
-                } else if(strtolower($payment->payment_gateway) === 'tap'){
-                    $tempChargeResult = ChargeService::TapCharge($chargeData, $companyId);
-                } else if(strtolower($payment->payment_gateway) === 'upayment'){
-                    $tempChargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
-                } else if(strtolower($payment->payment_gateway) === 'hesabe') {
-                    $tempChargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+                try {
+                    $tempChargeResult = ChargeService::getFee(
+                        gatewayName: $payment->payment_gateway,
+                        amount: $payment->amount,
+                        methodCode: $payment->payment_method_id ?? null,
+                        companyId: $companyId,
+                        currency: $payment->currency
+                    );
+                } catch (Exception $e) {
+                    Log::error('getFee exception in paymentShowLink', [
+                        'gateway' => $payment->payment_gateway,
+                        'message' => $e->getMessage(),
+                        'payment_id' => $payment->id,
+                    ]);
                 }
 
                 $gatewayFee = $tempChargeResult['fee'] ?? 0;
@@ -1777,14 +1778,21 @@ class PaymentController extends Controller
 
             $chargeResult = [];
             
-            if(strtolower($payment->payment_gateway) === 'tap'){
-                $chargeResult = ChargeService::TapCharge($chargeData, 'Tap');
-            } else if (strtolower($payment->payment_gateway) === 'upayment'){
-                $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
-            } else if(strtolower($payment->payment_gateway) === 'myfatoorah'){
-                $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
-            } else if(strtolower($payment->payment_gateway) === 'hesabe') {
-                $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+            try {
+                $chargeResult = ChargeService::getFee(
+                    gatewayName: $payment->payment_gateway,
+                    amount: $payment->amount,
+                    methodCode: $payment->payment_method_id ?? null,
+                    companyId: $companyId,
+                    currency: $payment->currency
+                );
+            } catch (Exception $e) {
+                Log::error('getFee exception in paymentShowLink (unpaid)', [
+                    'gateway' => $payment->payment_gateway,
+                    'message' => $e->getMessage(),
+                    'payment_id' => $payment->id,
+                ]);
+                $chargeResult = ['fee' => 0, 'finalAmount' => $payment->amount, 'paid_by' => 'Company'];
             }
 
             $gatewayFee = $chargeResult['fee'] ?? 0;
@@ -1827,13 +1835,16 @@ class PaymentController extends Controller
 
         if (strtolower($paymentGateway) === 'tap') {
             $tap = new Tap();
+            $paymentMethod = $payment->paymentMethod ? $payment->paymentMethod->id : null;
 
-            $chargeResult = ChargeService::TapCharge([
-                'amount' => $payment->amount,
-                'currency' => $payment->currency,
-                'client_id' => $payment->client_id,
-                'agent_id' => $payment->agent_id
-            ], 'Tap');
+            $chargeResult = ChargeService::getFee(
+                gatewayName: 'Tap',
+                amount: $payment->amount,
+                methodCode: $paymentMethod,
+                companyId: $payment->agent->branch->company_id,
+                currency: $payment->currency,
+            );
+
             $finalAmount = $chargeResult['finalAmount'];
 
             $requestTap = new Request([
@@ -1843,6 +1854,7 @@ class PaymentController extends Controller
                 'voucher_number' => $payment->voucher_number,
                 'payment_id' => $payment->id,
                 'payment_gateway' => $paymentGateway,
+                'payment_method_id' => $paymentMethod,
                 'description' => 'Payment for' . $payment->voucher_number,
                 'process' => $process,
             ]);
@@ -1962,6 +1974,12 @@ class PaymentController extends Controller
                     ]
                 ],
             ];
+
+            Log::info('MyFatoorah ExecutePayment request', [
+                'payload' => $executePayload,
+                'api_key' => $apiKey,
+                'base_url' => $baseUrl,
+            ]);
 
             $executeResponse = Http::withHeaders([
                 'Authorization' => "Bearer $apiKey",
@@ -4508,14 +4526,21 @@ class PaymentController extends Controller
 
                 $tempChargeResult = [];
 
-                if(strtolower($payment->payment_gateway) === 'myfatoorah') {
-                    $tempChargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
-                } elseif (strtolower($payment->payment_gateway) === 'tap') {
-                    $tempChargeResult = ChargeService::TapCharge($chargeData, 'Tap');
-                } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
-                    $tempChargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
-                } elseif (strtolower($payment->payment_gateway) === 'upayment') {
-                    $tempChargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+                try {
+                    $tempChargeResult = ChargeService::getFee(
+                        gatewayName: $payment->payment_gateway,
+                        amount: $payment->amount,
+                        methodCode: $payment->payment_method_id ?? null,
+                        companyId: $companyId,
+                        currency: $payment->currency
+                    );
+                } catch (Exception $e) {
+                    Log::error('getFee exception in paymentShowLinkArabic', [
+                        'gateway' => $payment->payment_gateway,
+                        'message' => $e->getMessage(),
+                        'payment_id' => $payment->id,
+                    ]);
+                    $tempChargeResult = ['fee' => 0];
                 }
 
                 $gatewayFee = $tempChargeResult['fee'] ?? 0;
@@ -4536,14 +4561,21 @@ class PaymentController extends Controller
 
             $chargeResult = [];
 
-            if(strtolower($payment->payment_gateway) === 'myfatoorah') {
-                $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
-            } elseif (strtolower($payment->payment_gateway) === 'tap') {
-                $chargeResult = ChargeService::TapCharge($chargeData, 'Tap');
-            } elseif (strtolower($payment->payment_gateway) === 'hesabe') {
-                $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
-            } elseif (strtolower($payment->payment_gateway) === 'upayment') {
-                $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $companyId);
+            try {
+                $chargeResult = ChargeService::getFee(
+                    gatewayName: $payment->payment_gateway,
+                    amount: $payment->amount,
+                    methodCode: $payment->payment_method_id ?? null,
+                    companyId: $companyId,
+                    currency: $payment->currency
+                );
+            } catch (Exception $e) {
+                Log::error('getFee exception in paymentShowLinkArabic (unpaid)', [
+                    'gateway' => $payment->payment_gateway,
+                    'message' => $e->getMessage(),
+                    'payment_id' => $payment->id,
+                ]);
+                $chargeResult = ['fee' => 0, 'finalAmount' => $payment->amount, 'paid_by' => 'Company'];
             }
 
             $gatewayFee = $chargeResult['fee'] ?? 0;

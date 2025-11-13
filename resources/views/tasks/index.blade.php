@@ -485,7 +485,7 @@
                         <hr>
                         <form id="agent-supplier-task" action="{{ route('tasks.agent.upload') }}"
                             class="p-4 flex flex-col" method="POST" enctype="multipart/form-data">
-                                @csrf
+                            @csrf
 
                             <div class="mb-3 z-10">
                                 <x-searchable-dropdown name="supplier_id" :items="$suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])" placeholder="Select Supplier"
@@ -1167,7 +1167,7 @@
                                                                 <div x-show="open" @click.away="open = false" x-anchor.bottom-start.offset.5="$refs.button"
                                                                     x-cloak class="absolute z-[9999] w-32 rounded-md bg-white shadow-lg border border-gray-200">
                                                                     <ul class="py-1 text-sm text-gray-700 dark:text-gray-200">
-                                                                       <li>
+                                                                        <li>
                                                                             <a href="javascript:void(0);"
                                                                                 class="flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
                                                                                 @click.prevent="console.log('View task clicked for ID:', {{ $task->id }}); $dispatch('view-task', { id: {{ $task->id }} }); open = false;">
@@ -1431,20 +1431,20 @@
                                                                                                     id="payment_method_account_id_{{ $task->id }}"
                                                                                                     class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full"
                                                                                                     onchange="console.log('Selected Payment Method ID:', this.value)">
-                                                                                                    
+
                                                                                                     <option value="" disabled {{ empty($task->payment_method_account_id) ? 'selected' : '' }}>
                                                                                                         Select Payment Method
                                                                                                     </option>
-                                                                                                    
+
                                                                                                     @foreach($listOfCreditors as $groupName => $accounts)
-                                                                                                        <optgroup label="{{ $groupName }}">
-                                                                                                            @foreach($accounts as $method)
-                                                                                                                <option value="{{ $method['id'] }}"
-                                                                                                                    {{ $task->payment_method_account_id == $method['id'] ? 'selected' : '' }}>
-                                                                                                                    {{ $method['name'] }}
-                                                                                                                </option>
-                                                                                                            @endforeach
-                                                                                                        </optgroup>
+                                                                                                    <optgroup label="{{ $groupName }}">
+                                                                                                        @foreach($accounts as $method)
+                                                                                                        <option value="{{ $method['id'] }}"
+                                                                                                            {{ $task->payment_method_account_id == $method['id'] ? 'selected' : '' }}>
+                                                                                                            {{ $method['name'] }}
+                                                                                                        </option>
+                                                                                                        @endforeach
+                                                                                                    </optgroup>
                                                                                                     @endforeach
                                                                                                 </select>
                                                                                             </div>
@@ -1506,7 +1506,7 @@
                                                                                     Update <strong>Price</strong>, <strong>Tax</strong>, and <strong>Surcharge</strong>.
                                                                                     The <strong>Total</strong> recalculates automatically. This action update the task and its related COA records.
                                                                                     @if($isInvoicedAndPaid)
-                                                                                        It will also recalculate commission for the <strong>paid</strong> invoice.
+                                                                                    It will also recalculate commission for the <strong>paid</strong> invoice.
                                                                                     @endif
                                                                                 </p>
                                                                             </div>
@@ -1536,7 +1536,7 @@
                                                                                 </div>
                                                                                 <div>
                                                                                     <label class="block text-sm font-medium text-gray-700">Total</label>
-                                                                                    <input required readonly name ="total" :value="total" class="border border-gray-300 p-2 rounded-md w-full bg-gray-100">
+                                                                                    <input required readonly name="total" :value="total" class="border border-gray-300 p-2 rounded-md w-full bg-gray-100">
                                                                                 </div>
                                                                                 <div>
                                                                                     <label class="block text-sm font-medium text-gray-700">Remarks *</label>
@@ -2016,9 +2016,17 @@
                                         </div>
                                     </div>
 
-                                <div id="floatingActions"
-                                    class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-10 p-3">
+                                    <div id="floatingActions"
+                                        class="hidden flex justify-between gap-5 fixed CuzPostion bg-[#f6f8fa] dark:bg-gray-800 shadow-[0_0_4px_2px_rgb(31_45_61_/_10%)] dark:shadow-[0_0_4px_2px_rgb(255_255_255_/_10%)] rounded-lg w-auto h-auto z-10 p-3">
                                         <div class="flex items-center gap-5 h-full">
+                                            <button id="createInvoiceBtn" data-route="{{ route('invoices.create') }}" type="button"
+                                                class="hidden flex px-5 py-3 gap-3 btn-success hover:bg-green-600 rounded-lg shadow-sm items-center transition-colors duration-200">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                                                    <path fill="#ffffff"
+                                                        d="M2 12c0-2.8 1.6-5.2 4-6.3V3.5C2.5 4.8 0 8.1 0 12s2.5 7.2 6 8.5v-2.2c-2.4-1.1-4-3.5-4-6.3m13-9c-5 0-9 4-9 9s4 9 9 9s9-4 9-9s-4-9-9-9m5 10h-4v4h-2v-4h-4v-2h4V7h2v4h4z" />
+                                                </svg>
+                                                <span class="text-sm">Create Invoice</span>
+                                            </button>
                                             <button id="proceedRefundBtn" data-route="{{ route('refunds.create') }}" type="button"
                                                 class="hidden flex px-5 py-3 gap-3 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-sm items-center transition-colors duration-200">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
@@ -2084,7 +2092,7 @@
             </div>
         </div>
     </div>
-        <!-- Task View Modal -->
+    <!-- Task View Modal -->
     <div x-data="{ 
         showTaskModal: false, 
         showTaxPopup: false,
@@ -2109,31 +2117,31 @@
                 this.loading = false;
             }
         }
-    }" 
-    @view-task.window="console.log('view-task event received:', $event.detail); fetchTaskDetails($event.detail.id)">
-        
+    }"
+        @view-task.window="console.log('view-task event received:', $event.detail); fetchTaskDetails($event.detail.id)">
+
         <!-- Modal Overlay -->
-        <div x-show="showTaskModal" 
-             x-cloak
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0"
-             @click.self="showTaskModal = false"
-             @keydown.escape.window="showTaskModal = false"
-             class="fixed inset-0 z-[10001] flex items-center justify-center bg-gray-500 bg-opacity-50 backdrop-blur-sm">
-            
+        <div x-show="showTaskModal"
+            x-cloak
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            @click.self="showTaskModal = false"
+            @keydown.escape.window="showTaskModal = false"
+            class="fixed inset-0 z-[10001] flex items-center justify-center bg-gray-500 bg-opacity-50 backdrop-blur-sm">
+
             <!-- Modal Content -->
             <div x-transition:enter="transition ease-out duration-300 transform"
-                 x-transition:enter-start="opacity-0 scale-95 -translate-y-4"
-                 x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                 x-transition:leave="transition ease-in duration-200 transform"
-                 x-transition:leave-start="opacity-100 scale-100"
-                 x-transition:leave-end="opacity-0 scale-95"
-                 class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-6xl w-full mx-4 max-h-[95vh] overflow-hidden border border-gray-200 dark:border-gray-700">
-                
+                x-transition:enter-start="opacity-0 scale-95 -translate-y-4"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-200 transform"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-6xl w-full mx-4 max-h-[95vh] overflow-hidden border border-gray-200 dark:border-gray-700">
+
                 <!-- Modal Header with Gradient -->
                 <div class="relative bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 px-8 py-6">
                     <div class="absolute inset-0 bg-grid-pattern opacity-10"></div>
@@ -2149,8 +2157,8 @@
                                 <span x-show="taskData" x-text="taskData?.reference" class="text-sm text-blue-100 font-mono bg-white/10 px-3 py-1 rounded-full mt-1 inline-block"></span>
                             </div>
                         </div>
-                        <button @click="showTaskModal = false" 
-                                class="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-xl p-2 transition-all duration-200 hover:rotate-90 transform">
+                        <button @click="showTaskModal = false"
+                            class="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-xl p-2 transition-all duration-200 hover:rotate-90 transform">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
@@ -2160,7 +2168,7 @@
 
                 <!-- Modal Body -->
                 <div class="p-5 overflow-y-auto max-h-[calc(95vh-180px)] bg-gray-50 dark:bg-gray-900">
-                    
+
                     <!-- Loading State -->
                     <div x-show="loading" class="flex flex-col items-center justify-center py-12">
                         <div class="relative">
@@ -2187,7 +2195,7 @@
 
                     <!-- Task Details Content -->
                     <div x-show="taskData && !loading && !error" class="space-y-4">
-                        
+
                         <!-- Enhanced Information Cards -->
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <!-- Basic Information Card -->
@@ -2213,15 +2221,15 @@
                                         </div>
                                         <div class="flex items-start justify-between group/item hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors">
                                             <span class="text-base text-gray-600 dark:text-gray-400 font-medium">Status:</span>
-                                            <span x-text="taskData?.status" 
-                                                  :class="{
+                                            <span x-text="taskData?.status"
+                                                :class="{
                                                       'text-green-700 bg-green-100 dark:bg-green-900/50 dark:text-green-300': taskData?.status === 'confirmed',
                                                       'text-blue-700 bg-blue-100 dark:bg-blue-900/50 dark:text-blue-300': taskData?.status === 'issued',
                                                       'text-yellow-700 bg-yellow-100 dark:bg-yellow-900/50 dark:text-yellow-300': taskData?.status === 'pending',
                                                       'text-red-700 bg-red-100 dark:bg-red-900/50 dark:text-red-300': taskData?.status === 'void',
                                                       'text-gray-700 bg-gray-100 dark:bg-gray-700 dark:text-gray-300': !['confirmed', 'issued', 'pending', 'void'].includes(taskData?.status)
                                                   }"
-                                                  class="text-base font-bold capitalize px-3 py-1.5 rounded-full shadow-sm"></span>
+                                                class="text-base font-bold capitalize px-3 py-1.5 rounded-full shadow-sm"></span>
                                         </div>
                                         <div x-show="taskData?.passenger_name" class="flex items-start justify-between group/item hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 rounded-lg transition-colors">
                                             <span class="text-base text-gray-600 dark:text-gray-400 font-medium">Passenger:</span>
@@ -2282,12 +2290,12 @@
                                             <span x-text="taskData?.price ? Number(taskData.price).toFixed(3) + ' KWD' : 'N/A'" class="text-base font-bold text-white"></span>
                                         </div>
                                         <button type="button"
-                                             @click="showTaxPopup = true; console.log('Tax popup opened', 'tax:', taskData?.tax, 'taxes_record:', taskData?.taxes_record);"
-                                             :disabled="!taskData?.tax && (!taskData?.taxes_record || (Array.isArray(taskData?.taxes_record) && taskData.taxes_record.length === 0))"
-                                             :class="(taskData?.tax || (taskData?.taxes_record && (!Array.isArray(taskData?.taxes_record) || taskData.taxes_record.length > 0))) ? 'cursor-pointer hover:bg-white/30 hover:shadow-lg' : 'cursor-not-allowed opacity-50'"
-                                             class="w-full flex items-center justify-between bg-white/10 p-3 rounded-xl transition-all duration-200 border-0 text-left relative"
-                                             style="z-index: 999 !important; position: relative;"
-                                             :title="(taskData?.tax || (taskData?.taxes_record && (!Array.isArray(taskData?.taxes_record) || taskData.taxes_record.length > 0))) ? 'Click to view tax details' : 'No tax information available'">
+                                            @click="showTaxPopup = true; console.log('Tax popup opened', 'tax:', taskData?.tax, 'taxes_record:', taskData?.taxes_record);"
+                                            :disabled="!taskData?.tax && (!taskData?.taxes_record || (Array.isArray(taskData?.taxes_record) && taskData.taxes_record.length === 0))"
+                                            :class="(taskData?.tax || (taskData?.taxes_record && (!Array.isArray(taskData?.taxes_record) || taskData.taxes_record.length > 0))) ? 'cursor-pointer hover:bg-white/30 hover:shadow-lg' : 'cursor-not-allowed opacity-50'"
+                                            class="w-full flex items-center justify-between bg-white/10 p-3 rounded-xl transition-all duration-200 border-0 text-left relative"
+                                            style="z-index: 999 !important; position: relative;"
+                                            :title="(taskData?.tax || (taskData?.taxes_record && (!Array.isArray(taskData?.taxes_record) || taskData.taxes_record.length > 0))) ? 'Click to view tax details' : 'No tax information available'">
                                             <span class="text-base text-white/90 font-medium">Tax:</span>
                                             <div class="flex items-center gap-2">
                                                 <span x-text="taskData?.tax ? Number(taskData.tax).toFixed(3) + ' KWD' : 'N/A'" class="text-base font-bold text-white"></span>
@@ -2593,8 +2601,8 @@
                             </svg>
                             <span>Powered by City Tour</span>
                         </div>
-                        <button @click="showTaskModal = false" 
-                                class="group px-6 py-2.5 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold flex items-center space-x-2 transform hover:scale-105">
+                        <button @click="showTaskModal = false"
+                            class="group px-6 py-2.5 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold flex items-center space-x-2 transform hover:scale-105">
                             <span>Close</span>
                             <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
@@ -2604,29 +2612,29 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Tax Details Popup -->
-        <div x-show="showTaxPopup" 
-             x-cloak
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="transition ease-in duration-200"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0"
-             @click.self="showTaxPopup = false"
-             @keydown.escape.window="showTaxPopup = false"
-             class="fixed inset-0 z-[10002] flex items-center justify-center bg-gray-900 bg-opacity-75 backdrop-blur-sm">
-            
+        <div x-show="showTaxPopup"
+            x-cloak
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            @click.self="showTaxPopup = false"
+            @keydown.escape.window="showTaxPopup = false"
+            class="fixed inset-0 z-[10002] flex items-center justify-center bg-gray-900 bg-opacity-75 backdrop-blur-sm">
+
             <!-- Tax Popup Content -->
             <div x-transition:enter="transition ease-out duration-300 transform"
-                 x-transition:enter-start="opacity-0 scale-95 -translate-y-4"
-                 x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                 x-transition:leave="transition ease-in duration-200 transform"
-                 x-transition:leave-start="opacity-100 scale-100"
-                 x-transition:leave-end="opacity-0 scale-95"
-                 class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden border-2 border-emerald-500">
-                
+                x-transition:enter-start="opacity-0 scale-95 -translate-y-4"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-200 transform"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden border-2 border-emerald-500">
+
                 <!-- Popup Header -->
                 <div class="relative bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4">
                     <div class="absolute inset-0 bg-grid-pattern opacity-10"></div>
@@ -2642,8 +2650,8 @@
                                 <p class="text-sm text-emerald-100">Detailed tax information</p>
                             </div>
                         </div>
-                        <button @click="showTaxPopup = false" 
-                                class="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-xl p-2 transition-all duration-200 hover:rotate-90 transform">
+                        <button @click="showTaxPopup = false"
+                            class="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-xl p-2 transition-all duration-200 hover:rotate-90 transform">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
@@ -2671,7 +2679,7 @@
                             </svg>
                             Tax Breakdown
                         </h4>
-                        
+
                         <!-- Display Raw Value -->
                         <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md border-l-4 border-emerald-500">
                             <pre x-text="taskData.taxes_record" class="text-base font-mono text-gray-900 dark:text-white whitespace-pre-wrap break-words"></pre>
@@ -2679,8 +2687,8 @@
                     </div>
 
                     <!-- No Tax Records Message -->
-                    <div x-show="!taskData?.taxes_record || taskData.taxes_record.toString().trim() === ''" 
-                         class="text-center py-8">
+                    <div x-show="!taskData?.taxes_record || taskData.taxes_record.toString().trim() === ''"
+                        class="text-center py-8">
                         <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full mb-4">
                             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
@@ -2694,8 +2702,8 @@
                 <!-- Popup Footer -->
                 <div class="bg-gray-100 dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                     <div class="flex justify-end">
-                        <button @click="showTaxPopup = false" 
-                                class="px-6 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold transform hover:scale-105">
+                        <button @click="showTaxPopup = false"
+                            class="px-6 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 font-semibold transform hover:scale-105">
                             Close
                         </button>
                     </div>
@@ -2845,14 +2853,14 @@
             if (btn) btn.replaceWith(btn.cloneNode(true));
         });
 
-        document.getElementById('createInvoiceBtn')?.addEventListener('click', function () {
+        document.getElementById('createInvoiceBtn')?.addEventListener('click', function() {
             const selectedTasks = window.selectedTasksGlobal ?? [];
             if (selectedTasks.length === 0) return alert('No task selected.');
             const route = this.getAttribute('data-route');
             window.location.href = route;
         });
 
-        document.getElementById('proceedRefundBtn')?.addEventListener('click', function () {
+        document.getElementById('proceedRefundBtn')?.addEventListener('click', function() {
             const selectedTasks = window.selectedTasksGlobal ?? [];
             if (selectedTasks.length === 0) return alert('No task selected.');
             const route = this.getAttribute('data-route');
@@ -4350,7 +4358,7 @@
         // Load existing filters from URL if filterRows is empty
         if (filterRows.length === 0) {
             const params = new URLSearchParams(window.location.search);
-            
+
             // Handle date-range fields
             Object.entries(filterConfig.columns).forEach(([key, col]) => {
                 if (col.type === 'date-range') {
@@ -4411,7 +4419,7 @@
                 });
             }
         }
-        
+
         document.getElementById('filterModal').classList.add('active');
         renderFilterRows();
     };

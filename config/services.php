@@ -114,4 +114,8 @@ return [
         'base_url' => env('IATA_API_BASE_URL'),
         'token_url' => env('IATA_TOKEN_URL'),
     ],
+    
+    'knet' => [
+        'url' => env('APP_ENV') == 'production' ? env('KNET_PRODUCTION_URL') : env('KNET_SANDBOX_URL'),
+    ]
 ];

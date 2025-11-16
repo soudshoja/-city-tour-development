@@ -4,7 +4,7 @@ namespace App\GraphQL\Mutations;
 
 use App\Models\Agent;
 use App\Services\HotelSearchService;
-use App\GraphQL\Mutations\GetFilteredHotels;
+use App\GraphQL\Queries\GetFilteredHotel;
 use Illuminate\Support\Facades\Log;
 
 class B2BHotelSearchWithPrebook
@@ -53,14 +53,11 @@ class B2BHotelSearchWithPrebook
             ],
             'filters' => [
                 'name' => $hotelName,
-                'classification' => $input['stars'] ?? [],
-                'minPrice' => $input['minPrice'] ?? null,
-                'maxPrice' => $input['maxPrice'] ?? null
             ]
         ];
         $this->logger->info("Calling Getfiltered", $filterInput);
 
-        $filtered = (new GetFilteredHotels())->__invoke(null, ['input' => $filterInput]);
+        $filtered = app(GetFilteredHotel::class)->__invoke(null, ['input' => $filterInput]);
         $this->logger->info("Getfiltered response", $filtered);
 
         // 0 MATCHES

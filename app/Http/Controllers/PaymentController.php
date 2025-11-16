@@ -56,6 +56,7 @@ use App\Models\Credit;
 use App\Models\Company;
 use App\Models\MyFatoorahPayment;
 use App\Models\Refund;
+use App\Support\PaymentGateway\Knet;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Gate;
@@ -489,6 +490,31 @@ class PaymentController extends Controller
             $responseToken = $responseData['response']['data'];
             $paymentUrl = $baseUrl . '/payment' . '?data=' . $responseToken;
             $paymentReference = $payment->voucher_number;
+        } elseif (strtolower($data['payment_gateway']) === 'knet') {
+
+            $knet = new Knet($companyId);
+
+            $requestKnet = new Request([
+                'finalAmount' => $finalAmount,
+                'payment_id' => $payment->id,
+                'voucher_number' => $payment->voucher_number,
+                'invoice_number' => $invoice->invoice_number,
+                'invoice_partial_id' => $data['invoice_partial_id'],
+                'company_id' => $companyId,
+            ]);
+
+            Log::info('KNET create charge request', ['request' => $requestKnet->all()]);
+
+            $response = $knet->createCharge($requestKnet);
+
+            Log::info('KNET create charge response', ['response' => $response]);
+
+            if ($response['status'] !== 'success') {
+                return response()->json(['error' => $response['message'] ?? 'KNET payment initiation failed'], 500);
+            }
+
+            $paymentReference = $response['track_id'];
+            $paymentUrl = $response['redirect_url'];
         } else {
             $payment->delete();
             return response()->json(['error' => 'Unsupported payment method'], 400);
@@ -1419,22 +1445,11 @@ class PaymentController extends Controller
 
         $paymentGateways = Charge::where('can_generate_link', true)
             ->where('is_active', true)->get();
-        $paymentMethods = PaymentMethod::where('is_active', true)->get();
 
-        $myFatoorahPaymentMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $companyId)
-            ->where('type', 'myfatoorah')
-            ->get();
-
-        $hesabeMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $companyId)
-            ->where('type', 'hesabe')
-            ->get();
-
-        $uPaymentMethods = PaymentMethod::where('is_active', true)
-            ->where('company_id', $companyId)
-            ->where('type', 'upayment')
-            ->get();
+        foreach($payments as $payment){
+            $payment->selected_gateway = $paymentGateways->where('name', $payment->payment_gateway)->first();
+            $payment->selected_method = PaymentMethod::where('id', $payment->payment_method_id)->first();
+        }
 
         $users = User::whereIn('id', Payment::select('created_by')->distinct()->pluck('created_by'))->get();
         $status = ['pending', 'initiate', 'completed', 'failed', 'cancelled'];
@@ -1444,10 +1459,6 @@ class PaymentController extends Controller
             'clients',
             'agents',
             'paymentGateways',
-            'paymentMethods',
-            'myFatoorahPaymentMethods',
-            'hesabeMethods',
-            'uPaymentMethods',
             'users',
             'status',
             'filters',
@@ -2960,9 +2971,426 @@ class PaymentController extends Controller
         }
     }
 
+    /**
+     * Handle KNET payment response (success callback)
+     * This is called by KNET gateway after payment processing
+     */
+    public function handleKnetResponse(Request $request)
+    {
+        try {
+            Log::info('KNET Response received', ['request' => $request->all()]);
+
+            // Get encrypted response data
+            $encryptedData = $request->input('trandata');
+            
+            if (!$encryptedData) {
+                Log::error('KNET Response: Missing encrypted data');
+                return redirect()->route('payment.failed')->with('error', 'Invalid response data.');
+            }
+
+            // Extract company_id from UDF to initialize Knet with correct credentials
+            // We need to decrypt first to get company_id, but we need company_id to initialize Knet
+            // Solution: Get company_id from a temporary query parameter or use a default/first attempt
+            $tempCompanyId = $request->query('company_id');
+            
+            if (!$tempCompanyId) {
+                Log::error('KNET Response: Missing company_id parameter');
+                return redirect()->route('payment.failed')->with('error', 'Missing company identifier.');
+            }
+
+            $knet = new \App\Support\PaymentGateway\Knet($tempCompanyId);
+            $responseData = $knet->decryptResponse($encryptedData);
+
+            if (!$responseData) {
+                Log::error('KNET Response: Decryption failed');
+                return redirect()->route('payment.failed')->with('error', 'Failed to process response.');
+            }
+
+            Log::info('KNET Response decrypted', $responseData);
+
+            // Extract payment data from UDF fields
+            $paymentId = $responseData['udf1'] ?? null;
+            $voucherNumber = $responseData['udf2'] ?? null;
+            $companyId = $responseData['udf3'] ?? null;
+            $invoiceNumber = $responseData['udf4'] ?? null;
+            $partialId = $responseData['udf5'] ?? null;
+
+            // Determine process type (invoice or topup)
+            $process = $voucherNumber ? 'topup' : 'invoice';
+
+            if (!$paymentId) {
+                Log::error('KNET Response: Missing payment_id in UDF', ['response' => $responseData]);
+                return redirect()->route('payment.failed')->with('error', 'Payment reference missing.');
+            }
+
+            $payment = Payment::with(['agent.branch.company', 'client', 'invoice'])->find($paymentId);
+            if (!$payment) {
+                Log::error('KNET Response: Payment not found', ['payment_id' => $paymentId]);
+                return redirect()->route('payment.failed')->with('error', 'Payment not found.');
+            }
+
+            $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+            // Check if already processed
+            if ($payment->status === 'completed') {
+                $invoice = $payment->invoice;
+
+                if ($invoice && $invoice->status !== 'paid') {
+                    $invoice->status = 'paid';
+                    $invoice->paid_date = now();
+                    $invoice->save();
+
+                    Log::info('Invoice status updated to paid for already completed KNET payment', ['invoice_id' => $invoice->id]);
+                }
+
+                Log::info('KNET callback ignored: already completed', ['payment_id' => $paymentId]);
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
+
+            // Check payment result
+            $resultCode = $responseData['result'] ?? '';
+            if ($resultCode !== 'CAPTURED' && $resultCode !== 'SUCCESS') {
+                Log::warning('KNET payment failed or cancelled', [
+                    'result' => $resultCode,
+                    'error' => $responseData['Error'] ?? '',
+                    'error_text' => $responseData['ErrorText'] ?? '',
+                    'track_id' => $responseData['trackid'] ?? '',
+                ]);
+
+                Transaction::create([
+                    'branch_id' => $payment->agent->branch->id,
+                    'company_id' => $payment->agent->branch->company->id,
+                    'entity_id' => $payment->agent->branch->company->id,
+                    'entity_type' => 'company',
+                    'transaction_type' => 'debit',
+                    'amount' => $payment->amount,
+                    'description' => 'KNET payment failed for ' . $payment->client->full_name,
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $payment->invoice_id,
+                    'payment_reference' => $responseData['paymentid'] ?? null,
+                    'reference_type' => 'Payment',
+                    'transaction_date' => now(),
+                ]);
+
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
+
+                $this->storeNotification([
+                    'user_id' => $receiptInfo['agent']->user_id,
+                    'title'   => $receiptInfo['title'],
+                    'message' => $receiptInfo['message'],
+                ]);
+
+                (new ResayilController())->message(
+                    $receiptInfo['agent']->phone_number,
+                    $receiptInfo['agent']->country_code,
+                    $receiptInfo['message']
+                );
+
+                $errorMessage = $responseData['ErrorText'] ?? 'Payment failed or cancelled.';
+                return redirect()->to($receiptInfo['url'])->with('error', $errorMessage . ' Please try again or contact support.');
+            }
+
+            // Process successful payment
+            DB::transaction(function () use ($payment, $responseData, $process, $partialId) {
+                $finalPaidAmount = floatval($responseData['amt'] ?? $payment->amount);
+
+                // Store KNET payment details
+                // Note: You may want to create a KnetPayment model similar to TapPayment
+                $payment->status = 'completed';
+                $payment->completed = 1;
+                $payment->service_charge = $finalPaidAmount - $payment->amount;
+                $payment->payment_reference = $responseData['paymentid'] ?? $responseData['tranid'] ?? null;
+                $payment->payment_date = now();
+                $payment->save();
+
+                if ($process === 'topup') {
+                    // Handle topup/credit process (similar to Tap)
+                    $clientController = new ClientController;
+                    $addCreditResponse = $clientController->addCredit($payment);
+                    if (isset($addCreditResponse['error'])) {
+                        throw new \RuntimeException('Failed to add credit: ' . $addCreditResponse['error']);
+                    }
+
+                    $liabilitiesAccount = Account::where('name', 'like', '%Liabilities%')
+                        ->where('company_id', $payment->agent->branch->company->id)
+                        ->first();
+
+                    $clientAdvance = Account::where('name', 'Client')
+                        ->where('company_id', $payment->agent->branch->company->id)
+                        ->where('root_id', $liabilitiesAccount->id)
+                        ->first();
+
+                    $paymentGateway = Account::where('name', 'Payment Gateway')
+                        ->where('company_id', $payment->agent->branch->company_id)
+                        ->where('parent_id', $clientAdvance->id)
+                        ->first();
+
+                    $transaction = Transaction::create([
+                        'branch_id' => $payment->agent->branch->id,
+                        'company_id' => $payment->agent->branch->company->id,
+                        'entity_id' => $payment->agent->branch->company->id,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'debit',
+                        'amount' => $payment->amount,
+                        'description' => 'Topup success via KNET by ' . $payment->client->full_name,
+                        'payment_id' => $payment->id,
+                        'payment_reference' => $responseData['paymentid'] ?? null,
+                        'reference_type' => 'Payment',
+                        'transaction_date' => now(),
+                    ]);
+
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $payment->agent->branch->id,
+                        'company_id' => $payment->agent->branch->company->id,
+                        'invoice_id' => $payment->invoice_id,
+                        'account_id' => $paymentGateway->id,
+                        'transaction_date' => now(),
+                        'description' => 'Advance Payment via KNET in voucher number: ' . $payment->voucher_number,
+                        'debit' => 0,
+                        'credit' => $payment->amount,
+                        'balance' => $paymentGateway->actual_balance - $payment->amount,
+                        'name' => $payment->client->full_name,
+                        'type' => 'receivable',
+                        'voucher_number' => $payment->voucher_number,
+                        'type_reference_id' => $paymentGateway->id
+                    ]);
+                } else {
+                    // Handle invoice payment
+                    $invoice = $payment->invoice;
+
+                    if (!$invoice) {
+                        throw new \RuntimeException('Invoice not found for payment.');
+                    }
+
+                    if (!empty($partialId)) {
+                        $partial = InvoicePartial::where('invoice_id', $invoice->id)->where('id', $partialId)->first();
+    
+                        if ($partial) {
+                            $partial->status = 'paid';
+                            $partial->payment_id = $payment->id;
+                            $partial->amount = $finalPaidAmount;
+                            $partial->save();
+                        }
+    
+                        Log::info('Updated KNET invoice partials to paid', [
+                            'invoice_id' => $invoice->id,
+                            'partial_id' => $partialId
+                        ]);
+                    }
+
+                    $allPartials = InvoicePartial::where('invoice_id', $invoice->id)->get();
+                    $paidCount = $allPartials->where('status', 'paid')->count();
+                    if ($paidCount === $allPartials->count()) {
+                        $invoice->status = 'paid';
+                    } elseif ($paidCount > 0) {
+                        $invoice->status = 'partial';
+                    } else {
+                        $invoice->status = 'unpaid';
+                    }
+
+                    $invoice->paid_date = now();
+                    $invoice->save();
+
+                    $this->completeRefundIfApplicable($payment);
+
+                    $chargeRecord = Charge::where('name', 'LIKE', '%knet%')
+                        ->where('company_id', $payment->invoice->agent->branch->company->id)
+                        ->first();
+                        
+                    $bankPaymentFee = Account::find($chargeRecord->acc_fee_bank_id);
+                    $knetAccount = Account::find($chargeRecord->acc_fee_id);
+                    $receivableAccount = Account::where('name', 'Clients')->first();
+
+                    if (!$bankPaymentFee || !$knetAccount || !$receivableAccount) {
+                        throw new \Exception('One or more financial accounts not found.');
+                    }
+
+                    $transaction = Transaction::create([
+                        'branch_id' => $invoice->agent->branch->id,
+                        'company_id' => $invoice->agent->branch->company->id,
+                        'entity_id' => $invoice->agent->branch->company->id,
+                        'entity_type' => 'company',
+                        'transaction_type' => 'debit',
+                        'amount' => $finalPaidAmount,
+                        'description' => 'KNET payment success: ' . $invoice->invoice_number,
+                        'invoice_id' => $invoice->id,
+                        'payment_id' => $payment->id,
+                        'payment_reference' => $responseData['paymentid'] ?? null,
+                        'reference_type' => 'Invoice',
+                        'transaction_date' => now(),
+                    ]);
+
+                    $invoiceDetail = InvoiceDetail::where('invoice_number', $payment->invoice->invoice_number)->first();
+                    $client = $payment->invoice->client;
+    
+                    if (!$invoiceDetail || !$client) {
+                        throw new \Exception('Invoice detail or client not found.');
+                    }
+
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $payment->invoice->agent->branch->id,
+                        'company_id' => $payment->invoice->agent->branch->company->id,
+                        'invoice_id' => $payment->invoice->id,
+                        'account_id' => $receivableAccount->id,
+                        'invoice_detail_id' => $invoiceDetail->id,
+                        'transaction_date' => now(),
+                        'description' => 'Client payment received via KNET',
+                        'debit' => 0,
+                        'credit' => $payment->amount,
+                        'balance' => $invoiceDetail->task_price - $payment->amount,
+                        'name' => $client->full_name,
+                        'type' => 'receivable',
+                        'voucher_number' => $payment->voucher_number ?? null,
+                        'type_reference_id' => $receivableAccount->id
+                    ]);
+
+                    JournalEntry::create([
+                        'transaction_id' => $transaction->id,
+                        'branch_id' => $payment->invoice->agent->branch->id,
+                        'company_id' => $payment->invoice->agent->branch->company->id,
+                        'invoice_id' => $payment->invoice->id,
+                        'account_id' => $knetAccount->id,
+                        'transaction_date' => now(),
+                        'description' => 'Payment received via KNET gateway',
+                        'debit' => $finalPaidAmount,
+                        'credit' => 0,
+                        'balance' => $knetAccount->actual_balance + $finalPaidAmount,
+                        'name' => $client->full_name,
+                        'type' => 'receivable',
+                        'voucher_number' => $payment->voucher_number ?? null,
+                        'type_reference_id' => $knetAccount->id
+                    ]);
+
+                    if ($payment->service_charge > 0) {
+                        JournalEntry::create([
+                            'transaction_id' => $transaction->id,
+                            'branch_id' => $payment->invoice->agent->branch->id,
+                            'company_id' => $payment->invoice->agent->branch->company->id,
+                            'invoice_id' => $payment->invoice->id,
+                            'account_id' => $bankPaymentFee->id,
+                            'transaction_date' => now(),
+                            'description' => 'KNET service charge for ' . $invoice->invoice_number,
+                            'debit' => $payment->service_charge,
+                            'credit' => 0,
+                            'balance' => $bankPaymentFee->actual_balance + $payment->service_charge,
+                            'name' => $client->full_name,
+                            'type' => 'receivable',
+                            'voucher_number' => $payment->voucher_number ?? null,
+                            'type_reference_id' => $bankPaymentFee->id
+                        ]);
+                    }
+                }
+            });
+
+            $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+            $this->storeNotification([
+                'user_id' => $receiptInfo['agent']->user_id,
+                'title'   => $receiptInfo['title'],
+                'message' => $receiptInfo['message'],
+            ]);
+
+            (new ResayilController())->message(
+                $receiptInfo['agent']->phone_number,
+                $receiptInfo['agent']->country_code,
+                $receiptInfo['message']
+            );
+
+            Log::info('KNET payment processed successfully', ['payment_id' => $payment->id]);
+
+            return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
+
+        } catch (\Throwable $e) {
+            Log::error('KNET Response exception', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->route('payment.failed')->with('error', 'Something went wrong. Please contact support.');
+        }
+    }
+
+    /**
+     * Handle KNET payment error
+     * This is called by KNET gateway when payment fails
+     */
+    public function handleKnetError(Request $request)
+    {
+        try {
+            Log::info('KNET Error received', ['request' => $request->all()]);
+
+            // Extract error information
+            $errorCode = $request->input('Error');
+            $errorText = $request->input('ErrorText');
+            $trackId = $request->input('trackid');
+            $paymentId = $request->input('paymentid');
+
+            Log::error('KNET Payment Error', [
+                'error_code' => $errorCode,
+                'error_text' => $errorText,
+                'track_id' => $trackId,
+                'payment_id' => $paymentId,
+            ]);
+
+            // Try to get payment from UDF if available
+            $encryptedData = $request->input('trandata');
+            $companyId = $request->query('company_id');
+
+            if ($encryptedData && $companyId) {
+                try {
+                    $knet = new \App\Support\PaymentGateway\Knet($companyId);
+                    $responseData = $knet->decryptResponse($encryptedData);
+                    
+                    $paymentIdFromUdf = $responseData['udf1'] ?? null;
+                    $voucherNumber = $responseData['udf2'] ?? null;
+                    $partialId = $responseData['udf5'] ?? null;
+
+                    if ($paymentIdFromUdf) {
+                        $payment = Payment::find($paymentIdFromUdf);
+                        
+                        if ($payment) {
+                            $process = $voucherNumber ? 'topup' : 'invoice';
+                            $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
+
+                            $this->storeNotification([
+                                'user_id' => $receiptInfo['agent']->user_id,
+                                'title'   => $receiptInfo['title'],
+                                'message' => $receiptInfo['message'],
+                            ]);
+
+                            (new ResayilController())->message(
+                                $receiptInfo['agent']->phone_number,
+                                $receiptInfo['agent']->country_code,
+                                $receiptInfo['message']
+                            );
+
+                            return redirect()->to($receiptInfo['url'])
+                                ->with('error', $errorText ?: 'Payment failed. Please try again.');
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to decrypt KNET error response', ['error' => $e->getMessage()]);
+                }
+            }
+
+            return redirect()->route('payment.failed')
+                ->with('error', $errorText ?: 'Payment failed. Please try again or contact support.');
+
+        } catch (\Throwable $e) {
+            Log::error('KNET Error handler exception', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->route('payment.failed')
+                ->with('error', 'Something went wrong. Please contact support.');
+        }
+    }
+
     public function paymentUpdateLink($paymentId, Request $request)
     {
         $payment = Payment::find($paymentId);
+        
         if (!$payment) {
             return redirect()->back()->with('error', 'Payment not found.');
         }

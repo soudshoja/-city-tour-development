@@ -913,82 +913,114 @@ class HotelSearchService
                         'roomTokens' => $roomTokens,
                     ];
 
-                    $prebookResponse = $this->prebookOffer($magicService, $prebookData);
-                    $storePrebookResponse = $this->storePrebook([
-                        'telephone' => $telephone,
-                        'availability_token' => $prebookResponse['availabilityToken'] ?? null,
-                        'srk' => $tempOffer->srk,
-                        'package_token' => $packageToken,
-                        'hotel_id' => $tempOffer->hotel_index,
-                        'offer_index' => $tempOffer->offer_index,
-                        'result_token' => $tempOffer->result_token,
-                        'rooms' => array_map(function ($token) use ($currentPrebookRooms) {
-                            $matched = collect($currentPrebookRooms)->first(fn($r) => $r['offered_room']->room_token === $token);
-                            $r = $matched['offered_room'];
+                    try {
+                        $prebookResponse = $this->prebookOffer($magicService, $prebookData);
+
+                        $storePrebookResponse = $this->storePrebook([
+                            'telephone' => $telephone,
+                            'availability_token' => $prebookResponse['availabilityToken'] ?? null,
+                            'srk' => $tempOffer->srk,
+                            'package_token' => $packageToken,
+                            'hotel_id' => $tempOffer->hotel_index,
+                            'offer_index' => $tempOffer->offer_index,
+                            'result_token' => $tempOffer->result_token,
+                            'rooms' => array_map(function ($token) use ($currentPrebookRooms) {
+                                $matched = collect($currentPrebookRooms)->first(fn($r) => $r['offered_room']->room_token === $token);
+                                $r = $matched['offered_room'];
+                                return [
+                                    'room_token' => $r->room_token,
+                                    'room_name' => $r->room_name,
+                                    'board_basis' => $r->board_basis,
+                                    'non_refundable' => (bool)$r->non_refundable,
+                                    'price' => (float)$r->price,
+                                    'currency' => $r->currency,
+                                    'occupancy' => json_decode($r->occupancy, true),
+                                ];
+                            }, $roomTokens),
+                            'service_dates' => $prebookResponse['serviceDates'] ?? null,
+                            'checkin' => $prebookResponse['serviceDates']['startDate'] ?? $checkIn,
+                            'checkout' => $prebookResponse['serviceDates']['endDate'] ?? $checkOut,
+                            'duration' => $prebookResponse['serviceDates']['duration'] ?? null,
+                            'autocancel_date' => $prebookResponse['autocancelDate'] ?? $prebookResponse['autoCancelDate'] ?? null,
+                            'cancel_policy' => $prebookResponse['cancellationPolicy'] ?? [],
+                            'remarks' => $prebookResponse['remarks'] ?? [],
+                            'package' => $prebookResponse['package'] ?? [],
+                            'payment_methods' => $prebookResponse['paymentMethods'] ?? [],
+                            'booking_options' => $prebookResponse['bookingOptions'] ?? [],
+                            'price_breakdown' => $prebookResponse['priceBreakdown'] ?? [],
+                            'taxes' => $prebookResponse['taxes'] ?? [],
+                        ]);
+
+                        $finalRoomsData[] = [
+                            'success' => true,
+                            'room' => collect($currentPrebookRooms)->map(fn($room) => [
+                                'room_name' => $room['offered_room']->room_name,
+                                'board_basis' => $room['offered_room']->board_basis,
+                                'non_refundable' => (bool)$room['offered_room']->non_refundable,
+                                'price' => ceil($room['offered_room']->price * 1.2), // apply 20% markup
+                                'currency' => $room['offered_room']->currency,
+                                'info' => $offered->info ?? null,
+                                'occupancy' => !empty($room['offered_room']->occupancy) ? json_decode($room['offered_room']->occupancy, true) : null,
+                            ])->values()->all(),
+                            'prebook' => [
+                                'prebookKey' => $storePrebookResponse['prebook_key'] ?? null,
+                                'serviceDates' => $prebookResponse['serviceDates'] ?? [],
+                                'package' => [
+                                    'status' => $prebookResponse['package']['status'] ?? null,
+                                    'complete' => $prebookResponse['package']['complete'] ?? null,
+                                    'price' => [
+                                        'selling' => [
+                                            'value' => isset($prebookResponse['package']['price']['selling']['value']) ? ceil($prebookResponse['package']['price']['selling']['value'] * 1.2) : null,
+                                            'currency' => $prebookResponse['package']['price']['selling']['currency'] ?? 'KWD',
+                                        ],
+                                    ],
+                                    'rate' => $prebookResponse['package']['rate'] ?? [],
+                                    'packageRooms' => array_map(function ($room) {
+                                        return [
+                                            'occupancy' => $room['occupancy'] ?? [],
+                                        ];
+                                    }, $prebookResponse['package']['packageRooms'] ?? []),
+                                ],
+                                'paymentMethods' => [
+                                    'prepaid' => $prebookResponse['paymentMethods']['prepaid'] ?? [],
+                                ],
+                                'bookingOptions' => $prebookResponse['bookingOptions'] ?? [],
+                                'autocancelDate' => $prebookResponse['autocancelDate'] ?? $prebookResponse['autoCancelDate'] ?? null,
+                                'cancelPolicy' => $prebookResponse['cancellationPolicy'] ?? [],
+                                'priceBreakdown' => $prebookResponse['priceBreakdown'] ?? [],
+                                'remarks' => $prebookResponse['remarks'] ?? [],
+                                'taxes' => $prebookResponse['taxes'] ?? [],
+                            ],
+                        ];
+                    } catch (Exception $e) {
+                        $this->logger->error("Prebook failed for room #{$p}", [
+                            'error' => $e->getMessage(),
+                            'prebookData' => $prebookData
+                        ]);
+
+                        $failedRoomDetails = collect($currentPrebookRooms)->map(function ($room) {
+                            $r = $room['offered_room'];
+
                             return [
-                                'room_token' => $r->room_token,
                                 'room_name' => $r->room_name,
                                 'board_basis' => $r->board_basis,
                                 'non_refundable' => (bool)$r->non_refundable,
-                                'price' => (float)$r->price,
+                                'price' => ceil($r->price * 1.2),
                                 'currency' => $r->currency,
-                                'occupancy' => json_decode($r->occupancy, true),
+                                'info' => null,
+                                'occupancy' => !empty($r->occupancy) ? json_decode($r->occupancy, true) : null,
                             ];
-                        }, $roomTokens),
-                        'service_dates' => $prebookResponse['serviceDates'] ?? null,
-                        'checkin' => $prebookResponse['serviceDates']['startDate'] ?? $checkIn,
-                        'checkout' => $prebookResponse['serviceDates']['endDate'] ?? $checkOut,
-                        'duration' => $prebookResponse['serviceDates']['duration'] ?? null,
-                        'autocancel_date' => $prebookResponse['autocancelDate'] ?? $prebookResponse['autoCancelDate'] ?? null,
-                        'cancel_policy' => $prebookResponse['cancellationPolicy'] ?? [],
-                        'remarks' => $prebookResponse['remarks'] ?? [],
-                        'package' => $prebookResponse['package'] ?? [],
-                        'payment_methods' => $prebookResponse['paymentMethods'] ?? [],
-                        'booking_options' => $prebookResponse['bookingOptions'] ?? [],
-                        'price_breakdown' => $prebookResponse['priceBreakdown'] ?? [],
-                        'taxes' => $prebookResponse['taxes'] ?? [],
-                    ]);
+                        })->values()->all();
 
-                    $finalRoomsData[] = [
-                        'room' => collect($currentPrebookRooms)->map(fn($room) => [
-                            'room_name' => $room['offered_room']->room_name,
-                            'board_basis' => $room['offered_room']->board_basis,
-                            'non_refundable' => (bool)$room['offered_room']->non_refundable,
-                            'price' => ceil($room['offered_room']->price * 1.2), // apply 20% markup
-                            'currency' => $room['offered_room']->currency,
-                            'info' => $offered->info ?? null,
-                            'occupancy' => !empty($room['offered_room']->occupancy) ? json_decode($room['offered_room']->occupancy, true) : null,
-                        ])->values()->all(),
-                        'prebook' => [
-                            'prebookKey' => $storePrebookResponse['prebook_key'] ?? null,
-                            'serviceDates' => $prebookResponse['serviceDates'] ?? [],
-                            'package' => [
-                                'status' => $prebookResponse['package']['status'] ?? null,
-                                'complete' => $prebookResponse['package']['complete'] ?? null,
-                                'price' => [
-                                    'selling' => [
-                                        'value' => isset($prebookResponse['package']['price']['selling']['value']) ? ceil($prebookResponse['package']['price']['selling']['value'] * 1.2) : null,
-                                        'currency' => $prebookResponse['package']['price']['selling']['currency'] ?? 'KWD',
-                                    ],
-                                ],
-                                'rate' => $prebookResponse['package']['rate'] ?? [],
-                                'packageRooms' => array_map(function ($room) {
-                                    return [
-                                        'occupancy' => $room['occupancy'] ?? [],
-                                    ];
-                                }, $prebookResponse['package']['packageRooms'] ?? []),
-                            ],
-                            'paymentMethods' => [
-                                'prepaid' => $prebookResponse['paymentMethods']['prepaid'] ?? [],
-                            ],
-                            'bookingOptions' => $prebookResponse['bookingOptions'] ?? [],
-                            'autocancelDate' => $prebookResponse['autocancelDate'] ?? $prebookResponse['autoCancelDate'] ?? null,
-                            'cancelPolicy' => $prebookResponse['cancellationPolicy'] ?? [],
-                            'priceBreakdown' => $prebookResponse['priceBreakdown'] ?? [],
-                            'remarks' => $prebookResponse['remarks'] ?? [],
-                            'taxes' => $prebookResponse['taxes'] ?? [],
-                        ],
-                    ];
+                        $finalRoomsData[] = [
+                            'success' => false,
+                            'error' => 'Prebooking step failed: Hotel is unavailable',
+                            'room' => $failedRoomDetails,
+                            'prebook' => null,
+                        ];
+
+                        continue;
+                    }
                 }
             }
 

@@ -12,6 +12,7 @@ use App\Models\HotelBooking;
 use App\Models\RequestBookingRoom;
 use App\Models\UserStep;
 use App\Models\Country;
+use App\Services\HotelSearchService;
 use App\Services\MagicHolidayService;
 use Exception;
 use Illuminate\Support\Facades\Log;
@@ -1475,14 +1476,12 @@ class WhatsAppHotelController extends Controller
             [
                 'clientRef' => $clientRef,
                 'availabilityToken' => $availabilityToken,
-
                 'payment' => [
                     'method' => 'paynow',
                     'order' => [
                         'id' => $payment->id,
                     ],
                 ],
-
                 'priceModifiers' => [
                     'markup' => [
                         'value' => $payment->amount,
@@ -1497,7 +1496,6 @@ class WhatsAppHotelController extends Controller
                         'currency' => $payment->currency ?? 'KWD',
                     ]
                 ],
-
                 'rooms' => [
                     [
                         'packageRoomToken' => $packageRoomToken,
@@ -1544,7 +1542,8 @@ class WhatsAppHotelController extends Controller
         $this->logger->info("B2B Confirm Booking Request", $request->all());
 
         $request->validate([
-            "phone" => "required|string",
+            "agent_phone" => "required|string",
+            "client_phone" => "required|string",
             "email" => "required|email",
             "prebookKey" => "required|string",
             "first_name" => "required|string",
@@ -1567,13 +1566,35 @@ class WhatsAppHotelController extends Controller
         $bookingParams = $this->buildB2BBookingParameter($request, $prebookKey);
 
         if (!$bookingParams["success"]) {
+            $this->logger->warning('Booking params preparation failed', [
+                'prebook_key' => $prebookKey,
+                'error' => $bookingParams['message']
+            ]);
             return response()->json([
                 "success" => false,
                 "message" => $bookingParams["message"]
             ], 400);
         }
 
-        $magic = new MagicHolidayService();
+        $companyId = app(HotelSearchService::class)->findCompanyIdByPhone($request->agent_phone);
+        if (!$companyId) {
+            $this->logger->warning('Company ID not found via agent phone', [
+                'phone' => $request->phone,
+                'prebook_key' => $prebookKey,
+            ]);
+            return response()->json([
+                "success" => false,
+                "message" => "Unable to determine company from agent phone."
+            ], 400);
+        }
+
+        $magic = new MagicHolidayService($companyId);
+        $this->logger->info("Attempting booking with company ID resolved from agent phone", [
+            'company_id' => $companyId,
+            'agent_phone' => $request->agent_phone,
+            'prebook_key' => $prebookKey,
+        ]);
+
         $bookingResponse = $magic->storeBooking([
             'srk' => $bookingParams['srk'],
             'hotelId' => $bookingParams['hotelIndex'],
@@ -1601,10 +1622,9 @@ class WhatsAppHotelController extends Controller
             "supplier_booking_id" => $reservationId,
             "client_ref" => $bookingParams['payload']['clientRef'],
             "status" => $bookingResponse["data"]["status"] ?? 'confirmed',
-            "price" => $bookingResponse["data"]["price"]["value"] ?? ($bookingResponse["data"]['selling']['value'] ?? 0),
-            "currency" => $bookingResponse["data"]["price"]["currency"] ?? ($bookingResponse["data"]['selling']['currency'] ?? 'KWD'),
+            "price" => $bookingResponse["data"]["price"]['selling']["value"] ?? 0,
+            "currency" => $bookingResponse["data"]["price"]['selling']["currency"] ?? 'KWD',
             "booking_time" => now(),
-            "magic_raw" => $bookingResponse,
         ]);
 
         $this->logger->info('Magic Holiday hotelBooking successful', [
@@ -1614,48 +1634,32 @@ class WhatsAppHotelController extends Controller
             'response' => $bookingResponse
         ]);
 
-        $docsResponse = $magic->getReservationDocuments($reservationId);
-        $this->logger->info("Documents API Response", $docsResponse);
-
-        $voucherUrl = null;
-        if (!empty($docsResponse["data"]["documents"])) {
-            foreach ($docsResponse["data"]["documents"] as $docGroup) {
-                if ($docGroup["code"] === "voucher") {
-                    $file = $docGroup["documents"][0] ?? null;
-                    if ($file && isset($file["token"])) {
-                        $token = $file["token"];
-                        $voucherUrl =
-                            "/reservationsApi/v1/reservations/{$reservationId}/documents?token={$token}";
-                    }
-                }
-            }
-        }
-
-        $hotelBooking->update([
-            "voucher_url" => $voucherUrl
-        ]);
+        $documentsResult = $magic->getAllReservationDocumentsWithUrls($reservationId);
+        $cleanBooking = array_filter($hotelBooking->toArray(), fn($v) => !is_null($v));
 
         return response()->json([
             "success" => true,
             "message" => "Booking successfully confirmed.",
             "reservation_id" => $reservationId,
-            "voucher_url" => $voucherUrl,
-            "booking" => $hotelBooking
+            "documents" => $documentsResult['documents'] ?? [],
+            "booking" => $cleanBooking
         ]);
     }
 
     private function buildB2BBookingParameter(Request $request, string $prebookKey): array
     {
         $this->logger->info("Building B2B booking payload", ["prebookKey" => $prebookKey]);
-
         $prebook = Prebooking::where("prebook_key", $prebookKey)->first();
 
         if (!$prebook) {
+            $this->logger->info('No Prebook data found for this key', ['prebook_key' => $prebookKey]);
             return [
                 "success" => false,
                 "message" => "Prebook not found."
             ];
         }
+
+        $this->logger->info('Prebook data from system database', ['data' => $prebook]);
 
         $srk = $prebook->srk;
         $hotelIndex = $prebook->hotel_id;
@@ -1667,6 +1671,7 @@ class WhatsAppHotelController extends Controller
         $rooms = $prebook->rooms ?? [];
 
         if (empty($rooms)) {
+            $this->logger->error('No rooms found in prebook data', ['prebook_key' => $prebookKey]);
             return [
                 "success" => false,
                 "message" => "No rooms found in prebook data."
@@ -1675,21 +1680,40 @@ class WhatsAppHotelController extends Controller
 
         $roomsPayload = [];
         foreach ($rooms as $index => $room) {
-
+            $roomToken = $room['room_token'] ?? null;
             $occupancy = $room['occupancy'] ?? ($packageRooms[$index]['occupancy'] ?? []);
+
+            if (!$roomToken) {
+                $this->logger->warning('Room token missing for room index', ['index' => $index]);
+                continue;
+            }
+
+            if (!$occupancy) {
+                $this->logger->warning('Occupancy data missing for room index', ['index' => $index]);
+                continue;
+            }
+
             $adults = $occupancy['adults'];
             $childrenAges = $occupancy['childrenAges'] ?? [];
+
+            $this->logger->info('Building room payload', [
+                'room_index' => $index,
+                'room_token' => $roomToken,
+                'adults' => $adults,
+                'children' => count($childrenAges),
+                'children_ages' => $childrenAges,
+            ]);
 
             $travelers = [];
 
             $codes = Country::pluck('dialing_code')->toArray();
             usort($codes, fn($a, $b) => strlen($b) <=> strlen($a));
             $countryCode = '+000';
-            $phone = $request->phone;
+            $phone = $request->client_phone;
             foreach ($codes as $code) {
-                if (str_starts_with($request->phone, $code)) {
+                if (str_starts_with($request->client_phone, $code)) {
                     $countryCode = $code;
-                    $phone = substr($request->phone, strlen($code));
+                    $phone = substr($request->client_phone, strlen($code));
                     break;
                 }
             }
@@ -1735,7 +1759,7 @@ class WhatsAppHotelController extends Controller
             }
 
             $roomsPayload[] = [
-                "packageRoomToken" => $room["room_token"],
+                "packageRoomToken" => $roomToken,
                 "travelers" => $travelers
             ];
 

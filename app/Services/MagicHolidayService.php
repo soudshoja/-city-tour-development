@@ -48,17 +48,17 @@ class MagicHolidayService
         $key = 'magic_holiday_access_token_' . $this->clientId . '_' . implode('_', $scopes);
 
         $ttl = 60 * 60 * 24; // seconds * minutes * hours (1 day)
-       
+
         return Cache::remember($key, $ttl, function () use ($scopes) {
 
-            if(!$this->clientId || !$this->clientSecret) {
+            if (!$this->clientId || !$this->clientSecret) {
 
-                $this->logger->error('ClientId or ClientSecret is missing',[
+                $this->logger->error('ClientId or ClientSecret is missing', [
                     'company_id' => $this->companyId,
                     'client_id' => $this->clientId,
                     'client_secret' => $this->clientSecret
                 ]);
-                
+
                 throw new Exception('Client Id or Client Secret is not found');
             }
             $response = Http::asForm()->post($this->tokenUrl, [
@@ -96,9 +96,21 @@ class MagicHolidayService
             $endpoint .= '?' . http_build_query($params);
         }
 
-        $response = Http::withToken($token)
-            ->accept('application/json')
-            ->{$method}($this->baseUrl . $endpoint, $method === 'get' ? $params : $payload);
+        if ($method === 'get') {
+            // GET requests CANNOT send arrays in the request body → use query params only
+            $response = Http::timeout(30)
+                ->connectTimeout(10)
+                ->withToken($token)
+                ->accept('application/json')
+                ->get($this->baseUrl . $endpoint, $params ?: []);
+        } else {
+            // POST / PUT / DELETE requests → send payload normally
+            $response = Http::timeout(180)
+                ->connectTimeout(60)
+                ->withToken($token)
+                ->accept('application/json')
+                ->{$method}($this->baseUrl . $endpoint, $payload);
+        }
 
         $responseData = [
             'status' => $response->status(),
@@ -590,16 +602,91 @@ class MagicHolidayService
 
     public function getReservationDocuments(int $reservationId)
     {
-        $scopes = ['read:reservations'];
+        $scopes = ['read:reservations-documents'];
         $this->applyRequestSpacing();
 
-        return $this->request(
+        $response = $this->request(
             'get',
             "/reservationsApi/v1/reservations/{$reservationId}/documents",
             $scopes,
             [],
             []
         );
+
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
+        }
+
+        return $response;
+    }
+
+    public function generateDocument(int $reservationId, string $documentToken)
+    {
+        $scopes = ['read:reservations-documents'];
+        $this->applyRequestSpacing();
+
+        $response = $this->request(
+            'get',
+            "/reservationsApi/v1/reservations/{$reservationId}/documents/generate",
+            $scopes,
+            ['token' => $documentToken],
+            []
+        );
+
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
+        }
+
+        return $response;
+    }
+
+    public function getAllReservationDocumentsWithUrls(int $reservationId)
+    {
+        $scopes = ['read:reservations-documents'];
+
+        $docsResponse = $this->request(
+            'get',
+            "/reservationsApi/v1/reservations/{$reservationId}/documents",
+            $scopes
+        );
+
+        if (($docsResponse['status'] ?? null) != 200 || empty($docsResponse['data']['documents'] ?? [])) {
+            return [
+                "success" => false,
+                "documents" => []
+            ];
+        }
+
+        $result = [];
+
+        foreach ($docsResponse['data']['documents'] as $group) {
+            foreach ($group['documents'] as $doc) {
+                $token = $doc['token'];
+
+                $generateResponse = $this->request(
+                    'get',
+                    "/reservationsApi/v1/reservations/{$reservationId}/documents/generate",
+                    $scopes,
+                    ['token' => $token]
+                );
+
+                $result[] = [
+                    "group_code" => $group['code'],
+                    "filename" => $doc['filename'],
+                    "description" => $doc['description'],
+                    "download_url" => $generateResponse['data']['_links']['download']['href'] ?? null
+                ];
+            }
+        }
+
+        return [
+            "success" => true,
+            "documents" => $result
+        ];
     }
 
     public function cancelReservation(int $reservationId)

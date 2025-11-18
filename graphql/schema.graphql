@@ -37,6 +37,10 @@ type Query {
     "Search for hotel rooms with the cheapest price and prebook details."
     searchHotelRooms(input: HotelSearchInput!): HotelSearchResponse!
         @field(resolver: "App\\GraphQL\\Queries\\SearchHotelRooms")
+
+    "Search for TBO hotel rooms with the cheapest price and prebook details."
+    searchTBOHotelRooms(input: TBOHotelSearchInput!): TBOHotelSearchResponse!
+        @field(resolver: "App\\GraphQL\\Queries\\SearchTBOHotelRooms")
 }
 
 "Input for searching hotel rooms"
@@ -390,3 +394,82 @@ type B2BHotelSearchSuccess {
 union B2BHotelSearchWithPrebookResult =
       B2BMultipleHotelMatch
     | B2BHotelSearchSuccess
+
+"Input for searching TBO hotel rooms"
+input TBOHotelSearchInput {
+    "Hotel code from TBO system"
+    hotelCode: Int!
+
+    "Guest nationality code (ISO 3166-1 alpha-2)"
+    guestNationality: String!
+
+    "Check-in date (format: YYYY-MM-DD)"
+    checkIn: Date!
+
+    "Check-out date (format: YYYY-MM-DD)"
+    checkOut: Date!
+
+    "Array of room configurations"
+    rooms: [TBORoomInput!]!
+}
+
+"Room configuration for TBO search"
+input TBORoomInput {
+    "Number of adults"
+    adults: Int!
+
+    "Number of children"
+    children: Int!
+
+    "Ages of children (optional)"
+    childAges: [Int!]
+}
+
+"Response for TBO hotel room search"
+type TBOHotelSearchResponse {
+    "Whether the search was successful"
+    success: Boolean!
+
+    "Message describing the result"
+    message: String
+
+    "Search result data (null if unsuccessful)"
+    data: TBOHotelSearchData
+}
+
+"TBO hotel search result data"
+type TBOHotelSearchData {
+    "Hotel code"
+    hotel_code: Int!
+
+    "Hotel name"
+    hotel_name: String!
+
+    "Total rooms returned"
+    room_count: Int!
+
+    "List of rooms with details and prebook info"
+    rooms: [TBORoomResult!]!
+}
+
+"TBO room details with prebook information"
+type TBORoomResult {
+    success: Boolean!
+    error: String
+    room: [RoomDetails!]!
+    prebook: TBOPrebookDetails
+}
+
+"TBO pre-booking details"
+type TBOPrebookDetails {
+    prebookKey: String
+    tboId: Int
+    bookingCode: String
+    serviceDates: Mixed
+    package: Mixed
+    totalFare: Float
+    totalTax: Float
+    currency: String
+    mealType: String
+    isRefundable: Boolean
+}

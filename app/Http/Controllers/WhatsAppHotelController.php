@@ -12,6 +12,7 @@ use App\Models\HotelBooking;
 use App\Models\RequestBookingRoom;
 use App\Models\UserStep;
 use App\Models\Country;
+use App\Models\Agent;
 use App\Services\HotelSearchService;
 use App\Services\MagicHolidayService;
 use Exception;
@@ -1543,8 +1544,8 @@ class WhatsAppHotelController extends Controller
 
         $request->validate([
             "agent_phone" => "required|string",
-            "client_phone" => "required|string",
-            "email" => "required|email",
+            "email" => "nullable|email",
+            "client_phone" => "nullable|string",
             "prebookKey" => "required|string",
             "first_name" => "required|string",
             "last_name" => "required|string",
@@ -1705,16 +1706,21 @@ class WhatsAppHotelController extends Controller
             ]);
 
             $travelers = [];
+            $countryCode = null;
+            $phone = null;
 
-            $codes = Country::pluck('dialing_code')->toArray();
-            usort($codes, fn($a, $b) => strlen($b) <=> strlen($a));
-            $countryCode = '+000';
-            $phone = $request->client_phone;
-            foreach ($codes as $code) {
-                if (str_starts_with($request->client_phone, $code)) {
-                    $countryCode = $code;
-                    $phone = substr($request->client_phone, strlen($code));
-                    break;
+            if (!empty($request->client_phone)) {
+                $codes = Country::pluck('dialing_code')->toArray();
+                usort($codes, fn($a, $b) => strlen($b) <=> strlen($a));
+
+                $countryCode = '+000';
+                $phone = $request->client_phone;
+                foreach ($codes as $code) {
+                    if (str_starts_with($request->client_phone, $code)) {
+                        $countryCode = $code;
+                        $phone = substr($request->client_phone, strlen($code));
+                        break;
+                    }
                 }
             }
 
@@ -1725,7 +1731,7 @@ class WhatsAppHotelController extends Controller
                 "title" => "mr",
                 'firstName' => $request->first_name,
                 'lastName' => $request->last_name,
-                "email" => $request->email,
+                "email" => null,
                 "phonePrefix" => $countryCode,
                 "phone" => $phone,
             ];
@@ -1738,7 +1744,7 @@ class WhatsAppHotelController extends Controller
                     "title" => "mr",
                     'firstName' => $request->first_name,
                     'lastName' => $request->last_name,
-                    "email" => $request->email,
+                    "email" => null,
                     "phonePrefix" => $countryCode,
                     "phone" => $phone,
                 ];
@@ -1779,6 +1785,14 @@ class WhatsAppHotelController extends Controller
             ];
         }
 
+        $agent = Agent::where('phone_number', $request->agent_phone)->first();
+        $agentInfo = [
+            'name' => $agent->name ?? 'Unknown Agent',
+            'email' => $agent->email ?? null,
+            'phone' => $request->agent_phone,
+        ];
+        $this->logger->info("Agent resolved", $agentInfo);
+
         $payload = [
             "clientRef" => $prebookKey,
             "availabilityToken" => $availabilityToken,
@@ -1786,9 +1800,9 @@ class WhatsAppHotelController extends Controller
                 "method" => "prepaid"
             ],
             "rooms" => $roomsPayload,
-            "comments" => "Booking via B2B API - details confirmed",
-            'bosRef' => 'Booking via B2B API',
-            'agentRef' => 'Booking via B2B API',
+            "comments" => "Booking via B2B API",
+            "bosRef" => null,
+            "agentRef" => 'Booking by ' . $request->agent_phone,
         ];
 
         $this->logger->info('Final Payload Request', [

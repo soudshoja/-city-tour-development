@@ -8,24 +8,30 @@ use App\Models\TemporaryOffer;
 use App\Models\OfferedRoom;
 use App\Models\MapHotel;
 use App\Models\Prebooking;
-use App\Models\Hotel;
 use App\Models\HotelBooking;
 use App\Models\RequestBookingRoom;
 use App\Models\UserStep;
-use App\Models\Payment;
+use App\Models\Country;
 use App\Models\Agent;
+use App\Services\HotelSearchService;
 use App\Services\MagicHolidayService;
 use Exception;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 
 class WhatsAppHotelController extends Controller
 {
-    public function getAccessToken(Request $request){
+    protected $logger;
 
+    public function __construct()
+    {
+        $this->logger = Log::channel('magic_holidays');
+    }
+
+    public function getAccessToken(Request $request)
+    {
         $request->validate([
             'scopes' => 'required|array',
         ]);
@@ -170,7 +176,7 @@ class WhatsAppHotelController extends Controller
                     'telephone' => $request->phone_number,
                 ]));
 
-                if($deletePreviousOffer->getData()->success === false) {
+                if ($deletePreviousOffer->getData()->success === false) {
                     Log::channel('whatsapp')->error('saveBookingDetails: Failed to delete previous offers', ['response' => $deletePreviousOffer]);
                     $warnings['offers'][] = 'Failed to delete previous offers.';
 
@@ -229,7 +235,7 @@ class WhatsAppHotelController extends Controller
                 }
 
                 Log::channel('whatsapp')->info('saveBookingDetails: Created new booking record', $row->toArray());
-            
+
                 $deletePreviousOffer = $this->deleteOffers(new Request([
                     'telephone' => $request->phone_number,
                 ]));
@@ -1449,13 +1455,13 @@ class WhatsAppHotelController extends Controller
         $rooms = $prebookData->rooms;
         $packageRoomToken = $rooms[0]['room_token'];
         $occupancy = $rooms[0]['occupancy'];
-        
+
         if ($occupancy) {
-           $adults = $occupancy['adults'] ?? 0;
+            $adults = $occupancy['adults'] ?? 0;
             $children = count($occupancy['childrenAges'] ?? []);
 
             $type = $adults > 0 ? 'adult' : 'child';
-            $lead = $adults > 0; 
+            $lead = $adults > 0;
 
             Log::info('Traveler type & lead info', [
                 'type' => $type,
@@ -1463,68 +1469,65 @@ class WhatsAppHotelController extends Controller
             ]);
         }
 
-        $client = Client::where('id' , $payment->client_id)->first();
-        
+        $client = Client::where('id', $payment->client_id)->first();
+
         $sellingPrice = $payment->amount - ($payment->amount * 0.2);
 
-        $payload = 
-        [
-            'clientRef' => $clientRef,
-            'availabilityToken' => $availabilityToken,
-
-            'payment' => [
-                'method' => 'paynow',
-                'order' => [
-                    'id' => $payment->id,
+        $payload =
+            [
+                'clientRef' => $clientRef,
+                'availabilityToken' => $availabilityToken,
+                'payment' => [
+                    'method' => 'paynow',
+                    'order' => [
+                        'id' => $payment->id,
+                    ],
                 ],
-            ],
-
-            'priceModifiers' => [
-                'markup' => [
-                    'value' => $payment->amount,
-                    'currency' => $payment->currency ?? 'KWD',
+                'priceModifiers' => [
+                    'markup' => [
+                        'value' => $payment->amount,
+                        'currency' => $payment->currency ?? 'KWD',
+                    ],
+                    'commision' => [
+                        'value' => 0,
+                        'currency' => 'KWD',
+                    ],
+                    'sellingPrice' => [
+                        'value' => $sellingPrice,
+                        'currency' => $payment->currency ?? 'KWD',
+                    ]
                 ],
-                'commision' => [
-                    'value' => 0,
-                    'currency' => 'KWD',
-                ],
-                'sellingPrice' => [
-                    'value' => $sellingPrice,
-                    'currency' => $payment->currency ?? 'KWD',
-                ]
-            ],
-
-            'rooms' => [
-                [
-                    'packageRoomToken' => $packageRoomToken,
-                    'travelers' => [
-                        [
-                            'reference' => $client->id,
-                            'type' => $type,
-                            'lead' => $lead,
-                            'title' => 'mr',
-                            'firstName' => $client->first_name,
-                            'lastName' => $client->last_name,
-                            'email' => $client->email,
-                            'phonePrefix' => $client->country_code,
-                            'phone' => $client->phone,
-                            'identificationNumbers' => [
-                                'fiscalIdentificationNumber' => $client->passport ?? $client->civil_no ?? 'N/A',
-                                'identityNo' => $client->passport ?? $client->civil_no ?? 'N/A',
+                'rooms' => [
+                    [
+                        'packageRoomToken' => $packageRoomToken,
+                        'travelers' => [
+                            [
+                                'reference' => $client->id,
+                                'type' => $type,
+                                'lead' => $lead,
+                                'title' => 'mr',
+                                'firstName' => $client->first_name,
+                                'lastName' => $client->last_name,
+                                'email' => $client->email,
+                                'phonePrefix' => $client->country_code,
+                                'phone' => $client->phone,
+                                'identificationNumbers' => [
+                                    'fiscalIdentificationNumber' => $client->passport ?? $client->civil_no ?? 'N/A',
+                                    'identityNo' => $client->passport ?? $client->civil_no ?? 'N/A',
+                                ],
+                                'address' => $client->address ?? 'Kuwait',
+                                'country' => $client->address ?? 'Kuwait',
+                                'city' => $client->address ?? 'Kuwait',
+                                'postalCode' => 'N/A',
                             ],
-                            'address' => $client->address ?? 'Kuwait',
-                            'country' => $client->address ?? 'Kuwait',
-                            'city' => $client->address ?? 'Kuwait',
-                            'postalCode' => 'N/A',
                         ],
                     ],
                 ],
-            ],
 
-            'comments' => '',
-            'bosRef' => '',
-            'agentRef' => '',
-        ];
+                'comments' => '',
+                'bosRef' => '',
+                'agentRef' => '',
+            ];
 
         Log::info('Final Payload Request', ['payload' => $payload]);
 
@@ -1534,5 +1537,288 @@ class WhatsAppHotelController extends Controller
             'payload' => $payload,
         ]);
     }
-}
 
+    public function confirmBooking(Request $request)
+    {
+        $this->logger->info("B2B Confirm Booking Request", $request->all());
+
+        $request->validate([
+            "agent_phone" => "required|string",
+            "email" => "nullable|email",
+            "client_phone" => "nullable|string",
+            "prebookKey" => "required|string",
+            "first_name" => "required|string",
+            "last_name" => "required|string",
+        ]);
+
+        $prebookKey = $request->prebookKey;
+
+        $prebook = Prebooking::where("prebook_key", $prebookKey)->first();
+
+        if (!$prebook) {
+            return response()->json([
+                "success" => false,
+                "message" => "Invalid prebook key."
+            ], 404);
+        }
+
+        $this->logger->info("Prebook found", ["prebook" => $prebook]);
+
+        $bookingParams = $this->buildB2BBookingParameter($request, $prebookKey);
+
+        if (!$bookingParams["success"]) {
+            $this->logger->warning('Booking params preparation failed', [
+                'prebook_key' => $prebookKey,
+                'error' => $bookingParams['message']
+            ]);
+            return response()->json([
+                "success" => false,
+                "message" => $bookingParams["message"]
+            ], 400);
+        }
+
+        $companyId = app(HotelSearchService::class)->findCompanyIdByPhone($request->agent_phone);
+        if (!$companyId) {
+            $this->logger->warning('Company ID not found via agent phone', [
+                'phone' => $request->phone,
+                'prebook_key' => $prebookKey,
+            ]);
+            return response()->json([
+                "success" => false,
+                "message" => "Unable to determine company from agent phone."
+            ], 400);
+        }
+
+        $magic = new MagicHolidayService($companyId);
+        $this->logger->info("Attempting booking with company ID resolved from agent phone", [
+            'company_id' => $companyId,
+            'agent_phone' => $request->agent_phone,
+            'prebook_key' => $prebookKey,
+        ]);
+
+        $bookingResponse = $magic->storeBooking([
+            'srk' => $bookingParams['srk'],
+            'hotelId' => $bookingParams['hotelIndex'],
+            'offerIndex' => $bookingParams['offerIndex'],
+            'resultToken' => $bookingParams['resultToken'],
+            'payload' => $bookingParams['payload'],
+        ]);
+
+        $this->logger->info("Magic Booking Response", $bookingResponse);
+
+        if (($bookingResponse["status"] ?? null) !== 200) {
+            return response()->json([
+                "success" => false,
+                "message" => "Booking failed with Magic Holiday.",
+                "response" => $bookingResponse
+            ], 400);
+        }
+
+        $reservationId = $bookingResponse["data"]["id"] ?? null;
+
+        $hotelBooking = HotelBooking::create([
+            "prebook_id" => $prebook->id,
+            "client_id" => null,
+            "payment_id" => null,
+            "supplier_booking_id" => $reservationId,
+            "client_ref" => $bookingParams['payload']['clientRef'],
+            "status" => $bookingResponse["data"]["status"] ?? 'confirmed',
+            "price" => $bookingResponse["data"]["price"]['selling']["value"] ?? 0,
+            "currency" => $bookingResponse["data"]["price"]['selling']["currency"] ?? 'KWD',
+            "booking_time" => now(),
+        ]);
+
+        $this->logger->info('Magic Holiday hotelBooking successful', [
+            'prebook_key' => $prebookKey,
+            'hotel_booking_id' => $hotelBooking->id,
+            'supplier_booking_id' => $reservationId,
+            'response' => $bookingResponse
+        ]);
+
+        $documentsResult = $magic->getAllReservationDocumentsWithUrls($reservationId);
+        $cleanBooking = array_filter($hotelBooking->toArray(), fn($v) => !is_null($v));
+
+        return response()->json([
+            "success" => true,
+            "message" => "Booking successfully confirmed.",
+            "reservation_id" => $reservationId,
+            "documents" => $documentsResult['documents'] ?? [],
+            "booking" => $cleanBooking
+        ]);
+    }
+
+    private function buildB2BBookingParameter(Request $request, string $prebookKey): array
+    {
+        $this->logger->info("Building B2B booking payload", ["prebookKey" => $prebookKey]);
+        $prebook = Prebooking::where("prebook_key", $prebookKey)->first();
+
+        if (!$prebook) {
+            $this->logger->info('No Prebook data found for this key', ['prebook_key' => $prebookKey]);
+            return [
+                "success" => false,
+                "message" => "Prebook not found."
+            ];
+        }
+
+        $this->logger->info('Prebook data from system database', ['data' => $prebook]);
+
+        $srk = $prebook->srk;
+        $hotelIndex = $prebook->hotel_id;
+        $offerIndex = $prebook->offer_index;
+        $resultToken = $prebook->result_token;
+        $availabilityToken = $prebook->availability_token;
+        $package = is_string($prebook->package) ? json_decode($prebook->package, true) : $prebook->package;
+        $packageRooms = $package["packageRooms"] ?? [];
+        $rooms = $prebook->rooms ?? [];
+
+        if (empty($rooms)) {
+            $this->logger->error('No rooms found in prebook data', ['prebook_key' => $prebookKey]);
+            return [
+                "success" => false,
+                "message" => "No rooms found in prebook data."
+            ];
+        }
+
+        $roomsPayload = [];
+        foreach ($rooms as $index => $room) {
+            $roomToken = $room['room_token'] ?? null;
+            $occupancy = $room['occupancy'] ?? ($packageRooms[$index]['occupancy'] ?? []);
+
+            if (!$roomToken) {
+                $this->logger->warning('Room token missing for room index', ['index' => $index]);
+                continue;
+            }
+
+            if (!$occupancy) {
+                $this->logger->warning('Occupancy data missing for room index', ['index' => $index]);
+                continue;
+            }
+
+            $adults = $occupancy['adults'];
+            $childrenAges = $occupancy['childrenAges'] ?? [];
+
+            $this->logger->info('Building room payload', [
+                'room_index' => $index,
+                'room_token' => $roomToken,
+                'adults' => $adults,
+                'children' => count($childrenAges),
+                'children_ages' => $childrenAges,
+            ]);
+
+            $travelers = [];
+            $countryCode = null;
+            $phone = null;
+
+            if (!empty($request->client_phone)) {
+                $codes = Country::pluck('dialing_code')->toArray();
+                usort($codes, fn($a, $b) => strlen($b) <=> strlen($a));
+
+                $countryCode = '+000';
+                $phone = $request->client_phone;
+                foreach ($codes as $code) {
+                    if (str_starts_with($request->client_phone, $code)) {
+                        $countryCode = $code;
+                        $phone = substr($request->client_phone, strlen($code));
+                        break;
+                    }
+                }
+            }
+
+            $travelers[] = [
+                "reference" => "lead-1",
+                "type" => "adult",
+                "lead" => true,
+                "title" => "mr",
+                'firstName' => $request->first_name,
+                'lastName' => $request->last_name,
+                "email" => null,
+                "phonePrefix" => $countryCode,
+                "phone" => $phone,
+            ];
+
+            for ($i = 1; $i < $adults; $i++) {
+                $travelers[] = [
+                    "reference" => "adult-" . ($i + 1),
+                    "type" => "adult",
+                    "lead" => false,
+                    "title" => "mr",
+                    'firstName' => $request->first_name,
+                    'lastName' => $request->last_name,
+                    "email" => null,
+                    "phonePrefix" => $countryCode,
+                    "phone" => $phone,
+                ];
+            }
+
+            foreach ($childrenAges as $childIndex => $age) {
+                $birthDate = $prebook->checkin->copy()->subYears($age)->format('Y-m-d');
+
+                $travelers[] = [
+                    "reference" => "child-" . ($childIndex + 1),
+                    "type" => "child",
+                    "lead" => false,
+                    "title" => "mstr",
+                    'firstName' => $request->first_name . ' Child ' . ($childIndex + 1),
+                    'lastName' => $request->last_name,
+                    "birthDate" => $birthDate,
+                ];
+            }
+
+            $roomsPayload[] = [
+                "packageRoomToken" => $roomToken,
+                "travelers" => $travelers
+            ];
+
+            $this->logger->info('Room payload built', [
+                'room_index' => $index,
+                'total_travelers' => count($travelers),
+                'adult_count' => $adults,
+                'child_count' => count($childrenAges),
+            ]);
+        }
+
+        if (empty($roomsPayload)) {
+            $this->logger->error('Failed to build any room payloads', ['prebook_key' => $prebookKey]);
+            return [
+                'success' => false,
+                'message' => 'Failed to build room payloads',
+            ];
+        }
+
+        $agent = Agent::where('phone_number', $request->agent_phone)->first();
+        $agentInfo = [
+            'name' => $agent->name ?? 'Unknown Agent',
+            'email' => $agent->email ?? null,
+            'phone' => $request->agent_phone,
+        ];
+        $this->logger->info("Agent resolved", $agentInfo);
+
+        $payload = [
+            "clientRef" => $prebookKey,
+            "availabilityToken" => $availabilityToken,
+            "payment" => [
+                "method" => "prepaid"
+            ],
+            "rooms" => $roomsPayload,
+            "comments" => "Booking via B2B API",
+            "bosRef" => null,
+            "agentRef" => 'Booking by ' . $request->agent_phone,
+        ];
+
+        $this->logger->info('Final Payload Request', [
+            'prebook_key' => $prebookKey,
+            'total_rooms' => count($roomsPayload),
+            'payload' => $payload
+        ]);
+
+        return [
+            "success" => true,
+            'message' => 'Booking payload prepared successfully',
+            "srk" => $srk,
+            "hotelIndex" => $hotelIndex,
+            "offerIndex" => $offerIndex,
+            "resultToken" => $resultToken,
+            "payload" => $payload,
+        ];
+    }
+}

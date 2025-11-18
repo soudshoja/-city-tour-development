@@ -58,7 +58,7 @@ class TaskController extends Controller
 {
     use NotificationTrait, Converter, CurrencyExchangeTrait;
 
-    public function index(Request $request) : View | RedirectResponse
+    public function index(Request $request): View | RedirectResponse
     {
         Gate::authorize('viewAny', Task::class);
         $user = Auth::user();
@@ -240,14 +240,14 @@ class TaskController extends Controller
                                 ->where(function ($q3) use ($amadeusId) {
                                     $q3->where('status', '!=', 'issued')
                                         ->orWhereRaw("
-                                            NOT EXISTS (
-                                                SELECT 1 FROM tasks t2
-                                                WHERE t2.reference = tasks.reference
-                                                AND t2.supplier_id = ?
-                                                AND t2.status = 'void'
-                                                AND t2.deleted_at IS NULL
-                                            )
-                                    ", [$amadeusId]);
+                                                NOT EXISTS (
+                                                    SELECT 1 FROM tasks t2
+                                                    WHERE t2.reference = tasks.reference
+                                                    AND t2.supplier_id = ?
+                                                    AND t2.status = 'void'
+                                                    AND t2.deleted_at IS NULL
+                                                )
+                                        ", [$amadeusId]);
                                 });
                         })
                         ->orWhere(function ($q2) use ($jazeeraId) {
@@ -255,14 +255,14 @@ class TaskController extends Controller
                                 ->where(function ($q3) use ($jazeeraId) {
                                     $q3->where('status', '!=', 'confirmed')
                                         ->orWhereRaw("
-                                            NOT EXISTS (
-                                                SELECT 1 FROM tasks t2
-                                                WHERE t2.reference = tasks.reference
-                                                AND t2.supplier_id = ?
-                                                AND t2.status = 'issued'
-                                                AND t2.deleted_at IS NULL
-                                            )
-                                        ", [$jazeeraId]);
+                                                NOT EXISTS (
+                                                    SELECT 1 FROM tasks t2
+                                                    WHERE t2.reference = tasks.reference
+                                                    AND t2.supplier_id = ?
+                                                    AND t2.status = 'issued'
+                                                    AND t2.deleted_at IS NULL
+                                                )
+                                            ", [$jazeeraId]);
                                 });
                         });
                 });
@@ -936,7 +936,7 @@ class TaskController extends Controller
         // Handle original task for non-issued statuses
         if (in_array($request->status, ['reissued', 'refund', 'void', 'emd'])) {
             $originalTask = Task::where('reference', $request->original_reference)
-                ->orWhere('reference' , $request->reference)
+                ->orWhere('reference', $request->reference)
                 ->where('company_id', $request->company_id)
                 ->whereIn('status', ['issued', 'reissued'])
                 ->first();
@@ -1009,14 +1009,14 @@ class TaskController extends Controller
                 ->where('is_active', true)
                 ->where(function ($q) use ($task) {
                     $q->where('created_by', $task->created_by)
-                    ->orWhere('issued_by', $task->issued_by)
-                    ->orWhere('agent_id', $task->agent_id);
+                        ->orWhere('issued_by', $task->issued_by)
+                        ->orWhere('agent_id', $task->agent_id);
                 })
                 ->get()
-                ->first(fn($r) =>
-                    (!$r->created_by || $r->created_by === $task->created_by) &&
-                    (!$r->issued_by || $r->issued_by  === $task->issued_by) &&
-                    (!$r->agent_id || $r->agent_id === $task->agent_id)
+                ->first(
+                    fn($r) => (!$r->created_by || $r->created_by === $task->created_by) &&
+                        (!$r->issued_by || $r->issued_by  === $task->issued_by) &&
+                        (!$r->agent_id || $r->agent_id === $task->agent_id)
                 );
 
             if ($matchedRule) {
@@ -1038,28 +1038,32 @@ class TaskController extends Controller
 
             $supplierMagicHoliday = Supplier::where('name', 'Magic Holiday')->first();
 
-            if($task->client_ref && $supplierMagicHoliday && $task->supplier_id == $supplierMagicHoliday->id){
+            if ($task->client_ref && $supplierMagicHoliday && $task->supplier_id == $supplierMagicHoliday->id) {
 
                 $hotelBooking = HotelBooking::where('client_ref', $task->client_ref)->first();
 
-                if($hotelBooking){
+                if ($hotelBooking) {
                     $payment = $hotelBooking->payment;
 
                     $task->is_n8n_booking = true;
-                    $task->enabled = true;
-                    $task->client_id = $payment->client_id;
-                    $task->client_name = $payment->client->full_name;
-                    $task->agent_id = $payment->agent_id;
+
+                    if ($payment) {
+                        $task->enabled = true;
+                        $task->client_id = $payment->client_id;
+                        $task->client_name = $payment->client->full_name;
+                        $task->agent_id = $payment->agent_id;
+                        $generateInvoiceResponse = app(InvoiceController::class)->autoGenerateInvoice($task, $payment);
+                        Log::info('Auto-generated invoice for n8n hotel booking task: ' . $task->reference, $generateInvoiceResponse);
+                    } else {
+                        Log::warning("MagicHoliday task: No payment found for client_ref {$task->client_ref}");
+                        $task->enabled = false;
+                        $task->agent_id = $task->agent_id ?? null;
+                    }
 
                     $task->save();
-
-                    $generateInvoiceResponse = app(InvoiceController::class)->autoGenerateInvoice($task, $payment);
-
-                    Log::info('Auto-generated invoice for n8n hotel booking task: ' . $task->reference, $generateInvoiceResponse);
                 } else {
                     Log::warning('No HotelBooking found for Magic Holiday task with client_ref: ' . $task->client_ref);
                 }
-
             }
 
             // Set enabled status: task must be complete AND have an agent assigned
@@ -1126,10 +1130,10 @@ class TaskController extends Controller
                         ]);
 
                         $payment_method_account_id = Account::where('name', 'like', '%City Travelers (EasyPay)%')
-                        ->where('root_id', $liabilities)
-                        ->where('parent_id', $creditors)
-                        ->value('id');
-                        
+                            ->where('root_id', $liabilities)
+                            ->where('parent_id', $creditors)
+                            ->value('id');
+
                         $task->update([
                             'payment_method_account_id' => $payment_method_account_id
                         ]);
@@ -1141,8 +1145,8 @@ class TaskController extends Controller
                         if (!$response instanceof JsonResponse) {
                             Log::error('Response from updateJournalPaymentMethod is not a JsonResponse', [
                                 'task_id' => $task->id,
-                                'expected_type' => JsonResponse::class, 
-                                'actual_type' => is_object($response) ? get_class ($response) : gettype($response)
+                                'expected_type' => JsonResponse::class,
+                                'actual_type' => is_object($response) ? get_class($response) : gettype($response)
                             ]);
 
                             throw new Exception('Failed to update payment method journal entries');
@@ -1180,7 +1184,6 @@ class TaskController extends Controller
                             'task_amount' => $task->total,
                             'closing_balance' => $closingBalance
                         ]);
-                        
                     } elseif ($issuedBy == 'KWIKT2843') {
                         Log::info('Issued By Como Travel: ', [
                             'issued_by' => $issuedBy,
@@ -1196,8 +1199,8 @@ class TaskController extends Controller
                         if (!$response instanceof JsonResponse) {
                             Log::error('Response from updateJournalPaymentMethod is not a JsonResponse', [
                                 'task_id' => $task->id,
-                                'expected_type' => JsonResponse::class, 
-                                'actual_type' => is_object($response) ? get_class ($response) : gettype($response)
+                                'expected_type' => JsonResponse::class,
+                                'actual_type' => is_object($response) ? get_class($response) : gettype($response)
                             ]);
 
                             throw new Exception('Failed to update payment method journal entries');
@@ -1216,10 +1219,10 @@ class TaskController extends Controller
                     Log::info('NDC Suppliers detected. Starting the process to automate payment method into using IATA City Travelers (EasyPay)');
 
                     $payment_method_account_id = Account::where('name', 'like', '%City Travelers (EasyPay)%')
-                    ->where('root_id', $liabilities)
-                    ->where('parent_id', $creditors)
-                    ->value('id');
-                    
+                        ->where('root_id', $liabilities)
+                        ->where('parent_id', $creditors)
+                        ->value('id');
+
                     $task->update([
                         'payment_method_account_id' => $payment_method_account_id
                     ]);
@@ -1231,8 +1234,8 @@ class TaskController extends Controller
                     if (!$response instanceof JsonResponse) {
                         Log::error('Response from updateJournalPaymentMethod is not a JsonResponse', [
                             'task_id' => $task->id,
-                            'expected_type' => JsonResponse::class, 
-                            'actual_type' => is_object($response) ? get_class ($response) : gettype($response)
+                            'expected_type' => JsonResponse::class,
+                            'actual_type' => is_object($response) ? get_class($response) : gettype($response)
                         ]);
 
                         throw new Exception('Failed to update payment method journal entries');
@@ -1270,7 +1273,7 @@ class TaskController extends Controller
                         'task_amount' => $task->total,
                         'closing_balance' => $closingBalance
                     ]);
-                } 
+                }
 
                 $company = Company::find($task->company_id);
 
@@ -1282,7 +1285,7 @@ class TaskController extends Controller
             } else {
                 Log::info('No IATA wallet detected. Skipping the automation');
             }
-            
+
             DB::commit();
 
             return response()->json([
@@ -1939,7 +1942,7 @@ class TaskController extends Controller
 
     private function processVoidTask(Task $task, $branchId)
     {
-        Log::info('Tasks: ', [ 'task' => $task->toArray() ]);
+        Log::info('Tasks: ', ['task' => $task->toArray()]);
 
         $originalTask = Task::find($task->original_task_id);
         if (!$originalTask) {
@@ -2427,14 +2430,14 @@ class TaskController extends Controller
         ], 201);
     }
 
-   public function show($id)
+    public function show($id)
     {
         $task = Task::with([
-            'agent.branch', 
-            'client', 
-            'flightDetails.countryFrom',  
-            'flightDetails.countryTo', 
-            'hotelDetails.hotel', 
+            'agent.branch',
+            'client',
+            'flightDetails.countryFrom',
+            'flightDetails.countryTo',
+            'hotelDetails.hotel',
             'insuranceDetails',
             'visaDetails',
             'supplier'
@@ -2448,39 +2451,37 @@ class TaskController extends Controller
             $task['country_from'] = $task->flightDetails->countryFrom?->name;
             $task['country_to'] = $task->flightDetails->countryTo?->name;
             $task['description'] = $task['country_from'] . ' ---> ' . $task['country_to'];
-        }
-        elseif ($task->hotelDetails) {
+        } elseif ($task->hotelDetails) {
             $task['hotel_name'] = $task->hotelDetails->hotel?->name;
             $task['hotel_country'] = $task->hotelDetails->hotel?->country;
             $task['description'] = $task['hotel_name'] . '/' . $task['hotel_country'];
-        }
-        else {
+        } else {
             $task['description'] = 'No description';
         }
 
         // Convert relationship names to snake_case for frontend consistency
         // and wrap single items in arrays for frontend iteration
         $taskArray = $task->toArray();
-        
+
         // Convert single objects to arrays for frontend
         if (isset($taskArray['flight_details']) && $taskArray['flight_details']) {
             $taskArray['flight_details'] = [$taskArray['flight_details']];
         } else {
             $taskArray['flight_details'] = [];
         }
-        
+
         if (isset($taskArray['hotel_details']) && $taskArray['hotel_details']) {
             $taskArray['hotel_details'] = [$taskArray['hotel_details']];
         } else {
             $taskArray['hotel_details'] = [];
         }
-        
+
         if (isset($taskArray['visa_details']) && $taskArray['visa_details']) {
             $taskArray['visa_details'] = [$taskArray['visa_details']];
         } else {
             $taskArray['visa_details'] = [];
         }
-        
+
         if (isset($taskArray['insurance_details']) && $taskArray['insurance_details']) {
             $taskArray['insurance_details'] = [$taskArray['insurance_details']];
         } else {
@@ -2572,14 +2573,14 @@ class TaskController extends Controller
                 ->where('is_active', true)
                 ->where(function ($q) use ($task) {
                     $q->where('created_by', $task->created_by)
-                    ->orWhere('issued_by', $task->issued_by)
-                    ->orWhere('agent_id', $task->agent_id);
+                        ->orWhere('issued_by', $task->issued_by)
+                        ->orWhere('agent_id', $task->agent_id);
                 })
                 ->get()
-                ->first(fn($r) =>
-                    (!$r->created_by || $r->created_by === $task->created_by) &&
-                    (!$r->issued_by || $r->issued_by === $task->issued_by) &&
-                    (!$r->agent_id || $r->agent_id === $task->agent_id)
+                ->first(
+                    fn($r) => (!$r->created_by || $r->created_by === $task->created_by) &&
+                        (!$r->issued_by || $r->issued_by === $task->issued_by) &&
+                        (!$r->agent_id || $r->agent_id === $task->agent_id)
                 );
 
             if ($matchedRule) {
@@ -2826,7 +2827,7 @@ class TaskController extends Controller
                     $entry->debit = 0;
                     $entry->balance = $newTotal;
                 }
-    
+
                 if (isset($entry->amount)) {
                     $entry->amount = $newTotal;
                 }
@@ -2871,7 +2872,7 @@ class TaskController extends Controller
                         'remarks' => "InvoiceDetail #{$invoiceDetail->id} supplier_price updated | " . $request->remarks,
                     ]);
                 }
-            
+
                 if (abs($beforeMarkup - $invoiceDetail->markup_price) >= 0.0005) {
                     SystemLog::create([
                         'user_id' => Auth::user()->id,
@@ -3000,7 +3001,7 @@ class TaskController extends Controller
                         'new_value' => $je->balance,
                         'remarks' => "Commission liability JE #{$je->id} balance updated",
                     ]);
-                }   
+                }
             }
 
             // Update expense entries: set DEBIT
@@ -3810,12 +3811,11 @@ class TaskController extends Controller
                 ];
             }
 
-            if($clientRef && str_contains(strtolower($clientRef), 'pb-')){
+            if ($clientRef && str_contains(strtolower($clientRef), 'pb-')) {
                 $agentInDB = Agent::where('name', 'AI Agent')
                     ->whereHas('branch', function ($query) use ($companyId) {
                         $query->where('company_id', $companyId);
                     })->first();
-
             } else {
                 $agentInDB = Agent::where('name', $agent['name'])
                     ->orWhere('email', 'like', $agent['email'])
@@ -4425,7 +4425,7 @@ class TaskController extends Controller
     public function hotelPdf($taskId)
     {
         $invoiceTask = Task::with('company', 'hotelDetails.room', 'hotelDetails.hotel.country', 'agent', 'client')->findOrFail($taskId);
-        $tasks = $invoiceTask->reference ? Task::with(['agent','client','company'])->where('reference', $invoiceTask->reference)->get() : collect([$invoiceTask]);
+        $tasks = $invoiceTask->reference ? Task::with(['agent', 'client', 'company'])->where('reference', $invoiceTask->reference)->get() : collect([$invoiceTask]);
 
         if ($tasks->isEmpty()) {
             $tasks = collect([$invoiceTask]);
@@ -4476,7 +4476,7 @@ class TaskController extends Controller
         $transactionDate = $originalTask->supplier_pay_date ? Carbon::parse($originalTask->supplier_date) : Carbon::now();
 
         $journalEntries = JournalEntry::where('task_id', $originalTask->id)->get();
-        $branchIdFromJournal = $journalEntries->first()?->branch_id; 
+        $branchIdFromJournal = $journalEntries->first()?->branch_id;
 
         $transaction = Transaction::create([
             'branch_id' => $originalTask->agent->branch_id ?? $branchIdFromJournal,

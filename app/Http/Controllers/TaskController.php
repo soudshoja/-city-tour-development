@@ -48,6 +48,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use iio\libmergepdf\Merger;
 use iio\libmergepdf\Driver\Fpdi2Driver;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -4971,4 +4973,114 @@ class TaskController extends Controller
             ]
         ], 200);
     }
+
+    public function supplierAutomation(Request $request)
+{   
+    Log::info('Supplier Automation Triggered', [
+        'request_fields' => $request->except('file'),
+        'has_file' => $request->hasFile('file'),
+    ]);
+
+    if ($request->hasFile('file')) {
+
+        $file = $request->file('file');
+
+        // Create folder if not exists
+        $folder = storage_path('app/supplier_uploads');
+        if (!file_exists($folder)) {
+            mkdir($folder, 0777, true);
+        }
+
+        // Save the file with original filename
+        $filename = time() . '_' . $file->getClientOriginalName();
+
+        $path = $file->move($folder, $filename);
+
+        Log::info('Supplier file saved', [
+            'original_name' => $file->getClientOriginalName(),
+            'saved_as' => $filename,
+            'path' => $path
+        ]);
+
+        return response()->json([
+            'received' => true,
+            'message' => "File uploaded successfully",
+            'filename' => $filename,
+        ]);
+    }
+
+    return response()->json([
+        'received' => true,
+        'message' => "No file detected",
+        'data' => $request->all(),
+    ]);
 }
+
+    public function automationAgentData(Request $request)
+    {
+        Log::info('Agent Data', [
+            'response' => $request->all(),
+        ]);
+
+        $request->validate([
+            'agent_phone' => 'required|string',
+            'agent_name' => 'required|string',
+            'file_name' => 'required|string',
+            'group_id' => 'required|string',
+            'resume_url' => 'required|string',
+        ]);
+
+        $groupId = explode('@', $request->group_id)[0];
+        $phone = explode('@', $request->agent_phone)[0];
+        
+        $agent = Agent::where('phone_number', $phone)->first();
+        if (!$agent) {
+            Log::info("No agent found within the system database with phone number: " . $phone);
+            return response()->json([
+                'success' => false,
+                'message' => 'No agent with such phone number'
+            ], 400);
+        }
+
+        $supplierCompany = SupplierCompany::where('group_id', $groupId)->first();
+        if (!$supplierCompany) {
+            Log::info("No supplier company found within the system database with group ID: " . $groupId);
+            return response()->json([
+                'success' => false,
+                'message' => 'No supplier found with such group ID',
+            ], 400);
+        }
+
+        $fileRecord = FileUpload::create([
+            'file_name' => $request->file_name,
+            'destination_path' => 'N8N',
+            'user_id' => $agent->user_id,
+            'company_id' => $agent->branch->company_id,
+            'supplier_id' => $supplierCompany->supplier_id,
+            'status' => 'pending',
+            'source_files' => 'n8n',
+        ]);
+
+        if (!$fileRecord) {
+            Log::info('Failed to create a File Upload record');
+            return response()->json([
+                'success' => false,
+                'message' => 'No file upload record created',
+            ], 500);
+        }
+
+        Log::info('Successfully created file upload record with the agent information');
+
+        return response()->json([
+            'success' => true,
+            'resume_url' => $request->resume_url,
+            'agent_phone' => $request->agent_phone,
+            'file_name' => $request->file_name,
+            'group_id' => $request->group_id,
+            'message' => 'API Local processed successfully'
+        ]);
+
+        
+    }
+}
+

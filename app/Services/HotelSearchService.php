@@ -957,7 +957,7 @@ class HotelSearchService
                                 'room_name' => $room['offered_room']->room_name,
                                 'board_basis' => $room['offered_room']->board_basis,
                                 'non_refundable' => (bool)$room['offered_room']->non_refundable,
-                                'price' => ceil($room['offered_room']->price * 1.2), // apply 20% markup
+                                'price' => ceil($room['offered_room']->price * 1.02), // apply 20% markup
                                 'currency' => $room['offered_room']->currency,
                                 'info' => $offered->info ?? null,
                                 'occupancy' => !empty($room['offered_room']->occupancy) ? json_decode($room['offered_room']->occupancy, true) : null,
@@ -970,7 +970,7 @@ class HotelSearchService
                                     'complete' => $prebookResponse['package']['complete'] ?? null,
                                     'price' => [
                                         'selling' => [
-                                            'value' => isset($prebookResponse['package']['price']['selling']['value']) ? ceil($prebookResponse['package']['price']['selling']['value'] * 1.2) : null,
+                                            'value' => isset($prebookResponse['package']['price']['selling']['value']) ? ceil($prebookResponse['package']['price']['selling']['value'] * 1.02) : null,
                                             'currency' => $prebookResponse['package']['price']['selling']['currency'] ?? 'KWD',
                                         ],
                                     ],
@@ -1005,7 +1005,7 @@ class HotelSearchService
                                 'room_name' => $r->room_name,
                                 'board_basis' => $r->board_basis,
                                 'non_refundable' => (bool)$r->non_refundable,
-                                'price' => ceil($r->price * 1.2),
+                                'price' => ceil($r->price * 1.02),
                                 'currency' => $r->currency,
                                 'info' => null,
                                 'occupancy' => !empty($r->occupancy) ? json_decode($r->occupancy, true) : null,

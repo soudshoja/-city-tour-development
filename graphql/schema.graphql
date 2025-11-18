@@ -67,6 +67,9 @@ input HotelSearchInput {
 
     "Occupancy configuration defining how many adults and children per room"
     occupancy: Mixed!
+
+    "Room Name to search for (partial match supported)"
+    roomName: String!
 }
 
 "Response for hotel room search"

@@ -546,7 +546,8 @@ class HotelSearchService
         ?string $cityName = null,
         int $roomCount = 1,
         ?bool $nonRefundable = null,
-        ?string $boardBasis = null
+        ?string $boardBasis = null,
+        ?string $roomName = null
     ): array {
         // occupancy['rooms'] now come as a string, need to turn it into an array , example: "[{\"adults\":2,\"childrenAges\":[5,7]},{\"adults\":1,\"childrenAges\":[]}]"
 
@@ -771,12 +772,54 @@ class HotelSearchService
             }
 
             // Get all sorted cheapest rooms from API or DB
+            if($isReused && !empty($roomName)) {
+                $this->logger->info('find if there is multiple room with some sort of same with user request');
+
+
+                
+            }
+
+
             $allCheapestData = $isReused
-                ? $this->getCheapestFromDatabase($telephone, $nonRefundable, $boardBasis)
+                ? $this->getCheapestFromDatabase(
+                    telephone: $telephone,
+                    nonRefundable: $nonRefundable,
+                    boardBasis: $boardBasis,
+                    )
                 : $this->saveOffersAndGetCheapest($telephone, $srk, $resultsToken, $enquiryId, ['hotels' => $allOffers], $nonRefundable, $boardBasis);
+
 
             if (empty($allCheapestData)) {
                 return ['success' => false, 'message' => 'No rooms are currently available for the selected criteria. Please adjust your search and try again.'];
+            }
+
+            //get all the room name from allCheapestData
+            $roomNames = [];
+            $this->logger->info('Total cheapest rooms found', [
+                'count' => count($allCheapestData ?? []),
+            ]);
+
+            $roomNames = array_map(function($item) {
+                return $item['offered_room']->room_name;
+            }, $allCheapestData);
+
+            $matches = $this->findBestMatches(
+                roomName: $roomName,
+                listOfRoomNames: $roomNames,
+                maxResult: 3
+            );
+
+            if(count($matches) > 0){
+                // dd([
+                //     'success' => false,
+                //     'message' => 'There is multiple rooms with similar names, please confirm the exact room names that you want',
+                //     'room_names' => $matches
+                // ]);
+                return [
+                    'success' => false,
+                    'message' => 'There is multiple rooms with similar names, please confirm the exact room names that you want',
+                    'room_names' => $matches
+                ];
             }
 
             $roomsGroupedByPackage = collect($allCheapestData)
@@ -1061,6 +1104,31 @@ class HotelSearchService
                 'message' => trim($message)
             ];
         }
+    }
+
+    protected function findBestMatches(string $roomName, array $listOfRoomNames, int $maxResult = 3) : array
+    {
+        $this->logger->info('Finding best matches for room names with potential duplicates');
+
+        $results = [];
+
+        foreach($listOfRoomNames as $room){
+            $distance = levenshtein(
+                strtolower($roomName),
+                strtolower($room)
+            );
+
+            $results[] = [
+                'room_name' => $room,
+                'distance' => $distance
+            ];
+        }
+
+        usort($results, function($a, $b) {
+            return $a['distance'] <=> $b['distance'];
+        });
+
+        return array_slice($results, 0, $maxResult);
     }
 
     protected function parseRoomsString(string $roomsString): array

@@ -495,7 +495,7 @@ class CreateFullB2CBooking
                     ->first();
             }
 
-            $marginPrice = (0.2 * ($input['amount'])) + $input['amount'];
+            $marginPrice = (0.02 * ($input['amount'])) + $input['amount'];
             $marginPrice = ceil($marginPrice);
 
             $payment = Payment::create([

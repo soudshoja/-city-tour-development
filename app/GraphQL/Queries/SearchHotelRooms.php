@@ -36,6 +36,7 @@ class SearchHotelRooms
             'boardBasis' => 'nullable|string|max:4',
             'occupancy' => 'required|array',
             'occupancy.rooms' => 'required|string',
+            'roomName' => 'nullable|string',
         ], [
             'telephone.required' => 'Telephone number is required.',
             'hotel.required' => 'Hotel name is required.',
@@ -55,16 +56,29 @@ class SearchHotelRooms
             ];
         }
 
+        // $result = $this->hotelSearchService->searchHotelRooms(
+            // $input['telephone'],
+            // $input['hotel'],
+            // $input['checkIn'],
+            // $input['checkOut'],
+            // $input['occupancy'],
+            // $input['city'] ?? null,
+            // $input['roomCount'] ?? 1,
+            // $input['nonRefundable'] ?? null,
+            // $input['boardBasis'] ?? null
+        // );
+
         $result = $this->hotelSearchService->searchHotelRooms(
-            $input['telephone'],
-            $input['hotel'],
-            $input['checkIn'],
-            $input['checkOut'],
-            $input['occupancy'],
-            $input['city'] ?? null,
-            $input['roomCount'] ?? 1,
-            $input['nonRefundable'] ?? null,
-            $input['boardBasis'] ?? null
+            telephone: $input['telephone'],
+            hotelName: $input['hotel'],
+            checkIn: $input['checkIn'],
+            checkOut: $input['checkOut'],
+            occupancy: $input['occupancy'],
+            cityName: $input['city'] ?? null,
+            roomCount: $input['roomCount'] ?? 1,
+            nonRefundable: $input['nonRefundable'] ?? null,
+            boardBasis: $input['boardBasis'] ?? null,
+            roomName: $input['roomName'] ?? null
         );
 
         return $result;

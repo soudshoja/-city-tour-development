@@ -389,21 +389,52 @@ class HotelSearchService
         })->values()->all();
     }
 
-    public function getCheapestFromDatabase(string $telephone, ?bool $nonRefundable = null, ?string $boardBasis = null): ?array
+    public function getCheapestFromDatabase(string $telephone, ?bool $nonRefundable = null, ?string $boardBasis = null, ?string $roomName = null): ?array
     {
         $this->logger->info('Finding sorted rooms from cached database offers', [
             'telephone' => $telephone,
             'non_refundable' => $nonRefundable,
             'board_basis' => $boardBasis,
+            'room_name' => $roomName,
         ]);
 
-        $filteredRooms = OfferedRoom::whereHas('temporaryOffer', function ($q) use ($telephone) {
+        $query = OfferedRoom::whereHas('temporaryOffer', function ($q) use ($telephone) {
             $q->where('telephone', $telephone);
         })
             ->when(!is_null($nonRefundable), fn($q) => $q->where('non_refundable', $nonRefundable ? 1 : 0))
-            ->when(!empty($boardBasis), fn($q) => $q->whereRaw('UPPER(TRIM(board_basis)) = ?', [strtoupper(trim($boardBasis))]))
-            ->orderBy('price')
-            ->get();
+            ->when(!empty($boardBasis), fn($q) => $q->whereRaw('UPPER(TRIM(board_basis)) = ?', [strtoupper(trim($boardBasis))]));
+
+        if (!empty($roomName)) {
+            $roomNameLower = strtolower(trim($roomName));
+            
+            // Normalize: remove generic words
+            $genericWords = ['room', 'type', 'category', 'bed', 'suite'];
+            $roomNameNormalized = $roomNameLower;
+            foreach ($genericWords as $generic) {
+                $roomNameNormalized = preg_replace('/\b' . $generic . '\b/i', '', $roomNameNormalized);
+            }
+            $roomNameNormalized = trim(preg_replace('/\s+/', ' ', $roomNameNormalized));
+            
+            $searchWords = preg_split('/[\s,\-()]+/', $roomNameNormalized, -1, PREG_SPLIT_NO_EMPTY);
+            
+            if (empty($searchWords)) {
+                $searchWords = preg_split('/[\s,\-()]+/', $roomNameLower, -1, PREG_SPLIT_NO_EMPTY);
+            }
+            
+            foreach ($searchWords as $word) {
+                if (strlen($word) >= 2) {
+                    $query->where('room_name', 'LIKE', '%' . $word . '%');
+                }
+            }
+            
+            $this->logger->info('Applied room name word-based filtering', [
+                'original_search' => $roomName,
+                'normalized_search' => $roomNameNormalized,
+                'search_words' => $searchWords,
+            ]);
+        }
+
+        $filteredRooms = $query->orderBy('price')->get();
 
         if ($filteredRooms->isEmpty()) {
             $this->logger->warning('No matching cached rooms found for criteria', [
@@ -546,7 +577,8 @@ class HotelSearchService
         ?string $cityName = null,
         int $roomCount = 1,
         ?bool $nonRefundable = null,
-        ?string $boardBasis = null
+        ?string $boardBasis = null,
+        ?string $roomName = null
     ): array {
         // occupancy['rooms'] now come as a string, need to turn it into an array , example: "[{\"adults\":2,\"childrenAges\":[5,7]},{\"adults\":1,\"childrenAges\":[]}]"
 
@@ -772,11 +804,87 @@ class HotelSearchService
 
             // Get all sorted cheapest rooms from API or DB
             $allCheapestData = $isReused
-                ? $this->getCheapestFromDatabase($telephone, $nonRefundable, $boardBasis)
+                ? $this->getCheapestFromDatabase(
+                    telephone: $telephone,
+                    nonRefundable: $nonRefundable,
+                    boardBasis: $boardBasis,
+                    roomName: $roomName
+                    )
                 : $this->saveOffersAndGetCheapest($telephone, $srk, $resultsToken, $enquiryId, ['hotels' => $allOffers], $nonRefundable, $boardBasis);
 
             if (empty($allCheapestData)) {
                 return ['success' => false, 'message' => 'No rooms are currently available for the selected criteria. Please adjust your search and try again.'];
+            }
+
+            //get all the room name from allCheapestData
+            $roomNames = [];
+            $this->logger->info('Total cheapest rooms found', [
+                'count' => count($allCheapestData ?? []),
+            ]);
+
+            $roomNames = array_map(function($item) {
+                return $item['offered_room']->room_name;
+           }, $allCheapestData);
+
+            $additionalMessage = null;
+            
+            if (!empty($roomName)) {
+                $matches = $this->findBestMatches(
+                    search: $roomName,
+                    items: $roomNames,
+                    maxResult: 3
+                );
+
+                if (count($matches) === 0) {
+                    $this->logger->info('No matching room names found, proceeding with default behavior', [
+                        'searched_room_name' => $roomName,
+                    ]);
+                    $additionalMessage = "No exact match found for the requested room name '{$roomName}'. Showing the cheapest available rooms.";
+                } elseif (count($matches) === 1 && $matches[0]['similarity'] >= 90) {
+                    $matchedRoomName = $matches[0]['room_name'];
+                    $filteredData = array_values(array_filter($allCheapestData, function($item) use ($matchedRoomName) {
+                        return $item['offered_room']->room_name === $matchedRoomName;
+                    }));
+                    
+                    if (!empty($filteredData)) {
+                        $allCheapestData = $filteredData;
+                        $this->logger->info('Filtered to exact room match', [
+                            'room_name' => $matchedRoomName,
+                            'similarity' => $matches[0]['similarity'],
+                            'remaining_rooms' => count($allCheapestData)
+                        ]);
+                        $additionalMessage = "Exact match found: '{$matchedRoomName}'.";
+                    } else {
+                        $this->logger->warning('Exact match found but no availability, falling back to all rooms', [
+                            'room_name' => $matchedRoomName,
+                            'similarity' => $matches[0]['similarity']
+                        ]);
+                        $additionalMessage = "'{$matchedRoomName}' matched but not available. Showing alternative rooms.";
+                    }
+                } elseif (count($matches) > 1) {
+                    // Filter to all matching room names
+                    $matchedRoomNames = array_map(fn($m) => $m['room_name'], $matches);
+                    $filteredData = array_values(array_filter($allCheapestData, function($item) use ($matchedRoomNames) {
+                        return in_array($item['offered_room']->room_name, $matchedRoomNames);
+                    }));
+                    
+                    if (!empty($filteredData)) {
+                        $allCheapestData = $filteredData;
+                        $this->logger->info('Multiple matching room names found, filtered to matching rooms', [
+                            'searched_room_name' => $roomName,
+                            'matches_count' => count($matches),
+                            'matched_rooms' => $matchedRoomNames,
+                            'remaining_rooms' => count($allCheapestData)
+                        ]);
+                        $additionalMessage = "Multiple rooms matched: " . implode(', ', array_unique($matchedRoomNames)) . ". Showing the cheapest options.";
+                    } else {
+                        $this->logger->warning('Multiple matches found but none available, falling back to all rooms', [
+                            'searched_room_name' => $roomName,
+                            'matched_rooms' => $matchedRoomNames
+                        ]);
+                        $additionalMessage = "Matched rooms (" . implode(', ', array_unique($matchedRoomNames)) . ") not available. Showing alternatives.";
+                    }
+                }
             }
 
             $roomsGroupedByPackage = collect($allCheapestData)
@@ -913,86 +1021,118 @@ class HotelSearchService
                         'roomTokens' => $roomTokens,
                     ];
 
-                    $prebookResponse = $this->prebookOffer($magicService, $prebookData);
-                    $storePrebookResponse = $this->storePrebook([
-                        'telephone' => $telephone,
-                        'availability_token' => $prebookResponse['availabilityToken'] ?? null,
-                        'srk' => $tempOffer->srk,
-                        'package_token' => $packageToken,
-                        'hotel_id' => $tempOffer->hotel_index,
-                        'offer_index' => $tempOffer->offer_index,
-                        'result_token' => $tempOffer->result_token,
-                        'rooms' => array_map(function ($token) use ($currentPrebookRooms) {
-                            $matched = collect($currentPrebookRooms)->first(fn($r) => $r['offered_room']->room_token === $token);
-                            $r = $matched['offered_room'];
+                    try {
+                        $prebookResponse = $this->prebookOffer($magicService, $prebookData);
+
+                        $storePrebookResponse = $this->storePrebook([
+                            'telephone' => $telephone,
+                            'availability_token' => $prebookResponse['availabilityToken'] ?? null,
+                            'srk' => $tempOffer->srk,
+                            'package_token' => $packageToken,
+                            'hotel_id' => $tempOffer->hotel_index,
+                            'offer_index' => $tempOffer->offer_index,
+                            'result_token' => $tempOffer->result_token,
+                            'rooms' => array_map(function ($token) use ($currentPrebookRooms) {
+                                $matched = collect($currentPrebookRooms)->first(fn($r) => $r['offered_room']->room_token === $token);
+                                $r = $matched['offered_room'];
+                                return [
+                                    'room_token' => $r->room_token,
+                                    'room_name' => $r->room_name,
+                                    'board_basis' => $r->board_basis,
+                                    'non_refundable' => (bool)$r->non_refundable,
+                                    'price' => (float)$r->price,
+                                    'currency' => $r->currency,
+                                    'occupancy' => json_decode($r->occupancy, true),
+                                ];
+                            }, $roomTokens),
+                            'service_dates' => $prebookResponse['serviceDates'] ?? null,
+                            'checkin' => $prebookResponse['serviceDates']['startDate'] ?? $checkIn,
+                            'checkout' => $prebookResponse['serviceDates']['endDate'] ?? $checkOut,
+                            'duration' => $prebookResponse['serviceDates']['duration'] ?? null,
+                            'autocancel_date' => $prebookResponse['autocancelDate'] ?? $prebookResponse['autoCancelDate'] ?? null,
+                            'cancel_policy' => $prebookResponse['cancellationPolicy'] ?? [],
+                            'remarks' => $prebookResponse['remarks'] ?? [],
+                            'package' => $prebookResponse['package'] ?? [],
+                            'payment_methods' => $prebookResponse['paymentMethods'] ?? [],
+                            'booking_options' => $prebookResponse['bookingOptions'] ?? [],
+                            'price_breakdown' => $prebookResponse['priceBreakdown'] ?? [],
+                            'taxes' => $prebookResponse['taxes'] ?? [],
+                        ]);
+
+                        $finalRoomsData[] = [
+                            'success' => true,
+                            'room' => collect($currentPrebookRooms)->map(fn($room) => [
+                                'room_name' => $room['offered_room']->room_name,
+                                'board_basis' => $room['offered_room']->board_basis,
+                                'non_refundable' => (bool)$room['offered_room']->non_refundable,
+                                'price' => ceil($room['offered_room']->price * 1.02), // apply 20% markup
+                                'currency' => $room['offered_room']->currency,
+                                'info' => $offered->info ?? null,
+                                'occupancy' => !empty($room['offered_room']->occupancy) ? json_decode($room['offered_room']->occupancy, true) : null,
+                            ])->values()->all(),
+                            'prebook' => [
+                                'prebookKey' => $storePrebookResponse['prebook_key'] ?? null,
+                                'serviceDates' => $prebookResponse['serviceDates'] ?? [],
+                                'package' => [
+                                    'status' => $prebookResponse['package']['status'] ?? null,
+                                    'complete' => $prebookResponse['package']['complete'] ?? null,
+                                    'price' => [
+                                        'selling' => [
+                                            'value' => isset($prebookResponse['package']['price']['selling']['value']) ? ceil($prebookResponse['package']['price']['selling']['value'] * 1.02) : null,
+                                            'currency' => $prebookResponse['package']['price']['selling']['currency'] ?? 'KWD',
+                                        ],
+                                    ],
+                                    'rate' => $prebookResponse['package']['rate'] ?? [],
+                                    'packageRooms' => array_map(function ($room) {
+                                        return [
+                                            'occupancy' => $room['occupancy'] ?? [],
+                                        ];
+                                    }, $prebookResponse['package']['packageRooms'] ?? []),
+                                ],
+                                'paymentMethods' => [
+                                    'prepaid' => $prebookResponse['paymentMethods']['prepaid'] ?? [],
+                                ],
+                                'bookingOptions' => $prebookResponse['bookingOptions'] ?? [],
+                                'autocancelDate' => $prebookResponse['autocancelDate'] ?? $prebookResponse['autoCancelDate'] ?? null,
+                                'cancelPolicy' => $prebookResponse['cancellationPolicy'] ?? [],
+                                'priceBreakdown' => $prebookResponse['priceBreakdown'] ?? [],
+                                'remarks' => $prebookResponse['remarks'] ?? [],
+                                'taxes' => $prebookResponse['taxes'] ?? [],
+                            ],
+                        ];
+                    } catch (Exception $e) {
+                        $this->logger->error("Prebook failed for room #{$p}", [
+                            'error' => $e->getMessage(),
+                            'prebookData' => $prebookData
+                        ]);
+
+                        $failedRoomDetails = collect($currentPrebookRooms)->map(function ($room) {
+                            $r = $room['offered_room'];
+
                             return [
-                                'room_token' => $r->room_token,
                                 'room_name' => $r->room_name,
                                 'board_basis' => $r->board_basis,
                                 'non_refundable' => (bool)$r->non_refundable,
-                                'price' => (float)$r->price,
+                                'price' => ceil($r->price * 1.02),
                                 'currency' => $r->currency,
-                                'occupancy' => json_decode($r->occupancy, true),
+                                'info' => null,
+                                'occupancy' => !empty($r->occupancy) ? json_decode($r->occupancy, true) : null,
                             ];
-                        }, $roomTokens),
-                        'service_dates' => $prebookResponse['serviceDates'] ?? null,
-                        'checkin' => $prebookResponse['serviceDates']['startDate'] ?? $checkIn,
-                        'checkout' => $prebookResponse['serviceDates']['endDate'] ?? $checkOut,
-                        'duration' => $prebookResponse['serviceDates']['duration'] ?? null,
-                        'autocancel_date' => $prebookResponse['autocancelDate'] ?? $prebookResponse['autoCancelDate'] ?? null,
-                        'cancel_policy' => $prebookResponse['cancellationPolicy'] ?? [],
-                        'remarks' => $prebookResponse['remarks'] ?? [],
-                        'package' => $prebookResponse['package'] ?? [],
-                        'payment_methods' => $prebookResponse['paymentMethods'] ?? [],
-                        'booking_options' => $prebookResponse['bookingOptions'] ?? [],
-                        'price_breakdown' => $prebookResponse['priceBreakdown'] ?? [],
-                        'taxes' => $prebookResponse['taxes'] ?? [],
-                    ]);
+                        })->values()->all();
 
-                    $finalRoomsData[] = [
-                        'room' => collect($currentPrebookRooms)->map(fn($room) => [
-                            'room_name' => $room['offered_room']->room_name,
-                            'board_basis' => $room['offered_room']->board_basis,
-                            'non_refundable' => (bool)$room['offered_room']->non_refundable,
-                            'price' => ceil($room['offered_room']->price * 1.2), // apply 20% markup
-                            'currency' => $room['offered_room']->currency,
-                            'info' => $offered->info ?? null,
-                            'occupancy' => !empty($room['offered_room']->occupancy) ? json_decode($room['offered_room']->occupancy, true) : null,
-                        ])->values()->all(),
-                        'prebook' => [
-                            'prebookKey' => $storePrebookResponse['prebook_key'] ?? null,
-                            'serviceDates' => $prebookResponse['serviceDates'] ?? [],
-                            'package' => [
-                                'status' => $prebookResponse['package']['status'] ?? null,
-                                'complete' => $prebookResponse['package']['complete'] ?? null,
-                                'price' => [
-                                    'selling' => [
-                                        'value' => isset($prebookResponse['package']['price']['selling']['value']) ? ceil($prebookResponse['package']['price']['selling']['value'] * 1.2) : null,
-                                        'currency' => $prebookResponse['package']['price']['selling']['currency'] ?? 'KWD',
-                                    ],
-                                ],
-                                'rate' => $prebookResponse['package']['rate'] ?? [],
-                                'packageRooms' => array_map(function ($room) {
-                                    return [
-                                        'occupancy' => $room['occupancy'] ?? [],
-                                    ];
-                                }, $prebookResponse['package']['packageRooms'] ?? []),
-                            ],
-                            'paymentMethods' => [
-                                'prepaid' => $prebookResponse['paymentMethods']['prepaid'] ?? [],
-                            ],
-                            'bookingOptions' => $prebookResponse['bookingOptions'] ?? [],
-                            'autocancelDate' => $prebookResponse['autocancelDate'] ?? $prebookResponse['autoCancelDate'] ?? null,
-                            'cancelPolicy' => $prebookResponse['cancellationPolicy'] ?? [],
-                            'priceBreakdown' => $prebookResponse['priceBreakdown'] ?? [],
-                            'remarks' => $prebookResponse['remarks'] ?? [],
-                            'taxes' => $prebookResponse['taxes'] ?? [],
-                        ],
-                    ];
+                        $finalRoomsData[] = [
+                            'success' => false,
+                            'error' => 'Prebooking step failed: Hotel is unavailable',
+                            'room' => $failedRoomDetails,
+                            'prebook' => null,
+                        ];
+
+                        continue;
+                    }
                 }
             }
 
-            return [
+            $response = [
                 'success' => true,
                 'message' => 'B2B booking flow completed successfully.',
                 'data' => [
@@ -1002,6 +1142,12 @@ class HotelSearchService
                     'rooms' => $finalRoomsData,
                 ]
             ];
+
+            if ($additionalMessage) {
+                $response['data']['additional_info'] = $additionalMessage;
+            }
+
+            return $response;
         } catch (Exception $e) {
             $this->logger->error('Hotel search flow failed', [
                 'telephone' => $telephone,
@@ -1029,6 +1175,120 @@ class HotelSearchService
                 'message' => trim($message)
             ];
         }
+    }
+
+    protected function findBestMatches(string $search, array $items, int $maxResult = 3, int $minSimilarity = 60) : array
+    {
+        $this->logger->info('Finding best matches for room names', [
+            'search_term' => $search,
+            'items_count' => count($items),
+            'max_results' => $maxResult,
+            'min_similarity' => $minSimilarity
+        ]);
+
+        $search = strtolower(trim($search));
+        
+        // Normalize search term: remove common generic words
+        $genericWords = ['room', 'type', 'category', 'bed', 'suite'];
+        $searchNormalized = $search;
+        foreach ($genericWords as $generic) {
+            $searchNormalized = preg_replace('/\b' . $generic . '\b/i', '', $searchNormalized);
+        }
+        $searchNormalized = trim(preg_replace('/\s+/', ' ', $searchNormalized));
+        
+        $results = [];
+
+        foreach ($items as $item) {
+            $itemLower = strtolower($item);
+            $score = 0;
+
+            // Strategy 1: Direct substring match
+            if (strpos($itemLower, $search) !== false) {
+                $position = strpos($itemLower, $search);
+                $positionScore = 100 - ($position * 2);
+                $score = max(100, $positionScore);
+            } else {
+                // Strategy 2: Word-by-word matching with normalized search
+                $searchWords = preg_split('/[\s,\-()]+/', $searchNormalized, -1, PREG_SPLIT_NO_EMPTY);
+                $itemWords = preg_split('/[\s,\-()]+/', $itemLower, -1, PREG_SPLIT_NO_EMPTY);
+                
+                if (empty($searchWords)) {
+                    // If normalization removed all words, fall back to original
+                    $searchWords = preg_split('/[\s,\-()]+/', $search, -1, PREG_SPLIT_NO_EMPTY);
+                }
+                
+                $matchedWords = 0;
+                $totalSimilarity = 0;
+                
+                foreach ($searchWords as $searchWord) {
+                    if (strlen($searchWord) < 2) continue;
+                    
+                    $bestWordMatch = 0;
+                    
+                    foreach ($itemWords as $itemWord) {
+                        if (strlen($itemWord) < 2) continue;
+                        
+                        if ($searchWord === $itemWord) {
+                            $bestWordMatch = 100;
+                            break;
+                        }
+                        
+                        if (strpos($itemWord, $searchWord) !== false || strpos($searchWord, $itemWord) !== false) {
+                            $bestWordMatch = max($bestWordMatch, 85);
+                            continue;
+                        }
+                        
+                        $distance = levenshtein($searchWord, $itemWord);
+                        $maxLen = max(strlen($searchWord), strlen($itemWord));
+                        $similarity = (1 - $distance / $maxLen) * 100;
+                        
+                        if ($similarity > $bestWordMatch) {
+                            $bestWordMatch = $similarity;
+                        }
+                    }
+                    
+                    if ($bestWordMatch > 0) {
+                        $matchedWords++;
+                        $totalSimilarity += $bestWordMatch;
+                    }
+                }
+                
+                if ($matchedWords > 0) {
+                    $avgSimilarity = $totalSimilarity / $matchedWords;
+                    $matchRatio = $matchedWords / count($searchWords);
+                    $score = $avgSimilarity * $matchRatio;
+                }
+            }
+
+            if ($score >= $minSimilarity) {
+                $results[] = [
+                    'room_name' => $item,
+                    'similarity' => round($score, 2)
+                ];
+            }
+        }
+
+        if (empty($results)) {
+            $this->logger->info('No matches found', [
+                'search_term' => $search,
+                'min_similarity' => $minSimilarity
+            ]);
+            return [];
+        }
+
+        usort($results, function($a, $b) {
+            return $b['similarity'] <=> $a['similarity'];
+        });
+
+        $slicedResults = array_slice($results, 0, $maxResult);
+
+        $this->logger->info('Best matches found', [
+            'search_term' => $search,
+            'matches_count' => count($slicedResults),
+            'matches' => $slicedResults
+        ]);
+
+        return $slicedResults;
     }
 
     protected function parseRoomsString(string $roomsString): array

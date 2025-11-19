@@ -389,21 +389,52 @@ class HotelSearchService
         })->values()->all();
     }
 
-    public function getCheapestFromDatabase(string $telephone, ?bool $nonRefundable = null, ?string $boardBasis = null): ?array
+    public function getCheapestFromDatabase(string $telephone, ?bool $nonRefundable = null, ?string $boardBasis = null, ?string $roomName = null): ?array
     {
         $this->logger->info('Finding sorted rooms from cached database offers', [
             'telephone' => $telephone,
             'non_refundable' => $nonRefundable,
             'board_basis' => $boardBasis,
+            'room_name' => $roomName,
         ]);
 
-        $filteredRooms = OfferedRoom::whereHas('temporaryOffer', function ($q) use ($telephone) {
+        $query = OfferedRoom::whereHas('temporaryOffer', function ($q) use ($telephone) {
             $q->where('telephone', $telephone);
         })
             ->when(!is_null($nonRefundable), fn($q) => $q->where('non_refundable', $nonRefundable ? 1 : 0))
-            ->when(!empty($boardBasis), fn($q) => $q->whereRaw('UPPER(TRIM(board_basis)) = ?', [strtoupper(trim($boardBasis))]))
-            ->orderBy('price')
-            ->get();
+            ->when(!empty($boardBasis), fn($q) => $q->whereRaw('UPPER(TRIM(board_basis)) = ?', [strtoupper(trim($boardBasis))]));
+
+        if (!empty($roomName)) {
+            $roomNameLower = strtolower(trim($roomName));
+            
+            // Normalize: remove generic words
+            $genericWords = ['room', 'type', 'category', 'bed', 'suite'];
+            $roomNameNormalized = $roomNameLower;
+            foreach ($genericWords as $generic) {
+                $roomNameNormalized = preg_replace('/\b' . $generic . '\b/i', '', $roomNameNormalized);
+            }
+            $roomNameNormalized = trim(preg_replace('/\s+/', ' ', $roomNameNormalized));
+            
+            $searchWords = preg_split('/[\s,\-()]+/', $roomNameNormalized, -1, PREG_SPLIT_NO_EMPTY);
+            
+            if (empty($searchWords)) {
+                $searchWords = preg_split('/[\s,\-()]+/', $roomNameLower, -1, PREG_SPLIT_NO_EMPTY);
+            }
+            
+            foreach ($searchWords as $word) {
+                if (strlen($word) >= 2) {
+                    $query->where('room_name', 'LIKE', '%' . $word . '%');
+                }
+            }
+            
+            $this->logger->info('Applied room name word-based filtering', [
+                'original_search' => $roomName,
+                'normalized_search' => $roomNameNormalized,
+                'search_words' => $searchWords,
+            ]);
+        }
+
+        $filteredRooms = $query->orderBy('price')->get();
 
         if ($filteredRooms->isEmpty()) {
             $this->logger->warning('No matching cached rooms found for criteria', [
@@ -772,19 +803,12 @@ class HotelSearchService
             }
 
             // Get all sorted cheapest rooms from API or DB
-            if($isReused && !empty($roomName)) {
-                $this->logger->info('find if there is multiple room with some sort of same with user request');
-
-
-                
-            }
-
-
             $allCheapestData = $isReused
                 ? $this->getCheapestFromDatabase(
                     telephone: $telephone,
                     nonRefundable: $nonRefundable,
                     boardBasis: $boardBasis,
+                    roomName: $roomName
                     )
                 : $this->saveOffersAndGetCheapest($telephone, $srk, $resultsToken, $enquiryId, ['hotels' => $allOffers], $nonRefundable, $boardBasis);
 
@@ -815,41 +839,51 @@ class HotelSearchService
                     $this->logger->info('No matching room names found, proceeding with default behavior', [
                         'searched_room_name' => $roomName,
                     ]);
-                    $additionalMessage = "No exact match found for the requested room name. Proceeding with the cheapest available room.";
+                    $additionalMessage = "No exact match found for the requested room name '{$roomName}'. Showing the cheapest available rooms.";
                 } elseif (count($matches) === 1 && $matches[0]['similarity'] >= 90) {
                     $matchedRoomName = $matches[0]['room_name'];
-                    $allCheapestData = array_values(array_filter($allCheapestData, function($item) use ($matchedRoomName) {
+                    $filteredData = array_values(array_filter($allCheapestData, function($item) use ($matchedRoomName) {
                         return $item['offered_room']->room_name === $matchedRoomName;
                     }));
                     
-                    $this->logger->info('Filtered to exact room match', [
-                        'room_name' => $matchedRoomName,
-                        'similarity' => $matches[0]['similarity'],
-                        'remaining_rooms' => count($allCheapestData)
-                    ]);
-
-                    if (empty($allCheapestData)) {
-                        return ['success' => false, 'message' => 'No rooms are currently available for the selected criteria. Please adjust your search and try again.'];
+                    if (!empty($filteredData)) {
+                        $allCheapestData = $filteredData;
+                        $this->logger->info('Filtered to exact room match', [
+                            'room_name' => $matchedRoomName,
+                            'similarity' => $matches[0]['similarity'],
+                            'remaining_rooms' => count($allCheapestData)
+                        ]);
+                        $additionalMessage = "Exact match found: '{$matchedRoomName}'.";
+                    } else {
+                        $this->logger->warning('Exact match found but no availability, falling back to all rooms', [
+                            'room_name' => $matchedRoomName,
+                            'similarity' => $matches[0]['similarity']
+                        ]);
+                        $additionalMessage = "'{$matchedRoomName}' matched but not available. Showing alternative rooms.";
                     }
                 } elseif (count($matches) > 1) {
                     // Filter to all matching room names
                     $matchedRoomNames = array_map(fn($m) => $m['room_name'], $matches);
-                    $allCheapestData = array_values(array_filter($allCheapestData, function($item) use ($matchedRoomNames) {
+                    $filteredData = array_values(array_filter($allCheapestData, function($item) use ($matchedRoomNames) {
                         return in_array($item['offered_room']->room_name, $matchedRoomNames);
                     }));
                     
-                    $this->logger->info('Multiple matching room names found, filtered to matching rooms', [
-                        'searched_room_name' => $roomName,
-                        'matches_count' => count($matches),
-                        'matched_rooms' => $matchedRoomNames,
-                        'remaining_rooms' => count($allCheapestData)
-                    ]);
-
-                    if (empty($allCheapestData)) {
-                        return ['success' => false, 'message' => 'No rooms are currently available for the selected criteria. Please adjust your search and try again.'];
+                    if (!empty($filteredData)) {
+                        $allCheapestData = $filteredData;
+                        $this->logger->info('Multiple matching room names found, filtered to matching rooms', [
+                            'searched_room_name' => $roomName,
+                            'matches_count' => count($matches),
+                            'matched_rooms' => $matchedRoomNames,
+                            'remaining_rooms' => count($allCheapestData)
+                        ]);
+                        $additionalMessage = "Multiple rooms matched: " . implode(', ', array_unique($matchedRoomNames)) . ". Showing the cheapest options.";
+                    } else {
+                        $this->logger->warning('Multiple matches found but none available, falling back to all rooms', [
+                            'searched_room_name' => $roomName,
+                            'matched_rooms' => $matchedRoomNames
+                        ]);
+                        $additionalMessage = "Matched rooms (" . implode(', ', array_unique($matchedRoomNames)) . ") not available. Showing alternatives.";
                     }
-                    
-                    $additionalMessage = "Multiple rooms with similar names found (" . implode(', ', array_unique($matchedRoomNames)) . "). Showing the cheapest available option.";
                 }
             }
 
@@ -1153,33 +1187,77 @@ class HotelSearchService
         ]);
 
         $search = strtolower(trim($search));
+        
+        // Normalize search term: remove common generic words
+        $genericWords = ['room', 'type', 'category', 'bed', 'suite'];
+        $searchNormalized = $search;
+        foreach ($genericWords as $generic) {
+            $searchNormalized = preg_replace('/\b' . $generic . '\b/i', '', $searchNormalized);
+        }
+        $searchNormalized = trim(preg_replace('/\s+/', ' ', $searchNormalized));
+        
         $results = [];
 
         foreach ($items as $item) {
             $itemLower = strtolower($item);
             $score = 0;
 
+            // Strategy 1: Direct substring match
             if (strpos($itemLower, $search) !== false) {
                 $position = strpos($itemLower, $search);
                 $positionScore = 100 - ($position * 2);
                 $score = max(100, $positionScore);
             } else {
+                // Strategy 2: Word-by-word matching with normalized search
+                $searchWords = preg_split('/[\s,\-()]+/', $searchNormalized, -1, PREG_SPLIT_NO_EMPTY);
                 $itemWords = preg_split('/[\s,\-()]+/', $itemLower, -1, PREG_SPLIT_NO_EMPTY);
-                $bestWordSimilarity = 0;
-
-                foreach ($itemWords as $word) {
-                    if (strlen($word) < 2) continue;
-
-                    $distance = levenshtein($search, $word);
-                    $maxLen = max(strlen($search), strlen($word));
-                    $similarity = (1 - $distance / $maxLen) * 100;
-
-                    if ($similarity > $bestWordSimilarity) {
-                        $bestWordSimilarity = $similarity;
+                
+                if (empty($searchWords)) {
+                    // If normalization removed all words, fall back to original
+                    $searchWords = preg_split('/[\s,\-()]+/', $search, -1, PREG_SPLIT_NO_EMPTY);
+                }
+                
+                $matchedWords = 0;
+                $totalSimilarity = 0;
+                
+                foreach ($searchWords as $searchWord) {
+                    if (strlen($searchWord) < 2) continue;
+                    
+                    $bestWordMatch = 0;
+                    
+                    foreach ($itemWords as $itemWord) {
+                        if (strlen($itemWord) < 2) continue;
+                        
+                        if ($searchWord === $itemWord) {
+                            $bestWordMatch = 100;
+                            break;
+                        }
+                        
+                        if (strpos($itemWord, $searchWord) !== false || strpos($searchWord, $itemWord) !== false) {
+                            $bestWordMatch = max($bestWordMatch, 85);
+                            continue;
+                        }
+                        
+                        $distance = levenshtein($searchWord, $itemWord);
+                        $maxLen = max(strlen($searchWord), strlen($itemWord));
+                        $similarity = (1 - $distance / $maxLen) * 100;
+                        
+                        if ($similarity > $bestWordMatch) {
+                            $bestWordMatch = $similarity;
+                        }
+                    }
+                    
+                    if ($bestWordMatch > 0) {
+                        $matchedWords++;
+                        $totalSimilarity += $bestWordMatch;
                     }
                 }
-
-                $score = $bestWordSimilarity;
+                
+                if ($matchedWords > 0) {
+                    $avgSimilarity = $totalSimilarity / $matchedWords;
+                    $matchRatio = $matchedWords / count($searchWords);
+                    $score = $avgSimilarity * $matchRatio;
+                }
             }
 
             if ($score >= $minSimilarity) {

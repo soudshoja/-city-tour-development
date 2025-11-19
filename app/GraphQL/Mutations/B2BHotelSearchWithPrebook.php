@@ -27,7 +27,7 @@ class B2BHotelSearchWithPrebook
         $checkIn = date('Y-m-d', strtotime($input['checkIn']));
         $checkOut = date('Y-m-d', strtotime($input['checkOut']));
         $occupancy = $input['occupancy'] ?? null;
-        $roomcount = $input['roomcount'] ?? 1;
+        $roomCount = $input['roomCount'] ?? 1;
         $nonRefundable = $input['nonRefundable'] ?? null;
         $boardBasis = $input['boardBasis'] ?? null;
         $roomName = $input['roomName'] ?? null;
@@ -100,7 +100,7 @@ class B2BHotelSearchWithPrebook
             checkOut: $checkOut,
             occupancy: $occupancy,
             cityName: $cityName ?? null,
-            roomCount: $roomcount,
+            roomCount: $roomCount,
             nonRefundable: $nonRefundable,
             boardBasis: $boardBasis,
             roomName: $roomName ?? null

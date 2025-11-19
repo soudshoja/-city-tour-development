@@ -69,7 +69,7 @@ input HotelSearchInput {
     occupancy: Mixed!
 
     "Room Name to search for (partial match supported)"
-    roomName: String!
+    roomName: String
 }
 
 "Response for hotel room search"
@@ -351,11 +351,12 @@ input B2BHotelSearchWithPrebookInput {
     checkOut: Date!
     occupancy: Mixed!
     nonRefundable: Boolean
-    roomcount: Int
+    roomCount: Int
     boardBasis: String
     minPrice: PriceInput
     maxPrice: PriceInput
     stars: [Int]
+    roomName: String
 }
 
 type AgentInfo {

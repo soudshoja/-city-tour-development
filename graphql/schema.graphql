@@ -97,6 +97,9 @@ type HotelSearchData {
 
     "List of cheapest rooms with details and prebook info"
     rooms: [RoomResult!]!
+
+    "Additional info"
+    additional_info: String
 }
 
 "Room details with prebook information"

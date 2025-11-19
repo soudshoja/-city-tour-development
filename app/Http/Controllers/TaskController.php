@@ -4974,66 +4974,45 @@ class TaskController extends Controller
         ], 200);
     }
 
-    public function supplierAutomation(Request $request)
-{   
-    Log::info('Supplier Automation Triggered', [
-        'request_fields' => $request->except('file'),
-        'has_file' => $request->hasFile('file'),
-    ]);
-
-    if ($request->hasFile('file')) {
-
-        $file = $request->file('file');
-
-        // Create folder if not exists
-        $folder = storage_path('app/supplier_uploads');
-        if (!file_exists($folder)) {
-            mkdir($folder, 0777, true);
-        }
-
-        // Save the file with original filename
-        $filename = time() . '_' . $file->getClientOriginalName();
-
-        $path = $file->move($folder, $filename);
-
-        Log::info('Supplier file saved', [
-            'original_name' => $file->getClientOriginalName(),
-            'saved_as' => $filename,
-            'path' => $path
-        ]);
-
-        return response()->json([
-            'received' => true,
-            'message' => "File uploaded successfully",
-            'filename' => $filename,
-        ]);
-    }
-
-    return response()->json([
-        'received' => true,
-        'message' => "No file detected",
-        'data' => $request->all(),
-    ]);
-}
-
-    public function automationAgentData(Request $request)
+    public function automationAgent(Request $request)
     {
         Log::info('Agent Data', [
             'response' => $request->all(),
         ]);
 
         $request->validate([
-            'agent_phone' => 'required|string',
-            'agent_name' => 'required|string',
+            'body' => 'nullable',
+            'mention' => 'nullable',
             'file_name' => 'required|string',
             'group_id' => 'required|string',
-            'resume_url' => 'required|string',
         ]);
 
         $groupId = explode('@', $request->group_id)[0];
-        $phone = explode('@', $request->agent_phone)[0];
+        $body = $request->body;
+        $mention = $request->mention;
+        $phone = null;
+
+        if (!empty($mention)) {
+            $unfilteredPhone = $mention[0]['id'];
+            
+        } elseif ($body) {
+            $unfilteredPhone = $body;
+        }
+
+        if ($unfilteredPhone) {
+            if (preg_match('/\d{11,12}/', $unfilteredPhone, $matches)) {
+                $phone = $matches[0];
+            } else {
+                $phone = explode('@', $unfilteredPhone)[0];
+                $phone = preg_replace('/\D/', '', $phone); 
+            }
+        }
         
         $agent = Agent::where('phone_number', $phone)->first();
+        Log::info("Found agent information for phone number: " . $phone, [
+            'data' => $agent,
+        ]);
+
         if (!$agent) {
             Log::info("No agent found within the system database with phone number: " . $phone);
             return response()->json([
@@ -5073,12 +5052,11 @@ class TaskController extends Controller
 
         return response()->json([
             'success' => true,
-            'resume_url' => $request->resume_url,
-            'agent_phone' => $request->agent_phone,
-            'file_name' => $request->file_name,
+            'message' => 'Successfully created file upload record for the file',
             'group_id' => $request->group_id,
-            'message' => 'API Local processed successfully'
-        ]);
+            'agent' => $agent,
+            'file_name' => $request->file_name,
+        ], 200);
 
         
     }

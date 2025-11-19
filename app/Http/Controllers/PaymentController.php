@@ -1622,12 +1622,13 @@ class PaymentController extends Controller
         if (strtolower($request->payment_gateway) === 'myfatoorah') {
             $chargeResult = ChargeService::FatoorahCharge($request->amount, $paymentMethodId, $companyId);
         } else if (strtolower($request->payment_gateway) === 'tap') {
-            $chargeResult = ChargeService::TapCharge([
-                'amount' => $request->amount,
-                'client_id' => $client->id,
-                'agent_id' => $agent->id,
-                'currency' => $request->currency ?? 'KWD',
-            ], 'tap');
+
+            $chargeResult = ChargeService::getFee(
+                gatewayName: 'Tap',
+                amount: $request->amount,
+                methodCode: $paymentMethodId,
+                companyId: $companyId
+            );
 
         } else if (strtolower($request->payment_gateway) === 'upayment') {
             $chargeResult = ChargeService::UPaymentCharge($request->amount, $paymentMethodId, $companyId);
@@ -1635,7 +1636,7 @@ class PaymentController extends Controller
             $chargeResult = ChargeService::HesabeCharge($request->amount, $paymentMethodId, $companyId);
         }
 
-        $serviceCharge = $chargeResult['gatewayFee'] ?? 0;
+        $serviceCharge = $chargeResult['fee'] ?? 0;
         
         try {
             $data = [

@@ -204,8 +204,7 @@
                                 </td>
                                 <td class="px-3 py-2 whitespace-nowrap text-sm font-semibold">
                                     @php
-                                    $payment_reference = 'this is testing';
-
+                                    $payment_reference = $payment->myFatoorahPayment ? $payment->myFatoorahPayment->invoice_ref : $payment->payment_reference;
                                     if($payment_reference === null) {
                                     $payment_reference = 'N/A';
                                     }

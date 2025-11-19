@@ -30,6 +30,7 @@ class B2BHotelSearchWithPrebook
         $roomcount = $input['roomcount'] ?? 1;
         $nonRefundable = $input['nonRefundable'] ?? null;
         $boardBasis = $input['boardBasis'] ?? null;
+        $roomName = $input['roomName'] ?? null;
 
         // STEP 1 — AGENT INFO
         $agent = Agent::where('phone_number', $telephone)->first();
@@ -101,7 +102,8 @@ class B2BHotelSearchWithPrebook
             cityName: $cityName ?? null,
             roomCount: $roomcount,
             nonRefundable: $nonRefundable,
-            boardBasis: $boardBasis
+            boardBasis: $boardBasis,
+            roomName: $roomName ?? null
         );
 
         return [

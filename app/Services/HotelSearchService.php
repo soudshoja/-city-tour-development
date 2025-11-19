@@ -815,41 +815,51 @@ class HotelSearchService
                     $this->logger->info('No matching room names found, proceeding with default behavior', [
                         'searched_room_name' => $roomName,
                     ]);
-                    $additionalMessage = "No exact match found for the requested room name. Proceeding with the cheapest available room.";
+                    $additionalMessage = "No exact match found for the requested room name '{$roomName}'. Showing the cheapest available rooms.";
                 } elseif (count($matches) === 1 && $matches[0]['similarity'] >= 90) {
                     $matchedRoomName = $matches[0]['room_name'];
-                    $allCheapestData = array_values(array_filter($allCheapestData, function($item) use ($matchedRoomName) {
+                    $filteredData = array_values(array_filter($allCheapestData, function($item) use ($matchedRoomName) {
                         return $item['offered_room']->room_name === $matchedRoomName;
                     }));
                     
-                    $this->logger->info('Filtered to exact room match', [
-                        'room_name' => $matchedRoomName,
-                        'similarity' => $matches[0]['similarity'],
-                        'remaining_rooms' => count($allCheapestData)
-                    ]);
-
-                    if (empty($allCheapestData)) {
-                        return ['success' => false, 'message' => 'No rooms are currently available for the selected criteria. Please adjust your search and try again.'];
+                    if (!empty($filteredData)) {
+                        $allCheapestData = $filteredData;
+                        $this->logger->info('Filtered to exact room match', [
+                            'room_name' => $matchedRoomName,
+                            'similarity' => $matches[0]['similarity'],
+                            'remaining_rooms' => count($allCheapestData)
+                        ]);
+                        $additionalMessage = "Exact match found: '{$matchedRoomName}'.";
+                    } else {
+                        $this->logger->warning('Exact match found but no availability, falling back to all rooms', [
+                            'room_name' => $matchedRoomName,
+                            'similarity' => $matches[0]['similarity']
+                        ]);
+                        $additionalMessage = "'{$matchedRoomName}' matched but not available. Showing alternative rooms.";
                     }
                 } elseif (count($matches) > 1) {
                     // Filter to all matching room names
                     $matchedRoomNames = array_map(fn($m) => $m['room_name'], $matches);
-                    $allCheapestData = array_values(array_filter($allCheapestData, function($item) use ($matchedRoomNames) {
+                    $filteredData = array_values(array_filter($allCheapestData, function($item) use ($matchedRoomNames) {
                         return in_array($item['offered_room']->room_name, $matchedRoomNames);
                     }));
                     
-                    $this->logger->info('Multiple matching room names found, filtered to matching rooms', [
-                        'searched_room_name' => $roomName,
-                        'matches_count' => count($matches),
-                        'matched_rooms' => $matchedRoomNames,
-                        'remaining_rooms' => count($allCheapestData)
-                    ]);
-
-                    if (empty($allCheapestData)) {
-                        return ['success' => false, 'message' => 'No rooms are currently available for the selected criteria. Please adjust your search and try again.'];
+                    if (!empty($filteredData)) {
+                        $allCheapestData = $filteredData;
+                        $this->logger->info('Multiple matching room names found, filtered to matching rooms', [
+                            'searched_room_name' => $roomName,
+                            'matches_count' => count($matches),
+                            'matched_rooms' => $matchedRoomNames,
+                            'remaining_rooms' => count($allCheapestData)
+                        ]);
+                        $additionalMessage = "Multiple rooms matched: " . implode(', ', array_unique($matchedRoomNames)) . ". Showing the cheapest options.";
+                    } else {
+                        $this->logger->warning('Multiple matches found but none available, falling back to all rooms', [
+                            'searched_room_name' => $roomName,
+                            'matched_rooms' => $matchedRoomNames
+                        ]);
+                        $additionalMessage = "Matched rooms (" . implode(', ', array_unique($matchedRoomNames)) . ") not available. Showing alternatives.";
                     }
-                    
-                    $additionalMessage = "Multiple rooms with similar names found (" . implode(', ', array_unique($matchedRoomNames)) . "). Showing the cheapest available option.";
                 }
             }
 

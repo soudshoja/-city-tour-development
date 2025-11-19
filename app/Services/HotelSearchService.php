@@ -788,7 +788,6 @@ class HotelSearchService
                     )
                 : $this->saveOffersAndGetCheapest($telephone, $srk, $resultsToken, $enquiryId, ['hotels' => $allOffers], $nonRefundable, $boardBasis);
 
-
             if (empty($allCheapestData)) {
                 return ['success' => false, 'message' => 'No rooms are currently available for the selected criteria. Please adjust your search and try again.'];
             }
@@ -801,25 +800,57 @@ class HotelSearchService
 
             $roomNames = array_map(function($item) {
                 return $item['offered_room']->room_name;
-            }, $allCheapestData);
+           }, $allCheapestData);
 
-            $matches = $this->findBestMatches(
-                roomName: $roomName,
-                listOfRoomNames: $roomNames,
-                maxResult: 3
-            );
+            $additionalMessage = null;
+            
+            if (!empty($roomName)) {
+                $matches = $this->findBestMatches(
+                    search: $roomName,
+                    items: $roomNames,
+                    maxResult: 3
+                );
 
-            if(count($matches) > 0){
-                // dd([
-                //     'success' => false,
-                //     'message' => 'There is multiple rooms with similar names, please confirm the exact room names that you want',
-                //     'room_names' => $matches
-                // ]);
-                return [
-                    'success' => false,
-                    'message' => 'There is multiple rooms with similar names, please confirm the exact room names that you want',
-                    'room_names' => $matches
-                ];
+                if (count($matches) === 0) {
+                    $this->logger->info('No matching room names found, proceeding with default behavior', [
+                        'searched_room_name' => $roomName,
+                    ]);
+                    $additionalMessage = "No exact match found for the requested room name. Proceeding with the cheapest available room.";
+                } elseif (count($matches) === 1 && $matches[0]['similarity'] >= 90) {
+                    $matchedRoomName = $matches[0]['room_name'];
+                    $allCheapestData = array_values(array_filter($allCheapestData, function($item) use ($matchedRoomName) {
+                        return $item['offered_room']->room_name === $matchedRoomName;
+                    }));
+                    
+                    $this->logger->info('Filtered to exact room match', [
+                        'room_name' => $matchedRoomName,
+                        'similarity' => $matches[0]['similarity'],
+                        'remaining_rooms' => count($allCheapestData)
+                    ]);
+
+                    if (empty($allCheapestData)) {
+                        return ['success' => false, 'message' => 'No rooms are currently available for the selected criteria. Please adjust your search and try again.'];
+                    }
+                } elseif (count($matches) > 1) {
+                    // Filter to all matching room names
+                    $matchedRoomNames = array_map(fn($m) => $m['room_name'], $matches);
+                    $allCheapestData = array_values(array_filter($allCheapestData, function($item) use ($matchedRoomNames) {
+                        return in_array($item['offered_room']->room_name, $matchedRoomNames);
+                    }));
+                    
+                    $this->logger->info('Multiple matching room names found, filtered to matching rooms', [
+                        'searched_room_name' => $roomName,
+                        'matches_count' => count($matches),
+                        'matched_rooms' => $matchedRoomNames,
+                        'remaining_rooms' => count($allCheapestData)
+                    ]);
+
+                    if (empty($allCheapestData)) {
+                        return ['success' => false, 'message' => 'No rooms are currently available for the selected criteria. Please adjust your search and try again.'];
+                    }
+                    
+                    $additionalMessage = "Multiple rooms with similar names found (" . implode(', ', array_unique($matchedRoomNames)) . "). Showing the cheapest available option.";
+                }
             }
 
             $roomsGroupedByPackage = collect($allCheapestData)
@@ -1067,7 +1098,7 @@ class HotelSearchService
                 }
             }
 
-            return [
+            $response = [
                 'success' => true,
                 'message' => 'B2B booking flow completed successfully.',
                 'data' => [
@@ -1077,6 +1108,12 @@ class HotelSearchService
                     'rooms' => $finalRoomsData,
                 ]
             ];
+
+            if ($additionalMessage) {
+                $response['data']['additional_info'] = $additionalMessage;
+            }
+
+            return $response;
         } catch (Exception $e) {
             $this->logger->error('Hotel search flow failed', [
                 'telephone' => $telephone,
@@ -1106,29 +1143,74 @@ class HotelSearchService
         }
     }
 
-    protected function findBestMatches(string $roomName, array $listOfRoomNames, int $maxResult = 3) : array
+    protected function findBestMatches(string $search, array $items, int $maxResult = 3, int $minSimilarity = 60) : array
     {
-        $this->logger->info('Finding best matches for room names with potential duplicates');
+        $this->logger->info('Finding best matches for room names', [
+            'search_term' => $search,
+            'items_count' => count($items),
+            'max_results' => $maxResult,
+            'min_similarity' => $minSimilarity
+        ]);
 
+        $search = strtolower(trim($search));
         $results = [];
 
-        foreach($listOfRoomNames as $room){
-            $distance = levenshtein(
-                strtolower($roomName),
-                strtolower($room)
-            );
+        foreach ($items as $item) {
+            $itemLower = strtolower($item);
+            $score = 0;
 
-            $results[] = [
-                'room_name' => $room,
-                'distance' => $distance
-            ];
+            if (strpos($itemLower, $search) !== false) {
+                $position = strpos($itemLower, $search);
+                $positionScore = 100 - ($position * 2);
+                $score = max(100, $positionScore);
+            } else {
+                $itemWords = preg_split('/[\s,\-()]+/', $itemLower, -1, PREG_SPLIT_NO_EMPTY);
+                $bestWordSimilarity = 0;
+
+                foreach ($itemWords as $word) {
+                    if (strlen($word) < 2) continue;
+
+                    $distance = levenshtein($search, $word);
+                    $maxLen = max(strlen($search), strlen($word));
+                    $similarity = (1 - $distance / $maxLen) * 100;
+
+                    if ($similarity > $bestWordSimilarity) {
+                        $bestWordSimilarity = $similarity;
+                    }
+                }
+
+                $score = $bestWordSimilarity;
+            }
+
+            if ($score >= $minSimilarity) {
+                $results[] = [
+                    'room_name' => $item,
+                    'similarity' => round($score, 2)
+                ];
+            }
+        }
+
+        if (empty($results)) {
+            $this->logger->info('No matches found', [
+                'search_term' => $search,
+                'min_similarity' => $minSimilarity
+            ]);
+            return [];
         }
 
         usort($results, function($a, $b) {
-            return $a['distance'] <=> $b['distance'];
+            return $b['similarity'] <=> $a['similarity'];
         });
 
-        return array_slice($results, 0, $maxResult);
+        $slicedResults = array_slice($results, 0, $maxResult);
+
+        $this->logger->info('Best matches found', [
+            'search_term' => $search,
+            'matches_count' => count($slicedResults),
+            'matches' => $slicedResults
+        ]);
+
+        return $slicedResults;
     }
 
     protected function parseRoomsString(string $roomsString): array

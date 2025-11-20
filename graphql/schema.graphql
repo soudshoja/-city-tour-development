@@ -70,6 +70,9 @@ input HotelSearchInput {
 
     "Room Name to search for (partial match supported)"
     roomName: String
+
+    "Country name for nationality (e.g., 'Kuwait', 'Saudi Arabia', defaults to 'Kuwait')"
+    nationality: String
 }
 
 "Response for hotel room search"
@@ -357,6 +360,7 @@ input B2BHotelSearchWithPrebookInput {
     maxPrice: PriceInput
     stars: [Int]
     roomName: String
+    nationality: String
 }
 
 type AgentInfo {
@@ -373,7 +377,9 @@ type B2BMultipleHotelMatch {
 
 type B2BMatchedHotel {
     name: String!
-    address: String!
+    address: String
+    stars: Int
+    index: Int
 }
 
 type B2BHotelSearchSuccess {

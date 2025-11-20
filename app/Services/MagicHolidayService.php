@@ -250,7 +250,7 @@ class MagicHolidayService
 
     public function getNationalities(array $params = [])
     {
-        $response =  $this->mapping('/nationalities', $params);
+        return $this->mapping('/nationalities', $params);
     }
 
     public function getNationalitiesDetails(string $nationalityId)

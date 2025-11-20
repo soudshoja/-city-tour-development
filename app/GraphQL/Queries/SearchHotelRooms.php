@@ -37,6 +37,7 @@ class SearchHotelRooms
             'occupancy' => 'required|array',
             'occupancy.rooms' => 'required|string',
             'roomName' => 'nullable|string',
+            'nationality' => 'nullable|string',
         ], [
             'telephone.required' => 'Telephone number is required.',
             'hotel.required' => 'Hotel name is required.',
@@ -78,7 +79,9 @@ class SearchHotelRooms
             roomCount: $input['roomCount'] ?? 1,
             nonRefundable: $input['nonRefundable'] ?? null,
             boardBasis: $input['boardBasis'] ?? null,
-            roomName: $input['roomName'] ?? null
+            roomName: $input['roomName'] ?? null,
+            isMarkup: true,
+            nationality: $input['nationality'] ?? null
         );
 
         return $result;

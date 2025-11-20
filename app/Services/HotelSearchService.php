@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Agent;
+use App\Models\MapCity;
 use App\Models\MapHotel;
 use App\Models\TemporaryOffer;
 use App\Models\OfferedRoom;
@@ -19,6 +20,52 @@ class HotelSearchService
     public function __construct()
     {
         $this->logger = Log::channel('magic_holidays');
+    }
+
+    public function resolveNationalityId(string $countryName, MagicHolidayService $magicService): int
+    {
+        $this->logger->info('Resolving nationality ID', ['country_name' => $countryName]);
+
+        try {
+            $country = \App\Models\Country::whereRaw('LOWER(name) = ?', [strtolower(trim($countryName))])->first();
+
+            $params = [];
+            if ($country && !empty($country->iso_code)) {
+                $params['iso'] = $country->iso_code;
+                $this->logger->info('Country found in local database, using ISO code', [
+                    'country_name' => $countryName,
+                    'iso_code' => $country->iso_code
+                ]);
+            } else {
+                $params['name'] = $countryName;
+                $this->logger->info('Country not found in local database, searching by name', [
+                    'country_name' => $countryName
+                ]);
+            }
+
+            $response = $magicService->getNationalities($params);
+
+            if (isset($response['data']['data']) && !empty($response['data']['data'])) {
+                $nationalityId = $response['data']['data'][0]['id'];
+                $this->logger->info('Nationality resolved from Magic Holiday API', [
+                    'country_name' => $countryName,
+                    'nationality_id' => $nationalityId,
+                    'nationality_name' => $response['data']['data'][0]['name'] ?? null
+                ]);
+                return $nationalityId;
+            }
+
+            $this->logger->warning('Nationality not found in Magic Holiday API, defaulting to Kuwait (ID: 1)', [
+                'country_name' => $countryName
+            ]);
+            return 1;
+        } catch (Exception $e) {
+            $this->logger->error('Failed to resolve nationality, defaulting to Kuwait (ID: 1)', [
+                'country_name' => $countryName,
+                'error' => $e->getMessage()
+            ]);
+            return 1;
+        }
     }
 
     public function findCompanyIdByPhone(string $telephone): ?int
@@ -578,7 +625,9 @@ class HotelSearchService
         int $roomCount = 1,
         ?bool $nonRefundable = null,
         ?string $boardBasis = null,
-        ?string $roomName = null
+        ?string $roomName = null,
+        $isMarkup = false,
+        ?string $nationality = null
     ): array {
         // occupancy['rooms'] now come as a string, need to turn it into an array , example: "[{\"adults\":2,\"childrenAges\":[5,7]},{\"adults\":1,\"childrenAges\":[]}]"
 
@@ -587,7 +636,7 @@ class HotelSearchService
         ]);
 
         $rooms = [];
-        $leaderNationality = $occupancy['leaderNationality'] ?? 1;
+        $leaderNationality = $occupancy['leaderNationality'] ?? null;
 
         if (!empty($occupancy['rooms'])) {
             $roomsString = $occupancy['rooms'];
@@ -598,11 +647,6 @@ class HotelSearchService
             'occupancy_rooms' => $rooms,
         ]);
 
-        $occupancy = [
-            'leaderNationality' => $leaderNationality,
-            'rooms' => $rooms
-        ];
-
         try {
             $this->logger->info('Starting hotel room search flow', [
                 'telephone' => $telephone,
@@ -612,27 +656,126 @@ class HotelSearchService
                 'check_out' => $checkOut,
                 'room_count_requested' => $roomCount,
                 'occupancy_rooms_count' => count($rooms),
+                'nationality_input' => $nationality,
             ]);
 
             $checkIn = date('Y-m-d', strtotime($checkIn));
             $checkOut = date('Y-m-d', strtotime($checkOut));
 
             $companyId = $this->findCompanyIdByPhone($telephone);
+            $magicService = new MagicHolidayService($companyId);
 
-            $hotelData = $this->findHotelByName($hotelName, $cityName);
-            if (!$hotelData) {
-                $message = $cityName
-                    ? 'Hotel not found with the provided name and city.'
-                    : 'Hotel not found with the provided name.';
+            if ($leaderNationality === null) {
+                $countryName = $nationality ?? 'Kuwait';
+                $leaderNationality = $this->resolveNationalityId($countryName, $magicService);
+            }
+
+            $occupancy = [
+                'leaderNationality' => $leaderNationality,
+                'rooms' => $rooms
+            ];
+
+            $searchParams = [
+                'checkIn' => $checkIn,
+                'checkOut' => $checkOut,
+                'occupancy' => $occupancy,
+                'filters' => [
+                    'name' => $hotelName,
+                ],
+                'language' => 'en_GB',
+                'timeout' => 30,
+                'sellingChannel' => 'B2C',
+                'availableOnly' => true,
+            ];
+
+            if ($cityName) {
+                $cityRecord = MapCity::where('name', 'like', "%$cityName%")->first();
+                if ($cityRecord) {
+                    $searchParams['destination'] = ['city' => ['id' => $cityRecord->id]];
+                } else {
+                    $this->logger->error('City not found in mapping table', ['city_name' => $cityName]);
+                    return [
+                        'success' => false,
+                        'message' => 'City not found: ' . $cityName
+                    ];
+                }
+            }
+
+            $this->logger->info('Starting hotel search via Magic Holiday API', $searchParams);
+
+            $searchResult = $this->startSearch($magicService, $searchParams);
+            $srk = $searchResult['srk'];
+            $enquiryId = $searchResult['enquiry_id'];
+            $progressToken = $searchResult['progress_token'];
+            $resultsToken = $searchResult['results_token'];
+
+            $this->pollSearchProgress($magicService, $progressToken);
+
+            $this->logger->info('Fetching detailed search results', ['srk' => $srk]);
+            $resultsResponse = $magicService->getSearchResults($srk, $resultsToken, ['includeHotelDetails' => 1]);
+
+            if (!isset($resultsResponse['data']['hotels'])) {
+                $this->logger->error('Failed to get detailed results', ['response' => $resultsResponse]);
                 return [
                     'success' => false,
-                    'message' => $message
+                    'message' => 'Failed to retrieve hotel search results.'
                 ];
             }
+
+            $hotels = $resultsResponse['data']['hotels'];
+            if (empty($hotels)) {
+                $this->logger->warning('No hotels found', ['srk' => $srk]);
+                return [
+                    'success' => false,
+                    'message' => 'No hotels found matching your search criteria.'
+                ];
+            }
+
+            $normalizedSearchName = strtolower(preg_replace('/[^a-z0-9]+/i', '', $hotelName));
+            $exactMatch = null;
+
+            foreach ($hotels as $hotel) {
+                $normalizedHotelName = strtolower(preg_replace('/[^a-z0-9]+/i', '', $hotel['name'] ?? ''));
+                if ($normalizedHotelName === $normalizedSearchName) {
+                    $exactMatch = $hotel;
+                    break;
+                }
+            }
+
+            if (count($hotels) > 1 && !$exactMatch) {
+                $this->logger->info('Multiple hotels found, no exact match', [
+                    'count' => count($hotels),
+                    'hotels' => array_map(fn($h) => $h['name'], $hotels)
+                ]);
+
+                return [
+                    'success' => false,
+                    'message' => 'Multiple hotels match your search. Please select one.',
+                    'multiple_hotels' => array_map(function($h) {
+                        return [
+                            'name' => $h['name'] ?? null,
+                            'address' => $h['details']['address'] ?? null,
+                            'stars' => $h['stars'] ?? null,
+                            'index' => $h['index'] ?? null,
+                        ];
+                    }, $hotels)
+                ];
+            }
+
+            $selectedHotel = $exactMatch ?? $hotels[0];
+            $hotelData = [
+                'hotel_name' => $selectedHotel['name'],
+                'city_id' => $cityRecord->id,
+                'city_name' => $cityName,
+            ];
+
+            $this->logger->info('Selected hotel for search', ['hotel' => $hotelData['hotel_name']]);
+
             $isReused = false;
             $normalizedHotelName = trim(str_replace(',', '', $hotelName));
 
             $existingRequest = RequestBookingRoom::where('phone_number', $telephone)
+                ->where('disabled', false)
                 ->whereRaw('REPLACE(hotel, ",", "") = ?', [$normalizedHotelName])
                 ->whereDate('check_in', date('Y-m-d', strtotime($checkIn)))
                 ->whereDate('check_out', date('Y-m-d', strtotime($checkOut)))
@@ -684,113 +827,38 @@ class HotelSearchService
                 $this->clearPreviousOffers($telephone);
             }
 
-            $magicService = new MagicHolidayService($companyId);
-            $srk = null;
-            $enquiryId = null;
-            $resultsToken = null;
             $allOffers = [];
 
             if (!$isReused) {
-                $this->logger->info('No cached offers found — fetching from Magic Holiday API');
-
-                $searchParams = [
-                    'destination' => [
-                        'city' => [
-                            'id' => $hotelData['city_id'],
-                        ]
-                    ],
-                    'checkIn' => $checkIn,
-                    'checkOut' => $checkOut,
-                    'occupancy' => $occupancy,
-                    'filters' => [
-                        'name' => $hotelData['hotel_name'],
-                    ],
-                    'language' => 'en_GB',
-                    'timeout' => 30,
-                    'sellingChannel' => 'B2C',
-                    'availableOnly' => true,
-                ];
-
-                $searchResult = $this->startSearch($magicService, $searchParams);
-                $srk = $searchResult['srk'];
-                $enquiryId = $searchResult['enquiry_id'];
-                $progressToken = $searchResult['progress_token'];
-                $resultsToken = $searchResult['results_token'];
-
-                $this->pollSearchProgress($magicService, $progressToken);
-
-                $summary = $this->getSearchSummary($magicService, $progressToken);
-                if (empty($summary['hotels']) || ($summary['count'] ?? 0) === 0) {
-                    $this->logger->warning('No hotels found in search results', [
-                        'telephone' => $telephone,
-                        'hotel' => $hotelName,
-                        'summary' => $summary
-                    ]);
-
-                    return [
-                        'success' => false,
-                        'message' => 'No available hotels or rooms found for the specified dates and hotel name.'
-                    ];
-                }
-
-                $this->logger->info('Fetching detailed search results', ['srk' => $srk]);
-                $resultsResponse = $magicService->getSearchResults($srk, $resultsToken);
-
-                if (!isset($resultsResponse['data']['hotels'])) {
-                    $this->logger->error('Failed to get detailed results', ['response' => $resultsResponse]);
-                    return [
-                        'success' => false,
-                        'message' => 'Failed to retrieve detailed hotel offers.'
-                    ];
-                }
-
-                $hotels = $resultsResponse['data']['hotels'];
-                if (empty($hotels)) {
-                    $this->logger->warning('No hotels in results response', ['srk' => $srk]);
-                    return [
-                        'success' => false,
-                        'message' => 'No hotels found in search results.'
-                    ];
-                }
-
-                $this->logger->info('Processing hotels and fetching offers', [
-                    'hotel_count' => count($hotels),
-                    'srk' => $srk
+                $this->logger->info('Fetching offers for selected hotel', [
+                    'hotel_name' => $hotelData['hotel_name']
                 ]);
 
-                foreach ($hotels as $hotel) {
-                    $hotelIndex = $hotel['id'] ?? $hotel['index'] ?? null;
+                $hotelIndex = $selectedHotel['id'] ?? $selectedHotel['index'] ?? null;
 
-                    if (!$hotelIndex) {
-                        $this->logger->warning('Hotel missing id/index', ['hotel' => $hotel]);
-                        continue;
-                    }
-
-                    $this->logger->info('Fetching offers for hotel', [
-                        'hotel_index' => $hotelIndex,
-                        'hotel_name' => $hotel['name'] ?? 'Unknown'
-                    ]);
-
-                    $offersResponse = $magicService->getHotelOffers($srk, $hotelIndex, $resultsToken);
-
-                    if (isset($offersResponse['data']['offers'])) {
-                        $hotel['offers'] = $offersResponse['data']['offers'];
-                        $allOffers[] = $hotel;
-                    } else {
-                        $this->logger->warning('No offers found for hotel', [
-                            'hotel_index' => $hotelIndex,
-                            'response' => $offersResponse
-                        ]);
-                    }
-                }
-
-                if (empty($allOffers)) {
-                    $this->logger->warning('No offers found for any hotel', ['srk' => $srk]);
+                if (!$hotelIndex) {
+                    $this->logger->error('Hotel missing id/index', ['hotel' => $selectedHotel]);
                     return [
                         'success' => false,
-                        'message' => 'No available rooms found for the specified dates.'
+                        'message' => 'Invalid hotel data received from search.'
                     ];
                 }
+
+                $offersResponse = $magicService->getHotelOffers($srk, $hotelIndex, $resultsToken);
+
+                if (!isset($offersResponse['data']['offers'])) {
+                    $this->logger->warning('No offers found for hotel', [
+                        'hotel_index' => $hotelIndex,
+                        'response' => $offersResponse
+                    ]);
+                    return [
+                        'success' => false,
+                        'message' => 'No available rooms found for the selected hotel.'
+                    ];
+                }
+
+                $selectedHotel['offers'] = $offersResponse['data']['offers'];
+                $allOffers[] = $selectedHotel;
 
                 $this->saveBookingRequest($telephone, [
                     'hotel_name' => $hotelData['hotel_name'],
@@ -1059,17 +1127,27 @@ class HotelSearchService
                             'taxes' => $prebookResponse['taxes'] ?? [],
                         ]);
 
+
+                        $finalSellingPrebook = null;
+
+                        if(isset($prebookResponse['package']['price']['selling']['value'])){
+                            $finalSellingPrebook = ceil($prebookResponse['package']['price']['selling']['value'] * 1.02);
+                        }
+
                         $finalRoomsData[] = [
                             'success' => true,
-                            'room' => collect($currentPrebookRooms)->map(fn($room) => [
+                            'room' => collect($currentPrebookRooms)->map(function($room) use ($isMarkup){ 
+                                $finalPrice = $isMarkup ? ceil($room['offered_room']->price * 1.02) : $room['offered_room']->price;
+                                return [
                                 'room_name' => $room['offered_room']->room_name,
                                 'board_basis' => $room['offered_room']->board_basis,
                                 'non_refundable' => (bool)$room['offered_room']->non_refundable,
-                                'price' => ceil($room['offered_room']->price * 1.02), // apply 20% markup
+                                'price' => $finalPrice,
                                 'currency' => $room['offered_room']->currency,
                                 'info' => $offered->info ?? null,
                                 'occupancy' => !empty($room['offered_room']->occupancy) ? json_decode($room['offered_room']->occupancy, true) : null,
-                            ])->values()->all(),
+                                ];
+                            })->values()->all(),
                             'prebook' => [
                                 'prebookKey' => $storePrebookResponse['prebook_key'] ?? null,
                                 'serviceDates' => $prebookResponse['serviceDates'] ?? [],
@@ -1078,7 +1156,7 @@ class HotelSearchService
                                     'complete' => $prebookResponse['package']['complete'] ?? null,
                                     'price' => [
                                         'selling' => [
-                                            'value' => isset($prebookResponse['package']['price']['selling']['value']) ? ceil($prebookResponse['package']['price']['selling']['value'] * 1.02) : null,
+                                            'value' =>  $finalSellingPrebook,
                                             'currency' => $prebookResponse['package']['price']['selling']['currency'] ?? 'KWD',
                                         ],
                                     ],

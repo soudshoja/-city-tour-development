@@ -4,7 +4,6 @@ namespace App\GraphQL\Mutations;
 
 use App\Models\Agent;
 use App\Services\HotelSearchService;
-use App\GraphQL\Queries\GetFilteredHotel;
 use Illuminate\Support\Facades\Log;
 
 class B2BHotelSearchWithPrebook
@@ -31,8 +30,8 @@ class B2BHotelSearchWithPrebook
         $nonRefundable = $input['nonRefundable'] ?? null;
         $boardBasis = $input['boardBasis'] ?? null;
         $roomName = $input['roomName'] ?? null;
+        $nationality = $input['nationality'] ?? null;
 
-        // STEP 1 — AGENT INFO
         $agent = Agent::where('phone_number', $telephone)->first();
         $agentInfo = [
             'agentName' => $agent->name ?? null,
@@ -41,61 +40,10 @@ class B2BHotelSearchWithPrebook
 
         $this->logger->info("Agent resolved", $agentInfo);
 
-        // STEP 2 — CALL Getfiltered
-        $filterInput = [
-            'destination' => [
-                'city' => ['name' => $cityName]
-            ],
-            'checkin'  => $checkIn,
-            'checkout' => $checkOut,
-            'occupancy' => [
-                'leaderNationality' => $occupancy['leaderNationality'] ?? 1,
-                'rooms' => $occupancy['rooms']
-            ],
-            'filters' => [
-                'name' => $hotelName,
-            ]
-        ];
-        $this->logger->info("Calling Getfiltered", $filterInput);
-
-        $filtered = app(GetFilteredHotel::class)->__invoke(null, ['input' => $filterInput]);
-        $this->logger->info("Getfiltered response", $filtered);
-
-        // 0 MATCHES
-        if (empty($filtered['hotels'])) {
-            return [
-                '__typename' => 'B2BMultipleHotelMatch',
-                'agentInfo' => $agentInfo,
-                'status' => 'not_found',
-                'message' => 'No hotels found with applied filters.',
-                'hotels' => []
-            ];
-        }
-
-        // MULTIPLE MATCHES
-        if (count($filtered['hotels']) > 1) {
-            return [
-                '__typename' => 'B2BMultipleHotelMatch',
-                'agentInfo' => $agentInfo,
-                'status' => 'multiple_matches',
-                'message' => 'Multiple hotels match your search.',
-                'hotels' => array_map(function ($h) {
-                    return [
-                        'name' => $h['name'],
-                        'address' => $h['address'] ?? null
-                    ];
-                }, $filtered['hotels'])
-            ];
-        }
-
-        // EXACT MATCH → room search
-        $hotel = $filtered['hotels'][0];
-        $this->logger->info("Exact hotel match", $hotel);
-
         $search = new HotelSearchService();
         $searchResult = $search->searchHotelRooms(
             telephone: $telephone,
-            hotelName: $hotel['name'],
+            hotelName: $hotelName,
             checkIn: $checkIn,
             checkOut: $checkOut,
             occupancy: $occupancy,
@@ -103,8 +51,30 @@ class B2BHotelSearchWithPrebook
             roomCount: $roomCount,
             nonRefundable: $nonRefundable,
             boardBasis: $boardBasis,
-            roomName: $roomName ?? null
+            roomName: $roomName ?? null,
+            isMarkup: false,
+            nationality: $nationality
         );
+
+        if (!$searchResult['success']) {
+            if (isset($searchResult['multiple_hotels'])) {
+                return [
+                    '__typename' => 'B2BMultipleHotelMatch',
+                    'agentInfo' => $agentInfo,
+                    'status' => 'multiple_matches',
+                    'message' => $searchResult['message'] ?? 'Multiple hotels match your search.',
+                    'hotels' => $searchResult['multiple_hotels']
+                ];
+            }
+
+            return [
+                '__typename' => 'B2BMultipleHotelMatch',
+                'agentInfo' => $agentInfo,
+                'status' => 'not_found',
+                'message' => $searchResult['message'] ?? 'No hotels found.',
+                'hotels' => []
+            ];
+        }
 
         return [
             '__typename' => 'B2BHotelSearchSuccess',

@@ -27,28 +27,12 @@ class HotelSearchService
         $this->logger->info('Resolving nationality ID', ['country_name' => $countryName]);
 
         try {
-            $country = \App\Models\Country::whereRaw('LOWER(name) = ?', [strtolower(trim($countryName))])->first();
-
-            $params = [];
-            if ($country && !empty($country->iso_code)) {
-                $params['iso'] = $country->iso_code;
-                $this->logger->info('Country found in local database, using ISO code', [
-                    'country_name' => $countryName,
-                    'iso_code' => $country->iso_code
-                ]);
-            } else {
-                $params['name'] = $countryName;
-                $this->logger->info('Country not found in local database, searching by name', [
-                    'country_name' => $countryName
-                ]);
-            }
-
-            $response = $magicService->getNationalities($params);
+            $response = $magicService->getNationalities(['name' => $countryName]);
 
             if (isset($response['data']['_embedded']['nationalities']) && !empty($response['data']['_embedded']['nationalities'])) {
                 $nationalityId = $response['data']['_embedded']['nationalities'][0]['id'];
-                $this->logger->info('Nationality resolved from Magic Holiday API', [
-                    'country_name' => $countryName,
+                $this->logger->info('Found nationality from Magic Holiday API', [
+                    'country_input' => $countryName,
                     'nationality_id' => $nationalityId,
                     'nationality_name' => $response['data']['_embedded']['nationalities'][0]['name'] ?? null,
                     'nationality_iso' => $response['data']['_embedded']['nationalities'][0]['ISO'] ?? null
@@ -56,16 +40,31 @@ class HotelSearchService
                 return $nationalityId;
             }
 
-            $this->logger->warning('Nationality not found in Magic Holiday API, defaulting to Kuwait (ID: 1)', [
+            $this->logger->warning('Nationality not found, fetching Kuwait as fallback', [
                 'country_name' => $countryName
             ]);
-            return 1;
+
+            $kuwaitResponse = $magicService->getNationalities(['iso' => 'KW']);
+
+            if (isset($kuwaitResponse['data']['_embedded']['nationalities']) && !empty($kuwaitResponse['data']['_embedded']['nationalities'])) {
+                $kuwaitId = $kuwaitResponse['data']['_embedded']['nationalities'][0]['id'];
+                $this->logger->info('Using Kuwait nationality as fallback', [
+                    'kuwait_id' => $kuwaitId,
+                    'original_country' => $countryName
+                ]);
+                return $kuwaitId;
+            }
+
+            $this->logger->warning('Failed to fetch Kuwait from API, using hard-coded fallback', [
+                'country_name' => $countryName
+            ]);
+            return 158;
         } catch (Exception $e) {
-            $this->logger->error('Failed to resolve nationality, defaulting to Kuwait (ID: 1)', [
+            $this->logger->error('Failed to resolve nationality, defaulting to Kuwait', [
                 'country_name' => $countryName,
                 'error' => $e->getMessage()
             ]);
-            return 1;
+            return 158;
         }
     }
 

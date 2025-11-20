@@ -1549,6 +1549,7 @@ class WhatsAppHotelController extends Controller
             "prebookKey" => "required|string",
             "first_name" => "required|string",
             "last_name" => "required|string",
+            "payment_method" => "required|string|in:prepaid,credit",
         ]);
 
         $prebookKey = $request->prebookKey;
@@ -1797,7 +1798,7 @@ class WhatsAppHotelController extends Controller
             "clientRef" => $prebookKey,
             "availabilityToken" => $availabilityToken,
             "payment" => [
-                "method" => "prepaid"
+                "method" => $request->payment_method,
             ],
             "rooms" => $roomsPayload,
             "comments" => "Booking via B2B API",

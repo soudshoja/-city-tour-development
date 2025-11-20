@@ -45,12 +45,13 @@ class HotelSearchService
 
             $response = $magicService->getNationalities($params);
 
-            if (isset($response['data']['data']) && !empty($response['data']['data'])) {
-                $nationalityId = $response['data']['data'][0]['id'];
+            if (isset($response['data']['_embedded']['nationalities']) && !empty($response['data']['_embedded']['nationalities'])) {
+                $nationalityId = $response['data']['_embedded']['nationalities'][0]['id'];
                 $this->logger->info('Nationality resolved from Magic Holiday API', [
                     'country_name' => $countryName,
                     'nationality_id' => $nationalityId,
-                    'nationality_name' => $response['data']['data'][0]['name'] ?? null
+                    'nationality_name' => $response['data']['_embedded']['nationalities'][0]['name'] ?? null,
+                    'nationality_iso' => $response['data']['_embedded']['nationalities'][0]['ISO'] ?? null
                 ]);
                 return $nationalityId;
             }

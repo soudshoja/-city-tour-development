@@ -43,6 +43,7 @@
 
         cityButtons.forEach(button => {
             button.addEventListener('click', function() {
+                console.log('City button clicked');
                 hotels.innerHTML = '';
 
                 const itemId = this.getAttribute('data-item-id');
@@ -80,7 +81,9 @@
                 fetch(url)
                     .then(response => response.json())
                     .then(data => {
+                        // console.log(data);
                         if (typeof data.error !== 'undefined') throw new Error(data.error);
+                        hotelsData = data.Hotels;
                         hotels.innerHTML = '';
 
 
@@ -101,7 +104,7 @@
 
                         hotels.appendChild(hotelListContainer);
 
-                        data.forEach(hotel => {
+                        hotelsData.forEach(hotel => {
                             hotelsList.push(hotel);
 
                             breadcrumbs.innerHTML = `
@@ -168,38 +171,134 @@
                                     .then(response => response.json())
                                     .then(data => {
                                         if (typeof data.error !== 'undefined') throw new Error(data.error);
+                                        if (data.Status.Code !== 200) throw new Error(data.Status.Description);
+
+                                        hotelData = data.HotelDetails[0];
+                                        console.log(data);
 
                                         breadcrumbs.innerHTML = `
                                             <p class="">
-                                                <p class="" id="hotel-list">Hotels</p>
+                                                <span class="cursor-pointer hover:underline customBlueColor" id="hotel-list">Hotels</span>
                                             </p>
                                             <p class="before:content-['/'] before:mr-1">
-                                                <p class=""> ${data[0].HotelName} </p>
+                                                <span>${hotelData.HotelName}</span>
                                             </p>
                                         `;
 
-                                        hotelListContainer.innerHTML = '';
-                                        hotelListContainer.classList.remove('grid', 'grid-cols-2', 'gap-2', 'w-full');
-                                        hotelListContainer.classList.add('flex', 'flex-col', 'w-full', 'p-2');
+                                        // Add click event to go back to hotels list
+                                        document.getElementById('hotel-list').addEventListener('click', function() {
+                                            location.reload(); // Simple way to go back, or rebuild the hotels list
+                                        });
 
-                                        data.forEach(hotelDetails => {
-                                            const hotelDetailsDiv = document.createElement('div');
-                                            Object.entries(hotelDetails).forEach(([key, value]) => {
+                                        hotelListContainer.innerHTML = '';
+                                        hotelListContainer.classList.remove('grid', 'grid-cols-2', 'gap-2');
+                                        hotelListContainer.classList.add('flex', 'flex-col', 'w-full', 'space-y-4');
+
+                                        // Display hotel details
+                                        const hotelDetailsDiv = document.createElement('div');
+                                        hotelDetailsDiv.className = 'bg-white dark:bg-gray-700 rounded-lg shadow p-4';
+
+                                        // Hotel Name as header
+                                        hotelDetailsDiv.innerHTML = `
+                                            <h2 class="text-2xl font-bold mb-4">${hotelData.HotelName}</h2>
+                                        `;
+
+                                        // Single Image
+                                        if (hotelData.Image && typeof hotelData.Image === 'string') {
+                                            hotelDetailsDiv.innerHTML += `
+                                                <div class="mt-4">
+                                                    <div class="rounded overflow-hidden shadow w-full md:w-1/2">
+                                                        <img src="${hotelData.Image}" alt="${hotelData.HotelName}" class="w-full h-64 object-cover" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\'%3E%3Crect fill=\'%23ddd\' width=\'100\' height=\'100\'/%3E%3Ctext fill=\'%23999\' x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\'%3ENo Image%3C/text%3E%3C/svg%3E'">
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }
+
+
+
+                                        // Description
+                                        if (hotelData.Description) {
+                                            hotelDetailsDiv.innerHTML += `
+                                                <div class="mb-4">
+                                                    <h3 class="font-semibold text-lg mb-2">Description:</h3>
+                                                    <p class="text-gray-700 dark:text-gray-300">${hotelData.Description}</p>
+                                                </div>
+                                            `;
+                                        }
+
+                                        // Other details
+                                        const excludeKeys = ['HotelName', 'Description', 'HotelFacilities', 'Attractions', 'Images'];
+                                        Object.entries(hotelData).forEach(([key, value]) => {
+                                            if (!excludeKeys.includes(key) && value !== null && value !== '') {
                                                 hotelDetailsDiv.innerHTML += `
-                                                    <div class="grid grid-cols-1 text-start">
-                                                        <div class="inline-flex gap-2">
-                                                            <strong>${key}:</strong> ${value}
-                                                        </div>
+                                                    <div class="mb-2">
+                                                        <span class="font-semibold">${key}:</span>
+                                                        <span class="ml-2">${typeof value === 'object' ? JSON.stringify(value) : value}</span>
                                                     </div>
                                                 `;
-                                            });
-                                            hotelListContainer.appendChild(hotelDetailsDiv);
-                                        })
+                                            }
+                                        });
+                                        // Hotel Fees
+                                        if (hotelData.HotelFees) {
+                                            const fees = typeof hotelData.HotelFees === 'string' ? JSON.parse(hotelData.HotelFees) : hotelData.HotelFees;
+
+                                            hotelDetailsDiv.innerHTML += `
+                                                <div class="mt-4">
+                                                    <h3 class="font-semibold text-lg mb-2">Hotel Fees:</h3>
+                                                    <div class="bg-gray-50 dark:bg-gray-600 rounded p-3">
+                                                        ${fees.Optional && fees.Optional.length > 0 ? `
+                                                            <div class="mb-3">
+                                                                <h4 class="font-semibold mb-2">Optional Fees:</h4>
+                                                                <div class="grid grid-cols-1 gap-2">
+                                                                    ${fees.Optional.map(fee => `
+                                                                        <div class="text-sm bg-white dark:bg-gray-700 p-2 rounded">
+                                                                            ${typeof fee === 'object' ? JSON.stringify(fee) : fee}
+                                                                        </div>
+                                                                    `).join('')}
+                                                                </div>
+                                                            </div>
+                                                        ` : '<div class="text-sm text-gray-600 dark:text-gray-400 mb-2">No Optional Fees</div>'}
+                                                        
+                                                        ${fees.Mandatory && fees.Mandatory.length > 0 ? `
+                                                            <div>
+                                                                <h4 class="font-semibold mb-2">Mandatory Fees:</h4>
+                                                                <div class="grid grid-cols-1 gap-2">
+                                                                    ${fees.Mandatory.map(fee => `
+                                                                        <div class="text-sm bg-white dark:bg-gray-700 p-2 rounded">
+                                                                            ${typeof fee === 'object' ? JSON.stringify(fee) : fee}
+                                                                        </div>
+                                                                    `).join('')}
+                                                                </div>
+                                                            </div>
+                                                        ` : '<div class="text-sm text-gray-600 dark:text-gray-400">No Mandatory Fees</div>'}
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }
+                                        // Hotel Facilities
+                                        if (hotelData.HotelFacilities && hotelData.HotelFacilities.length > 0) {
+                                            hotelDetailsDiv.innerHTML += `
+                                                <div class="mt-4">
+                                                    <h3 class="font-semibold text-lg mb-2">Facilities:</h3>
+                                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                                        ${hotelData.HotelFacilities.map(facility => `<div class="text-sm">• ${facility}</div>`).join('')}
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }
+
+                                        hotelListContainer.appendChild(hotelDetailsDiv);
 
 
                                     })
                                     .catch(error => {
-                                        alert(error);
+                                        hotelListContainer.innerHTML = `
+                                            <div class="text-center w-full font-bold text-red-600 dark:text-red-400 p-4 bg-red-50 dark:bg-red-900/20 rounded">
+                                                Error: ${error.message}
+                                            </div>
+                                        `;
+
+                                        hotelDiv.classList.remove('animate-pulse');
                                     });
 
 

@@ -9,6 +9,7 @@ class TBO extends Model
     protected $table = 'tbo';
 
     protected $fillable = [
+        'prebook_key',
         'booking_code',
         'hotel_code',
         'hotel_name',

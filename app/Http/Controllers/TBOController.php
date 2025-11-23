@@ -8,6 +8,7 @@ use App\Services\TBOHolidayService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 
 class TBOController extends Controller
@@ -469,7 +470,8 @@ class TBOController extends Controller
     public function hotelDetails(int $hotelCode)
     {
         $response = $this->tboService->getHotelDetails($hotelCode);
-        return $response;
+
+        return response()->json($response, $response['Status']['Code']);
     }
 
     public function getAllDestinations()

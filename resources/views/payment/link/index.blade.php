@@ -287,7 +287,44 @@
                                                     </svg>
                                                     View Invoice
                                                 </a>
-
+                                                <form action="{{ route('payment.link.payment.activation', $payment->id) }}" method="POST" class="block">
+                                                @csrf
+                                                    @if ($payment->status !== 'completed' && !$payment->is_disabled)
+                                                        <div class="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                            <button class="flex items-center gap-2 w-full">
+                                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                                    class="h-5 w-5 mr-2 text-purple-500"
+                                                                    fill="none" viewBox="0 0 24 24"
+                                                                    stroke="currentColor" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        d="M12 11c-1.657 0-3 1.343-3 3v3h6v-3c0-1.657-1.343-3-3-3z" />
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        d="M17 11V7a5 5 0 00-10 0v4" />
+                                                                    <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                                                                </svg>
+                                                                Disable Link
+                                                            </button>
+                                                        </div>
+                                                    @elseif ($payment->status !== 'completed' && $payment->is_disabled)
+                                                        <div class="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                            <button class="flex items-center gap-2 w-full">
+                                                                <svg xmlns="http://www.w3.org/2000/svg"
+                                                                    class="h-5 w-5 mr-2 text-purple-500"
+                                                                    fill="none" viewBox="0 0 24 24"
+                                                                    stroke="currentColor" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        d="M17 8a5 5 0 10-10 0v1" />
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        d="M17 8v-2" />
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        d="M12 11c-1.657 0-3 1.343-3 3v3h6v-3c0-1.657-1.343-3-3-3z" />
+                                                                    <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                                                                </svg>
+                                                                Enable Link
+                                                            </button>
+                                                        </div>
+                                                    @endif
+                                                </form>
                                                 @if ($payment->status === 'pending')
                                                 <div class="border-t border-gray-200 my-1"></div>
                                                 <button @click="editPaymentLink = true; open = false" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50">

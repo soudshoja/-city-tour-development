@@ -210,7 +210,9 @@ class IncomingMediaController extends Controller
             $newFilename = 'media_' . time() . '_' . uniqid() . '.' . $extension;
             $response = Http::withHeaders([
                 'Token' => config('services.resayil.api_token'),
-            ])->get($mediaUrl);
+            ])
+            ->timeout(120)
+            ->get($mediaUrl);
 
             if ($response->ok()) {
                 Storage::put("public/uploads/{$newFilename}", $response->body());

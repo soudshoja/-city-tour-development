@@ -39,20 +39,26 @@ type Query {
         @field(resolver: "App\\GraphQL\\Queries\\SearchHotelRooms")
 
     "Search for TBO hotel rooms with the cheapest price and prebook details."
-    searchTBOHotelRooms(input: TBOHotelSearchInput!): TBOHotelSearchResponse!
+    searchTBOHotelRooms(input: HotelSearchInput!): TBOHotelSearchResponse!
         @field(resolver: "App\\GraphQL\\Queries\\SearchTBOHotelRooms")
 }
 
-"Input for searching hotel rooms"
+"Input for searching hotel rooms (unified for both Magic Holiday and TBO)"
 input HotelSearchInput {
     "Customer telephone number (used to identify agent/company)"
     telephone: String!
 
-    "Hotel name to search (partial match supported)"
-    hotel: String!
+    "Hotel name to search (partial match supported) - Optional if hotelCode provided"
+    hotel: String
+
+    "TBO hotel code - Optional if hotel name provided"
+    hotelCode: Int
 
     "City name to narrow down search (optional, partial match supported)"
     city: String
+
+    "Guest nationality code (ISO 3166-1 alpha-2, e.g., 'AL', 'US', 'GB') - Required for TBO"
+    guestNationality: String
 
     "Check-in date (format: YYYY-MM-DD)"
     checkIn: Date!
@@ -69,13 +75,13 @@ input HotelSearchInput {
     "Filter by board basis codes (e.g., RO, BB, HB)"
     boardBasis: String
 
-    "Occupancy configuration defining how many adults and children per room"
+    "Occupancy configuration - Supports both string format '2,1|1,0' and array format [{adults: 2, children: 1}]"
     occupancy: Mixed!
 
     "Room Name to search for (partial match supported)"
     roomName: String
 
-    "Country name for nationality (e.g., 'Kuwait', 'Saudi Arabia', defaults to 'Kuwait')"
+    "Country name for nationality (e.g., 'Kuwait', 'Saudi Arabia', defaults to 'Kuwait') - For Magic Holiday"
     nationality: String
 }
 
@@ -430,11 +436,17 @@ type TBOHotelSearchResponse {
     "Whether the search was successful"
     success: Boolean!
 
+    "Status of the response: 'hotel_found', 'multiple_hotels_found', 'hotel_not_found'"
+    status: String
+
     "Message describing the result"
     message: String
 
-    "Search result data (null if unsuccessful)"
+    "Search result data (null if unsuccessful or multiple hotels found)"
     data: TBOHotelSearchData
+
+    "List of hotel options when multiple hotels are found"
+    hotelOptions: [HotelOption!]
 }
 
 "TBO hotel search result data"
@@ -472,4 +484,22 @@ type TBOPrebookDetails {
     currency: String
     mealType: String
     isRefundable: Boolean
+}
+
+"Hotel option when multiple hotels match the search"
+type HotelOption {
+    "TBO Hotel Code (use this as hotelCode in next request)"
+    id: Int!
+
+    "Hotel name from TBO"
+    name: String!
+
+    "Hotel address"
+    address: String
+
+    "Hotel rating (e.g., 'ThreeStar', 'FourStar', 'FiveStar')"
+    rating: String
+
+    "City name"
+    city_name: String
 }

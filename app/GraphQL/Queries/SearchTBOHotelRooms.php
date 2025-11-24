@@ -5,6 +5,7 @@ namespace App\GraphQL\Queries;
 use App\Services\TBOHolidayService;
 use App\Models\TBO;
 use App\Models\TBORoom;
+use App\Models\Country;
 use Exception;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
@@ -29,7 +30,7 @@ class SearchTBOHotelRooms
             'hotelCode' => 'required_without:hotel|integer',
             'hotel' => 'required_without:hotelCode|string',
             'city' => 'required_with:hotel|string',
-            'guestNationality' => 'required|string|size:2',
+            'guestNationality' => 'required|string',
             'checkIn' => 'required|date|after_or_equal:today',
             'checkOut' => 'required|date|after:checkIn',
             'occupancy' => 'required',
@@ -44,7 +45,6 @@ class SearchTBOHotelRooms
             'hotel.required_without' => 'Hotel name or hotel code is required.',
             'city.required_with' => 'City name is required when searching by hotel name.',
             'guestNationality.required' => 'Guest nationality is required.',
-            'guestNationality.size' => 'Guest nationality must be a 2-letter country code.',
             'checkIn.required' => 'Check-in date is required.',
             'checkIn.after_or_equal' => 'Check-in date must be today or later.',
             'checkOut.required' => 'Check-out date is required.',
@@ -66,7 +66,63 @@ class SearchTBOHotelRooms
         }
 
         try {
-            // Get hotel code - either from input or search by name
+            $guestNationalityInput = $input['guestNationality'];
+            $guestNationalityCode = null;
+
+            if (strlen($guestNationalityInput) === 2) {
+                $guestNationalityCode = strtoupper($guestNationalityInput);
+            } else {
+                $country = Country::where('name', 'LIKE', '%' . $guestNationalityInput . '%')
+                    ->orWhere('iso_code', strtoupper($guestNationalityInput))
+                    ->first();
+
+                if (!$country) {
+                    $allCountries = Country::all();
+                    $bestMatch = null;
+                    $lowestDistance = PHP_INT_MAX;
+                    $threshold = 3;
+
+                    foreach ($allCountries as $c) {
+                        $distance = levenshtein(
+                            strtolower($guestNationalityInput),
+                            strtolower($c->name)
+                        );
+
+                        if ($distance < $lowestDistance) {
+                            $lowestDistance = $distance;
+                            $bestMatch = $c;
+                        }
+                    }
+
+                    if ($bestMatch && $lowestDistance <= $threshold) {
+                        $country = $bestMatch;
+                        
+                        $this->logger->info('Found country using Levenshtein distance', [
+                            'input' => $guestNationalityInput,
+                            'matched_country' => $country->name,
+                            'distance' => $lowestDistance
+                        ]);
+                    } else {
+                        return [
+                            'success' => false,
+                            'status' => 'country_not_found',
+                            'message' => "Country '{$guestNationalityInput}' not found. " . 
+                                ($bestMatch ? "Did you mean '{$bestMatch->name}'?" : "Please provide a valid country name or 2-letter ISO code."),
+                            'data' => null,
+                            'hotelOptions' => null,
+                        ];
+                    }
+                }
+
+                $guestNationalityCode = $country->iso_code;
+                
+                $this->logger->info('Resolved guest nationality', [
+                    'input' => $guestNationalityInput,
+                    'resolved_code' => $guestNationalityCode,
+                    'country_name' => $country->name
+                ]);
+            }
+
             $hotelCode = $input['hotelCode'] ?? null;
             
             if (!$hotelCode) {
@@ -157,12 +213,11 @@ class SearchTBOHotelRooms
                 }
             }
 
-            // Parse occupancy to rooms array
             $rooms = $this->parseOccupancy($input['occupancy']);
 
             $result = $this->searchTBOHotelRooms(
                 $hotelCode,
-                $input['guestNationality'],
+                $guestNationalityCode,
                 $input['checkIn'],
                 $input['checkOut'],
                 $rooms,

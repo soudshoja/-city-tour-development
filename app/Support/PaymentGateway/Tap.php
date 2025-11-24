@@ -11,6 +11,7 @@ use App\Models\Role;
 use App\Models\Company;
 use App\Models\Agent;
 use App\Models\Accountant;
+use App\Models\PaymentMethod;
 use Illuminate\Support\Facades\Auth;
 
 class Tap
@@ -27,6 +28,7 @@ class Tap
             'invoice_number' => 'nullable|string|max:255',
             'payment_id' => 'required|integer|exists:payments,id',
             'payment_gateway' => 'required|string|max:255',
+            'payment_method_id' => 'nullable|integer|exists:payment_methods,id',
             'invoice_partial_id' => 'nullable',
             'description' => 'required|string',
             'voucher_number' => 'nullable|string',
@@ -52,6 +54,8 @@ class Tap
         
         $isPaymentLink  = trim($request->input('voucher_number', ''));
 
+        $paymentMethod = $request->input('payment_method_id') ? PaymentMethod::find($request->input('payment_method_id'))->code : 'src_all';
+
         $data = [
             'amount' => $request->input('finalAmount'),
             'currency' => 'KWD',
@@ -61,7 +65,7 @@ class Tap
                 'email' => $request->input('client_email') ?? $companyEmail,
             ],
             'source' => [
-                'id' => 'src_all',
+                'id' => $paymentMethod,
             ],
             'description' => $request->input('description'),
             'metadata' => [

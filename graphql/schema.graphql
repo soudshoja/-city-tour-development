@@ -1,5 +1,6 @@
 "A datetime string with format `Y-m-d H:i:s`, e.g. `2018-05-23 13:43:32`."
-scalar DateTime @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
+scalar DateTime
+    @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\DateTime")
 
 "A date string with format `Y-m-d`, e.g. `2025-11-01`."
 scalar Date @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\Date")
@@ -11,7 +12,8 @@ scalar Mixed @scalar(class: "App\\GraphQL\\Scalars\\MixedScalar")
 scalar ISODateTime @scalar(class: "App\\GraphQL\\Scalars\\ISODateTimeScalar")
 
 "Scalar for file uploads via multipart/form-data"
-scalar Upload @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\Upload")
+scalar Upload
+    @scalar(class: "Nuwave\\Lighthouse\\Schema\\Types\\Scalars\\Upload")
 
 "Indicates what fields are available at the top level of a query operation."
 type Query {
@@ -21,7 +23,9 @@ type Query {
         id: ID @eq @rules(apply: ["prohibits:email", "required_without:email"])
 
         "Search by email address."
-        email: String @eq @rules(apply: ["prohibits:id", "required_without:id", "email"])
+        email: String
+            @eq
+            @rules(apply: ["prohibits:id", "required_without:id", "email"])
     ): User @find
 
     "List multiple users."
@@ -63,6 +67,12 @@ input HotelSearchInput {
 
     "Occupancy configuration defining how many adults and children per room"
     occupancy: Mixed!
+
+    "Room Name to search for (partial match supported)"
+    roomName: String
+
+    "Country name for nationality (e.g., 'Kuwait', 'Saudi Arabia', defaults to 'Kuwait')"
+    nationality: String
 }
 
 "Response for hotel room search"
@@ -90,10 +100,15 @@ type HotelSearchData {
 
     "List of cheapest rooms with details and prebook info"
     rooms: [RoomResult!]!
+
+    "Additional info"
+    additional_info: String
 }
 
 "Room details with prebook information"
 type RoomResult {
+    success: Boolean!
+    error: String
     room: [RoomDetails!]!
     prebook: PrebookDetails
 }
@@ -165,10 +180,14 @@ type Mutation {
 
     createFullB2CBooking(input: FullB2CBookingInput!): FullB2CBookingResponse!
         @field(resolver: "App\\GraphQL\\Mutations\\CreateFullB2CBooking")
-    
-    getFilteredHotels(input: GetFilteredHotelsInput!): GetHotelsByCityPayload
-    @field(resolver: "App\\GraphQL\\Mutations\\GetFilteredHotels")
 
+    getFilteredHotels(input: GetFilteredHotelsInput!): GetHotelsByCityPayload
+        @field(resolver: "App\\GraphQL\\Mutations\\GetFilteredHotels")
+
+    B2BHotelSearchWithPrebook(
+        input: B2BHotelSearchWithPrebookInput!
+    ): B2BHotelSearchWithPrebookResult!
+        @field(resolver: "App\\GraphQL\\Mutations\\B2BHotelSearchWithPrebook")
 }
 
 "Input data for storing a prebook details"
@@ -237,7 +256,7 @@ type GetHotelsByCityPayload {
 
 input OccupancyInput {
     leaderNationality: Int
-    rooms: [RoomInput]
+    rooms: String
 }
 
 input RoomInput {
@@ -251,10 +270,10 @@ input PriceInput {
 }
 
 input Filters {
-  classification: [Int]
-  name: String
-  minPrice: PriceInput
-  maxPrice: PriceInput
+    classification: String
+    name: String
+    minPrice: PriceInput
+    maxPrice: PriceInput
 }
 
 input DestinationInput {
@@ -266,27 +285,27 @@ input CityInput {
 }
 
 input GetFilteredHotelsInput {
-  destination: DestinationInput!
-  checkin: String
-  checkout: String
-  occupancy: OccupancyInput
-  sellingChannel: String
-  language: String
-  timeout: Int
-  filters: Filters
+    destination: DestinationInput!
+    checkin: String
+    checkout: String
+    occupancy: OccupancyInput
+    sellingChannel: String
+    language: String
+    timeout: Int
+    filters: Filters
 }
 
 type Hotel {
-  index: String
-  name: String
-  address: String
-  stars: Int
-  recommended: Boolean
-  specialDeal: Boolean
-  price: Price
-  boardBasis: [BoardBasis]
-  nonRefundable: [BoardBasis]
-  rateTags: [String]
+    index: String
+    name: String
+    address: String
+    stars: Int
+    recommended: Boolean
+    specialDeal: Boolean
+    price: Price
+    boardBasis: [BoardBasis]
+    nonRefundable: [BoardBasis]
+    rateTags: [String]
 }
 
 input FullB2CBookingInput {
@@ -326,3 +345,48 @@ type FullB2CBookingResponse {
     payment_link: String
     rooms: [RoomResult]
 }
+
+input B2BHotelSearchWithPrebookInput {
+    telephone: String!
+    hotel: String!
+    city: String
+    checkIn: Date!
+    checkOut: Date!
+    occupancy: Mixed!
+    nonRefundable: Boolean
+    roomCount: Int
+    boardBasis: String
+    minPrice: PriceInput
+    maxPrice: PriceInput
+    stars: [Int]
+    roomName: String
+    nationality: String
+}
+
+type AgentInfo {
+    agentName: String
+    email: String
+}
+
+type B2BMultipleHotelMatch {
+    agentInfo: AgentInfo!
+    status: String!
+    message: String!
+    hotels: [B2BMatchedHotel!]!
+}
+
+type B2BMatchedHotel {
+    name: String!
+    address: String
+    stars: Int
+    index: Int
+}
+
+type B2BHotelSearchSuccess {
+    agentInfo: AgentInfo!
+    searchResult: HotelSearchResponse!
+}
+
+union B2BHotelSearchWithPrebookResult =
+      B2BMultipleHotelMatch
+    | B2BHotelSearchSuccess

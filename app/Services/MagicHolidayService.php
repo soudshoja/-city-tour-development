@@ -18,6 +18,7 @@ class MagicHolidayService
     protected $clientId;
     protected $clientSecret;
     protected $logger;
+    protected $companyId;
 
     public function __construct($companyId = null)
     {
@@ -26,15 +27,16 @@ class MagicHolidayService
         $this->clientId = config('services.magic-holiday.client-id');
         $this->clientSecret = config('services.magic-holiday.client-secret');
         $this->logger = Log::channel('magic_holidays');
+        $this->companyId = $companyId;
 
-        if($companyId){
+        if ($companyId) {
             $supplierCredential = SupplierCredential::where('company_id', $companyId)
-                ->whereHas('supplier', function($query) {
+                ->whereHas('supplier', function ($query) {
                     $query->where('name', 'Magic Holiday');
                 })
                 ->first();
 
-            if($supplierCredential){
+            if ($supplierCredential) {
                 $this->clientId = $supplierCredential->client_id;
                 $this->clientSecret = $supplierCredential->client_secret;
             }
@@ -47,7 +49,18 @@ class MagicHolidayService
 
         $ttl = 60 * 60 * 24; // seconds * minutes * hours (1 day)
 
-        return Cache::remember($key , $ttl, function () use ($scopes) {
+        return Cache::remember($key, $ttl, function () use ($scopes) {
+
+            if (!$this->clientId || !$this->clientSecret) {
+
+                $this->logger->error('ClientId or ClientSecret is missing', [
+                    'company_id' => $this->companyId,
+                    'client_id' => $this->clientId,
+                    'client_secret' => $this->clientSecret
+                ]);
+
+                throw new Exception('Client Id or Client Secret is not found');
+            }
             $response = Http::asForm()->post($this->tokenUrl, [
                 'grant_type' => 'client_credentials',
                 'client_id' => $this->clientId,
@@ -79,13 +92,25 @@ class MagicHolidayService
             'payload' => $payload,
         ]);
 
-        if($method === 'post' && !empty($params)){
+        if ($method === 'post' && !empty($params)) {
             $endpoint .= '?' . http_build_query($params);
         }
 
-        $response = Http::withToken($token)
-            ->accept('application/json')
-            ->{$method}($this->baseUrl . $endpoint, $method === 'get' ? $params : $payload);
+        if ($method === 'get') {
+            // GET requests CANNOT send arrays in the request body → use query params only
+            $response = Http::timeout(30)
+                ->connectTimeout(10)
+                ->withToken($token)
+                ->accept('application/json')
+                ->get($this->baseUrl . $endpoint, $params ?: []);
+        } else {
+            // POST / PUT / DELETE requests → send payload normally
+            $response = Http::timeout(180)
+                ->connectTimeout(60)
+                ->withToken($token)
+                ->accept('application/json')
+                ->{$method}($this->baseUrl . $endpoint, $payload);
+        }
 
         $responseData = [
             'status' => $response->status(),
@@ -115,35 +140,36 @@ class MagicHolidayService
         throw new Exception("API request failed: " . $response->body());
     }
 
-    public function getSingleReservation(string $ref){
+    public function getSingleReservation(string $ref)
+    {
 
         $key = 'magic_single_reservation';
         $url = '/reservationsApi/v1/reservations/' . $ref;
         $scopes = ['read:reservations'];
 
-        if(Cache::has($key)){
+        if (Cache::has($key)) {
             $rateLimitReset = Cache::get($key);
 
             $this->logger->info('Rate limit reset time: ' . date('Y-m-d H:i:s', $rateLimitReset));
 
-            if($rateLimitReset !== null){
-               $this->logger->info('Waiting for rate limit reset at: ' . date('Y-m-d H:i:s', $rateLimitReset));
-               
-               // Calculate wait time using current timestamps (not UTC conversion due to API issues)
-               $currentTimestamp = time();
-               $waitTime = max(0, $rateLimitReset - $currentTimestamp);
+            if ($rateLimitReset !== null) {
+                $this->logger->info('Waiting for rate limit reset at: ' . date('Y-m-d H:i:s', $rateLimitReset));
 
-               $this->logger->info('Current timestamp: ' . $currentTimestamp . ', Reset timestamp: ' . $rateLimitReset . ', Wait time: ' . $waitTime . ' seconds');
+                // Calculate wait time using current timestamps (not UTC conversion due to API issues)
+                $currentTimestamp = time();
+                $waitTime = max(0, $rateLimitReset - $currentTimestamp);
 
-               if($waitTime > 0){
-                   $this->logger->info('Sleeping for ' . $waitTime . ' seconds due to Magic Holiday API rate limit...');
-                   sleep($waitTime);
-               } else {
-                   $this->logger->info('No wait needed - reset time has passed');
-               }
+                $this->logger->info('Current timestamp: ' . $currentTimestamp . ', Reset timestamp: ' . $rateLimitReset . ', Wait time: ' . $waitTime . ' seconds');
 
-               $this->logger->info('Resuming requests after rate limit reset.');
-               Cache::forget($key);
+                if ($waitTime > 0) {
+                    $this->logger->info('Sleeping for ' . $waitTime . ' seconds due to Magic Holiday API rate limit...');
+                    sleep($waitTime);
+                } else {
+                    $this->logger->info('No wait needed - reset time has passed');
+                }
+
+                $this->logger->info('Resuming requests after rate limit reset.');
+                Cache::forget($key);
             }
         }
 
@@ -151,7 +177,7 @@ class MagicHolidayService
 
         $response = $this->request('get', $url, $scopes);
 
-        if(!isset($response['status']) ?? $response['status'] !== 200){
+        if (!isset($response['status']) ?? $response['status'] !== 200) {
             $this->logger->error('Failed to fetch single reservation from Magic Holiday API', [
                 'status' => $response['status'],
                 'body' => $response,
@@ -160,7 +186,7 @@ class MagicHolidayService
             return $response;
         }
 
-        if(isset($response['headers'])){
+        if (isset($response['headers'])) {
             $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
             $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
 
@@ -168,17 +194,17 @@ class MagicHolidayService
 
             $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
 
-            if($rateLimitRemaining !== null && $rateLimitRemaining <= 5 && $rateLimitReset !== null){
+            if ($rateLimitRemaining !== null && $rateLimitRemaining <= 5 && $rateLimitReset !== null) {
                 $this->logger->warning('Rate limit reached for Magic Holiday API. Next reset at: ' . date('Y-m-d H:i:s', $rateLimitReset));
                 $this->logger->info('Raw reset timestamp: ' . $rateLimitReset . ', Current timestamp: ' . time());
-                
+
                 // Magic Holiday API has broken reset times, use fixed delay based on remaining requests
-                $delaySeconds = match(true) {
-                    $rateLimitRemaining <= 1 => 60,  
-                    $rateLimitRemaining <= 3 => 30,  
-                    default => 10                    
+                $delaySeconds = match (true) {
+                    $rateLimitRemaining <= 1 => 60,
+                    $rateLimitRemaining <= 3 => 30,
+                    default => 10
                 };
-                
+
                 $this->logger->warning("API rate limit broken. Using fixed delay of {$delaySeconds} seconds instead.");
                 Cache::put($key, time() + $delaySeconds, Carbon::now()->addMinutes(2));
             }
@@ -189,7 +215,7 @@ class MagicHolidayService
 
     protected function mapping(string $mapping, array $params = [])
     {
-        if(!isset($params['perPage'])) {
+        if (!isset($params['perPage'])) {
             $params['perPage'] = 100; // Default perPage value
         }
 
@@ -219,12 +245,12 @@ class MagicHolidayService
 
     public function getCountryDetails(string $countryId)
     {
-        return $this->mapping('/countries/' .$countryId);
+        return $this->mapping('/countries/' . $countryId);
     }
 
     public function getNationalities(array $params = [])
     {
-        $response =  $this->mapping('/nationalities' , $params);
+        return $this->mapping('/nationalities', $params);
     }
 
     public function getNationalitiesDetails(string $nationalityId)
@@ -275,19 +301,19 @@ class MagicHolidayService
         return $this->request('post', '/bookings', [], $bookingData);
     }
 
-    public function startHotelSearch(array $searchParams)
+    public function startHotelSearch(array $payload)
     {
         $scopes = ['read:hotels-search'];
         $this->applyRequestSpacing();
-        
-        $response = $this->request('post', '/hotels/v1/search/start', $scopes, [], $searchParams);
-        
+
+        $response = $this->request('post', '/hotels/v1/search/start', $scopes, [], $payload);
+
         if (isset($response['headers'])) {
             $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
             $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
             $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
         }
-        
+
         return $response;
     }
 
@@ -295,15 +321,15 @@ class MagicHolidayService
     {
         $scopes = ['read:hotels-search'];
         $this->applyRequestSpacing();
-        
+
         $response = $this->request('get', '/hotels/v1/search/progress', $scopes, ['token' => $progressToken], []);
-        
+
         if (isset($response['headers'])) {
             $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
             $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
             $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
         }
-        
+
         return $response;
     }
 
@@ -311,15 +337,15 @@ class MagicHolidayService
     {
         $scopes = ['read:hotels-search'];
         $this->applyRequestSpacing();
-        
+
         $response = $this->request('get', '/hotels/v1/search/progress/summary', $scopes, ['token' => $progressToken], []);
-        
+
         if (isset($response['headers'])) {
             $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
             $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
             $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
         }
-        
+
         return $response;
     }
 
@@ -330,13 +356,13 @@ class MagicHolidayService
 
         $params = array_merge(['token' => $resultsToken], $queryParams);
         $response = $this->request('get', "/hotels/v1/search/results/$srk", $scopes, $params, []);
-        
+
         if (isset($response['headers'])) {
             $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
             $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
             $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
         }
-        
+
         return $response;
     }
 
@@ -344,16 +370,16 @@ class MagicHolidayService
     {
         $scopes = ['read:hotels-search'];
         $this->applyRequestSpacing();
-        
+
         $params = ['token' => $resultsToken];
         $response = $this->request('get', "/hotels/v1/search/results/$srk/hotels/$hotelIndex/offers", $scopes, $params, []);
-        
+
         if (isset($response['headers'])) {
             $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
             $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
             $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
         }
-        
+
         return $response;
     }
 
@@ -361,25 +387,25 @@ class MagicHolidayService
     {
         $scopes = ['read:hotels-search'];
         $this->applyRequestSpacing();
-        
+
         $endpoint = "/hotels/v1/search/results/{$srk}/hotels/{$hotelId}/offers/{$offerIndex}/availability";
-        
+
         $params = ['token' => $resultsToken];
         $response = $this->request('post', $endpoint, $scopes, $params, ['packageToken' => $packageToken, 'roomTokens' => $roomTokens]);
-        
+
         if (isset($response['headers'])) {
             $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
             $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
             $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
         }
-        
+
         return $response;
     }
 
     protected function applyRequestSpacing(): void
     {
         $rateLimitInfo = Cache::get('magic_rate_limit_info');
-        
+
         if (!$rateLimitInfo) {
             sleep(2);
             return;
@@ -422,8 +448,8 @@ class MagicHolidayService
 
         if ($remaining > 0) {
             $calculatedDelay = intval($timeUntilReset / $remaining);
-            
-            $maxDelay = match(true) {
+
+            $maxDelay = match (true) {
                 $remaining <= 2 => 120,  // Max 2 minutes when very low
                 $remaining <= 5 => 60,   // Max 1 minute when low
                 $remaining <= 10 => 30,  // Max 30 seconds when moderate
@@ -431,8 +457,8 @@ class MagicHolidayService
             };
 
             $optimalDelay = min($calculatedDelay, $maxDelay);
-            
-            $minDelay = match(true) {
+
+            $minDelay = match (true) {
                 $remaining <= 2 => 10,   // At least 10 seconds when very low
                 $remaining <= 5 => 5,    // At least 5 seconds when low
                 default => 1             // At least 1 second otherwise
@@ -457,9 +483,9 @@ class MagicHolidayService
         ];
 
         $ttl = min(600, max(60, $resetTimestamp - time() + 60));
-        
+
         Cache::put('magic_rate_limit_info', $rateLimitInfo, $ttl);
-        
+
         $this->logger->debug('Updated rate limit info', $rateLimitInfo);
     }
 
@@ -486,7 +512,7 @@ class MagicHolidayService
     }
 
     public function storeBooking(array $payload)
-    {        
+    {
         $this->logger->info('Hit the API for Magic Holiday booking',  $payload);
         $srk        = $payload['srk'];
         $hotelId    = $payload['hotelId'];
@@ -560,6 +586,109 @@ class MagicHolidayService
         return $response;
     }
 
+    public function createReservation(array $payload)
+    {
+        $scopes = ['write:reservations'];
+        $this->applyRequestSpacing();
+
+        return $this->request(
+            'post',
+            "/reservationsApi/v1/reservations",
+            $scopes,
+            [],
+            $payload
+        );
+    }
+
+    public function getReservationDocuments(int $reservationId)
+    {
+        $scopes = ['read:reservations-documents'];
+        $this->applyRequestSpacing();
+
+        $response = $this->request(
+            'get',
+            "/reservationsApi/v1/reservations/{$reservationId}/documents",
+            $scopes,
+            [],
+            []
+        );
+
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
+        }
+
+        return $response;
+    }
+
+    public function generateDocument(int $reservationId, string $documentToken)
+    {
+        $scopes = ['read:reservations-documents'];
+        $this->applyRequestSpacing();
+
+        $response = $this->request(
+            'get',
+            "/reservationsApi/v1/reservations/{$reservationId}/documents/generate",
+            $scopes,
+            ['token' => $documentToken],
+            []
+        );
+
+        if (isset($response['headers'])) {
+            $rateLimitRemaining = $response['headers']['X-RateLimit-Remaining'][0] ?? null;
+            $rateLimitReset = $response['headers']['X-RateLimit-Reset'][0] ?? null;
+            $this->updateRateLimitInfo($rateLimitRemaining, $rateLimitReset);
+        }
+
+        return $response;
+    }
+
+    public function getAllReservationDocumentsWithUrls(int $reservationId)
+    {
+        $scopes = ['read:reservations-documents'];
+
+        $docsResponse = $this->request(
+            'get',
+            "/reservationsApi/v1/reservations/{$reservationId}/documents",
+            $scopes
+        );
+
+        if (($docsResponse['status'] ?? null) != 200 || empty($docsResponse['data']['documents'] ?? [])) {
+            return [
+                "success" => false,
+                "documents" => []
+            ];
+        }
+
+        $result = [];
+
+        foreach ($docsResponse['data']['documents'] as $group) {
+            foreach ($group['documents'] as $doc) {
+                $token = $doc['token'];
+
+                $generateResponse = $this->request(
+                    'get',
+                    "/reservationsApi/v1/reservations/{$reservationId}/documents/generate",
+                    $scopes,
+                    ['token' => $token]
+                );
+
+                $result[] = [
+                    "group_code" => $group['code'],
+                    "filename" => $doc['filename'],
+                    "description" => $doc['description'],
+                    "download_url" => $generateResponse['data']['_links']['download']['href'] ?? null
+                ];
+            }
+        }
+
+        return [
+            "success" => true,
+            "documents" => $result
+        ];
+    }
+
     public function cancelReservation(int $reservationId)
     {
         $scopes = ['write:reservations'];
@@ -575,5 +704,4 @@ class MagicHolidayService
 
         return $response;
     }
-
 }

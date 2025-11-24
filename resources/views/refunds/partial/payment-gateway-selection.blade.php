@@ -6,7 +6,17 @@
             Choose Payment Gateway
         </label>
         @php
-        $selectedPaymentGateway = isset($refund) ? strtolower($refund->invoice->invoicePartials->first()->payment_gateway) : '';
+            $selectedPaymentGateway = '';
+
+            if (isset($refund)) {
+                $invoiceId = $refund->invoice_id;
+
+                $invoicePartial = \App\Models\InvoicePartial::where('invoice_id', $invoiceId)->first();
+
+                if ($invoicePartial) {
+                    $selectedPaymentGateway = strtolower($invoicePartial->payment_gateway);
+                }
+            }
         @endphp
         <select id="payment_gateway_option" name="payment_gateway_option"
             class="border border-gray-300 p-2 rounded w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -73,11 +83,11 @@
     // Payment gateway data from backend
     const paymentGateways = @json($paymentGateways ?? []);
     const paymentMethods = @json($paymentMethods ?? []);
-    let old_payment_gateway = "{{ old('payment_gateway_option', isset($refund) ? strtolower($refund->invoice->invoicePartials->first()->payment_gateway) : '') }}";
-    let old_payment_method = "{{ old('payment_method', isset($refund) ? (int)($refund->invoice->invoicePartials->first()->payment_method ?? 0) : '') }}";
-    
+    let old_payment_gateway = "{{ old('payment_gateway_option', isset($refund) && $refund->invoice && $refund->invoice->invoicePartials->first() ? strtolower($refund->invoice->invoicePartials->first()->payment_gateway) : '') }}";
+    let old_payment_method = "{{ old('payment_method', isset($refund) && $refund->invoice && $refund->invoice->invoicePartials->first() ? (int) $refund->invoice->invoicePartials->first()->payment_method : 0) }}";
+
     // Selected values for editing mode
-    const selectedPaymentMethod = {{ isset($refund) ? (int)($refund->invoice->invoicePartials->first()->payment_method ?? 0) : 0 }};
+    const selectedPaymentMethod = {{ isset($refund) && $refund->invoice && $refund->invoice->invoicePartials->first() ? (int) $refund->invoice->invoicePartials->first()->payment_method : 0 }};
 
     // Function to update the service charge input
     function updateServiceCharge(amount) {

@@ -304,4 +304,145 @@ class ChargeService
             gatewayFee: $selfChargeAmount,
         );
     }
+
+    /**
+     * Unified method to get fees for any gateway
+     * Supports both payment method-based gateways (MyFatoorah, Hesabe, UPayment)
+     * and gateway-level gateways (Tap, custom gateways)
+     * 
+     * @param string $gatewayName The gateway name (e.g., 'Tap', 'MyFatoorah', 'Hesabe')
+     * @param float $amount The transaction amount
+     * @param int|null $methodCode The payment method ID (null for gateway-level charges)
+     * @param int $companyId The company ID
+     * @param string $currency The currency code (default: 'KWD')
+     * @return array Standardized charge calculation result
+     */
+    public static function getFee(string $gatewayName, float $amount, ?int $methodCode = null, int $companyId, string $currency = 'KWD'): array
+    {
+        // Scenario 1: Payment method provided - use payment method charges
+        if ($methodCode !== null && $methodCode > 0) {
+            $method = PaymentMethod::where('id', $methodCode)
+                ->where('company_id', $companyId)
+                ->where('type', $gatewayName)
+                ->first();
+
+            if (!$method) {
+                Log::warning('Payment method not found, falling back to gateway-level charges', [
+                    'method_code' => $methodCode,
+                    'gateway' => $gatewayName,
+                    'company_id' => $companyId
+                ]);
+                // Fall through to Scenario 2
+            } else {
+                $paidBy = $method->paid_by;
+                $apiServiceCharge = $method->service_charge ?? 0;
+                
+                $selfChargeValue = $method->self_charge ?? $method->service_charge ?? 0;
+                $selfChargeType = $method->charge_type ?? 'Flat Rate';
+                
+                $selfChargeAmount = 0;
+                if ($selfChargeValue > 0) {
+                    $selfChargeAmount = ceil(self::calculateChargeAmount($amount, $selfChargeValue, $selfChargeType));
+                }
+
+                $totalFee = 0;
+                if ($paidBy === 'Client') {
+                    $totalFee = $selfChargeAmount;
+                }
+
+                $finalAmount = $amount + $totalFee;
+                $netReceived = $amount - $totalFee;
+
+                Log::info('Gateway charge calculated via getFee (payment method)', [
+                    'gateway' => $gatewayName,
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'method_code' => $methodCode,
+                    'company_id' => $companyId,
+                    'using_self_charge' => !is_null($method->self_charge),
+                    'api_service_charge' => $apiServiceCharge,
+                    'self_charge_value' => $selfChargeValue,
+                    'self_charge_amount' => $selfChargeAmount,
+                    'self_charge_type' => $selfChargeType,
+                    'total_fee' => $totalFee,
+                    'finalAmount' => $finalAmount,
+                    'netReceived' => $netReceived,
+                    'paid_by' => $paidBy,
+                    'gatewayFee' => $selfChargeAmount,
+                ]);
+
+                return self::standardReturn(
+                    finalAmount: $finalAmount,
+                    fee: $totalFee,
+                    paidBy: $paidBy,
+                    netReceived: $netReceived,
+                    chargeType: $method->charge_type,
+                    selfChargeType: $method->self_charge_type,
+                    selfCharge: $method->self_charge,
+                    apiServiceCharge: $apiServiceCharge,
+                    gatewayFee: $selfChargeAmount,
+                );
+            }
+        }
+
+        // Scenario 2: No payment method or payment method not found - use gateway-level charges
+        $charge = Charge::where('name', $gatewayName)
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$charge) {
+            Log::warning('No charge configuration found for gateway', [
+                'gateway' => $gatewayName,
+                'company_id' => $companyId,
+                'method_code' => $methodCode
+            ]);
+            return self::standardReturn(
+                finalAmount: $amount,
+                fee: 0,
+                paidBy: null,
+                netReceived: $amount
+            );
+        }
+
+        $paidBy = $charge->paid_by;
+        $chargeValue = !is_null($charge->self_charge) ? $charge->self_charge : $charge->amount;
+        $chargeType = !is_null($charge->self_charge) ? ($charge->self_charge_type ?? 'Flat Rate') : $charge->charge_type;
+
+        $fee = $chargeValue > 0 ? ceil(self::calculateChargeAmount($amount, $chargeValue, $chargeType)) : 0;
+
+        $totalFee = 0;
+        if ($paidBy === 'Client') {
+            $totalFee = $fee;
+        }
+
+        $finalAmount = $amount + $totalFee;
+        $netReceived = $amount - $totalFee;
+
+        Log::info('Gateway charge calculated via getFee (gateway-level)', [
+            'gateway' => $gatewayName,
+            'amount' => $amount,
+            'currency' => $currency,
+            'method_code' => $methodCode,
+            'company_id' => $companyId,
+            'using_self_charge' => !is_null($charge->self_charge),
+            'charge_value' => $chargeValue,
+            'charge_type' => $chargeType,
+            'total_fee' => $totalFee,
+            'finalAmount' => $finalAmount,
+            'netReceived' => $netReceived,
+            'paid_by' => $paidBy,
+            'gatewayFee' => $fee,
+        ]);
+
+        return self::standardReturn(
+            finalAmount: $finalAmount,
+            fee: $totalFee,
+            paidBy: $paidBy,
+            netReceived: $netReceived,
+            chargeType: $charge->charge_type,
+            selfChargeType: $charge->self_charge_type,
+            selfCharge: $charge->self_charge,
+            gatewayFee: $fee,
+        );
+    }
 }

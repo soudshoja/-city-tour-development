@@ -42,6 +42,7 @@ class Payment extends Model
         'discount',
         'shipping',
         'completed',
+        'is_disabled',
     ];
 
     protected $casts = [
@@ -51,6 +52,7 @@ class Payment extends Model
         'service_charge' => 'decimal:3',
         'tax' => 'decimal:3',
         'completed' => 'boolean',
+        'is_disabled' => 'boolean',
     ];
 
     public function client()

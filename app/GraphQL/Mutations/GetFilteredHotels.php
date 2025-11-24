@@ -45,6 +45,9 @@ class GetFilteredHotels
             'destination.city.id' => 'required|integer',
             'checkin' => 'required|date',
             'checkout' => 'required|date|after:checkin',
+            'classification' => 'nullable|string',
+            'occupancy' => 'required|array',
+            'occupancy.rooms' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -63,18 +66,60 @@ class GetFilteredHotels
         try {
             $magicService = new MagicHolidayService();
 
+            $this->logger->info("Before decode classification", ['classification' => $input['filters']['classification'] ?? null]);
+
+            $classificationArray = [];
+            if (isset($input['filters']['classification'])) {
+                if (is_string($input['filters']['classification'])) {
+                    $decoded = json_decode($input['filters']['classification'], true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $classificationArray = array_map('intval', $decoded);
+                    } else {
+                        $classificationArray = array_map('intval', array_map('trim', explode(',', $input['filters']['classification'])));
+                    }
+                } elseif (is_array($input['filters']['classification'])) {
+                    $classificationArray = array_map('intval', $input['filters']['classification']);
+                } else {
+                    $classificationArray = [(int)$input['filters']['classification']];
+                }
+            }
+
+            $this->logger->info("After decode classification", ['classification' => $classificationArray]);
+
+            $this->logger->info("Before decode occupancy rooms", ['rooms' => $input['occupancy']['rooms'] ?? null]);
+            $rooms = [];
+            $leaderNationality = $input['occupancy']['leaderNationality'] ?? 1;
+
+            if (!empty($input['occupancy']['rooms'])) {
+                $roomsString = $input['occupancy']['rooms'];
+                $rooms = $this->parseRoomsString($roomsString);
+            }
+
+            $this->logger->info("After decode occupancy rooms", ['rooms' => $rooms]);
+
+            if (empty($rooms)) {
+                $rooms = [
+                    ['adults' => 2, 'childrenAges' => []]
+                ];
+            }
+
+            $occupancyPayload = [
+                'leaderNationality' => $leaderNationality,
+                'rooms' => $rooms
+            ];
+
             $payload = [
                 'destination' => $input['destination'],
                 'checkIn' => $input['checkin'],
                 'checkOut' => $input['checkout'],
-                'occupancy' => $input['occupancy'] ?? [],
+                'occupancy' => $occupancyPayload,
                 'sellingChannel' => $input['sellingChannel'] ?? 'B2B',
                 'availableOnly' => true,
                 'language' => $input['language'] ?? 'en_GB',
                 'timeout' => $input['timeout'] ?? 20,
                 'providers' => $input['providers'] ?? ['expediarapid'],
                 'filters' => [
-                    'classification' => $input['filters']['classification'] ?? [],
+                    'classification' => $classificationArray ?? [],
                     'name' => $input['filters']['name'] ?? null,
                     'minPrice' => $input['filters']['minPrice'] ?? null,
                     'maxPrice' => $input['filters']['maxPrice'] ?? null,
@@ -168,5 +213,52 @@ class GetFilteredHotels
         }
 
         throw new Exception('Hotel search timeout after ' . $maxAttempts . ' attempts');
+    }
+
+    protected function parseRoomsString(string $roomsString): array
+    {
+        $this->logger->info('Parsing rooms string', ['raw_string' => $roomsString]);
+
+        $normalizedString = str_replace("'", '"', $roomsString);
+
+        $decoded = json_decode($normalizedString, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            if (isset($decoded[0]) && is_array($decoded[0]) && isset($decoded[0]['adults'])) {
+                $this->logger->info('Rooms string decoded successfully', ['decoded' => $decoded]);
+                return $decoded;
+            }
+        }
+
+        $normalizedString = trim($normalizedString);
+
+        if (preg_match('/^\[(.*)\]$/', $normalizedString, $matches)) {
+            $inner = $matches[1];
+            $parts = preg_split('/\]\s*,\s*\[/', $inner);
+
+            $rooms = [];
+            foreach ($parts as $part) {
+                $part = trim($part);
+
+                if (str_starts_with($part, '{') && str_ends_with($part, '}')) {
+                    $room = json_decode($part, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($room)) {
+                        $rooms[] = $room;
+                    }
+                }
+            }
+
+            if (!empty($rooms)) {
+                $this->logger->info('Rooms string parsed successfully', ['parsed' => $rooms]);
+                return $rooms;
+            }
+        }
+
+        $this->logger->error('Failed to parse rooms string', [
+            'raw_string' => $roomsString,
+            'normalized_string' => $normalizedString,
+            'json_error' => json_last_error_msg()
+        ]);
+
+        return [];
     }
 }

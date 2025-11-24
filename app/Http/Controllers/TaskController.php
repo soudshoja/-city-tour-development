@@ -242,14 +242,14 @@ class TaskController extends Controller
                                 ->where(function ($q3) use ($amadeusId) {
                                     $q3->where('status', '!=', 'issued')
                                         ->orWhereRaw("
-                                            NOT EXISTS (
-                                                SELECT 1 FROM tasks t2
-                                                WHERE t2.reference = tasks.reference
-                                                AND t2.supplier_id = ?
-                                                AND t2.status = 'void'
-                                                AND t2.deleted_at IS NULL
-                                            )
-                                    ", [$amadeusId]);
+                                                NOT EXISTS (
+                                                    SELECT 1 FROM tasks t2
+                                                    WHERE t2.reference = tasks.reference
+                                                    AND t2.supplier_id = ?
+                                                    AND t2.status = 'void'
+                                                    AND t2.deleted_at IS NULL
+                                                )
+                                        ", [$amadeusId]);
                                 });
                         })
                         ->orWhere(function ($q2) use ($jazeeraId) {
@@ -257,14 +257,14 @@ class TaskController extends Controller
                                 ->where(function ($q3) use ($jazeeraId) {
                                     $q3->where('status', '!=', 'confirmed')
                                         ->orWhereRaw("
-                                            NOT EXISTS (
-                                                SELECT 1 FROM tasks t2
-                                                WHERE t2.reference = tasks.reference
-                                                AND t2.supplier_id = ?
-                                                AND t2.status = 'issued'
-                                                AND t2.deleted_at IS NULL
-                                            )
-                                        ", [$jazeeraId]);
+                                                NOT EXISTS (
+                                                    SELECT 1 FROM tasks t2
+                                                    WHERE t2.reference = tasks.reference
+                                                    AND t2.supplier_id = ?
+                                                    AND t2.status = 'issued'
+                                                    AND t2.deleted_at IS NULL
+                                                )
+                                            ", [$jazeeraId]);
                                 });
                         });
                 });
@@ -1121,28 +1121,32 @@ class TaskController extends Controller
 
             $supplierMagicHoliday = Supplier::where('name', 'Magic Holiday')->first();
 
-            if($task->client_ref && $supplierMagicHoliday && $task->supplier_id == $supplierMagicHoliday->id){
+            if ($task->client_ref && $supplierMagicHoliday && $task->supplier_id == $supplierMagicHoliday->id) {
 
                 $hotelBooking = HotelBooking::where('client_ref', $task->client_ref)->first();
 
-                if($hotelBooking){
+                if ($hotelBooking) {
                     $payment = $hotelBooking->payment;
 
                     $task->is_n8n_booking = true;
-                    $task->enabled = true;
-                    $task->client_id = $payment->client_id;
-                    $task->client_name = $payment->client->full_name;
-                    $task->agent_id = $payment->agent_id;
+
+                    if ($payment) {
+                        $task->enabled = true;
+                        $task->client_id = $payment->client_id;
+                        $task->client_name = $payment->client->full_name;
+                        $task->agent_id = $payment->agent_id;
+                        $generateInvoiceResponse = app(InvoiceController::class)->autoGenerateInvoice($task, $payment);
+                        Log::info('Auto-generated invoice for n8n hotel booking task: ' . $task->reference, $generateInvoiceResponse);
+                    } else {
+                        Log::warning("MagicHoliday task: No payment found for client_ref {$task->client_ref}");
+                        $task->enabled = false;
+                        $task->agent_id = $task->agent_id ?? null;
+                    }
 
                     $task->save();
-
-                    $generateInvoiceResponse = app(InvoiceController::class)->autoGenerateInvoice($task, $payment);
-
-                    Log::info('Auto-generated invoice for n8n hotel booking task: ' . $task->reference, $generateInvoiceResponse);
                 } else {
                     Log::warning('No HotelBooking found for Magic Holiday task with client_ref: ' . $task->client_ref);
                 }
-
             }
 
             // Set enabled status: task must be complete AND have an agent assigned
@@ -3890,12 +3894,11 @@ class TaskController extends Controller
                 ];
             }
 
-            if($clientRef && str_contains(strtolower($clientRef), 'pb-')){
+            if ($clientRef && str_contains(strtolower($clientRef), 'pb-')) {
                 $agentInDB = Agent::where('name', 'AI Agent')
                     ->whereHas('branch', function ($query) use ($companyId) {
                         $query->where('company_id', $companyId);
                     })->first();
-
             } else {
                 $agentInDB = Agent::where('name', $agent['name'])
                     ->orWhere('email', 'like', $agent['email'])

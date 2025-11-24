@@ -499,6 +499,11 @@ type TBOPrebookDetails {
     currency: String
     mealType: String
     isRefundable: Boolean
+    inclusion: String
+    cancelPolicies: [Mixed!]
+    amenities: [String!]
+    dayRates: [Mixed!]
+    rateConditions: [String!]
 }
 
 "Hotel option when multiple hotels match the search"

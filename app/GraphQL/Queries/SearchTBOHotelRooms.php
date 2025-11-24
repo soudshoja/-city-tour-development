@@ -515,6 +515,11 @@ class SearchTBOHotelRooms
                     'currency' => $hotel['Currency'],
                     'mealType' => $prebookRoom['MealType'] ?? '',
                     'isRefundable' => $prebookRoom['IsRefundable'] ?? false,
+                    'inclusion' => $prebookRoom['Inclusion'] ?? '',
+                    'cancelPolicies' => $prebookRoom['CancelPolicies'] ?? [],
+                    'amenities' => $prebookRoom['Amenities'] ?? [],
+                    'dayRates' => $prebookRoom['DayRates'] ?? [],
+                    'rateConditions' => $prebookRoom['RateConditions'] ?? [],
                 ],
             ];
         }

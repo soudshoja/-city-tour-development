@@ -13,6 +13,17 @@
         </div>
         <!-- add new charge & refresh page -->
         <div class="flex items-center gap-5">
+            @if(auth()->user()->hasRole('admin'))
+            <select
+                onchange="window.location='{{ route('charges.index') }}?company_id='+this.value"
+                name="company_id" id="company_id" class="px-4 py-2 border border-gray-300 rounded-full bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-sm font-medium text-gray-700 cursor-pointer">
+                @foreach(App\Models\Company::all() as $company)
+                <option value="{{ $company->id }}" {{ $companyId == $company->id ? 'selected' : '' }}>
+                    {{ $company->name }}
+                </option>
+                @endforeach
+            </select>
+            @endif
             <div data-tooltip-left="Reload"
                 class="rotate refresh-icon relative w-12 h-12 flex items-center justify-center bg-[#b1c0db] hover:bg-gray-300 rounded-full shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
@@ -25,6 +36,7 @@
             </div>
             <!-- Add New Charge Button -->
             <div x-data="{ createModal: false }" class="relative">
+                @if(auth()->user()->hasRole('admin'))
                 <div id="createCharge" data-tooltip-left="Add new charge"
                     class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm cursor-pointer"
                     @click="createModal = true">
@@ -34,6 +46,17 @@
                         </path>
                     </svg>
                 </div>
+                @else
+                <div id="createCharge" data-tooltip-left="Add custom gateway (system gateways managed by admin)"
+                    class="relative w-12 h-12 flex items-center justify-center btn-success rounded-full shadow-sm cursor-pointer"
+                    @click="createModal = true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#fff"
+                            d="M16 8h-2v3h-3v2h3v3h2v-3h3v-2h-3M2 12c0-2.79 1.64-5.2 4-6.32V3.5C2.5 4.76 0 8.09 0 12s2.5 7.24 6 8.5v-2.18C3.64 17.2 2 14.79 2 12m13-9c-4.96 0-9 4.04-9 9s4.04 9 9 9s9-4.04 9-9s-4.04-9-9-9m0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7s7 3.14 7 7s-3.14 7-7 7">
+                        </path>
+                    </svg>
+                </div>
+                @endif
 
                 <!-- Create Charge Modal -->
                 <div x-cloak x-show="createModal" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
@@ -109,7 +132,7 @@
                                     <div class="w-1/2">
                                         <div class="flex items-center">
                                             <input type="checkbox" name="is_active" id="is_active" value="1" checked
-                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                             <label for="is_active" class="ml-2 text-sm font-medium text-gray-700">Active</label>
                                         </div>
                                         <p class="text-xs text-gray-500 mt-1">If unchecked, gateway will be saved but inactive</p>
@@ -117,7 +140,7 @@
                                     <div class="w-1/2">
                                         <div class="flex items-center">
                                             <input type="checkbox" name="can_generate_link" id="can_generate_link" value="1" checked
-                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                             <label for="can_generate_link" class="ml-2 text-sm font-medium text-gray-700">Can Generate Link</label>
                                         </div>
                                         <p class="text-xs text-gray-500 mt-1">Allow customers to pay invoices using this gateway</p>
@@ -184,10 +207,9 @@
                                 this.editCredsModal = null;
                                 this.createModal = false;
                             }
-                        }"
-                        >
-                        <div class="dataTable-container h-max">
-                            <table id="myTable" class="table-hover whitespace-nowrap dataTable-table w-full" x-data="{ open: {} }">
+                        }">
+                        <div class="dataTable-container h-max overflow-x-auto">
+                            <table id="myTable" class="table-hover whitespace-nowrap dataTable-table w-full relative" x-data="{ open: {} }">
                                 <thead>
                                     <tr>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Charge Name</th>
@@ -203,7 +225,7 @@
                                         <th class="p-3 text-left text-md font-bold text-gray-500">External URL</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Generate Link</th>
                                         <th class="p-3 text-left text-md font-bold text-gray-500">Description</th>
-                                        <th class="p-3 text-left text-md font-bold text-gray-500">Actions</th>
+                                        <th class="p-3 text-left text-md font-bold text-gray-500 sticky right-0 bg-white z-10">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -217,11 +239,21 @@
                                     @foreach ($charges as $charge)
                                     <tr class="cursor-pointer bg-gray-100 hover:bg-gray-200" @click="open[{{ $charge->id }}] = !open[{{ $charge->id }}]">
                                         <td class="p-3 font-bold text-gray-800 bg-gray-100" colspan="13">
-                                            {{ $charge->name }}
+                                            <div class="flex items-center gap-2">
+                                                <span>{{ $charge->name }}</span>
+                                                @if($charge->is_system_default)
+                                                <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold bg-purple-100 text-purple-800 rounded-full">
+                                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                                    </svg>
+                                                    System Gateway
+                                                </span>
+                                                @endif
+                                            </div>
                                         </td>
-                                        <td class="p-3 bg-gray-100">
+                                        <td class="p-3 bg-gray-100 sticky right-0 z-10">
                                             <div class="relative group inline-block">
-                                                <button @click.stop="editCredsModal = {{ $charge->id }}" class="text-blue-600 hover:text-blue-800" title="API Settings">
+                                                <button @click.stop="editCredsModal = {{ $charge->id }}" class="text-blue-600 hover:text-blue-800">
                                                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                         <path fill-rule="evenodd" clip-rule="evenodd"
                                                             d="M12 8.25C9.92894 8.25 8.25 9.92893 8.25 12C8.25 14.0711 9.92894 15.75 12 15.75C14.0711 15.75 15.75 14.0711 15.75 12C15.75 9.92893 14.0711 8.25 12 8.25ZM9.75 12C9.75 10.7574 10.7574 9.75 12 9.75C13.2426 9.75 14.25 10.7574 14.25 12C14.25 13.2426 13.2426 14.25 12 14.25C10.7574 14.25 9.75 13.2426 9.75 12Z"
@@ -250,9 +282,9 @@
                                         <td class="p-3 text-sm text-gray-600">{{ $method->charge_type }}</td>
                                         <td class="p-3 text-sm">
                                             @if($charge->is_active && $method->is_active)
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
                                             @else
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Inactive</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Inactive</span>
                                             @endif
                                         </td>
                                         <td class="p-3 text-sm text-gray-600">
@@ -293,19 +325,18 @@
                                         </td>
                                         <td class="p-3 text-sm">
                                             @if($charge->can_generate_link)
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Allowed</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Allowed</span>
                                             @else
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Disabled</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Disabled</span>
                                             @endif
                                         </td>
                                         <td class="p-3 text-sm text-gray-600">
                                             {{ $method->description ? $method->description : 'Not Set' }}
                                         </td>
-                                        <td class="p-3 text-sm text-gray-600">
+                                        <td class="p-3 text-sm text-gray-600 sticky right-0 bg-white z-10">
                                             <div class="relative group inline-block">
                                                 <button @click.stop="editChildModal = {{ $method->id }}" class="text-blue-600 hover:text-blue-800">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <title>Edit</title>
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                             d="M15.232 5.232l3.536 3.536M9 11l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 14.5H9v-3.5z" />
                                                     </svg>
@@ -350,7 +381,7 @@
                                                     </div>
                                                     <div class="w-1/2">
                                                         <label class="block text-sm font-medium">API Service Charge</label>
-                                                        <input type="text" name="service_charge" value="{{ $method->service_charge }}" class="w-full border px-3 py-2 rounded-full" readonly>
+                                                        <input type="text" name="service_charge" value="{{ $method->service_charge }}" class="w-full border px-3 py-2 rounded-full">
                                                     </div>
                                                 </div>
                                                 <div class="mb-4">
@@ -362,14 +393,14 @@
                                                         <label class="block text-sm font-medium">Paid By</label>
                                                         <select name="paid_by" value="{{ $method->paid_by }}" class="w-full border px-3 py-2 rounded-full">
                                                             <option value="Company" @selected(old('paid_by', $method->paid_by) === 'Company')>Company</option>
-                                                            <option value="Client"  @selected(old('paid_by', $method->paid_by) === 'Client')>Client</option>
+                                                            <option value="Client" @selected(old('paid_by', $method->paid_by) === 'Client')>Client</option>
                                                         </select>
                                                     </div>
                                                     <div class="w-1/2">
                                                         <label class="block text-sm font-medium">Charge Type</label>
                                                         <select name="charge_type" value="{{ $method->charge_type }}" class="w-full border px-3 py-2 rounded-full">
                                                             <option value="Flat Rate" @selected(old('charge_type', $method->charge_type) === 'Flat Rate')>Flat Rate</option>
-                                                            <option value="Percent"   @selected(old('charge_type', $method->charge_type) === 'Percent')>Percent</option>
+                                                            <option value="Percent" @selected(old('charge_type', $method->charge_type) === 'Percent')>Percent</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -382,7 +413,7 @@
                                                     <div class="flex items-center">
                                                         <input type="checkbox" name="is_active" value="1" id="is_active_{{ $charge->id }}"
                                                             @checked(old('is_active', (bool)$method->is_active))
-                                                            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                         <label class="ml-2 text-sm font-medium text-gray-700">Active</label>
                                                     </div>
                                                     <p class="text-xs text-gray-500 mt-1">If unchecked, gateway will be saved but inactive</p>
@@ -413,9 +444,9 @@
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->charge_type }}</td>
                                         <td class="p-3 text-sm">
                                             @if($charge->is_active)
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
                                             @else
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Inactive</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Inactive</span>
                                             @endif
                                         </td>
                                         <td class="p-3 text-sm text-gray-600">
@@ -456,45 +487,59 @@
                                         </td>
                                         <td class="p-3 text-sm">
                                             @if($charge->can_generate_link)
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Allowed</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Allowed</span>
                                             @else
-                                                <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Disabled</span>
+                                            <span class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Disabled</span>
                                             @endif
                                         </td>
                                         <td class="p-3 text-sm text-gray-600">{{ $charge->description }}</td>
-                                        <td class="p-3 text-sm flex items-center gap-3">
-                                            <!-- Edit Button -->
-                                            <div class="relative group inline-block">
-                                                <button
-                                                    @click.stop="editParentModal = {{ $charge->id }}"
-                                                    class="text-blue-600 hover:text-blue-800">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <title>Edit</title>
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                            d="M15.232 5.232l3.536 3.536M9 11l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 14.5H9v-3.5z" />
-                                                    </svg>
-                                                </button>
-                                                <div class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
-                                                    Edit
-                                                </div>
-                                            </div>
-
-                                            <!-- Delete Button -->
-                                            <div class="relative group inline-block">
-                                                <form method="POST" action="{{ route('charges.destroy', $charge->id)}}" onsubmit="return confirm('Are you sure?')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-800">
+                                        <td class="p-3 text-sm sticky right-0 bg-white z-10">
+                                            <div class="flex items-center gap-3">
+                                                <!-- Edit Button -->
+                                                <div class="relative group inline-block">
+                                                    <button
+                                                        @click.stop="editParentModal = {{ $charge->id }}"
+                                                        class="text-blue-600 hover:text-blue-800">
                                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <title>Delete</title>
+                                                            <title>Edit</title>
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                d="M15.232 5.232l3.536 3.536M9 11l6.768-6.768a2.5 2.5 0 113.536 3.536L12.536 14.5H9v-3.5z" />
+                                                        </svg>
+                                                    </button>
+                                                    <div class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
+                                                        Edit
+                                                    </div>
+                                                </div>
+
+                                                <!-- Delete Button -->
+                                                @if($charge->can_be_deleted)
+                                                <div class="relative group inline-block">
+                                                    <form method="POST" action="{{ route('charges.destroy', $charge->id)}}" onsubmit="return confirm('Are you sure?')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-red-600 hover:text-red-800">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <title>Delete</title>
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a2 2 0 00-2-2H9a2 2 0 00-2 2m12 0H3" />
+                                                            </svg>
+                                                        </button>
+                                                    </form>
+                                                    <div class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
+                                                        Delete
+                                                    </div>
+                                                </div>
+                                                @else
+                                                <div class="relative group inline-block">
+                                                    <button type="button" class="text-gray-400 cursor-not-allowed" disabled>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <title>System gateway cannot be deleted</title>
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0a2 2 0 00-2-2H9a2 2 0 00-2 2m12 0H3" />
                                                         </svg>
                                                     </button>
-                                                </form>
-                                                <div class="absolute bottom-full mb-1 hidden group-hover:block text-xs text-white bg-black px-2 py-1 rounded shadow-md z-10">
-                                                    Delete
                                                 </div>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -503,23 +548,38 @@
                                     <div x-cloak x-show="editParentModal === {{ $charge->id }}" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
                                         <div class="bg-white rounded-lg w-full max-w-lg shadow max-h-[80vh] flex flex-col" @click.away="editParentModal = null">
                                             <div class="flex items-center justify-between px-5 pt-6 pb-4">
-                                                <h2 class="text-lg font-bold mb-4">Edit Gateway Charges</h2>
+                                                <div class="flex items-center gap-2">
+                                                    <h2 class="text-lg font-bold">Edit Gateway Charges</h2>
+                                                    @if($charge->is_system_default && !auth()->user()->hasRole('admin'))
+                                                    <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold bg-yellow-100 text-yellow-800 rounded-full">
+                                                        Limited Editing
+                                                    </span>
+                                                    @endif
+                                                </div>
                                                 <button @click="editParentModal = null" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">&times;</button>
                                             </div>
 
                                             <div class="overflow-y-auto px-8 pb-8 [scrollbar-gutter:stable]">
                                                 <form action="{{ route('charges.update', $charge->id) }}" method="POST">
-                                                    @method('PUT') 
+                                                    @method('PUT')
                                                     @csrf
 
+                                                    @if(auth()->user()->hasRole('admin'))
                                                     <div class="mb-4">
                                                         <label class="block text-sm font-medium">Name</label>
                                                         <input type="text" name="name" value="{{ $charge->name }}" class="w-full border px-3 py-2 rounded-full" />
                                                     </div>
+                                                    @else
+                                                    <div class="mb-4">
+                                                        <label class="block text-sm font-medium">Name</label>
+                                                        <input type="text" value="{{ $charge->name }}" class="w-full border px-3 py-2 rounded-full bg-gray-100 cursor-not-allowed" readonly />
+                                                        <p class="text-xs text-gray-500 mt-1">System gateway name cannot be changed</p>
+                                                    </div>
+                                                    @endif
 
                                                     <div class="mb-4">
-                                                        <label class="block text-sm font-medium">Service Charge</label>
-                                                        <input type="text" name="amount" value="{{ $charge->amount }}" class="w-full border px-3 py-2 rounded-full">
+                                                        <label class="block text-sm font-medium">API Service Charge</label>
+                                                        <input type="text" value="{{ $charge->amount }}" name="amount" class="w-full border px-3 py-2 rounded-full bg-white-100">
                                                     </div>
 
                                                     <div class="mb-4">
@@ -527,6 +587,7 @@
                                                         <input type="number" name="self_charge" value="{{ $charge->self_charge }}" class="w-full border px-3 py-2 rounded-full" placeholder="Enter self charge amount (optional)">
                                                         <p class="text-xs text-gray-500 mt-1">If set, this will override the gateway amount</p>
                                                     </div>
+
 
                                                     <div class="mb-4">
                                                         <label class="block text-sm font-medium">Extra Charge (KWD)</label>
@@ -538,22 +599,26 @@
                                                             <label class="block text-sm font-medium">Paid By</label>
                                                             <select name="paid_by" value="{{ $charge->paid_by }}" class="w-full border px-3 py-2 rounded-full">
                                                                 <option value="Company" @selected(old('paid_by', $charge->paid_by) === 'Company')>Company</option>
-                                                                <option value="Client"  @selected(old('paid_by', $charge->paid_by) === 'Client')>Client</option>
+                                                                <option value="Client" @selected(old('paid_by', $charge->paid_by) === 'Client')>Client</option>
                                                             </select>
                                                         </div>
                                                         <div class="w-1/2">
                                                             <label class="block text-sm font-medium">Charge Type</label>
                                                             <select name="charge_type" value="{{ $charge->charge_type }}" class="w-full border px-3 py-2 rounded-full">
                                                                 <option value="Flat Rate" @selected(old('charge_type', $charge->charge_type) === 'Flat Rate')>Flat Rate</option>
-                                                                <option value="Percent"   @selected(old('charge_type', $charge->charge_type) === 'Percent')>Percent</option>
+                                                                <option value="Percent" @selected(old('charge_type', $charge->charge_type) === 'Percent')>Percent</option>
                                                             </select>
                                                         </div>
                                                     </div>
+
+                                                    @if(auth()->user()->hasRole('admin'))
 
                                                     <div class="mb-4">
                                                         <label class="block text-sm font-medium">Description</label>
                                                         <input type="text" name="description" value="{{ $charge->description }}" class="w-full border px-3 py-2 rounded-full" />
                                                     </div>
+
+                                                    @endif
 
                                                     <div class="flex justify-between items-center mt-6">
                                                         <button type="button" @click="editParentModal = null" class="bg-gray-300 px-4 py-2 rounded-full">Cancel</button>
@@ -567,7 +632,14 @@
                                     <div x-cloak x-show="editCredsModal === {{ $charge->id }}" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-30 backdrop-blur-sm">
                                         <div class="bg-white rounded-lg w-full max-w-lg shadow max-h-[80vh] flex flex-col" @click.away="editCredsModal = null">
                                             <div class="flex items-center justify-between px-5 pt-6 pb-4">
-                                                <h2 class="text-lg font-bold">Gateway API Settings</h2>
+                                                <div class="flex items-center gap-2">
+                                                    <h2 class="text-lg font-bold">Gateway API Settings</h2>
+                                                    @if($charge->is_system_default && !auth()->user()->hasRole('admin'))
+                                                    <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold bg-yellow-100 text-yellow-800 rounded-full">
+                                                        Limited Access
+                                                    </span>
+                                                    @endif
+                                                </div>
                                                 <button @click.stop="editCredsModal = null" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">&times;</button>
                                             </div>
 
@@ -581,40 +653,45 @@
                                                         <input type="text" class="w-full border px-3 py-2 rounded-full bg-gray-200" value="{{ $charge->name }}" readonly>
                                                     </div>
 
+                                                    @if($charge->is_system_default)
                                                     <div class="mb-4">
                                                         <label class="block text-sm font-medium">API Key</label>
                                                         <textarea name="api_key" id="api_key_{{ $charge->id }}" class="w-full border px-3 py-2 rounded-md resize-y min-h-[6rem]"
                                                             placeholder="Provide new key to replace existing">{{ old('api_key', $charge->api_key) }}</textarea>
                                                     </div>
+                                                    @endif
+
+                                                    <div class="mb-6">
+                                                        <div class="flex items-center">
+                                                            <input type="checkbox" name="is_active" value="1" id="is_active_{{ $charge->id }}"
+                                                                @checked(old('is_active', (bool)$charge->is_active))
+                                                            class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                            <label class="ml-2 text-sm font-medium text-gray-700">Active</label>
+                                                        </div>
+                                                        <p class="text-xs text-gray-500 mt-1">Enable or disable this gateway for your company</p>
+                                                    </div>
+
+                                                    @if(auth()->user()->hasRole('admin') || !$charge->is_system_default)
 
                                                     <div class="mb-6 flex gap-4">
-                                                        <div class="w-1/2">
-                                                            <div class="flex items-center">
-                                                                <input type="checkbox" name="is_active" value="1" id="is_active_{{ $charge->id }}"
-                                                                    @checked(old('is_active', (bool)$charge->is_active))
-                                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-                                                                <label class="ml-2 text-sm font-medium text-gray-700">Active</label>
-                                                            </div>
-                                                            <p class="text-xs text-gray-500 mt-1">If unchecked, gateway will be saved but inactive</p>
-                                                        </div>
+
                                                         <div class="w-1/2">
                                                             <div class="flex items-center">
                                                                 <input type="checkbox" name="can_generate_link" value="1" id="can_generate_link_{{ $charge->id }}"
                                                                     @checked(old('can_generate_link', (bool)$charge->can_generate_link))
-                                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                                 <label class="ml-2 text-sm font-medium text-gray-700">Can Generate Link</label>
                                                             </div>
                                                             <p class="text-xs text-gray-500 mt-1">Allow customers to pay invoices using this gateway</p>
                                                         </div>
                                                     </div>
 
-                                                    <!-- Auto Payment and External URL Settings -->
                                                     <div class="mb-4 flex gap-4">
                                                         <div class="w-1/3">
                                                             <div class="flex items-center">
                                                                 <input type="checkbox" name="is_auto_paid" value="1" id="is_auto_paid_{{ $charge->id }}"
                                                                     @checked(old('is_auto_paid', (bool)$charge->is_auto_paid))
-                                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                                 <label class="ml-2 text-sm font-medium text-gray-700">Auto Payment</label>
                                                             </div>
                                                             <p class="text-xs text-gray-500 mt-1">Invoice will be automatically paid</p>
@@ -623,7 +700,7 @@
                                                             <div class="flex items-center">
                                                                 <input type="checkbox" name="has_url" value="1" id="has_url_{{ $charge->id }}"
                                                                     @checked(old('has_url', (bool)$charge->has_url))
-                                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                                 <label class="ml-2 text-sm font-medium text-gray-700">External URL</label>
                                                             </div>
                                                             <p class="text-xs text-gray-500 mt-1">Can put external payment gateway URL</p>
@@ -632,12 +709,13 @@
                                                             <div class="flex items-center">
                                                                 <input type="checkbox" name="can_charge_invoice" value="1" id="can_charge_invoice_{{ $charge->id }}"
                                                                     @checked(old('can_charge_invoice', (bool)$charge->can_charge_invoice))
-                                                                    class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                                                                class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
                                                                 <label class="ml-2 text-sm font-medium text-gray-700">Invoice Charge</label>
                                                             </div>
                                                             <p class="text-xs text-gray-500 mt-1">Allow charging additional fees on invoices</p>
                                                         </div>
                                                     </div>
+                                                    @endif
 
                                                     <div class="flex justify-between items-center mt-6">
                                                         <button type="button" @click="editCredsModal = null" class="bg-gray-300 px-4 py-2 rounded-full">Cancel</button>
@@ -656,33 +734,5 @@
                 </div>
             </div>
         </div>
-        <!-- <div class="content-30 hidden">
-            <div class="flex lg:flex-col md:flex-row justify-center text-center gap-5">
-                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-                        <path fill="#333333"
-                            d="M30 8h-4.1c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2v2h14.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30zm-9 4c-1.7 0-3-1.3-3-3s1.3-3 3-3s3 1.3 3 3s-1.3 3-3 3M2 24h4.1c.5 2.3 2.5 4 4.9 4s4.4-1.7 4.9-4H30v-2H15.9c-.5-2.3-2.5-4-4.9-4s-4.4 1.7-4.9 4H2zm9-4c1.7 0 3 1.3 3 3s-1.3 3-3 3s-3-1.3-3-3s1.3-3 3-3" />
-                    </svg>
-                    <span class="text-sm">Customize</span>
-                </button>
-                <button class="flex px-5 py-3 gap-2 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path fill="#333333" d="M10 19h4v-2h-4zm-4-6h12v-2H6zM3 5v2h18V5z" />
-                    </svg>
-                    <span class="text-sm">Filter</span>
-                </button>
-                <button class="flex px-5 py-3 gap-3 bg-white hover:bg-gray-300 rounded-lg shadow-sm items-center">
-                    <svg class="svgW" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <path fill="#333333"
-                            d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
-                    </svg>
-                    <span class="text-sm">Export</span>
-                </button>
-            </div>
-            <div class="mt-5 ">
-                <div id="chargeDetails" class="panel w-full xl:mt-0 rounded-lg h-auto hidden"></div>
-
-            </div>
-        </div> -->
     </div>
 </x-app-layout>

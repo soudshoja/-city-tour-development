@@ -112,7 +112,7 @@
                     <td class="py-3 px-4">Payment Gateway</td>
                     <td class="py-3 px-4 text-right">{{ $payment->payment_gateway }}</td>
                 </tr>
-                @if($payment->payment_gateway === 'MyFatoorah')
+                @if($payment->paymentMethod)
                 <tr>
                     <td class="py-3 px-4">Payment Method</td>
                     <td class="py-3 px-4 text-right">{{ $payment->paymentMethod->english_name ?? '-' }}</td>
@@ -197,7 +197,7 @@
 
         <!-- MOBILE -->
         <div class="mt-10 md:hidden space-y-3 w-full">
-            @unless ($payment->status === 'completed')
+            @unless ($payment->status === 'completed' || $payment->is_disabled)
             <div class="mb-10">
                 <form action="{{ route('payment.link.initiate') }}" method="POST" class="w-full">
                     @csrf
@@ -245,7 +245,7 @@
                 </div>
             </div>
 
-            @unless ($payment->status === 'completed')
+            @unless ($payment->status === 'completed' || $payment->is_disabled)
             <form action="{{ route('payment.link.initiate') }}" method="POST" class="flex-shrink-0">
                 @csrf
                 <input type="hidden" name="payment_id" value="{{ $payment->id }}">

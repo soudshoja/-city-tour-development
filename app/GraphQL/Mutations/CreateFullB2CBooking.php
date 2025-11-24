@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Sequence;
 use App\Models\Charge;
+use App\Models\Country;
 use App\Services\HotelSearchService;
 use App\Http\Controllers\PaymentController;
 use Illuminate\Http\UploadedFile;
@@ -79,8 +80,19 @@ class CreateFullB2CBooking
         try {
             Log::info('CreateFullB2CBooking started', ['input' => $input]);
 
-            $countryCode = substr($input['phone'], 0, 3);
-            $phone = substr($input['phone'], 3);
+            $codes = Country::pluck('dialing_code')->toArray();
+            usort($codes, fn($a, $b) => strlen($b) <=> strlen($a));
+
+            $countryCode = '+000';
+            $phone = $input['phone'];
+
+            foreach ($codes as $code) {
+                if (str_starts_with($input['phone'], $code)) {
+                    $countryCode = $code;
+                    $phone = substr($input['phone'], strlen($code));
+                    break;
+                }
+            }
 
             if (!$hasPrebookKey) {
                 return [
@@ -169,7 +181,7 @@ class CreateFullB2CBooking
                     ]);
 
                     Log::info('Client created from passport', ['client_id' => $client->id]);
-                } elseif (!empty($input['first_name']) && !empty($input['last_name']) && !empty($input['email']) && !empty($phone) && !empty($countryCode)) {
+                } elseif (!empty($input['first_name']) && !empty($input['email']) && !empty($input['phone'])) {
                     $agent = $this->getOrCreateAIAgent();
 
                     $client = Client::create([
@@ -262,7 +274,11 @@ class CreateFullB2CBooking
             }
 
             $rooms = $prebook->rooms ?? [];
-            $totalPrice = collect($rooms)->sum('price');
+            $roomsWithMarkup = collect($rooms)->map(function ($room) {
+                $room['price'] = ceil($room['price'] * 1.2);
+                return $room;
+            })->values()->all();
+            $totalPrice = ceil(collect($roomsWithMarkup)->sum('price'));
             $currency = !empty($rooms) ? ($rooms[0]['currency'] ?? 'KWD') : 'KWD';
 
             $paymentResponse = $this->createClientPaymentLink([
@@ -311,7 +327,7 @@ class CreateFullB2CBooking
                 'payment_link' => $paymentResponse['payment_link'] ?? null,
                 'rooms' => [
                     [
-                        'room' => $rooms,
+                        'room' => $roomsWithMarkup,
                         'prebook' => [
                             'prebookKey' => $prebook->prebook_key,
                             'serviceDates' => is_string($prebook->service_dates) ? json_decode($prebook->service_dates, true) : $prebook->service_dates,
@@ -319,7 +335,20 @@ class CreateFullB2CBooking
                             'package' => [
                                 'status' => (is_string($prebook->package) ? json_decode($prebook->package, true)['status'] ?? null : $prebook->package['status'] ?? null),
                                 'complete' => (is_string($prebook->package) ? json_decode($prebook->package, true)['complete'] ?? null : $prebook->package['complete'] ?? null),
-                                'price' => (is_string($prebook->package) ? json_decode($prebook->package, true)['price'] ?? [] : $prebook->package['price'] ?? []),
+                                'price' => (is_string($prebook->package)
+                                    ? array_merge(json_decode($prebook->package, true)['price'] ?? [], [
+                                        'selling' => [
+                                            'value' => ceil(json_decode($prebook->package, true)['price']['selling']['value'] ?? 0),
+                                            'currency' => json_decode($prebook->package, true)['price']['selling']['currency'] ?? 'KWD',
+                                        ],
+                                    ])
+                                    : array_merge($prebook->package['price'] ?? [], [
+                                        'selling' => [
+                                            'value' => ceil(($prebook->package['price']['selling']['value'] ?? 0) * 1.2),
+                                            'currency' => $prebook->package['price']['selling']['currency'] ?? 'KWD',
+                                        ],
+                                    ])
+                                ),
                                 'rate' => (is_string($prebook->package) ? json_decode($prebook->package, true)['rate'] ?? [] : $prebook->package['rate'] ?? []),
                                 'packageRooms' => array_map(function ($room) {
                                     return [
@@ -427,8 +456,19 @@ class CreateFullB2CBooking
         try {
             $aiAgent = $this->getOrCreateAIAgent();
 
-            $countryCode = substr($input['phone'], 0, 3);
-            $phone = substr($input['phone'], 3);
+            $codes = Country::pluck('dialing_code')->toArray();
+            usort($codes, fn($a, $b) => strlen($b) <=> strlen($a));
+
+            $countryCode = '+000';
+            $phone = $input['phone'];
+
+            foreach ($codes as $code) {
+                if (str_starts_with($input['phone'], $code)) {
+                    $countryCode = $code;
+                    $phone = substr($input['phone'], strlen($code));
+                    break;
+                }
+            }
 
             $client = Client::where('phone', $phone)
                 ->where('country_code', $countryCode)
@@ -449,10 +489,13 @@ class CreateFullB2CBooking
             if (empty($input['payment_method'])) {
                 $paymentMethod = null;
             } else {
-                $paymentMethod = PaymentMethod::where([['type', strtolower($input['payment_gateway'])], ['english_name', $input['payment_method']]])->first();
+                $paymentMethod = PaymentMethod::where('is_active', true)
+                    ->where('type', strtolower($input['payment_gateway']))
+                    ->where('english_name', 'LIKE', $input['payment_method'])
+                    ->first();
             }
 
-            $marginPrice = (0.2 * ($input['amount'])) + $input['amount'];
+            $marginPrice = (0.02 * ($input['amount'])) + $input['amount'];
             $marginPrice = ceil($marginPrice);
 
             $payment = Payment::create([

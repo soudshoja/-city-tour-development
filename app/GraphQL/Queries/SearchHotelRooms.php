@@ -35,6 +35,9 @@ class SearchHotelRooms
             'nonRefundable' => 'nullable|boolean',
             'boardBasis' => 'nullable|string|max:4',
             'occupancy' => 'required|array',
+            'occupancy.rooms' => 'required|string',
+            'roomName' => 'nullable|string',
+            'nationality' => 'nullable|string',
         ], [
             'telephone.required' => 'Telephone number is required.',
             'hotel.required' => 'Hotel name is required.',
@@ -42,6 +45,8 @@ class SearchHotelRooms
             'checkIn.after_or_equal' => 'Check-in date must be today or later.',
             'checkOut.required' => 'Check-out date is required.',
             'checkOut.after' => 'Check-out date must be after check-in date.',
+            'occupancy.required' => 'Occupancy details are required.',
+            'occupancy.rooms.required' => 'Rooms must be specified in occupancy.',
         ]);
 
         if ($validator->fails()) {
@@ -52,16 +57,31 @@ class SearchHotelRooms
             ];
         }
 
+        // $result = $this->hotelSearchService->searchHotelRooms(
+            // $input['telephone'],
+            // $input['hotel'],
+            // $input['checkIn'],
+            // $input['checkOut'],
+            // $input['occupancy'],
+            // $input['city'] ?? null,
+            // $input['roomCount'] ?? 1,
+            // $input['nonRefundable'] ?? null,
+            // $input['boardBasis'] ?? null
+        // );
+
         $result = $this->hotelSearchService->searchHotelRooms(
-            $input['telephone'],
-            $input['hotel'],
-            $input['checkIn'],
-            $input['checkOut'],
-            $input['occupancy'],
-            $input['city'] ?? null,
-            $input['roomCount'] ?? 1,
-            $input['nonRefundable'] ?? null,
-            $input['boardBasis'] ?? null
+            telephone: $input['telephone'],
+            hotelName: $input['hotel'],
+            checkIn: $input['checkIn'],
+            checkOut: $input['checkOut'],
+            occupancy: $input['occupancy'],
+            cityName: $input['city'] ?? null,
+            roomCount: $input['roomCount'] ?? 1,
+            nonRefundable: $input['nonRefundable'] ?? null,
+            boardBasis: $input['boardBasis'] ?? null,
+            roomName: $input['roomName'] ?? null,
+            isMarkup: true,
+            nationality: $input['nationality'] ?? null
         );
 
         return $result;

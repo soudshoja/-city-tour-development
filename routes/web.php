@@ -441,7 +441,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/unpaid-invoice', [RefundController::class, 'storeForUnpaidInvoice'])->name('store-unpaid');
         Route::get('/{refund}/edit', [RefundController::class, 'edit'])->name('edit');
         Route::put('/{refund}', [RefundController::class, 'update'])->name('update');
-        Route::post('/{refund}/complete-process', [RefundController::class, 'complete_process'])->name('complete_process');
+        Route::post('/{refund}/complete-process', [RefundController::class, 'completeProcess'])->name('complete_process');
         Route::get('/{refundClientId}/complete', [RefundController::class, 'completeRefundClient'])->name('refund-client.complete');
         Route::delete('/{refundClientId}', [RefundController::class, 'deleteRefundClient'])->name('refund-client.delete');
         Route::get('/{companyId}/{refundNumber}', [RefundController::class, 'show'])->name('show')->withoutMiddleware(['auth']);
@@ -482,6 +482,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/reinitiate', [PaymentController::class, 'paymentLinkReInitiate'])->name('reinitiate')->withoutMiddleware(['auth']);
             Route::post('/import/invoice', [PaymentController::class, 'importFromInvoice'])->name('import.invoice');
             Route::post('/import/payment', [PaymentController::class, 'importFromPayment'])->name('import.payment');
+            Route::post('/payment-activation/{paymentId}', [PaymentController::class, 'paymentLinkActivation'])->name('payment.activation');
         });
         Route::get('/tap-callback', [PaymentController::class, 'handleTapCallback'])->name('tap.callback')->withoutMiddleware(['auth']);
 
@@ -491,6 +492,9 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/hesabe-callback', [PaymentController::class, 'handleHesabeResponse'])->name('hesabe.response');
         Route::get('/hesabe-error', [PaymentController::class, 'handleHesabeFailure'])->name('hesabe.failure');
+
+        Route::get('/knet-response', [PaymentController::class, 'handleKnetResponse'])->name('knet.response')->withoutMiddleware(['auth']);
+        Route::get('/knet-error', [PaymentController::class, 'handleKnetError'])->name('knet.error')->withoutMiddleware(['auth']);
     });
 
     Route::group([

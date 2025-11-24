@@ -13,8 +13,11 @@ use App\Models\RequestBookingRoom;
 use App\Models\UserStep;
 use App\Models\Country;
 use App\Models\Agent;
+use App\Models\TBO;
+use App\Models\TBORoom;
 use App\Services\HotelSearchService;
 use App\Services\MagicHolidayService;
+use App\Services\TBOHolidayService;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -1648,6 +1651,154 @@ class WhatsAppHotelController extends Controller
         ]);
     }
 
+    public function confirmTBOBooking(Request $request)
+    {
+        Log::channel('whatsapp')->info("TBO Confirm Booking Request", $request->all());
+
+        $request->validate([
+            "agent_phone" => "required|string",
+            "email" => "nullable|email",
+            "client_phone" => "nullable|string",
+            "prebookKey" => "required|string",
+            "first_name" => "required|string",
+            "last_name" => "required|string",
+            "payment_method" => "required|string|in:prepaid,credit",
+        ]);
+
+        $prebookKey = $request->prebookKey;
+
+        // Find TBO prebook by prebook_key
+        $prebook = TBO::where("prebook_key", $prebookKey)->first();
+
+        if (!$prebook) {
+            return response()->json([
+                "success" => false,
+                "message" => "Invalid TBO prebook key."
+            ], 404);
+        }
+
+        Log::channel('whatsapp')->info("TBO Prebook found", ["prebook" => $prebook]);
+
+        // Build booking parameters
+        $bookingParams = $this->buildTBOBookingParameter($request, $prebookKey);
+
+        if (!$bookingParams["success"]) {
+            Log::channel('whatsapp')->warning('TBO booking params preparation failed', [
+                'prebook_key' => $prebookKey,
+                'error' => $bookingParams['message']
+            ]);
+            return response()->json([
+                "success" => false,
+                "message" => $bookingParams["message"]
+            ], 400);
+        }
+
+        // Generate unique client reference ID
+        $clientReferenceId = $bookingParams['payload']['ClientReferenceId'];
+
+        // STEP 1: Create HotelBooking record FIRST with pending status
+        $hotelBooking = HotelBooking::create([
+            "prebook_id" => null, // TBO doesn't use the prebookings table
+            "client_id" => null,
+            "payment_id" => null,
+            "supplier_booking_id" => null, // Will be updated after API call
+            "client_ref" => $clientReferenceId,
+            "status" => 'pending', // Initial status
+            "price" => $prebook->total_fare,
+            "currency" => $prebook->currency,
+            "booking_time" => now(),
+        ]);
+
+        // Link TBO prebook to HotelBooking
+        $prebook->update(['hotel_booking_id' => $hotelBooking->id]);
+
+        Log::channel('whatsapp')->info("HotelBooking created with pending status and linked to TBO prebook", [
+            'hotel_booking_id' => $hotelBooking->id,
+            'tbo_id' => $prebook->id,
+            'prebook_key' => $prebookKey,
+            'status' => 'pending'
+        ]);
+
+        // STEP 2: Initialize TBO service and call Book API
+        $tboService = new TBOHolidayService();
+        
+        Log::channel('whatsapp')->info("Attempting TBO booking", [
+            'prebook_key' => $prebookKey,
+            'booking_code' => $prebook->booking_code,
+            'hotel_booking_id' => $hotelBooking->id,
+        ]);
+
+        $bookingResponse = $tboService->book($bookingParams['payload']);
+
+        Log::channel('whatsapp')->info("TBO Booking Response", $bookingResponse);
+
+        // STEP 3: Update records based on API response
+        if (($bookingResponse["Status"]["Code"] ?? null) !== 200) {
+            // Update HotelBooking status to failed
+            $hotelBooking->update([
+                'status' => 'failed'
+            ]);
+
+            // Update TBO prebook status
+            $prebook->update([
+                'payment_status' => 'unpaid',
+                'supplier_status' => 'failed'
+            ]);
+
+            Log::channel('whatsapp')->error('TBO booking failed', [
+                'prebook_key' => $prebookKey,
+                'hotel_booking_id' => $hotelBooking->id,
+                'error' => $bookingResponse["Status"]["Description"] ?? 'Unknown error'
+            ]);
+
+            return response()->json([
+                "success" => false,
+                "message" => "Booking failed with TBO.",
+                "hotel_booking_id" => $hotelBooking->id,
+                "response" => $bookingResponse
+            ], 400);
+        }
+
+        $confirmationNo = $bookingResponse["BookingDetail"]["ConfirmationNo"] ?? null;
+        $bookingReferenceId = $bookingResponse["BookingDetail"]["BookingReferenceId"] ?? null;
+        $bookingStatus = $bookingResponse["BookingDetail"]["BookingStatus"] ?? 'confirmed';
+
+        // STEP 4: Update HotelBooking with confirmation details
+        $hotelBooking->update([
+            "supplier_booking_id" => $confirmationNo,
+            "status" => $bookingStatus,
+        ]);
+
+        // STEP 5: Update TBO prebook with booking confirmation details
+        $prebook->update([
+            'confirmation_no' => $confirmationNo,
+            'booking_reference_id' => $bookingReferenceId,
+            'payment_status' => 'pending', // Can be updated later when payment is confirmed
+            'supplier_status' => $bookingStatus,
+        ]);
+
+        Log::channel('whatsapp')->info('TBO booking successful', [
+            'prebook_key' => $prebookKey,
+            'hotel_booking_id' => $hotelBooking->id,
+            'confirmation_no' => $confirmationNo,
+            'supplier_status' => $bookingStatus,
+            'response' => $bookingResponse
+        ]);
+
+        $cleanBooking = array_filter($hotelBooking->fresh()->toArray(), fn($v) => !is_null($v));
+
+        return response()->json([
+            "success" => true,
+            "message" => "TBO booking successfully confirmed.",
+            "confirmation_no" => $confirmationNo,
+            "booking_reference_id" => $bookingReferenceId,
+            "hotel_booking_id" => $hotelBooking->id,
+            "payment_status" => $prebook->payment_status,
+            "supplier_status" => $prebook->supplier_status,
+            "booking" => $cleanBooking
+        ]);
+    }
+
     private function buildB2BBookingParameter(Request $request, string $prebookKey): array
     {
         $this->logger->info("Building B2B booking payload", ["prebookKey" => $prebookKey]);
@@ -1819,6 +1970,93 @@ class WhatsAppHotelController extends Controller
             "hotelIndex" => $hotelIndex,
             "offerIndex" => $offerIndex,
             "resultToken" => $resultToken,
+            "payload" => $payload,
+        ];
+    }
+
+    private function buildTBOBookingParameter(Request $request, string $prebookKey): array
+    {
+        Log::channel('whatsapp')->info("Building TBO booking payload", ["prebookKey" => $prebookKey]);
+        
+        $prebook = TBO::with('rooms')->where("prebook_key", $prebookKey)->first();
+
+        if (!$prebook) {
+            Log::channel('whatsapp')->info('No TBO Prebook data found for this key', ['prebook_key' => $prebookKey]);
+            return [
+                "success" => false,
+                "message" => "TBO prebook not found."
+            ];
+        }
+
+        Log::channel('whatsapp')->info('TBO Prebook data from database', ['data' => $prebook]);
+
+        $rooms = $prebook->rooms;
+
+        if ($rooms->isEmpty()) {
+            Log::channel('whatsapp')->error('No rooms found in TBO prebook data', ['prebook_key' => $prebookKey]);
+            return [
+                "success" => false,
+                "message" => "No rooms found in TBO prebook data."
+            ];
+        }
+
+        // Build CustomerDetails array
+        $customerDetails = [];
+        foreach ($rooms as $roomIndex => $room) {
+            $customers = [];
+            
+            // Add adults
+            for ($i = 0; $i < $room->adult_quantity; $i++) {
+                $customers[] = [
+                    'FirstName' => $request->first_name,
+                    'LastName' => $request->last_name,
+                    'Title' => 'Mr', // Default title
+                    'Type' => 'Adult'
+                ];
+            }
+
+            // Add children if any
+            for ($i = 0; $i < $room->child_quantity; $i++) {
+                $customers[] = [
+                    'FirstName' => 'Child' . ($i + 1),
+                    'LastName' => $request->last_name,
+                    'Title' => 'Mstr', // Default title for children
+                    'Type' => 'Child'
+                ];
+            }
+
+            $customerDetails[] = [
+                'CustomerNames' => $customers
+            ];
+        }
+
+        // Generate unique client reference ID
+        $clientReferenceId = $prebookKey . '-' . time();
+
+        $payload = [
+            'BookingCode' => $prebook->booking_code,
+            'CustomerDetails' => $customerDetails,
+            'ClientReferenceId' => $clientReferenceId,
+            'BookingReferenceId' => $prebookKey,
+            'TotalFare' => (float)$prebook->total_fare,
+            'EmailId' => $request->email ?? 'noreply@example.com',
+            'PhoneNumber' => $request->client_phone ?? $request->agent_phone,
+            'PaymentMode' => 'Limit', // Default to Limit (prepaid/credit)
+            'PaymentInfo' => [
+                'CvvNumber' => '', // Empty as we're using Limit payment
+            ]
+        ];
+
+        Log::channel('whatsapp')->info('Final TBO Payload Request', [
+            'prebook_key' => $prebookKey,
+            'booking_code' => $prebook->booking_code,
+            'total_rooms' => count($customerDetails),
+            'payload' => $payload
+        ]);
+
+        return [
+            "success" => true,
+            'message' => 'TBO booking payload prepared successfully',
             "payload" => $payload,
         ];
     }

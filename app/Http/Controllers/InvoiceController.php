@@ -667,7 +667,7 @@ class InvoiceController extends Controller
                     Log::info('Deleting InvoicePartial', ['invoice_partial_id' => $partial->id]);
                     $partial->delete();
                 }
-                Log::info('Payment type changed, ll related partials deleted for invoice ID: ' . $invoice->id);
+                Log::info('Payment type changed, all related partials deleted for invoice ID: ' . $invoice->id);
             } else {
                 Log::info('Payment type changed, no related invoice partial found for invoice ID: ' . $invoice->id);
             }

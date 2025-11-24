@@ -71,8 +71,8 @@ class TBOController extends Controller
 
         $countries->setPath($request->url());
 
-        $startDate = date('2025-01-15');
-        $endDate = date('2025-03-01');
+        $startDate = date('Y-m-d', strtotime('-30 days'));
+        $endDate = date('Y-m-d');
 
         $pastBookings = $this->tboService->getBookingDetailByDate($startDate, $endDate);
         

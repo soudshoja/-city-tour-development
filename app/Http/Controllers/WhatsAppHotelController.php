@@ -1667,7 +1667,6 @@ class WhatsAppHotelController extends Controller
 
         $prebookKey = $request->prebookKey;
 
-        // Find TBO prebook by prebook_key
         $prebook = TBO::where("prebook_key", $prebookKey)->first();
 
         if (!$prebook) {
@@ -1679,7 +1678,6 @@ class WhatsAppHotelController extends Controller
 
         Log::channel('whatsapp')->info("TBO Prebook found", ["prebook" => $prebook]);
 
-        // Build booking parameters
         $bookingParams = $this->buildTBOBookingParameter($request, $prebookKey);
 
         if (!$bookingParams["success"]) {
@@ -1693,23 +1691,20 @@ class WhatsAppHotelController extends Controller
             ], 400);
         }
 
-        // Generate unique client reference ID
         $clientReferenceId = $bookingParams['payload']['ClientReferenceId'];
 
-        // STEP 1: Create HotelBooking record FIRST with pending status
         $hotelBooking = HotelBooking::create([
-            "prebook_id" => null, // TBO doesn't use the prebookings table
+            "prebook_id" => null,
             "client_id" => null,
             "payment_id" => null,
-            "supplier_booking_id" => null, // Will be updated after API call
+            "supplier_booking_id" => null,
             "client_ref" => $clientReferenceId,
-            "status" => 'pending', // Initial status
+            "status" => 'pending',
             "price" => $prebook->total_fare,
             "currency" => $prebook->currency,
             "booking_time" => now(),
         ]);
 
-        // Link TBO prebook to HotelBooking
         $prebook->update(['hotel_booking_id' => $hotelBooking->id]);
 
         Log::channel('whatsapp')->info("HotelBooking created with pending status and linked to TBO prebook", [
@@ -1719,7 +1714,6 @@ class WhatsAppHotelController extends Controller
             'status' => 'pending'
         ]);
 
-        // STEP 2: Initialize TBO service and call Book API
         $tboService = new TBOHolidayService();
         
         Log::channel('whatsapp')->info("Attempting TBO booking", [
@@ -1732,14 +1726,9 @@ class WhatsAppHotelController extends Controller
 
         Log::channel('whatsapp')->info("TBO Booking Response", $bookingResponse);
 
-        // STEP 3: Update records based on API response
         if (($bookingResponse["Status"]["Code"] ?? null) !== 200) {
-            // Update HotelBooking status to failed
-            $hotelBooking->update([
-                'status' => 'failed'
-            ]);
+            $hotelBooking->update(['status' => 'failed']);
 
-            // Update TBO prebook status
             $prebook->update([
                 'payment_status' => 'unpaid',
                 'supplier_status' => 'failed'
@@ -1759,21 +1748,19 @@ class WhatsAppHotelController extends Controller
             ], 400);
         }
 
-        $confirmationNo = $bookingResponse["BookingDetail"]["ConfirmationNo"] ?? null;
-        $bookingReferenceId = $bookingResponse["BookingDetail"]["BookingReferenceId"] ?? null;
-        $bookingStatus = $bookingResponse["BookingDetail"]["BookingStatus"] ?? 'confirmed';
+        $confirmationNo = $bookingResponse["ConfirmationNumber"] ?? null;
+        $bookingReferenceId = $bookingResponse["ClientReferenceId"] ?? null;
+        $bookingStatus = 'confirmed';
 
-        // STEP 4: Update HotelBooking with confirmation details
         $hotelBooking->update([
             "supplier_booking_id" => $confirmationNo,
             "status" => $bookingStatus,
         ]);
 
-        // STEP 5: Update TBO prebook with booking confirmation details
         $prebook->update([
             'confirmation_no' => $confirmationNo,
             'booking_reference_id' => $bookingReferenceId,
-            'payment_status' => 'pending', // Can be updated later when payment is confirmed
+            'payment_status' => 'pending',
             'supplier_status' => $bookingStatus,
         ]);
 
@@ -1785,7 +1772,33 @@ class WhatsAppHotelController extends Controller
             'response' => $bookingResponse
         ]);
 
-        $bookingDetail = $bookingResponse["BookingDetail"] ?? [];
+        $detailedBookingResponse = null;
+        try {
+            $bookingDetailResponse = $tboService->getBookingDetail([
+                'ConfirmationNumber' => $confirmationNo
+            ]);
+
+            if (isset($bookingDetailResponse['Status']['Code']) && $bookingDetailResponse['Status']['Code'] === 200) {
+                $detailedBookingResponse = $bookingDetailResponse['BookingDetail'] ?? null;
+                
+                Log::channel('whatsapp')->info('TBO BookingDetail API response', [
+                    'confirmation_no' => $confirmationNo,
+                    'response' => $detailedBookingResponse
+                ]);
+            } else {
+                Log::channel('whatsapp')->warning('TBO BookingDetail API failed', [
+                    'confirmation_no' => $confirmationNo,
+                    'error' => $bookingDetailResponse['Status']['Description'] ?? 'Unknown error'
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::channel('whatsapp')->error('Failed to fetch booking details from TBO', [
+                'confirmation_no' => $confirmationNo,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        $bookingDetail = $detailedBookingResponse ?? $bookingResponse["BookingDetail"] ?? [];
         $hotelDetails = $bookingDetail["Hotel"] ?? [];
         
         return response()->json([

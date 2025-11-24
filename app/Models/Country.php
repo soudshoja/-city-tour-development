@@ -11,7 +11,8 @@ class Country extends Model
 
     protected $fillable = [
         'name',
-        'iso_code'
+        'iso_code',
+        'dialing_code'
     ];
     
     public function currencies()

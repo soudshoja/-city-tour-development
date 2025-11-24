@@ -31,7 +31,9 @@ class TBOHolidayService
             'url' => $this->apiUrl . $url,
         ]);
 
-        $response = Http::withBasicAuth($this->username, $this->password)->get($this->apiUrl . $url);
+        $response = Http::withBasicAuth($this->username, $this->password)
+            ->timeout(120)
+            ->get($this->apiUrl . $url);
 
         $this->logger->info("TBO Get Response", [
             'status' => $response->status(),
@@ -50,7 +52,9 @@ class TBOHolidayService
             'data' => $data
         ]);
 
-        $response = Http::withBasicAuth($this->username, $this->password)->post($this->apiUrl . $url, $data);
+        $response = Http::withBasicAuth($this->username, $this->password)
+            ->timeout(120)
+            ->post($this->apiUrl . $url, $data);
 
         $this->logger->info("TBO Post Response", [
             'status' => $response->status(),

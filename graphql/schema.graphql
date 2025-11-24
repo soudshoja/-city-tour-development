@@ -83,6 +83,18 @@ input HotelSearchInput {
 
     "Country name for nationality (e.g., 'Kuwait', 'Saudi Arabia', defaults to 'Kuwait') - For Magic Holiday"
     nationality: String
+
+    "Number of rooms filter - For TBO API (optional, defaults to count of rooms in occupancy)"
+    noOfRooms: Int
+
+    "Filter by refundable type - For TBO API (optional)"
+    refundable: Boolean
+
+    "Meal type filter - For TBO API (optional, values: 'All', 'WithMeal', 'RoomOnly', defaults to 'All')"
+    mealType: String
+
+    "Filter by star rating - For TBO API (optional, array of integers 1-5)"
+    starRating: [Int!]
 }
 
 "Response for hotel room search"

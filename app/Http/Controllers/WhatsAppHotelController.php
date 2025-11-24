@@ -1785,17 +1785,40 @@ class WhatsAppHotelController extends Controller
             'response' => $bookingResponse
         ]);
 
-        $cleanBooking = array_filter($hotelBooking->fresh()->toArray(), fn($v) => !is_null($v));
-
+        $bookingDetail = $bookingResponse["BookingDetail"] ?? [];
+        $hotelDetails = $bookingDetail["Hotel"] ?? [];
+        
         return response()->json([
             "success" => true,
             "message" => "TBO booking successfully confirmed.",
-            "confirmation_no" => $confirmationNo,
-            "booking_reference_id" => $bookingReferenceId,
-            "hotel_booking_id" => $hotelBooking->id,
-            "payment_status" => $prebook->payment_status,
-            "supplier_status" => $prebook->supplier_status,
-            "booking" => $cleanBooking
+            "booking_details" => [
+                "confirmation_no" => $confirmationNo,
+                "booking_reference_id" => $bookingReferenceId,
+                "booking_status" => $bookingStatus,
+                "hotel_booking_id" => $hotelBooking->id,
+                "payment_status" => $prebook->payment_status,
+                "supplier_status" => $prebook->supplier_status,
+                "prebook_key" => $prebookKey,
+                "hotel" => [
+                    "hotel_code" => $prebook->hotel_code,
+                    "hotel_name" => $prebook->hotel_name,
+                    "check_in" => $hotelDetails["CheckInDate"] ?? null,
+                    "check_out" => $hotelDetails["CheckOutDate"] ?? null,
+                ],
+                "pricing" => [
+                    "total_fare" => $prebook->total_fare,
+                    "total_tax" => $prebook->total_tax,
+                    "currency" => $prebook->currency,
+                ],
+                "room_details" => [
+                    "room_name" => json_decode($prebook->room_name, true),
+                    "meal_type" => $prebook->meal_type,
+                    "is_refundable" => $prebook->is_refundable,
+                    "room_quantity" => $prebook->room_quantity,
+                ],
+                "booking_time" => $hotelBooking->booking_time,
+            ],
+            "tbo_response" => $bookingDetail
         ]);
     }
 

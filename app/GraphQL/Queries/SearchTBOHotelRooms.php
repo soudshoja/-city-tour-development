@@ -34,6 +34,12 @@ class SearchTBOHotelRooms
             'checkIn' => 'required|date|after_or_equal:today',
             'checkOut' => 'required|date|after:checkIn',
             'occupancy' => 'required',
+            // Optional filters
+            'noOfRooms' => 'nullable|integer|min:1',
+            'refundable' => 'nullable|boolean',
+            'mealType' => 'nullable|string|in:All,WithMeal,RoomOnly',
+            'starRating' => 'nullable|array',
+            'starRating.*' => 'integer|min:1|max:5',
         ], [
             'telephone.required' => 'Telephone number is required.',
             'hotelCode.required_without' => 'Hotel code or hotel name is required.',
@@ -46,7 +52,13 @@ class SearchTBOHotelRooms
             'checkOut.required' => 'Check-out date is required.',
             'checkOut.after' => 'Check-out date must be after check-in date.',
             'occupancy.required' => 'Occupancy is required.',
+            'mealType.in' => 'Meal type must be one of: All, WithMeal, RoomOnly.',
+            'starRating.*.integer' => 'Star rating must be an integer.',
+            'starRating.*.min' => 'Star rating must be at least 1.',
+            'starRating.*.max' => 'Star rating must not exceed 5.',
         ]);
+
+        $this->logger->info('TBO hotel search input', ['input' => $input]);
 
         if ($validator->fails()) {
             return [
@@ -158,7 +170,11 @@ class SearchTBOHotelRooms
                 $input['guestNationality'],
                 $input['checkIn'],
                 $input['checkOut'],
-                $rooms
+                $rooms,
+                $input['noOfRooms'] ?? null,
+                $input['refundable'] ?? null,
+                $input['mealType'] ?? 'All',
+                $input['starRating'] ?? null
             );
 
             return $result;
@@ -186,9 +202,17 @@ class SearchTBOHotelRooms
      */
     protected function parseOccupancy($occupancy): array
     {
-        // If occupancy is already an array of rooms (TBO format), return as-is
+        // If occupancy is already an array of rooms
         if (is_array($occupancy) && isset($occupancy[0]) && is_array($occupancy[0])) {
-            return $occupancy;
+            // Convert new format [{'adults':1,'childrenAges':[]}] to TBO format
+            return array_map(function($room) {
+                $childrenAges = $room['childrenAges'] ?? $room['childAges'] ?? [];
+                return [
+                    'adults' => $room['adults'],
+                    'children' => count($childrenAges), // Infer children count from ages array
+                    'childAges' => $childrenAges
+                ];
+            }, $occupancy);
         }
 
         // If occupancy has 'rooms' key with string value (Magic Holiday format)
@@ -198,6 +222,21 @@ class SearchTBOHotelRooms
 
         // If occupancy is a string directly
         if (is_string($occupancy)) {
+            // Try to decode JSON format first: "[{'adults':1,'childrenAges':[]}]"
+            $decoded = json_decode(str_replace("'", '"', $occupancy), true);
+            if (is_array($decoded) && isset($decoded[0]) && is_array($decoded[0])) {
+                // Parse the decoded array using the array logic
+                return array_map(function($room) {
+                    $childrenAges = $room['childrenAges'] ?? $room['childAges'] ?? [];
+                    return [
+                        'adults' => $room['adults'],
+                        'children' => count($childrenAges),
+                        'childAges' => $childrenAges
+                    ];
+                }, $decoded);
+            }
+            
+            // Otherwise, use old format: "2,1|1,0"
             return $this->parseRoomsString($occupancy);
         }
 
@@ -237,7 +276,11 @@ class SearchTBOHotelRooms
         string $guestNationality,
         string $checkIn,
         string $checkOut,
-        array $rooms
+        array $rooms,
+        ?int $noOfRooms = null,
+        ?bool $refundable = null,
+        string $mealType = 'All',
+        ?array $starRating = null
     ): array {
         $this->logger->info('Starting TBO hotel search', [
             'hotel_code' => $hotelCode,
@@ -245,15 +288,45 @@ class SearchTBOHotelRooms
             'check_in' => $checkIn,
             'check_out' => $checkOut,
             'rooms' => $rooms,
+            'filters' => [
+                'noOfRooms' => $noOfRooms,
+                'refundable' => $refundable,
+                'mealType' => $mealType,
+                'starRating' => $starRating,
+            ],
         ]);
 
         $paxRooms = array_map(function ($room) {
             return [
-                'adults' => (string)$room['adults'],
-                'children' => $room['children'],
-                'childrenAges' => $room['childAges'] ?? [],
+                'Adults' => (string)$room['adults'],
+                'Children' => $room['children'],
+                'ChildrenAges' => $room['childAges'] ?? [],
             ];
         }, $rooms);
+
+        // Build filters array
+        $filters = [];
+        
+        // NoOfRooms: tells TBO API how many cheapest room options to return
+        // Also used to determine how many to prebook
+        $filters['NoOfRooms'] = $noOfRooms ?? 1;
+        
+        // Add optional filters if provided
+        if ($refundable !== null) {
+            $filters['Refundable'] = $refundable;
+
+            if(app()->environment() !== 'production'){
+                $filters['Refundable'] = true;
+            }
+        }
+        
+        if ($mealType !== null) {
+            $filters['MealType'] = $mealType;
+        }
+        
+        if ($starRating !== null && !empty($starRating)) {
+            $filters['StarRating'] = $starRating;
+        }
 
         $searchData = [
             'CheckIn' => $checkIn,
@@ -263,11 +336,7 @@ class SearchTBOHotelRooms
             'PaxRooms' => $paxRooms,
             'ResponseTime' => 23,
             'IsDetailedResponse' => false,
-            'Filters' => [
-                'Refundable' => false,
-                'NoOfRooms' => count($rooms),
-                'MealType' => 'All',
-            ]
+            'Filters' => $filters
         ];
 
         $response = $this->tboService->search($searchData);
@@ -316,91 +385,132 @@ class SearchTBOHotelRooms
 
         usort($allRooms, fn($a, $b) => $a['total_fare'] <=> $b['total_fare']);
 
-        $cheapestRoom = $allRooms[0];
-        $hotel = $cheapestRoom['hotel'];
-        $room = $cheapestRoom['room'];
-
-        // Get hotel details to retrieve hotel name
+        // Select cheapest rooms based on noOfRooms (like roomCount in Magic Holiday)
+        $roomsToPrebook = array_slice($allRooms, 0, $noOfRooms ?? 1);
+        
+        // Get hotel details once
+        $firstRoom = $roomsToPrebook[0];
+        $hotel = $firstRoom['hotel'];
         $hotelDetails = $this->tboService->getHotelDetails($hotel['HotelCode']);
         $hotelName = $hotelDetails['HotelDetails']['HotelName'] ?? 'Hotel ' . $hotel['HotelCode'];
 
-        $prebookResponse = $this->tboService->preBook($room['BookingCode']);
-
-        if (!isset($prebookResponse['Status']) || $prebookResponse['Status']['Code'] !== 200) {
-            $errorMessage = $prebookResponse['Status']['Description'] ?? 'Prebook failed';
+        // Prebook all selected rooms
+        $prebookedRooms = [];
+        
+        foreach ($roomsToPrebook as $roomData) {
+            $room = $roomData['room'];
             
+            $prebookResponse = $this->tboService->preBook($room['BookingCode']);
+
+            if (!isset($prebookResponse['Status']) || $prebookResponse['Status']['Code'] !== 200) {
+                $this->logger->warning('Prebook failed for one room', [
+                    'booking_code' => $room['BookingCode'],
+                    'error' => $prebookResponse['Status']['Description'] ?? 'Unknown error'
+                ]);
+                continue; // Skip this room and continue with others
+            }
+
+            $prebookHotel = $prebookResponse['HotelResult'][0] ?? null;
+            $prebookRoom = $prebookHotel['Rooms'][0] ?? null;
+
+            if (!$prebookRoom) {
+                $this->logger->warning('Prebook response missing room details', [
+                    'booking_code' => $room['BookingCode']
+                ]);
+                continue;
+            }
+
+            // Generate unique prebook key (same format as Magic Holiday)
+            $prebookKey = 'TBO-' . strtoupper(substr(uniqid(), -8));
+
+            $this->logger->info('Generated prebook key for TBO', [
+                'prebook_key' => $prebookKey,
+                'booking_code' => $prebookRoom['BookingCode'],
+                'hotel_code' => $hotel['HotelCode']
+            ]);
+
+            $tboPrebook = TBO::create([
+                'prebook_key' => $prebookKey,
+                'booking_code' => $prebookRoom['BookingCode'],
+                'hotel_code' => $hotel['HotelCode'],
+                'hotel_name' => $hotelName,
+                'room_quantity' => count($rooms),
+                'room_name' => json_encode($prebookRoom['Name']),
+                'currency' => $hotel['Currency'],
+                'inclusion' => $prebookRoom['Inclusion'] ?? '',
+                'day_rates' => 'day rates',
+                'total_fare' => $prebookRoom['TotalFare'],
+                'total_tax' => $prebookRoom['TotalTax'],
+                'extra_guest_charges' => $prebookRoom['ExtraGuestCharges'] ?? '0',
+                'room_promotion' => json_encode($prebookRoom['RoomPromotion'] ?? []),
+                'meal_type' => $prebookRoom['MealType'] ?? '',
+                'is_refundable' => $prebookRoom['IsRefundable'] ?? false,
+                'with_transfer' => $prebookRoom['WithTransfer'] ?? false,
+            ]);
+
+            foreach ($rooms as $index => $roomInput) {
+                TBORoom::create([
+                    'tbo_id' => $tboPrebook->id,
+                    'room_name' => $prebookRoom['Name'][$index] ?? 'Room ' . ($index + 1),
+                    'adult_quantity' => $roomInput['adults'],
+                    'child_quantity' => $roomInput['children'],
+                ]);
+            }
+
+            $roomDetails = array_map(function ($roomInput, $index) use ($prebookRoom) {
+                return [
+                    'room_name' => $prebookRoom['Name'][$index] ?? 'Room ' . ($index + 1),
+                    'board_basis' => $prebookRoom['MealType'] ?? '',
+                    'non_refundable' => !($prebookRoom['IsRefundable'] ?? false),
+                    'price' => $prebookRoom['TotalFare'] / count($prebookRoom['Name']),
+                    'currency' => $prebookRoom['Currency'] ?? 'USD',
+                    'info' => $prebookRoom['Inclusion'] ?? null,
+                    'occupancy' => [
+                        'adults' => $roomInput['adults'],
+                        'children' => $roomInput['children'],
+                        'childAges' => $roomInput['childAges'] ?? [],
+                    ],
+                ];
+            }, $rooms, array_keys($rooms));
+
+            $prebookedRooms[] = [
+                'success' => true,
+                'error' => null,
+                'room' => $roomDetails,
+                'prebook' => [
+                    'prebookKey' => $prebookKey,
+                    'tboId' => $tboPrebook->id,
+                    'bookingCode' => $prebookRoom['BookingCode'],
+                    'serviceDates' => [
+                        'checkIn' => $checkIn,
+                        'checkOut' => $checkOut,
+                    ],
+                    'package' => [
+                        'price' => [
+                            'selling' => [
+                                'value' => $prebookRoom['TotalFare'],
+                                'currency' => $hotel['Currency'],
+                            ],
+                        ],
+                    ],
+                    'totalFare' => $prebookRoom['TotalFare'],
+                    'totalTax' => $prebookRoom['TotalTax'],
+                    'currency' => $hotel['Currency'],
+                    'mealType' => $prebookRoom['MealType'] ?? '',
+                    'isRefundable' => $prebookRoom['IsRefundable'] ?? false,
+                ],
+            ];
+        }
+
+        if (empty($prebookedRooms)) {
             return [
                 'success' => false,
                 'status' => 'prebook_failed',
-                'message' => 'Prebook failed: ' . $errorMessage,
+                'message' => 'All prebook attempts failed.',
                 'data' => null,
                 'hotelOptions' => null,
             ];
         }
-
-        $prebookHotel = $prebookResponse['HotelResult'][0] ?? null;
-        $prebookRoom = $prebookHotel['Rooms'][0] ?? null;
-
-        if (!$prebookRoom) {
-            return [
-                'success' => false,
-                'message' => 'Prebook response missing room details.',
-                'data' => null,
-            ];
-        }
-
-        // Generate unique prebook key (same format as Magic Holiday)
-        $prebookKey = 'TBO-' . strtoupper(substr(uniqid(), -8));
-
-        $this->logger->info('Generated prebook key for TBO', [
-            'prebook_key' => $prebookKey,
-            'booking_code' => $prebookRoom['BookingCode'],
-            'hotel_code' => $hotel['HotelCode']
-        ]);
-
-        $tboPrebook = TBO::create([
-            'prebook_key' => $prebookKey,
-            'booking_code' => $prebookRoom['BookingCode'],
-            'hotel_code' => $hotel['HotelCode'],
-            'hotel_name' => $hotelName,
-            'room_quantity' => count($rooms),
-            'room_name' => json_encode($prebookRoom['Name']),
-            'currency' => $hotel['Currency'],
-            'inclusion' => $prebookRoom['Inclusion'] ?? '',
-            'day_rates' => 'day rates',
-            'total_fare' => $prebookRoom['TotalFare'],
-            'total_tax' => $prebookRoom['TotalTax'],
-            'extra_guest_charges' => $prebookRoom['ExtraGuestCharges'] ?? '0',
-            'room_promotion' => json_encode($prebookRoom['RoomPromotion'] ?? []),
-            'meal_type' => $prebookRoom['MealType'] ?? '',
-            'is_refundable' => $prebookRoom['IsRefundable'] ?? false,
-            'with_transfer' => $prebookRoom['WithTransfer'] ?? false,
-        ]);
-
-        foreach ($rooms as $index => $roomInput) {
-            TBORoom::create([
-                'tbo_id' => $tboPrebook->id,
-                'room_name' => $prebookRoom['Name'][$index] ?? 'Room ' . ($index + 1),
-                'adult_quantity' => $roomInput['adults'],
-                'child_quantity' => $roomInput['children'],
-            ]);
-        }
-
-        $roomDetails = array_map(function ($roomInput, $index) use ($prebookRoom) {
-            return [
-                'room_name' => $prebookRoom['Name'][$index] ?? 'Room ' . ($index + 1),
-                'board_basis' => $prebookRoom['MealType'] ?? '',
-                'non_refundable' => !($prebookRoom['IsRefundable'] ?? false),
-                'price' => $prebookRoom['TotalFare'] / count($prebookRoom['Name']),
-                'currency' => $prebookRoom['Currency'] ?? 'USD',
-                'info' => $prebookRoom['Inclusion'] ?? null,
-                'occupancy' => [
-                    'adults' => $roomInput['adults'],
-                    'children' => $roomInput['children'],
-                    'childAges' => $roomInput['childAges'] ?? [],
-                ],
-            ];
-        }, $rooms, array_keys($rooms));
 
         return [
             'success' => true,
@@ -409,36 +519,8 @@ class SearchTBOHotelRooms
             'data' => [
                 'hotel_code' => $hotel['HotelCode'],
                 'hotel_name' => $hotelName,
-                'room_count' => 1,
-                'rooms' => [
-                    [
-                        'success' => true,
-                        'error' => null,
-                        'room' => $roomDetails,
-                        'prebook' => [
-                            'prebookKey' => $prebookKey,
-                            'tboId' => $tboPrebook->id,
-                            'bookingCode' => $prebookRoom['BookingCode'],
-                            'serviceDates' => [
-                                'checkIn' => $checkIn,
-                                'checkOut' => $checkOut,
-                            ],
-                            'package' => [
-                                'price' => [
-                                    'selling' => [
-                                        'value' => $prebookRoom['TotalFare'],
-                                        'currency' => $hotel['Currency'],
-                                    ],
-                                ],
-                            ],
-                            'totalFare' => $prebookRoom['TotalFare'],
-                            'totalTax' => $prebookRoom['TotalTax'],
-                            'currency' => $hotel['Currency'],
-                            'mealType' => $prebookRoom['MealType'] ?? '',
-                            'isRefundable' => $prebookRoom['IsRefundable'] ?? false,
-                        ],
-                    ],
-                ],
+                'room_count' => count($prebookedRooms),
+                'rooms' => $prebookedRooms,
             ],
         ];
     }

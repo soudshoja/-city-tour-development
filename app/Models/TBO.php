@@ -9,8 +9,13 @@ class TBO extends Model
     protected $table = 'tbo';
 
     protected $fillable = [
+        'hotel_booking_id',
         'prebook_key',
         'booking_code',
+        'confirmation_no',
+        'booking_reference_id',
+        'payment_status',
+        'supplier_status',
         'hotel_code',
         'hotel_name',
         'room_name',
@@ -31,5 +36,10 @@ class TBO extends Model
     public function rooms()
     {
         return $this->hasMany(TBORoom::class, 'tbo_id');
+    }
+
+    public function hotelBooking()
+    {
+        return $this->belongsTo(HotelBooking::class, 'hotel_booking_id');
     }
 }

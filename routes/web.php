@@ -206,7 +206,7 @@ Route::middleware(['auth'])->group(function () {
             'prefix' => 'tbo',
             'as' => 'tbo.',
         ], function () {
-            Route::get('/index', [TBOController::class, 'index'])->name('index');
+            Route::get('index', [TBOController::class, 'index'])->name('index');
             Route::get('book/index', [TBOController::class, 'bookIndex'])->name('book.index');
             Route::post('search', [TBOController::class, 'search'])->name('search');
             Route::get('country', [TBOController::class, 'countryList'])->name('country-list');

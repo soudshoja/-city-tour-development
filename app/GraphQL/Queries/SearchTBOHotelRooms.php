@@ -24,7 +24,6 @@ class SearchTBOHotelRooms
     {
         $input = $args['input'];
 
-        // Validate unified input
         $validator = Validator::make($input, [
             'telephone' => 'required|string',
             'hotelCode' => 'required_without:hotel|integer',
@@ -34,12 +33,11 @@ class SearchTBOHotelRooms
             'checkIn' => 'required|date|after_or_equal:today',
             'checkOut' => 'required|date|after:checkIn',
             'occupancy' => 'required',
-            // Optional filters
             'noOfRooms' => 'nullable|integer|min:1',
             'refundable' => 'nullable|boolean',
             'mealType' => 'nullable|string|in:All,WithMeal,RoomOnly',
-            'starRating' => 'nullable|array',
-            'starRating.*' => 'integer|min:1|max:5',
+            'priceMin' => 'nullable|numeric|min:0',
+            'priceMax' => 'nullable|numeric|min:0',
         ], [
             'telephone.required' => 'Telephone number is required.',
             'hotelCode.required_without' => 'Hotel code or hotel name is required.',
@@ -53,9 +51,6 @@ class SearchTBOHotelRooms
             'checkOut.after' => 'Check-out date must be after check-in date.',
             'occupancy.required' => 'Occupancy is required.',
             'mealType.in' => 'Meal type must be one of: All, WithMeal, RoomOnly.',
-            'starRating.*.integer' => 'Star rating must be an integer.',
-            'starRating.*.min' => 'Star rating must be at least 1.',
-            'starRating.*.max' => 'Star rating must not exceed 5.',
         ]);
 
         $this->logger->info('TBO hotel search input', ['input' => $input]);
@@ -174,7 +169,8 @@ class SearchTBOHotelRooms
                 $input['noOfRooms'] ?? null,
                 $input['refundable'] ?? null,
                 $input['mealType'] ?? 'All',
-                $input['starRating'] ?? null
+                $input['priceMin'] ?? null,
+                $input['priceMax'] ?? null
             );
 
             return $result;
@@ -264,7 +260,7 @@ class SearchTBOHotelRooms
             $rooms[] = [
                 'adults' => $adults,
                 'children' => $children,
-                'childAges' => [] // TBO requires childAges array even if empty
+                'childAges' => []
             ];
         }
 
@@ -280,8 +276,11 @@ class SearchTBOHotelRooms
         ?int $noOfRooms = null,
         ?bool $refundable = null,
         string $mealType = 'All',
-        ?array $starRating = null
+        ?float $priceMin = null,
+        ?float $priceMax = null
     ): array {
+        $hasPriceFilter = ($priceMin !== null || $priceMax !== null);
+        
         $this->logger->info('Starting TBO hotel search', [
             'hotel_code' => $hotelCode,
             'guest_nationality' => $guestNationality,
@@ -292,7 +291,9 @@ class SearchTBOHotelRooms
                 'noOfRooms' => $noOfRooms,
                 'refundable' => $refundable,
                 'mealType' => $mealType,
-                'starRating' => $starRating,
+                'priceMin' => $priceMin,
+                'priceMax' => $priceMax,
+                'hasPriceFilter' => $hasPriceFilter,
             ],
         ]);
 
@@ -304,14 +305,12 @@ class SearchTBOHotelRooms
             ];
         }, $rooms);
 
-        // Build filters array
         $filters = [];
         
-        // NoOfRooms: tells TBO API how many cheapest room options to return
-        // Also used to determine how many to prebook
-        $filters['NoOfRooms'] = $noOfRooms ?? 1;
+        if (!$hasPriceFilter) {
+            $filters['NoOfRooms'] = $noOfRooms ?? 1;
+        }
         
-        // Add optional filters if provided
         if ($refundable !== null) {
             $filters['Refundable'] = $refundable;
 
@@ -322,10 +321,6 @@ class SearchTBOHotelRooms
         
         if ($mealType !== null) {
             $filters['MealType'] = $mealType;
-        }
-        
-        if ($starRating !== null && !empty($starRating)) {
-            $filters['StarRating'] = $starRating;
         }
 
         $searchData = [
@@ -383,9 +378,31 @@ class SearchTBOHotelRooms
             ];
         }
 
+        if ($hasPriceFilter) {
+            $allRooms = array_filter($allRooms, function($roomData) use ($priceMin, $priceMax) {
+                $price = $roomData['total_fare'];
+                if ($priceMin !== null && $price < $priceMin) {
+                    return false;
+                }
+                if ($priceMax !== null && $price > $priceMax) {
+                    return false;
+                }
+                return true;
+            });
+
+            if (empty($allRooms)) {
+                return [
+                    'success' => false,
+                    'status' => 'no_rooms_in_price_range',
+                    'message' => 'No rooms found within the specified price range.',
+                    'data' => null,
+                    'hotelOptions' => null,
+                ];
+            }
+        }
+
         usort($allRooms, fn($a, $b) => $a['total_fare'] <=> $b['total_fare']);
 
-        // Select cheapest rooms based on noOfRooms (like roomCount in Magic Holiday)
         $roomsToPrebook = array_slice($allRooms, 0, $noOfRooms ?? 1);
         
         // Get hotel details once

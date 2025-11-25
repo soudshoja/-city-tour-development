@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AI\AIManager;
 use App\Models\Client;
 use Illuminate\Http\Request;
 use App\Models\TemporaryOffer;
@@ -2117,6 +2118,7 @@ class WhatsAppHotelController extends Controller
             'last_name' => 'nullable|string|max:255',
             'payment_gateway' => 'nullable|string|max:50',
             'payment_method' => 'nullable|string|max:50',
+            'passport' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
         ]);
 
         if ($validator->fails()) {
@@ -2158,9 +2160,14 @@ class WhatsAppHotelController extends Controller
 
             if (!$client) {
                 $clientValidator = Validator::make($request->all(), [
-                    'first_name' => 'required|string|filled',
+                    'passport' => 'nullable|file',
+                    'first_name' => 'required_without:passport|string|filled',
+                    'email' => 'required_without:passport|email|filled',
+                    'phone' => 'required_without:passport|string|max:20|filled',
                 ], [
-                    'first_name.required' => 'Client first name is required to create a new account.',
+                    'first_name.required_without' => 'Client first name is required.',
+                    'email.required_without' => 'Client email is required.',
+                    'phone.required_without' => 'Client phone number is required.',
                 ]);
 
                 if ($clientValidator->fails()) {
@@ -2173,21 +2180,66 @@ class WhatsAppHotelController extends Controller
 
                 $agent = $this->getOrCreateB2CAgent();
 
-                $client = Client::create([
-                    'first_name' => $request->first_name,
-                    'middle_name' => $request->middle_name ?? '',
-                    'last_name' => $request->last_name ?? '',
-                    'email' => $request->email ?? null,
-                    'phone' => $phone,
-                    'country_code' => $countryCode,
-                    'agent_id' => $agent->id,
-                    'company_id' => $agent->branch->company_id,
-                ]);
+                // Passport upload with AI extraction
+                if ($request->hasFile('passport')) {
+                    $file = $request->file('passport');
+                    $fileName = time() . '_' . $file->getClientOriginalName();
+                    $filePath = $file->storeAs('uploads', $fileName, 'public');
+                    $fullFilePath = storage_path('app/public/' . $filePath);
 
-                Log::channel('whatsapp')->info('New B2C client created', [
-                    'client_id' => $client->id,
-                    'phone' => $phone
-                ]);
+                    Log::channel('whatsapp')->info('Processing passport file for TBO B2C', [
+                        'file_name' => $fileName,
+                        'file_path' => $fullFilePath
+                    ]);
+
+                    $aiManager = new AIManager();
+                    $response = $aiManager->extractPassportData($fullFilePath, $fileName);
+
+                    if ($response['status'] !== 'success') {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Failed to read passport. Please re-upload a clearer image or provide manual details.',
+                            'next_step' => 'provide_client_details',
+                        ], 422);
+                    }
+
+                    $passportData = $response['data'] ?? [];
+
+                    $client = Client::create([
+                        'first_name' => $passportData['first_name'],
+                        'middle_name' => $passportData['middle_name'] ?? null,
+                        'last_name' => $passportData['last_name'] ?? null,
+                        'passport_no' => $passportData['passport_no'] ?? null,
+                        'date_of_birth' => $passportData['date_of_birth'] ?? null,
+                        'email' => $request->email ?? null,
+                        'phone' => $phone,
+                        'country_code' => $countryCode,
+                        'agent_id' => $agent->id,
+                        'company_id' => $agent->branch->company_id,
+                    ]);
+
+                    Log::channel('whatsapp')->info('TBO B2C client created from passport', [
+                        'client_id' => $client->id,
+                        'passport_no' => $passportData['passport_no'] ?? null
+                    ]);
+                } else {
+                    // Manual client creation
+                    $client = Client::create([
+                        'first_name' => $request->first_name,
+                        'middle_name' => $request->middle_name ?? null,
+                        'last_name' => $request->last_name ?? null,
+                        'email' => $request->email ?? null,
+                        'phone' => $phone,
+                        'country_code' => $countryCode,
+                        'agent_id' => $agent->id,
+                        'company_id' => $agent->branch->company_id,
+                    ]);
+
+                    Log::channel('whatsapp')->info('TBO B2C client created manually', [
+                        'client_id' => $client->id,
+                        'phone' => $phone
+                    ]);
+                }
             }
 
             // Check if hotel booking already exists with payment
@@ -2198,7 +2250,7 @@ class WhatsAppHotelController extends Controller
                 // Check if payment was created within last 30 minutes
                 if ($existingPayment && $existingPayment->created_at->diffInMinutes(now()) < 30) {
                     $paymentLink = route('payment.link.show', [
-                        'companyId' => $existingPayment->company_id,
+                        'companyId' => $existingPayment->agent->branch->company_id,
                         'voucherNumber' => $existingPayment->voucher_number,
                     ]);
                     

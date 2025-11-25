@@ -118,6 +118,7 @@ Route::prefix('/whatsapp/hotel')->group(function () {
     Route::get('/booking-details', [WhatsAppHotelController::class, 'hotelBookingDetails']);
     Route::post('/booking-confirm', [WhatsAppHotelController::class, 'confirmBooking']);
     Route::post('/tbo-booking-confirm', [WhatsAppHotelController::class, 'confirmTBOBooking']);
+    Route::post('/tbo/b2c/booking-confirm', [WhatsAppHotelController::class, 'confirmTBOB2CBooking']);
 
     Route::group([
         'prefix' => 'step',
@@ -137,7 +138,6 @@ Route::post('/magic/webhook/callback', [SupplierController::class, 'magicReserve
 Route::group([
     'prefix' => 'magic-holiday',
 ], function(){
-
     Route::get('/get-reservation/{reservationId}', [MagicHolidayService::class, 'getSingleReservation'])->name('magic-holiday.get-reservation');
     Route::post('/access-token', [WhatsAppHotelController::class, 'getAccessToken'])->name('magic-holiday.access-token');
     Route::delete('/reservation/{reservationId}', [MagicHolidayService::class, 'cancelReservation'])->name('magic-holiday.cancel-reservation');

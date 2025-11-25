@@ -667,7 +667,7 @@ class InvoiceController extends Controller
                     Log::info('Deleting InvoicePartial', ['invoice_partial_id' => $partial->id]);
                     $partial->delete();
                 }
-                Log::info('Payment type changed, ll related partials deleted for invoice ID: ' . $invoice->id);
+                Log::info('Payment type changed, all related partials deleted for invoice ID: ' . $invoice->id);
             } else {
                 Log::info('Payment type changed, no related invoice partial found for invoice ID: ' . $invoice->id);
             }
@@ -4481,7 +4481,7 @@ class InvoiceController extends Controller
                     'client_id' => $task->client_id,
                     'company_id' => $task->company_id,
                     'sub_amount' => $payment->amount,
-                    'amount' => $payment->amount + $payment->service_charge,
+                    'amount' => $payment->amount,
                     'currency' => $payment->currency,
                     'status' => 'paid',
                     'payment_type' => 'full',
@@ -4498,9 +4498,9 @@ class InvoiceController extends Controller
                     'task_description' => $task->description,
                     'task_remark' => $task->remark,
                     'client_notes' => $task->notes,
-                    'task_price' => $payment->amount + $payment->service_charge,
+                    'task_price' => $payment->amount,
                     'supplier_price' => $task->total,
-                    'markup_price' => ($payment->amount + $payment->service_charge) - $task->total,
+                    'markup_price' => $payment->amount - $payment->service_charge - $task->total,
                     'paid' => true,
                 ]);
 

@@ -60,11 +60,11 @@
                             <div class="flex justify-around border-y border-gray-200 dark:border-gray-700 py-3 text-center">
                                 <div>
                                     <p class="text-xs text-gray-500">Paid Invoices</p>
-                                    <p class="text-sm font-semibold text-emerald-600">{{ $paid }} KWD</p>
+                                    <p class="text-sm font-semibold text-emerald-600">{{ number_format($paid, 3) }} KWD</p>
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-500">Pending Invoices</p>
-                                    <p class="text-sm font-semibold text-yellow-500">{{ $unpaid }} KWD</p>
+                                    <p class="text-sm font-semibold text-yellow-500">{{ number_format($unpaid, 3) }} KWD</p>
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-500">Clients</p>
@@ -204,11 +204,11 @@
                         <div class="flex justify-around border-y border-gray-200 dark:border-gray-700 py-3 text-center">
                             <div>
                                 <p class="text-sm text-gray-500">Paid Invoices</p>
-                                <p class="text-base font-semibold text-emerald-600">{{ $paid }} KWD</p>
+                                <p class="text-base font-semibold text-emerald-600">{{ number_format($paid, 3) }} KWD</p>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500">Pending Invoices</p>
-                                <p class="text-base font-semibold text-yellow-500">{{ $unpaid }} KWD</p>
+                                <p class="text-base font-semibold text-yellow-500">{{ number_format($unpaid, 3) }} KWD</p>
                             </div>
                             <div>
                                 <p class="text-sm text-gray-500">Clients</p>
@@ -373,13 +373,13 @@
                                 <td class="py-4 px-6 border-b border-gray-200 dark:border-gray-700">
                                     <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
                                         bg-green-100 text-green-700 ring-1 ring-green-500 shadow-none focus:outline-none focus:ring-0">
-                                        {{ number_format($client->paid, 2) }} KWD
+                                        {{ $client->paid }} KWD
                                     </span>
                                 </td>
                                 <td class="py-4 px-6 border-b border-gray-200 dark:border-gray-700">
                                     <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
                                         bg-yellow-100 text-yellow-700 ring-1 ring-yellow-400 shadow-none focus:outline-none focus:ring-0">
-                                        {{ number_format($client->unpaid, 2) }} KWD
+                                        {{ $client->unpaid }} KWD
                                     </span>
                                 </td>
                                 <td class="py-4 px-6 border-b border-gray-200 dark:border-gray-700">

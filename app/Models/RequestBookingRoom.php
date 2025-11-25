@@ -14,7 +14,8 @@ class RequestBookingRoom extends Model
         'hotel',
         'city',
         'city_id',
-        'occupancy',   
+        'occupancy',
+        'disabled',
     ];
 
     protected $casts = [

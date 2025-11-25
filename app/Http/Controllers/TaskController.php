@@ -5000,11 +5000,17 @@ class TaskController extends Controller
         }
 
         if ($unfilteredPhone) {
-            if (preg_match('/\d{11,12}/', $unfilteredPhone, $matches)) {
+
+            $clean = explode('@', $unfilteredPhone)[0];
+        
+            $clean = preg_replace('/\D/', '', $clean);
+
+            if (preg_match('/\d{11,12}/', $clean, $matches)) {
                 $phone = $matches[0];
-            } else {
-                $phone = explode('@', $unfilteredPhone)[0];
-                $phone = preg_replace('/\D/', '', $phone); 
+            }
+        
+            if ($phone && !str_starts_with($phone, '+')) {
+                $phone = '+' . $phone;
             }
         }
         

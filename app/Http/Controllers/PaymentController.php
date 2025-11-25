@@ -1622,12 +1622,13 @@ class PaymentController extends Controller
         if (strtolower($request->payment_gateway) === 'myfatoorah') {
             $chargeResult = ChargeService::FatoorahCharge($request->amount, $paymentMethodId, $companyId);
         } else if (strtolower($request->payment_gateway) === 'tap') {
-            $chargeResult = ChargeService::TapCharge([
-                'amount' => $request->amount,
-                'client_id' => $client->id,
-                'agent_id' => $agent->id,
-                'currency' => $request->currency ?? 'KWD',
-            ], 'tap');
+
+            $chargeResult = ChargeService::getFee(
+                gatewayName: 'Tap',
+                amount: $request->amount,
+                methodCode: $paymentMethodId,
+                companyId: $companyId
+            );
 
         } else if (strtolower($request->payment_gateway) === 'upayment') {
             $chargeResult = ChargeService::UPaymentCharge($request->amount, $paymentMethodId, $companyId);
@@ -1635,7 +1636,7 @@ class PaymentController extends Controller
             $chargeResult = ChargeService::HesabeCharge($request->amount, $paymentMethodId, $companyId);
         }
 
-        $serviceCharge = $chargeResult['gatewayFee'] ?? 0;
+        $serviceCharge = $chargeResult['fee'] ?? 0;
         
         try {
             $data = [
@@ -5344,5 +5345,34 @@ class PaymentController extends Controller
             'url' => $url,
             'route' => $route,
         ];
+    }
+
+    public function paymentLinkActivation($paymentId) 
+    {
+        $payment = Payment::find($paymentId);
+
+        if (!$payment) {
+            Log::info('Payment not found for ID: ' . $paymentId . ' to proceed with disabling payment link');
+            return redirect()->back()->with('error', 'Payment not found for ID: ' . $paymentId);
+        }
+
+        try {
+            $payment->is_disabled = !$payment->is_disabled;
+            $payment->save();
+
+            $message = $payment->is_disabled ? 'Payment link successfully disabled' : 'Payment link successfully enabled';
+            Log::info($message . ' for payment ID: ' . $paymentId);
+
+            return redirect()->back()->with('success', $message);
+        } catch (Exception $e) {
+            Log::error('Error disabling payment link for payment ID: ' . $paymentId, [
+                'message' => $e->getMessage(),
+                'trace'   => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()->with('error', 'Error disabling payment link: ' . $e->getMessage());
+        }
+
+        
     }
 }

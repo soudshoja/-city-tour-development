@@ -98,6 +98,9 @@ input HotelSearchInput {
 
     "Maximum price filter - For TBO API (optional, applied locally after API response)"
     priceMax: Float
+
+    "Booking type - determines pricing and markup (required for TBO)"
+    bookingType: String!
 }
 
 "Response for hotel room search"

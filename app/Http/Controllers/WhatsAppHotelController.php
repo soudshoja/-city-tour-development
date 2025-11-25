@@ -25,6 +25,7 @@ use App\Models\User;
 use App\Services\HotelSearchService;
 use App\Services\MagicHolidayService;
 use App\Services\TBOHolidayService;
+use App\Services\ChargeService;
 use Exception;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -2304,13 +2305,12 @@ class WhatsAppHotelController extends Controller
                 ], 200);
             }
 
+            // Use the already marked-up price from prebook (markup applied during search)
             $totalPrice = $prebook->total_fare;
-            $markup = 0.20;
-            $totalWithMarkup = ceil($totalPrice * (1 + $markup));
 
             $paymentResponse = $this->createB2CPaymentLink([
                 'client' => $client,
-                'amount' => $totalWithMarkup,
+                'amount' => $totalPrice,
                 'currency' => $prebook->currency,
                 'notes' => 'TBO B2C booking. Prebook Key: ' . $request->prebookKey,
                 'payment_gateway' => $request->payment_gateway,
@@ -2330,7 +2330,7 @@ class WhatsAppHotelController extends Controller
                 $existingHotelBooking->update([
                     'payment_id' => $paymentResponse['payment_id'],
                     'client_id' => $client->id,
-                    'price' => $totalWithMarkup,
+                    'price' => $totalPrice,
                 ]);
                 $hotelBooking = $existingHotelBooking;
             } else {
@@ -2341,7 +2341,7 @@ class WhatsAppHotelController extends Controller
                     'supplier_booking_id' => null,
                     'client_ref' => $request->prebookKey,
                     'status' => 'pending_payment',
-                    'price' => $totalWithMarkup,
+                    'price' => $totalPrice,
                     'currency' => $prebook->currency,
                     'booking_time' => now(),
                 ]);
@@ -2381,9 +2381,7 @@ class WhatsAppHotelController extends Controller
                 'hotel_booking_id' => $hotelBooking->id,
                 'hotel_name' => $prebook->hotel_name,
                 'room_count' => $prebook->rooms->count(),
-                'total_price' => $totalWithMarkup,
-                'original_price' => $totalPrice,
-                'markup_percentage' => ($markup * 100),
+                'total_price' => $totalPrice,
                 'currency' => $prebook->currency,
                 'payment_link' => $paymentResponse['payment_link'] ?? null,
                 'rooms' => $rooms,
@@ -2419,15 +2417,30 @@ class WhatsAppHotelController extends Controller
 
             $paymentMethod = null;
             if (!empty($input['payment_method'])) {
-                $paymentMethod = \App\Models\PaymentMethod::where('is_active', true)
+                $paymentMethod = PaymentMethod::where('is_active', true)
                     ->where('type', strtolower($input['payment_gateway']))
                     ->where('english_name', 'LIKE', $input['payment_method'])
                     ->orWhere('code', $input['payment_method'])
                     ->first();
             }
 
-            $gatewayFee = 0.02;
-            $finalAmount = ceil($input['amount'] * (1 + $gatewayFee));
+            // Calculate gateway charges using ChargeService
+            $chargeResult = ChargeService::getFee(
+                gatewayName: $input['payment_gateway'],
+                amount: $input['amount'],
+                methodCode: $paymentMethod?->id,
+                companyId: $companyId,
+                currency: $input['currency'] ?? 'KWD'
+            );
+
+            Log::channel('whatsapp')->info('TBO B2C Payment charge calculated', [
+                'original_amount' => $input['amount'],
+                'final_amount' => $chargeResult['finalAmount'],
+                'fee' => $chargeResult['fee'],
+                'paid_by' => $chargeResult['paid_by'],
+                'payment_gateway' => $input['payment_gateway'],
+                'payment_method_id' => $paymentMethod?->id,
+            ]);
 
             $payment = Payment::create([
                 'voucher_number' => $voucherNumber,
@@ -2435,7 +2448,8 @@ class WhatsAppHotelController extends Controller
                 'pay_to' => $agent->branch->company->name,
                 'currency' => $input['currency'] ?? 'USD',
                 'payment_date' => now(),
-                'amount' => $finalAmount,
+                'service_charge' => $chargeResult['fee'],
+                'amount' => $chargeResult['finalAmount'],
                 'status' => 'pending',
                 'client_id' => $client->id,
                 'agent_id' => $agent->id,

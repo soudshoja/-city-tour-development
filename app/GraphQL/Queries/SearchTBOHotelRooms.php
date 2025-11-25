@@ -6,12 +6,15 @@ use App\Services\TBOHolidayService;
 use App\Models\TBO;
 use App\Models\TBORoom;
 use App\Models\Country;
+use App\Http\Traits\CurrencyExchangeTrait;
 use Exception;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 
 class SearchTBOHotelRooms
 {
+    use CurrencyExchangeTrait;
+    
     protected $tboService;
     protected $logger;
 
@@ -39,6 +42,7 @@ class SearchTBOHotelRooms
             'mealType' => 'nullable|string|in:All,WithMeal,RoomOnly',
             'priceMin' => 'nullable|numeric|min:0',
             'priceMax' => 'nullable|numeric|min:0',
+            'bookingType' => 'required|string|in:b2b,b2c',
         ], [
             'telephone.required' => 'Telephone number is required.',
             'hotelCode.required_without' => 'Hotel code or hotel name is required.',
@@ -51,6 +55,8 @@ class SearchTBOHotelRooms
             'checkOut.after' => 'Check-out date must be after check-in date.',
             'occupancy.required' => 'Occupancy is required.',
             'mealType.in' => 'Meal type must be one of: All, WithMeal, RoomOnly.',
+            'bookingType.required' => 'Booking type is required.',
+            'bookingType.in' => 'Booking type must be either b2b or b2c.',
         ]);
 
         $this->logger->info('TBO hotel search input', ['input' => $input]);
@@ -225,7 +231,8 @@ class SearchTBOHotelRooms
                 $input['refundable'] ?? null,
                 $input['mealType'] ?? 'All',
                 $input['priceMin'] ?? null,
-                $input['priceMax'] ?? null
+                $input['priceMax'] ?? null,
+                $input['bookingType']
             );
 
             return $result;
@@ -332,7 +339,8 @@ class SearchTBOHotelRooms
         ?bool $refundable = null,
         string $mealType = 'All',
         ?float $priceMin = null,
-        ?float $priceMax = null
+        ?float $priceMax = null,
+        string $bookingType
     ): array {
         $hasPriceFilter = ($priceMin !== null || $priceMax !== null);
         
@@ -493,7 +501,7 @@ class SearchTBOHotelRooms
             }
 
             // Generate unique prebook key (same format as Magic Holiday)
-            $prebookKey = 'TBO-' . strtoupper(substr(uniqid(), -8));
+            $prebookKey = 'PB-' . strtoupper(substr(uniqid(), -8));
 
             $this->logger->info('Generated prebook key for TBO', [
                 'prebook_key' => $prebookKey,
@@ -501,18 +509,92 @@ class SearchTBOHotelRooms
                 'hotel_code' => $hotel['HotelCode']
             ]);
 
+            // Currency conversion logic
+            $originalCurrency = $hotel['Currency'];
+            $originalTotalFare = $prebookRoom['TotalFare'];
+            $originalTotalTax = $prebookRoom['TotalTax'];
+            $convertedTotalFare = $originalTotalFare;
+            $convertedTotalTax = $originalTotalTax;
+            $finalCurrency = $originalCurrency;
+            $exchangeRate = 1;
+
+            // Check if currency conversion is enabled via env
+            if (env('TBO_ENABLE_CURRENCY_CONVERSION', false) && $originalCurrency !== 'KWD') {
+                try {
+                    $companyId = 1; // Default company ID
+                    $conversionResult = $this->convert($companyId, $originalCurrency, 'KWD', $originalTotalFare);
+                    
+                    if ($conversionResult['status'] === 'success') {
+                        $exchangeRate = $conversionResult['exchange_rate'];
+                        $convertedTotalFare = $conversionResult['converted_amount'];
+                        $finalCurrency = 'KWD';
+                        
+                        // Convert tax as well
+                        $taxConversion = $this->convert($companyId, $originalCurrency, 'KWD', $originalTotalTax);
+                        if ($taxConversion['status'] === 'success') {
+                            $convertedTotalTax = $taxConversion['converted_amount'];
+                        }
+                        
+                        $this->logger->info('TBO currency conversion applied', [
+                            'original_currency' => $originalCurrency,
+                            'original_fare' => $originalTotalFare,
+                            'exchange_rate' => $exchangeRate,
+                            'converted_fare' => $convertedTotalFare,
+                            'target_currency' => 'KWD'
+                        ]);
+                    } else {
+                        $this->logger->warning('TBO currency conversion failed, using original currency', [
+                            'original_currency' => $originalCurrency,
+                            'message' => $conversionResult['message'] ?? 'Unknown error'
+                        ]);
+                    }
+                } catch (Exception $e) {
+                    $this->logger->error('TBO currency conversion exception', [
+                        'error' => $e->getMessage(),
+                        'original_currency' => $originalCurrency
+                    ]);
+                }
+            }
+
+            // Apply B2C markup (20%)
+            $priceBeforeMarkup = $convertedTotalFare;
+            $taxBeforeMarkup = $convertedTotalTax;
+            $markupPercentage = 0;
+            
+            if ($bookingType === 'b2c') {
+                $markupPercentage = 0.20; // 20% markup for B2C
+                $convertedTotalFare = ceil($convertedTotalFare * (1 + $markupPercentage));
+                $convertedTotalTax = ceil($convertedTotalTax * (1 + $markupPercentage));
+                
+                $this->logger->info('TBO B2C markup applied', [
+                    'booking_type' => 'b2c',
+                    'markup_percentage' => ($markupPercentage * 100) . '%',
+                    'price_before_markup' => $priceBeforeMarkup,
+                    'price_after_markup' => $convertedTotalFare,
+                    'currency' => $finalCurrency
+                ]);
+            }
+
             $tboPrebook = TBO::create([
                 'prebook_key' => $prebookKey,
                 'booking_code' => $prebookRoom['BookingCode'],
+                'booking_type' => $bookingType,
+                'markup_percentage' => $markupPercentage,
                 'hotel_code' => $hotel['HotelCode'],
                 'hotel_name' => $hotelName,
                 'room_quantity' => count($rooms),
                 'room_name' => json_encode($prebookRoom['Name']),
-                'currency' => $hotel['Currency'],
+                'currency' => $finalCurrency,
+                'original_currency' => $originalCurrency,
+                'exchange_rate' => $exchangeRate,
                 'inclusion' => $prebookRoom['Inclusion'] ?? '',
                 'day_rates' => 'day rates',
-                'total_fare' => $prebookRoom['TotalFare'],
-                'total_tax' => $prebookRoom['TotalTax'],
+                'total_fare' => $convertedTotalFare,
+                'total_tax' => $convertedTotalTax,
+                'price_before_markup' => $priceBeforeMarkup,
+                'tax_before_markup' => $taxBeforeMarkup,
+                'original_total_fare' => $originalTotalFare,
+                'original_total_tax' => $originalTotalTax,
                 'extra_guest_charges' => $prebookRoom['ExtraGuestCharges'] ?? '0',
                 'room_promotion' => json_encode($prebookRoom['RoomPromotion'] ?? []),
                 'meal_type' => $prebookRoom['MealType'] ?? '',
@@ -529,13 +611,13 @@ class SearchTBOHotelRooms
                 ]);
             }
 
-            $roomDetails = array_map(function ($roomInput, $index) use ($prebookRoom) {
+            $roomDetails = array_map(function ($roomInput, $index) use ($prebookRoom, $convertedTotalFare, $finalCurrency) {
                 return [
                     'room_name' => $prebookRoom['Name'][$index] ?? 'Room ' . ($index + 1),
                     'board_basis' => $prebookRoom['MealType'] ?? '',
                     'non_refundable' => !($prebookRoom['IsRefundable'] ?? false),
-                    'price' => $prebookRoom['TotalFare'] / count($prebookRoom['Name']),
-                    'currency' => $prebookRoom['Currency'] ?? 'USD',
+                    'price' => $convertedTotalFare / count($prebookRoom['Name']),
+                    'currency' => $finalCurrency,
                     'info' => $prebookRoom['Inclusion'] ?? null,
                     'occupancy' => [
                         'adults' => $roomInput['adults'],
@@ -560,14 +642,16 @@ class SearchTBOHotelRooms
                     'package' => [
                         'price' => [
                             'selling' => [
-                                'value' => $prebookRoom['TotalFare'],
-                                'currency' => $hotel['Currency'],
+                                'value' => $convertedTotalFare,
+                                'currency' => $finalCurrency,
                             ],
                         ],
                     ],
-                    'totalFare' => $prebookRoom['TotalFare'],
-                    'totalTax' => $prebookRoom['TotalTax'],
-                    'currency' => $hotel['Currency'],
+                    'totalFare' => $convertedTotalFare,
+                    'totalTax' => $convertedTotalTax,
+                    'currency' => $finalCurrency,
+                    'originalCurrency' => $originalCurrency,
+                    'exchangeRate' => $exchangeRate,
                     'mealType' => $prebookRoom['MealType'] ?? '',
                     'isRefundable' => $prebookRoom['IsRefundable'] ?? false,
                     'inclusion' => $prebookRoom['Inclusion'] ?? '',

@@ -57,11 +57,13 @@ use App\Models\Company;
 use App\Models\MyFatoorahPayment;
 use App\Models\Refund;
 use App\Models\TBO;
+use App\Models\SupplierCompany;
 use App\Services\TBOHolidayService;
 use App\Support\PaymentGateway\Knet;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Gate;
+use Throwable;
 
 class PaymentController extends Controller
 {
@@ -187,12 +189,11 @@ class PaymentController extends Controller
     private function processTBOBookingAfterPayment(Payment $payment): ?array
     {
         try {
-            // Check if this payment has a HotelBooking with TBO
             $hotelBooking = $payment->hotelBooking;
             
             if (!$hotelBooking) {
 
-                Log::channel('whatsapp')->info('No hotel booking linked, not a TBO payment', [
+                Log::info('No hotel booking linked, not a TBO payment', [
                     'payment_id' => $payment->id
                 ]);
 
@@ -203,7 +204,7 @@ class PaymentController extends Controller
             
             if (!$tboBooking) {
 
-                Log::channel('whatsapp')->info('No TBO booking found for the hotel booking', [
+                Log::info('No TBO booking found for the hotel booking', [
                     'payment_id' => $payment->id,
                     'hotel_booking_id' => $hotelBooking->id
                 ]);
@@ -211,9 +212,8 @@ class PaymentController extends Controller
                 return null;
             }
 
-            // Check if already booked
             if ($tboBooking->confirmation_no) {
-                Log::channel('whatsapp')->info('TBO booking already confirmed', [
+                Log::info('TBO booking already confirmed', [
                     'payment_id' => $payment->id,
                     'confirmation_no' => $tboBooking->confirmation_no
                 ]);
@@ -225,19 +225,17 @@ class PaymentController extends Controller
                 ];
             }
 
-            Log::channel('whatsapp')->info('Processing TBO booking after payment success', [
+            Log::info('Processing TBO booking after payment success', [
                 'payment_id' => $payment->id,
                 'hotel_booking_id' => $hotelBooking->id,
                 'tbo_id' => $tboBooking->id,
                 'prebook_key' => $tboBooking->prebook_key
             ]);
 
-            // Build TBO booking parameters (must match B2B format)
             $customerDetails = [];
             foreach ($tboBooking->rooms as $roomIndex => $room) {
                 $customers = [];
                 
-                // Add adults
                 for ($i = 0; $i < $room->adult_quantity; $i++) {
                     $customers[] = [
                         'FirstName' => $payment->client->first_name ?? 'Guest',
@@ -247,7 +245,6 @@ class PaymentController extends Controller
                     ];
                 }
 
-                // Add children if any
                 for ($i = 0; $i < $room->child_quantity; $i++) {
                     $customers[] = [
                         'FirstName' => 'Child' . ($i + 1),
@@ -262,10 +259,8 @@ class PaymentController extends Controller
                 ];
             }
 
-            // Generate unique client reference ID
             $clientReferenceId = $tboBooking->prebook_key . '-' . time();
 
-            // Use original_total_fare (supplier's price) for TBO API, not the converted/marked-up price
             $totalFareForTBO = $tboBooking->original_total_fare ?? $tboBooking->total_fare;
 
             $bookingPayload = [
@@ -282,7 +277,7 @@ class PaymentController extends Controller
                 ]
             ];
 
-            Log::channel('whatsapp')->info('TBO Booking Price Breakdown', [
+            Log::info('TBO Booking Price Breakdown', [
                 'original_total_fare' => $tboBooking->original_total_fare,
                 'original_currency' => $tboBooking->original_currency,
                 'total_fare_after_conversion' => $tboBooking->total_fare,
@@ -290,18 +285,17 @@ class PaymentController extends Controller
                 'sending_to_tbo' => $totalFareForTBO
             ]);
 
-            Log::channel('whatsapp')->info('Calling TBO Book API', [
+            Log::info('Calling TBO Book API', [
                 'payload' => $bookingPayload
             ]);
 
-            // Call TBO Book API
             $tboService = new TBOHolidayService();
             $bookingResponse = $tboService->book($bookingPayload);
 
-            Log::channel('whatsapp')->info('TBO Book API Response', $bookingResponse);
+            Log::info('TBO Book API Response', $bookingResponse);
 
             if (($bookingResponse['Status']['Code'] ?? null) !== 200) {
-                Log::channel('whatsapp')->error('TBO booking failed', [
+                Log::error('TBO booking failed', [
                     'payment_id' => $payment->id,
                     'response' => $bookingResponse
                 ]);
@@ -322,13 +316,11 @@ class PaymentController extends Controller
             $confirmationNo = $bookingResponse['ConfirmationNumber'] ?? null;
             $bookingReferenceId = $bookingResponse['ClientReferenceId'] ?? null;
 
-            // Update HotelBooking
             $hotelBooking->update([
                 'supplier_booking_id' => $confirmationNo,
                 'status' => 'confirmed'
             ]);
 
-            // Update TBO record
             $tboBooking->update([
                 'confirmation_no' => $confirmationNo,
                 'booking_reference_id' => $bookingReferenceId,
@@ -336,36 +328,65 @@ class PaymentController extends Controller
                 'supplier_status' => 'confirmed'
             ]);
 
-            // Call TBO BookingDetail API for full details
             try {
                 $detailResponse = $tboService->getBookingDetail([
                     'ConfirmationNumber' => $confirmationNo,
                     'PaymentMethod' => 'Limit'
                 ]);
 
-                Log::channel('whatsapp')->info('TBO BookingDetail API Response', $detailResponse);
-            } catch (\Exception $e) {
-                Log::channel('whatsapp')->warning('TBO BookingDetail API failed', [
+                Log::info('TBO BookingDetail API Response', $detailResponse);
+            } catch (Exception $e) {
+                Log::warning('TBO BookingDetail API failed', [
                     'error' => $e->getMessage()
                 ]);
             }
 
-            Log::channel('whatsapp')->info('TBO booking completed successfully', [
+            Log::info('TBO booking completed successfully', [
                 'payment_id' => $payment->id,
                 'confirmation_no' => $confirmationNo,
                 'booking_reference_id' => $bookingReferenceId
             ]);
 
-            return [
-                'success' => true,
-                'message' => 'TBO booking confirmed successfully',
+            $bookingResult = [
                 'confirmation_no' => $confirmationNo,
-                'booking_reference_id' => $bookingReferenceId,
-                'response' => $bookingResponse
+                'booking_reference_id' => $bookingReferenceId
             ];
 
-        } catch (\Exception $e) {
-            Log::channel('whatsapp')->error('Exception in processTBOBookingAfterPayment', [
+            $taskResult = $this->createTaskFromTBOBooking($payment, $tboBooking, $bookingResult);
+
+            if ($taskResult && $taskResult['success']) {
+                Log::info('Task and Invoice created from TBO booking', [
+                    'task_id' => $taskResult['task']['id'] ?? null,
+                    'invoice_number' => $taskResult['invoice']['invoice_number'] ?? null
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => 'TBO booking confirmed successfully',
+                    'confirmation_no' => $confirmationNo,
+                    'booking_reference_id' => $bookingReferenceId,
+                    'task' => $taskResult['task'] ?? null,
+                    'invoice' => $taskResult['invoice'] ?? null,
+                    'response' => $bookingResponse
+                ];
+            } else {
+                Log::warning('TBO booking confirmed but task creation failed', [
+                    'task_result' => $taskResult
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => 'TBO booking confirmed but task creation failed',
+                    'confirmation_no' => $confirmationNo,
+                    'booking_reference_id' => $bookingReferenceId,
+                    'task_creation_failed' => true,
+                    'task_error' => $taskResult['message'] ?? 'Unknown error',
+                    'response' => $bookingResponse
+                ];
+            }
+
+        } catch (Exception $e) {
+            Log::error('Exception in processTBOBookingAfterPayment', [
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -375,6 +396,459 @@ class PaymentController extends Controller
                 'success' => false,
                 'message' => 'TBO booking exception: ' . $e->getMessage()
             ];
+        }
+    }
+
+
+    private function createTaskFromTBOBooking(Payment $payment, TBO $tboBooking, array $bookingResult): ?array
+    {
+        try {
+            Log::info('Creating Task from TBO booking', [
+                'payment_id' => $payment->id,
+                'tbo_id' => $tboBooking->id,
+                'confirmation_no' => $bookingResult['confirmation_no']
+            ]);
+
+            $companyId = $payment->agent->branch->company_id ?? null;
+            if (!$companyId) {
+                Log::error('Company ID not found for payment agent', [
+                    'payment_id' => $payment->id,
+                    'agent_id' => $payment->agent_id
+                ]);
+                return [
+                    'success' => false,
+                    'message' => 'Company ID not found for agent'
+                ];
+            }
+
+            $supplierCompany = SupplierCompany::whereHas('supplier', function($query) {
+                $query->where('name', 'LIKE', '%TBO%')
+                      ->orWhere('name', 'LIKE', '%tbo%')
+                      ->orWhere('name', 'TBO Holiday');
+            })->where('company_id', $companyId)
+              ->where('is_active', true)
+              ->with('supplier')
+              ->first();
+
+            if (!$supplierCompany || !$supplierCompany->supplier) {
+                Log::error('TBO supplier not found in supplier_companies', [
+                    'company_id' => $companyId,
+                    'payment_id' => $payment->id
+                ]);
+                return [
+                    'success' => false,
+                    'message' => 'TBO supplier not configured for this company'
+                ];
+            }
+
+            $tboSupplier = $supplierCompany->supplier;
+
+            $taskData = $this->buildTaskRequestFromTBO($payment, $tboBooking, $bookingResult, $tboSupplier->id);
+
+            $request = new Request($taskData);
+
+            $taskController = new TaskController();
+            $response = $taskController->store($request);
+
+            $responseData = $response->getData(true);
+
+            // TaskController returns 'status' not 'success'
+            $isSuccess = ($responseData['status'] ?? '') === 'success' || ($responseData['success'] ?? false);
+
+            if ($isSuccess) {
+                $task = $responseData['data'] ?? $responseData['task'] ?? null;
+                $invoice = $responseData['invoice'] ?? null;
+
+                Log::info('Task created successfully from TBO booking', [
+                    'task_id' => $task['id'] ?? null,
+                    'invoice_id' => $invoice['id'] ?? null
+                ]);
+
+                // Update payment with invoice_id if invoice was created
+                if (!empty($invoice['id'])) {
+                    $payment->update(['invoice_id' => $invoice['id']]);
+                }
+
+                return [
+                    'success' => true,
+                    'task' => $task,
+                    'invoice' => $invoice
+                ];
+            } else {
+                Log::error('Failed to create task from TBO booking', [
+                    'response' => $responseData
+                ]);
+                return [
+                    'success' => false,
+                    'message' => $responseData['message'] ?? 'Task creation failed'
+                ];
+            }
+
+        } catch (Exception $e) {
+            Log::error('Exception creating task from TBO booking', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Task creation exception: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Build request data for TaskController@store from TBO booking
+     */
+    private function buildTaskRequestFromTBO(Payment $payment, TBO $tboBooking, array $bookingResult, int $supplierId): array
+    {
+        $hotelBooking = $payment->hotelBooking;
+        
+        $firstRoom = $tboBooking->rooms->first();
+        $checkIn = $firstRoom->check_in ?? null;
+        $checkOut = $firstRoom->check_out ?? null;
+        
+        $duration = null;
+        if ($checkIn && $checkOut) {
+            $checkInDate = Carbon::parse($checkIn);
+            $checkOutDate = Carbon::parse($checkOut);
+            $duration = $checkInDate->diffInDays($checkOutDate);
+        }
+
+        $hotelDetails = [];
+        foreach ($tboBooking->rooms as $index => $room) {
+            $hotelDetails[] = [
+                'hotel_name' => $tboBooking->hotel_name,
+                'room_type' => $room->room_type,
+                'check_in' => $room->check_in,
+                'check_out' => $room->check_out,
+                'adults' => $room->adult_quantity,
+                'children' => $room->child_quantity,
+                'meal_type' => $tboBooking->meal_type,
+                'city' => $tboBooking->city_name ?? null,
+                'room_details' => json_encode([
+                    'hotel_code' => $tboBooking->hotel_code,
+                    'room_index' => $index + 1,
+                    'is_refundable' => $tboBooking->is_refundable,
+                ]),
+            ];
+        }
+
+        $passengerName = $payment->client->full_name ?? 'Guest';
+
+        return [
+            'type' => 'hotel',
+            'status' => 'issued',
+            'reference' => $bookingResult['confirmation_no'],
+            'supplier_id' => $supplierId,
+            'company_id' => $payment->agent->branch->company_id,
+            'agent_id' => $payment->agent_id,
+            'client_id' => $payment->client_id,
+            
+            'original_price' => $tboBooking->original_total_fare,
+            'original_total' => $tboBooking->original_total_fare,
+            'original_currency' => $tboBooking->original_currency ?? 'USD',
+            'original_tax' => $tboBooking->original_total_tax ?? 0,
+            
+            'price' => $tboBooking->price_before_markup ?? $tboBooking->total_fare,
+            'total' => $tboBooking->price_before_markup ?? $tboBooking->total_fare,
+            'exchange_currency' => $tboBooking->currency ?? 'KWD',
+            'tax' => $tboBooking->tax_before_markup ?? 0,
+            'surcharge' => 0,
+            
+            'is_exchanged' => !empty($tboBooking->exchange_rate),
+            'exchange_rate' => $tboBooking->exchange_rate ?? 1,
+            
+            'duration' => $duration,
+            'passenger_name' => $passengerName,
+            'client_name' => $payment->client->full_name,
+            
+            'booking_reference' => $bookingResult['booking_reference_id'] ?? null,
+            'gds_reference' => $tboBooking->prebook_key,
+            'supplier_pay_date' => now(),
+            'issued_date' => now(),
+            
+            'payment_type' => $payment->payment_gateway,
+            'payment_method_account_id' => $payment->payment_method_id,
+            
+            'notes' => sprintf( 'TBO Booking - %s | Rooms: %d | Meal: %s | Refundable: %s | Payment: %s',
+                $tboBooking->hotel_name,
+                $tboBooking->rooms->count(),
+                $tboBooking->meal_type ?? 'N/A',
+                $tboBooking->is_refundable ? 'Yes' : 'No',
+                $payment->voucher_number
+            ),
+            
+            'task_hotel_details' => $hotelDetails,
+            
+            'enabled' => true,
+        ];
+    }
+
+    /**
+     * Register a confirmed TBO booking as a task in the system
+     * This can be called independently to handle cases where booking succeeded but task creation failed
+     * 
+     * @param int $paymentId - The payment ID
+     * @return JsonResponse
+     */
+    public function registerTBOBookingAsTask(Request $request)
+    {
+        try {
+            $request->validate([
+                'payment_id' => 'required|integer|exists:payments,id',
+            ]);
+
+            $paymentId = $request->input('payment_id');
+
+            $payment = Payment::with(['agent.branch.company', 'client', 'hotelBooking'])
+                ->find($paymentId);
+
+            if (!$payment) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payment not found'
+                ], 404);
+            }
+
+            $hotelBooking = $payment->hotelBooking;
+            if (!$hotelBooking) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hotel booking associated with this payment'
+                ], 400);
+            }
+
+            $tboBooking = TBO::with('rooms')->where('hotel_booking_id', $hotelBooking->id)->first();
+            if (!$tboBooking) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No TBO booking found for this hotel booking'
+                ], 404);
+            }
+
+            if (!$tboBooking->confirmation_no) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'TBO booking is not confirmed yet. Confirmation number missing.'
+                ], 400);
+            }
+
+            $existingTask = Task::where('reference', $tboBooking->confirmation_no)
+                ->where('type', 'hotel')
+                ->first();
+
+            if ($existingTask) {
+                Log::info('Task already exists, checking for invoice', [
+                    'task_id' => $existingTask->id,
+                    'invoice_id' => $payment->invoice_id
+                ]);
+
+                // Check if task has an invoice
+                $invoice = null;
+                if ($payment->invoice_id) {
+                    $invoiceModel = Invoice::find($payment->invoice_id);
+                    if ($invoiceModel) {
+                        $invoice = [
+                            'id' => $invoiceModel->id,
+                            'invoice_number' => $invoiceModel->invoice_number
+                        ];
+                    }
+                }
+
+                // If no invoice exists, generate one
+                if (!$invoice) {
+                    Log::info('Task exists but no invoice found, auto-generating invoice', [
+                        'task_id' => $existingTask->id,
+                        'payment_id' => $payment->id
+                    ]);
+
+                    try {
+                        $invoiceController = app(InvoiceController::class);
+                        $generateInvoiceResponse = $invoiceController->autoGenerateInvoice($existingTask, $payment);
+                        
+                        if ($generateInvoiceResponse['success'] ?? false) {
+                            $invoiceId = $generateInvoiceResponse['invoice_id'] ?? null;
+                            $invoiceNumber = null;
+                            
+                            if ($invoiceId) {
+                                $invoiceModel = Invoice::find($invoiceId);
+                                $invoiceNumber = $invoiceModel->invoice_number ?? null;
+                            }
+                            
+                            $invoice = [
+                                'id' => $invoiceId,
+                                'invoice_number' => $invoiceNumber
+                            ];
+                            
+                            Log::info('Invoice auto-generated successfully for existing task', [
+                                'invoice_id' => $invoice['id'],
+                                'invoice_number' => $invoice['invoice_number']
+                            ]);
+                        } else {
+                            Log::warning('Failed to auto-generate invoice for existing task', [
+                                'response' => $generateInvoiceResponse
+                            ]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('Exception auto-generating invoice for existing task', [
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+
+                $responseData = [
+                    'success' => true,
+                    'message' => 'Task already exists for this booking' . ($invoice ? '. Invoice has been sent.' : ''),
+                    'task_id' => $existingTask->id,
+                    'task' => $existingTask,
+                    'invoice' => $invoice,
+                    'already_exists' => true,
+                    'payment_id' => $payment->id,
+                    'confirmation_no' => $tboBooking->confirmation_no,
+                ];
+
+                if ($existingTask->id) {
+                    $responseData['hotel_voucher_url'] = route('tasks.pdf.hotel', $existingTask->id);
+                }
+                
+                if ($invoice && isset($invoice['invoice_number'])) {
+                    $responseData['invoice_url'] = route('invoice.show', [
+                        'companyId' => $payment->agent->branch->company_id,
+                        'invoiceNumber' => $invoice['invoice_number']
+                    ]);
+                }
+
+                return response()->json($responseData, 200);
+            }
+
+            $bookingResult = [
+                'confirmation_no' => $tboBooking->confirmation_no,
+                'booking_reference_id' => $tboBooking->booking_reference_id,
+            ];
+
+            $taskResult = $this->createTaskFromTBOBooking($payment, $tboBooking, $bookingResult);
+
+            Log::info('createTaskFromTBOBooking result', [
+                'taskResult' => $taskResult,
+                'has_success' => isset($taskResult['success']),
+                'success_value' => $taskResult['success'] ?? 'not set'
+            ]);
+
+            if (!$taskResult || !$taskResult['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $taskResult['message'] ?? 'Failed to create task from TBO booking',
+                    'details' => $taskResult
+                ], 500);
+            }
+
+            $task = $taskResult['task'] ?? null;
+            $invoice = $taskResult['invoice'] ?? null;
+            
+            Log::info('Task and Invoice extracted', [
+                'task' => $task,
+                'invoice' => $invoice,
+                'has_task' => !is_null($task),
+                'has_invoice' => !is_null($invoice),
+                'has_task_id' => $task && isset($task['id'])
+            ]);
+            
+            // If no invoice was created, auto-generate one
+            if (!$invoice && $task && isset($task['id'])) {
+                Log::info('No invoice found, auto-generating invoice for TBO task', [
+                    'task_id' => $task['id'],
+                    'payment_id' => $paymentId
+                ]);
+
+                try {
+                    $taskModel = Task::find($task['id']);
+                    if ($taskModel) {
+                        $invoiceController = app(InvoiceController::class);
+                        $generateInvoiceResponse = $invoiceController->autoGenerateInvoice($taskModel, $payment);
+                        
+                        if ($generateInvoiceResponse['success'] ?? false) {
+                            $invoiceId = $generateInvoiceResponse['invoice_id'] ?? null;
+                            $invoiceNumber = null;
+                            
+                            if ($invoiceId) {
+                                $invoiceModel = Invoice::find($invoiceId);
+                                $invoiceNumber = $invoiceModel->invoice_number ?? null;
+                            }
+                            
+                            $invoice = [
+                                'id' => $invoiceId,
+                                'invoice_number' => $invoiceNumber
+                            ];
+                            
+                            Log::info('Invoice auto-generated successfully', [
+                                'invoice_id' => $invoice['id'],
+                                'invoice_number' => $invoice['invoice_number']
+                            ]);
+                        } else {
+                            Log::warning('Failed to auto-generate invoice', [
+                                'response' => $generateInvoiceResponse
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Exception auto-generating invoice', [
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+            
+            $responseData = [
+                'success' => true,
+                'message' => 'TBO booking registered as task successfully. Invoice and hotel voucher have been sent automatically.',
+                'task' => $task,
+                'invoice' => $invoice,
+                'payment_id' => $paymentId,
+                'confirmation_no' => $tboBooking->confirmation_no,
+            ];
+
+            if ($task && isset($task['id'])) {
+                $responseData['hotel_voucher_url'] = route('tasks.pdf.hotel', $task['id']);
+            }
+            
+            if ($invoice && isset($invoice['invoice_number'])) {
+                $responseData['invoice_url'] = route('invoice.show', [
+                    'companyId' => $payment->agent->branch->company_id,
+                    'invoiceNumber' => $invoice['invoice_number']
+                ]);
+            }
+
+            Log::info('TBO booking registered as task successfully', [
+                'payment_id' => $paymentId,
+                'tbo_id' => $tboBooking->id,
+                'task_id' => $task['id'] ?? null,
+                'invoice_id' => $invoice['id'] ?? null,
+                'invoice_number' => $invoice['invoice_number'] ?? null,
+                'hotel_voucher_url' => $responseData['hotel_voucher_url'] ?? null,
+                'invoice_url' => $responseData['invoice_url'] ?? null,
+                'note' => 'Invoice and hotel voucher sent automatically via N8N webhook from autoGenerateInvoice'
+            ]);
+
+            return response()->json($responseData, 200);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (Exception $e) {
+            Log::error('Exception in registerTBOBookingAsTask', [
+                'payment_id' => $request->input('payment_id'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Exception occurred: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -3034,7 +3508,7 @@ class PaymentController extends Controller
                     $receivableAccount = Account::where('name', 'Clients')->first();
 
                     if (!$bankPaymentFee || !$tapAccount || !$receivableAccount) {
-                        throw new \Exception('One or more financial accounts not found.');
+                        throw new Exception('One or more financial accounts not found.');
                     }
 
                     $transaction = Transaction::create([
@@ -3056,7 +3530,7 @@ class PaymentController extends Controller
                     $client = $payment->invoice->client;
     
                     if (!$invoiceDetail || !$client) {
-                        throw new \Exception('Invoice detail or client not found.');
+                        throw new Exception('Invoice detail or client not found.');
                     }
 
                     JournalEntry::create([
@@ -3172,7 +3646,7 @@ class PaymentController extends Controller
 
                             Log::warning('Hotel booking API responded with failure', ['response' => $apiResponse]);
                             return redirect()->route('payment.failed')->with('error', $apiResponse['message'] ?? 'Booking API failed.');
-                        } catch (\Throwable $e) {
+                        } catch (Throwable $e) {
                             Log::error('Hotel booking API crashed', ['error' => $e->getMessage()]);
                             return redirect()->route('payment.failed')->with('error', 'Booking process failed: ' . $e->getMessage());
                         }
@@ -3182,7 +3656,7 @@ class PaymentController extends Controller
             
             return redirect()->to($receiptInfo['url'])->with('success', 'Payment successful!');
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::error('Tap callback exception', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return redirect()->route('payment.failed')->with('error', 'Something went wrong. Please contact support.');
         }

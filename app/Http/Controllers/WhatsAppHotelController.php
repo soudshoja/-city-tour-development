@@ -2290,6 +2290,7 @@ class WhatsAppHotelController extends Controller
                     ->map(function ($gateway) {
                         $methods = PaymentMethod::where('is_active', true)
                             ->where('charge_id', $gateway->id)
+                            ->where('paid_by', 'Company')
                             ->get(['code', 'english_name'])
                             ->map(fn($m) => [
                                 'code' => $m->code,

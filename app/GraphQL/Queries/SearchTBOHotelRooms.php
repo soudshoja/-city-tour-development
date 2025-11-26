@@ -344,6 +344,53 @@ class SearchTBOHotelRooms
     ): array {
         $hasPriceFilter = ($priceMin !== null || $priceMax !== null);
         
+        // Convert price filter from KWD to USD if currency conversion is enabled
+        $priceMinUSD = $priceMin;
+        $priceMaxUSD = $priceMax;
+        
+        if ($hasPriceFilter && env('TBO_ENABLE_CURRENCY_CONVERSION', false)) {
+            $companyId = 1; // Default company ID
+            $exchangeRate = $this->getExchangeRate($companyId, 'USD', 'KWD');
+            
+            if ($exchangeRate) {
+                // For B2C: User sees marked-up prices, so remove 20% markup first before converting
+                // For B2B: No markup applied, use prices as-is
+                $adjustedPriceMin = $priceMin;
+                $adjustedPriceMax = $priceMax;
+                
+                if ($bookingType === 'b2c') {
+                    // Remove 20% markup: price / 1.20
+                    if ($priceMin !== null) {
+                        $adjustedPriceMin = $priceMin / 1.20;
+                    }
+                    if ($priceMax !== null) {
+                        $adjustedPriceMax = $priceMax / 1.20;
+                    }
+                }
+                
+                // Convert KWD prices back to USD for filtering TBO results
+                // If rate is 0.30522 (USD to KWD), then to convert back: divide by rate
+                if ($adjustedPriceMin !== null) {
+                    $priceMinUSD = $adjustedPriceMin / $exchangeRate;
+                }
+                if ($adjustedPriceMax !== null) {
+                    $priceMaxUSD = $adjustedPriceMax / $exchangeRate;
+                }
+                
+                $this->logger->info('Converted price filter from KWD to USD', [
+                    'booking_type' => $bookingType,
+                    'original_min_kwd' => $priceMin,
+                    'original_max_kwd' => $priceMax,
+                    'adjusted_min_kwd' => $adjustedPriceMin,
+                    'adjusted_max_kwd' => $adjustedPriceMax,
+                    'exchange_rate' => $exchangeRate,
+                    'converted_min_usd' => $priceMinUSD,
+                    'converted_max_usd' => $priceMaxUSD,
+                    'markup_removed' => $bookingType === 'b2c' ? '20%' : 'none'
+                ]);
+            }
+        }
+        
         $this->logger->info('Starting TBO hotel search', [
             'hotel_code' => $hotelCode,
             'guest_nationality' => $guestNationality,
@@ -354,8 +401,10 @@ class SearchTBOHotelRooms
                 'noOfRooms' => $noOfRooms,
                 'refundable' => $refundable,
                 'mealType' => $mealType,
-                'priceMin' => $priceMin,
-                'priceMax' => $priceMax,
+                'priceMin_kwd' => $priceMin,
+                'priceMax_kwd' => $priceMax,
+                'priceMin_usd' => $priceMinUSD,
+                'priceMax_usd' => $priceMaxUSD,
                 'hasPriceFilter' => $hasPriceFilter,
             ],
         ]);
@@ -442,12 +491,12 @@ class SearchTBOHotelRooms
         }
 
         if ($hasPriceFilter) {
-            $allRooms = array_filter($allRooms, function($roomData) use ($priceMin, $priceMax) {
+            $allRooms = array_filter($allRooms, function($roomData) use ($priceMinUSD, $priceMaxUSD) {
                 $price = $roomData['total_fare'];
-                if ($priceMin !== null && $price < $priceMin) {
+                if ($priceMinUSD !== null && $price < $priceMinUSD) {
                     return false;
                 }
-                if ($priceMax !== null && $price > $priceMax) {
+                if ($priceMaxUSD !== null && $price > $priceMaxUSD) {
                     return false;
                 }
                 return true;

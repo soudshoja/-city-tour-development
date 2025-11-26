@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AI\AIManager;
 use App\Models\Client;
 use Illuminate\Http\Request;
 use App\Models\TemporaryOffer;
@@ -13,9 +14,20 @@ use App\Models\RequestBookingRoom;
 use App\Models\UserStep;
 use App\Models\Country;
 use App\Models\Agent;
+use App\Models\Branch;
+use App\Models\Charge;
+use App\Models\Payment;
+use App\Models\PaymentMethod;
+use App\Models\Sequence;
+use App\Models\TBO;
+use App\Models\TBORoom;
+use App\Models\User;
 use App\Services\HotelSearchService;
 use App\Services\MagicHolidayService;
+use App\Services\TBOHolidayService;
+use App\Services\ChargeService;
 use Exception;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -1648,6 +1660,190 @@ class WhatsAppHotelController extends Controller
         ]);
     }
 
+    public function confirmTBOBooking(Request $request)
+    {
+        Log::channel('whatsapp')->info("TBO Confirm Booking Request", $request->all());
+
+        $request->validate([
+            "agent_phone" => "required|string",
+            "email" => "nullable|email",
+            "client_phone" => "nullable|string",
+            "prebookKey" => "required|string",
+            "first_name" => "required|string",
+            "last_name" => "required|string",
+            // "payment_method" => "required|string|in:prepaid,credit",
+        ]);
+
+        $prebookKey = $request->prebookKey;
+
+        $prebook = TBO::where("prebook_key", $prebookKey)->first();
+
+        if (!$prebook) {
+            return response()->json([
+                "success" => false,
+                "message" => "Invalid TBO prebook key."
+            ], 404);
+        }
+
+        Log::channel('whatsapp')->info("TBO Prebook found", ["prebook" => $prebook]);
+
+        $bookingParams = $this->buildTBOBookingParameter($request, $prebookKey);
+
+        if (!$bookingParams["success"]) {
+            Log::channel('whatsapp')->warning('TBO booking params preparation failed', [
+                'prebook_key' => $prebookKey,
+                'error' => $bookingParams['message']
+            ]);
+            return response()->json([
+                "success" => false,
+                "message" => $bookingParams["message"]
+            ], 400);
+        }
+
+        $clientReferenceId = $bookingParams['payload']['ClientReferenceId'];
+
+        $hotelBooking = HotelBooking::create([
+            "prebook_id" => null,
+            "client_id" => null,
+            "payment_id" => null,
+            "supplier_booking_id" => null,
+            "client_ref" => $clientReferenceId,
+            "status" => 'pending',
+            "price" => $prebook->total_fare,
+            "currency" => $prebook->currency,
+            "booking_time" => now(),
+        ]);
+
+        $prebook->update(['hotel_booking_id' => $hotelBooking->id]);
+
+        Log::channel('whatsapp')->info("HotelBooking created with pending status and linked to TBO prebook", [
+            'hotel_booking_id' => $hotelBooking->id,
+            'tbo_id' => $prebook->id,
+            'prebook_key' => $prebookKey,
+            'status' => 'pending'
+        ]);
+
+        $tboService = new TBOHolidayService();
+        
+        Log::channel('whatsapp')->info("Attempting TBO booking", [
+            'prebook_key' => $prebookKey,
+            'booking_code' => $prebook->booking_code,
+            'hotel_booking_id' => $hotelBooking->id,
+        ]);
+
+        $bookingResponse = $tboService->book($bookingParams['payload']);
+
+        Log::channel('whatsapp')->info("TBO Booking Response", $bookingResponse);
+
+        if (($bookingResponse["Status"]["Code"] ?? null) !== 200) {
+            $hotelBooking->update(['status' => 'failed']);
+
+            $prebook->update([
+                'payment_status' => 'unpaid',
+                'supplier_status' => 'failed'
+            ]);
+
+            Log::channel('whatsapp')->error('TBO booking failed', [
+                'prebook_key' => $prebookKey,
+                'hotel_booking_id' => $hotelBooking->id,
+                'error' => $bookingResponse["Status"]["Description"] ?? 'Unknown error'
+            ]);
+
+            return response()->json([
+                "success" => false,
+                "message" => "Booking failed with TBO.",
+                "hotel_booking_id" => $hotelBooking->id,
+                "response" => $bookingResponse
+            ], 400);
+        }
+
+        $confirmationNo = $bookingResponse["ConfirmationNumber"] ?? null;
+        $bookingReferenceId = $bookingResponse["ClientReferenceId"] ?? null;
+        $bookingStatus = 'confirmed';
+
+        $hotelBooking->update([
+            "supplier_booking_id" => $confirmationNo,
+            "status" => $bookingStatus,
+        ]);
+
+        $prebook->update([
+            'confirmation_no' => $confirmationNo,
+            'booking_reference_id' => $bookingReferenceId,
+            'payment_status' => 'pending',
+            'supplier_status' => $bookingStatus,
+        ]);
+
+        Log::channel('whatsapp')->info('TBO booking successful', [
+            'prebook_key' => $prebookKey,
+            'hotel_booking_id' => $hotelBooking->id,
+            'confirmation_no' => $confirmationNo,
+            'supplier_status' => $bookingStatus,
+            'response' => $bookingResponse
+        ]);
+
+        $detailedBookingResponse = null;
+        try {
+            $bookingDetailResponse = $tboService->getBookingDetail([
+                'ConfirmationNumber' => $confirmationNo
+            ]);
+
+            if (isset($bookingDetailResponse['Status']['Code']) && $bookingDetailResponse['Status']['Code'] === 200) {
+                $detailedBookingResponse = $bookingDetailResponse['BookingDetail'] ?? null;
+                
+                Log::channel('whatsapp')->info('TBO BookingDetail API response', [
+                    'confirmation_no' => $confirmationNo,
+                    'response' => $detailedBookingResponse
+                ]);
+            } else {
+                Log::channel('whatsapp')->warning('TBO BookingDetail API failed', [
+                    'confirmation_no' => $confirmationNo,
+                    'error' => $bookingDetailResponse['Status']['Description'] ?? 'Unknown error'
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::channel('whatsapp')->error('Failed to fetch booking details from TBO', [
+                'confirmation_no' => $confirmationNo,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        $bookingDetail = $detailedBookingResponse ?? $bookingResponse["BookingDetail"] ?? [];
+        $hotelDetails = $bookingDetail["Hotel"] ?? [];
+        
+        return response()->json([
+            "success" => true,
+            "message" => "TBO booking successfully confirmed.",
+            "booking_details" => [
+                "confirmation_no" => $confirmationNo,
+                "booking_reference_id" => $bookingReferenceId,
+                "booking_status" => $bookingStatus,
+                "hotel_booking_id" => $hotelBooking->id,
+                "payment_status" => $prebook->payment_status,
+                "supplier_status" => $prebook->supplier_status,
+                "prebook_key" => $prebookKey,
+                "hotel" => [
+                    "hotel_code" => $prebook->hotel_code,
+                    "hotel_name" => $prebook->hotel_name,
+                    "check_in" => $hotelDetails["CheckInDate"] ?? null,
+                    "check_out" => $hotelDetails["CheckOutDate"] ?? null,
+                ],
+                "pricing" => [
+                    "total_fare" => $prebook->total_fare,
+                    "total_tax" => $prebook->total_tax,
+                    "currency" => $prebook->currency,
+                ],
+                "room_details" => [
+                    "room_name" => json_decode($prebook->room_name, true),
+                    "meal_type" => $prebook->meal_type,
+                    "is_refundable" => $prebook->is_refundable,
+                    "room_quantity" => $prebook->room_quantity,
+                ],
+                "booking_time" => $hotelBooking->booking_time,
+            ],
+            "tbo_response" => $bookingDetail
+        ]);
+    }
+
     private function buildB2BBookingParameter(Request $request, string $prebookKey): array
     {
         $this->logger->info("Building B2B booking payload", ["prebookKey" => $prebookKey]);
@@ -1821,5 +2017,511 @@ class WhatsAppHotelController extends Controller
             "resultToken" => $resultToken,
             "payload" => $payload,
         ];
+    }
+
+    private function buildTBOBookingParameter(Request $request, string $prebookKey): array
+    {
+        Log::channel('whatsapp')->info("Building TBO booking payload", ["prebookKey" => $prebookKey]);
+        
+        $prebook = TBO::with('rooms')->where("prebook_key", $prebookKey)->first();
+
+        if (!$prebook) {
+            Log::channel('whatsapp')->info('No TBO Prebook data found for this key', ['prebook_key' => $prebookKey]);
+            return [
+                "success" => false,
+                "message" => "TBO prebook not found."
+            ];
+        }
+
+        Log::channel('whatsapp')->info('TBO Prebook data from database', ['data' => $prebook]);
+
+        $rooms = $prebook->rooms;
+
+        if ($rooms->isEmpty()) {
+            Log::channel('whatsapp')->error('No rooms found in TBO prebook data', ['prebook_key' => $prebookKey]);
+            return [
+                "success" => false,
+                "message" => "No rooms found in TBO prebook data."
+            ];
+        }
+
+        // Build CustomerDetails array
+        $customerDetails = [];
+        foreach ($rooms as $roomIndex => $room) {
+            $customers = [];
+            
+            // Add adults
+            for ($i = 0; $i < $room->adult_quantity; $i++) {
+                $customers[] = [
+                    'FirstName' => $request->first_name,
+                    'LastName' => $request->last_name,
+                    'Title' => 'Mr', // Default title
+                    'Type' => 'Adult'
+                ];
+            }
+
+            // Add children if any
+            for ($i = 0; $i < $room->child_quantity; $i++) {
+                $customers[] = [
+                    'FirstName' => 'Child' . ($i + 1),
+                    'LastName' => $request->last_name,
+                    'Title' => 'Mstr', // Default title for children
+                    'Type' => 'Child'
+                ];
+            }
+
+            $customerDetails[] = [
+                'CustomerNames' => $customers
+            ];
+        }
+
+        // Generate unique client reference ID
+        $clientReferenceId = $prebookKey . '-' . time();
+
+        $payload = [
+            'BookingCode' => $prebook->booking_code,
+            'CustomerDetails' => $customerDetails,
+            'ClientReferenceId' => $clientReferenceId,
+            'BookingReferenceId' => $prebookKey,
+            'TotalFare' => (float)$prebook->total_fare,
+            'EmailId' => $request->email ?? 'noreply@example.com',
+            'PhoneNumber' => $request->client_phone ?? $request->agent_phone,
+            'PaymentMode' => 'Limit', // Default to Limit (prepaid/credit)
+            'PaymentInfo' => [
+                'CvvNumber' => '', // Empty as we're using Limit payment
+            ]
+        ];
+
+        Log::channel('whatsapp')->info('Final TBO Payload Request', [
+            'prebook_key' => $prebookKey,
+            'booking_code' => $prebook->booking_code,
+            'total_rooms' => count($customerDetails),
+            'payload' => $payload
+        ]);
+
+        return [
+            "success" => true,
+            'message' => 'TBO booking payload prepared successfully',
+            "payload" => $payload,
+        ];
+    }
+
+    public function confirmTBOB2CBooking(Request $request)
+    {
+        Log::channel('whatsapp')->info("TBO B2C Booking Confirmation Request", $request->all());
+
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required|string|max:20',
+            'prebookKey' => 'required|string',
+            'email' => 'nullable|email',
+            'first_name' => 'nullable|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'payment_gateway' => 'nullable|string|max:50',
+            'payment_method' => 'nullable|string|max:50',
+            'passport' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+            ], 422);
+        }
+
+        try {
+            $codes = Country::pluck('dialing_code')->toArray();
+            usort($codes, fn($a, $b) => strlen($b) <=> strlen($a));
+
+            $countryCode = '+000';
+            $phone = $request->phone;
+
+            foreach ($codes as $code) {
+                if (str_starts_with($request->phone, $code)) {
+                    $countryCode = $code;
+                    $phone = substr($request->phone, strlen($code));
+                    break;
+                }
+            }
+
+            $prebook = TBO::where('prebook_key', $request->prebookKey)->first();
+
+            if (!$prebook) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid prebook key. Please start a new booking.',
+                    'next_step' => 'restart_booking',
+                ], 404);
+            }
+
+            $client = Client::where('phone', $phone)
+                ->where('country_code', $countryCode)
+                ->when($request->filled('email'), fn($q) => $q->orWhere('email', $request->email))
+                ->first();
+
+            if (!$client) {
+                $clientValidator = Validator::make($request->all(), [
+                    'passport' => 'nullable|file',
+                    'first_name' => 'required_without:passport|string|filled',
+                    'email' => 'required_without:passport|email|filled',
+                    'phone' => 'required_without:passport|string|max:20|filled',
+                ], [
+                    'first_name.required_without' => 'Client first name is required.',
+                    'email.required_without' => 'Client email is required.',
+                    'phone.required_without' => 'Client phone number is required.',
+                ]);
+
+                if ($clientValidator->fails()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Client not found. ' . $clientValidator->errors()->first(),
+                        'next_step' => 'provide_client_details',
+                    ], 422);
+                }
+
+                $agent = $this->getOrCreateB2CAgent();
+
+                // Passport upload with AI extraction
+                if ($request->hasFile('passport')) {
+                    $file = $request->file('passport');
+                    $fileName = time() . '_' . $file->getClientOriginalName();
+                    $filePath = $file->storeAs('uploads', $fileName, 'public');
+                    $fullFilePath = storage_path('app/public/' . $filePath);
+
+                    Log::channel('whatsapp')->info('Processing passport file for TBO B2C', [
+                        'file_name' => $fileName,
+                        'file_path' => $fullFilePath
+                    ]);
+
+                    $aiManager = new AIManager();
+                    $response = $aiManager->extractPassportData($fullFilePath, $fileName);
+
+                    if ($response['status'] !== 'success') {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Failed to read passport. Please re-upload a clearer image or provide manual details.',
+                            'next_step' => 'provide_client_details',
+                        ], 422);
+                    }
+
+                    $passportData = $response['data'] ?? [];
+
+                    $client = Client::create([
+                        'first_name' => $passportData['first_name'],
+                        'middle_name' => $passportData['middle_name'] ?? null,
+                        'last_name' => $passportData['last_name'] ?? null,
+                        'passport_no' => $passportData['passport_no'] ?? null,
+                        'date_of_birth' => $passportData['date_of_birth'] ?? null,
+                        'email' => $request->email ?? null,
+                        'phone' => $phone,
+                        'country_code' => $countryCode,
+                        'agent_id' => $agent->id,
+                        'company_id' => $agent->branch->company_id,
+                    ]);
+
+                    Log::channel('whatsapp')->info('TBO B2C client created from passport', [
+                        'client_id' => $client->id,
+                        'passport_no' => $passportData['passport_no'] ?? null
+                    ]);
+                } else {
+                    // Manual client creation
+                    $client = Client::create([
+                        'first_name' => $request->first_name,
+                        'middle_name' => $request->middle_name ?? null,
+                        'last_name' => $request->last_name ?? null,
+                        'email' => $request->email ?? null,
+                        'phone' => $phone,
+                        'country_code' => $countryCode,
+                        'agent_id' => $agent->id,
+                        'company_id' => $agent->branch->company_id,
+                    ]);
+
+                    Log::channel('whatsapp')->info('TBO B2C client created manually', [
+                        'client_id' => $client->id,
+                        'phone' => $phone
+                    ]);
+                }
+            }
+
+            // Check if hotel booking already exists with payment
+            $existingHotelBooking = $prebook->hotelBooking;
+            if ($existingHotelBooking && $existingHotelBooking->payment_id) {
+                $existingPayment = $existingHotelBooking->payment;
+                
+                // Check if payment was created within last 30 minutes
+                if ($existingPayment && $existingPayment->created_at->diffInMinutes(now()) < 30) {
+                    $paymentLink = route('payment.link.show', [
+                        'companyId' => $existingPayment->agent->branch->company_id,
+                        'voucherNumber' => $existingPayment->voucher_number,
+                    ]);
+                    
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'You already have an active payment link for this booking.',
+                        'next_step' => 'make_payment',
+                        'client_id' => $client->id,
+                        'payment_link' => $paymentLink,
+                        'total_price' => $existingPayment->amount,
+                        'currency' => $existingPayment->currency,
+                    ]);
+                }
+            }
+
+            if ($prebook->created_at->diffInMinutes(now()) > 30) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Prebook expired. Please make a new booking.',
+                    'next_step' => 'restart_booking',
+                ], 410);
+            }
+
+            if (empty($request->payment_gateway)) {
+                $availableGateways = Charge::where('is_active', true)
+                    ->where('can_generate_link', true)
+                    ->get(['id', 'name', 'type'])
+                    ->map(function ($gateway) {
+                        $methods = PaymentMethod::where('is_active', true)
+                            ->where('charge_id', $gateway->id)
+                            ->get(['code', 'english_name'])
+                            ->map(fn($m) => [
+                                'code' => $m->code,
+                                'name' => $m->english_name,
+                            ])->values()->all();
+
+                        return [
+                            'id' => $gateway->id,
+                            'name' => $gateway->name,
+                            'type' => $gateway->type,
+                            'methods' => $methods,
+                        ];
+                    })->values()->all();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please choose your preferred payment gateway to continue.',
+                    'next_step' => 'choose_gateway',
+                    'available_gateways' => $availableGateways,
+                    'client_id' => $client->id,
+                ], 200);
+            }
+
+            // Use the already marked-up price from prebook (markup applied during search)
+            $totalPrice = $prebook->total_fare;
+
+            $paymentResponse = $this->createB2CPaymentLink([
+                'client' => $client,
+                'amount' => $totalPrice,
+                'currency' => $prebook->currency,
+                'notes' => 'TBO B2C booking. Prebook Key: ' . $request->prebookKey,
+                'payment_gateway' => $request->payment_gateway,
+                'payment_method' => $request->payment_method,
+            ]);
+
+            if (!$paymentResponse['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $paymentResponse['message'] ?? 'Failed to create payment link.',
+                    'client_id' => $client->id,
+                ], 500);
+            }
+
+            // Create or update HotelBooking with payment_id
+            if ($existingHotelBooking) {
+                $existingHotelBooking->update([
+                    'payment_id' => $paymentResponse['payment_id'],
+                    'client_id' => $client->id,
+                    'price' => $totalPrice,
+                ]);
+                $hotelBooking = $existingHotelBooking;
+            } else {
+                $hotelBooking = HotelBooking::create([
+                    'prebook_id' => null,
+                    'client_id' => $client->id,
+                    'payment_id' => $paymentResponse['payment_id'],
+                    'supplier_booking_id' => null,
+                    'client_ref' => $request->prebookKey,
+                    'status' => 'pending_payment',
+                    'price' => $totalPrice,
+                    'currency' => $prebook->currency,
+                    'booking_time' => now(),
+                ]);
+                
+                // Link TBO to HotelBooking
+                $prebook->update(['hotel_booking_id' => $hotelBooking->id]);
+            }
+
+            // Get room details from TBORoom records
+            $rooms = $prebook->rooms->map(function ($room) use ($prebook) {
+                return [
+                    'room' => [
+                        'room_name' => $room->room_name,
+                        'meal_type' => $prebook->meal_type,
+                        'is_refundable' => $prebook->is_refundable,
+                        'price' => $prebook->total_fare,
+                        'currency' => $prebook->currency,
+                        'adult_quantity' => $room->adult_quantity,
+                        'child_quantity' => $room->child_quantity,
+                    ],
+                    'prebook' => [
+                        'prebookKey' => $prebook->prebook_key,
+                        'booking_code' => $prebook->booking_code,
+                        'hotel_name' => $prebook->hotel_name,
+                        'hotel_code' => $prebook->hotel_code,
+                        'cancelPolicies' => json_decode($prebook->cancel_policies, true),
+                        'inclusion' => $prebook->inclusion,
+                    ]
+                ];
+            })->all();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Booking confirmed. Please proceed to payment.',
+                'next_step' => 'make_payment',
+                'client_id' => $client->id,
+                'hotel_booking_id' => $hotelBooking->id,
+                'hotel_name' => $prebook->hotel_name,
+                'room_count' => $prebook->rooms->count(),
+                'total_price' => $totalPrice,
+                'currency' => $prebook->currency,
+                'payment_link' => $paymentResponse['payment_link'] ?? null,
+                'rooms' => $rooms,
+            ]);
+
+        } catch (Exception $e) {
+            Log::channel('whatsapp')->error('TBO B2C Booking failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Booking failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function createB2CPaymentLink(array $input): array
+    {
+        try {
+            $client = $input['client'];
+            $agent = $this->getOrCreateB2CAgent();
+            $companyId = $agent->branch->company_id;
+
+            $voucherSequence = Sequence::firstOrCreate(
+                ['company_id' => $companyId],
+                ['current_sequence' => 1]
+            );
+            
+            $voucherNumber = app(PaymentController::class)->generateVoucherNumber($voucherSequence->current_sequence++);
+            $voucherSequence->save();
+
+            $paymentMethod = null;
+            if (!empty($input['payment_method'])) {
+                $paymentMethod = PaymentMethod::where('is_active', true)
+                    ->where('type', strtolower($input['payment_gateway']))
+                    ->where('english_name', 'LIKE', $input['payment_method'])
+                    ->orWhere('code', $input['payment_method'])
+                    ->first();
+            }
+
+            // Calculate gateway charges using ChargeService
+            $chargeResult = ChargeService::getFee(
+                gatewayName: $input['payment_gateway'],
+                amount: $input['amount'],
+                methodCode: $paymentMethod?->id,
+                companyId: $companyId,
+                currency: $input['currency'] ?? 'KWD'
+            );
+
+            Log::channel('whatsapp')->info('TBO B2C Payment charge calculated', [
+                'original_amount' => $input['amount'],
+                'final_amount' => $chargeResult['finalAmount'],
+                'fee' => $chargeResult['fee'],
+                'paid_by' => $chargeResult['paid_by'],
+                'payment_gateway' => $input['payment_gateway'],
+                'payment_method_id' => $paymentMethod?->id,
+            ]);
+
+            $payment = Payment::create([
+                'voucher_number' => $voucherNumber,
+                'from' => $client->full_name,
+                'pay_to' => $agent->branch->company->name,
+                'currency' => $input['currency'] ?? 'USD',
+                'payment_date' => now(),
+                'service_charge' => $chargeResult['fee'],
+                'amount' => $chargeResult['finalAmount'],
+                'status' => 'pending',
+                'client_id' => $client->id,
+                'agent_id' => $agent->id,
+                'notes' => $input['notes'] ?? 'TBO B2C booking payment',
+                'payment_gateway' => $input['payment_gateway'],
+                'payment_method_id' => $paymentMethod?->id,
+                'company_id' => $companyId,
+            ]);
+
+            $paymentLink = route('payment.link.show', [
+                'companyId' => $companyId,
+                'voucherNumber' => $payment->voucher_number,
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'Payment link created successfully.',
+                'payment_id' => $payment->id,
+                'payment_link' => $paymentLink,
+            ];
+
+        } catch (Exception $e) {
+            Log::channel('whatsapp')->error('createB2CPaymentLink failed', [
+                'error' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    private function getOrCreateB2CAgent(): Agent
+    {
+        $user = User::firstOrCreate(
+            ['email' => 'testBranch@gmail.com'],
+            [
+                'name' => 'AI Branch',
+                'password' => Hash::make('Alphia1234'),
+                'role_id' => 3
+            ]
+        );
+
+        $branch = Branch::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'company_id' => 1,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => '+60176508034'
+            ]
+        );
+
+        $agentUser = User::firstOrCreate(
+            ['email' => 'testAgent@gmail.com'],
+            [
+                'name' => 'AI Agent',
+                'password' => Hash::make('Alphia1234'),
+                'role_id' => 4
+            ]
+        );
+
+        return Agent::firstOrCreate(
+            ['name' => 'AI Agent', 'branch_id' => $branch->id],
+            [
+                'user_id' => $agentUser->id,
+                'email' => $agentUser->email,
+                'phone_number' => '+60176508034',
+                'country_code' => '+60',
+                'type_id' => 1
+            ]
+        );
     }
 }

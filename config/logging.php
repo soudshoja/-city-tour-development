@@ -177,5 +177,13 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'tbo' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/tboholidays/tbo_holidays.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 60),
+            'replace_placeholders' => true,
+        ],
+
     ],
 ];

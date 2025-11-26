@@ -191,14 +191,23 @@ class PaymentController extends Controller
             $hotelBooking = $payment->hotelBooking;
             
             if (!$hotelBooking) {
-                // No hotel booking linked, not a TBO payment
+
+                Log::channel('whatsapp')->info('No hotel booking linked, not a TBO payment', [
+                    'payment_id' => $payment->id
+                ]);
+
                 return null;
             }
 
             $tboBooking = TBO::where('hotel_booking_id', $hotelBooking->id)->first();
             
             if (!$tboBooking) {
-                // Not a TBO booking
+
+                Log::channel('whatsapp')->info('No TBO booking found for the hotel booking', [
+                    'payment_id' => $payment->id,
+                    'hotel_booking_id' => $hotelBooking->id
+                ]);
+
                 return null;
             }
 
@@ -223,7 +232,7 @@ class PaymentController extends Controller
                 'prebook_key' => $tboBooking->prebook_key
             ]);
 
-            // Build TBO booking parameters
+            // Build TBO booking parameters (must match B2B format)
             $customerDetails = [];
             foreach ($tboBooking->rooms as $roomIndex => $room) {
                 $customers = [];
@@ -231,39 +240,40 @@ class PaymentController extends Controller
                 // Add adults
                 for ($i = 0; $i < $room->adult_quantity; $i++) {
                     $customers[] = [
-                        'Title' => 'Mr',
                         'FirstName' => $payment->client->first_name ?? 'Guest',
                         'LastName' => $payment->client->last_name ?? 'Customer',
-                        'Age' => 30,
-                        'PaxType' => 1 // Adult
+                        'Title' => 'Mr',
+                        'Type' => 'Adult'
                     ];
                 }
 
                 // Add children if any
                 for ($i = 0; $i < $room->child_quantity; $i++) {
                     $customers[] = [
+                        'FirstName' => 'Child' . ($i + 1),
+                        'LastName' => $payment->client->last_name ?? 'Customer',
                         'Title' => 'Mstr',
-                        'FirstName' => $payment->client->first_name ?? 'Guest',
-                        'LastName' => $payment->client->last_name ?? 'Child',
-                        'Age' => 10,
-                        'PaxType' => 2 // Child
+                        'Type' => 'Child'
                     ];
                 }
 
                 $customerDetails[] = [
-                    'Customers' => $customers
+                    'CustomerNames' => $customers
                 ];
             }
 
             // Generate unique client reference ID
             $clientReferenceId = $tboBooking->prebook_key . '-' . time();
 
+            // Use original_total_fare (supplier's price) for TBO API, not the converted/marked-up price
+            $totalFareForTBO = $tboBooking->original_total_fare ?? $tboBooking->total_fare;
+
             $bookingPayload = [
                 'BookingCode' => $tboBooking->booking_code,
                 'CustomerDetails' => $customerDetails,
                 'ClientReferenceId' => $clientReferenceId,
                 'BookingReferenceId' => $tboBooking->prebook_key,
-                'TotalFare' => (float)$tboBooking->total_fare,
+                'TotalFare' => (float)$totalFareForTBO,
                 'EmailId' => $payment->client->email ?? 'noreply@example.com',
                 'PhoneNumber' => $payment->client->phone ?? '',
                 'PaymentMode' => 'Limit',
@@ -271,6 +281,14 @@ class PaymentController extends Controller
                     'PaymentType' => 'FullPayment'
                 ]
             ];
+
+            Log::channel('whatsapp')->info('TBO Booking Price Breakdown', [
+                'original_total_fare' => $tboBooking->original_total_fare,
+                'original_currency' => $tboBooking->original_currency,
+                'total_fare_after_conversion' => $tboBooking->total_fare,
+                'currency_after_conversion' => $tboBooking->currency,
+                'sending_to_tbo' => $totalFareForTBO
+            ]);
 
             Log::channel('whatsapp')->info('Calling TBO Book API', [
                 'payload' => $bookingPayload

@@ -32,4 +32,9 @@ class HotelBooking extends Model
     {
         return $this->belongsTo(Payment::class, 'payment_id');
     }
+    
+    public function tbo()
+    {
+        return $this->hasOne(TBO::class, 'hotel_booking_id');
+    }
 }

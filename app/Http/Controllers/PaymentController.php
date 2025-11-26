@@ -3129,6 +3129,19 @@ class PaymentController extends Controller
                 }
             });
             
+            // Process TBO booking if applicable (BEFORE sending notification)
+            $tboResult = $this->processTBOBookingAfterPayment($payment);
+            if ($tboResult !== null) {
+                if ($tboResult['success']) {
+                    Log::info('TBO booking processed successfully via Tap callback', $tboResult);
+                } else {
+                    Log::error('TBO booking failed via Tap callback', $tboResult);
+                }
+            }
+            
+            // Reload payment to get updated hotel booking with confirmation_no
+            $payment->refresh();
+            
             $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
             $this->storeNotification([
                 'user_id' => $receiptInfo['agent']->user_id,
@@ -3141,16 +3154,6 @@ class PaymentController extends Controller
                 $receiptInfo['agent']->country_code,
                 $receiptInfo['message']
             );
-
-            // Process TBO booking if applicable
-            $tboResult = $this->processTBOBookingAfterPayment($payment);
-            if ($tboResult !== null) {
-                if ($tboResult['success']) {
-                    Log::info('TBO booking processed successfully via Tap callback', $tboResult);
-                } else {
-                    Log::error('TBO booking failed via Tap callback', $tboResult);
-                }
-            }
 
             if ($payment['status'] == 'CAPTURED') {
                 $checkNotes = $payment->notes;
@@ -4026,6 +4029,19 @@ class PaymentController extends Controller
                 }
             }
 
+            // Process TBO booking if applicable (BEFORE sending notification)
+            $tboResult = $this->processTBOBookingAfterPayment($payment);
+            if ($tboResult !== null) {
+                if ($tboResult['success']) {
+                    Log::info('TBO booking processed successfully via MyFatoorah callback', $tboResult);
+                } else {
+                    Log::error('TBO booking failed via MyFatoorah callback', $tboResult);
+                }
+            }
+
+            // Reload payment to get updated hotel booking with confirmation_no
+            $payment->refresh();
+
             // Send notifications
             $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
             $agent = $receiptInfo['agent'];
@@ -4041,16 +4057,6 @@ class PaymentController extends Controller
                 $agent->country_code,
                 $receiptInfo['message']
             );
-
-            // Process TBO booking if applicable
-            $tboResult = $this->processTBOBookingAfterPayment($payment);
-            if ($tboResult !== null) {
-                if ($tboResult['success']) {
-                    Log::info('TBO booking processed successfully via MyFatoorah callback', $tboResult);
-                } else {
-                    Log::error('TBO booking failed via MyFatoorah callback', $tboResult);
-                }
-            }
 
             DB::commit();
 
@@ -4296,6 +4302,20 @@ class PaymentController extends Controller
                     $this->createUPaymentJournalEntries($payment, $totalPaidAmount);
                 }
             });
+            
+            // Process TBO booking if applicable (BEFORE sending notification)
+            $tboResult = $this->processTBOBookingAfterPayment($payment);
+            if ($tboResult !== null) {
+                if ($tboResult['success']) {
+                    Log::info('TBO booking processed successfully via UPayment callback', $tboResult);
+                } else {
+                    Log::error('TBO booking failed via UPayment callback', $tboResult);
+                }
+            }
+            
+            // Reload payment to get updated hotel booking with confirmation_no
+            $payment->refresh();
+            
             $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
 
             $this->storeNotification([
@@ -4569,7 +4589,6 @@ class PaymentController extends Controller
             $payment->status = 'completed';
             $payment->save();
 
-            // Process TBO booking if applicable
             $tboResult = $this->processTBOBookingAfterPayment($payment);
             if ($tboResult !== null) {
                 if ($tboResult['success']) {
@@ -4579,7 +4598,8 @@ class PaymentController extends Controller
                 }
             }
 
-            // Generate public receipt data (URL, title, message) for redirect and notifications
+            $payment->refresh();
+
             $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
         } else {
             Log::error('Response from Hesabe failed', ['response' => $responseData]);
@@ -5498,6 +5518,9 @@ class PaymentController extends Controller
         ?int $partialId = null
     ): array {
         $isInvoice = $process === 'invoice' || (!empty($payment->invoice_id) && $process !== 'topup');
+        
+        $hotelBooking = $payment->hotelBooking()->with('tbo')->first();
+        $isHotelBooking = !empty($hotelBooking) && !$isInvoice;
 
         $invoicePartialType = $payment->invoice?->invoicePartials()->where('payment_id', $payment->id)->value('type');
         $isPartial = in_array(strtolower($invoicePartialType ?? ''), ['split', 'partial']);
@@ -5549,6 +5572,24 @@ class PaymentController extends Controller
                     'url' => $url,
                     'route' => $route,
                 ];
+            } elseif ($isHotelBooking) {
+             
+                $tbo = $hotelBooking->tbo;
+                $confirmationInfo = '';
+                
+                if ($tbo && $tbo->confirmation_no) {
+                    $confirmationInfo = " (Confirmation: {$tbo->confirmation_no})";
+                }
+                
+                return [
+                    'agent'  => $payment->agent,
+                    'title'   => 'Hotel Booking Payment Successful',
+                    'message' => 'Your client ' . $payment->client->full_name . ' has successfully paid for hotel booking' . $confirmationInfo .
+                                ' with amount ' . number_format($payment->amount, 3) . ' ' . $payment->currency . 
+                                ' using voucher ' . $payment->voucher_number . ".\n\nCheck the link : " . $url,
+                    'url' => $url,
+                    'route' => $route,
+                ];
             } else {
                 return [
                     'agent'  => $payment->agent,
@@ -5575,6 +5616,16 @@ class PaymentController extends Controller
                 'title' => 'Client ' . $payment->client->full_name . "'s Payment Failed",
                 'message' => 'Your client ' . $payment->client->full_name . ' attempted to pay invoice ' . $payment->invoice->invoice_number .
                             ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.' . "\n\nCheck the link : " . $url,
+                'url' => $url,
+                'route' => $route,
+            ];
+        } elseif ($isHotelBooking) {
+         
+            return [
+                'agent' => $payment->agent,
+                'title' => 'Hotel Booking Payment Failed',
+                'message' => 'Your client ' . $payment->client->full_name . ' attempted to pay for hotel booking using payment link ' . $payment->voucher_number .
+                ' but the payment failed or was cancelled. Please follow up with your client to resolve the issue.' . "\n\nCheck the link : " . $url,
                 'url' => $url,
                 'route' => $route,
             ];

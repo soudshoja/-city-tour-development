@@ -2078,12 +2078,15 @@ class WhatsAppHotelController extends Controller
         // Generate unique client reference ID
         $clientReferenceId = $prebookKey . '-' . time();
 
+        // Use original_total_fare (supplier's price) for TBO API, not the converted price
+        $totalFareForTBO = $prebook->original_total_fare ?? $prebook->total_fare;
+
         $payload = [
             'BookingCode' => $prebook->booking_code,
             'CustomerDetails' => $customerDetails,
             'ClientReferenceId' => $clientReferenceId,
             'BookingReferenceId' => $prebookKey,
-            'TotalFare' => (float)$prebook->total_fare,
+            'TotalFare' => (float)$totalFareForTBO,
             'EmailId' => $request->email ?? 'noreply@example.com',
             'PhoneNumber' => $request->client_phone ?? $request->agent_phone,
             'PaymentMode' => 'Limit', // Default to Limit (prepaid/credit)
@@ -2096,6 +2099,11 @@ class WhatsAppHotelController extends Controller
             'prebook_key' => $prebookKey,
             'booking_code' => $prebook->booking_code,
             'total_rooms' => count($customerDetails),
+            'original_total_fare' => $prebook->original_total_fare,
+            'original_currency' => $prebook->original_currency,
+            'total_fare_stored' => $prebook->total_fare,
+            'currency_stored' => $prebook->currency,
+            'sending_to_tbo' => $totalFareForTBO,
             'payload' => $payload
         ]);
 
@@ -2282,6 +2290,7 @@ class WhatsAppHotelController extends Controller
                     ->map(function ($gateway) {
                         $methods = PaymentMethod::where('is_active', true)
                             ->where('charge_id', $gateway->id)
+                            ->where('paid_by', 'Company')
                             ->get(['code', 'english_name'])
                             ->map(fn($m) => [
                                 'code' => $m->code,

@@ -357,7 +357,7 @@ class PaymentController extends Controller
             if ($taskResult && $taskResult['success']) {
                 Log::info('Task and Invoice created from TBO booking', [
                     'task_id' => $taskResult['task']['id'] ?? null,
-                    'invoice_number' => $taskResult['invoice']['invoice_number'] ?? null
+                    'invoice_number' => $taskResult['invoice']->invoice_number ?? null
                 ]);
 
                 return [
@@ -455,26 +455,7 @@ class PaymentController extends Controller
             // TaskController returns 'status' not 'success'
             $isSuccess = ($responseData['status'] ?? '') === 'success' || ($responseData['success'] ?? false);
 
-            if ($isSuccess) {
-                $task = $responseData['data'] ?? $responseData['task'] ?? null;
-                $invoice = $responseData['invoice'] ?? null;
-
-                Log::info('Task created successfully from TBO booking', [
-                    'task_id' => $task['id'] ?? null,
-                    'invoice_id' => $invoice['id'] ?? null
-                ]);
-
-                // Update payment with invoice_id if invoice was created
-                if (!empty($invoice['id'])) {
-                    $payment->update(['invoice_id' => $invoice['id']]);
-                }
-
-                return [
-                    'success' => true,
-                    'task' => $task,
-                    'invoice' => $invoice
-                ];
-            } else {
+            if (!$isSuccess) {
                 Log::error('Failed to create task from TBO booking', [
                     'response' => $responseData
                 ]);
@@ -483,6 +464,79 @@ class PaymentController extends Controller
                     'message' => $responseData['message'] ?? 'Task creation failed'
                 ];
             }
+
+            $task = $responseData['data'] ?? $responseData['task'] ?? null;
+            $invoice = $responseData['invoice'] ?? null;
+
+            Log::info('Task created successfully from TBO booking', [
+                'task_id' => $task['id'] ?? null,
+                'invoice_id' => $invoice['id'] ?? null
+            ]);
+
+            // Generate invoice for TBO task if not already invoiced
+            if (isset($task['id'])) {
+                try {
+                    $taskModel = Task::with('invoiceDetail.invoice')->find($task['id']);
+                    
+                    if ($taskModel) {
+                        // Check if task already has an invoice through invoiceDetail relationship
+                        $hasInvoice = $taskModel->invoiceDetail && $taskModel->invoiceDetail->invoice;
+                        
+                        if ($hasInvoice) {
+                            Log::info('Task already has an invoice, skipping generation', [
+                                'task_id' => $taskModel->id,
+                                'invoice_id' => $taskModel->invoiceDetail->invoice->id,
+                                'invoice_number' => $taskModel->invoiceDetail->invoice->invoice_number
+                            ]);
+                            
+                            $invoice = $taskModel->invoiceDetail->invoice;
+                            
+                            // Update payment with invoice_id if not set
+                            if (!$payment->invoice_id) {
+                                $payment->update(['invoice_id' => $invoice->id]);
+                            }
+                        } else {
+                            Log::info('Task not invoiced yet, generating invoice', [
+                                'task_id' => $taskModel->id
+                            ]);
+                            
+                            $autoGenerateResponse = app(InvoiceController::class)->autoGenerateInvoice($taskModel, $payment);
+
+                            if ($autoGenerateResponse['success'] ?? false) {
+                                $invoiceId = $autoGenerateResponse['invoice_id'] ?? null;
+                                if ($invoiceId) {
+                                    $invoice = Invoice::find($invoiceId);
+                                    
+                                    // Update payment with invoice_id
+                                    if ($invoice) {
+                                        $payment->update(['invoice_id' => $invoice->id]);
+                                    }
+                                    
+                                    Log::info('Invoice generated successfully for TBO task', [
+                                        'invoice_id' => $invoiceId,
+                                        'invoice_number' => $invoice->invoice_number ?? null
+                                    ]);
+                                }
+                            } else {
+                                Log::warning('Failed to generate invoice for TBO task', [
+                                    'response' => $autoGenerateResponse
+                                ]);
+                            }
+                        }
+                    }
+                } catch (Exception $e) {
+                    Log::error('Exception checking/generating invoice for TBO task', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
+            }
+
+            return [
+                'success' => true,
+                'task' => $task,
+                'invoice' => $invoice
+            ];
 
         } catch (Exception $e) {
             Log::error('Exception creating task from TBO booking', [
@@ -2027,7 +2081,7 @@ class PaymentController extends Controller
         } else if ($user->role_id == Role::COMPANY) {
             $companyId = $user->company->id;
             $branches = Branch::where('company_id', $user->company->id)->get();
-            $agents = Agent::where('branch_id', $branches->pluck('id')->toArray())->get();
+            $agents = Agent::whereIn('branch_id', $branches->pluck('id')->toArray())->get();
             $agentsId = $agents->pluck('id')->toArray();
         } else if ($user->role_id == Role::BRANCH) {
             $companyId = $user->branch->company_id;

@@ -4495,6 +4495,7 @@ class InvoiceController extends Controller
                     'invoice_id' => $invoice->id,
                     'invoice_number' => $invoice->invoice_number,
                     'task_id' => $task->id,
+                    'task_price' => $task->total,
                     'task_description' => $task->description,
                     'task_remark' => $task->remark,
                     'client_notes' => $task->notes,
@@ -4537,6 +4538,13 @@ class InvoiceController extends Controller
                     'reference_type' => 'Invoice',
                     'transaction_date' => $invoice->invoice_date,
                 ]);
+
+                $invoice->refresh();
+                $invoiceDetail->refresh();
+                $transaction->refresh();
+
+                // Reload task with invoiceDetail relationship for addJournalEntry
+                $task->load('invoiceDetail');
 
                 $response = $this->addJournalEntry(
                     $task,

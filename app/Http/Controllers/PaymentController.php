@@ -349,7 +349,8 @@ class PaymentController extends Controller
 
             $bookingResult = [
                 'confirmation_no' => $confirmationNo,
-                'booking_reference_id' => $bookingReferenceId
+                'booking_reference_id' => $bookingReferenceId,
+                'booking_detail' => $detailResponse['BookingDetail'] ?? null
             ];
 
             $taskResult = $this->createTaskFromTBOBooking($payment, $tboBooking, $bookingResult);
@@ -558,10 +559,33 @@ class PaymentController extends Controller
     private function buildTaskRequestFromTBO(Payment $payment, TBO $tboBooking, array $bookingResult, int $supplierId): array
     {
         $hotelBooking = $payment->hotelBooking;
+        $bookingDetail = $bookingResult['booking_detail'] ?? null;
         
-        $firstRoom = $tboBooking->rooms->first();
-        $checkIn = $firstRoom->check_in ?? null;
-        $checkOut = $firstRoom->check_out ?? null;
+        // Use BookingDetail from API response if available
+        $checkIn = null;
+        $checkOut = null;
+        $hotelName = null;
+        $city = null;
+        $hotelCode = null;
+        
+        if ($bookingDetail) {
+            $checkIn = $bookingDetail['CheckIn'] ?? null;
+            $checkOut = $bookingDetail['CheckOut'] ?? null;
+            $hotelName = $bookingDetail['HotelDetails']['HotelName'] ?? null;
+            $city = $bookingDetail['HotelDetails']['City'] ?? null;
+            $hotelCode = $bookingDetail['HotelDetails']['HotelCode'] ?? null;
+        }
+        
+        // Fallback to TBO booking model
+        if (!$checkIn || !$checkOut) {
+            $firstRoom = $tboBooking->rooms->first();
+            $checkIn = $checkIn ?? ($firstRoom->check_in ?? null);
+            $checkOut = $checkOut ?? ($firstRoom->check_out ?? null);
+        }
+        
+        $hotelName = $hotelName ?? $tboBooking->hotel_name;
+        $city = $city ?? $tboBooking->city_name;
+        $hotelCode = $hotelCode ?? $tboBooking->hotel_code;
         
         $duration = null;
         if ($checkIn && $checkOut) {
@@ -571,22 +595,67 @@ class PaymentController extends Controller
         }
 
         $hotelDetails = [];
-        foreach ($tboBooking->rooms as $index => $room) {
-            $hotelDetails[] = [
-                'hotel_name' => $tboBooking->hotel_name,
-                'room_type' => $room->room_type,
-                'check_in' => $room->check_in,
-                'check_out' => $room->check_out,
-                'adults' => $room->adult_quantity,
-                'children' => $room->child_quantity,
-                'meal_type' => $tboBooking->meal_type,
-                'city' => $tboBooking->city_name ?? null,
-                'room_details' => json_encode([
-                    'hotel_code' => $tboBooking->hotel_code,
-                    'room_index' => $index + 1,
-                    'is_refundable' => $tboBooking->is_refundable,
-                ]),
-            ];
+        
+        // Use rooms from BookingDetail API response if available
+        if ($bookingDetail && isset($bookingDetail['Rooms'])) {
+            foreach ($bookingDetail['Rooms'] as $index => $room) {
+                // Extract room name (room type)
+                $roomType = is_array($room['Name']) ? implode(', ', $room['Name']) : ($room['Name'] ?? null);
+                
+                // Count adults and children from CustomerDetails
+                $adults = 0;
+                $children = 0;
+                if (isset($room['CustomerDetails'])) {
+                    foreach ($room['CustomerDetails'] as $customerDetail) {
+                        if (isset($customerDetail['CustomerNames'])) {
+                            foreach ($customerDetail['CustomerNames'] as $customer) {
+                                if (($customer['Type'] ?? '') === 'Adult') {
+                                    $adults++;
+                                } elseif (($customer['Type'] ?? '') === 'Child') {
+                                    $children++;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                $hotelDetails[] = [
+                    'hotel_name' => $hotelName,
+                    'room_type' => $roomType,
+                    'check_in' => $checkIn,
+                    'check_out' => $checkOut,
+                    'adults' => $adults > 0 ? $adults : 1,
+                    'children' => $children,
+                    'meal_type' => $room['MealType'] ?? ($tboBooking->meal_type ?? null),
+                    'city' => $city,
+                    'room_details' => json_encode([
+                        'hotel_code' => $hotelCode,
+                        'room_index' => $index + 1,
+                        'is_refundable' => $room['IsRefundable'] ?? $tboBooking->is_refundable,
+                        'inclusion' => $room['Inclusion'] ?? null,
+                        'total_fare' => $room['TotalFare'] ?? null,
+                    ]),
+                ];
+            }
+        } else {
+            // Fallback to TBO booking model
+            foreach ($tboBooking->rooms as $index => $room) {
+                $hotelDetails[] = [
+                    'hotel_name' => $hotelName,
+                    'room_type' => $room->room_type,
+                    'check_in' => $checkIn,
+                    'check_out' => $checkOut,
+                    'adults' => $room->adult_quantity ?? 1,
+                    'children' => $room->child_quantity ?? 0,
+                    'meal_type' => $tboBooking->meal_type,
+                    'city' => $city,
+                    'room_details' => json_encode([
+                        'hotel_code' => $hotelCode,
+                        'room_index' => $index + 1,
+                        'is_refundable' => $tboBooking->is_refundable,
+                    ]),
+                ];
+            }
         }
 
         $passengerName = $payment->client->full_name ?? 'Guest';

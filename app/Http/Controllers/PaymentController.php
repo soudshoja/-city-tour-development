@@ -265,6 +265,7 @@ class PaymentController extends Controller
 
             $bookingPayload = [
                 'BookingCode' => $tboBooking->booking_code,
+                'BookingType' => 'Confirm',
                 'CustomerDetails' => $customerDetails,
                 'ClientReferenceId' => $clientReferenceId,
                 'BookingReferenceId' => $tboBooking->prebook_key,

@@ -4472,8 +4472,9 @@ class InvoiceController extends Controller
             'payment_id' => $payment->id,
         ]);
 
+
         try{
-            DB::transaction(function () use ($task, $payment, &$invoice) {
+            $invoice = DB::transaction(function () use ($task, $payment) {
                 
                 $invoice = Invoice::create([
                     'invoice_number' => $this->getInvoiceNumberGenerated($task->company_id),
@@ -4565,6 +4566,9 @@ class InvoiceController extends Controller
                     'transaction_id' => $transaction->id,
                     'payment_id' => $payment->id,
                 ]);
+
+                return $invoice;
+
             });
 
         } catch (Exception $e){
@@ -4591,14 +4595,15 @@ class InvoiceController extends Controller
             'message' => $agentMessage,
         ]);
 
-        (new ResayilController())->message(
-            $task->agent->phone_number,
-            $task->agent->country_code,
-            $agentMessage
-        );
+        // (new ResayilController())->message(
+        //     phone : $task->agent->phone_number,
+        //     country_code : $task->agent->country_code,
+        //     message : $agentMessage,
+        //     isDummyNumber: env('AUTO_INVOICE_WHATSAPP_DUMMY', true)
+        // );
 
-        $agentPhoneNumber = app()->environment() == 'production' ? $task->agent->country_code . $task->agent->phone_number : env('PHONE_LOCAL', '+60193058463');
-        $clientPhoneNumber = app()->environment() == 'production' ? $task->client->country_code . $task->client->phone : env('PHONE_LOCAL', '+60193058463');
+        $agentPhoneNumber = env('AUTO_INVOICE_WHATSAPP_DUMMY', true) ? env('PHONE_LOCAL', '+60193058463') : $task->agent->country_code . $task->agent->phone_number;
+        $clientPhoneNumber = env('AUTO_INVOICE_WHATSAPP_DUMMY', true) ? env('PHONE_LOCAL', '+60193058463') : $task->client->country_code . $task->client->phone;
 
         $n8nResponse = Http::post(env('N8N_WEBHOOK_TEST_URL'), [
             'success' => true,

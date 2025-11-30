@@ -5010,10 +5010,6 @@ class TaskController extends Controller
 
     public function automationSupplier(Request $request)
     {
-        Log::info('N8N Data', [
-            'response' => $request->all(),
-        ]);
-
         $request->validate([
             'untagged' => 'nullable',
             'tagged' => 'nullable',
@@ -5026,26 +5022,24 @@ class TaskController extends Controller
         $groupId = explode('@', $request->group_id)[0];
 
         $supplierCompany = SupplierCompany::where('group_id', $groupId)->first();
+
         if (!$supplierCompany) {
             Log::info("No supplier company found within the system database with group ID: " . $groupId);
             return response()->json([
                 'status' => 'error',
                 'message' => 'No supplier found with such group ID',
-            ], 400);
+            ], 200);
         }
-
-        Log::info('Supplier Company Data', [
-            'supplier_company' => $supplierCompany,
-        ]);
 
         $untagged = $request->untagged;
         $tagged = $request->tagged;
+
         if (!$untagged || !$tagged) {
             Log::info("No untagged or tagged found in the request");
             return response()->json([
                 'status' => 'error',
-                'message' => 'No untagged or tagged found in the request'
-            ], 400);
+                'message' => 'Agent phone number is neither provided nor mentioned in the request'
+            ], 200);
         }
 
         if (!empty($tagged) && is_array($tagged) && isset($tagged[0]['id'])) {
@@ -5072,23 +5066,27 @@ class TaskController extends Controller
         }
 
         $agent = Agent::where('phone_number', $phone)->first();
+
         if (!$agent) {
             Log::info("No agent found within the system database with phone number: " . $phone);
             return response()->json([
                 'status' => 'error',
                 'message' => 'No agent with such phone number'
-            ], 400);
+            ], 200);
         } 
-        Log::info('Successfully retrieved agent information, creating file upload record', [
-            'agent' => $agent,
-            'group_id' => $request->group_id,
-            'file_name' => $request->file_name,
-        ]);
 
         try {
             //Storing the file
             $storeTheFile = $this->fileStorage($request, $supplierCompany, $agent);
-            Log::info('Successfully stored the file' . $storeTheFile->getContent());
+
+            $storeFileData = $storeTheFile->getData(true);
+
+            if ($storeFileData['status'] === 'error') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to store the file: ' . $storeFileData['message'],
+                ], 200);
+            }
         
             $fileResponseData = $storeTheFile->getData(true);
             $supplierFilePath = $fileResponseData['supplier_file_path'];
@@ -5105,11 +5103,32 @@ class TaskController extends Controller
             ]);
             Log::info('Successfully created file upload record for : ' . $request->file_name . ' under agent: ' . $agent->name);
 
-            $mergedFile = $this->mergingFiles($supplierCompany, $agent, $supplierFilePath, $filePath);   
-            Log::info('Successfully merge files response: ' . json_encode($mergedFile));
 
-            $mergedFileData = $mergedFile->getData(true);
+            $isMergeSupplier = [
+                'Jazeera Airways',
+                'Smile Holidays',
+                'Darina Holidays',
+                'Heysam Group',
+                'World Of Luxury',
+            ];
 
+            if (in_array($supplierCompany->supplier->name, $isMergeSupplier)) {
+                $mergedFile = $this->mergingFiles($supplierCompany, $agent, $supplierFilePath, $filePath);   
+
+                $mergedFileData = $mergedFile->getData(true);
+
+                if ($mergedFileData['status'] === 'error') {
+                    return response()->json([
+                        'status' => 'warning',
+                        'message' => $mergedFileData['message'],
+                        'group_id' => $request->group_id,
+                        'agent' => $agent->name,
+                        'file_name' => $request->file_name,
+                        'failed_files' => $mergedFileData['failed_files'] ?? [],
+                    ], 200);
+                }
+            }
+           
             return response()->json([
                 'status' => 'success',
                 'message' => 'Successfully merging files. Merged file name: ' . ($mergedFileData['merged_file_name']),
@@ -5123,7 +5142,7 @@ class TaskController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to merge files: ' . $e->getMessage(),
-            ], 500);
+            ], 200);
         }
     }
 
@@ -5133,12 +5152,6 @@ class TaskController extends Controller
         
         try {
             $pdf = $request->file('file');
-            
-            Log::info('File received in the request. Proceeding to store the file.', [
-                'file_name' => $pdf->getClientOriginalName(),
-                'mime_type' => $pdf->getMimeType(),
-                'size' => $pdf->getSize(),
-            ]);
             
             $companyName = strtolower(preg_replace('/[^A-Za-z0-9_\-]/', '_', $supplierCompany->company->name));
             $supplierName = strtolower(preg_replace('/[^A-Za-z0-9_\-]/', '_', $supplierCompany->supplier->name));
@@ -5194,7 +5207,6 @@ class TaskController extends Controller
         ];
 
         if (in_array($supplierCompany->supplier->name, $isMergeSupplier)) {
-            Log::info('Checking the 1st file existence');
 
             if (File::isDirectory($filePath)) {
                 $files = File::files($filePath);
@@ -5243,10 +5255,11 @@ class TaskController extends Controller
                                     'status' => 'error',
                                     'message' => 'Not enough valid files to merge',
                                     'failed_files' => $failedFiles,
-                                ], 400);
+                                ], 200);
+                                return 0;
                             }
 
-                            $prefix = $supplierPrefixMap[$supplierCompany->supplier->name] ?? 'MERGED';
+                            $prefix = $supplierPrefixMap[$supplierCompany->supplier->name];
                             $fileIds = $fileRecords->pluck('id')->implode('_');
                             $mergedFileName = sprintf('%s_%s_%s_%s.pdf', $prefix, $agent->id, $fileIds, now()->format('ymdHis'));
 

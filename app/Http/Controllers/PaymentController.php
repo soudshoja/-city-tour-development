@@ -56,6 +56,8 @@ use App\Models\Credit;
 use App\Models\Company;
 use App\Models\MyFatoorahPayment;
 use App\Models\Refund;
+use App\Models\TBO;
+use App\Services\TBOHolidayService;
 use App\Support\PaymentGateway\Knet;
 use Carbon\Carbon;
 use Exception;
@@ -173,6 +175,207 @@ class PaymentController extends Controller
     {
         $year = now()->year;
         return sprintf('VOU-%s-%05d', $year, $sequence);
+    }
+
+    /**
+     * Process TBO booking after payment success
+     * This method is called from all payment gateway callbacks
+     * 
+     * @param Payment $payment
+     * @return array|null
+     */
+    private function processTBOBookingAfterPayment(Payment $payment): ?array
+    {
+        try {
+            // Check if this payment has a HotelBooking with TBO
+            $hotelBooking = $payment->hotelBooking;
+            
+            if (!$hotelBooking) {
+
+                Log::channel('whatsapp')->info('No hotel booking linked, not a TBO payment', [
+                    'payment_id' => $payment->id
+                ]);
+
+                return null;
+            }
+
+            $tboBooking = TBO::where('hotel_booking_id', $hotelBooking->id)->first();
+            
+            if (!$tboBooking) {
+
+                Log::channel('whatsapp')->info('No TBO booking found for the hotel booking', [
+                    'payment_id' => $payment->id,
+                    'hotel_booking_id' => $hotelBooking->id
+                ]);
+
+                return null;
+            }
+
+            // Check if already booked
+            if ($tboBooking->confirmation_no) {
+                Log::channel('whatsapp')->info('TBO booking already confirmed', [
+                    'payment_id' => $payment->id,
+                    'confirmation_no' => $tboBooking->confirmation_no
+                ]);
+                return [
+                    'success' => true,
+                    'message' => 'TBO booking already confirmed',
+                    'confirmation_no' => $tboBooking->confirmation_no,
+                    'already_booked' => true
+                ];
+            }
+
+            Log::channel('whatsapp')->info('Processing TBO booking after payment success', [
+                'payment_id' => $payment->id,
+                'hotel_booking_id' => $hotelBooking->id,
+                'tbo_id' => $tboBooking->id,
+                'prebook_key' => $tboBooking->prebook_key
+            ]);
+
+            // Build TBO booking parameters (must match B2B format)
+            $customerDetails = [];
+            foreach ($tboBooking->rooms as $roomIndex => $room) {
+                $customers = [];
+                
+                // Add adults
+                for ($i = 0; $i < $room->adult_quantity; $i++) {
+                    $customers[] = [
+                        'FirstName' => $payment->client->first_name ?? 'Guest',
+                        'LastName' => $payment->client->last_name ?? 'Customer',
+                        'Title' => 'Mr',
+                        'Type' => 'Adult'
+                    ];
+                }
+
+                // Add children if any
+                for ($i = 0; $i < $room->child_quantity; $i++) {
+                    $customers[] = [
+                        'FirstName' => 'Child' . ($i + 1),
+                        'LastName' => $payment->client->last_name ?? 'Customer',
+                        'Title' => 'Mstr',
+                        'Type' => 'Child'
+                    ];
+                }
+
+                $customerDetails[] = [
+                    'CustomerNames' => $customers
+                ];
+            }
+
+            // Generate unique client reference ID
+            $clientReferenceId = $tboBooking->prebook_key . '-' . time();
+
+            // Use original_total_fare (supplier's price) for TBO API, not the converted/marked-up price
+            $totalFareForTBO = $tboBooking->original_total_fare ?? $tboBooking->total_fare;
+
+            $bookingPayload = [
+                'BookingCode' => $tboBooking->booking_code,
+                'CustomerDetails' => $customerDetails,
+                'ClientReferenceId' => $clientReferenceId,
+                'BookingReferenceId' => $tboBooking->prebook_key,
+                'TotalFare' => (float)$totalFareForTBO,
+                'EmailId' => $payment->client->email ?? 'noreply@example.com',
+                'PhoneNumber' => $payment->client->phone ?? '',
+                'PaymentMode' => 'Limit',
+                'PaymentInfo' => [
+                    'PaymentType' => 'FullPayment'
+                ]
+            ];
+
+            Log::channel('whatsapp')->info('TBO Booking Price Breakdown', [
+                'original_total_fare' => $tboBooking->original_total_fare,
+                'original_currency' => $tboBooking->original_currency,
+                'total_fare_after_conversion' => $tboBooking->total_fare,
+                'currency_after_conversion' => $tboBooking->currency,
+                'sending_to_tbo' => $totalFareForTBO
+            ]);
+
+            Log::channel('whatsapp')->info('Calling TBO Book API', [
+                'payload' => $bookingPayload
+            ]);
+
+            // Call TBO Book API
+            $tboService = new TBOHolidayService();
+            $bookingResponse = $tboService->book($bookingPayload);
+
+            Log::channel('whatsapp')->info('TBO Book API Response', $bookingResponse);
+
+            if (($bookingResponse['Status']['Code'] ?? null) !== 200) {
+                Log::channel('whatsapp')->error('TBO booking failed', [
+                    'payment_id' => $payment->id,
+                    'response' => $bookingResponse
+                ]);
+                
+                $hotelBooking->update(['status' => 'failed']);
+                $tboBooking->update([
+                    'payment_status' => 'paid',
+                    'supplier_status' => 'failed'
+                ]);
+
+                return [
+                    'success' => false,
+                    'message' => 'TBO booking failed: ' . ($bookingResponse['Status']['Description'] ?? 'Unknown error'),
+                    'response' => $bookingResponse
+                ];
+            }
+
+            $confirmationNo = $bookingResponse['ConfirmationNumber'] ?? null;
+            $bookingReferenceId = $bookingResponse['ClientReferenceId'] ?? null;
+
+            // Update HotelBooking
+            $hotelBooking->update([
+                'supplier_booking_id' => $confirmationNo,
+                'status' => 'confirmed'
+            ]);
+
+            // Update TBO record
+            $tboBooking->update([
+                'confirmation_no' => $confirmationNo,
+                'booking_reference_id' => $bookingReferenceId,
+                'payment_status' => 'paid',
+                'supplier_status' => 'confirmed'
+            ]);
+
+            // Call TBO BookingDetail API for full details
+            try {
+                $detailResponse = $tboService->getBookingDetail([
+                    'ConfirmationNumber' => $confirmationNo,
+                    'PaymentMethod' => 'Limit'
+                ]);
+
+                Log::channel('whatsapp')->info('TBO BookingDetail API Response', $detailResponse);
+            } catch (\Exception $e) {
+                Log::channel('whatsapp')->warning('TBO BookingDetail API failed', [
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+            Log::channel('whatsapp')->info('TBO booking completed successfully', [
+                'payment_id' => $payment->id,
+                'confirmation_no' => $confirmationNo,
+                'booking_reference_id' => $bookingReferenceId
+            ]);
+
+            return [
+                'success' => true,
+                'message' => 'TBO booking confirmed successfully',
+                'confirmation_no' => $confirmationNo,
+                'booking_reference_id' => $bookingReferenceId,
+                'response' => $bookingResponse
+            ];
+
+        } catch (\Exception $e) {
+            Log::channel('whatsapp')->error('Exception in processTBOBookingAfterPayment', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'TBO booking exception: ' . $e->getMessage()
+            ];
+        }
     }
 
     public function initiatePayment($data): JsonResponse
@@ -2939,6 +3142,16 @@ class PaymentController extends Controller
                 $receiptInfo['message']
             );
 
+            // Process TBO booking if applicable
+            $tboResult = $this->processTBOBookingAfterPayment($payment);
+            if ($tboResult !== null) {
+                if ($tboResult['success']) {
+                    Log::info('TBO booking processed successfully via Tap callback', $tboResult);
+                } else {
+                    Log::error('TBO booking failed via Tap callback', $tboResult);
+                }
+            }
+
             if ($payment['status'] == 'CAPTURED') {
                 $checkNotes = $payment->notes;
                 if (str_contains($checkNotes, 'Prebook Key')) {
@@ -3829,6 +4042,16 @@ class PaymentController extends Controller
                 $receiptInfo['message']
             );
 
+            // Process TBO booking if applicable
+            $tboResult = $this->processTBOBookingAfterPayment($payment);
+            if ($tboResult !== null) {
+                if ($tboResult['success']) {
+                    Log::info('TBO booking processed successfully via MyFatoorah callback', $tboResult);
+                } else {
+                    Log::error('TBO booking failed via MyFatoorah callback', $tboResult);
+                }
+            }
+
             DB::commit();
 
         } catch (Exception $e) {
@@ -3950,6 +4173,16 @@ class PaymentController extends Controller
                 $payment->status = 'completed';
                 $payment->completed = 1;
                 $payment->save();
+
+                // Process TBO booking if applicable
+                $tboResult = $this->processTBOBookingAfterPayment($payment);
+                if ($tboResult !== null) {
+                    if ($tboResult['success']) {
+                        Log::info('TBO booking processed successfully via UPayment callback', $tboResult);
+                    } else {
+                        Log::error('TBO booking failed via UPayment callback', $tboResult);
+                    }
+                }
 
                 UpaymentPayment::create([
                     'payment_int_id' => $payment->id,
@@ -4335,6 +4568,16 @@ class PaymentController extends Controller
             $payment->payment_date = $data['paidOn'] ?? now();
             $payment->status = 'completed';
             $payment->save();
+
+            // Process TBO booking if applicable
+            $tboResult = $this->processTBOBookingAfterPayment($payment);
+            if ($tboResult !== null) {
+                if ($tboResult['success']) {
+                    Log::info('TBO booking processed successfully via Hesabe callback', $tboResult);
+                } else {
+                    Log::error('TBO booking failed via Hesabe callback', $tboResult);
+                }
+            }
 
             // Generate public receipt data (URL, title, message) for redirect and notifications
             $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);

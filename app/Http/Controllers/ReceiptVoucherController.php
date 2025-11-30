@@ -48,7 +48,6 @@ class ReceiptVoucherController extends Controller
             $branchesId = $branch->pluck('id')->toArray();
             $invoicereceiptvouchers = Transaction::with('invoiceReceipt')
                 ->whereIn('branch_id', $branchesId)
-                ->whereNotNull('name')
                 ->where('reference_number', 'like', 'RV-%')
                 ->get();
 
@@ -1493,7 +1492,7 @@ class ReceiptVoucherController extends Controller
             Log::error('Invoice not found', ['invoice_id' => $invoiceId]);
             return response()->json(['ok' => false, 'message' => 'Invoice not found'], 404);
         }
-
+        
         $type = $request->input('type', '');
         $isPartial = strcasecmp($type, 'partial') === 0;
 
@@ -1535,8 +1534,8 @@ class ReceiptVoucherController extends Controller
                 ]
             );
         }
-        Log::info('data of invoice partial', [
-            'invoice_partial' => $invoicePartial->withoutRelations()->toArray(),
+        Log::info('Data of invoice partial', [
+            'data' => $invoicePartial->withoutRelations()->toArray(),
         ]);        
         
         $client = $invoice->client()->first();
@@ -1544,6 +1543,12 @@ class ReceiptVoucherController extends Controller
             Log::error('Missing client relation', ['invoice_id' => $invoiceId]);
             return response()->json(['ok' => false, 'message' => 'Client missing for invoice'], 422);
         }
+
+        $clientName = $client->name ?? trim(implode(' ', array_filter([
+            $client->first_name ?? null,
+            $client->middle_name ?? null,
+            $client->last_name ?? null,
+        ]))); 
 
         $amount = $request->amount;
         $ref    = 'RV-'.Str::upper(Str::random(10)); 
@@ -1563,7 +1568,7 @@ class ReceiptVoucherController extends Controller
                     'description'      => 'Invoice: '.$invoice->invoice_number.' Generated',
                     'invoice_id'       => $invoice->id,
                     'reference_type'   => 'Invoice',
-                    'name'             => $client->name,
+                    'name'             => $clientName,
                     'transaction_date' => $invoice->invoice_date,
                 ]);
             }
@@ -1600,7 +1605,7 @@ class ReceiptVoucherController extends Controller
                 'invoice_id'       => $invoiceId,
                 'reference_number' => $ref,
                 'reference_type'   => 'Invoice',
-                'name'             => $client->name,
+                'name'             => $clientName,
                 'transaction_date' => now(),
             ]);
 
@@ -1618,6 +1623,13 @@ class ReceiptVoucherController extends Controller
             }
 
             DB::commit();
+
+            Log::info('Successfully auto generated an unpaid Receipt Voucher', [
+                'invoice_id' => $invoiceId,
+                'invoice_partial_id' => $invoicePartial->id,
+                'transaction_id' => $transaction->id,
+                'reference_number' => $ref,
+            ]);
 
             return response()->json([
                 'ok'                => true,

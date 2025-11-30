@@ -289,7 +289,6 @@ class MagicHolidayService
         return $this->mapping('/hotels/search', $params);
     }
 
-    // Example method: Get Hotel Details
     public function getHotelDetails(string $hotelId)
     {
         return $this->mapping('/hotels/' . $hotelId);

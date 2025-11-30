@@ -316,6 +316,11 @@ class PaymentController extends Controller
             $confirmationNo = $bookingResponse['ConfirmationNumber'] ?? null;
             $bookingReferenceId = $bookingResponse['ClientReferenceId'] ?? null;
 
+            Log::info('TBO metadata', [
+                'confirmation_no' => $confirmationNo,
+                'booking_reference_id' => $bookingReferenceId
+            ]);
+
             $hotelBooking->update([
                 'supplier_booking_id' => $confirmationNo,
                 'status' => 'confirmed'

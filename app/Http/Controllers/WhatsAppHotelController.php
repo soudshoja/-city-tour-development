@@ -2045,7 +2045,7 @@ class WhatsAppHotelController extends Controller
             ];
         }
 
-        // Build CustomerDetails array
+        // Build CustomerDetails array - one object per room with CustomerNames
         $customerDetails = [];
         foreach ($rooms as $roomIndex => $room) {
             $customers = [];
@@ -2083,6 +2083,7 @@ class WhatsAppHotelController extends Controller
 
         $payload = [
             'BookingCode' => $prebook->booking_code,
+            'BookingType' => 'Confirm',
             'CustomerDetails' => $customerDetails,
             'ClientReferenceId' => $clientReferenceId,
             'BookingReferenceId' => $prebookKey,

@@ -36,6 +36,7 @@ use App\Models\FileUpload;
 use App\Models\SystemLog;
 use App\Models\AutoBilling;
 use App\Models\HotelBooking;
+use App\Models\TBO;
 use App\Models\Wallet;
 use App\Models\SupplierSurchargeReference;
 use Illuminate\Http\Request;
@@ -1146,6 +1147,39 @@ class TaskController extends Controller
                     $task->save();
                 } else {
                     Log::warning('No HotelBooking found for Magic Holiday task with client_ref: ' . $task->client_ref);
+                }
+            }
+
+            $supplierTBO = Supplier::where('name', 'LIKE', '%TBO%')->orWhere('name', 'TBO Holiday')->first();
+            
+            if ($task->booking_reference && $supplierTBO && $task->supplier_id == $supplierTBO->id) {
+
+                $tboBooking = TBO::where('booking_reference_id', $task->booking_reference)
+                    ->orWhere('confirmation_no', $task->reference)
+                    ->first();
+
+                if ($tboBooking && $tboBooking->hotel_booking_id) {
+                    $hotelBooking = HotelBooking::find($tboBooking->hotel_booking_id);
+                    
+                    if ($hotelBooking && $hotelBooking->payment_id) {
+                        $payment = Payment::find($hotelBooking->payment_id);
+                        
+                        if ($payment) {
+                            $task->is_n8n_booking = true;
+                            $task->enabled = true;
+                            
+                            $generateInvoiceResponse = app(InvoiceController::class)->autoGenerateInvoice($task, $payment);
+                            Log::info('Auto-generated invoice for TBO hotel booking task: ' . $task->reference, $generateInvoiceResponse);
+                            
+                            $task->save();
+                        } else {
+                            Log::warning("TBO task: No payment found for TBO booking {$tboBooking->id}");
+                        }
+                    } else {
+                        Log::warning("TBO task: No hotel booking or payment found for TBO booking {$tboBooking->id}");
+                    }
+                } else {
+                    Log::warning('No TBO booking found for task with reference: ' . $task->reference);
                 }
             }
 

@@ -22,7 +22,15 @@ class ResayilController extends Controller
         $this->token = config('services.whatsapp.token');
     }
 
-    public function message($phone, $country_code ,$message, $header = null, $footer = null, $buttons = null)
+    public function message(
+        $phone,
+        $country_code,
+        $message,
+        $header = null,
+        $footer = null,
+        $buttons = null,
+        $isDummyNumber = true,
+        )
     {
         $url = $this->url . 'messages';
       
@@ -32,7 +40,7 @@ class ResayilController extends Controller
             $phoneNumber = $country_code . $phone;
         }
 
-        if(app()->environment('local')){
+        if(app()->environment('local') && $isDummyNumber){
             $phoneNumber = env('PHONE_LOCAL', '+60193058463');
             $message = "This is a test message from local environment.\n\n" . $message;
         }

@@ -48,6 +48,7 @@ Route::get('/transaction/{agentId}', [MobileController::class, 'getTransactionBy
 
 Route::post('payment/webhook-fatoorah', [PaymentController::class, 'handleWebhookFatoorah']);
 Route::post('payment/importfatoorah', [PaymentController::class, 'importPaidFatoorah'])->name('importfatoorah');
+Route::post('payment/register-tbo-booking', [PaymentController::class, 'registerTBOBookingAsTask'])->name('payment.register.tbo.booking');
 
 Route::get('/clients', [MobileController::class, 'client']);
 Route::get('/clients/{agentId}', [MobileController::class, 'getClientByAgentId']);

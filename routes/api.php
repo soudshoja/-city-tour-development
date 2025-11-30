@@ -117,6 +117,8 @@ Route::prefix('/whatsapp/hotel')->group(function () {
     Route::post('/time-left', [WhatsappHotelController::class, 'temporaryOffersTimeLeft']);
     Route::get('/booking-details', [WhatsAppHotelController::class, 'hotelBookingDetails']);
     Route::post('/booking-confirm', [WhatsAppHotelController::class, 'confirmBooking']);
+    Route::post('/tbo-booking-confirm', [WhatsAppHotelController::class, 'confirmTBOBooking']);
+    Route::post('/tbo/b2c/booking-confirm', [WhatsAppHotelController::class, 'confirmTBOB2CBooking']);
 
     Route::group([
         'prefix' => 'step',

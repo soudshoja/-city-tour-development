@@ -185,9 +185,6 @@
                             @if(!empty($detail->task->reference))
                                 Reference: {{ $detail->task->reference }}
                             @endif
-                            <br>Client Name: {{ $detail->task->client_name ?? ($invoice->client->full_name ?? 'N/A') }}
-                            <br>Passenger Name: {{ $detail->task->passenger_name ?? 'N/A' }}
-                            <br>Hotel Name: {{ $detail->task->hotelDetails->hotel->name ?? 'N/A' }}
                             <br>Check In: {{ $detail->task->hotelDetails->check_in ?? 'N/A' }}
                             <br>Check Out: {{ $detail->task->hotelDetails->check_out ?? 'N/A' }}
                             <br>Number of Pax: {{ $passengerCount ?? $detail->task->number_of_pax ?? 'N/A' }}

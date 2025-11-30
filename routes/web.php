@@ -168,8 +168,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/supplier-task/{id}', [TaskController::class, 'supplierTask'])->name('supplier');
         Route::post('/agent/upload', [TaskController::class, 'supplierTaskForAgent'])->name('agent.upload');
         Route::get('/get-tbo/{companyId}', [TaskController::class, 'getTboTask'])->name('get-tbo');
-        Route::get('/pdf/flight/{taskId}', [TaskController::class, 'flightPdf'])->name('pdf.flight');
-        Route::get('/pdf/hotel/{taskId}', [TaskController::class, 'hotelPdf'])->name('pdf.hotel');
+        Route::get('/pdf/flight/{taskId}', [TaskController::class, 'flightPdf'])->name('pdf.flight')->withoutMiddleware(['auth']);
+        Route::get('/pdf/hotel/{taskId}', [TaskController::class, 'hotelPdf'])->name('pdf.hotel')->withoutMiddleware(['auth']);
         Route::get('/pdf/receipt/{taskId}', [TaskController::class, 'receiptPdf'])->name('pdf.receipt');
         Route::get('/pdf/receipt/{taskId}/download', [TaskController::class, 'receiptPdfDownload'])->name('pdf.receipt.download');
         Route::post('/upload', [TaskController::class, 'clientPassport'])->name('upload.passport');

@@ -194,6 +194,8 @@
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Net Amount</th>
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Profit</th>
                                     <th class="p-3 text-center text-md font-bold text-gray-500">Invoice Amount</th>
+                                    <th class="p-3 text-center text-md font-bold text-gray-500">Service Charges</th>
+                                    <th class="p-3 text-center text-md font-bold text-gray-500">Client Pay</th>
                                     <th>
                                         <a href="{{ request()->fullUrlWithQuery([
                                             'sortBy' => 'created_at',
@@ -530,6 +532,12 @@
                                         @else
                                         {{ number_format($invoice->amount, 3) }} {{ $invoice->currency }}
                                         @endif
+                                    </td>
+                                    <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                        {{ number_format($invoice->service_charges, 3) }} {{ $invoice->currency }}
+                                    </td>
+                                    <td class="p-3 text-center text-sm font-semibold text-gray-500">
+                                        {{ number_format($invoice->client_pay, 3) }} {{ $invoice->currency }}
                                     </td>
                                     <td class="p-3 text-center text-sm font-semibold text-gray-500">
                                         {{ $invoice->created_at }}

@@ -2083,6 +2083,7 @@ class WhatsAppHotelController extends Controller
 
         $payload = [
             'BookingCode' => $prebook->booking_code,
+            'BookingType' => 'Confirm',
             'CustomerDetails' => $customerDetails,
             'ClientReferenceId' => $clientReferenceId,
             'BookingReferenceId' => $prebookKey,
@@ -2429,8 +2430,14 @@ class WhatsAppHotelController extends Controller
                 $paymentMethod = PaymentMethod::where('is_active', true)
                     ->where('type', strtolower($input['payment_gateway']))
                     ->where('english_name', 'LIKE', $input['payment_method'])
-                    ->orWhere('code', $input['payment_method'])
                     ->first();
+
+                if (!$paymentMethod) {
+                    $paymentMethod = PaymentMethod::where('is_active', true)
+                        ->where('type', strtolower($input['payment_gateway']))
+                        ->where('code', 'LIKE', $input['payment_method'])
+                        ->first();
+                }
             }
 
             // Calculate gateway charges using ChargeService

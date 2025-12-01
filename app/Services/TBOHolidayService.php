@@ -380,22 +380,8 @@ class TBOHolidayService
      * @param string|null $cityName Required city name to search hotels
      * @return array Response with status and data
      */
-    public function findHotelCodeByName(string $hotelName, ?string $cityName = null): array
+    public function findHotelCodeByName(?string $hotelName = null, string $cityName): array
     {
-        // City is required for TBO hotel search
-        if (!$cityName) {
-            $this->logger->warning('City name is required for hotel search', [
-                'hotel_name' => $hotelName
-            ]);
-            
-            return [
-                'success' => false,
-                'status' => 'city_required',
-                'message' => 'City name is required to search for hotels',
-                'data' => null
-            ];
-        }
-
         // Step 1: Get TBO city code from city name
         $cityCode = $this->getCityCodeByName($cityName);
         
@@ -429,7 +415,27 @@ class TBOHolidayService
             ];
         }
 
-        // Step 3: Filter hotels by name (case-insensitive)
+        if(empty($hotelName)){
+            // If no hotel name provided, return all hotels in city
+            $hotelList = [];
+            foreach ($hotels as $hotel) {
+                $hotelList[] = [
+                    'id' => (int)$hotel['HotelCode'],
+                    'name' => $hotel['HotelName'],
+                    'address' => $hotel['Address'] ?? null,
+                    'rating' => $hotel['HotelRating'] ?? null,
+                    'city_name' => $cityName
+                ];
+            }
+
+            return [
+                'success' => true,
+                'status' => 'multiple_hotels_found',
+                'message' => "Hotel list for {$cityName}",
+                'data' => $hotelList
+            ];
+        }
+
         $hotelName = trim($hotelName);
         
         // Try exact match first

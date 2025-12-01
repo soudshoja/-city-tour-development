@@ -390,6 +390,7 @@ class ChargeService
             ->where('company_id', $companyId)
             ->first();
 
+
         if (!$charge) {
             Log::warning('No charge configuration found for gateway', [
                 'gateway' => $gatewayName,

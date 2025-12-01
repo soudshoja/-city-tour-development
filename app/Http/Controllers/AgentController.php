@@ -153,19 +153,17 @@ class AgentController extends Controller
         $monthlyOutstanding = 0;
 
         foreach ($allInvoices as $invoice) {
-            // Calculate total profit for this invoice: markup_price + invoice_charge
-            $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
+                $invoiceProfit = $invoice->invoiceDetails->sum('markup_price') + ($invoice->invoice_charge ?? 0);
             
-            // Calculate net commission from journal entries linked to invoice details (credits - debits)
-            $invoiceCommission = 0;
-            if (in_array($agent->type_id, [2, 3, 4])) {
-                foreach ($invoice->invoiceDetails as $detail) {
-                    $commissionEntries = $detail->JournalEntrys()
-                        ->where('account_id', $commissionAccountId)
-                        ->get();
-                    $invoiceCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
+                $invoiceCommission = 0;
+                if (in_array($agent->type_id, [2, 3, 4])) {
+                    foreach ($invoice->invoiceDetails as $detail) {
+                        $commissionEntries = $detail->JournalEntrys()
+                            ->where('account_id', $commissionAccountId)
+                            ->get();
+                        $invoiceCommission += $commissionEntries->sum('credit') - $commissionEntries->sum('debit');
+                    }
                 }
-            }
             
             $monthlyProfit += $invoiceProfit;
             $monthlyCommission += $invoiceCommission;

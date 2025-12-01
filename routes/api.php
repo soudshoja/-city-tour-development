@@ -144,4 +144,6 @@ Route::group([
     Route::delete('/reservation/{reservationId}', [MagicHolidayService::class, 'cancelReservation'])->name('magic-holiday.cancel-reservation');
 });
 
+Route::post('/automation-supplier', [TaskController::class, 'automationSupplier']);
+
 require __DIR__ . '/auth.php';

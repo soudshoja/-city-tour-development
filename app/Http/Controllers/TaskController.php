@@ -27,6 +27,7 @@ use App\Models\TaskVisaDetail;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\SupplierCompany;
+use App\Models\SupplierSurcharge;
 use App\Models\Transaction;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
@@ -37,6 +38,7 @@ use App\Models\AutoBilling;
 use App\Models\HotelBooking;
 use App\Models\TBO;
 use App\Models\Wallet;
+use App\Models\SupplierSurchargeReference;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -151,7 +153,7 @@ class TaskController extends Controller
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
 
-        if(!$companyId){
+        if (!$companyId) {
             return redirect()->back()->with('error', 'Company not found for the user.');
         }
 
@@ -163,7 +165,7 @@ class TaskController extends Controller
             Log::error('Liabilities account not found for company ID: ' . $companyId);
             return redirect()->back()->with('error', 'Liabilities account not found. Please contact the administrator.');
         }
-        
+
         $creditorsAccount = Account::where('name', 'Creditors')
             ->where('company_id', $companyId)
             ->where('root_id', $liabilities->id)
@@ -1006,6 +1008,87 @@ class TaskController extends Controller
             $data['supplier_pay_date'] = $supplier_pay_date;
 
             $task = Task::create($data);
+
+            if ($task->supplier_id) {
+                $supplierCompany = SupplierCompany::where('supplier_id', $task->supplier_id)
+                    ->where('company_id', $task->company_id)
+                    ->first();
+
+                if ($supplierCompany) {
+                    $totalSurcharge = 0;
+
+                    $surcharges = SupplierSurcharge::with('references')
+                        ->where('supplier_company_id', $supplierCompany->id)
+                        ->get();
+
+                    foreach ($surcharges as $surcharge) {
+                        Log::info('Processing surcharge', [
+                            'mode' => $surcharge->charge_mode,
+                            'amount' => $surcharge->amount,
+                            'reference_count' => $surcharge->references->count(),
+                        ]);
+
+                        if ($surcharge->charge_mode === 'task') {
+                            if ($surcharge->canChargeForStatus($task->status)) {
+                                Log::info('Adding task surcharge', [
+                                    'amount' => $surcharge->amount,
+                                    'status' => $task->status,
+                                ]);
+                                $totalSurcharge += $surcharge->amount;
+                            }
+                        }
+
+                        if ($surcharge->charge_mode === 'reference') {
+                            $response = SupplierSurchargeReference::createSurchargeRecord($task, $surcharge);
+                            Log::info('Successfully created surcharge reference record');
+
+                            if (!$response) {
+                                Log::error('Failed to create reference surcharge record');
+                            }
+
+                            Log::info('Checking reference', [
+                                'ref_id' => $response->id,
+                                'ref_value' => $response->reference,
+                                'is_charged' => $response->is_charged,
+                                'behavior' => $surcharge->charge_behavior,
+                            ]);
+
+                            $canCharge = $response->canBeCharged($surcharge->charge_behavior);
+
+                            if ($canCharge) {
+                                $totalSurcharge += $surcharge->amount;
+                                Log::info('Added reference surcharge', [
+                                    'ref_value' => $response->reference,
+                                    'amount' => $surcharge->amount,
+                                    'total' => $totalSurcharge,
+                                ]);
+
+                                if ($surcharge->charge_behavior === 'single') {
+                                    $response->markAsCharged();
+                                    Log::info('Marked reference as charged', [
+                                        'ref_value' => $response->reference,
+                                    ]);
+                                }
+                            } else {
+                                Log::info('Skipped reference surcharge (already charged)', [
+                                    'ref_value' => $response->reference,
+                                ]);
+                            }
+                        }
+                    }
+
+                    Log::info('Total surcharge computed', [
+                        'task_id' => $task->id,
+                        'total' => $totalSurcharge,
+                    ]);
+
+                    if ($totalSurcharge > 0) {
+                        $task->update([
+                            'supplier_surcharge' => $totalSurcharge,
+                        ]);
+                    }
+                }
+            }
 
             // Auto-link task with active AutoBilling rule if matching created_by / issued_by / agent_id
             $matchedRule = AutoBilling::where('company_id', $task->company_id)
@@ -4479,8 +4562,13 @@ class TaskController extends Controller
         }
 
         $boardLabels = [
-            'RO' => 'Room Only', 'SC' => 'Self-Catering', 'BB' => 'Bed & Breakfast',
-            'HB' => 'Half Board', 'FB' => 'Full Board', 'AI' => 'All Inclusive', 'RD' => 'Room Description',
+            'RO' => 'Room Only',
+            'SC' => 'Self-Catering',
+            'BB' => 'Bed & Breakfast',
+            'HB' => 'Half Board',
+            'FB' => 'Full Board',
+            'AI' => 'All Inclusive',
+            'RD' => 'Room Description',
         ];
 
         return view('tasks.pdf.hotel', compact('tasks', 'company', 'hotelDetail', 'policies', 'boardLabels'));

@@ -1371,13 +1371,15 @@
                                                                                         </div>
                                                                                     </div>
 
+                                                                                    @php
+                                                                                    $filteredSurcharges = $task->supplierCompany
+                                                                                    ? $task->supplierCompany->supplierSurcharges()->forStatus($task->status)->get() : collect();
+                                                                                    @endphp
                                                                                     <div x-data="{
                                                                                             rawPrice: '{{ $task->price ?? 0 }}',
                                                                                             rawTax: '{{ $task->tax ?? 0 }}',
                                                                                             rawSurcharge: '{{ $task->surcharge ?? 0 }}',
-                                                                                            supplierSurcharges: {{ json_encode($task->supplierCompany?->supplierSurcharges ?? []) }},
-                                                                                            supplierSurchargeTotal: {{ $task->supplier_surcharge ?? 0 }},
-                                                                                            hasInvoice: {{ $task->invoiceDetail ? 'true' : 'false' }},
+                                                                                            rawSupplierSurcharge: '{{ $task->supplier_surcharge ?? 0 }}',
                                                                                             total: 0,
                                                                                             parseNum(v) {
                                                                                                 if (!v) return 0;
@@ -1385,15 +1387,9 @@
                                                                                                 return isNaN(num) ? 0 : num;
                                                                                             },
                                                                                             calculate() {
-                                                                                                let autoTotal = 0;
-                                                                                                if (!this.hasInvoice) {
-                                                                                                    // Not invoiced: use live surcharges from supplierCompany
-                                                                                                    autoTotal = this.supplierSurcharges.reduce((sum, s) => sum + this.parseNum(s.amount), 0);
-                                                                                                } else {
-                                                                                                    // Invoiced: use stored supplier_surcharge (fixed)
-                                                                                                    autoTotal = this.parseNum(this.supplierSurchargeTotal);
-                                                                                                }
-                                                                                                this.total = +(this.parseNum(this.rawPrice) + this.parseNum(this.rawTax) + this.parseNum(this.rawSurcharge) + autoTotal).toFixed(3);
+                                                                                                const base = this.parseNum(this.rawPrice) + this.parseNum(this.rawTax) + this.parseNum(this.rawSurcharge);
+                                                                                                const supplier = this.parseNum(this.rawSupplierSurcharge);
+                                                                                                this.total = +(base + supplier).toFixed(3);
                                                                                             }
                                                                                         }"
                                                                                         x-init="calculate()" x-effect="calculate()" class="flex flex-wrap gap-4">
@@ -1412,24 +1408,11 @@
                                                                                             <input type="text" name="surcharge" x-model="rawSurcharge"
                                                                                                 class="border border-gray-300 p-2 rounded-md w-full">
                                                                                         </div>
-                                                                                        <template x-if="!hasInvoice && supplierSurcharges.length">
-                                                                                            <template x-for="(item, index) in supplierSurcharges" :key="index">
-                                                                                                <div class="flex-1 min-w-[150px]">
-                                                                                                    <label class="block text-sm font-medium text-gray-700"
-                                                                                                        x-text="item.label.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())"></label>
-                                                                                                    <input type="text" :value="parseNum(item.amount).toFixed(3)" readonly
-                                                                                                        class="border border-gray-300 bg-gray-100 p-2 rounded-md w-full font-semibold">
-                                                                                                </div>
-                                                                                            </template>
-                                                                                        </template>
-                                                                                        <!-- Invoiced tasks: show single stored total -->
-                                                                                        <template x-if="hasInvoice">
-                                                                                            <div class="flex-1 min-w-[150px]">
-                                                                                                <label class="block text-sm font-medium text-gray-700">Supplier Surcharge (Fixed)</label>
-                                                                                                <input type="text" :value="parseNum(supplierSurchargeTotal).toFixed(3)" 
-                                                                                                    readonly class="border border-gray-300 bg-gray-100 p-2 rounded-md w-full font-semibold">
-                                                                                            </div>
-                                                                                        </template>
+                                                                                        <div class="flex-1 min-w-[150px]">
+                                                                                            <label class="block text-sm font-medium text-gray-700">Supplier Surcharge (Fixed)</label>
+                                                                                            <input type="text" :value="parseNum(rawSupplierSurcharge).toFixed(3)" readonly
+                                                                                                class="border border-gray-300 bg-gray-100 p-2 rounded-md w-full font-semibold">
+                                                                                        </div>
                                                                                         <div class="flex-1 min-w-[150px]">
                                                                                             <label class="block text-sm font-medium text-gray-700">Total</label>
                                                                                             <input type="text" name="total" :value="total.toFixed(3)" readonly
@@ -1466,8 +1449,6 @@
                                                                                                 </select>
                                                                                             </div>
                                                                                         </div>
-
-
                                                                                         @if (empty($task->supplier_pay_date))
                                                                                         <div class="flex-1 min-w-0 required-input">
                                                                                             <label for="supplier_pay_date"

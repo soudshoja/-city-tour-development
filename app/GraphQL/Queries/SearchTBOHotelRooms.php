@@ -30,9 +30,9 @@ class SearchTBOHotelRooms
 
         $validator = Validator::make($input, [
             'telephone' => 'required|string',
-            'hotelCode' => 'required_without:hotel|integer',
-            'hotel' => 'required_without:hotelCode|string',
-            'city' => 'required_with:hotel|string',
+            'hotelCode' => 'nullable|integer',
+            'hotel' => 'nullable|string',
+            'city' => 'required|string',
             'guestNationality' => 'required|string',
             'checkIn' => 'required|date|after_or_equal:today',
             'checkOut' => 'required|date|after:checkIn',
@@ -45,8 +45,6 @@ class SearchTBOHotelRooms
             'bookingType' => 'required|string|in:b2b,b2c',
         ], [
             'telephone.required' => 'Telephone number is required.',
-            'hotelCode.required_without' => 'Hotel code or hotel name is required.',
-            'hotel.required_without' => 'Hotel name or hotel code is required.',
             'city.required_with' => 'City name is required when searching by hotel name.',
             'guestNationality.required' => 'Guest nationality is required.',
             'checkIn.required' => 'Check-in date is required.',
@@ -133,8 +131,8 @@ class SearchTBOHotelRooms
             
             if (!$hotelCode) {
                 $findCodeResponse = $this->tboService->findHotelCodeByName(
-                    $input['hotel'],
-                    $input['city'] ?? null
+                    hotelName: $input['hotel'] ?? null,
+                    cityName: $input['city'] 
                 );
 
                 // Handle multiple hotels found

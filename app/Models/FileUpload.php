@@ -8,6 +8,7 @@ class FileUpload extends Model
 {
     protected $fillable = [
         'file_name',
+        'merged_file_name',
         'destination_path',
         'user_id',
         'company_id',

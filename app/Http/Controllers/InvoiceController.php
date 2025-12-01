@@ -139,6 +139,11 @@ class InvoiceController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        foreach ($invoices as $invoice) {
+            $invoice->service_charges = $invoice->invoicePartials()->sum('service_charge');
+            $invoice->client_pay = $invoice->amount + $invoice->service_charges;
+        }
+        
         return view('invoice.index', compact('invoices', 'totalInvoices', 'totalNet', 'totalSales'));
     }
 
@@ -1850,36 +1855,34 @@ class InvoiceController extends Controller
             }
         }
 
-        if ($canGenerateLink) {
-            foreach ($invoicePartials as $partial) {
-                if ($partial->status !== 'paid') {
-                    $gatewayFee = [];
-                    try {
-                        $gatewayFee = ChargeService::getFee(
-                            gatewayName: $partial->payment_gateway,
-                            amount: $partial->amount,
-                            methodCode: $partial->payment_method ?? null,
-                            companyId: $companyId,
-                            currency: $invoice->currency
-                        );
-                    } catch (\Exception $e) {
-                        Log::error('ChargeService getFee exception in show', [
-                            'message' => $e->getMessage(),
-                            'gateway' => $partial->payment_gateway,
-                            'company_id' => $companyId,
-                        ]);
-                        $gatewayFee = ['fee' => 0, 'gatewayFee' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
-                    }
-                    $partial->service_charge = $gatewayFee['fee'] ?? 0.00;
-                    $partial->save();
-                    $partial->final_amount = $partial->amount + $partial->service_charge;
-                    $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
+        foreach ($invoicePartials as $partial) {
+            if ($partial->status !== 'paid') {
+                $gatewayFee = [];
+                try {
+                    $gatewayFee = ChargeService::getFee(
+                        gatewayName: $partial->payment_gateway,
+                        amount: $partial->amount,
+                        methodCode: $partial->payment_method ?? null,
+                        companyId: $companyId,
+                        currency: $invoice->currency
+                    );
+                } catch (\Exception $e) {
+                    Log::error('ChargeService getFee exception in show', [
+                        'message' => $e->getMessage(),
+                        'gateway' => $partial->payment_gateway,
+                        'company_id' => $companyId,
+                    ]);
+                    $gatewayFee = ['fee' => 0, 'gatewayFee' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
+                }
+                $partial->service_charge = $gatewayFee['fee'] ?? 0.00;
+                $partial->save();
+                $partial->final_amount = $partial->amount + $partial->service_charge;
+                $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
 
-                    if ($chargePayer !== 'Company') {
-                        $totalGatewayFee['fee'] += $partial->service_charge;
-                        $totalGatewayFee['paid_by'] = $chargePayer;
-                        $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
-                    }
+                if ($chargePayer !== 'Company') {
+                    $totalGatewayFee['fee'] += $partial->service_charge;
+                    $totalGatewayFee['paid_by'] = $chargePayer;
+                    $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
                 }
             }
         }
@@ -1958,36 +1961,34 @@ class InvoiceController extends Controller
             }
         }
 
-        if ($canGenerateLink) {
-            foreach ($invoicePartials as $partial) {
-                if ($partial->status !== 'paid') {
-                    $gatewayFee = [];
-                    try {
-                        $gatewayFee = ChargeService::getFee(
-                            gatewayName: $partial->payment_gateway,
-                            amount: $partial->amount,
-                            methodCode: $partial->payment_method ?? null,
-                            companyId: $companyId,
-                            currency: $invoice->currency
-                        );
-                    } catch (Exception $e) {
-                        Log::error('ChargeService getFee exception in showArabic', [
-                            'message' => $e->getMessage(),
-                            'gateway' => $partial->payment_gateway,
-                            'company_id' => $companyId,
-                        ]);
-                        $gatewayFee = ['fee' => 0, 'gatewayFee' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
-                    }
-                    $partial->service_charge = $gatewayFee['fee'];
-                    $partial->save();
-                    $partial->final_amount = $partial->amount + $partial->service_charge;
-                    $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
+        foreach ($invoicePartials as $partial) {
+            if ($partial->status !== 'paid') {
+                $gatewayFee = [];
+                try {
+                    $gatewayFee = ChargeService::getFee(
+                        gatewayName: $partial->payment_gateway,
+                        amount: $partial->amount,
+                        methodCode: $partial->payment_method ?? null,
+                        companyId: $companyId,
+                        currency: $invoice->currency
+                    );
+                } catch (Exception $e) {
+                    Log::error('ChargeService getFee exception in showArabic', [
+                        'message' => $e->getMessage(),
+                        'gateway' => $partial->payment_gateway,
+                        'company_id' => $companyId,
+                    ]);
+                    $gatewayFee = ['fee' => 0, 'gatewayFee' => 0, 'paid_by' => 'Company', 'charge_type' => 'Percent'];
+                }
+                $partial->service_charge = $gatewayFee['fee'];
+                $partial->save();
+                $partial->final_amount = $partial->amount + $partial->service_charge;
+                $chargePayer = $gatewayFee['paid_by'] ?? 'Company';
 
-                    if ($chargePayer !== 'Company') {
-                        $totalGatewayFee['fee'] += $partial->service_charge;
-                        $totalGatewayFee['paid_by'] = $chargePayer;
-                        $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
-                    }
+                if ($chargePayer !== 'Company') {
+                    $totalGatewayFee['fee'] += $partial->service_charge;
+                    $totalGatewayFee['paid_by'] = $chargePayer;
+                    $totalGatewayFee['charge_type'] = $gatewayFee['charge_type'] ?? 'Percent';
                 }
             }
         }

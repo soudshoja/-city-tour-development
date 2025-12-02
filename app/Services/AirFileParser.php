@@ -346,9 +346,9 @@ class AirFileParser
         }
 
         // Look for TMCD line with format: TMCD[airline_code]-[ticket_number]
-        $match = $this->findLine('/^TMCD(\d+)-(\d+)/');
+        $match = $this->findLine('/^TMCD\d+-\d+/');;
         if ($match) {
-            return $match[1];
+            return $match[0];
         }
 
         return null;
@@ -1610,10 +1610,11 @@ class AirFileParser
         // Find all I- lines (passenger lines)
         $passengerLines = $this->findLines('/^I-(\d+);(\d+)([^;]+);/');
 
-        if ($this->extractStatus() === 'refund') {
+        $status = $this->extractStatus();
+        if ($status === 'refund') {
             $ticketLines = $this->findLines('/^R-(\d+)-(\d+)/');
-        } else if ($this->extractStatus() === 'emd') {
-            $ticketLines = $this->findLines('/^TMCD(\d+)-(\d+)/');
+        } else if ($status === 'emd' || $status === 'void') {
+            $ticketLines = $this->findLines('/^TMCD\d+-\d+/');;
         } else {
             $ticketLines = $this->findLines('/^T-[KE](\d+)-(\d+)/');
         }

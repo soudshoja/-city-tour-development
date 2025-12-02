@@ -108,4 +108,9 @@ class Supplier extends Model
     {
         return $this->hasMany(SupplierProcedure::class);
     }
+
+    public function supplierCompanies()
+    {
+        return $this->hasMany(SupplierCompany::class);
+    }
 }

@@ -17,6 +17,7 @@ class SupplierCompany extends Pivot
         'supplier_id',
         'company_id',
         'account_id',
+        'group_id',
         'is_active',
     ];
 

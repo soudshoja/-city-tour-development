@@ -102,7 +102,7 @@
                             :items="$countries->map(fn($c) => ['id' => $c->id, 'name' => $c->name])"
                             placeholder="Select Country" />
                     </div>
-
+                
                     @php($supplier = $supplier ?? new \App\Models\Supplier())
                     <div x-data="{
                             hasHotel: {{ $supplier->has_hotel ? 'true' : 'false' }},
@@ -837,7 +837,7 @@
                 </tr>
                 @else
                 @foreach ($suppliers as $supplier)
-                <tr class=" hover:bg-gray-200 dark:hover:bg-gray-600">
+                <tr class="hover:bg-gray-200 dark:hover:bg-gray-600">
                     <td class="px-4 py-2 border dark:border-gray-600 cursor-pointer">
                         <a href="{{ route('suppliers.show', $supplier->id) }}">
                             <span class="font-bold">» {{ $supplier->name }}</span><br>
@@ -853,6 +853,153 @@
                         <x-primary-a-button href="{{ route('tasks.supplier', $supplier->id) }}">
                             Get All Task
                         </x-primary-a-button>
+                        
+                        <!-- Supplier Charges - Fixed -->
+                        <div x-data="{chargesModal: false}">
+                            <x-primary-button @click="chargesModal = true">
+                                Supplier Charges
+                            </x-primary-button>
+                            
+                            <!-- Modal -->
+                            <div x-show="chargesModal" 
+                                x-cloak
+                                class="fixed inset-0 z-50 flex items-center justify-center"
+                                x-transition:enter="transition ease-out duration-300"
+                                x-transition:enter-start="opacity-0"
+                                x-transition:enter-end="opacity-100"
+                                x-transition:leave="transition ease-in duration-200"
+                                x-transition:leave-start="opacity-100"
+                                x-transition:leave-end="opacity-0">
+                                
+                                <!-- Backdrop -->
+                                <div class="fixed inset-0 bg-gray-900 bg-opacity-50" @click="chargesModal = false"></div>
+                                
+                                <!-- Modal Content -->
+                                <div class="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto z-10 mx-4"
+                                    @click.stop>
+                                    
+                                    <!-- Modal Header -->
+                                    <div class="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
+                                        <div>
+                                            <h3 class="text-lg font-semibold text-gray-900">Supplier Charges - {{ $supplier->name }}</h3>
+                                            <p class="text-sm text-gray-500">Configure surcharges for this supplier</p>
+                                        </div>
+                                        <button @click="chargesModal = false" class="text-gray-400 hover:text-gray-600">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="p-4">
+                                        <form action="{{ route('suppliers.update.surcharges', $supplier->id) }}" method="POST" id="surchargeForm-{{ $supplier->id }}">
+                                            @csrf
+                                            
+                                            <div id="auto-surcharge-wrapper" class="space-y-4">
+                                                @foreach($supplier->companies as $company)
+                                                <div class="border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100/60 transition-colors duration-200 shadow-sm">
+                                                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-100 rounded-t-lg">
+                                                        <h3 class="font-semibold text-gray-800 text-base">{{ $company->name }}</h3>
+                                                        <button type="button"
+                                                            class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                                                            onclick="addSurchargeRow({{ $company->pivot->id }})">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                                                                stroke="currentColor" class="w-4 h-4">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                                                            </svg>
+                                                            Add Label
+                                                        </button>
+                                                    </div>
+                                                    <div class="p-4 space-y-3" id="company-surcharge-{{ $company->pivot->id }}">
+                                                        @if($company->pivot && $company->pivot->supplierSurcharges->isNotEmpty())
+                                                            @foreach($company->pivot->supplierSurcharges as $surcharge)
+                                                            <div
+                                                                x-data="{ chargeMode: '{{ $surcharge->charge_mode }}' }"
+                                                                class="border border-gray-200 rounded-lg p-3 mb-2 bg-white shadow-sm surcharge-row-wrapper"
+                                                                data-surcharge-id="{{ $surcharge->id }}">
+                                                                <div class="flex items-center gap-3">
+                                                                    <input type="hidden" name="surcharge_id[{{ $company->pivot->id }}][]" value="{{ $surcharge->id }}">
+                                                                    <input type="text" name="surcharge_label[{{ $company->pivot->id }}][{{ $surcharge->id }}]"
+                                                                        value="{{ $surcharge->label }}"
+                                                                        placeholder="Label"
+                                                                        class="flex-1 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                                                                    <input type="number" name="surcharge_amount[{{ $company->pivot->id }}][{{ $surcharge->id }}]"
+                                                                        value="{{ $surcharge->amount }}" min="0" step="0.001" placeholder="Amount"
+                                                                        class="w-32 border border-gray-300 rounded-md px-3 py-1.5 text-sm text-right focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+                                                                    <button type="button" class="text-gray-400 hover:text-red-500" onclick="removeSurchargeRow(this)" title="Remove">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                                        </svg>
+                                                                    </button>
+                                                                </div>
+                                                                
+                                                                <!-- Charge Mode -->
+                                                                <div class="mt-2 flex items-center flex-wrap gap-x-3 gap-y-1 text-sm mt-8">
+                                                                    <label class="text-gray-700 whitespace-nowrap">Charge Mode:</label>
+                                                                    <select name="charge_mode[{{ $company->pivot->id }}][{{ $surcharge->id }}]"
+                                                                        x-model="chargeMode" class="min-w-[8rem] border border-gray-300 rounded-md px-1.5 py-1 text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400">
+                                                                        <option value="task">Task-wise</option>
+                                                                        <option value="reference">Reference-wise</option>
+                                                                    </select>
+                                                                </div>
+
+                                                                <!-- Task Rule Section -->
+                                                                <div x-show="chargeMode === 'task'" x-cloak class="mt-4 border-t pt-3">
+                                                                    <div class="flex flex-wrap items-center justify-between">
+                                                                        <h4 class="text-sm font-semibold text-gray-800 mb-2 md:mb-0">Task Rules</h4>
+                                                                        <div class="flex flex-wrap items-center gap-3 rounded-md px-3 py-1.5">
+                                                                            @foreach(['issued','reissued','confirmed','refund','void'] as $status)
+                                                                            <label class="flex items-center text-xs gap-1 text-gray-700 whitespace-nowrap">
+                                                                                <input type="checkbox" value="1" name="is_{{ $status }}[{{ $company->pivot->id }}][{{ $surcharge->id }}]"
+                                                                                    {{ $surcharge->{'is_'.$status} ? 'checked' : '' }}
+                                                                                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                                                {{ ucfirst($status) }}
+                                                                            </label>
+                                                                            @endforeach
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <!-- Reference Rule Section -->
+                                                                <div class="flex items-center justify-between mt-4 border-t pt-3 reference-section" x-show="chargeMode === 'reference'" x-cloak>
+                                                                    <h4 class="text-sm font-semibold text-gray-800 mr-3">Reference Rules</h4>
+                                                                    <div class="flex items-center gap-2" id="reference-list-{{ $surcharge->id }}">
+                                                                        <select name="charge_behavior[{{ $surcharge->id }}][]"
+                                                                            class="min-w-[9rem] border border-gray-300 rounded-md px-2 py-1 text-xs focus:ring-1 focus:ring-blue-400 focus:border-blue-400">
+                                                                            <option value="single" {{ $surcharge->charge_behavior === 'single' ? 'selected' : '' }}>Charge Once</option>
+                                                                            <option value="repetitive" {{ $surcharge->charge_behavior === 'repetitive' ? 'selected' : '' }}>Charge Repeatedly</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            @endforeach
+                                                        @else
+                                                        <div class="text-sm text-gray-500 italic">No surcharges yet — click "Add Label" to create one.</div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                @endforeach
+                                            </div>
+                                            
+                                            <input type="hidden" name="deleted_surcharges" value="">
+                                        </form>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between gap-3 p-4 sticky bottom-0 bg-white">
+                                        <button type="button" @click="chargesModal = false"
+                                            class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                                            Cancel
+                                        </button>
+                                        <button type="submit" form="surchargeForm-{{ $supplier->id }}"
+                                            class="px-4 py-2 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                                            Save Changes
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         @if($supplier->named_route)
                         <x-primary-a-button href="">Configure</x-primary-a-button>
                         @endif

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\SupplierCredentialRequest;
 use App\Models\SupplierCredential;
+use App\Models\SupplierCompany;
 use Exception;
 use Illuminate\Http\Request;
 
@@ -33,6 +34,18 @@ class SupplierCredentialController extends Controller
                 'refresh_token' => $request->refresh_token,
                 'expires_at' => $request->expires_at,
             ]);
+
+            if ($request->filled('group_id')) {
+                SupplierCompany::updateOrCreate(
+                [
+                    'supplier_id' => $request->supplier_id,
+                    'company_id' => $request->company_id,
+                ],
+                [
+                    'group_id' => $request->group_id,
+                ]
+            );
+        }
         } catch (Exception $e) {
             return redirect()->route('suppliers.index')->with('error', 'Failed to save supplier credential');
         }

@@ -613,7 +613,7 @@ class ProcessAirFilesTest extends TestCase
             // Transform and validate each passenger for ProcessAirFiles compatibility
             foreach ($parserResult as $index => $passengerData) {
                 $taskData = $this->transformParserDataToTaskData($passengerData);
-                
+
                 $this->assertTrue(
                     $this->isValidTaskData($taskData),
                     "Passenger {$index} from {$testName} should produce valid task data for ProcessAirFiles"

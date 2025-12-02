@@ -1614,7 +1614,14 @@ class AirFileParser
         if ($status === 'refund') {
             $ticketLines = $this->findLines('/^R-(\d+)-(\d+)/');
         } else if ($status === 'emd' || $status === 'void') {
-            $ticketLines = $this->findLines('/^TMCD\d+-\d+/');;
+            $ticketLines = $this->findLines('/^TMCD\d+-\d+/');
+            if (empty($ticketLines)) {
+                $ticketLines = $this->findLines('/^(T-[KE]\d+-\d+)/');
+            }
+            
+            if (empty($ticketLines)) {
+                $ticketLines = $this->findLines('/^(R-\d+-\d+)/');
+            }
         } else {
             $ticketLines = $this->findLines('/^T-[KE](\d+)-(\d+)/');
         }

@@ -5124,7 +5124,7 @@ class TaskController extends Controller
         $tagged = $request->tagged;
 
         if (!$untagged || !$tagged) {
-            Log::info("No untagged or tagged found in the request");
+            Log::info("No untagged or tagged data found in the request");
             return response()->json([
                 'status' => 'error',
                 'message' => 'Agent phone number is neither provided nor mentioned in the request'
@@ -5154,6 +5154,14 @@ class TaskController extends Controller
             }
         }
 
+        if (!$phone) {
+            Log::info('Unable to extract the phone number');
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Could not extract a valid phone number',
+            ], 200);
+        }
+
         $agent = Agent::where('phone_number', $phone)->first();
 
         if (!$agent) {
@@ -5163,6 +5171,17 @@ class TaskController extends Controller
                 'message' => 'No agent with such phone number'
             ], 200);
         } 
+
+        $mergeableSupplier = [
+            'Jazeera Airways',
+            'Smile Holidays',
+            'Darina Holidays',
+            'Heysam Group',
+            'World Of Luxury',
+        ];
+
+        $supplierName = $supplierCompany->supplier->name;
+        $isMergeableSupplier = in_array($supplierName, $mergeableSupplier);
 
         try {
             //Storing the file
@@ -5187,21 +5206,13 @@ class TaskController extends Controller
                 'user_id' => $agent->user_id,
                 'company_id' => $agent->branch->company_id,
                 'supplier_id' => $supplierCompany->supplier_id,
-                'status' => 'pending',
+                'status' => $isMergeableSupplier ? 'pending' : 'completed',
                 'source_files' => 'n8n',
             ]);
+
             Log::info('Successfully created file upload record for : ' . $request->file_name . ' under agent: ' . $agent->name);
 
-
-            $isMergeSupplier = [
-                'Jazeera Airways',
-                'Smile Holidays',
-                'Darina Holidays',
-                'Heysam Group',
-                'World Of Luxury',
-            ];
-
-            if (in_array($supplierCompany->supplier->name, $isMergeSupplier)) {
+            if ($isMergeableSupplier) {
                 $mergedFile = $this->mergingFiles($supplierCompany, $agent, $supplierFilePath, $filePath);   
 
                 $mergedFileData = $mergedFile->getData(true);
@@ -5216,15 +5227,37 @@ class TaskController extends Controller
                         'failed_files' => $mergedFileData['failed_files'] ?? [],
                     ], 200);
                 }
+
+                if ($mergedFileData['status'] === 'waiting') {
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => $mergedFileData['message'],
+                        'group_id' => $request->group_id,
+                        'agent' => $agent->name,
+                        'supplier_name' => $supplierName,
+                        'file_name' => $request->file_name,
+                        'pending_count' => $mergedFileData['pending_count'] ?? 1,
+                    ], 200);
+                }
+
+                if ($mergedFileData['status'] === 'success') {
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => 'Successfully merging files. Merged file named as ' . $mergedFileData['file_name'],
+                        'group_id' => $request->group_id,
+                        'agent' => $agent,
+                        'file_name' => $request->file_name,
+                    ], 200);
+                }
             }
-           
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Successfully merging files. Merged file name: ' . ($mergedFileData['merged_file_name']),
-                'group_id' => $request->group_id,
-                'agent' => $agent,
-                'file_name' => $request->file_name,
-            ], 200);
+         
+        return response()->json([
+            'status' => 'success',
+            'message' => 'File stored successfully',
+            'group_id' => $request->group_id,
+            'agent' => $agent->name,
+            'file_name' => $request->file_name,
+        ], 200); 
 
         } catch (Exception $e) {
             Log::info('Failed to merge files: ' . $e->getMessage());
@@ -5274,134 +5307,139 @@ class TaskController extends Controller
             Log::info('No file found in the request to store.');
             return 0;
         }
-        
     }
 
-    public function mergingFiles($supplierCompany, $agent, $supplierFilePath,$filePath) 
+    public function mergingFiles($supplierCompany, $agent, $supplierFilePath, $filePath) 
     {
-        $isMergeSupplier = [
-            'Jazeera Airways',
-            'Smile Holidays',
-            'Darina Holidays',
-            'Heysam Group',
-            'World Of Luxury',
-        ];
-
         $supplierPrefixMap = [
-            'Jazeera Airways' => 'JAW',
+            'Jazeera Airways' => 'JAZ',
             'Smile Holidays' => 'SMIL',
             'Darina Holidays' => 'DARIN',
-            'Heysam Group' => 'HEYS',
+            'Heysam Group' => 'HEYG',
             'World Of Luxury' => 'WLUX',
         ];
 
-        if (in_array($supplierCompany->supplier->name, $isMergeSupplier)) {
+        if (File::isDirectory($filePath)) {
 
-            if (File::isDirectory($filePath)) {
-                $files = File::files($filePath);
+            $files = File::files($filePath);
 
-                if (count($files) > 0) {
-                    Log::info('Found ' . count($files) . ' files in this directory, proceeding to merge process');
+            if (count($files) > 0) {
+                Log::info('Found ' . count($files) . ' files in this directory, proceeding to merge process');
 
-                    try {
-                        $fileRecords = FileUpload::where('supplier_id', $supplierCompany->supplier_id)
-                            ->where('company_id', $agent->branch->company_id)
-                            ->where('user_id', $agent->user_id)
-                            ->whereNull('merged_file_name')
-                            ->get();
+                try {
+                    $fileRecords = FileUpload::where('supplier_id', $supplierCompany->supplier_id)
+                        ->where('company_id', $agent->branch->company_id)
+                        ->where('user_id', $agent->user_id)
+                        ->where('status', 'pending')
+                        ->where('destination_path', $filePath) 
+                        ->whereNull('merged_file_name')
+                        ->get();
 
-                        if ($fileRecords->count() > 0) {
-                            Log::info('Found ' . $fileRecords->count() . ' file records that are not merged yet', [
-                                'file_ids' => $fileRecords->pluck('id')->toArray(),
-                                'file_names' => $fileRecords->pluck('file_name')->toArray(),
-                            ]);
+                    if ($fileRecords->count() > 0) {
+                        Log::info('Found ' . $fileRecords->count() . ' file records that are not merged yet', [
+                            'file_ids' => $fileRecords->pluck('id')->toArray(),
+                            'file_names' => $fileRecords->pluck('file_name')->toArray(),
+                        ]);
 
-                            $merger = new Merger(new Fpdi2Driver());
-                            $successFiles = [];
-                            $failedFiles = [];
+                        $merger = new Merger(new Fpdi2Driver());
+                        $successFiles = [];
+                        $successFileIds = [];  // ✅ Add this
+                        $failedFiles = [];
 
-                            foreach ($fileRecords as $fileRecord) {
-                                $fullPath = $fileRecord->destination_path . '/' . $fileRecord->file_name;
-                                
-                                if (File::exists($fullPath)) {
-                                    try {
-                                        $merger->addFile($fullPath);
-                                        $successFiles[] = $fileRecord->file_name;
-                                        Log::info('Added file to merger: ' . $fileRecord->file_name);
-                                    } catch (\Throwable $e) {
-                                        $failedFiles[] = $fileRecord->file_name;
-                                        Log::error('Failed to add file to merger: ' . $fileRecord->file_name . ' - ' . $e->getMessage());
-                                    }
-                                } else {
+                        foreach ($fileRecords as $fileRecord) {
+                            $fullPath = $fileRecord->destination_path . '/' . $fileRecord->file_name;
+                            
+                            if (File::exists($fullPath)) {
+                                try {
+                                    $merger->addFile($fullPath);
+                                    $successFiles[] = $fileRecord->file_name;
+                                    $successFileIds[] = $fileRecord->id;  // ✅ Add this
+                                    Log::info('Added file to merger: ' . $fileRecord->file_name);
+                                } catch (\Throwable $e) {
                                     $failedFiles[] = $fileRecord->file_name;
-                                    Log::warning('File does not exist on disk: ' . $fullPath);
+                                    Log::error('Failed to add file to merger: ' . $fileRecord->file_name . ' - ' . $e->getMessage());
                                 }
+                            } else {
+                                $failedFiles[] = $fileRecord->file_name;
+                                Log::warning('File does not exist on disk: ' . $fullPath);
                             }
-
-                            if (count($successFiles) < 2) {
-                                Log::warning('Not enough valid files to merge. Need at least 2, got ' . count($successFiles));
-                                return response()->json([
-                                    'status' => 'error',
-                                    'message' => 'Not enough valid files to merge',
-                                    'failed_files' => $failedFiles,
-                                ], 200);
-                                return 0;
-                            }
-
-                            $prefix = $supplierPrefixMap[$supplierCompany->supplier->name];
-                            $fileIds = $fileRecords->pluck('id')->implode('_');
-                            $mergedFileName = sprintf('%s_%s_%s_%s.pdf', $prefix, $agent->id, $fileIds, now()->format('ymdHis'));
-
-                            $mergedBytes = $merger->merge();
-
-                            $mergedFilePath = $supplierFilePath . '/files_unprocessed/' . $mergedFileName;
-                            File::put($mergedFilePath, $mergedBytes);
-
-                            Log::info('Successfully merged ' . count($successFiles) . ' files into: ' . $mergedFileName);
-
-                            foreach ($fileRecords as $fileRecord) {
-                                if (in_array($fileRecord->file_name, $successFiles)) {
-                                    $fileRecord->update([
-                                        'merged_file_name' => $mergedFileName,
-                                        'status' => 'completed',
-                                    ]);
-                                }
-                            }
-
-                            FileUpload::create([
-                                'file_name' => $mergedFileName,
-                                'destination_path' => $mergedFilePath,
-                                'user_id' => $agent->user_id,
-                                'company_id' => $agent->branch->company_id,
-                                'supplier_id' => $supplierCompany->supplier_id,
-                                'status' => 'completed',
-                                'source_files' => $successFiles,
-                            ]);
-
-                            return response()->json([
-                                'status' => 'success',
-                                'message' => 'Successfully merged ' . count($successFiles) . ' files',
-                                'merged_file_name' => $mergedFileName,
-                                'source_files' => $successFiles,
-                            ], 200);
-                        } else {
-                            Log::info('No unmerged file records found');
                         }
-                    } catch (Exception $e) {
-                        Log::error('Error in second-layer checking: ' . $e->getMessage());
-                    }
 
-                } else {
-                    Log::info('No files found in this directory to merge');
+                        if (count($successFiles) < 2) {
+                            Log::warning('Not enough valid files to merge. Need at least 2, got ' . count($successFiles));
+                            return response()->json([
+                                'status' => 'waiting',
+                                'message' => 'Waiting for more files. Currently ' . $fileRecords->count() . ' file(s) pending',
+                                'pending_count' => $fileRecords->count(),
+                                'failed_files' => $failedFiles,
+                            ], 200);
+                        }
+
+                        $prefix = $supplierPrefixMap[$supplierCompany->supplier->name];
+                        $fileIds = implode('_', $successFileIds);  // ✅ Changed this
+                        $mergedFileName = sprintf('%s_%s_%s_%s.pdf', $prefix, $agent->id, $fileIds, now()->format('ymdHis'));
+
+                        $mergedBytes = $merger->merge();
+
+                        $mergedFilePath = $supplierFilePath . '/files_unprocessed/' . $mergedFileName;
+                        File::put($mergedFilePath, $mergedBytes);
+
+                        Log::info('Successfully merged ' . count($successFiles) . ' files into: ' . $mergedFileName);
+
+                        foreach ($fileRecords as $fileRecord) {
+                            if (in_array($fileRecord->file_name, $successFiles)) {
+                                $fileRecord->update([
+                                    'merged_file_name' => $mergedFileName,
+                                    'status' => 'completed',
+                                ]);
+                            }
+                        }
+
+                        FileUpload::create([
+                            'file_name' => $mergedFileName,
+                            'destination_path' => $mergedFilePath,
+                            'user_id' => $agent->user_id,
+                            'company_id' => $agent->branch->company_id,
+                            'supplier_id' => $supplierCompany->supplier_id,
+                            'status' => 'completed',
+                            'source_files' => $successFiles,
+                        ]);
+
+                        return response()->json([
+                            'status' => 'success',
+                            'message' => 'Successfully merged ' . count($successFiles) . ' files',
+                            'merged_file_name' => $mergedFileName,
+                            'source_files' => $successFiles,
+                        ], 200);
+                    } else {
+                        Log::info('No unmerged file records found');
+                    }
+                } catch (Exception $e) {
+                    Log::error('Failed to merge files: ' . $e->getMessage());
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Failed to merge files: ' . $e->getMessage(),
+                    ], 200);
                 }
             } else {
-                Log::info('Directory does not exist: ' . $filePath);
+                Log::info('No files found in this directory to merge');
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No files found in this directory to merge',
+                ], 200);
             }
-            
+        } else {
+            Log::info('Directory does not exist: ' . $filePath);
             return response()->json([
-                'status' => 'success',
-                'message' => 'Merge supplier file processed',
+                'status' => 'error',
+                'message' => 'Directory does not exist: ' . $filePath,
             ], 200);
         }
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Merge supplier file processed',
+        ], 200);
+        
     }
 }

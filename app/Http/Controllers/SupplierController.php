@@ -69,9 +69,23 @@ class SupplierController extends Controller
                 }
             }
         } elseif ($user->role_id == Role::COMPANY) {
-            $suppliers = Supplier::with(['credentials', 'companies'])
-                ->activeForCompany($user->company->id)
+            $suppliers = Supplier::with(['credentials', 'companies' => function ($query) use ($user) {
+                $query->where('company_id', $user->branch->company->id);
+            }])
+                ->activeForCompany($user->branch->company->id)
                 ->get();
+
+            // Load surcharges for company role (same as admin)
+            foreach ($suppliers as $supplier) {
+                foreach ($supplier->companies as $company) {
+                    if ($company->pivot) {
+                        $company->pivot->setRelation(
+                            'supplierSurcharges',
+                            SupplierSurcharge::with('references')->where('supplier_company_id', $company->pivot->id)->get()
+                        );
+                    }
+                }
+            }
         } elseif ($user->role_id == Role::ACCOUNTANT) {
             $suppliers = Supplier::with(['companies' => function ($query) {
                 $query->where('is_active', true);

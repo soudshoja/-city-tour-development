@@ -45,7 +45,6 @@
             @endif
         </div>
         
-        <!-- Modal Body -->
         <form id="store-credential_{{ $supplier->id }}" action="{{ route('credentials.store') }}" method="POST">
             @csrf
             <input type="hidden" name="supplier_id" value="{{ $supplier->id }}">

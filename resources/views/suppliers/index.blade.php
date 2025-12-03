@@ -854,13 +854,12 @@
                             Get All Task
                         </x-primary-a-button>
                         
-                        <!-- Supplier Charges - Fixed -->
+                        <!-- Supplier Charges -->
                         <div x-data="{chargesModal: false}">
                             <x-primary-button @click="chargesModal = true">
                                 Supplier Charges
                             </x-primary-button>
                             
-                            <!-- Modal -->
                             <div x-show="chargesModal" 
                                 x-cloak
                                 class="fixed inset-0 z-50 flex items-center justify-center"
@@ -871,14 +870,11 @@
                                 x-transition:leave-start="opacity-100"
                                 x-transition:leave-end="opacity-0">
                                 
-                                <!-- Backdrop -->
                                 <div class="fixed inset-0 bg-gray-900 bg-opacity-50" @click="chargesModal = false"></div>
                                 
-                                <!-- Modal Content -->
                                 <div class="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto z-10 mx-4"
                                     @click.stop>
                                     
-                                    <!-- Modal Header -->
                                     <div class="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
                                         <div>
                                             <h3 class="text-lg font-semibold text-gray-900">Supplier Charges - {{ $supplier->name }}</h3>
@@ -934,7 +930,6 @@
                                                                     </button>
                                                                 </div>
                                                                 
-                                                                <!-- Charge Mode -->
                                                                 <div class="mt-2 flex items-center flex-wrap gap-x-3 gap-y-1 text-sm mt-8">
                                                                     <label class="text-gray-700 whitespace-nowrap">Charge Mode:</label>
                                                                     <select name="charge_mode[{{ $company->pivot->id }}][{{ $surcharge->id }}]"
@@ -944,7 +939,6 @@
                                                                     </select>
                                                                 </div>
 
-                                                                <!-- Task Rule Section -->
                                                                 <div x-show="chargeMode === 'task'" x-cloak class="mt-4 border-t pt-3">
                                                                     <div class="flex flex-wrap items-center justify-between">
                                                                         <h4 class="text-sm font-semibold text-gray-800 mb-2 md:mb-0">Task Rules</h4>
@@ -961,7 +955,6 @@
                                                                     </div>
                                                                 </div>
 
-                                                                <!-- Reference Rule Section -->
                                                                 <div class="flex items-center justify-between mt-4 border-t pt-3 reference-section" x-show="chargeMode === 'reference'" x-cloak>
                                                                     <h4 class="text-sm font-semibold text-gray-800 mr-3">Reference Rules</h4>
                                                                     <div class="flex items-center gap-2" id="reference-list-{{ $surcharge->id }}">

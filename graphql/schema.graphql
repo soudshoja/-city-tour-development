@@ -101,6 +101,12 @@ input HotelSearchInput {
 
     "Booking type - determines pricing and markup (required for TBO)"
     bookingType: String!
+
+    "Minimum hotel rating filter (optional, e.g., 3 means 3-star and above)"
+    minRating: Int
+
+    "Maximum hotel rating filter (optional, e.g., 4 means up to 4-star)"
+    maxRating: Int
 }
 
 "Response for hotel room search"

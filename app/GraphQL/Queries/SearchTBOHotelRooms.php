@@ -43,6 +43,8 @@ class SearchTBOHotelRooms
             'priceMin' => 'nullable|numeric|min:0',
             'priceMax' => 'nullable|numeric|min:0',
             'bookingType' => 'required|string|in:b2b,b2c',
+            'minRating' => 'nullable|integer|min:1|max:5',
+            'maxRating' => 'nullable|integer|min:1|max:5',
         ], [
             'telephone.required' => 'Telephone number is required.',
             'city.required_with' => 'City name is required when searching by hotel name.',
@@ -135,14 +137,45 @@ class SearchTBOHotelRooms
                     cityName: $input['city'] 
                 );
 
-                // Handle multiple hotels found
                 if ($findCodeResponse['status'] === 'multiple_hotels_found') {
+                    $hotelOptions = $findCodeResponse['data'];
+                    
+                    $minRating = $input['minRating'] ?? null;
+                    $maxRating = $input['maxRating'] ?? null;
+                    
+                    // When no hotel name AND no rating filters provided, default to 4-star and 5-star only
+                    if (empty($input['hotel']) && $minRating === null && $maxRating === null) {
+                        $minRating = 4;
+                        $maxRating = 5;
+                    }
+                    
+                    if ($minRating !== null || $maxRating !== null) {
+                        $hotelOptions = array_filter($hotelOptions, function($hotel) use ($minRating, $maxRating) {
+                            $hotelRating = $hotel['rating'] ?? '';
+                            $ratingInt = $this->mapRatingToInteger($hotelRating);
+                            
+                            if ($minRating !== null && $ratingInt < $minRating) {
+                                return false;
+                            }
+                            if ($maxRating !== null && $ratingInt > $maxRating) {
+                                return false;
+                            }
+                            return true;
+                        });
+                        
+                        $hotelOptions = array_values($hotelOptions);
+                    }
+                    
+                    if (empty($input['hotel'])) {
+                        $hotelOptions = $this->sampleHotelsByRating($hotelOptions, 2);
+                    }
+                    
                     return [
                         'success' => false,
                         'status' => 'multiple_hotels_found',
                         'message' => $findCodeResponse['message'],
                         'data' => null,
-                        'hotelOptions' => $findCodeResponse['data']
+                        'hotelOptions' => $hotelOptions
                     ];
                 }
 
@@ -230,7 +263,9 @@ class SearchTBOHotelRooms
                 $input['mealType'] ?? 'All',
                 $input['priceMin'] ?? null,
                 $input['priceMax'] ?? null,
-                $input['bookingType']
+                $input['bookingType'],
+                $input['minRating'] ?? null,
+                $input['maxRating'] ?? null
             );
 
             return $result;
@@ -338,7 +373,9 @@ class SearchTBOHotelRooms
         string $mealType = 'All',
         ?float $priceMin = null,
         ?float $priceMax = null,
-        string $bookingType
+        string $bookingType,
+        ?int $minRating = null,
+        ?int $maxRating = null
     ): array {
         $hasPriceFilter = ($priceMin !== null || $priceMax !== null);
         
@@ -404,6 +441,8 @@ class SearchTBOHotelRooms
                 'priceMin_usd' => $priceMinUSD,
                 'priceMax_usd' => $priceMaxUSD,
                 'hasPriceFilter' => $hasPriceFilter,
+                'minRating' => $minRating,
+                'maxRating' => $maxRating,
             ],
         ]);
 
@@ -505,6 +544,32 @@ class SearchTBOHotelRooms
                     'success' => false,
                     'status' => 'no_rooms_in_price_range',
                     'message' => 'No rooms found within the specified price range.',
+                    'data' => null,
+                    'hotelOptions' => null,
+                ];
+            }
+        }
+
+        // Apply rating filter if provided
+        if ($minRating !== null || $maxRating !== null) {
+            $allRooms = array_filter($allRooms, function($roomData) use ($minRating, $maxRating) {
+                $hotelRating = $roomData['hotel']['HotelRating'] ?? '';
+                $ratingInt = $this->mapRatingToInteger($hotelRating);
+                
+                if ($minRating !== null && $ratingInt < $minRating) {
+                    return false;
+                }
+                if ($maxRating !== null && $ratingInt > $maxRating) {
+                    return false;
+                }
+                return true;
+            });
+
+            if (empty($allRooms)) {
+                return [
+                    'success' => false,
+                    'status' => 'no_rooms_in_rating_range',
+                    'message' => 'No rooms found within the specified rating range.',
                     'data' => null,
                     'hotelOptions' => null,
                 ];
@@ -731,5 +796,70 @@ class SearchTBOHotelRooms
                 'rooms' => $prebookedRooms,
             ],
         ];
+    }
+
+    /**
+     * Map hotel rating string from TBO API to integer value
+     *
+     * @param string $hotelRating Rating string from TBO (e.g., 'OneStar', 'FourStar')
+     * @return int Integer rating (1-5), 0 if unrecognized
+     */
+    protected function mapRatingToInteger(string $hotelRating): int
+    {
+        $ratingMap = [
+            'OneStar' => 1,
+            'TwoStar' => 2,
+            'ThreeStar' => 3,
+            'FourStar' => 4,
+            'FiveStar' => 5,
+        ];
+        
+        return $ratingMap[$hotelRating] ?? 0;
+    }
+
+    /**
+     * Sample random hotels from each rating group
+     * Returns exactly 2 random hotels per rating (or all if less than 2)
+     * Maintains rating order from low to high
+     *
+     * @param array $hotels Array of hotels with 'rating' field
+     * @param int $samplesPerRating Number of hotels to sample per rating (default: 2)
+     * @return array Sampled hotels ordered by rating
+     */
+    protected function sampleHotelsByRating(array $hotels, int $samplesPerRating = 2): array
+    {
+        $groupedByRating = [];
+        
+        foreach ($hotels as $hotel) {
+            $hotelRating = $hotel['rating'] ?? '';
+            $ratingInt = $this->mapRatingToInteger($hotelRating);
+            
+            if ($ratingInt === 0) {
+                continue;
+            }
+            
+            if (!isset($groupedByRating[$ratingInt])) {
+                $groupedByRating[$ratingInt] = [];
+            }
+            
+            $groupedByRating[$ratingInt][] = $hotel;
+        }
+        
+        ksort($groupedByRating);
+        
+        $sampledHotels = [];
+        
+        foreach ($groupedByRating as $rating => $ratingHotels) {
+            $hotelCount = count($ratingHotels);
+            
+            if ($hotelCount <= $samplesPerRating) {
+                $sampledHotels = array_merge($sampledHotels, $ratingHotels);
+            } else {
+                shuffle($ratingHotels);
+                $sampledHotels = array_merge($sampledHotels, array_slice($ratingHotels, 0, $samplesPerRating));
+            }
+        }
+        
+        return $sampledHotels;
     }
 }

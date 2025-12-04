@@ -143,6 +143,12 @@ class SearchTBOHotelRooms
                     $minRating = $input['minRating'] ?? null;
                     $maxRating = $input['maxRating'] ?? null;
                     
+                    // When no hotel name AND no rating filters provided, default to 4-star and 5-star only
+                    if (empty($input['hotel']) && $minRating === null && $maxRating === null) {
+                        $minRating = 4;
+                        $maxRating = 5;
+                    }
+                    
                     if ($minRating !== null || $maxRating !== null) {
                         $hotelOptions = array_filter($hotelOptions, function($hotel) use ($minRating, $maxRating) {
                             $hotelRating = $hotel['rating'] ?? '';
@@ -158,6 +164,10 @@ class SearchTBOHotelRooms
                         });
                         
                         $hotelOptions = array_values($hotelOptions);
+                    }
+                    
+                    if (empty($input['hotel'])) {
+                        $hotelOptions = $this->sampleHotelsByRating($hotelOptions, 2);
                     }
                     
                     return [
@@ -805,5 +815,51 @@ class SearchTBOHotelRooms
         ];
         
         return $ratingMap[$hotelRating] ?? 0;
+    }
+
+    /**
+     * Sample random hotels from each rating group
+     * Returns exactly 2 random hotels per rating (or all if less than 2)
+     * Maintains rating order from low to high
+     *
+     * @param array $hotels Array of hotels with 'rating' field
+     * @param int $samplesPerRating Number of hotels to sample per rating (default: 2)
+     * @return array Sampled hotels ordered by rating
+     */
+    protected function sampleHotelsByRating(array $hotels, int $samplesPerRating = 2): array
+    {
+        $groupedByRating = [];
+        
+        foreach ($hotels as $hotel) {
+            $hotelRating = $hotel['rating'] ?? '';
+            $ratingInt = $this->mapRatingToInteger($hotelRating);
+            
+            if ($ratingInt === 0) {
+                continue;
+            }
+            
+            if (!isset($groupedByRating[$ratingInt])) {
+                $groupedByRating[$ratingInt] = [];
+            }
+            
+            $groupedByRating[$ratingInt][] = $hotel;
+        }
+        
+        ksort($groupedByRating);
+        
+        $sampledHotels = [];
+        
+        foreach ($groupedByRating as $rating => $ratingHotels) {
+            $hotelCount = count($ratingHotels);
+            
+            if ($hotelCount <= $samplesPerRating) {
+                $sampledHotels = array_merge($sampledHotels, $ratingHotels);
+            } else {
+                shuffle($ratingHotels);
+                $sampledHotels = array_merge($sampledHotels, array_slice($ratingHotels, 0, $samplesPerRating));
+            }
+        }
+        
+        return $sampledHotels;
     }
 }

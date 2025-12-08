@@ -463,7 +463,7 @@ class SearchTBOHotelRooms
         if ($refundable !== null) {
             $filters['Refundable'] = $refundable;
 
-            if(app()->environment() !== 'production'){
+            if(app()->environment() !== 'production' && app()->environment() !== 'staging') {
                 $filters['Refundable'] = true;
             }
         }

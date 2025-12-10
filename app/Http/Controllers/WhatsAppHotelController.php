@@ -2083,7 +2083,6 @@ class WhatsAppHotelController extends Controller
 
         $payload = [
             'BookingCode' => $prebook->booking_code,
-            'BookingType' => 'Confirm',
             'CustomerDetails' => $customerDetails,
             'ClientReferenceId' => $clientReferenceId,
             'BookingReferenceId' => $prebookKey,

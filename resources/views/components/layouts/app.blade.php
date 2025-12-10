@@ -51,10 +51,8 @@
 
     </main>
 
-    @if(Route::is('suppliers.tbo.*') && config('app.env') === 'local')
     @if(session('tbo.url') === null)
     @include('suppliers.credential-modal')
-    @endif
     @endif
     
     <!-- Global Duplicate Client Warning Modal -->

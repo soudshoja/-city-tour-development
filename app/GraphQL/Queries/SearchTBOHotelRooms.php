@@ -549,9 +549,9 @@ class SearchTBOHotelRooms
                 ];
             }
         }
-
+      
         // Apply rating filter if provided
-        if ($minRating !== null || $maxRating !== null) {
+        if (!$hotelCode && ($minRating !== null || $maxRating !== null)) {
             $allRooms = array_filter($allRooms, function($roomData) use ($minRating, $maxRating) {
                 $hotelRating = $roomData['hotel']['HotelRating'] ?? '';
                 $ratingInt = $this->mapRatingToInteger($hotelRating);

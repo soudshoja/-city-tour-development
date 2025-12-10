@@ -265,7 +265,7 @@ class PaymentController extends Controller
 
             $bookingPayload = [
                 'BookingCode' => $tboBooking->booking_code,
-                'BookingType' => 'Confirm',
+                'BookingType' => $tboBooking->is_refundable ? 'Confirm' : 'Voucher',
                 'CustomerDetails' => $customerDetails,
                 'ClientReferenceId' => $clientReferenceId,
                 'BookingReferenceId' => $tboBooking->prebook_key,

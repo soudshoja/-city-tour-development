@@ -168,7 +168,7 @@ class TBOController extends Controller
         $data = [
             'CheckIn' => $request->checkInDate,
             'CheckOut' => $request->checkOutDate,
-            'HotelCodes' => (integer)$request->hotel,
+            'HotelCodes' => (string)$request->hotel,
             'GuestNationality' => $request->guestNationality,
             'PaxRooms' => $request->rooms,
             'ResponseTime' => 23,

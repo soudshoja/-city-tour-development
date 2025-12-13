@@ -86,7 +86,7 @@ class TBOHolidayService
     public function getBookingDetail(array $data)
     {
         $url = '/BookingDetail';
-        $data['PaymentMethod'] = 'Limit';
+        $data['PaymentMode'] = 'Limit';
         return $this->post($url, $data);
     }
 

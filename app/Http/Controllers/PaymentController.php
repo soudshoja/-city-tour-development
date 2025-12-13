@@ -334,24 +334,65 @@ class PaymentController extends Controller
                 'supplier_status' => 'confirmed'
             ]);
 
-            try {
-                $detailResponse = $tboService->getBookingDetail([
-                    'ConfirmationNumber' => $confirmationNo,
-                    'PaymentMethod' => 'Limit'
-                ]);
-
-                Log::info('TBO BookingDetail API Response', $detailResponse);
-            } catch (Exception $e) {
-                Log::warning('TBO BookingDetail API failed', [
-                    'error' => $e->getMessage()
-                ]);
-            }
-
             Log::info('TBO booking completed successfully', [
                 'payment_id' => $payment->id,
                 'confirmation_no' => $confirmationNo,
                 'booking_reference_id' => $bookingReferenceId
             ]);
+
+            // Retry mechanism for TBO BookingDetail API (handles propagation delay)
+            $detailResponse = null;
+            $maxRetries = 3;
+            $retryDelay = 3; 
+            
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                try {
+                    if ($attempt > 1) {
+                        Log::info("TBO BookingDetail retry attempt {$attempt}/{$maxRetries}", [
+                            'confirmation_no' => $confirmationNo,
+                            'delay' => $retryDelay . 's'
+                        ]);
+                        sleep($retryDelay);
+                    }
+                    
+                    $detailResponse = $tboService->getBookingDetail([
+                        'ConfirmationNumber' => $confirmationNo,
+                    ]);
+
+                    if (isset($detailResponse['Status']['Code']) && $detailResponse['Status']['Code'] == 200) {
+                        Log::info('TBO BookingDetail API Response (success)', [
+                            'attempt' => $attempt,
+                            'response' => $detailResponse
+                        ]);
+                        break; 
+                    } else {
+                        $errorMsg = $detailResponse['Status']['Description'] ?? 'Unknown error';
+                        Log::warning("TBO BookingDetail API returned error on attempt {$attempt}", [
+                            'error' => $errorMsg,
+                            'response' => $detailResponse
+                        ]);
+                        
+                        // If it's "does not exist" error and we have retries left, continue
+                        if ($attempt < $maxRetries && strpos($errorMsg, 'does not exist') !== false) {
+                            continue;
+                        }
+                    }
+                } catch (Exception $e) {
+                    Log::warning("TBO BookingDetail API exception on attempt {$attempt}", [
+                        'error' => $e->getMessage(),
+                        'confirmation_no' => $confirmationNo
+                    ]);
+                    
+                    if ($attempt >= $maxRetries) {
+                        Log::error('TBO BookingDetail API failed after all retries', [
+                            'confirmation_no' => $confirmationNo,
+                            'total_attempts' => $maxRetries,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+            }
+
 
             $bookingResult = [
                 'confirmation_no' => $confirmationNo,
@@ -413,7 +454,7 @@ class PaymentController extends Controller
             Log::info('Creating Task from TBO booking', [
                 'payment_id' => $payment->id,
                 'tbo_id' => $tboBooking->id,
-                'confirmation_no' => $bookingResult['confirmation_no']
+                'booking_result' => $bookingResult
             ]);
 
             $companyId = $payment->agent->branch->company_id ?? null;
@@ -564,6 +605,13 @@ class PaymentController extends Controller
      */
     private function buildTaskRequestFromTBO(Payment $payment, TBO $tboBooking, array $bookingResult, int $supplierId): array
     {
+        Log::info('Building task request data from TBO booking', [
+            'payment_id' => $payment->id,
+            'tbo_id' => $tboBooking->id,
+            'booking_result' => $bookingResult,
+            'supplier_id' => $supplierId
+        ]);
+
         $hotelBooking = $payment->hotelBooking;
         $bookingDetail = $bookingResult['booking_detail'] ?? null;
         

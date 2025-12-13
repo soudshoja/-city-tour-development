@@ -475,7 +475,7 @@ class SearchTBOHotelRooms
         $searchData = [
             'CheckIn' => $checkIn,
             'CheckOut' => $checkOut,
-            'HotelCodes' => $hotelCode,
+            'HotelCodes' => (string)$hotelCode,
             'GuestNationality' => $guestNationality,
             'PaxRooms' => $paxRooms,
             'ResponseTime' => 23,

@@ -51,7 +51,7 @@
 
     </main>
 
-    @if(session('tbo.url') === null)
+    @if(session('tbo.url') === null  && request()->routeIs('suppliers.tbo.index'))
     @include('suppliers.credential-modal')
     @endif
     

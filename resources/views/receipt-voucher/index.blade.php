@@ -50,7 +50,7 @@
                 <div class="dataTable-wrapper dataTable-loading no-footer fixed-columns">
                     <div class="dataTable-top"></div>
                     <!-- table -->
-                    <div class="dataTable2-container h-max">
+                    <div class="dataTable2-container h-max overflow-x-auto">
                         <table id="myTable" class="table-hover whitespace-nowrap dataTable-table w-full">
                             <thead>
                                 <tr>

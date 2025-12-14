@@ -87,6 +87,7 @@ class TaskController extends Controller
         $companyId = null;
 
         if ($user->role_id == Role::ADMIN) {
+            $companyId = 1;
             $clients = Client::all();
             $agents = Agent::all();
             $fullClients = Client::all();

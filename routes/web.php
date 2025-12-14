@@ -492,6 +492,7 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/hesabe-callback', [PaymentController::class, 'handleHesabeResponse'])->name('hesabe.response');
         Route::get('/hesabe-error', [PaymentController::class, 'handleHesabeFailure'])->name('hesabe.failure');
+        Route::post('/hesabe-webhook', [PaymentController::class, 'handleHesabeWebhook'])->name('hesabe.webhook')->withoutMiddleware(['auth']);
 
         Route::get('/knet-response', [PaymentController::class, 'handleKnetResponse'])->name('knet.response')->withoutMiddleware(['auth']);
         Route::get('/knet-error', [PaymentController::class, 'handleKnetError'])->name('knet.error')->withoutMiddleware(['auth']);

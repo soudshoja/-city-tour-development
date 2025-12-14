@@ -1279,6 +1279,7 @@ class PaymentController extends Controller
                 "variable2" => $variable2,
                 "responseUrl" => route('payment.hesabe.response'),
                 "failureUrl" => route('payment.hesabe.failure'),
+                'webhookUrl' => route('payment.hesabe.webhook'),
             ];
 
             Log::info('Hesabe RequestData', ['payload' => $checkoutPayload]);
@@ -2927,6 +2928,7 @@ class PaymentController extends Controller
                 "variable1" => 'topup',
                 "responseUrl" => route('payment.hesabe.response'),
                 "failureUrl" => route('payment.hesabe.failure'),
+                'webhookUrl' => route('payment.hesabe.webhook'),
             ];
 
             $requestDataJson = json_encode($checkoutPayload);
@@ -5480,6 +5482,193 @@ class PaymentController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
             return redirect()->route('payment.failed')->with('error', 'Payment failed! Something went wrong while processing failure.');
+        }
+    }
+
+    public function handleHesabeWebhook(Request $request)
+    {
+        Log::info('Hesabe webhook received', ['request' => $request->all()]);
+
+        $configService = new GatewayConfigService();
+        $hesabeConfig = $configService->getHesabeConfig();
+
+        if (!$hesabeConfig['status'] || !$hesabeConfig['data']) {
+            Log::error('Hesabe webhook: Configuration is missing or inactive');
+            return response()->json(['error' => 'Configuration error'], 500);
+        }
+        
+        $apiKey = $hesabeConfig['data']['api_key'];
+        $encryptionKey = $hesabeConfig['data']['iv_key'];
+        $response = $request->input('data');
+
+        if (!$response) {
+            Log::error('Hesabe webhook: No data field in request');
+            return response()->json(['error' => 'Invalid request'], 400);
+        }
+
+        $decryptedResponse = HesabeCrypt::decrypt($response, $apiKey, $encryptionKey);
+
+        if ($decryptedResponse === false) {
+            Log::error('Hesabe webhook: Response decryption failed', ['response' => $response]);
+            return response()->json(['error' => 'Decryption failed'], 400);
+        }
+        
+        $responseData = json_decode($decryptedResponse, true);
+        Log::info('Hesabe webhook decrypted data:', ['response' => $responseData]);
+
+        $partialId = null;
+
+        DB::beginTransaction();
+        try {
+            if (isset($responseData['status']) && $responseData['status'] == true) {
+                $data = $responseData['response'];
+                $voucherNumber = $data['orderReferenceNumber'];
+                $process = $data['variable1'] ?? null;
+
+                $raw = $data['variable2'] ?? null;
+                $partialId = $raw ? intval($raw) : null;
+                
+                Log::info('Extracted Hesabe webhook variable2 (partialId):', ['raw' => $raw, 'parsed' => $partialId]);
+
+                $payment = Payment::where('voucher_number', $voucherNumber)->first();
+
+                if (!$payment) {
+                    Log::error('Hesabe webhook: Payment record not found', ['voucher_number' => $voucherNumber]);
+                    DB::rollback();
+                    return response()->json(['error' => 'Payment not found'], 404);
+                }
+
+                Log::info('Hesabe webhook: Processing successful payment', ['payment_id' => $payment->id]);
+
+                $payment->payment_reference = $data['transactionId'];
+                $payment->invoice_reference = $data['trackID'];
+                $payment->payment_date = $data['paidOn'] ?? now();
+                $payment->status = 'completed';
+                $payment->save();
+
+                $tboResult = $this->processTBOBookingAfterPayment($payment);
+                if ($tboResult !== null) {
+                    if ($tboResult['success']) {
+                        Log::info('TBO booking processed successfully via Hesabe webhook', $tboResult);
+                    } else {
+                        Log::error('TBO booking failed via Hesabe webhook', $tboResult);
+                    }
+                }
+
+                $payment->refresh();
+
+                HesabePayment::updateOrCreate(
+                    ['payment_int_id' => $payment->id],
+                    [
+                        'status' => $data['resultCode'] ?? null,
+                        'payment_token' => $data['paymentToken'] ?? null,
+                        'payment_id' => $data['paymentId'] ?? null,
+                        'order_reference_number' => $data['orderReferenceNumber'] ?? null,
+                        'auth_code' => $data['auth'] ?? null,
+                        'track_id' => $data['trackID'] ?? null,
+                        'transaction_id' => $data['transactionId'] ?? null,
+                        'invoice_id' => $data['Id'] ?? null,
+                        'paid_on' => $data['paidOn'] ?? null,
+                        'payload' => $responseData,
+                    ]
+                );
+
+                if ($process === 'topup') {
+                    Log::info('Hesabe webhook: Processing credit for topup');
+                    $clientController = new ClientController();
+
+                    $addCreditResponse = $clientController->addCredit($payment);
+
+                    if (isset($addCreditResponse['error'])) {
+                        Log::error('Hesabe webhook: Failed to add credit to client', [
+                            'message' => $addCreditResponse['error'],
+                            'payment_reference' => $data['transactionId'],
+                        ]);
+                        DB::rollback();
+                        return response()->json(['error' => $addCreditResponse['error']], 500);
+                    }
+
+                    $creditCoa = $this->creditCOA($payment);
+                    if (!$creditCoa['success']) {
+                        Log::error('Hesabe webhook: Failed to create journal entry', [
+                            'message' => $creditCoa['message'],
+                        ]);
+                    }
+                }
+
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+                DB::commit();
+
+                Log::info('Hesabe webhook: Payment processed successfully', [
+                    'payment_id' => $payment->id,
+                    'transaction_id' => $data['transactionId'],
+                ]);
+
+                return response()->json([
+                    'message' => 'Payment processed successfully',
+                    'status' => 'success',
+                ], 200);
+
+            } else {
+                
+                Log::error('Hesabe webhook: Payment failed', ['response' => $responseData]);
+
+                $voucherNumber = $responseData['response']['orderReferenceNumber'] ?? null;
+                $payment = $voucherNumber ? Payment::where('voucher_number', $voucherNumber)->first() : null;
+
+                if ($payment) {
+                    $data = $responseData['response'];
+                    $payment->payment_reference = $data['transactionId'] ?? null;
+                    $payment->invoice_reference = $data['trackID'] ?? null;
+                    $payment->payment_date = $data['paidOn'] ?? now();
+                    $payment->status = 'failed';
+                    $payment->save();
+
+                    HesabePayment::updateOrCreate(
+                        ['payment_int_id' => $payment->id],
+                        [
+                            'status' => $data['resultCode'] ?? null,
+                            'payment_token' => $data['paymentToken'] ?? null,
+                            'payment_id' => $data['paymentId'] ?? null,
+                            'order_reference_number' => $data['orderReferenceNumber'] ?? null,
+                            'auth_code' => $data['auth'] ?? null,
+                            'track_id' => $data['trackID'] ?? null,
+                            'transaction_id' => $data['transactionId'] ?? null,
+                            'invoice_id' => $data['Id'] ?? null,
+                            'paid_on' => $data['paidOn'] ?? null,
+                            'payload' => $responseData,
+                        ]
+                    );
+
+                    $process = $payment->invoice ? 'invoice' : 'topup';
+                    $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
+
+                    $this->storeNotification([
+                        'user_id' => $receiptInfo['agent']->user_id,
+                        'title'   => $receiptInfo['title'],
+                        'message' => $receiptInfo['message'],
+                    ]);
+
+                    (new ResayilController())->message(
+                        $receiptInfo['agent']->phone_number,
+                        $receiptInfo['agent']->country_code,
+                        $receiptInfo['message']
+                    );
+                }
+
+                DB::commit();
+
+                return response()->json(['message' => 'Payment failed processed'], 200);
+            }
+
+        } catch (Exception $e) {
+            DB::rollback();
+            Log::error('Hesabe webhook: Exception occurred', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['error' => 'Internal server error'], 500);
         }
     }
 

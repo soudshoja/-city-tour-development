@@ -5540,6 +5540,20 @@ class PaymentController extends Controller
 
                 Log::info('Hesabe webhook: Processing successful payment', ['payment_id' => $payment->id]);
 
+                $alreadyProcessed = $payment->status === 'completed';
+                
+                if ($alreadyProcessed) {
+                    Log::info('Hesabe webhook: Payment already processed by callback', [
+                        'payment_id' => $payment->id,
+                        'status' => $payment->status,
+                    ]);
+                    DB::rollback();
+                    return response()->json([
+                        'message' => 'Payment already processed',
+                        'status' => 'success',
+                    ], 200);
+                }
+
                 $payment->payment_reference = $data['transactionId'];
                 $payment->invoice_reference = $data['trackID'];
                 $payment->payment_date = $data['paidOn'] ?? now();

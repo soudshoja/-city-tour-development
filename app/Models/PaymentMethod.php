@@ -17,6 +17,7 @@ class PaymentMethod extends Model
         'company_id',
         'arabic_name',
         'english_name',
+        'payment_method_group_id',
         'code',
         'type',
         'is_active',
@@ -28,6 +29,11 @@ class PaymentMethod extends Model
         'description',
         'image',
     ];
+
+    public function charge()
+    {
+        return $this->belongsTo(Charge::class, 'charge_id');
+    }
 
     public function gateways()
     {

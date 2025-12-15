@@ -717,6 +717,7 @@ Route::group([
     'prefix' => 'payment-method',
     'as'     => 'payment-method.',
 ], function () {
+    Route::get('/', [PaymentMethodController::class, 'index'])->name('index');
     Route::get('/{id}', [PaymentMethodController::class, 'show'])->name('show');
     Route::put('/{id}', [PaymentMethodController::class, 'update'])->name('update');
     Route::delete('/{id}', [PaymentMethodController::class, 'destroy'])->name('destroy');

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Charge;
 use App\Models\PaymentMethod;
+use App\Models\PaymentMethodGroup;
+use App\Models\PaymentMethodChose;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -13,7 +15,19 @@ class PaymentMethodController extends Controller
 {
     public function index()
     {
-        // Optional: can be used to list methods
+        $companyId = Auth::user()->company_id;
+        
+        // Get all payment method groups with their payment methods
+        $paymentMethodGroups = PaymentMethodGroup::with(['paymentMethods.company', 'paymentMethods.charge'])
+            ->whereHas('paymentMethods')
+            ->get();
+
+        // Get existing choices for this company
+        $selectedMethods = PaymentMethodChose::where('company_id', $companyId)
+            ->pluck('payment_method_id', 'payment_method_group_id')
+            ->toArray();
+
+        return view('charges.partial.choose_payment_method', compact('paymentMethodGroups', 'selectedMethods'));
     }
 
     public function show($id)

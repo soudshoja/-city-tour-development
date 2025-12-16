@@ -615,6 +615,20 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/update-expiry', [SettingController::class, 'updateInvoiceExpiry'])->name('update-expiry');
         });
     });
+
+    //Payment Method
+    Route::group([
+        'prefix' => 'payment-method',
+        'as'     => 'payment-method.',
+    ], function () {
+        Route::get('/', [PaymentMethodController::class, 'index'])->name('index');
+        Route::get('/{id}', [PaymentMethodController::class, 'show'])->name('show');
+        Route::put('/{id}', [PaymentMethodController::class, 'update'])->name('update');
+        Route::delete('/{id}', [PaymentMethodController::class, 'destroy'])->name('destroy');
+        Route::post('/set-group', [PaymentMethodController::class, 'setGroup'])->name('set-group');
+        Route::post('/toggle-enable/{id}', [PaymentMethodController::class, 'toggleEnable'])->name('toggle-enable');
+
+    });
 }); // auth middleware end
 
 Route::get('/download-pdf/{path}', function ($path) {
@@ -712,16 +726,6 @@ Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhoo
 Route::post('/whatsapp/sendToResayilSimple', [WhatsappController::class, 'sendToResayilSimple'])->name('whatsapp.sendToResayilSimple');
 Route::post('/webhook/resayil', [WhatsappController::class, 'handleResayilWebhook'])->name('whatsapp.resayil-webhook');
 
-//Payment Method
-Route::group([
-    'prefix' => 'payment-method',
-    'as'     => 'payment-method.',
-], function () {
-    Route::get('/', [PaymentMethodController::class, 'index'])->name('index');
-    Route::get('/{id}', [PaymentMethodController::class, 'show'])->name('show');
-    Route::put('/{id}', [PaymentMethodController::class, 'update'])->name('update');
-    Route::delete('/{id}', [PaymentMethodController::class, 'destroy'])->name('destroy');
-});
 
 Route::group([
     'prefix' => 'resayil',

@@ -2418,6 +2418,7 @@ class PaymentController extends Controller
             return $this->importPaymentProcess($request);
             exit;
         }
+
         $request->validate([
             'payment_gateway' => 'required',
             'payment_method' => 'nullable',
@@ -2430,6 +2431,7 @@ class PaymentController extends Controller
             'paymentReference' => 'nullable',
             'trackId' => 'nullable',
             'notes' => 'nullable|string|max:255',
+            'terms_conditions' => 'nullable|string|max:99999',
             'currency' => 'nullable|string|max:3',
             'company_id' => 'nullable|integer|exists:companies,id',
         ]);
@@ -2516,6 +2518,7 @@ class PaymentController extends Controller
                 'client_id' => $client->id,
                 'agent_id' => $agent->id,
                 'notes' => $request->notes,
+                'terms_conditions' => $request->terms_conditions,
                 'created_by' => Auth::id()
             ];
             
@@ -2550,7 +2553,8 @@ class PaymentController extends Controller
 
             $response = $this->multiPaymentMethodProcess($request);
 
-            return redirect()->back()->with($response['success'] ? 'success' : 'error', $response['message']);
+            // return redirect()->back()->with($response['success'] ? 'success' : 'error', $response['message']);
+            return auth()->user() ? redirect()->route('payment.link.index')->with( $response['success'], $response['message']) : redirect()->back()->with($response['success'] ? 'success' : 'error', $response['message']);
         } 
 
         // old process (backward compatibility)
@@ -2695,16 +2699,24 @@ class PaymentController extends Controller
         // Load available payment method groups that were selected when creating the payment link
         $payment->load(['availablePaymentMethodGroups']);
 
+         // If no payment method groups are associated, show the single payment method view
+
         if ($payment->availablePaymentMethodGroups->isEmpty()) {
-            return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'invoiceRef', 'authorizationId'));
+
+            return view('payment.link.show', compact(
+                'payment',
+                'chargeResult',
+                'gatewayFee',
+                'finalAmount',
+                'invoiceRef',
+                'authorizationId',
+            ));
         }
 
-        // Get CURRENT active payment method for each group using PaymentMethodChose
-        // This ensures clients always see the payment method currently chosen by the company
         $availablePaymentMethods = collect();
         
         foreach ($payment->availablePaymentMethodGroups as $group) {
-            // First, check PaymentMethodChose to see which method is currently chosen
+            
             $chose = PaymentMethodChose::where('company_id', $companyId)
                 ->where('payment_method_group_id', $group->id)
                 ->with(['paymentMethod.charge', 'paymentMethod.paymentMethodGroup'])
@@ -2713,10 +2725,8 @@ class PaymentController extends Controller
             $currentMethod = null;
             
             if ($chose && $chose->paymentMethod && $chose->paymentMethod->is_active) {
-                // Use the chosen payment method if it's still active
                 $currentMethod = $chose->paymentMethod;
             } else {
-                // Fallback: get first active method in this group
                 $currentMethod = PaymentMethod::withoutGlobalScope('company')
                     ->with(['paymentMethodGroup', 'charge'])
                     ->where('company_id', $companyId)
@@ -2726,7 +2736,6 @@ class PaymentController extends Controller
             }
             
             if ($currentMethod) {
-                // Calculate service charge for this payment method
                 try {
                     $feeResult = ChargeService::getFee(
                         gatewayName: $currentMethod->charge->name ?? null,
@@ -2736,16 +2745,15 @@ class PaymentController extends Controller
                         currency: $payment->currency,
                     );
                     
-                    // Attach fee information to the payment method
                     $currentMethod->calculated_fee = $feeResult['fee'] ?? 0;
                     $currentMethod->final_amount = $feeResult['finalAmount'] ?? $payment->amount;
                     $currentMethod->paid_by = $feeResult['paid_by'] ?? 'Company';
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     Log::error('Failed to calculate fee for payment method', [
                         'payment_method_id' => $currentMethod->id,
                         'error' => $e->getMessage(),
                     ]);
-                    // Fallback to no fee
+                    
                     $currentMethod->calculated_fee = 0;
                     $currentMethod->final_amount = $payment->amount;
                     $currentMethod->paid_by = 'Company';
@@ -2755,7 +2763,6 @@ class PaymentController extends Controller
             }
         }
 
-        // If no active methods found, fallback to single payment view
         if ($availablePaymentMethods->isEmpty()) {
             return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'invoiceRef', 'authorizationId'));
         }
@@ -2768,9 +2775,8 @@ class PaymentController extends Controller
             'gatewayFee',
             'finalAmount',
             'invoiceRef',
-            'authorizationId'
+            'authorizationId',
         ));
-
     }
 
     public function paymentLinkInitiate(Request $request)
@@ -6627,6 +6633,7 @@ class PaymentController extends Controller
         Log::info('[MULTI PAYMENT METHOD] Initiating multi payment method process', [
             'request_data' => $request->all(),
         ]);
+        
 
         $request->validate([
             'payment_methods' => 'required|array|min:1',
@@ -6674,7 +6681,8 @@ class PaymentController extends Controller
                     'client_id' => $client->id,
                     'agent_id' => $agent->id,
                     'notes' => $request->notes,
-                    'created_bt' => Auth::id(),
+                    'terms_conditions' => $request->terms_conditions,
+                    'created_by' => Auth::id(),
                 ]);
 
                 // Extract payment method group IDs from the selected payment methods

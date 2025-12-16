@@ -106,6 +106,18 @@ class Payment extends Model
         return $this->belongsTo(PaymentMethod::class, 'payment_method_id');
     }
 
+    public function availablePaymentMethods()
+    {
+        return $this->belongsToMany(PaymentMethod::class, 'payment_link_payment_method')
+            ->withTimestamps();
+    }
+
+    public function availablePaymentMethodGroups()
+    {
+        return $this->belongsToMany(PaymentMethodGroup::class, 'payment_link_payment_method_group')
+            ->withTimestamps();
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');

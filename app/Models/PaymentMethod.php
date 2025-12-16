@@ -45,6 +45,17 @@ class PaymentMethod extends Model
         return $this->belongsTo(Company::class);
     }
 
+    public function paymentMethodGroup()
+    {
+        return $this->belongsTo(PaymentMethodGroup::class, 'payment_method_group_id');
+    }
+
+    public function paymentLinks()
+    {
+        return $this->belongsToMany(Payment::class, 'payment_link_payment_method')
+            ->withTimestamps();
+    }
+
     protected static ?int $resolvedCompanyId = null;
 
     protected static function resolveCompanyId(): ?int

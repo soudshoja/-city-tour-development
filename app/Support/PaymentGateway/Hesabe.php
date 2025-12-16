@@ -7,10 +7,12 @@ use App\Models\Payment;
 use App\Models\Company;
 use App\Models\Agent;
 use App\Models\Accountant;
+use App\Models\PaymentMethod;
 use App\Models\User;
 use App\Models\Role;
 use App\Services\GatewayConfigService;
 use App\Services\HesabeCrypt;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +22,7 @@ class Hesabe
 {
     use HttpRequestTrait;
 
-    public function createCharge(Request $request)
+    public function createCharge(Request $request) : array
     {
         $request->validate([
             'final_amount' => 'required|numeric|min:1',
@@ -44,14 +46,20 @@ class Hesabe
         $company = $payment->agent->branch->company;
 
         if(!$company){
-            Log::error('Hesabe: Company not found for payment', ['payment_id' => $payment->id]);
-            return response()->json(['error' => 'Company not found for the agent.'], 404);
+            Log::error('[HESABE] Company not found for payment', ['payment_id' => $payment->id]);
+            return [
+                'success' => false,
+                'message' => 'Company not found for the agent.',
+            ];
         }
 
         if ($hesabeConfig['status'] === 'error') {
             $payment->delete();
 
-            return response()->json(['error' => $hesabeConfig['message'], 500]);
+            return [
+                'success' => false,
+                'message' => $hesabeConfig['message'],
+            ];
         }
 
         $hesabeConfig = $hesabeConfig['data'];
@@ -59,14 +67,27 @@ class Hesabe
         $apiKey = $hesabeConfig['api_key'];
         $baseUrl = $hesabeConfig['base_url'];
         $merchantCode = $hesabeConfig['merchant_code'];
-        $encryptionKey = $hesabeConfig['secret_key'];
         $ivKey = $hesabeConfig['iv_key'];
         $accessCode = $hesabeConfig['access_code'];
 
         $orderReference = $request->input('invoice_number');
         $paymentMethodId = $request->input('payment_method_id');
 
-        $clientPhone = $data['client_phone'] ?? '50000000';
+        $paymentMethod = PaymentMethod::find($paymentMethodId);
+
+        $myfatoorahId = $paymentMethod ? $paymentMethod->myfatoorah_id : null;
+
+
+        if(!$myfatoorahId){
+            Log::error('[HESABE] Payment method MyFatoorah ID not found', ['payment_method_id' => $paymentMethodId]);
+            return [
+                'success' => false,
+                'message' => 'Payment method configuration is missing. Please contact support.',
+            ];
+        }
+
+
+        $clientPhone = $request->input('client_phone') ?? '50000000';
 
         if (isset($clientPhone) && strpos($clientPhone, '+') === 0) {
             $clientPhone = preg_replace('/^\+\d{1,3}/', '', $clientPhone);
@@ -82,7 +103,7 @@ class Hesabe
             'amount'        => $request->final_amount,
             'currency'      => 'KWD',
             'merchantCode' => $merchantCode,
-            'paymentType' => '1',
+            'paymentType' => $myfatoorahId,
             'orderReferenceNumber' => $orderReference,
             'name' => $request->client_name,
             'mobile_number' => $clientPhone,
@@ -91,32 +112,59 @@ class Hesabe
             'cardId' => 'required|string',
             'authorize' => 'boolean', */            
             'version' => '2.0',
-            'responseUrl' => route('hesabe.response'),
-            'failureUrl' => route('hesabe.failure'),
-            /*'webhookUrl' => 'required|string',*/        
+            'responseUrl' => route('payment.hesabe.response'),
+            'failureUrl' => route('payment.hesabe.failure'),
+            'webhookUrl' => route('payment.hesabe.webhook'),
         ];
 
         $requestDataJson = json_encode($requestData);
 
-        $encryptedData = HesabeCrypt::encrypt($requestDataJson, $encryptionKey, $ivKey);
+
+        $encryptedData = HesabeCrypt::encrypt($requestDataJson, $apiKey, $ivKey);
 
         $hesabePayload = [
             'data' => $encryptedData,
         ];
 
-        Log::info('Hesabe: CheckoutPayment payload', ['payload' => $hesabePayload]);
+        Log::info('[HESABE] CheckoutPayment payload', ['payload' => $hesabePayload]);
 
         $checkoutResponse = Http::withHeaders([
             'accessCode' => $accessCode,
             'Accept' => 'application/json',
         ])->post("$baseUrl/checkout", $hesabePayload);
         
-        Log::info('Hesabe: CheckoutPayment response', ['response' => $checkoutResponse->body()]);
+        Log::info('[HESABE] CheckoutPayment response', ['response' => $checkoutResponse->body()]);
         
         if (!$checkoutResponse->successful()) {
-            return response()->json(['error' => 'CheckoutPayment failed.'], 500);
+            return [
+                'success' => false,
+                'message' => 'HTTP ' . $checkoutResponse->status(),
+                'data'    => [
+                    'body'    => $checkoutResponse->body(),
+                ],
+            ];
+        }
+        $response = $checkoutResponse->body();
+
+        $decryptedData = HesabeCrypt::decrypt($response , $apiKey, $ivKey);
+
+        Log::info('[HESABE] Decrypted CheckoutPayment response', ['decrypted_response' => $decryptedData]);
+
+        if (!$decryptedData) {
+            return [
+                'success' => false,
+                'message' => 'Failed to decrypt Hesabe response.',
+            ];
         }
 
-        return $checkoutResponse->json();
+        $responseData = json_decode($decryptedData, true);
+
+        $url = $baseUrl . '/payment?data=' . $responseData['response']['data'];
+
+        return  [
+            'success' => true,
+            'payment_url' => $url,
+            'order_reference' => $orderReference,
+        ];
     }
 }

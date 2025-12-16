@@ -186,17 +186,17 @@
 
                                     <div>
                                         @unlessrole('agent')
-                                            <x-searchable-dropdown name="agent_id" :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
-                                                placeholder="Select an Agent" label="Agent" />
+                                        <x-searchable-dropdown name="agent_id" :items="$agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name])"
+                                            placeholder="Select an Agent" label="Agent" />
                                         @else
-                                            <label for="agent_id"
-                                                class="block text-sm font-medium text-gray-700">Agent</label>
-                                            <input type="text" name="agent_id" id="agent_id"
-                                                value="{{ auth()->user()->agent->name }}"
-                                                class="form-input w-full border rounded px-3 py-2 bg-gray-100 text-gray-500"
-                                                readonly />
+                                        <label for="agent_id"
+                                            class="block text-sm font-medium text-gray-700">Agent</label>
+                                        <input type="text" name="agent_id" id="agent_id"
+                                            value="{{ auth()->user()->agent->name }}"
+                                            class="form-input w-full border rounded px-3 py-2 bg-gray-100 text-gray-500"
+                                            readonly />
 
-                                            <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
+                                        <input type="hidden" name="agent_id" value="{{ auth()->user()->agent->id }}">
                                         @endunlessrole
                                     </div>
 
@@ -212,7 +212,7 @@
                                     </div>
                                 </form>
                             </div>
-                        </div>  
+                        </div>
                     </div>
                     <!-- Import Payment from Payment Gateway-->
                     <div x-data="{ importFatoorahModal: false }" class="flex items-center gap-5">
@@ -254,7 +254,7 @@
                                                 required>
                                                 <option value="" selected disabled hidden>Select Payment Gateway</option>
                                                 @foreach($can_import as $gateway)
-                                                    <option value="{{ strtolower($gateway->name) }}">{{ $gateway->name }}</option>
+                                                <option value="{{ strtolower($gateway->name) }}">{{ $gateway->name }}</option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -301,16 +301,16 @@
                 x-data="{ submitting:false }" x-on:submit.prevent=" if (submitting) return; submitting = true; $el.submit();">
                 @csrf
                 @php
-                    $prefill = session('prefill_data');
+                $prefill = session('prefill_data');
                 @endphp
 
                 @if ($prefill)
-                    <input type="hidden" name="payment_gateway" value="{{ $prefill['payment_gateway'] }}">
-                    <input type="hidden" name="payment_method" value="{{ $prefill['payment_method'] }}">
-                    <input type="hidden" name="amount" value="{{ $prefill['amount'] }}">
-                    <input type="hidden" name="client_id" value="{{ $prefill['client_id'] }}">
-                    <input type="hidden" name="agent_id" value="{{ $prefill['agent_id'] }}">
-                    <input type="hidden" name="notes" value="{{ $prefill['notes'] }}">
+                <input type="hidden" name="payment_gateway" value="{{ $prefill['payment_gateway'] }}">
+                <input type="hidden" name="payment_method" value="{{ $prefill['payment_method'] }}">
+                <input type="hidden" name="amount" value="{{ $prefill['amount'] }}">
+                <input type="hidden" name="client_id" value="{{ $prefill['client_id'] }}">
+                <input type="hidden" name="agent_id" value="{{ $prefill['agent_id'] }}">
+                <input type="hidden" name="notes" value="{{ $prefill['notes'] }}">
                 @endif
                 <input type="hidden" name="payment_id" value="{{ old('payment_id', $prefill['payment_id'] ?? '') }}">
                 <input type="hidden" name="invoice_id" value="{{ old('invoice_id', $prefill['invoice_id'] ?? '') }}">
@@ -320,12 +320,12 @@
                 <input type="hidden" name="payment_reference" value="{{ old('payment_reference', $prefill['payment_reference'] ?? '') }}">
                 <input type="hidden" name="track_id" value="{{ old('track_id', $prefill['track_id'] ?? '') }}">
 
-                                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     @php
                     $selectedClient = null;
                     $clientPlaceholder = $selectedClient ? $selectedClient->full_name : 'Select a Client';
-                    $selectedId   = old('client_id', $selectedClient->id ?? null);
+                    $selectedId = old('client_id', $selectedClient->id ?? null);
                     $selectedName = old('client_name', $selectedClient->full_name ?? null);
                     @endphp
                     <div>
@@ -340,14 +340,13 @@
                             :selectedId="$selectedId"
                             :selectedName="$selectedName"
                             placeholder="{{ $clientPlaceholder }}"
-                            class="mt-1 block w-full"
-                        />
+                            class="mt-1 block w-full" />
                     </div>
 
                     @php
                     $selectedAgent = null;
                     $agentPlaceholder = $selectedAgent ? $selectedAgent->name : 'Select a Agent';
-                    $selectedId   = old('agent_id', $selectedAgent->id ?? null);
+                    $selectedId = old('agent_id', $selectedAgent->id ?? null);
                     $selectedName = old('agent_name', $selectedAgent->name ?? null);
                     @endphp
                     <div>
@@ -359,78 +358,55 @@
                             :selectedId="$selectedId"
                             :selectedName="$selectedName"
                             placeholder="{{ $agentPlaceholder }}"
-                            class="mt-1 block w-full"
-                        />
+                            class="mt-1 block w-full" />
                     </div>
                 </div>
 
                 @php
-                    $prefill = session('prefill_data');
-                    $selectedGateway = $prefill['payment_gateway'] ?? old('payment_gateway');
+                $prefill = session('prefill_data');
+                $selectedGateway = $prefill['payment_gateway'] ?? old('payment_gateway');
                 @endphp
 
-                <div x-data="{ 
-                    selectedGateway: '{{ $selectedGateway }}', 
-                    hasMethod: false,
-                    gatewayMethods: @js($gatewayMethods),
-                    checkHasMethod() {
-                        const gateway = this.selectedGateway.toLowerCase();
-                        this.hasMethod = this.gatewayMethods.hasOwnProperty(gateway) && this.gatewayMethods[gateway].length > 0;
-                    }
-                }" x-init="checkHasMethod()">
-                    <div :class="hasMethod ? 'grid grid-cols-1 md:grid-cols-2 gap-6 items-start' : 'block'">
-                        <div>
-                            <label for="payment-gateway" class="block text-sm font-medium text-gray-700">Payment Gateway</label>
-                            <select name="payment_gateway" id="payment-gateway"
-                                class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                x-model="selectedGateway"
-                                @change="checkHasMethod()">
-                                <option value="" disabled>Select Payment Gateway</option>
-                                @foreach ($paymentGateways as $gateway)
-                                    <option value="{{ $gateway->name }}" {{ old('payment_gateway') == $gateway->name ? 'selected' : '' }}>
-                                        {{ $gateway->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        @foreach($gatewayMethods as $gatewayName => $methods)
-                        <template x-if="selectedGateway.toLowerCase() === '{{ $gatewayName }}'">
-                            <div x-cloak x-transition>
-                                <label for="payment-method-{{ $gatewayName }}" class="block text-sm font-medium text-gray-700">{{ucfirst($gatewayName)}} Payment Method</label>
-                                <select name="payment_method" id="payment-method-{{ $gatewayName }}"
-                                    class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    @if($methods->count() > 1)
-                                    @endif
-                                    @foreach ($methods as $method)
-                                    <option value="{{ $method->id }}" {{ old('payment_method') == $method->id ? 'selected' : '' }}>
-                                        {{ $method->english_name }}
-                                    </option>
-                                    @endforeach
-                                </select>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+                    <div class="flex flex-wrap gap-8">
+                        @foreach ($paymentMethodChose as $chose)
+                        <div class="flex items-center gap-4">
+                            <div class="flex">
+                                <input 
+                                    type="checkbox" 
+                                    name="payment_methods[]" 
+                                    value="{{ $chose->paymentMethod->id }}" 
+                                    id="payment_method_{{ $chose->paymentMethod->id }}"
+                                    {{ in_array($chose->paymentMethod->id, old('payment_methods', [])) ? 'checked' : '' }}
+                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                <label for="payment_method_{{ $chose->paymentMethod->id }}" class="ml-2 text-sm text-gray-700">
+                                    {{ $chose->paymentMethodGroup->name }}
+                                </label>
                             </div>
-                        </template>
+                        </div>
                         @endforeach
                     </div>
                 </div>
+
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
                         <input type="number" name="amount" id="amount" step="0.001" min="0"
-                        value="{{ old('amount') }}"
-                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        required>
+                            value="{{ old('amount') }}"
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            required>
                     </div>
                     <div>
                         <label for="currency" class="block text-sm font-medium text-gray-700">Currency</label>
                         <select name="currency" id="currency"
                             class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             @foreach ($currencies as $currency)
-                                <option value="{{ $currency->iso_code }}"
-                                    {{ old('currency', $currency->country?->name === 'Kuwait' ? $currency->iso_code : '') == $currency->iso_code ? 'selected' : '' }}>
-                                    {{ $currency->name }}
-                                </option>
+                            <option value="{{ $currency->iso_code }}"
+                                {{ old('currency', $currency->country?->name === 'Kuwait' ? $currency->iso_code : '') == $currency->iso_code ? 'selected' : '' }}>
+                                {{ $currency->name }}
+                            </option>
                             @endforeach
                         </select>
                     </div>
@@ -439,8 +415,8 @@
                 <div>
                     <label for="notes" class="block text-sm font-medium text-gray-700">Notes</label>
                     <input type="text" name="notes" id="notes"
-                    value="{{ old('notes') }}"
-                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        value="{{ old('notes') }}"
+                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                 </div>
 
                 <div class="flex justify-between">
@@ -615,16 +591,18 @@
             const clientSelect = document.getElementById('client_id');
             const agentSelect = document.getElementById('agent_id');
 
-            clientSelect.addEventListener('change', function() {
-                const selectedClientId = this.value;
-                const agentId = clientAgentMap[selectedClientId];
+            if (clientSelect) {
+                clientSelect.addEventListener('change', function() {
+                    const selectedClientId = this.value;
+                    const agentId = clientAgentMap[selectedClientId];
 
-                if (agentId) {
-                    agentSelect.value = agentId;
-                } else {
-                    agentSelect.value = '';
-                }
-            });
+                    if (agentId) {
+                        agentSelect.value = agentId;
+                    } else {
+                        agentSelect.value = '';
+                    }
+                });
+            }
         });
     </script>
 </x-app-layout>

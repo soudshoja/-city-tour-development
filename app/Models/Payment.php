@@ -42,6 +42,7 @@ class Payment extends Model
         'tax',
         'discount',
         'shipping',
+        'language',
         'completed',
         'is_disabled',
     ];

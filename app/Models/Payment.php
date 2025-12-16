@@ -33,6 +33,7 @@ class Payment extends Model
         'payment_url',
         'expiry_date',
         'status',
+        'terms_conditions',
         'account_number',
         'bank_name',
         'swift_no',

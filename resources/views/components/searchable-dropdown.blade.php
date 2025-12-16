@@ -19,26 +19,26 @@
 
         <button type="button"
             @click="focusSearch($refs)"
-            class="w-full h-10 border border-gray-300 dark:border-gray-600 p-2 rounded text-base text-left bg-white text-black">
+            class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-left bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors">
             <span class="truncate block w-full" :class="selectedName ? 'text-gray-900' : 'text-gray-400'" x-text="selectedName || placeholder"></span>
         </button>
 
         <input type="hidden" name="{{ $name }}" :value="selectedId">
         @if($items)
         <div x-cloak x-show="open" @click.away="open = false"
-            class="absolute bg-white z-10 border w-full max-h-48 overflow-y-auto rounded shadow mt-1">
+            class="absolute bg-white z-10 border border-gray-300 w-full max-h-48 overflow-y-auto rounded-lg shadow-lg mt-1">
             <div class="px-2 py-2">
                 <input type="text"
                     x-ref="searchInput"
                     x-model="search"
                     @input="filterOptions"
                     :placeholder="placeholder"
-                    class="w-full border border-gray-300 rounded px-2 py-1 text-sm text-black">
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-black focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
             </div>
 
             <template x-for="option in filtered.slice(0, {{ $maxResults ?? 10 }})" :key="option.id">
                 <div @click="select(option)"
-                    class="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                    class="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                     x-html="highlightMatch(option.name)">
                 </div>
             </template>

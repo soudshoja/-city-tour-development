@@ -13,6 +13,7 @@
             document.documentElement.classList.remove('dark');
         }
     </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
@@ -55,7 +56,7 @@
                 <p class="text-sm text-gray-600">{{ $payment->voucher_number }}</p>
                 <p class="text-sm text-gray-600">Date: {{ $payment->created_at->format('d M Y') }}</p>
             </div>
-            
+
             {{-- Right: Company Logo --}}
             <div>
                 <img class="w-auto h-[95px] object-contain" src="{{ $payment->agent->branch->company->logo ? Storage::url($payment->agent->branch->company->logo) : asset('images/UserPic.svg') }}" alt="Company logo" />
@@ -119,24 +120,24 @@
                 </tr>
                 @endif
                 @if(!empty($payment->payment_reference))
-                    <tr>
-                        @if ($payment->payment_gateway === 'MyFatoorah')
-                            @if(empty($payment->invoice_reference) && empty($payment->auth_code) && empty($invoiceRef))
-                                <td class="py-3 px-4">Invoice ID</td>
-                            @else
-                                <td class="py-3 px-4">Payment Reference</td>
-                            @endif
-                        @else
-                            <td class="py-3 px-4">Payment Reference</td>
-                        @endif
-                        <td class="py-3 px-4 text-right">{{ $payment->payment_reference }}</td>
-                    </tr>
-                    @if($payment->payment_gateway === 'MyFatoorah' && $payment->status === 'completed' && !empty($invoiceRef))
-                        <tr>
-                            <td class="py-3 px-4">Invoice Reference</td>
-                            <td class="py-3 px-4 text-right">{{ $invoiceRef }}</td>
-                        </tr>
+                <tr>
+                    @if ($payment->payment_gateway === 'MyFatoorah')
+                    @if(empty($payment->invoice_reference) && empty($payment->auth_code) && empty($invoiceRef))
+                    <td class="py-3 px-4">Invoice ID</td>
+                    @else
+                    <td class="py-3 px-4">Payment Reference</td>
                     @endif
+                    @else
+                    <td class="py-3 px-4">Payment Reference</td>
+                    @endif
+                    <td class="py-3 px-4 text-right">{{ $payment->payment_reference }}</td>
+                </tr>
+                @if($payment->payment_gateway === 'MyFatoorah' && $payment->status === 'completed' && !empty($invoiceRef))
+                <tr>
+                    <td class="py-3 px-4">Invoice Reference</td>
+                    <td class="py-3 px-4 text-right">{{ $invoiceRef }}</td>
+                </tr>
+                @endif
                 @endif
             </tbody>
         </table>
@@ -163,7 +164,6 @@
                 @endif
             </div>
 
-            {{-- Right slot: Totals --}}
             <div class="md:col-span-1 w-full text-sm">
                 @php
                 $serviceCharge = $payment->service_charge ?? $gatewayFee;
@@ -172,20 +172,8 @@
 
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>Amount:</span>
-                    <!--  <span>{{ number_format($payment->amount, 2) }}</span> -->
                     <span>{{ number_format(!empty($finalAmount) ? $finalAmount : $payment->amount, 2) }} {{ $payment->currency }}</span>
                 </div>
-
-                <!-- @if ($serviceCharge > 0)
-                <tr>
-                    <td class="py-1 px-4">
-                        <div class="ml-5">Service Charge</div>
-                    </td>
-                    <td class="py-1 px-4 text-right">
-                        {{ number_format($serviceCharge, 2) }} {{ $payment->currency }}
-                    </td>
-                </tr>
-                @endif -->
 
                 <div class="flex justify-between items-center py-2 font-bold text-gray-800">
                     <span>Total:</span>
@@ -194,76 +182,111 @@
             </div>
         </div>
 
+        <!-- TnC & Pay Now -->
+        @if (!empty($payment->terms_conditions) && $payment->status != 'completed')
+        <div class="md:col-span-3 w-full mt-2" x-data="{ TNCModal: false, agreed: false }">
+            <div class="rounded-xl p-4">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <input
+                            type="checkbox"
+                            id="agree-modal"
+                            x-model="agreed"
+                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <label for="agree-modal" class="text-sm text-gray-700">
+                            I have read and agree to the
+                            <button type="button" @click="TNCModal = true" class="text-blue-600 hover:underline font-medium">
+                                Terms and Conditions
+                            </button>
+                        </label>
+                    </div>
 
-        <!-- MOBILE -->
-        <div class="mt-10 md:hidden space-y-3 w-full">
-            @unless ($payment->status === 'completed' || $payment->is_disabled)
-            <div class="mb-10">
-                <form action="{{ route('payment.link.initiate') }}" method="POST" class="w-full">
-                    @csrf
-                    <input type="hidden" name="payment_id" value="{{ $payment->id }}">
-                    <button type="submit"
-                        class="city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-5 py-2 shadow-md font-semibold w-[180px] text-left">
-                        Pay Now
-                    </button>
-                </form>
+                    @unless ($payment->status === 'completed' || $payment->is_disabled)
+                    <form action="{{ route('payment.link.initiate') }}" method="POST" class="flex-shrink-0">
+                        @csrf
+                        <input type="hidden" name="payment_id" value="{{ $payment->id }}">
+                        <button type="submit"
+                            :disabled="!agreed"
+                            :class="agreed ? 'city-light-yellow hover:text-white hover:bg-[#004c9e]' : 'bg-gray-300 text-gray-500 cursor-not-allowed'"
+                            class="w-full md:w-auto rounded-full border border-gray-300 px-6 py-2 shadow-md font-semibold transition-colors">
+                            Pay Now
+                        </button>
+                    </form>
+                    @endunless
+                </div>
             </div>
-            @endunless
 
-            <div class="space-y-2 text-center w-full">
-                <p class="text-lg font-bold text-gray-800">Thank you for your business!</p>
-                <div class="text-sm text-gray-600 w-full overflow-x-auto">
-                    <p class="whitespace-nowrap">If you have any questions about this voucher, please contact:</p>
-                    <p>
-                        {{ $payment->agent->name }} -
-                        <a href="mailto:{{ $payment->agent->email }}" class="hover:underline hover:text-blue-600">
-                            {{ $payment->agent->email }}
-                        </a>
-                        @if ($payment->agent->phone)
-                        || {{ $payment->agent->phone }}
-                        @endif
-                    </p>
+            <!-- Modal -->
+            <div x-show="TNCModal" x-cloak
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                @click.away="TNCModal = false">
+                <div class="bg-white rounded-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col shadow-2xl">
+                    <div class="px-6 pt-5 pb-4 flex items-start justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Terms and Conditions</h3>
+                            <p class="text-xs text-gray-500 italic mt-0.5">Please read carefully before proceeding with your payment</p>
+                        </div>
+                        <button type="button" @click="TNCModal = false" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="px-6 py-4 overflow-y-auto flex-1 border-t border-gray-200">
+                        <div class="prose prose-sm text-gray-600 whitespace-pre-wrap">{{ $payment->terms_conditions }}</div>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-200 flex justify-between">
+                        <button type="button" @click="TNCModal = false" class="px-4 py-2 text-sm bg-gray-100 text-gray-600 font-medium rounded-full shadow-md hover:text-gray-800">
+                            Close
+                        </button>
+                        <button type="button" @click="agreed = true; TNCModal = false" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-full shadow-md hover:bg-blue-700">
+                            I Agree
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-
-        <!-- DESKTOP -->
-        <div class="mt-10 hidden md:flex items-start justify-between w-full">
-            <div class="space-y-2 text-left">
-                <p class="text-lg font-bold text-gray-800">Thank you for your business!</p>
-                <div class="text-sm text-gray-600 w-full overflow-x-auto">
-                    <p class="whitespace-nowrap">If you have any questions about this voucher, please contact:</p>
-                    <p>
-                        {{ $payment->agent->name }} -
-                        <a href="mailto:{{ $payment->agent->email }}" class="hover:underline hover:text-blue-600">
-                            {{ $payment->agent->email }}
-                        </a>
-                        @if ($payment->agent->phone)
-                        || {{ $payment->agent->phone }}
-                        @endif
-                    </p>
-                </div>
-            </div>
-
-            @unless ($payment->status === 'completed' || $payment->is_disabled)
-            <form action="{{ route('payment.link.initiate') }}" method="POST" class="flex-shrink-0">
+        @else
+        @unless ($payment->status === 'completed' || $payment->is_disabled)
+        <div class="md:col-span-3 w-full mt-2 flex justify-end">
+            <form action="{{ route('payment.link.initiate') }}" method="POST" class="w-full md:w-auto">
                 @csrf
                 <input type="hidden" name="payment_id" value="{{ $payment->id }}">
                 <button type="submit"
-                    class="city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-6 py-2 shadow-md font-semibold">
+                    class="w-full md:w-auto city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-6 py-2 shadow-md font-semibold">
                     Pay Now
                 </button>
             </form>
-            @endunless
-                <div class="flex justify-end mb-4">
-                    <button
-                        onclick="window.open('{{ route('payment.link.show-arabic', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number]) }}', '_blank')"
-                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                        عرض القسيمة بالعربية
-                    </button>
-                </div>
-          
         </div>
+        @endunless
+        @endif
+
+        <div class="space-y-2 text-center w-full mt-6">
+            <div class="text-sm text-gray-600 w-full overflow-x-auto">
+                <p>If you have any questions about this voucher, please reach out to agent
+                <span class="font-semibold">{{ $payment->agent->name }}</span> through
+            </p>
+            <p>
+                <a href="mailto:{{ $payment->agent->email }}" class="font-semibold hover:underline hover:text-blue-600">
+                    {{ $payment->agent->email }}
+                </a>
+                @if ($payment->agent->phone_number)
+                or <span class="font-semibold">{{ $payment->agent->phone_number }}</span>
+                @endif
+            </p>
+            </div>
+        </div>
+
+        <!-- 
+            <div class="flex justify-end mb-4">
+                <button
+                    onclick="window.open('{{ route('payment.link.show-arabic', ['companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number]) }}', '_blank')"
+                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                    عرض القسيمة بالعربية
+                </button>
+            </div> -->
+
     </div>
 </body>
+
 </html>

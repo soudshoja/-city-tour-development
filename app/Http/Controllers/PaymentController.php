@@ -2412,6 +2412,7 @@ class PaymentController extends Controller
             return $this->importPaymentProcess($request);
             exit;
         }
+
         $request->validate([
             'payment_gateway' => 'required',
             'payment_method' => 'nullable',
@@ -2424,6 +2425,7 @@ class PaymentController extends Controller
             'paymentReference' => 'nullable',
             'trackId' => 'nullable',
             'notes' => 'nullable|string|max:255',
+            'terms_conditions' => 'nullable|string|max:99999',
             'currency' => 'nullable|string|max:3',
             'company_id' => 'nullable|integer|exists:companies,id',
         ]);
@@ -2510,6 +2512,7 @@ class PaymentController extends Controller
                 'client_id' => $client->id,
                 'agent_id' => $agent->id,
                 'notes' => $request->notes,
+                'terms_conditions' => $request->terms_conditions,
                 'created_by' => Auth::id()
             ];
             
@@ -2672,7 +2675,19 @@ class PaymentController extends Controller
             $finalAmount = $payment->amount + $gatewayFee;
         }
 
-        return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'invoiceRef', 'authorizationId'));
+        $tnc = Payment::whereNotNull('terms_conditions')
+                    ->where('terms_conditions', '!=', '')
+                    ->get();
+
+        return view('payment.link.show', compact(
+            'payment', 
+            'chargeResult', 
+            'gatewayFee', 
+            'finalAmount', 
+            'invoiceRef', 
+            'authorizationId',
+            'tnc',
+        ));
     }
 
     public function paymentLinkInitiate(Request $request)

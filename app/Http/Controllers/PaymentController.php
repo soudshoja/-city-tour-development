@@ -73,21 +73,101 @@ class PaymentController extends Controller
 {
     use NotificationTrait;
 
-    public function index(string $invoiceNumber)
+    public function show(int $id)
     {
-        Gate::authorize('viewAny', Payment::class);
+        // Gate::authorize('view', $user, Payment::class);
 
-        $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
+        $payment = Payment::with([
+            'client',
+            'agent.branch.company',
+            'invoice',
+            'paymentMethod',
+            'createdBy',
+            'tapPayment',
+            'myFatoorahPayment'
+        ])->findOrFail($id);
 
-        if (!$invoice) {
-            return redirect()->back()->with('error', 'Invoice not found!');
+        return view('payment.show', compact('payment'));
+    }
+
+    /**
+     * Get payment partials for lazy loading
+     */
+    public function getPartials(int $id): JsonResponse
+    {
+        try {
+            $payment = Payment::findOrFail($id);
+            
+            $partials = $payment->partials()
+                ->select('id', 'invoice_id', 'amount', 'status', 'due_date', 'created_at')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($partial) {
+                    return [
+                        'id' => $partial->id,
+                        'amount' => number_format($partial->amount, 3),
+                        'status' => $partial->status,
+                        'due_date' => $partial->due_date ? $partial->due_date->format('d/m/Y') : null,
+                        'created_at' => $partial->created_at->format('d/m/Y H:i'),
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'partials' => $partials
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error loading payment partials', [
+                'payment_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading partials',
+                'partials' => []
+            ], 500);
         }
+    }
 
-        $invoiceDetails = InvoiceDetail::where('invoice_number', $invoiceNumber)->get();
-        
-        $transaction = Transaction::where('invoice_id', $invoice->id)->first();
+    /**
+     * Get payment transactions for lazy loading
+     */
+    public function getTransactions(int $id): JsonResponse
+    {
+        try {
+            $payment = Payment::findOrFail($id);
+            
+            $transactions = $payment->transactions()
+                ->select('id', 'transaction_type', 'amount', 'description', 'created_at')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($transaction) {
+                    return [
+                        'id' => $transaction->id,
+                        'transaction_type' => ucfirst($transaction->transaction_type),
+                        'amount' => number_format($transaction->amount, 3) . ' KWD',
+                        'description' => $transaction->description,
+                        'created_at' => $transaction->created_at->format('d/m/Y H:i'),
+                    ];
+                });
 
-        return view('payment.index', compact('invoice', 'invoiceDetails', 'transaction'));
+            return response()->json([
+                'success' => true,
+                'transactions' => $transactions
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error loading payment transactions', [
+                'payment_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading transactions',
+                'transactions' => []
+            ], 500);
+        }
     }
 
     public function create($companyId, $invoiceNumber, Request $request)

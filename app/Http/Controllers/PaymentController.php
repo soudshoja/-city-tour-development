@@ -55,6 +55,8 @@ use App\Models\Role;
 use App\Models\Credit;
 use App\Models\Company;
 use App\Models\MyFatoorahPayment;
+use App\Models\PaymentMethodChose;
+use App\Models\PaymentMethodGroup;
 use App\Models\Refund;
 use App\Models\TBO;
 use App\Models\SupplierCompany;
@@ -63,6 +65,8 @@ use App\Support\PaymentGateway\Knet;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Gate;
+use SebastianBergmann\Type\TrueType;
+use Symfony\Component\Mime\DraftEmail;
 use Throwable;
 
 class PaymentController extends Controller
@@ -2386,6 +2390,8 @@ class PaymentController extends Controller
             $companyId = null;
         }
 
+        $paymentMethodChose = PaymentMethodChose::where('company_id', $companyId)->get();
+
         $can_import = Charge::where('company_id', $companyId)
             ->where('can_import', true)
             ->get();
@@ -2398,7 +2404,8 @@ class PaymentController extends Controller
             'paymentGateways',
             'paymentMethods',
             'gatewayMethods',
-            'can_import'
+            'can_import',
+            'paymentMethodChose'
         ));
     }
 
@@ -2412,6 +2419,7 @@ class PaymentController extends Controller
             return $this->importPaymentProcess($request);
             exit;
         }
+
         $request->validate([
             'payment_gateway' => 'required',
             'payment_method' => 'nullable',
@@ -2424,8 +2432,10 @@ class PaymentController extends Controller
             'paymentReference' => 'nullable',
             'trackId' => 'nullable',
             'notes' => 'nullable|string|max:255',
+            'terms_conditions' => 'nullable|string|max:99999',
             'currency' => 'nullable|string|max:3',
             'company_id' => 'nullable|integer|exists:companies,id',
+            'language' => 'nullable',
         ]);
 
         if (!$request->company_id) {
@@ -2500,7 +2510,7 @@ class PaymentController extends Controller
                 'invoice_reference' => $invoiceReference,
                 'from' => $client->full_name,
                 'pay_to' => $agent->branch->company->name,
-                'currency' => 'KWD',
+                'currency' => $request->currency ?? 'KWD',
                 'payment_date' => Carbon::now(),
                 'amount' => $request->amount,
                 'service_charge' => $serviceCharge,
@@ -2510,6 +2520,8 @@ class PaymentController extends Controller
                 'client_id' => $client->id,
                 'agent_id' => $agent->id,
                 'notes' => $request->notes,
+                'terms_conditions' => $request->terms_conditions,
+                'language' => $request->language,
                 'created_by' => Auth::id()
             ];
             
@@ -2534,6 +2546,21 @@ class PaymentController extends Controller
 
     public function paymentStoreLink(Request $request)
     {
+        if($request->payment_gateway == null){
+
+            Log::info("multi payment method invoke at paymentStoreLink");
+
+            $request->validate([
+                'payment_methods' => 'required'
+            ]);
+
+            $response = $this->multiPaymentMethodProcess($request);
+
+            // return redirect()->back()->with($response['success'] ? 'success' : 'error', $response['message']);
+            return auth()->user() ? redirect()->route('payment.link.index')->with( $response['success'], $response['message']) : redirect()->back()->with($response['success'] ? 'success' : 'error', $response['message']);
+        } 
+
+        // old process (backward compatibility)
         $response = $this->paymentStoreLinkProcess($request);
         if ($response['status'] === 'error') {
             return redirect()->back()->with('error', $response['message']);
@@ -2563,6 +2590,9 @@ class PaymentController extends Controller
         if (!$payment->agent) {
             return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
         }
+
+        $locale = $payment->language === 'ARB' ? 'ar' : 'en';
+        app()->setLocale($locale);
 
         $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
 
@@ -2672,7 +2702,83 @@ class PaymentController extends Controller
             $finalAmount = $payment->amount + $gatewayFee;
         }
 
-        return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'invoiceRef', 'authorizationId'));
+        $payment->load(['availablePaymentMethodGroups']);
+
+        if ($payment->availablePaymentMethodGroups->isEmpty()) {
+            return view('payment.link.show', compact(
+                'payment',
+                'chargeResult',
+                'gatewayFee',
+                'finalAmount',
+                'invoiceRef',
+                'authorizationId',
+            ));
+        }
+
+        $availablePaymentMethods = collect();
+        
+        foreach ($payment->availablePaymentMethodGroups as $group) {
+            
+            $chose = PaymentMethodChose::where('company_id', $companyId)
+                ->where('payment_method_group_id', $group->id)
+                ->with(['paymentMethod.charge', 'paymentMethod.paymentMethodGroup'])
+                ->first();
+            
+            $currentMethod = null;
+            
+            if ($chose && $chose->paymentMethod && $chose->paymentMethod->is_active) {
+                $currentMethod = $chose->paymentMethod;
+            } else {
+                $currentMethod = PaymentMethod::withoutGlobalScope('company')
+                    ->with(['paymentMethodGroup', 'charge'])
+                    ->where('company_id', $companyId)
+                    ->where('payment_method_group_id', $group->id)
+                    ->where('is_active', 1)
+                    ->first();
+            }
+            
+            if ($currentMethod) {
+                try {
+                    $feeResult = ChargeService::getFee(
+                        gatewayName: $currentMethod->charge->name ?? null,
+                        amount: $payment->amount,
+                        methodCode: $currentMethod->id,
+                        companyId: $companyId,
+                        currency: $payment->currency,
+                    );
+                    
+                    $currentMethod->calculated_fee = $feeResult['fee'] ?? 0;
+                    $currentMethod->final_amount = $feeResult['finalAmount'] ?? $payment->amount;
+                    $currentMethod->paid_by = $feeResult['paid_by'] ?? 'Company';
+                } catch (Exception $e) {
+                    Log::error('Failed to calculate fee for payment method', [
+                        'payment_method_id' => $currentMethod->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    
+                    $currentMethod->calculated_fee = 0;
+                    $currentMethod->final_amount = $payment->amount;
+                    $currentMethod->paid_by = 'Company';
+                }
+                
+                $availablePaymentMethods->push($currentMethod);
+            }
+        }
+
+        if ($availablePaymentMethods->isEmpty()) {
+            return view('payment.link.show', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'invoiceRef', 'authorizationId'));
+        }
+
+        $payment->setRelation('availablePaymentMethods', $availablePaymentMethods);
+
+        return view('payment.link.multi-payment', compact(
+            'payment',
+            'chargeResult',
+            'gatewayFee',
+            'finalAmount',
+            'invoiceRef',
+            'authorizationId',
+        ));
     }
 
     public function paymentLinkInitiate(Request $request)
@@ -4285,7 +4391,8 @@ class PaymentController extends Controller
         if ($request->payment_gateway) $payment->payment_gateway = $request->payment_gateway;
         if ($request->payment_method_id) $payment->payment_method_id = $request->payment_method_id;
         if ($request->amount) $payment->amount = $request->amount;
-
+        if ($request->language) $payment->language = $request->language;
+        
         try {
             $payment->update();
             $client->update();
@@ -6003,139 +6110,6 @@ class PaymentController extends Controller
         return view('payment.failed');
     }
 
-    public function paymentShowLinkArabic($companyId, $voucherNumber)
-    {
-         $payment = Payment::with(['agent.branch.company', 'client'])
-            ->where('voucher_number', $voucherNumber)
-            ->whereHas('agent.branch', fn ($q) => $q->where('company_id', $companyId))
-            ->first();
-
-        if (!$payment) {
-            return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
-        }
-
-        if (!$payment->client) {
-            return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
-        }
-
-        if (!$payment->agent) {
-            return auth()->user() ? redirect()->route('payment.link.index') : abort(404);
-        }
-
-        $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
-
-        $fatoorahPayment = $payment->findMyFatoorahPayment();
-
-        $invoiceRef = null;
-        $authorizationId = null;
-
-        if ($fatoorahPayment) {
-            $payloadData = $fatoorahPayment->payload;
-            
-            if (is_array($payloadData) && isset($payloadData['Data'])) {
-                $invoiceRef = $payloadData['Data']['InvoiceReference'] ?? 'N/A';
-                $transactions = $payloadData['Data']['InvoiceTransactions'] ?? [];
-                if (!empty($transactions)) {
-                    $authorizationId = $transactions[0]['AuthorizationId'] ?? 'N/A';
-                }
-            }
-        }
-
-        $companyId = optional($payment->agent->branch)->company_id;
-        $chargeResult = [];
-        $gatewayFee = 0;
-        $finalAmount = 0;
-        $paidBy = 'Company';
-        $chargeData = [
-            'amount'    => $payment->amount,
-            'client_id' => $payment->client_id,
-            'agent_id'  => $payment->agent_id,
-            'currency'  => $payment->currency,
-        ];
-
-        if ($payment->status === 'completed' && is_null($payment->service_charge)) {
-            if ($payment->invoice) {
-                $invoicePartial = InvoicePartial::where('invoice_id', $payment->invoice->id)->first();
-                if ($invoicePartial) {
-                    $gatewayFee = $invoicePartial->service_charge ?? 0;
-                    $finalAmount = $payment->amount;
-                    $paidBy = ($gatewayFee > 0) ? 'Client' : 'Company';
-                } else {
-                    $gatewayFee = 0;
-                    $finalAmount = $payment->amount;
-                    $paidBy = 'Company';
-                }
-            } else {
-                // $tempChargeResult = $payment->payment_gateway === 'MyFatoorah'
-                //     ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
-                //     : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
-
-                $tempChargeResult = [];
-
-                try {
-                    $tempChargeResult = ChargeService::getFee(
-                        gatewayName: $payment->payment_gateway,
-                        amount: $payment->amount,
-                        methodCode: $payment->payment_method_id ?? null,
-                        companyId: $companyId,
-                        currency: $payment->currency
-                    );
-                } catch (Exception $e) {
-                    Log::error('getFee exception in paymentShowLinkArabic', [
-                        'gateway' => $payment->payment_gateway,
-                        'message' => $e->getMessage(),
-                        'payment_id' => $payment->id,
-                    ]);
-                    $tempChargeResult = ['fee' => 0];
-                }
-
-                $gatewayFee = $tempChargeResult['fee'] ?? 0;
-                $finalAmount = $payment->amount;
-                $paidBy = ($gatewayFee > 0) ? 'Client' : 'Company';
-            }
-        } else if ($payment->status !== 'completed') {
-            $chargeData = [
-                'amount'     => $payment->amount,
-                'currency'   => $payment->currency,
-                'client_id'  => $payment->client_id,
-                'agent_id'   => $payment->agent_id,
-            ];
-
-            // $chargeResult = $payment->payment_gateway === 'MyFatoorah'
-            //     ? ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId)
-            //     : ChargeService::TapCharge($chargeData, $payment->payment_gateway ?? 'Tap');
-
-            $chargeResult = [];
-
-            try {
-                $chargeResult = ChargeService::getFee(
-                    gatewayName: $payment->payment_gateway,
-                    amount: $payment->amount,
-                    methodCode: $payment->payment_method_id ?? null,
-                    companyId: $companyId,
-                    currency: $payment->currency
-                );
-            } catch (Exception $e) {
-                Log::error('getFee exception in paymentShowLinkArabic (unpaid)', [
-                    'gateway' => $payment->payment_gateway,
-                    'message' => $e->getMessage(),
-                    'payment_id' => $payment->id,
-                ]);
-                $chargeResult = ['fee' => 0, 'finalAmount' => $payment->amount, 'paid_by' => 'Company'];
-            }
-
-            $gatewayFee = $chargeResult['fee'] ?? 0;
-            $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
-            $paidBy = $chargeResult['paid_by'] ?? 'Company';
-
-            $payment->service_charge = ($chargeResult['paid_by'] === 'Company') ? 0 : $chargeResult['fee'];
-            $payment->save();
-        }
-
-        return view('payment.link.show-arabic', compact('payment', 'chargeResult', 'gatewayFee', 'finalAmount', 'paidBy', 'invoiceRef', 'authorizationId'));
-    
-    }
-
     public function hesabeTransactionEnquiry(Request $request): JsonResponse
     {
         $request->validate([
@@ -6520,7 +6494,486 @@ class PaymentController extends Controller
 
             return redirect()->back()->with('error', 'Error disabling payment link: ' . $e->getMessage());
         }
-
-        
     }
+
+    public function multiPaymentMethodProcess(Request $request) : array {
+
+        Log::info('[MULTI PAYMENT METHOD] Initiating multi payment method process', [
+            'request_data' => $request->all(),
+        ]);
+        
+
+        $request->validate([
+            'payment_methods' => 'required|array|min:1',
+            'amount' => 'required|numeric',
+            'currency' => 'required|string',
+            'client_id' => 'required|integer|exists:clients,id',
+            'agent_id' => 'required|integer|exists:agents,id',
+        ]);     
+
+        $agent = Agent::find($request->input('agent_id'));
+        $client = Client::find($request->input('client_id'));
+
+        $company = $agent->branch->company;
+
+        if(!$company) {
+            Log::error('[MULTI PAYMENT METHOD] Company not found for agent ID: ' . $agent->id);
+            return [
+                'success' => false,
+                'message' => 'Company not found for the specified agent'
+            ];
+        }
+
+        $voucherSequence = Sequence::firstOrCreate(['company_id' => $company->id], ['current_sequence' => 1]);
+
+        $currentSequence = $voucherSequence->current_sequence;
+        $voucherNumber = $this->generateVoucherNumber($currentSequence);
+
+        $response = DB::transaction( function() use (
+            $request,
+            $voucherNumber,
+            $company,
+            $client,
+            $agent,
+            $voucherSequence,
+        ) {
+            try{
+                $payment = Payment::create([
+                    'voucher_number' => $voucherNumber,
+                    'amount' => $request->amount,
+                    'from' => $client->full_name,
+                    'pay_to' => $company->name,
+                    'currency' => $request->currency,
+                    'payment_gateway' => 'Multi',
+                    'status' => 'pending',
+                    'client_id' => $client->id,
+                    'agent_id' => $agent->id,
+                    'notes' => $request->notes,
+                    'terms_conditions' => $request->terms_conditions,
+                    'created_by' => Auth::id(),
+                ]);
+
+                // Extract payment method group IDs from the selected payment methods
+                $paymentMethods = PaymentMethod::whereIn('id', $request->payment_methods)->get();
+                $groupIds = $paymentMethods->pluck('payment_method_group_id')->unique()->filter();
+
+                // Attach payment method groups instead of individual methods
+                $payment->availablePaymentMethodGroups()->attach($groupIds);
+
+                Log::info('[MULTI PAYMENT METHOD] Attached payment method groups to payment ID: ' . $payment->id, [
+                    'payment_methods_selected' => $request->payment_methods,
+                    'payment_method_groups' => $groupIds->toArray(),
+                ]);
+
+                $voucherSequence->current_sequence++;
+                $voucherSequence->save();
+
+                Log::info('[MULTI PAYMENT METHOD] Payment created with voucher number: ' . $voucherNumber, [
+                    'payment_id' => $payment->id,
+                ]);
+
+                return [
+                    'success' => true,
+                    'payment_id' => $payment->id,
+                    'message' => 'Multi payment method payment created successfully'
+                ];
+
+            } catch (Exception $e) {
+                Log::error('Error creating multi payment method payment', [
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return [
+                    'success' => false,
+                    'message' => 'Error creating payment'
+                ];
+            }
+        });
+
+        return $response;
+    }
+
+    public function multiPaymentLinkInitiate(Request $request)
+    {
+        Log::info('[MULTI PAYMENT] Initiating multi payment link process', [
+            'request_data' => $request->all(),
+        ]);
+
+        $request->validate([
+            'payment_id' => 'required|exists:payments,id',
+            'payment_method_id' => 'required|exists:payment_methods,id',
+        ]);
+
+        $payment = Payment::with('invoice', 'agent.branch', 'availablePaymentMethodGroups')->find($request->payment_id);
+
+        $paymentMethod = PaymentMethod::withoutGlobalScope('company')
+            ->with(['charge', 'paymentMethodGroup'])
+            ->find($request->payment_method_id);
+
+        if (!$paymentMethod) {
+            Log::error('[MULTI PAYMENT] Payment method not found', ['payment_method_id' => $request->payment_method_id]);
+            return redirect()->back()->with('error', 'Selected payment method not found');
+        }
+
+        if (!$paymentMethod->is_active) {
+            Log::warning('[MULTI PAYMENT] Inactive payment method selected', [
+                'payment_method_id' => $paymentMethod->id,
+                'payment_id' => $payment->id
+            ]);
+            return redirect()->back()->with('error', 'Selected payment method is no longer active. Please choose another payment method.');
+        }
+
+        $companyId = optional($payment->agent->branch)->company_id;
+        if ($paymentMethod->company_id !== $companyId) {
+            Log::error('[MULTI PAYMENT] Payment method company mismatch', [
+                'payment_method_id' => $paymentMethod->id,
+                'payment_method_company_id' => $paymentMethod->company_id,
+                'payment_company_id' => $companyId
+            ]);
+            return redirect()->back()->with('error', 'Invalid payment method selected');
+        }
+
+        $allowedGroupIds = $payment->availablePaymentMethodGroups->pluck('id');
+        if (!$allowedGroupIds->contains($paymentMethod->payment_method_group_id)) {
+            Log::error('[MULTI PAYMENT] Payment method group not allowed', [
+                'payment_method_id' => $paymentMethod->id,
+                'payment_method_group_id' => $paymentMethod->payment_method_group_id,
+                'allowed_group_ids' => $allowedGroupIds->toArray()
+            ]);
+            return redirect()->back()->with('error', 'This payment method is not available for this payment link');
+        }
+
+        $paymentGateway = $paymentMethod->charge->name;
+
+        if(!$paymentGateway) {
+            Log::error('[MULTI PAYMENT] Payment gateway not found for payment method ID: ' . $paymentMethod->id);
+            return redirect()->back()->with('error', 'Payment gateway configuration is missing. Please contact support.');
+        }
+
+        $payment->payment_gateway = $paymentGateway;
+        $payment->payment_method_id = $paymentMethod->id;
+        $payment->save();
+
+        Log::info('[MULTI PAYMENT] Payment initiated', [
+            'payment_id' => $payment->id,
+            'voucher' => $payment->voucher_number,
+            'method' => $paymentMethod->english_name,
+            'gateway' => $paymentGateway,
+        ]);
+
+        $process = 'topup';
+        if ($payment->invoice) {
+            $process = 'invoice';
+        }
+
+        if (strtolower($paymentGateway) === 'tap') {
+            $tap = new Tap();
+            $paymentMethod = $payment->paymentMethod ? $payment->paymentMethod->id : null;
+
+            $chargeResult = ChargeService::getFee(
+                gatewayName: 'Tap',
+                amount: $payment->amount,
+                methodCode: $paymentMethod,
+                companyId: $payment->agent->branch->company_id,
+                currency: $payment->currency,
+            );
+
+            $finalAmount = $chargeResult['finalAmount'];
+
+            $requestTap = new Request([
+                'finalAmount' => $finalAmount,
+                'client_name' => $payment->client->full_name,
+                'client_email' => $payment->client->email,
+                'voucher_number' => $payment->voucher_number,
+                'payment_id' => $payment->id,
+                'payment_gateway' => $paymentGateway,
+                'payment_method_id' => $paymentMethod,
+                'description' => 'Payment for ' . $payment->voucher_number,
+                'process' => $process,
+            ]);
+
+            Log::info('requestTap', ['requestTap' => $requestTap]);
+
+            $response = $tap->createCharge($requestTap);
+            logger('Payment link initiate response', ['response' => $response]);
+
+            if (isset($response['errors'])) {
+                return redirect()->back()->with('error', $response['errors'][0]['description']);
+            }
+
+            $paymentUrl = $response['transaction']['url'];
+            return redirect($paymentUrl);
+        } else if (strtolower($paymentGateway) === 'myfatoorah') {
+            $configService = new GatewayConfigService();
+            $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
+            if(!$myfatoorahConfig['status'] || !$myfatoorahConfig['data']) {
+                return redirect()->back()->with('error', $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive');
+            }
+
+            $myfatoorahConfig = $myfatoorahConfig['data'];
+    
+            $apiKey  = $myfatoorahConfig['api_key'];
+            $baseUrl = $myfatoorahConfig['base_url'];
+
+            $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
+            $companyId = $payment->agent->branch->company_id;
+
+            if(!$companyId){
+                Log::error('Company ID not found for the payment.', ['payment_id' => $payment->id]);
+                return auth()->user() ? redirect()->back()->with('error', 'Company ID not found for the payment.') : abort(500);
+            }
+
+            if ($payment->status === 'initiate') {
+                if ($payment->payment_url && $payment->expiry_date && now()->lt($payment->expiry_date)) {
+                    Log::info('Reusing existing payment URL', [
+                        'invoice_id' => $payment->payment_reference,
+                        'url' => $payment->payment_url,
+                        'expires_at' => $payment->expiry_date,
+                    ]);
+
+                    return redirect($payment->payment_url);
+                }
+                Log::info('Old payment URL expired, reinitiating new payment');
+                return $this->paymentLinkReinitiate($payment->payment_reference);
+            } elseif (in_array(strtolower($payment->status), ['completed', 'paid'])) {
+                Log::info('Initiate payment ignored: payment already completed', ['payment_id' => $payment->id]);
+                $partialId = $payment->invoice?->invoicePartials()->where('payment_id', $payment->id)->value('id');
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+                return redirect()->to($receiptInfo['url'])->with('success', 'Payment already completed.');
+            }
+
+            //filter record
+            $firstName = $payment->client->first_name;
+            $middleName = $payment->client->middle_name ?? '';
+            $lastName = $payment->client->last_name ?? '';
+
+            $customerName = trim("$firstName $middleName $lastName");
+
+            $client = $payment->client;
+            $clientPhone = $client->phone ?? null;
+
+            if (isset($clientPhone) && strpos($clientPhone, '+') === 0) {
+                $clientPhone = preg_replace('/^\+\d{1,3}/', '', $clientPhone);
+                $clientPhone = ltrim($clientPhone, '0'); // Optionally remove leading zero
+            }
+
+            $chargeResult = ChargeService::FatoorahCharge($payment->amount, $payment->payment_method_id, $companyId);
+
+            $finalAmount = $chargeResult['finalAmount'];
+
+            $company = $companyId ? Company::find($companyId) : null;
+            $companyEmail = $company?->email ?? 'admin@citytravelers.co';
+
+            $executePayload = [
+                "PaymentMethodId"     => $paymentMethod,
+                "InvoiceValue"        => $finalAmount,
+                "CustomerName"       => $customerName ?? 'Customer',
+                "CustomerEmail"       => $companyEmail,
+                "MobileCountryCode"   => $client->country_code ?? '+965',
+                "CustomerMobile"      => $clientPhone ?? '50000000',
+                "DisplayCurrencyIso"  => $payment->currency ?? 'KWD',
+                "CallBackUrl"         => route('payments.callback'),
+                "ErrorUrl"            => route('payments.error', ['payment_id' => $payment->id]),
+                // "ErrorUrl"            => route('payments.error'),
+                "Language"            => "en",
+                "UserDefinedField"   => json_encode([
+                    'voucher_number' => $payment->voucher_number,
+                    'payment_id' => $payment->id,
+                    'payment_gateway' => $paymentGateway,
+                    'payment_method' => $paymentMethod,
+                    'process' => $process,
+                ]),
+                "InvoiceItems" => [
+                    [
+                        "ItemName"   => "Voucher " . $payment->voucher_number,
+                        "Quantity"   => 1,
+                        "UnitPrice"  => $finalAmount,
+                    ]
+                ],
+            ];
+
+            Log::info('MyFatoorah ExecutePayment request', [
+                'payload' => $executePayload,
+                'api_key' => $apiKey,
+                'base_url' => $baseUrl,
+            ]);
+
+            $executeResponse = Http::withHeaders([
+                'Authorization' => "Bearer $apiKey",
+                'Content-Type' => 'application/json',
+            ])->post("$baseUrl/ExecutePayment", $executePayload);
+
+            if (!$executeResponse->successful()) {
+                Log::error('MyFatoorah: ExecutePayment failed', ['response' => $executeResponse->body()]);
+                return redirect()->back()->with('error', 'ExecutePayment failed.');
+            }
+
+            $resData = $executeResponse->json();
+            $invoiceUrl = $resData['Data']['PaymentURL'] ?? null;
+            $mfInvoiceId = $resData['Data']['InvoiceId'] ?? null;
+            $expiryDateURL = $resData['Data']['ExpiryDate'] ?? null;
+
+            if ($invoiceUrl && $mfInvoiceId) {
+                $payment->payment_reference = $mfInvoiceId;
+                $payment->payment_url = $invoiceUrl;
+                $payment->expiry_date = $expiryDateURL ? Carbon::parse($expiryDateURL) : now()->addDays(2);
+                $payment->status = 'initiate';
+                $payment->save();
+
+                Log::info('MyFatoorah payment initiated', [
+                    'old_invoice_id' => $mfInvoiceId,
+                    'old_url' => $invoiceUrl,
+                    'old_expires_at' => $payment->expiry_date,
+                ]);
+                return redirect($invoiceUrl);
+            }
+
+            return redirect()->back()->with('error', 'MyFatoorah response missing PaymentURL or InvoiceId.');
+        } elseif (strtolower($paymentGateway) === 'hesabe') {
+
+            $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
+            $companyId = $payment->agent->branch->company_id;
+            
+            $chargeResult = ChargeService::HesabeCharge($payment->amount, $payment->payment_method_id, $companyId);
+            $finalAmount = $chargeResult['finalAmount'] ?? $payment->amount;
+
+            $client = $payment->client;
+            $clientPhone = $client->phone ?? '50000000';
+
+            if (isset($clientPhone) && strpos($clientPhone, '+') === 0) {
+                $clientPhone = preg_replace('/^\+\d{1,3}/', '', $clientPhone);
+                $clientPhone = ltrim($clientPhone, '0');
+            }
+
+            $firstName = $payment->client->first_name;
+            $middleName = $payment->client->middle_name;
+            $lastName = $payment->client->last_name;
+            $customerName = trim("$firstName $middleName $lastName");
+
+            $requestHesabe = new Request([
+                'final_amount' => $finalAmount,
+                'client_name' => $customerName,
+                'client_email' => $payment->agent->branch->company->email ?? 'admin@citytravelers.co',
+                'invoice_id' => optional($payment->invoice)->id,
+                'invoice_number' => $payment->voucher_number,
+                'payment_id' => $payment->id,
+                'payment_gateway' => $paymentGateway,
+                'payment_method_id' => $payment->payment_method_id,
+                'invoice_partial_id' => null,
+                'client_phone' => $clientPhone,
+            ]);
+
+            Log::info('[HESABE] Creating charge via Hesabe helper', ['request' => $requestHesabe->all()]);
+
+            $hesabe = new Hesabe();
+            $response = $hesabe->createCharge($requestHesabe);
+
+            if(!$response['success']){
+                Log::error('[HESABE] Payment initiation failed', ['response' => $response]);
+                return redirect()->back()->with('error', 'Hesabe payment initiation failed: ' . ($response['message'] ?? 'Something went wrong'));
+            }
+
+            $paymentUrl = $response['payment_url'] ?? null;
+
+            if(!$paymentUrl){
+                Log::error('[HESABE] Payment URL missing in response', ['response' => $response]);
+                return redirect()->back()->with('error', 'Hesabe response missing payment URL.');
+            }
+
+            $payment->payment_url = $paymentUrl;
+            $payment->status = 'initiate';
+            $payment->save();
+
+            Log::info('[HESABE] Payment initiated successfully', [
+                'payment_id' => $payment->id,
+                'payment_url' => $paymentUrl,
+                'payment_status' => $payment->status,
+            ]);
+
+            return redirect($paymentUrl);
+
+        } elseif (strtolower($paymentGateway) === 'upayment') {
+            if ($payment->status === 'initiate') {
+                if ($payment->payment_url && $payment->expiry_date && now()->lt($payment->expiry_date)) {
+                    Log::info('Reusing existing payment URL', [
+                        'invoice_id' => $payment->payment_reference,
+                        'url' => $payment->payment_url,
+                        'expires_at' => $payment->expiry_date,
+                    ]);
+
+                    return redirect($payment->payment_url);
+                }
+                Log::info('Old payment URL expired, reinitiating new payment');
+                return $this->paymentLinkReinitiate($payment->payment_reference);
+            }
+
+
+            $payment->load(['agent.branch.company', 'client']);
+            $company = $payment->agent?->branch?->company;
+            $client = $payment->client;
+
+            $clientPhone = $client->phone ?? null;
+            if ($clientPhone && str_starts_with($clientPhone, '+')) {
+                $clientPhone = preg_replace('/^\+\d{1,3}/', '', $clientPhone);
+                $clientPhone = ltrim($clientPhone, '0');
+            }
+
+            $chargeResult = ChargeService::UPaymentCharge($payment->amount, $payment->payment_method_id, $company->id);
+            $finalAmount  = $chargeResult['finalAmount'] ?? $payment->amount;
+
+            $requestUPayment = new Request([
+                'final_amount'      => $finalAmount,
+                'client_id'         => $client->id,
+                'client_name'       => $client->full_name,
+                'client_email'      => $client->email ?? $company?->email,
+                'client_phone'      => $clientPhone ?? '50000000',
+                'company_email'     => $company?->email,
+                'payment_id'        => $payment->id,
+                'payment_number'    => $payment->voucher_number,
+                'payment_method_id' => $payment->payment_method_id,
+                'invoice_id'        => optional($payment->invoice)->id,
+                'invoice_number'    => optional($payment->invoice)->invoice_number,
+                'currency'          => $payment->currency ?? 'KWD',
+            ]);
+
+            $uPayment = new UPayment();
+            $response = $uPayment->makeCharge($requestUPayment);
+
+            if (!is_array($response)) {
+                Log::error('UPayments: Unexpected response', ['raw' => $response]);
+                return redirect()->back()->with('error', 'UPayments: unexpected response');
+            }
+        
+            if (isset($response['status']) && $response['status'] === 'error') {
+                return redirect()->back()->with('error', $response['message'] ?? 'UPayments error');
+            }
+        
+            $paymentReference = $response['data']['trackId'] ?? null;
+            $paymentUrl = $response['data']['link'] ?? null;
+            $expiryDate = $response['transaction']['expiryDate'] ?? $response['data']['expiryDate'] ?? null;
+
+            if ($paymentUrl && $paymentReference) {
+                $payment->payment_reference = $paymentReference;
+                $payment->payment_url = $paymentUrl;
+                $payment->expiry_date = $expiryDate ? Carbon::parse($expiryDate) : now()->addDays(2);
+                $payment->status = 'initiate';
+                $payment->save();
+        
+                Log::info('UPayments payment initiated', [
+                    'payment_id'  => $payment->id,
+                    'track_id'    => $paymentReference,
+                    'payment_url' => $paymentUrl,
+                    'expires_at'  => $payment->expiry_date,
+                ]);
+        
+                return redirect($paymentUrl);
+            }
+            Log::error('UPayments: Missing link or trackId', ['response' => $response]);
+            return redirect()->back()->with('error', 'UPayments response missing link or trackId.');
+        }
+
+        return redirect()->route('payment.link.index')->with('success', 'Payment initiated successfully!');
+    }
+
 }

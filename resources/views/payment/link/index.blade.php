@@ -495,6 +495,33 @@
                                                             <input type="text" name="amount" id="amount" value="{{ $payment->amount }}"
                                                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                                         </div>
+                                                        
+                                                        <!-- Language -->
+                                                        <div class="mb-4">
+                                                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Invoice Language</label>
+                                                            <div x-data="{ language: '{{ $payment->language ?? 'EN' }}' }" class="inline-flex rounded-lg border border-gray-300 p-1 bg-gray-100">
+                                                                <input type="hidden" name="language" :value="language">
+                                                                
+                                                                <button type="button" 
+                                                                    @click="language = 'EN'"
+                                                                    :class="language === 'EN' 
+                                                                        ? 'bg-white text-gray-900 shadow-sm' 
+                                                                        : 'text-gray-500 hover:text-gray-700'"
+                                                                    class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
+                                                                    <span>🇬🇧</span> English
+                                                                </button>
+                                                                
+                                                                <button type="button" 
+                                                                    @click="language = 'ARB'"
+                                                                    :class="language === 'ARB' 
+                                                                        ? 'bg-white text-gray-900 shadow-sm' 
+                                                                        : 'text-gray-500 hover:text-gray-700'"
+                                                                    class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
+                                                                    <span>🇸🇦</span> العربية
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
                                                         <div class="flex justify-between space-x-4">
                                                             <button type="button" @click="editPaymentLink = false"
                                                                 class="rounded-full shadow-md border border-gray-200 hover:bg-gray-400 px-4 py-2">Cancel</button>

@@ -2434,6 +2434,7 @@ class PaymentController extends Controller
             'terms_conditions' => 'nullable|string|max:99999',
             'currency' => 'nullable|string|max:3',
             'company_id' => 'nullable|integer|exists:companies,id',
+            'language' => 'nullable',
         ]);
 
         if (!$request->company_id) {
@@ -2519,6 +2520,7 @@ class PaymentController extends Controller
                 'agent_id' => $agent->id,
                 'notes' => $request->notes,
                 'terms_conditions' => $request->terms_conditions,
+                'language' => $request->language,
                 'created_by' => Auth::id()
             ];
             
@@ -2695,14 +2697,17 @@ class PaymentController extends Controller
             $gatewayFee = $payment->service_charge ?? 0;
             $finalAmount = $payment->amount + $gatewayFee;
         }
+        
+        if ($payment->language === 'ARB') {
+            return redirect()->route('payment.link.show-arabic', [
+                'companyId' => $companyId,
+                'voucherNumber' => $voucherNumber
+            ]);
+        }
 
-        // Load available payment method groups that were selected when creating the payment link
         $payment->load(['availablePaymentMethodGroups']);
 
-         // If no payment method groups are associated, show the single payment method view
-
         if ($payment->availablePaymentMethodGroups->isEmpty()) {
-
             return view('payment.link.show', compact(
                 'payment',
                 'chargeResult',
@@ -4389,7 +4394,8 @@ class PaymentController extends Controller
         if ($request->payment_gateway) $payment->payment_gateway = $request->payment_gateway;
         if ($request->payment_method_id) $payment->payment_method_id = $request->payment_method_id;
         if ($request->amount) $payment->amount = $request->amount;
-
+        if ($request->language) $payment->language = $request->language;
+        
         try {
             $payment->update();
             $client->update();

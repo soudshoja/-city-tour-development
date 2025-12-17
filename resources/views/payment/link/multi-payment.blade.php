@@ -234,6 +234,7 @@
                     <form action="{{ route('payment.link.multi-initiate') }}" method="POST" class="flex-shrink-0">
                         @csrf
                         <input type="hidden" name="payment_id" value="{{ $payment->id }}">
+                        <input type="hidden" name="payment_method_id" id="payment_method_input_tnc">
                         <button type="submit"
                             :disabled="!agreed"
                             :class="agreed ? 'city-light-yellow hover:text-white hover:bg-[#004c9e]' : 'bg-gray-300 text-gray-500 cursor-not-allowed'"
@@ -281,6 +282,7 @@
             <form action="{{ route('payment.link.multi-initiate') }}" method="POST" class="w-full md:w-auto">
                 @csrf
                 <input type="hidden" name="payment_id" value="{{ $payment->id }}">
+                <input type="hidden" name="payment_method_id" id="payment_method_input_non_tnc">
                 <button type="submit"
                     class="w-full md:w-auto city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-6 py-2 shadow-md font-semibold">
                     Pay Now
@@ -293,16 +295,16 @@
         <div class="space-y-2 text-center w-full mt-6">
             <div class="text-sm text-gray-600 w-full overflow-x-auto">
                 <p>If you have any questions about this voucher, please reach out to agent
-                <span class="font-semibold">{{ $payment->agent->name }}</span> through
-            </p>
-            <p>
-                <a href="mailto:{{ $payment->agent->email }}" class="font-semibold hover:underline hover:text-blue-600">
-                    {{ $payment->agent->email }}
-                </a>
-                @if ($payment->agent->phone_number)
-                or <span class="font-semibold">{{ $payment->agent->phone_number }}</span>
-                @endif
-            </p>
+                    <span class="font-semibold">{{ $payment->agent->name }}</span> through
+                </p>
+                <p>
+                    <a href="mailto:{{ $payment->agent->email }}" class="font-semibold hover:underline hover:text-blue-600">
+                        {{ $payment->agent->email }}
+                    </a>
+                    @if ($payment->agent->phone_number)
+                    or <span class="font-semibold">{{ $payment->agent->phone_number }}</span>
+                    @endif
+                </p>
             </div>
         </div>
 
@@ -310,21 +312,21 @@
             // Sync selected payment method to hidden inputs in both forms
             document.addEventListener('DOMContentLoaded', function() {
                 const radioButtons = document.querySelectorAll('input[name="selected_payment_method"]');
-                const mobileInput = document.getElementById('payment_method_input_mobile');
-                const desktopInput = document.getElementById('payment_method_input_desktop');
+                const tncInput = document.getElementById('payment_method_input_tnc');
+                const nonTncInput = document.getElementById('payment_method_input_non_tnc');
 
                 // Set initial value from checked radio
                 const checkedRadio = document.querySelector('input[name="selected_payment_method"]:checked');
                 if (checkedRadio) {
-                    if (mobileInput) mobileInput.value = checkedRadio.value;
-                    if (desktopInput) desktopInput.value = checkedRadio.value;
+                    if (tncInput) tncInput.value = checkedRadio.value;
+                    if (nonTncInput) nonTncInput.value = checkedRadio.value;
                 }
 
                 // Update hidden inputs and total amount when radio selection changes
                 radioButtons.forEach(radio => {
                     radio.addEventListener('change', function() {
-                        if (mobileInput) mobileInput.value = this.value;
-                        if (desktopInput) desktopInput.value = this.value;
+                        if (tncInput) tncInput.value = this.value;
+                        if (nonTncInput) nonTncInput.value = this.value;
 
                         // Update the total amount display
                         const finalAmount = this.getAttribute('data-final-amount');

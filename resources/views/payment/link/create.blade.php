@@ -434,6 +434,34 @@
                         class="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors">
                 </div>
 
+                <!-- Language -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Invoice Language</label>
+                    <p class="text-xs text-gray-500 mb-3">Select the language for the payment voucher sent to client</p>
+                    
+                    <div x-data="{ language: '{{ old('language', 'EN') }}' }" class="inline-flex rounded-lg border border-gray-300 p-1 bg-gray-100">
+                        <input type="hidden" name="language" :value="language">
+                        
+                        <button type="button" 
+                            @click="language = 'EN'"
+                            :class="language === 'EN' 
+                                ? 'bg-white text-gray-900 shadow-sm' 
+                                : 'text-gray-500 hover:text-gray-700'"
+                            class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
+                            <span>🇬🇧</span> English
+                        </button>
+                        
+                        <button type="button" 
+                            @click="language = 'ARB'"
+                            :class="language === 'ARB' 
+                                ? 'bg-white text-gray-900 shadow-sm' 
+                                : 'text-gray-500 hover:text-gray-700'"
+                            class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
+                            <span>🇸🇦</span> العربية
+                        </button>
+                    </div>
+                </div>     
+                          
                 <!-- Advanced Section -->
                 <div x-show="advancedMode" 
                     x-cloak
@@ -459,7 +487,10 @@
                     </div>
 
                     <!-- Advanced Section with left border -->
-                    <div class="border-l-4 border-blue-500 bg-blue-50 rounded-r-lg p-4 space-y-4">
+                    <div class="border-l-4 border-blue-500 bg-blue-50 rounded-r-lg p-4 space-y-10 shadow-md">
+                        
+
+                        <!-- Terms and Condition -->
                         <div x-data="{ 
                             content: '{{ old('terms_conditions') }}', 
                             wordCount: 0,
@@ -498,7 +529,6 @@
                                 </p>
                             </div>
                         </div>
-
                     </div>
                 </div>
 

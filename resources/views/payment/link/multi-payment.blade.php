@@ -14,7 +14,6 @@
         }
     </script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-
     <title>{{ config('app.name', 'Laravel') }}</title>
 
     <!-- Fonts -->
@@ -32,10 +31,11 @@
     $isRtl = app()->getLocale() === 'ar';
     $textAlign = $isRtl ? 'text-right' : 'text-left';
     $textAlignReverse = $isRtl ? 'text-left' : 'text-right';
+    $marginStart = $isRtl ? 'ml-3' : 'mr-3';
 @endphp
 
 @if ($payment->status === 'completed')
-<div class="max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 flex items-center text-white rounded-lg">
+<div class="mb-2 max-w-4xl mx-auto bg-gradient-to-r from-[#1b3f20] to-[#1d832a] p-6 flex items-center text-white rounded-lg">
     <div class="flex items-center justify-between text-white">
         <p class="text-3xl">{{ __('invoice.paid') }}</p>
     </div>
@@ -111,11 +111,7 @@
                     <td class="py-3 px-4">{{ __('invoice.client_name') }}</td>
                     <td class="py-3 px-4 {{ $textAlignReverse }}">{{ $payment->client->full_name }}</td>
                 </tr>
-                <tr>
-                    <td class="py-3 px-4">{{ __('invoice.payment_gateway') }}</td>
-                    <td class="py-3 px-4 {{ $textAlignReverse }}">{{ $payment->payment_gateway }}</td>
-                </tr>
-                @if($payment->paymentMethod)
+                @if($payment->status === 'completed' && $payment->paymentMethod)
                 <tr>
                     <td class="py-3 px-4">{{ __('invoice.payment_method') }}</td>
                     <td class="py-3 px-4 {{ $textAlignReverse }}">{{ $payment->paymentMethod->english_name ?? '-' }}</td>
@@ -144,6 +140,39 @@
             </tbody>
         </table>
 
+        <!-- Choose Payment Method -->
+        @if ($payment->status !== 'completed' && $payment->availablePaymentMethods && $payment->availablePaymentMethods->isNotEmpty())
+        <div class="border rounded-lg overflow-hidden">
+            <div class="bg-gray-100 p-4 font-semibold text-lg border-b border-gray-300 {{ $textAlign }}">
+                {{ __('invoice.choose_payment_method') }}
+            </div>
+            <div class="p-4" id="payment-methods-container">
+                @foreach ($payment->availablePaymentMethods as $index => $method)
+                <label class="flex items-center p-4 border rounded-lg mb-3 cursor-pointer hover:bg-gray-50 transition-colors {{ $method->is_active ? 'border-gray-300' : 'border-red-300 bg-red-50' }}"
+                    for="payment_method_{{ $method->id }}">
+                    <input
+                        type="radio"
+                        name="selected_payment_method"
+                        id="payment_method_{{ $method->id }}"
+                        value="{{ $method->id }}"
+                        data-final-amount="{{ number_format($method->final_amount, 2, '.', '') }}"
+                        {{ $index === 0 ? 'checked' : '' }}
+                        {{ !$method->is_active ? 'disabled' : '' }}
+                        class="w-4 h-4 text-blue-600 focus:ring-blue-500 {{ $marginStart }}">
+                    <div>
+                        <span class="font-medium text-gray-800">
+                            {{ $method->paymentMethodGroup ? $method->paymentMethodGroup->name : 'unknown' }}
+                        </span>
+                        @if (!$method->is_active)
+                        <span class="block text-xs text-red-600">{{ __('invoice.currently_unavailable') }}</span>
+                        @endif
+                    </div>
+                </label>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         <!-- Notes & Amounts -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start mb-8 mt-10">
             <div class="md:col-span-2">
@@ -168,19 +197,19 @@
             </div>
 
             <div class="md:col-span-1 w-full text-sm">
-                @php
-                $serviceCharge = $payment->service_charge ?? $gatewayFee;
-                $baseAmount = $payment->amount - $serviceCharge;
-                @endphp
-
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>{{ __('invoice.amount') }}:</span>
                     <span>{{ number_format(!empty($finalAmount) ? $finalAmount : $payment->amount, 2) }} {{ $payment->currency }}</span>
                 </div>
-
                 <div class="flex justify-between items-center py-2 font-bold text-gray-800">
                     <span>{{ __('invoice.total') }}:</span>
-                    <span>{{ number_format(!empty($finalAmount) ? $finalAmount : $payment->amount, 2) }} {{ $payment->currency }}</span>
+                    <span id="total-amount">
+                        @if ($payment->availablePaymentMethods && $payment->availablePaymentMethods->isNotEmpty())
+                        {{ number_format($payment->availablePaymentMethods->first()->final_amount, 2) }} {{ $payment->currency }}
+                        @else
+                        {{ number_format($payment->amount, 2) }} {{ $payment->currency }}
+                        @endif
+                    </span>
                 </div>
             </div>
         </div>
@@ -205,9 +234,10 @@
                     </div>
 
                     @unless ($payment->status === 'completed' || $payment->is_disabled)
-                    <form action="{{ route('payment.link.initiate') }}" method="POST" class="flex-shrink-0">
+                    <form action="{{ route('payment.link.multi-initiate') }}" method="POST" class="flex-shrink-0">
                         @csrf
                         <input type="hidden" name="payment_id" value="{{ $payment->id }}">
+                        <input type="hidden" name="payment_method_id" id="payment_method_input_tnc">
                         <button type="submit"
                             :disabled="!agreed"
                             :class="agreed ? 'city-light-yellow hover:text-white hover:bg-[#004c9e]' : 'bg-gray-300 text-gray-500 cursor-not-allowed'"
@@ -219,6 +249,7 @@
                 </div>
             </div>
 
+            <!-- Modal -->
             <div x-show="TNCModal" x-cloak
                 class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
                 @click.away="TNCModal = false">
@@ -251,9 +282,10 @@
         @else
         @unless ($payment->status === 'completed' || $payment->is_disabled)
         <div class="md:col-span-3 w-full mt-2 flex justify-end">
-            <form action="{{ route('payment.link.initiate') }}" method="POST" class="w-full md:w-auto">
+            <form action="{{ route('payment.link.multi-initiate') }}" method="POST" class="w-full md:w-auto">
                 @csrf
                 <input type="hidden" name="payment_id" value="{{ $payment->id }}">
+                <input type="hidden" name="payment_method_id" id="payment_method_input_non_tnc">
                 <button type="submit"
                     class="w-full md:w-auto city-light-yellow hover:text-white hover:bg-[#004c9e] rounded-full border border-gray-300 px-6 py-2 shadow-md font-semibold">
                     {{ __('invoice.pay_now') }}
@@ -277,6 +309,51 @@
             </div>
         </div>
 
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const radioButtons = document.querySelectorAll('input[name="selected_payment_method"]');
+                const tncInput = document.getElementById('payment_method_input_tnc');
+                const nonTncInput = document.getElementById('payment_method_input_non_tnc');
+
+                const checkedRadio = document.querySelector('input[name="selected_payment_method"]:checked');
+                if (checkedRadio) {
+                    if (tncInput) tncInput.value = checkedRadio.value;
+                    if (nonTncInput) nonTncInput.value = checkedRadio.value;
+                }
+
+                radioButtons.forEach(radio => {
+                    radio.addEventListener('change', function() {
+                        if (tncInput) tncInput.value = this.value;
+                        if (nonTncInput) nonTncInput.value = this.value;
+
+                        const finalAmount = this.getAttribute('data-final-amount');
+                        const totalAmountElement = document.getElementById('total-amount');
+                        if (totalAmountElement && finalAmount) {
+                            const formattedAmount = parseFloat(finalAmount).toFixed(2);
+                            totalAmountElement.textContent = formattedAmount + ' {{ $payment->currency }}';
+                        }
+                    });
+                });
+
+                const forms = [
+                    document.getElementById('payment-form-mobile'),
+                    document.getElementById('payment-form-desktop')
+                ];
+
+                forms.forEach(form => {
+                    if (form) {
+                        form.addEventListener('submit', function(e) {
+                            const selectedMethod = document.querySelector('input[name="selected_payment_method"]:checked');
+                            if (!selectedMethod) {
+                                e.preventDefault();
+                                alert('{{ __("invoice.select_payment_method_alert") }}');
+                                return false;
+                            }
+                        });
+                    }
+                });
+            });
+        </script>
     </div>
 </body>
 

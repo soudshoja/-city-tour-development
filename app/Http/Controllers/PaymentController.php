@@ -6550,6 +6550,7 @@ class PaymentController extends Controller
                     'agent_id' => $agent->id,
                     'notes' => $request->notes,
                     'terms_conditions' => $request->terms_conditions,
+                    'language' => $request->language,
                     'created_by' => Auth::id(),
                 ]);
 

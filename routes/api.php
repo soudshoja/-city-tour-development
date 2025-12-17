@@ -146,4 +146,10 @@ Route::group([
 
 Route::post('/automation-supplier', [TaskController::class, 'automationSupplier']);
 
+// Payment API routes for lazy-loaded content
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/payments/{id}/partials', [PaymentController::class, 'getPartials']);
+    Route::get('/payments/{id}/transactions', [PaymentController::class, 'getTransactions']);
+});
+
 require __DIR__ . '/auth.php';

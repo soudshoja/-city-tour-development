@@ -452,7 +452,9 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'payment',
         'as' => 'payment.',
     ], function () {
-        // Route::get('/', [PaymentController::class, 'showPaymentPage'])->name('choose')->withoutMiddleware(['auth']);
+        Route::get('/{id}/details', [PaymentController::class, 'show'])->name('show');
+        Route::get('/{id}/partials', [PaymentController::class, 'getPartials'])->name('partials');
+        Route::get('/{id}/transactions', [PaymentController::class, 'getTransactions'])->name('transactions');
         Route::post('/create/{companyId}/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         //Route::match(['get', 'post'], '/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');

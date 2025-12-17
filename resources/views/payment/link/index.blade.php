@@ -155,10 +155,7 @@
                         <tbody>
                             @foreach ($payments as $payment)
                             @php
-                            $paymentUrl = route('payment.link.show', [
-                            'companyId' => $payment->agent->branch->company_id,
-                            'voucherNumber' => $payment->voucher_number,
-                            ]);
+                            $paymentUrl = route('payment.show', $payment->id);
                             @endphp
                             <tr class="border-b hover:bg-gray-50">
                                 <td class="px-3 py-2 whitespace-nowrap">
@@ -280,7 +277,7 @@
                                                     </svg>
                                                     Copy Link
                                                 </button>
-                                                <a href="{{ $paymentUrl }}" target="_blank" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                <a href="{{ route('payment.link.show', [ 'companyId' => $payment->agent->branch->company_id, 'voucherNumber' => $payment->voucher_number, ]); }}" target="_blank" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                                     <svg class="h-4 w-4 mr-1 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round"
                                                             stroke-width="2" d="M12 4v16m8-8H4" />
@@ -288,41 +285,41 @@
                                                     View Invoice
                                                 </a>
                                                 <form action="{{ route('payment.link.payment.activation', $payment->id) }}" method="POST" class="block">
-                                                @csrf
+                                                    @csrf
                                                     @if ($payment->status !== 'completed' && !$payment->is_disabled)
-                                                        <div class="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                                            <button class="flex items-center gap-2 w-full">
-                                                                <svg xmlns="http://www.w3.org/2000/svg"
-                                                                    class="h-5 w-5 mr-2 text-purple-500"
-                                                                    fill="none" viewBox="0 0 24 24"
-                                                                    stroke="currentColor" stroke-width="2">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                                        d="M12 11c-1.657 0-3 1.343-3 3v3h6v-3c0-1.657-1.343-3-3-3z" />
-                                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                                        d="M17 11V7a5 5 0 00-10 0v4" />
-                                                                    <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
-                                                                </svg>
-                                                                Disable Link
-                                                            </button>
-                                                        </div>
+                                                    <div class="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                        <button class="flex items-center gap-2 w-full">
+                                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                                class="h-5 w-5 mr-2 text-purple-500"
+                                                                fill="none" viewBox="0 0 24 24"
+                                                                stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    d="M12 11c-1.657 0-3 1.343-3 3v3h6v-3c0-1.657-1.343-3-3-3z" />
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    d="M17 11V7a5 5 0 00-10 0v4" />
+                                                                <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                                                            </svg>
+                                                            Disable Link
+                                                        </button>
+                                                    </div>
                                                     @elseif ($payment->status !== 'completed' && $payment->is_disabled)
-                                                        <div class="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                                            <button class="flex items-center gap-2 w-full">
-                                                                <svg xmlns="http://www.w3.org/2000/svg"
-                                                                    class="h-5 w-5 mr-2 text-purple-500"
-                                                                    fill="none" viewBox="0 0 24 24"
-                                                                    stroke="currentColor" stroke-width="2">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                                        d="M17 8a5 5 0 10-10 0v1" />
-                                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                                        d="M17 8v-2" />
-                                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                                        d="M12 11c-1.657 0-3 1.343-3 3v3h6v-3c0-1.657-1.343-3-3-3z" />
-                                                                    <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
-                                                                </svg>
-                                                                Enable Link
-                                                            </button>
-                                                        </div>
+                                                    <div class="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                        <button class="flex items-center gap-2 w-full">
+                                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                                class="h-5 w-5 mr-2 text-purple-500"
+                                                                fill="none" viewBox="0 0 24 24"
+                                                                stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    d="M17 8a5 5 0 10-10 0v1" />
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    d="M17 8v-2" />
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    d="M12 11c-1.657 0-3 1.343-3 3v3h6v-3c0-1.657-1.343-3-3-3z" />
+                                                                <rect x="5" y="11" width="14" height="10" rx="2" ry="2" />
+                                                            </svg>
+                                                            Enable Link
+                                                        </button>
+                                                    </div>
                                                     @endif
                                                 </form>
                                                 @if ($payment->status === 'pending')
@@ -495,14 +492,14 @@
                                                             <input type="text" name="amount" id="amount" value="{{ $payment->amount }}"
                                                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                                         </div>
-                                                        
+
                                                         <!-- Language -->
                                                         <div class="mb-4">
                                                             <label class="block text-sm font-medium text-gray-700 mb-1.5">Invoice Language</label>
                                                             <div x-data="{ language: '{{ $payment->language ?? 'EN' }}' }" class="inline-flex rounded-lg border border-gray-300 p-1 bg-gray-100">
                                                                 <input type="hidden" name="language" :value="language">
-                                                                
-                                                                <button type="button" 
+
+                                                                <button type="button"
                                                                     @click="language = 'EN'"
                                                                     :class="language === 'EN' 
                                                                         ? 'bg-white text-gray-900 shadow-sm' 
@@ -510,8 +507,8 @@
                                                                     class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
                                                                     <span>🇬🇧</span> English
                                                                 </button>
-                                                                
-                                                                <button type="button" 
+
+                                                                <button type="button"
                                                                     @click="language = 'ARB'"
                                                                     :class="language === 'ARB' 
                                                                         ? 'bg-white text-gray-900 shadow-sm' 

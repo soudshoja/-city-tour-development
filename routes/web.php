@@ -473,7 +473,6 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/show/{voucherNumber}', function () {
                 return redirect()->route('payment.link.show', ['companyId' => 1, 'voucherNumber' => request()->voucherNumber]);
             })->withoutMiddleware(['auth']);
-            Route::get('/show-arabic/{companyId}/{voucherNumber}', [PaymentController::class, 'paymentShowLinkArabic'])->name('show-arabic')->withoutMiddleware(['auth']);
             Route::put('/update/{paymentId}', [PaymentController::class, 'paymentUpdateLink'])->name('update');
             Route::delete('/delete/{paymentId}', [PaymentController::class, 'paymentDeleteLink'])->name('delete');
             Route::get('/share/{paymentId}', [PaymentController::class, 'shareLink'])->name('share');

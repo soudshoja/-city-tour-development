@@ -66,6 +66,7 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Gate;
 use SebastianBergmann\Type\TrueType;
+use Symfony\Component\Mime\DraftEmail;
 use Throwable;
 
 class PaymentController extends Controller
@@ -6733,6 +6734,10 @@ class PaymentController extends Controller
 
     public function multiPaymentLinkInitiate(Request $request)
     {
+        Log::info('[MULTI PAYMENT] Initiating multi payment link process', [
+            'request_data' => $request->all(),
+        ]);
+
         $request->validate([
             'payment_id' => 'required|exists:payments,id',
             'payment_method_id' => 'required|exists:payment_methods,id',
@@ -6740,7 +6745,6 @@ class PaymentController extends Controller
 
         $payment = Payment::with('invoice', 'agent.branch', 'availablePaymentMethodGroups')->find($request->payment_id);
 
-        // Get the selected payment method with current gateway configuration (bypassing global scope)
         $paymentMethod = PaymentMethod::withoutGlobalScope('company')
             ->with(['charge', 'paymentMethodGroup'])
             ->find($request->payment_method_id);

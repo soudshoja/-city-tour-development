@@ -4341,7 +4341,44 @@ class PaymentController extends Controller
             Log::error('MF Webhook: invalid JSON');
             return response()->json(['error' => 'Invalid JSON'], 400);
         }
-        Log::info('MyFatoorah Webhook Received', ['body' => json_decode($rawBody, true)]);
+        Log::info('MyFatoorah Webhook Received', ['body' => $payload]);
+
+        // ============ CHECK IF THIS IS ERP BOOKING PAYMENT ============
+        $userDefinedField = json_decode(data_get($payload, 'Data.UserDefinedField', '{}'), true) ?? [];
+        $project = $userDefinedField['project'] ?? null;
+        $customerReference = data_get($payload, 'Data.CustomerReference', '');
+
+        if ($project === 'erp_booking' || str_starts_with($customerReference, 'APP')) {
+            Log::info('MF Webhook: Routing to ERP Booking system', [
+                'project' => $project,
+                'customer_reference' => $customerReference,
+            ]);
+
+            try {
+                $response = Http::timeout(30)
+                    ->withHeaders([
+                        'Content-Type' => 'application/json',
+                        'MyFatoorah-Signature' => $incomingSignature,
+                    ])
+                    ->post(config('services.erp_booking.webhook_url'), $payload);
+
+                Log::info('MF Webhook: Forwarded to ERP Booking', [
+                    'status' => $response->status(),
+                    'response' => $response->json(),
+                ]);
+
+                return response()->json([
+                    'status' => 'forwarded',
+                    'target' => 'erp_booking',
+                    'erp_response' => $response->json(),
+                ]);
+            } catch (\Exception $e) {
+                Log::error('MF Webhook: Failed to forward to ERP Booking', [
+                    'error' => $e->getMessage(),
+                ]);
+                return response()->json(['error' => 'Failed to forward to ERP'], 500);
+            }
+        }
 
         $sigString = sprintf(
             'Invoice.Id=%s,Invoice.Status=%s,Transaction.Status=%s,Transaction.PaymentId=%s,Invoice.ExternalIdentifier=%s',

@@ -56,10 +56,10 @@ return [
     ],
 
     'whatsapp' => [
-        'url' => env('WHATSAPP_URL'), 
+        'url' => env('WHATSAPP_URL'),
         'phone-number-id' => env('WHATSAPP_PHONE_NUMBER_ID'),
         'token' => env('WHATSAPP_TOKEN'),
-        'graph_api_url' => env('WHATSAPP_GRAPH_API_URL', 'https://graph.facebook.com/v22.0'), 
+        'graph_api_url' => env('WHATSAPP_GRAPH_API_URL', 'https://graph.facebook.com/v22.0'),
     ],
 
     'resayil' => [
@@ -70,7 +70,7 @@ return [
 
     'open-ai' => [
         'model' => env('OPENAI_MODEL'),
-        'url' => env('OPENAI_URL').'/'.env("OPENAI_VERSION"),
+        'url' => env('OPENAI_URL') . '/' . env("OPENAI_VERSION"),
         'key' => env('OPENAI_KEY'),
     ],
 
@@ -97,7 +97,7 @@ return [
         'api_key' => env('APP_ENV') == 'production' ? env('UPAYMENT_LIVE_KEY') : env('UPAYMENT_SANDBOX_KEY'),
         'base_url' => rtrim(env('APP_ENV') == 'production' ? env('UPAYMENT_LIVE_URL') : env('UPAYMENT_SANDBOX_URL'), '/') . '/v1',
     ],
-    
+
     'hesabe' => [
         'api_key' => env('APP_ENV') == 'production' ? env('HESABE_SECRET_KEY') : env('HESABE_SANDBOX_SECRET_KEY'),
         'base_url' => env('APP_ENV') == 'production' ? env('HESABE_PRODUCTION') : env('HESABE_SANDBOX'),
@@ -114,8 +114,12 @@ return [
         'base_url' => env('IATA_API_BASE_URL'),
         'token_url' => env('IATA_TOKEN_URL'),
     ],
-    
+
     'knet' => [
         'url' => env('APP_ENV') == 'production' ? env('KNET_PRODUCTION_URL') : env('KNET_SANDBOX_URL'),
-    ]
+    ],
+
+    'erp_booking' => [
+        'webhook_url' => env('APP_ENV') == 'production' ? env('ERP_PRODUCTION_URL') : env('ERP_SANDBOX_URL'),
+    ],
 ];

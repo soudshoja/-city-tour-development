@@ -47,6 +47,7 @@ use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ResayilController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SupplierProcedureController;
+use App\Http\Controllers\ReminderController;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -628,6 +629,15 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/set-group', [PaymentMethodController::class, 'setGroup'])->name('set-group');
         Route::post('/toggle-enable/{id}', [PaymentMethodController::class, 'toggleEnable'])->name('toggle-enable');
 
+    });
+
+    Route::group([
+        'prefix' => 'reminder',
+        'as' => 'reminder.',
+    ], function () {
+        Route::get('/', [ReminderController::class, 'index'])->name('index');
+        Route::post('/reminders', [ReminderController::class, 'store'])->name('store');
+        Route::post('/reminders/bulk', [ReminderController::class, 'bulk'])->name('bulk');
     });
 }); // auth middleware end
 

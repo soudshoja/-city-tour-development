@@ -6804,7 +6804,7 @@ class PaymentController extends Controller
             $companyEmail = $company?->email ?? 'admin@citytravelers.co';
 
             $executePayload = [
-                "PaymentMethodId"     => $paymentMethod,
+                "PaymentMethodId"     => $paymentMethod->myfatoorah_id,
                 "InvoiceValue"        => $finalAmount,
                 "CustomerName"       => $customerName ?? 'Customer',
                 "CustomerEmail"       => $companyEmail,
@@ -6819,7 +6819,7 @@ class PaymentController extends Controller
                     'voucher_number' => $payment->voucher_number,
                     'payment_id' => $payment->id,
                     'payment_gateway' => $paymentGateway,
-                    'payment_method' => $paymentMethod,
+                    'payment_method' => $paymentMethod->myfatoorah_id,
                     'process' => $process,
                 ]),
                 "InvoiceItems" => [

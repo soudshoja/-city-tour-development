@@ -4451,9 +4451,9 @@ class PaymentController extends Controller
         Log::info('MyFatoorah Webhook Received', ['body' => $payload]);
 
         // ============ CHECK IF THIS IS ERP BOOKING PAYMENT ============
-        $userDefinedField = json_decode(data_get($payload, 'Data.UserDefinedField', '{}'), true) ?? [];
+        $userDefinedField = json_decode(data_get($payload, 'Data.Invoice.UserDefinedField', '{}'), true) ?? [];
         $project = $userDefinedField['project'] ?? null;
-        $customerReference = data_get($payload, 'Data.CustomerReference', '');
+        $customerReference = data_get($payload, 'Data.Invoice.ExternalIdentifier', '');
 
         if ($project === 'erp_booking' || str_starts_with($customerReference, 'APP')) {
             Log::info('MF Webhook: Routing to ERP Booking system', [

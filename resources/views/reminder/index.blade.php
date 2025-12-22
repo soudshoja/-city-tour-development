@@ -601,10 +601,7 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div>
-                                    <label class="block text-xs text-slate-600 mb-1">Max Reminders</label>
-                                    <input type="number" name="max_reminder" x-model="maxReminders" min="1" max="20" class="w-full border border-slate-300 rounded-md px-2 py-1.5 text-sm">
-                                </div>
+
                             </div>
                         </div>
 
@@ -725,10 +722,6 @@
                                             <option value="days">Days</option>
                                         </select>
                                     </div>
-                                </div>
-                                <div>
-                                    <label class="block text-xs text-slate-600 mb-1">Max Reminders</label>
-                                    <input type="number" name="max_reminder" x-model="maxReminders" min="1" max="20" class="w-full border border-slate-300 rounded-md px-2 py-1.5 text-sm">
                                 </div>
                             </div>
                         </div>

@@ -199,15 +199,21 @@
             <div class="md:col-span-1 w-full text-sm">
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>{{ __('invoice.amount') }}:</span>
-                    <span>{{ number_format(!empty($finalAmount) ? $finalAmount : $payment->amount, 2) }} {{ $payment->currency }}</span>
+                    <span id="display-amount">
+                        @if ($payment->availablePaymentMethods && $payment->availablePaymentMethods->isNotEmpty())
+                            {{ number_format($payment->availablePaymentMethods->first()->final_amount, 2) }} {{ $payment->currency }}
+                        @else
+                            {{ number_format($payment->amount, 2) }} {{ $payment->currency }}
+                        @endif
+                    </span>
                 </div>
                 <div class="flex justify-between items-center py-2 font-bold text-gray-800">
                     <span>{{ __('invoice.total') }}:</span>
                     <span id="total-amount">
                         @if ($payment->availablePaymentMethods && $payment->availablePaymentMethods->isNotEmpty())
-                        {{ number_format($payment->availablePaymentMethods->first()->final_amount, 2) }} {{ $payment->currency }}
+                            {{ number_format($payment->availablePaymentMethods->first()->final_amount, 2) }} {{ $payment->currency }}
                         @else
-                        {{ number_format($payment->amount, 2) }} {{ $payment->currency }}
+                            {{ number_format($payment->amount, 2) }} {{ $payment->currency }}
                         @endif
                     </span>
                 </div>
@@ -224,7 +230,9 @@
                             type="checkbox"
                             id="agree-modal"
                             x-model="agreed"
-                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            @click.prevent="TNCModal = true"
+                            :class="agreed ? 'text-blue-600' : 'text-gray-400'"
+                            class="w-4 h-4 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
                         <span class="text-sm text-gray-700">
                             {{ __('invoice.tnc_read_agree') }}
                             <button type="button" @click.stop.prevent="TNCModal = true" class="text-blue-600 hover:underline font-medium">
@@ -327,10 +335,10 @@
                         if (nonTncInput) nonTncInput.value = this.value;
 
                         const finalAmount = this.getAttribute('data-final-amount');
-                        const totalAmountElement = document.getElementById('total-amount');
-                        if (totalAmountElement && finalAmount) {
-                            const formattedAmount = parseFloat(finalAmount).toFixed(2);
-                            totalAmountElement.textContent = formattedAmount + ' {{ $payment->currency }}';
+                        if (finalAmount) {
+                            const formattedAmount = parseFloat(finalAmount).toFixed(2) + ' {{ $payment->currency }}';
+                            document.getElementById('display-amount').textContent = formattedAmount;
+                            document.getElementById('total-amount').textContent = formattedAmount;
                         }
                     });
                 });

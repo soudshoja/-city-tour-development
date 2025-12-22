@@ -390,7 +390,7 @@
                                     name="payment_methods[]" 
                                     value="{{ $chose->paymentMethod->id }}" 
                                     id="payment_method_{{ $chose->paymentMethod->id }}"
-                                    {{ in_array($chose->paymentMethod->id, old('payment_methods', [])) ? 'checked' : '' }}
+                                    {{ in_array($chose->paymentMethod->id, old('payment_methods', [])) || (strtolower($chose->paymentMethod->charge->name) == 'myfatoorah' && strtolower($chose->paymentMethod->english_name) == 'knet') ? 'checked' : '' }}
                                     class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                 <label for="payment_method_{{ $chose->paymentMethod->id }}" class="ml-2 text-sm text-gray-700">
                                     {{ $chose->paymentMethodGroup->name }}

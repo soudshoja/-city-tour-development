@@ -11,6 +11,7 @@ use App\Models\Company;
 use App\Models\Agent;
 use App\Models\Accountant;
 use App\Services\GatewayConfigService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -48,9 +49,15 @@ class MyFatoorah
         }
 
         if ($myfatoorahConfig['status'] === 'error') {
-            $payment->delete();
-
-            return response()->json(['error' => $myfatoorahConfig['message']], 500);
+            Log::error('MyFatoorah: Configuration error', [
+                'message' => $myfatoorahConfig['message'],
+                'payment_id' => $payment->id
+            ]);
+            
+            return [
+                'status' => 'error',
+                'message' => $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive'
+            ];
         }
 
         $myfatoorahConfig = $myfatoorahConfig['data'];
@@ -70,16 +77,20 @@ class MyFatoorah
             $customerName = trim(explode('/', $customerName)[0]);
         }
 
-        $clientPhone = $data['client_phone'] ?? '50000000';
+        $clientPhone = $request->input('client_phone') ?? '50000000';
 
         if (isset($clientPhone) && strpos($clientPhone, '+') === 0) {
             $clientPhone = preg_replace('/^\+\d{1,3}/', '', $clientPhone);
             $clientPhone = ltrim($clientPhone, '0');
         }
 
+        // Determine process type
+        $process = $payment->invoice ? 'invoice' : 'topup';
+
         $userDefinedField = json_encode([
-            'invoice_id'          => $request->input('invoice_id'),
-            'invoice_partial_id' => $request->input('invoice_partial_id'),
+            'voucher_number'      => $payment->voucher_number,
+            'process'             => $process,
+            'invoice_partial_id'  => $request->input('invoice_partial_id'),
         ]);
 
         $companyId = $company->id;
@@ -92,17 +103,17 @@ class MyFatoorah
             "InvoiceValue"        => $request->input('final_amount'),
             "CustomerName"        => $request->client_name,
             "CustomerEmail"       => $companyEmail,
-            "MobileCountryCode"   => $client->country_code ?? '+965',
+            "MobileCountryCode"   => $payment->client->country_code ?? '+965',
             "CustomerMobile"      => $clientPhone,
-            "DisplayCurrencyIso"  => "KWD",
+            "DisplayCurrencyIso"  => $payment->currency ?? "KWD",
+            "ExpiryDate"         => now()->addDays(2)->toDateString(),
             "CallBackUrl"         => route('payments.callback'),
-            "ErrorUrl"            => route('payments.error', ['invoice_id' => $request->input('invoice_id')]),
+            "ErrorUrl"            => route('payments.error', ['payment_id' => $payment->id]),
             "Language"            => "en",
-            "CustomerReference"   => $invoiceNumber,
             "UserDefinedField"    => $userDefinedField,
             "InvoiceItems" => [
                 [
-                    "ItemName"   => "Invoice " . $invoiceNumber,
+                    "ItemName"   => "Voucher " . $payment->voucher_number,
                     "Quantity"   => 1,
                     "UnitPrice"  => $request->input('final_amount'),
                 ]
@@ -119,10 +130,51 @@ class MyFatoorah
         Log::info('MyFatoorah: ExecutePayment response', ['response' => $executeResponse->json()]);
 
         if (!$executeResponse->successful()) {
-            return response()->json(['error' => 'ExecutePayment failed.'], 500);
+            $errorBody = $executeResponse->json();
+            Log::error('MyFatoorah: ExecutePayment failed', [
+                'response' => $errorBody,
+                'status' => $executeResponse->status(),
+                'payment_id' => $payment->id
+            ]);
+            
+            return [
+                'status' => 'error',
+                'message' => $errorBody['Message'] ?? 'Payment initiation failed',
+                'errors' => $errorBody['ValidationErrors'] ?? [],
+                'response' => $errorBody
+            ];
         }
 
-        return $executeResponse->json();
+        $resData = $executeResponse->json();
+
+        // Validate response structure
+        if (!isset($resData['Data']['InvoiceId']) || !isset($resData['Data']['PaymentURL'])) {
+            Log::error('MyFatoorah: Invalid response structure', [
+                'response' => $resData,
+                'payment_id' => $payment->id
+            ]);
+            
+            return [
+                'status' => 'error',
+                'message' => 'Invalid response from MyFatoorah - missing required fields',
+                'response' => $resData
+            ];
+        }
+
+        Log::info('MyFatoorah: Charge created successfully', [
+            'payment_id' => $payment->id,
+            'voucher_number' => $payment->voucher_number,
+            'invoice_id' => $resData['Data']['InvoiceId'],
+            'payment_url' => $resData['Data']['PaymentURL']
+        ]);
+
+        return [
+            'status' => 'success',
+            'data' => $resData['Data'],
+            'payment_url' => $resData['Data']['PaymentURL'],
+            'invoice_id' => $resData['Data']['InvoiceId'],
+            'expiry_date' => $resData['Data']['ExpiryDate'] ?? null
+        ];
     }
 
     public function getCharge($chargeId)

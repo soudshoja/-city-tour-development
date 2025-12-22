@@ -207,10 +207,9 @@
                     </div>
 
                     @unless ($payment->status === 'completed' || $payment->is_disabled)
-                    <form action="{{ route('payment.link.multi-initiate') }}" method="POST" class="flex-shrink-0">
+                    <form action="{{ route('payment.link.initiate') }}" method="POST" class="flex-shrink-0">
                         @csrf
                         <input type="hidden" name="payment_id" value="{{ $payment->id }}">
-                        <input type="hidden" name="payment_method_id" id="payment_method_input_tnc">
                         <button type="submit"
                             :disabled="!agreed"
                             :class="agreed ? 'city-light-yellow hover:text-white hover:bg-[#004c9e]' : 'bg-gray-300 text-gray-500 cursor-not-allowed'"

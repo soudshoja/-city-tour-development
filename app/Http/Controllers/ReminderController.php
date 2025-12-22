@@ -66,12 +66,13 @@ class ReminderController extends Controller
 
     public function store(Request $request)
     {
+        dd('Payment Link Reminder', $request->all());
         $request->validate([
             'agent_id' => 'nullable|exists:agents,id',
             'client_id' => 'nullable|exists:clients,id',
             'invoice_id' => 'nullable|exists:invoices,id',
             'payment_id' => 'nullable|exists:payments,id',
-            'target_type' => 'required|in:invoice,client,agent',
+            'target_type' => 'required|in:invoice,payment,client,agent',
             'message' => 'required|string|max:500',
             'send_to_client' => 'nullable',
             'send_to_agent' => 'nullable',

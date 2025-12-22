@@ -17,6 +17,7 @@ class PaymentMethod extends Model
         'company_id',
         'arabic_name',
         'english_name',
+        'payment_method_group_id',
         'code',
         'type',
         'is_active',
@@ -29,6 +30,11 @@ class PaymentMethod extends Model
         'image',
     ];
 
+    public function charge()
+    {
+        return $this->belongsTo(Charge::class, 'charge_id');
+    }
+
     public function gateways()
     {
         return $this->belongsTo(Charge::class, 'type', 'name');
@@ -37,6 +43,17 @@ class PaymentMethod extends Model
     public function company()
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function paymentMethodGroup()
+    {
+        return $this->belongsTo(PaymentMethodGroup::class, 'payment_method_group_id');
+    }
+
+    public function paymentLinks()
+    {
+        return $this->belongsToMany(Payment::class, 'payment_link_payment_method')
+            ->withTimestamps();
     }
 
     protected static ?int $resolvedCompanyId = null;

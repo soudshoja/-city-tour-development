@@ -473,7 +473,6 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/show/{voucherNumber}', function () {
                 return redirect()->route('payment.link.show', ['companyId' => 1, 'voucherNumber' => request()->voucherNumber]);
             })->withoutMiddleware(['auth']);
-            Route::get('/show-arabic/{companyId}/{voucherNumber}', [PaymentController::class, 'paymentShowLinkArabic'])->name('show-arabic')->withoutMiddleware(['auth']);
             Route::put('/update/{paymentId}', [PaymentController::class, 'paymentUpdateLink'])->name('update');
             Route::delete('/delete/{paymentId}', [PaymentController::class, 'paymentDeleteLink'])->name('delete');
             Route::get('/share/{paymentId}', [PaymentController::class, 'shareLink'])->name('share');
@@ -483,6 +482,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/import/invoice', [PaymentController::class, 'importFromInvoice'])->name('import.invoice');
             Route::post('/import/payment', [PaymentController::class, 'importFromPayment'])->name('import.payment');
             Route::post('/payment-activation/{paymentId}', [PaymentController::class, 'paymentLinkActivation'])->name('payment.activation');
+            Route::post('/multi-initiate', [PaymentController::class, 'multiPaymentLinkInitiate'])->name('multi-initiate')->withoutMiddleware(['auth']);
         });
         Route::get('/tap-callback', [PaymentController::class, 'handleTapCallback'])->name('tap.callback')->withoutMiddleware(['auth']);
 
@@ -615,6 +615,20 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/update-expiry', [SettingController::class, 'updateInvoiceExpiry'])->name('update-expiry');
         });
     });
+
+    //Payment Method
+    Route::group([
+        'prefix' => 'payment-method',
+        'as'     => 'payment-method.',
+    ], function () {
+        Route::get('/', [PaymentMethodController::class, 'index'])->name('index');
+        Route::get('/{id}', [PaymentMethodController::class, 'show'])->name('show');
+        Route::put('/{id}', [PaymentMethodController::class, 'update'])->name('update');
+        Route::delete('/{id}', [PaymentMethodController::class, 'destroy'])->name('destroy');
+        Route::post('/set-group', [PaymentMethodController::class, 'setGroup'])->name('set-group');
+        Route::post('/toggle-enable/{id}', [PaymentMethodController::class, 'toggleEnable'])->name('toggle-enable');
+
+    });
 }); // auth middleware end
 
 Route::get('/download-pdf/{path}', function ($path) {
@@ -712,15 +726,6 @@ Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhoo
 Route::post('/whatsapp/sendToResayilSimple', [WhatsappController::class, 'sendToResayilSimple'])->name('whatsapp.sendToResayilSimple');
 Route::post('/webhook/resayil', [WhatsappController::class, 'handleResayilWebhook'])->name('whatsapp.resayil-webhook');
 
-//Payment Method
-Route::group([
-    'prefix' => 'payment-method',
-    'as'     => 'payment-method.',
-], function () {
-    Route::get('/{id}', [PaymentMethodController::class, 'show'])->name('show');
-    Route::put('/{id}', [PaymentMethodController::class, 'update'])->name('update');
-    Route::delete('/{id}', [PaymentMethodController::class, 'destroy'])->name('destroy');
-});
 
 Route::group([
     'prefix' => 'resayil',

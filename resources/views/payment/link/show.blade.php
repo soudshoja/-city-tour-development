@@ -195,7 +195,9 @@
                             type="checkbox"
                             id="agree-modal"
                             x-model="agreed"
-                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            @click.prevent="TNCModal = true"
+                            :class="agreed ? 'text-blue-600' : 'text-gray-400'"
+                            class="w-4 h-4 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
                         <span class="text-sm text-gray-700">
                             {{ __('invoice.tnc_read_agree') }}
                             <button type="button" @click.stop.prevent="TNCModal = true" class="text-blue-600 hover:underline font-medium">
@@ -205,9 +207,10 @@
                     </div>
 
                     @unless ($payment->status === 'completed' || $payment->is_disabled)
-                    <form action="{{ route('payment.link.initiate') }}" method="POST" class="flex-shrink-0">
+                    <form action="{{ route('payment.link.multi-initiate') }}" method="POST" class="flex-shrink-0">
                         @csrf
                         <input type="hidden" name="payment_id" value="{{ $payment->id }}">
+                        <input type="hidden" name="payment_method_id" id="payment_method_input_tnc">
                         <button type="submit"
                             :disabled="!agreed"
                             :class="agreed ? 'city-light-yellow hover:text-white hover:bg-[#004c9e]' : 'bg-gray-300 text-gray-500 cursor-not-allowed'"

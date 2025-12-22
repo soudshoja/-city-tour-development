@@ -85,5 +85,6 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view settlement', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'view creditors', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'view daily sales', 'group' => 'report']);
+        Permission::firstOrCreate(['name' => 'manage payment method groups', 'group' => 'charges']);
     }
 }

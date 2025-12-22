@@ -33,6 +33,7 @@ class Payment extends Model
         'payment_url',
         'expiry_date',
         'status',
+        'terms_conditions',
         'account_number',
         'bank_name',
         'swift_no',
@@ -41,6 +42,7 @@ class Payment extends Model
         'tax',
         'discount',
         'shipping',
+        'language',
         'completed',
         'is_disabled',
     ];
@@ -104,6 +106,18 @@ class Payment extends Model
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class, 'payment_method_id');
+    }
+
+    public function availablePaymentMethods()
+    {
+        return $this->belongsToMany(PaymentMethod::class, 'payment_link_payment_method')
+            ->withTimestamps();
+    }
+
+    public function availablePaymentMethodGroups()
+    {
+        return $this->belongsToMany(PaymentMethodGroup::class, 'payment_link_payment_method_group')
+            ->withTimestamps();
     }
 
     public function createdBy()

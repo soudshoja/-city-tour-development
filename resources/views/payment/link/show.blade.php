@@ -195,7 +195,9 @@
                             type="checkbox"
                             id="agree-modal"
                             x-model="agreed"
-                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            @click.prevent="TNCModal = true"
+                            :class="agreed ? 'text-blue-600' : 'text-gray-400'"
+                            class="w-4 h-4 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
                         <span class="text-sm text-gray-700">
                             {{ __('invoice.tnc_read_agree') }}
                             <button type="button" @click.stop.prevent="TNCModal = true" class="text-blue-600 hover:underline font-medium">

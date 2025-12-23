@@ -2637,7 +2637,7 @@ class PaymentController extends Controller
             $response = $this->multiPaymentMethodProcess($request);
 
             // return redirect()->back()->with($response['success'] ? 'success' : 'error', $response['message']);
-            return auth()->user() ? redirect()->route('payment.link.index')->with( $response['success'], $response['message']) : redirect()->back()->with($response['success'] ? 'success' : 'error', $response['message']);
+            return auth()->user() ? redirect()->route('payment.show', ['id' => $response['payment_id']])->with( $response['success'], $response['message']) : redirect()->back()->with($response['success'] ? 'success' : 'error', $response['message']);
         } 
 
         // old process (backward compatibility)

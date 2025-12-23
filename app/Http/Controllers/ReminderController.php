@@ -21,17 +21,21 @@ class ReminderController extends Controller
         $sortField = $request->get('sort', 'due_date');
         $sortDirection = $request->get('direction', 'asc');
 
-        // Validate sort field
         $allowedSorts = ['invoice_number', 'due_date', 'client_name', 'agent_name'];
         if (!in_array($sortField, $allowedSorts)) {
             $sortField = 'due_date';
         }
 
-        // Validate direction
         $sortDirection = $sortDirection === 'desc' ? 'desc' : 'asc';
 
-        $query = Invoice::where('invoices.status', 'unpaid')  // ← Add table prefix
-            ->with(['client', 'agent']);
+        $query = Invoice::where('invoices.status', 'unpaid')
+            ->with([
+                'client',
+                'agent',
+                'reminders' => function ($query) {
+                    $query->orderBy('scheduled_at', 'asc');
+                }
+            ]);
 
         // Handle sorting by relationship fields
         if ($sortField === 'client_name') {
@@ -43,7 +47,7 @@ class ReminderController extends Controller
                 ->orderBy('users.name', $sortDirection)
                 ->select('invoices.*');
         } else {
-            $query->orderBy('invoices.' . $sortField, $sortDirection);  // ← Add table prefix
+            $query->orderBy('invoices.' . $sortField, $sortDirection);
         }
 
         // Search filter
@@ -59,59 +63,149 @@ class ReminderController extends Controller
                     });
             });
         }
+
         $invoices = $query->paginate(20)->withQueryString();
 
-        return view('reminder.index', compact('invoices', 'sortField', 'sortDirection', 'search'));
+        // Payment Reminders (grouped by group_id)
+        $paymentReminders = Reminder::where('target_type', 'payment')
+            ->with(['payment', 'client', 'agent'])
+            ->orderBy('group_id')
+            ->orderBy('scheduled_at')
+            ->get()
+            ->groupBy('group_id');
+
+        // All Reminders for History tab (grouped by group_id)
+        $allReminders = Reminder::with(['client', 'agent', 'invoice', 'payment'])
+            ->orderBy('created_at', 'desc')
+            ->orderBy('scheduled_at', 'asc')
+            ->get()
+            ->groupBy('group_id');
+
+        return view('reminder.index', compact(
+            'invoices',
+            'sortField',
+            'sortDirection',
+            'search',
+            'paymentReminders',
+            'allReminders'
+        ));
     }
 
     public function store(Request $request)
     {
-        dd('Payment Link Reminder', $request->all());
+        Log::info('Starting to create a reminder');
         $request->validate([
             'agent_id' => 'nullable|exists:agents,id',
             'client_id' => 'nullable|exists:clients,id',
             'invoice_id' => 'nullable|exists:invoices,id',
             'payment_id' => 'nullable|exists:payments,id',
             'target_type' => 'required|in:invoice,payment,client,agent',
-            'message' => 'required|string|max:500',
+            'message' => 'nullable|string|max:500',
             'send_to_client' => 'nullable',
             'send_to_agent' => 'nullable',
             'frequency' => 'required|in:once,auto',
             'value' => 'required_if:frequency,auto|nullable|integer|min:1',
             'unit' => 'required_if:frequency,auto|nullable|in:hours,days',
+            'number_of_reminder' => 'required|integer|min:1',
         ]);
 
-        $invoice = Invoice::with(['client', 'agent'])->findOrFail($request->invoice_id);
-        $agent = Agent::findOrFail($invoice->agent_id);
-        $client = Client::findOrFail($invoice->client_id);
+        $targetType = $request->target_type;
+        Log::info("Target type selected: {$request->target_type}");
 
-        $formattedDueDate = \Carbon\Carbon::parse($invoice->due_date)->format('jS F Y');
+        $agent = Agent::findOrFail($request->agent_id);
+        $client = Client::findOrFail($request->client_id);
 
-        $invoiceLink = route('invoice.show', [
-            'companyId' => $client->agent->branch->company_id,
-            'invoiceNumber' => $invoice->invoice_number,
+        $additionalInfo = $request->message ? "\n\nAdditional information regarding this {$targetType} can be find below:\n{$request->message}" : '';
+
+        // Client phone: combine country_code + phone
+        $clientPhone = $client->phone;
+        $clientCountryCode = $client->country_code ?? '';
+
+        // Agent phone: use phone_number column (already includes country code)
+        $agentPhoneFull = $agent->phone_number ?? '';
+        
+        // Parse agent phone to separate country code and number
+        // Assuming format like "+60123456789" or "60123456789"
+        $agentCountryCode = '';
+        $agentPhone = $agentPhoneFull;
+        
+        if (preg_match('/^(\+?\d{1,3})(\d{6,})$/', $agentPhoneFull, $matches)) {
+            $agentCountryCode = $matches[1];
+            $agentPhone = $matches[2];
+        }
+
+        // Validate phone numbers before proceeding
+        $sendToClient = $request->has('send_to_client');
+        $sendToAgent = $request->has('send_to_agent');
+
+        if ($sendToClient && (empty($clientPhone) || strlen($clientPhone) < 6)) {
+            return redirect()->back()->with('error', 'Client does not have a valid phone number.');
+        }
+        if ($sendToAgent && (empty($agentPhoneFull) || strlen($agentPhoneFull) < 6)) {
+            return redirect()->back()->with('error', 'Agent does not have a valid phone number.');
+        }
+
+        Log::info('Phone numbers to be used', [
+            'client_country_code' => $clientCountryCode,
+            'client_phone' => $clientPhone,
+            'agent_country_code' => $agentCountryCode,
+            'agent_phone' => $agentPhone,
+            'agent_phone_full' => $agentPhoneFull,
         ]);
 
-        $messageText = "Please be reminded that you have an outstanding payment to invoice {$invoice->invoice_number} of {$invoice->currency} {$invoice->amount} that was past due on {$formattedDueDate}\n\nAdditional information regarding this invoice can be find below:\n{$request->message}\n\nPlease click the following link to make the payment to the invoice:\n{$invoiceLink}\n\nShould you require further assistance, feel free to reach out our support team.";
+        $invoice = null;
+        $payment = null;
+        $clientId = null;
+        $agentId = null;
+        $invoiceId = null;
+        $paymentId = null;
 
-        // Test number
-        $dummyPhone = '126103085';
-        $country_code = '+60';
+        if ($targetType === 'invoice') {
+            Log::info('Target type is Invoice. Searching the target invoice');
+            $invoice = Invoice::with(['client', 'agent'])->findOrFail($request->invoice_id);
+
+            $clientId = $invoice->client_id;
+            $agentId = $invoice->agent_id;
+            $invoiceId = $invoice->id;
+            $paymentId = null;
+
+            $formattedDueDate = \Carbon\Carbon::parse($invoice->due_date)->format('jS F Y');
+            $invoiceLink = route('invoice.show', [
+                'companyId' => $client->agent->branch->company_id,
+                'invoiceNumber' => $invoice->invoice_number,
+            ]);
+
+            $clientMessageText = "Please be reminded that you have an outstanding payment to invoice {$invoice->invoice_number} of {$invoice->currency} {$invoice->amount} that was past due on {$formattedDueDate}.{$additionalInfo}\n\nPlease click the following link to make the payment to the invoice:\n{$invoiceLink}\n\nShould you require further assistance, feel free to reach out our support team.";
+
+            $agentMessageText = "This is a reminder that your client has an outstanding payment to invoice {$invoice->invoice_number} of {$invoice->currency} {$invoice->amount} that was past due on {$formattedDueDate}.{$additionalInfo}\n\nInvoice link:\n{$invoiceLink}\n\nPlease follow up with your client regarding this payment.";
+        } elseif ($targetType === 'payment') {
+            Log::info('Target type is Payment. Searching the target payment');
+            $payment = Payment::with(['client', 'agent'])->findOrFail($request->payment_id);
+
+            $clientId = $payment->client_id;
+            $agentId = $payment->agent_id;
+            $invoiceId = null;
+            $paymentId = $payment->id;
+
+            $paymentLink = route('payment.link.show', [
+                'companyId' => $client->agent->branch->company->id,
+                'voucherNumber' => $payment->voucher_number,
+            ]);
+
+            $clientMessageText = "Please be reminded that you have an outstanding payment to voucher {$payment->voucher_number} of {$payment->currency} {$payment->amount}.{$additionalInfo}\n\nPlease click the following link to make the payment:\n{$paymentLink}\n\nShould you require further assistance, feel free to reach out our support team.";
+
+            $agentMessageText = "This is a reminder that your client has an outstanding payment to voucher {$payment->voucher_number} of {$payment->currency} {$payment->amount}.{$additionalInfo}\n\nPayment link:\n{$paymentLink}\n\nPlease follow up with your client regarding this payment.";
+        } else {
+            return redirect()->back()->with('error', 'Unsupported target type for reminder.');
+        }
 
         // Generate ONE group_id for all reminders in this batch
-        $groupId = Str::uuid()->toString();
+        $groupId = Str::random(10);
 
         // Determine how many reminders to create based on frequency
-        // once = 1 reminder
-        // auto = value number of reminders (e.g., value=3 means 3 reminders)
-        $reminderCount = $request->frequency === 'once' ? 1 : (int) ($request->value ?? 1);
+        $reminderCount = $request->frequency === 'once' ? 1 : (int) ($request->number_of_reminder ?? 1);
+        $intervalValue = (int) ($request->value ?? 1);
         $intervalUnit = $request->unit ?? 'days';
-
-        Log::info('=== REMINDER CREATION ===');
-        Log::info('Invoice: ' . $invoice->invoice_number);
-        Log::info('Frequency: ' . $request->frequency);
-        Log::info('Total Reminders to create: ' . $reminderCount);
-        Log::info('Interval: every 1 ' . $intervalUnit);
 
         $resayil = new ResayilController();
         $createdReminders = [];
@@ -120,55 +214,72 @@ class ReminderController extends Controller
         for ($i = 0; $i < $reminderCount; $i++) {
             $reminderNumber = $i + 1;
             $sentAt = null;
+            $status = 'pending';
 
             if ($i === 0) {
-                // First reminder - send immediately
                 $scheduledAt = now();
-                $status = 'pending';
+                $clientResult = ['success' => false];
+                $agentResult = ['success' => false];
 
-                $result = $resayil->shareReminder(
-                    $dummyPhone,
-                    $country_code,
-                    $messageText,
-                    $invoice->client_id,
-                    $invoice->agent_id,
-                    $invoice->id
-                );
+                // Send to Client
+                if ($sendToClient) {
+                    $clientResult = $resayil->shareReminder(
+                        $clientPhone,
+                        $clientCountryCode,
+                        $clientMessageText,
+                        $clientId,
+                        $agentId,
+                        $invoiceId ?? $paymentId,
+                    );
+                    Log::info("Reminder #{$reminderNumber} - Sent to CLIENT ({$clientCountryCode}{$clientPhone})", $clientResult);
+                }
 
-                Log::info("Reminder #" . $reminderNumber . " - Sending now", $result);
+                // Send to Agent
+                if ($sendToAgent) {
+                    $agentResult = $resayil->shareReminder(
+                        $agentPhone,
+                        $agentCountryCode,
+                        $agentMessageText,
+                        $clientId,
+                        $agentId,
+                        $invoiceId ?? $paymentId,
+                    );
+                    Log::info("Reminder #{$reminderNumber} - Sent to AGENT ({$agentCountryCode}{$agentPhone})", $agentResult);
+                }
 
-                if ($result['success']) {
+                // Determine status based on results
+                $clientSuccess = !$sendToClient || $clientResult['success'];
+                $agentSuccess = !$sendToAgent || $agentResult['success'];
+
+                if ($clientSuccess && $agentSuccess) {
                     $status = 'sent';
                     $sentAt = now();
                     $firstReminderSent = true;
                 } else {
                     $status = 'failed';
-                    $sentAt = null;
-                    Log::error("Failed to send reminder #" . $reminderNumber . ": " . ($result['error'] ?? 'Unknown error'));
+                    Log::error("Failed to send reminder #{$reminderNumber}", [
+                        'client_result' => $sendToClient ? $clientResult : 'not sent',
+                        'agent_result' => $sendToAgent ? $agentResult : 'not sent',
+                    ]);
                 }
             } else {
-                // Subsequent reminders - schedule 1 unit apart each
                 $scheduledAt = $intervalUnit === 'hours'
-                    ? now()->addHours($i)      // +1h, +2h, +3h...
-                    : now()->addDays($i);       // +1d, +2d, +3d...
+                    ? now()->addHours($intervalValue * $i)
+                    : now()->addDays($intervalValue * $i);
 
-                $status = 'pending';
-                $sentAt = null;
-
-                Log::info("Reminder #" . $reminderNumber . " - Scheduled for: " . $scheduledAt->format('Y-m-d H:i:s'));
+                Log::info("Reminder #{$reminderNumber} - Scheduled for: " . $scheduledAt->format('Y-m-d H:i:s'));
             }
 
-            // Create reminder record
             $reminder = Reminder::create([
-                'client_id' => $invoice->client_id,
-                'agent_id' => $invoice->agent_id,
-                'target_type' => $request->target_type,
-                'invoice_id' => $invoice->id,
-                'payment_id' => $request->payment_id,
+                'client_id' => $clientId,
+                'agent_id' => $agentId,
+                'target_type' => $targetType,
+                'invoice_id' => $invoiceId,
+                'payment_id' => $paymentId,
                 'message' => $request->message,
                 'group_id' => $groupId,
-                'send_to_client' => $request->has('send_to_client'),
-                'send_to_agent' => $request->has('send_to_agent'),
+                'send_to_client' => $sendToClient,
+                'send_to_agent' => $sendToAgent,
                 'frequency' => $request->frequency,
                 'value' => $request->value,
                 'unit' => $request->unit,
@@ -184,19 +295,24 @@ class ReminderController extends Controller
         Log::info('=== REMINDERS CREATED ===', [
             'group_id' => $groupId,
             'count' => count($createdReminders),
+            'sent_to_client' => $sendToClient,
+            'sent_to_agent' => $sendToAgent,
         ]);
 
         if ($firstReminderSent) {
+            $recipients = [];
+            if ($sendToClient) $recipients[] = "Client ({$clientCountryCode}{$clientPhone})";
+            if ($sendToAgent) $recipients[] = "Agent ({$agentCountryCode}{$agentPhone})";
+
             $message = $reminderCount > 1
-                ? "First reminder sent! " . $reminderCount . " reminders scheduled in total."
-                : "Reminder sent to " . $country_code . $dummyPhone;
+                ? "First reminder sent to " . implode(' & ', $recipients) . "! {$reminderCount} reminders scheduled in total."
+                : "Reminder sent to " . implode(' & ', $recipients);
 
             return redirect()->back()->with('success', $message);
         } else {
             return redirect()->back()->with('error', 'Failed to send the first reminder.');
         }
     }
-
 
     public function bulk(Request $request)
     {

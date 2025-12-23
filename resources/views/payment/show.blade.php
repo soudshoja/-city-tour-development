@@ -220,13 +220,75 @@
                             </div>
 
                             <div id="content-transactions" class="hidden tab-content">
+                                @if($payment->paymentTransactions == null || $payment->paymentTransactions->isEmpty())
                                 <div class="py-12 text-center">
                                     <svg class="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
-                                    <p class="text-lg font-medium text-gray-600 dark:text-gray-400">Transaction Details</p>
-                                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Coming soon...</p>
+                                    <p class="text-lg font-medium text-gray-600 dark:text-gray-400">No Transactions</p>
+                                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No transaction records available for this payment.</p>
                                 </div>
+                                @else
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                        <thead class="bg-gray-50 dark:bg-gray-900">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Transaction ID</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Payment Gateway</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Track ID</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Reference Number</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Expiry Date</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">URL</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Notes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                            @foreach($payment->paymentTransactions as $transaction)
+                                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                                <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                                                    {{ $transaction->transaction_id }}
+                                                </td>
+                                                <td class="px-4 py-3 text-sm whitespace-nowrap">
+                                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                                                        {{ strtolower($transaction->status) === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
+                                                           (strtolower($transaction->status) === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 
+                                                           'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200') }}">
+                                                        {{ strtoupper($transaction->status) }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                                                    {{ $transaction->paymentGateway->name }} - {{ $transaction->paymentMethod->english_name }}
+                                                </td>
+                                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                                    {{ $transaction->track_id ?? 'N/A' }}
+                                                </td>
+                                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                                    {{ $transaction->reference_number ?? 'N/A' }}
+                                                </td>
+                                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                                    {{ $transaction->expiry_date ? $transaction->expiry_date->format('d M Y, H:i') : 'N/A' }}
+                                                </td>
+                                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                                                    @if($transaction->url)
+                                                    @if(now()->lt($transaction->expiry_date))
+                                                    <a href="{{ $transaction->url }}" target="_blank" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">View</a>
+                                                    @else
+                                                    <span class="text-gray-400 italic">Expired</span>
+                                                    @endif
+                                                    @else
+                                                    N/A
+                                                    @endif
+                                                </td>
+                                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                                                    {{ $transaction->notes ?? 'N/A' }}
+                                                </td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                                @endif
                             </div>
 
                             <div id="content-history" class="hidden tab-content">
@@ -286,7 +348,6 @@
                                 </div>
                                 @endif
 
-                                @if($payment->payment_url)
                                 <div class="pt-4 mt-4 border-t border-blue-100 dark:border-gray-700">
                                     <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Payment Link</p>
                                     <div class="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -308,7 +369,6 @@
                                         </a>
                                     </div>
                                 </div>
-                                @endif
                             </div>
                         </div>
                     </div>

@@ -38,15 +38,21 @@
                 {{ session('error') }}
             </div>
             @endif
-
-            <!-- Main Two Column Layout -->
+            <div class="">
+                <ul class="flex space-x-2 rtl:space-x-reverse pb-5 text-base md:text-lg sm:text-sm">
+                    <li>
+                        <a href="{{ route('dashboard') }}" class="customBlueColor hover:underline">Dashboard</a>
+                    </li>
+                    <li class="before:content-['/'] before:mr-1 ">
+                        <a href="{{ route('payment.link.index') }}" class="customBlueColor hover:underline">Payment Links</a>
+                    </li>
+                    <li class="before:content-['/'] before:mr-1 ">
+                        <span>Payment Link Details</span>
+                    </li>
+                </ul>
+            </div>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-                <!-- LEFT COLUMN: Info, Bank Details, Tabs -->
                 <div class="lg:col-span-2 space-y-4">
-
-                    <!-- Info Section - Split into Customer Card and Payment Details Card -->
-
                     <!-- Customer Card -->
                     <div class="bg-white dark:bg-gray-800 shadow-lg sm:rounded-lg">
                         <div class="p-6">
@@ -286,7 +292,6 @@
                                 </div>
                                 @endif
 
-                                @if($payment->payment_url)
                                 <div class="pt-4 mt-4 border-t border-blue-100 dark:border-gray-700">
                                     <p class="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Payment Link</p>
                                     <div class="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -308,7 +313,6 @@
                                         </a>
                                     </div>
                                 </div>
-                                @endif
                             </div>
                         </div>
                     </div>
@@ -326,6 +330,7 @@
                             </div>
 
                             <div class="flex-1 space-y-4" style="overflow: visible;">
+                                <!-- Send Link -->
                                 <div class="flex flex-col gap-3" style="position: relative; overflow: visible;">
                                     <div>
                                         <p class="font-semibold text-gray-900 dark:text-gray-100">Send Payment</p>
@@ -367,230 +372,253 @@
                                         </div>
                                     </div>
                                 </div>
+                                <!-- Send Reminder -->
                                 @if($payment->status != 'completed')
-<div class="pt-3 border-t border-purple-100 dark:border-gray-700">
-    <form id="reminderForm" action="{{ route('reminder.store') }}" method="POST"
-        x-data="{ 
-            frequency: 'once',
-            intervalPreset: 'every3days',
-            repeatValue: 3,
-            repeatUnit: 'days',
-            maxReminders: 5,
-            loading: false,
-            sendToClient: true,
-            sendToAgent: false,
-            message: '',
-            maxWords: 500,
-            get wordCount() {
-                return this.message.trim() === '' ? 0 : this.message.trim().split(/\s+/).length;
-            },
-            limitWords() {
-                const words = this.message.trim().split(/\s+/);
-                if (words.length > this.maxWords) {
-                    this.message = words.slice(0, this.maxWords).join(' ');
-                }
-            },
-            submitForm(e) {
-                if (!this.sendToClient && !this.sendToAgent) {
-                    e.preventDefault();
-                    return;
-                }
-                this.loading = true;
-            }
-        }"
-        @submit="submitForm($event)">
-        @csrf
-        <input type="hidden" name="payment_id" value="{{ $payment->id }}">
-        <input type="hidden" name="client_id" value="{{ $payment->client?->id }}">
-        <input type="hidden" name="agent_id" value="{{ $payment->client?->agent?->id }}">
-        <input type="hidden" name="target_type" value="payment">
+                                <div class="pt-3 border-t border-purple-100 dark:border-gray-700">
+                                    <form id="reminderForm" action="{{ route('reminder.store') }}" method="POST"
+                                        x-data="{ 
+                                            frequency: 'once',
+                                            intervalPreset: 'every3days',
+                                            repeatValue: 3,
+                                            repeatUnit: 'days',
+                                            reminderCount: 3,
+                                            loading: false,
+                                            sendToClient: true,
+                                            sendToAgent: false,
+                                            message: '',
+                                            maxWords: 500,
+                                            get wordCount() {
+                                                return this.message.trim() === '' ? 0 : this.message.trim().split(/\s+/).length;
+                                            },
+                                            limitWords() {
+                                                const words = this.message.trim().split(/\s+/);
+                                                if (words.length > this.maxWords) {
+                                                    this.message = words.slice(0, this.maxWords).join(' ');
+                                                }
+                                            },
+                                            submitForm(e) {
+                                                if (!this.sendToClient && !this.sendToAgent) {
+                                                    e.preventDefault();
+                                                    return;
+                                                }
+                                                this.loading = true;
+                                            }
+                                        }"
+                                        @submit="submitForm($event)">
+                                        @csrf
+                                        <input type="hidden" name="payment_id" value="{{ $payment->id }}">
+                                        <input type="hidden" name="client_id" value="{{ $payment->client?->id }}">
+                                        <input type="hidden" name="agent_id" value="{{ $payment->client?->agent?->id }}">
+                                        <input type="hidden" name="target_type" value="payment">
 
-        <div class="flex flex-col gap-3">
-            <div>
-                <p class="font-semibold text-gray-900 dark:text-gray-100">Remind After</p>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Set payment reminder</p>
-            </div>
+                                        <div class="flex flex-col gap-3">
+                                            <div>
+                                                <p class="font-semibold text-gray-900 dark:text-gray-100">Remind After</p>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">Set payment reminder</p>
+                                            </div>
 
-            <!-- RECIPIENTS -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Send To</label>
-                <div class="space-y-2">
-                    <label class="flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all"
-                        :class="sendToClient ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-600'">
-                        <div class="flex items-center gap-3">
-                            <input type="checkbox" name="send_to_client" value="1" x-model="sendToClient" 
-                                class="w-4 h-4 text-purple-500 rounded border-gray-300 focus:ring-purple-500">
-                            <div>
-                                <p class="font-medium text-gray-700 dark:text-gray-200 text-sm">{{ strtoupper($payment->client?->full_name ?? 'N/A') }}</p>
-                                <p class="text-xs text-gray-400">{{ $payment->client?->country_code }}{{ $payment->client?->phone }}</p>
-                            </div>
-                        </div>
-                        <span class="text-xs text-purple-600 bg-purple-100 dark:bg-purple-900 dark:text-purple-300 px-2 py-0.5 rounded-full">Client</span>
-                    </label>
+                                            <!-- RECIPIENTS -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Send To</label>
+                                                <div class="space-y-2">
+                                                    <label class="flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all"
+                                                        :class="sendToClient ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-gray-600'">
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox" name="send_to_client" value="1" x-model="sendToClient"
+                                                                class="w-4 h-4 text-purple-500 rounded border-gray-300 focus:ring-purple-500">
+                                                            <div>
+                                                                <p class="font-medium text-gray-700 dark:text-gray-200 text-sm">{{ strtoupper($payment->client?->full_name ?? 'N/A') }}</p>
+                                                                <p class="text-xs text-gray-400">{{ $payment->client?->country_code }}{{ $payment->client?->phone }}</p>
+                                                            </div>
+                                                        </div>
+                                                        <span class="text-xs text-purple-600 bg-purple-100 dark:bg-purple-900 dark:text-purple-300 px-2 py-0.5 rounded-full">Client</span>
+                                                    </label>
 
-                    <label class="flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all"
-                        :class="sendToAgent ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/30' : 'border-gray-200 dark:border-gray-600'">
-                        <div class="flex items-center gap-3">
-                            <input type="checkbox" name="send_to_agent" value="1" x-model="sendToAgent" 
-                                class="w-4 h-4 text-yellow-500 rounded border-gray-300 focus:ring-yellow-500">
-                            <div>
-                                <p class="font-medium text-gray-700 dark:text-gray-200 text-sm">{{ strtoupper($payment->client?->agent?->name ?? 'N/A') }}</p>
-                                <p class="text-xs text-gray-400">{{ $payment->client?->agent?->phone_number }}</p>
-                            </div>
-                        </div>
-                        <span class="text-xs text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-300 px-2 py-0.5 rounded-full">Agent</span>
-                    </label>
+                                                    <label class="flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all"
+                                                        :class="sendToAgent ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30' : 'border-gray-200 dark:border-gray-600'">
+                                                        <div class="flex items-center gap-3">
+                                                            <input type="checkbox" name="send_to_agent" value="1" x-model="sendToAgent"
+                                                                class="w-4 h-4 text-indigo-500 rounded border-gray-300 focus:ring-indigo-500">
+                                                            <div>
+                                                                <p class="font-medium text-gray-700 dark:text-gray-200 text-sm">{{ strtoupper($payment->client?->agent?->name ?? 'N/A') }}</p>
+                                                                <p class="text-xs text-gray-400">{{ $payment->client?->agent?->phone_number }}</p>
+                                                            </div>
+                                                        </div>
+                                                        <span class="text-xs text-indigo-600 bg-indigo-100 dark:bg-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded-full">Agent</span>
+                                                    </label>
 
-                    <p x-show="!sendToClient && !sendToAgent" x-cloak class="text-xs text-red-500 mt-1">
-                        <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-                        </svg>
-                        Please select at least one recipient
-                    </p>
-                </div>
-            </div>
+                                                    <p x-show="!sendToClient && !sendToAgent" x-cloak class="text-xs text-red-500 mt-1">
+                                                        <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                                        </svg>
+                                                        Please select at least one recipient
+                                                    </p>
+                                                </div>
+                                            </div>
 
-            <!-- MESSAGE -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message</label>
-                <textarea
-                    name="message"
-                    x-model="message"
-                    @input="limitWords()"
-                    rows="3"
-                    class="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none resize-none"
-                    placeholder="Enter your reminder message"></textarea>
-                <div class="flex justify-end mt-1">
-                    <p class="text-xs" :class="wordCount >= maxWords ? 'text-red-500 font-medium' : 'text-gray-400'">
-                        <span x-text="wordCount"></span>/<span x-text="maxWords"></span> words
-                        <span x-show="wordCount >= maxWords" class="ml-1">limit reached</span>
-                    </p>
-                </div>
-            </div>
+                                            <!-- MESSAGE -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message</label>
+                                                <textarea
+                                                    name="message"
+                                                    x-model="message"
+                                                    @input="limitWords()"
+                                                    rows="3"
+                                                    class="w-full bg-purple-50 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none resize-none placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                                                    placeholder="Enter reminder message"></textarea>
+                                                <div class="flex justify-end mt-1">
+                                                    <p class="text-xs" :class="wordCount >= maxWords ? 'text-red-500 font-medium' : 'text-gray-400'">
+                                                        <span x-text="wordCount"></span>/<span x-text="maxWords"></span> words
+                                                        <span x-show="wordCount >= maxWords" class="ml-1">limit reached</span>
+                                                    </p>
+                                                </div>
+                                            </div>
 
-            <!-- Frequency Toggle -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Frequency</label>
-                <div class="grid grid-cols-2 gap-2">
-                    <button type="button" @click="frequency = 'once'"
-                        :class="frequency === 'once' 
-                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' 
-                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
-                        class="border-2 rounded-lg p-3 text-left transition">
-                        <div class="flex items-center gap-2">
-                            <div :class="frequency === 'once' ? 'border-purple-500' : 'border-gray-300 dark:border-gray-500'"
-                                class="w-4 h-4 rounded-full border-2 flex items-center justify-center">
-                                <div x-show="frequency === 'once'" class="w-2 h-2 bg-purple-500 rounded-full"></div>
-                            </div>
-                            <div>
-                                <p class="font-medium text-sm">One-time</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Send now only</p>
-                            </div>
-                        </div>
-                    </button>
+                                            <!-- Frequency Toggle -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Frequency</label>
+                                                <div class="grid grid-cols-2 gap-2">
+                                                    <button type="button" @click="frequency = 'once'"
+                                                        :class="frequency === 'once' 
+                                                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' 
+                                                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                                                        class="border-2 rounded-lg p-3 text-left transition">
+                                                        <div class="flex items-center gap-2">
+                                                            <div :class="frequency === 'once' ? 'border-purple-500' : 'border-gray-300 dark:border-gray-500'"
+                                                                class="w-4 h-4 rounded-full border-2 flex items-center justify-center">
+                                                                <div x-show="frequency === 'once'" class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                                            </div>
+                                                            <div>
+                                                                <p class="font-medium text-sm">One-time</p>
+                                                                <p class="text-xs text-gray-500 dark:text-gray-400">Send now only</p>
+                                                            </div>
+                                                        </div>
+                                                    </button>
 
-                    <button type="button" @click="frequency = 'auto'"
-                        :class="frequency === 'auto' 
-                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' 
-                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
-                        class="border-2 rounded-lg p-3 text-left transition">
-                        <div class="flex items-center gap-2">
-                            <div :class="frequency === 'auto' ? 'border-purple-500' : 'border-gray-300 dark:border-gray-500'"
-                                class="w-4 h-4 rounded-full border-2 flex items-center justify-center">
-                                <div x-show="frequency === 'auto'" class="w-2 h-2 bg-purple-500 rounded-full"></div>
-                            </div>
-                            <div>
-                                <p class="font-medium text-sm">Auto-repeat</p>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Schedule recurring</p>
-                            </div>
-                        </div>
-                    </button>
-                </div>
-            </div>
+                                                    <button type="button" @click="frequency = 'auto'"
+                                                        :class="frequency === 'auto' 
+                                                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' 
+                                                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                                                        class="border-2 rounded-lg p-3 text-left transition">
+                                                        <div class="flex items-center gap-2">
+                                                            <div :class="frequency === 'auto' ? 'border-purple-500' : 'border-gray-300 dark:border-gray-500'"
+                                                                class="w-4 h-4 rounded-full border-2 flex items-center justify-center">
+                                                                <div x-show="frequency === 'auto'" class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                                            </div>
+                                                            <div>
+                                                                <p class="font-medium text-sm">Auto-repeat</p>
+                                                                <p class="text-xs text-gray-500 dark:text-gray-400">Schedule recurring</p>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                </div>
+                                            </div>
 
-            <!-- Recurring Options (shown when auto-repeat selected) -->
-            <div x-show="frequency === 'auto'" x-collapse class="space-y-3">
-                <!-- Preset Buttons -->
-                <div class="flex flex-wrap gap-2">
-                    <button type="button" @click="intervalPreset = 'daily'; repeatValue = 1; repeatUnit = 'days'"
-                        :class="intervalPreset === 'daily' 
-                        ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800' 
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
-                        class="px-3 py-1.5 rounded-full text-xs font-medium transition">
-                        Daily
-                    </button>
-                    <button type="button" @click="intervalPreset = 'every3days'; repeatValue = 3; repeatUnit = 'days'"
-                        :class="intervalPreset === 'every3days' 
-                        ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800' 
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
-                        class="px-3 py-1.5 rounded-full text-xs font-medium transition">
-                        Every 3 days
-                    </button>
-                    <button type="button" @click="intervalPreset = 'weekly'; repeatValue = 7; repeatUnit = 'days'"
-                        :class="intervalPreset === 'weekly' 
-                        ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-800' 
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
-                        class="px-3 py-1.5 rounded-full text-xs font-medium transition">
-                        Weekly
-                    </button>
-                </div>
+                                            <!-- Recurring Options (shown when auto-repeat selected) -->
+                                            <div x-show="frequency === 'auto'" x-cloak class="space-y-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                                                <!-- Quick Presets -->
+                                                <div>
+                                                    <label class="text-xs text-gray-500 dark:text-gray-400 mb-2 block">Quick Presets</label>
+                                                    <div class="flex flex-wrap gap-2">
+                                                        <button type="button" @click="intervalPreset = 'daily'; repeatValue = 1; repeatUnit = 'days'; reminderCount = 3"
+                                                            :class="intervalPreset === 'daily' 
+                                                            ? 'border-purple-500 bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400' 
+                                                            : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                                                            class="px-2.5 py-1 text-xs border rounded-md transition-colors">
+                                                            Daily × 3
+                                                        </button>
+                                                        <button type="button" @click="intervalPreset = 'every3days'; repeatValue = 3; repeatUnit = 'days'; reminderCount = 3"
+                                                            :class="intervalPreset === 'every3days' 
+                                                            ? 'border-purple-500 bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400' 
+                                                            : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                                                            class="px-2.5 py-1 text-xs border rounded-md transition-colors">
+                                                            Every 3 days × 3
+                                                        </button>
+                                                        <button type="button" @click="intervalPreset = 'weekly'; repeatValue = 7; repeatUnit = 'days'; reminderCount = 4"
+                                                            :class="intervalPreset === 'weekly' 
+                                                            ? 'border-purple-500 bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400' 
+                                                            : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                                                            class="px-2.5 py-1 text-xs border rounded-md transition-colors">
+                                                            Weekly × 4
+                                                        </button>
+                                                    </div>
+                                                </div>
 
-                <!-- Custom Inputs -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Repeat Every</label>
-                        <div class="flex gap-1">
-                            <input type="number" x-model="repeatValue" min="1" max="30"
-                                @input="intervalPreset = 'custom'"
-                                class="w-14 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-2 text-center text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                            <select x-model="repeatUnit"
-                                @change="intervalPreset = 'custom'"
-                                class="flex-1 border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                                <option value="hours">Hours</option>
-                                <option value="days">Days</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Max Reminders</label>
-                        <input type="number" x-model="maxReminders" min="1" max="10"
-                            class="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg px-2 py-2 text-center text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent">
-                    </div>
-                </div>
+                                                <!-- Custom Settings -->
+                                                <div class="grid grid-cols-3 gap-2">
+                                                    <div>
+                                                        <label class="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Interval</label>
+                                                        <input type="number" x-model="repeatValue" min="1" max="30"
+                                                            @input="intervalPreset = 'custom'"
+                                                            class="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md px-2 py-1.5 text-sm text-center focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                                    </div>
+                                                    <div>
+                                                        <label class="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Unit</label>
+                                                        <select x-model="repeatUnit"
+                                                            @change="intervalPreset = 'custom'"
+                                                            class="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md px-2 py-1.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                                            <option value="hours">Hours</option>
+                                                            <option value="days">Days</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label class="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Total Reminders</label>
+                                                        <input type="number" x-model="reminderCount" min="1" max="10"
+                                                            @input="intervalPreset = 'custom'"
+                                                            class="w-full border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-md px-2 py-1.5 text-sm text-center focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                                    </div>
+                                                </div>
 
-                <!-- Preview -->
-                <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
-                    <p class="text-xs text-purple-600 dark:text-purple-400 font-medium">
-                        <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span x-text="maxReminders"></span> reminders, every <span x-text="repeatValue"></span> <span x-text="repeatUnit"></span>
-                    </p>
-                </div>
-            </div>
+                                                <!-- Preview -->
+                                                <div class="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+                                                    <div class="flex items-start gap-2">
+                                                        <svg class="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                        </svg>
+                                                        <div class="text-xs text-purple-700 dark:text-purple-300">
+                                                            <p class="font-medium mb-1">Schedule Preview</p>
+                                                            <p>
+                                                                <span x-text="reminderCount"></span> reminders will be sent every
+                                                                <span x-text="repeatValue"></span>
+                                                                <span x-text="repeatUnit"></span>
+                                                            </p>
+                                                            <p class="mt-1 text-purple-600 dark:text-purple-400">
+                                                                • 1st: Immediately<br>
+                                                                <template x-for="i in Math.min(reminderCount - 1, 3)" :key="i">
+                                                                    <span>
+                                                                        • <span x-text="i + 1"></span><span x-text="i + 1 == 2 ? 'nd' : (i + 1 == 3 ? 'rd' : 'th')"></span>:
+                                                                        In <span x-text="repeatValue * i"></span> <span x-text="repeatUnit"></span><br>
+                                                                    </span>
+                                                                </template>
+                                                                <span x-show="reminderCount > 4" class="text-purple-500">... and <span x-text="reminderCount - 4"></span> more</span>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
 
-            <!-- Hidden inputs for form submission -->
-            <input type="hidden" name="frequency" :value="frequency">
-            <input type="hidden" name="value" :value="repeatValue">
-            <input type="hidden" name="unit" :value="repeatUnit">
-            <input type="hidden" name="max_reminder" :value="frequency === 'auto' ? maxReminders : 1">
+                                            <!-- Hidden inputs for form submission -->
+                                            <input type="hidden" name="frequency" :value="frequency">
+                                            <input type="hidden" name="value" :value="repeatValue">
+                                            <input type="hidden" name="unit" :value="repeatUnit">
+                                            <input type="hidden" name="number_of_reminder" :value="frequency === 'once' ? 1 : reminderCount">
 
-            <!-- Send Button -->
-            <button type="submit"
-                :disabled="loading || (!sendToClient && !sendToAgent)"
-                class="w-full mt-3 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg x-show="!loading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                <svg x-show="loading" x-cloak class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
-                <span x-text="loading ? 'Scheduling...' : 'Send & Schedule'"></span>
-            </button>
-        </div>
-    </form>
-</div>
+                                            <!-- Send Button -->
+                                            <button type="submit"
+                                                :disabled="loading || (!sendToClient && !sendToAgent)"
+                                                class="w-full mt-3 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                                                <svg x-show="!loading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                                </svg>
+                                                <svg x-show="loading" x-cloak class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                </svg>
+                                                <span x-text="loading ? 'Scheduling...' : (frequency === 'auto' ? 'Send & Schedule' : 'Send Now')"></span>
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                                 @endif
                             </div>
                         </div>

@@ -17,10 +17,38 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use RuntimeException;
 
 class Hesabe 
 {
     use HttpRequestTrait;
+
+    protected $apiKey;
+    protected $baseUrl;
+    protected $merchantCode;
+    protected $ivKey;
+    protected $accessCode;
+
+    public function __construct()
+    {
+        $configService = new GatewayConfigService();
+        $hesabeConfig = $configService->getHesabeConfig();
+
+        if ($hesabeConfig['status'] === 'error') {
+            Log::error('[HESABE] Configuration error', [
+                'message' => $hesabeConfig['message']
+            ]);
+            throw new RuntimeException('Hesabe configuration is missing or inactive');
+        }
+
+        $hesabeConfig = $hesabeConfig['data'];
+
+        $this->apiKey  = $hesabeConfig['api_key'];
+        $this->baseUrl = $hesabeConfig['base_url'];
+        $this->merchantCode = $hesabeConfig['merchant_code'];
+        $this->ivKey = $hesabeConfig['iv_key'];
+        $this->accessCode = $hesabeConfig['access_code'];
+    }
 
     public function createCharge(Request $request) : array
     {
@@ -38,9 +66,6 @@ class Hesabe
         ]);
          
         $auth = Auth::user();
-        $configService = new GatewayConfigService();
-        $hesabeConfig = $configService->getHesabeConfig();
-
         $payment = Payment::find($request->input('payment_id'));
 
         $company = $payment->agent->branch->company;
@@ -52,23 +77,6 @@ class Hesabe
                 'message' => 'Company not found for the agent.',
             ];
         }
-
-        if ($hesabeConfig['status'] === 'error') {
-            $payment->delete();
-
-            return [
-                'success' => false,
-                'message' => $hesabeConfig['message'],
-            ];
-        }
-
-        $hesabeConfig = $hesabeConfig['data'];
-
-        $apiKey = $hesabeConfig['api_key'];
-        $baseUrl = $hesabeConfig['base_url'];
-        $merchantCode = $hesabeConfig['merchant_code'];
-        $ivKey = $hesabeConfig['iv_key'];
-        $accessCode = $hesabeConfig['access_code'];
 
         $orderReference = $request->input('invoice_number');
         $paymentMethodId = $request->input('payment_method_id');
@@ -102,7 +110,7 @@ class Hesabe
         $requestData = [
             'amount'        => $request->final_amount,
             'currency'      => 'KWD',
-            'merchantCode' => $merchantCode,
+            'merchantCode' => $this->merchantCode,
             'paymentType' => $myfatoorahId,
             'orderReferenceNumber' => $orderReference,
             'name' => $request->client_name,
@@ -117,21 +125,32 @@ class Hesabe
             'webhookUrl' => route('payment.hesabe.webhook'),
         ];
 
+        Log::info('[HESABE] CheckoutPayment request data', [
+            'data' => $requestData,
+            'api_key' => $this->apiKey,
+            'iv_key' => $this->ivKey,
+            'access_code' => $this->accessCode,
+        ]);
+
+
         $requestDataJson = json_encode($requestData);
 
-
-        $encryptedData = HesabeCrypt::encrypt($requestDataJson, $apiKey, $ivKey);
+        $encryptedData = HesabeCrypt::encrypt($requestDataJson, $this->apiKey, $this->ivKey);
 
         $hesabePayload = [
             'data' => $encryptedData,
         ];
 
-        Log::info('[HESABE] CheckoutPayment payload', ['payload' => $hesabePayload]);
+        Log::info('[HESABE] CheckoutPayment payload', [
+            'url' => $this->baseUrl . '/checkout',
+            'payload' => $hesabePayload
+        ]);
 
         $checkoutResponse = Http::withHeaders([
-            'accessCode' => $accessCode,
+            'accessCode' => $this->accessCode,
             'Accept' => 'application/json',
-        ])->post("$baseUrl/checkout", $hesabePayload);
+        ])->timeout(60)
+        ->post("$this->baseUrl/checkout", $hesabePayload);
         
         Log::info('[HESABE] CheckoutPayment response', ['response' => $checkoutResponse->body()]);
         
@@ -146,7 +165,7 @@ class Hesabe
         }
         $response = $checkoutResponse->body();
 
-        $decryptedData = HesabeCrypt::decrypt($response , $apiKey, $ivKey);
+        $decryptedData = HesabeCrypt::decrypt($response , $this->apiKey, $this->ivKey);
 
         Log::info('[HESABE] Decrypted CheckoutPayment response', ['decrypted_response' => $decryptedData]);
 
@@ -159,12 +178,22 @@ class Hesabe
 
         $responseData = json_decode($decryptedData, true);
 
-        $url = $baseUrl . '/payment?data=' . $responseData['response']['data'];
+        $url = $this->baseUrl . '/payment?data=' . $responseData['response']['data'];
 
         return  [
             'success' => true,
             'payment_url' => $url,
             'order_reference' => $orderReference,
         ];
+    }
+
+    public function getPaymentStatus(string $token)
+    {
+        $response = Http::withHeaders([
+            'accessCode' => $this->accessCode,
+            'Accept' => 'application/json',
+        ])->get("$this->baseUrl/api/transaction/$token");
+    
+        return $response;
     }
 }

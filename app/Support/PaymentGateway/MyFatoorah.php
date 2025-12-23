@@ -12,17 +12,41 @@ use App\Models\Agent;
 use App\Models\Accountant;
 use App\Services\GatewayConfigService;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use RuntimeException;
+use SebastianBergmann\Environment\Runtime;
 
 class MyFatoorah
 {
     use HttpRequestTrait;
 
+    protected $apiKey;
+    protected $baseUrl;
+
+    public function __construct()
+    {
+        $configService = new GatewayConfigService();
+        $myfatoorahConfig = $configService->getMyFatoorahConfig();
+
+        if ($myfatoorahConfig['status'] === 'error') {
+            Log::error('[MYFATOORAH] Configuration error', [
+                'message' => $myfatoorahConfig['message']
+            ]);
+            throw new RuntimeException('MyFatoorah configuration is missing or inactive');
+        }
+
+        $myfatoorahConfig = $myfatoorahConfig['data'];
+
+        $this->apiKey  = $myfatoorahConfig['api_key'];
+        $this->baseUrl = $myfatoorahConfig['base_url'];
+    }
+
     public function createCharge(Request $request)
-    {   
+    {
         $request->validate([
             'final_amount' => 'required|numeric|min:1',
             'client_name' => 'required|string|max:255',
@@ -36,35 +60,15 @@ class MyFatoorah
             'client_phone' => 'nullable|string|max:20',
         ]);
 
-        $configService = new GatewayConfigService();
-        $myfatoorahConfig = $configService->getMyFatoorahConfig();
-
         $payment = Payment::find($request->input('payment_id'));
 
         $company = $payment->agent->branch->company;
 
-        if(!$company) {
-            Log::error('MyFatoorah: Company not found for payment', ['payment_id' => $payment->id]);
+        if (!$company) {
+            Log::error('[MYFATOORAH] Company not found for payment', ['payment_id' => $payment->id]);
             return response()->json(['error' => 'Company not found for the agent.'], 404);
         }
 
-        if ($myfatoorahConfig['status'] === 'error') {
-            Log::error('MyFatoorah: Configuration error', [
-                'message' => $myfatoorahConfig['message'],
-                'payment_id' => $payment->id
-            ]);
-            
-            return [
-                'status' => 'error',
-                'message' => $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive'
-            ];
-        }
-
-        $myfatoorahConfig = $myfatoorahConfig['data'];
-
-        $apiKey  = $myfatoorahConfig['api_key'];
-        $baseUrl = $myfatoorahConfig['base_url'];
-        
         $invoiceNumber = $request->input('invoice_number');
 
         $paymentMethodId = $request->input('payment_method_id');
@@ -106,7 +110,7 @@ class MyFatoorah
             "MobileCountryCode"   => $payment->client->country_code ?? '+965',
             "CustomerMobile"      => $clientPhone,
             "DisplayCurrencyIso"  => $payment->currency ?? "KWD",
-            "ExpiryDate"         => now()->addDays(2)->toDateString(),
+            "ExpiryDate"         => now()->addDays(2)->format('Y-m-d H:i:s'),
             "CallBackUrl"         => route('payments.callback'),
             "ErrorUrl"            => route('payments.error', ['payment_id' => $payment->id]),
             "Language"            => "en",
@@ -120,23 +124,23 @@ class MyFatoorah
             ],
         ];
 
-        Log::info('MyFatoorah: ExecutePayment payload', ['payload' => $executePayload]);
+        Log::info('[MYFATOORAH] ExecutePayment payload', ['payload' => $executePayload]);
 
         $executeResponse = Http::withHeaders([
-            'Authorization' => "Bearer $apiKey",
+            'Authorization' => "Bearer $this->apiKey",
             'Content-Type' => 'application/json',
-        ])->post("$baseUrl/ExecutePayment", $executePayload);
+        ])->post("$this->baseUrl/ExecutePayment", $executePayload);
 
-        Log::info('MyFatoorah: ExecutePayment response', ['response' => $executeResponse->json()]);
+        Log::info('[MYFATOORAH] ExecutePayment response', ['response' => $executeResponse->json()]);
 
         if (!$executeResponse->successful()) {
             $errorBody = $executeResponse->json();
-            Log::error('MyFatoorah: ExecutePayment failed', [
+            Log::error('[MYFATOORAH] ExecutePayment failed', [
                 'response' => $errorBody,
                 'status' => $executeResponse->status(),
                 'payment_id' => $payment->id
             ]);
-            
+
             return [
                 'status' => 'error',
                 'message' => $errorBody['Message'] ?? 'Payment initiation failed',
@@ -149,11 +153,11 @@ class MyFatoorah
 
         // Validate response structure
         if (!isset($resData['Data']['InvoiceId']) || !isset($resData['Data']['PaymentURL'])) {
-            Log::error('MyFatoorah: Invalid response structure', [
+            Log::error('[MYFATOORAH] Invalid response structure', [
                 'response' => $resData,
                 'payment_id' => $payment->id
             ]);
-            
+
             return [
                 'status' => 'error',
                 'message' => 'Invalid response from MyFatoorah - missing required fields',
@@ -161,7 +165,7 @@ class MyFatoorah
             ];
         }
 
-        Log::info('MyFatoorah: Charge created successfully', [
+        Log::info('[MYFATOORAH] Charge created successfully', [
             'payment_id' => $payment->id,
             'voucher_number' => $payment->voucher_number,
             'invoice_id' => $resData['Data']['InvoiceId'],
@@ -177,28 +181,82 @@ class MyFatoorah
         ];
     }
 
-    public function getCharge($chargeId)
+    public function getPaymentStatus(string $type, string $key)
     {
-        $configService = new GatewayConfigService();
-        $myfatoorahConfig = $configService->getMyFatoorahConfig();
+        $keyType = null;
 
-        if($myfatoorahConfig['status'] === 'error') {
-            return $myfatoorahConfig;
+        switch ($type) {
+            case 'invoice':
+                $keyType = 'InvoiceId';
+                break;
+            case 'payment':
+                $keyType = 'PaymentId';
+                break;
+            case 'reference':
+                $keyType = 'CustomerReference';
+                break;
+            default:
+                throw new RuntimeException('Unsupported payment status type: ' . $type);
+                break;
         }
-        
-        $response = $this->getRequest(
-            $myfatoorahConfig['base_url'] . '/charges/' . $chargeId,
-            array(
-                'Authorization: Bearer ' . $myfatoorahConfig['api_key'],
-            ),
-            [],
-        );
 
-        logger('
-        
-        ', $response);
+        $response = Http::withHeaders([
+            'Authorization' => "Bearer $this->apiKey",
+            'Content-Type' => 'application/json',
+        ])->post("$this->baseUrl/GetPaymentStatus", [
+            "Key" => $key,
+            "KeyType" => $keyType
+        ]);
 
-        return $response;
+        Log::info('[MYFATOORAH] GetPaymentStatus response', ['response' => $response->json()]);
+
+        if (!$response->successful()) {
+            $errorBody = $response->json();
+
+            Log::error('[MYFATOORAH] GetPaymentStatus failed', [
+                'key' => $key,
+                'key_type' => $keyType
+            ]);
+
+            return [
+                'success' => false,
+                'message' => $errorBody['Message'] ?? 'Failed to retrieve payment status',
+                'errors' => $errorBody['ValidationErrors'] ?? [],
+                'response' => $errorBody
+            ];
+        }
+
+        $resData = $response->json();
+
+        return [
+            'success' => true,
+            'data' => $resData['Data'],
+            'response' => $resData
+        ];
     }
 
+    public function convertExpiryDate(string $expiryDate, string $expiryTime)
+    {
+        Log::info('[MYFATOORAH] Converting expiry date', [
+            'expiry_date' => $expiryDate,
+            'expiry_time' => $expiryTime,
+        ]);
+
+        try {
+            $dateTimeString = $expiryDate . ' ' . $expiryTime;
+
+            $carbonDate = Carbon::createFromFormat('F j, Y H:i:s.v', $dateTimeString);
+
+            return $carbonDate->format('Y-m-d H:i:s');
+        } catch (Exception $e) {
+            Log::error('[MYFATOORAH] Failed to convert expiry date', [
+                'expiry_date' => $expiryDate,
+                'expiry_time' => $expiryTime,
+                'error' => $e->getMessage()
+            ]);
+
+            return null;
+        }
+    }
 }
+

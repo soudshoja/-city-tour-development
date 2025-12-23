@@ -2648,8 +2648,9 @@ class PaymentController extends Controller
 
             $response = $this->multiPaymentMethodProcess($request);
 
-            // return redirect()->back()->with($response['success'] ? 'success' : 'error', $response['message']);
-            return auth()->user() ? redirect()->route('payment.link.index')->with( $response['success'], $response['message']) : redirect()->back()->with($response['success'] ? 'success' : 'error', $response['message']);
+            $route = $response['payment_id'] ? route('payment.show', $response['payment_id']) : route('payment.link.index');
+
+            return auth()->check() ? redirect()->to($route)->with($response['success'], $response['message']) : redirect()->back()->with($response['success'] ? 'success' : 'error', $response['message']);
         } 
 
         // old process (backward compatibility)
@@ -3481,43 +3482,46 @@ class PaymentController extends Controller
             }
 
             try {
-                $configService = new GatewayConfigService();
-                $myfatoorahConfig = $configService->getMyFatoorahConfig();
+                // $configService = new GatewayConfigService();
+                // $myfatoorahConfig = $configService->getMyFatoorahConfig();
 
-                if(!$myfatoorahConfig['status'] || !$myfatoorahConfig['data']) {
-                    return redirect()->route('payment.failed')->with('error', $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive');
-                }
+                // if(!$myfatoorahConfig['status'] || !$myfatoorahConfig['data']) {
+                //     return redirect()->route('payment.failed')->with('error', $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive');
+                // }
 
-                $myfatoorahConfig = $myfatoorahConfig['data'];
-                $apiKey  = $myfatoorahConfig['api_key'];
-                $baseUrl = $myfatoorahConfig['base_url'];
+                // $myfatoorahConfig = $myfatoorahConfig['data'];
+                // $apiKey  = $myfatoorahConfig['api_key'];
+                // $baseUrl = $myfatoorahConfig['base_url'];
 
-                $statusResponse = Http::withHeaders([
-                    'Authorization' => "Bearer $apiKey",
-                    'Content-Type' => 'application/json',
-                ])->post("$baseUrl/getPaymentStatus", [
-                    "Key" => $paymentId,
-                    "KeyType" => "PaymentId"
-                ]);
+                // $statusResponse = Http::withHeaders([
+                //     'Authorization' => "Bearer $apiKey",
+                //     'Content-Type' => 'application/json',
+                // ])->post("$baseUrl/getPaymentStatus", [
+                //     "Key" => $paymentId,
+                //     "KeyType" => "PaymentId"
+                // ]);
 
-                if (!$statusResponse->successful()) {
-                    Log::error('Failed to verify payment status', ['response' => $statusResponse->json()]);
+                $myfatoorah = new MyFatoorah();
+
+                $statusResponse = $myfatoorah->getPaymentStatus(type: 'payment' , key: $paymentId);
+
+                if (!$statusResponse['success']) {
                     return redirect()->route('payment.failed')->with('error', 'Failed to verify payment status.');
                 }
 
-                $statusData = $statusResponse->json();
-                
-                Log::info('MyFatoorah payment status', $statusData);
+                $invoiceStatus = strtolower($statusResponse['data']['InvoiceStatus'] ?? '');
+                $invoiceId = $statusResponse['data']['InvoiceId'] ?? null;
 
-                $userDefinedField   = !empty($statusData['Data']['UserDefinedField']) ? json_decode($statusData['Data']['UserDefinedField'], true) : [];
-                $invoiceId = $statusData['Data']['InvoiceId'] ?? null;
+                $userDefinedField   = !empty($statusResponse['data']['UserDefinedField']) ? json_decode($statusResponse['data']['UserDefinedField'], true) : [];
+
+                Log::info('[MYFATOORAH CALLBACK] UserDefinedField:', ['user_defined_field' => $userDefinedField]);
                 $voucherNumber = $userDefinedField['voucher_number'] ?? null;
                 $process = $userDefinedField['process'] ?? 'invoice';
-                $invoiceStatus = strtolower($statusData['Data']['InvoiceStatus'] ?? '');
                 $partialId = $userDefinedField['invoice_partial_id'] ?? null;
 
+                $payment = Payment::where('payment_reference', $invoiceId)->orWhere('voucher_number', $voucherNumber)->first();
+
                 if (!$invoiceId || $invoiceStatus !== 'paid') {
-                    $payment = Payment::where('payment_reference', $invoiceId)->orWhere('voucher_number', $voucherNumber)->first();
                     if ($payment) {
                         $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
 
@@ -3538,8 +3542,6 @@ class PaymentController extends Controller
 
                     return redirect()->route('payment.failed')->with('error', 'Payment was not completed.');
                 }
-
-                $payment = Payment::where('payment_reference', $invoiceId)->orWhere('voucher_number', $voucherNumber)->first();
 
                 if (!$payment) {
                     Log::error('Payment not found', ['invoiceId' => $invoiceId]);
@@ -3568,7 +3570,7 @@ class PaymentController extends Controller
                 }
 
                 try {
-                    $this->processMyFatoorahPaymentCompletion($payment, $statusData['Data'], $process, $partialId);
+                    $this->processMyFatoorahPaymentCompletion($payment, $statusResponse['data'], $process, $partialId);
                 } catch (Exception $e) {
                     Log::error('MyFatoorah callback processing failed', [
                         'payment_id' => $payment->id,
@@ -3589,29 +3591,18 @@ class PaymentController extends Controller
 
     public function handleMyFatoorahError(Request $request)
     {
-        Log::error('MyFatoorah error callback', [
+        Log::error('[MYFATOORAH] error callback', [
             'request' => $request->all(),
             'query' => $request->query(),
             'input' => $request->input(),
         ]);
 
-        $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
-        $payment = null;
-
-        // Optionally update payment status as failed or cancelled
-        if ($paymentId) {
-            $payment = Payment::where('payment_reference', $paymentId)->first();
-            if ($payment) {
-                $payment->status = 'failed';
-                $payment->save();
-            }
-        }
-
-        if (!$payment) {
-            return redirect()->route('payment.failed')->with('error', 'Payment was not completed or was cancelled.');
-        }
-
         if ($request->has('invoice_id')) {
+
+            Log::error('[MYFATOORAH] update transaction for failed invoice payment', [
+                'invoice_id' => $request->input('invoice_id'),
+            ]);
+
             $invoice = Invoice::with('agent.branch', 'client')->find($request->input('invoice_id'));
             $paymentId = $request->query('paymentId') ?? $request->input('paymentId');
             Transaction::create([
@@ -3631,6 +3622,11 @@ class PaymentController extends Controller
         }
 
         if ($request->has('payment_id')) {
+
+            Log::error('[MYFATOORAH] update transaction for failed topup payment', [
+                'payment_id' => $request->input('payment_id'),
+            ]);
+
             $payment = Payment::with('client', 'agent.branch')->find($request->input('payment_id'));
             Transaction::create([
                 'branch_id' => $payment->agent->branch->id,
@@ -3651,6 +3647,12 @@ class PaymentController extends Controller
         $process = $payment->invoice ? 'invoice' : 'topup';
         $partialId = $payment->invoice?->invoicePartials()->where('payment_id', $payment->id)->value('id');
         $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
+
+        Log::info('[MYFATOORAH] prepare notification for failed payment', [
+            'user_id' => $receiptInfo['agent']->user_id,
+            'title'   => $receiptInfo['title'],
+            'message' => $receiptInfo['message'],
+        ]);
 
         $this->storeNotification([
             'user_id' => $receiptInfo['agent']->user_id,
@@ -4729,6 +4731,26 @@ class PaymentController extends Controller
                     'voucher_number' => $payment->voucher_number,
                     'type_reference_id' => $paymentGateway->id
                 ]);
+
+                $paymentTransaction = $payment->paymentTransactions()->where('reference_number', $statusData['InvoiceReference'])->first();
+
+                if ($paymentTransaction) {
+
+                    Log::info('[MYFATOORAH] Updating payment transaction ID: ' . $paymentTransaction->id,[
+                        'payment_id' => $payment->id,
+                        'transaction_id' => $transactionRecord->id,
+                        'status' => $statusData['InvoiceStatus'],
+                    ]);
+
+                    $paymentTransaction->transaction_id = $transactionRecord->id;
+                    $paymentTransaction->status = $statusData['InvoiceStatus'];
+                    $paymentTransaction->save();
+                } else {
+                    Log::warning('[MYFATOORAH] Payment transaction not found for reference: ' . $statusData['InvoiceReference'],[
+                        'payment_id' => $payment->id,
+                        'status' => $statusData['InvoiceStatus'],
+                    ]);
+                }
 
             } else {
                 if ($payment->invoice) {
@@ -6584,12 +6606,9 @@ class PaymentController extends Controller
         }
     }
 
-    public function multiPaymentMethodProcess(Request $request) : array {
-
-        Log::info('[MULTI PAYMENT METHOD] Initiating multi payment method process', [
-            'request_data' => $request->all(),
-        ]);
-        
+    public function multiPaymentMethodProcess(Request $request) : array 
+    {
+        Log::info('[MULTI PAYMENT METHOD] Initiating multi payment method process', $request->all());
 
         $request->validate([
             'payment_methods' => 'required|array|min:1',
@@ -6739,7 +6758,7 @@ class PaymentController extends Controller
             return redirect()->back()->with('error', 'Payment gateway configuration is missing. Please contact support.');
         }
 
-        $paymentTransaction = $payment->paymentTransaction()->latest()->first();
+        $paymentTransaction = $payment->paymentTransactions()->latest()->first();
 
         if ($paymentTransaction){
             Log::info('[MULTI PAYMENT] Existing payment transaction found, comparing the payment method', [
@@ -6912,6 +6931,49 @@ class PaymentController extends Controller
                 ? Carbon::parse($response['expiry_date']) 
                 : now()->addDays(2);
 
+            if($response['invoice_id']) {
+
+                Log::info('[MULTI PAYMENT] Fetching MyFatoorah payment status', [
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $response['invoice_id'],
+                ]);
+
+                $getPaymentStatus = $myFatoorah->getPaymentStatus(
+                    type: 'invoice',
+                    key: $response['invoice_id'],
+                );
+
+                if($getPaymentStatus['success']) {
+
+                    $invoiceReference = $getPaymentStatus['data']['InvoiceReference'] ?? null;
+                    $trackId = $getPaymentStatus['data']['InvoiceTransactoins'][0]['TrackId'] ?? null;
+                    $invoiceStatus = $getPaymentStatus['data']['InvoiceStatus'] ?? null;
+                    $expiryDateStr = $getPaymentStatus['data']['ExpiryDate'] ?? null;
+                    $expiryTimeStr = $getPaymentStatus['data']['ExpiryTime'] ?? null;
+
+                    Log::info('[MULTI PAYMENT] MyFatoorah payment status fetched successfully', [
+                        'payment_id' => $payment->id,
+                        'reference_number' => $invoiceReference,
+                        'track_id' => $trackId,
+                        'status' => $invoiceStatus,
+                        'expiry_date' => $expiryDateStr,
+                        'expiry_time' => $expiryTimeStr,
+                    ]);
+
+                    $paymentGatewayStatus = $invoiceStatus ?? 'initiate';
+                    $paymentGatewayReferenceNumber = $invoiceReference ?? $paymentGatewayReferenceNumber;
+                    $paymentGatewayTrackId =   $trackId ?? $paymentGatewayTrackId;
+                    $paymentGatewayExpiryDate =  $myFatoorah->convertExpiryDate(expiryDate: $expiryDateStr, expiryTime: $expiryTimeStr) 
+                        ?? $paymentGatewayExpiryDate;
+
+                } else {
+                    Log::warning('[MULTI PAYMENT] Failed to fetch MyFatoorah payment status', [
+                        'payment_id' => $payment->id,
+                        'response' => $getPaymentStatus,
+                    ]);
+                }
+            }
+
             Log::info('[MULTI PAYMENT] MyFatoorah payment initiated successfully', [
                 'payment_id' => $payment->id,
                 'invoice_id' => $response['invoice_id'],
@@ -6979,7 +7041,6 @@ class PaymentController extends Controller
                 'payment_url' => $paymentUrl,
                 'payment_status' => $payment->status,
             ]);
-
 
             $paymentGatewayStatus = 'initiate';
             $paymentGatewayUrl = $paymentUrl;
@@ -7080,12 +7141,12 @@ class PaymentController extends Controller
             'payment_id' => $payment->id,
             'payment_gateway_id' => $paymentMethod->charge->id,
             'payment_method_id' => $paymentMethod->id,
+            'reference_number' => $paymentGatewayReferenceNumber,
         ],
         [
             'status' => $paymentGatewayStatus,
             'url' => $paymentGatewayUrl,
             'track_id' => $paymentGatewayTrackId,
-            'reference_number' => $paymentGatewayReferenceNumber,
             'expiry_date' => $paymentGatewayExpiryDate,
         ]);
 
@@ -7103,6 +7164,17 @@ class PaymentController extends Controller
             ]);
             return redirect()->back()->with('error', 'Payment gateway URL is missing. Please contact support.');
         }
+    }
+
+    public function getHesabePayment(string $token)
+    {
+        $hesabe = new Hesabe();
+
+        $response = $hesabe->getPaymentStatus(
+            token: $token,
+        );
+
+        return $response->body();
     }
 
 }

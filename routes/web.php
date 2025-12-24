@@ -48,6 +48,7 @@ use App\Http\Controllers\ResayilController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SupplierProcedureController;
 use App\Http\Controllers\ReminderController;
+use App\Http\Controllers\TermController;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -766,6 +767,21 @@ Route::group([
     Route::patch('/{procedureId}/activate', [SupplierProcedureController::class, 'activate'])->name('activate');
     Route::get('/{procedureId}', [SupplierProcedureController::class, 'show'])->name('show');
     Route::delete('/{procedureId}', [SupplierProcedureController::class, 'destroy'])->name('destroy');
+});
+
+Route::group([
+    'prefix' => 'terms',
+    'as' => 'terms.',
+], function() {
+    // Terms Templates
+    Route::prefix('templates')->name('templates.')->group(function () {
+        Route::get('/', [TermController::class, 'index'])->name('index');
+        Route::post('/', [TermController::class, 'store'])->name('store');
+        Route::put('/{id}', [TermController::class, 'update'])->name('update');
+        Route::delete('/{id}', [TermController::class, 'destroy'])->name('destroy');
+        Route::post('/{id}/set-default', [TermController::class, 'setDefault'])->name('set-default');
+        Route::post('/{id}/toggle-active', [TermController::class, 'toggleActive'])->name('toggle-active');
+    });
 });
 
 require __DIR__ . '/auth.php';

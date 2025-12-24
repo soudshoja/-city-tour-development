@@ -496,87 +496,86 @@
                             <p class="text-xs text-gray-500 mb-3">These terms will be displayed to the client before proceeding to payment</p>
 
                             <!-- Template Selector -->
-                           <!-- Template Selector - Custom Dropdown -->
-<div class="mb-3">
-    <div class="flex items-center gap-3">
-        <label class="text-xs font-medium text-gray-600">Template:</label>
-        
-        <!-- Custom Dropdown -->
-        <div class="relative flex-1" x-data="{ open: false }">
-            <button type="button" 
-                @click="open = !open"
-                @click.away="open = false"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between">
-                <span x-text="selectedTemplateId ? getSelectedTemplateName() : '-- Select a template --'" 
-                    :class="!selectedTemplateId ? 'text-gray-400' : 'text-gray-900'"></span>
-                <svg class="w-4 h-4 text-gray-400 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-            </button>
-            
-            <!-- Dropdown Options -->
-            <div x-show="open" 
-                x-transition:enter="transition ease-out duration-100"
-                x-transition:enter-start="opacity-0 scale-95"
-                x-transition:enter-end="opacity-100 scale-100"
-                x-transition:leave="transition ease-in duration-75"
-                x-transition:leave-start="opacity-100 scale-100"
-                x-transition:leave-end="opacity-0 scale-95"
-                class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
-                
-                <!-- Empty option -->
-                <div @click="selectedTemplateId = ''; open = false"
-                    class="px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 cursor-pointer">
-                    -- Select a template --
-                </div>
-                
-                <!-- Template options -->
-                <template x-for="template in filteredTemplates" :key="template.id">
-                    <div @click="selectedTemplateId = template.id; loadSelectedTemplate(); open = false"
-                        :class="selectedTemplateId == template.id ? 'bg-blue-50' : 'hover:bg-gray-50'"
-                        class="px-3 py-2 text-sm cursor-pointer flex items-center justify-between">
-                        <span x-text="template.title" class="text-gray-900"></span>
-                        <span x-show="template.is_default" class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Default</span>
-                    </div>
-                </template>
-                
-                <!-- No templates message -->
-                <div x-show="filteredTemplates.length === 0" class="px-3 py-2 text-sm text-gray-400 italic">
-                    No templates available
-                </div>
-            </div>
-        </div>
-        
-        <button type="button" 
-            @click="resetToDefault()"
-            x-show="filteredTemplates.length > 0"
-            class="px-3 py-2 text-xs font-medium text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
-            title="Load default template for selected language">
-            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-            Reset
-        </button>
-    </div>
-    
-    <!-- No templates message -->
-    <p x-show="filteredTemplates.length === 0 && !loadingTemplates" class="text-xs text-amber-600 mt-2">
-        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-        </svg>
-        No templates available for <span x-text="currentLang === 'EN' ? 'English' : 'Arabic'"></span>. 
-        <a href="{{ route('settings.index') }}" class="underline hover:text-amber-700">Create one in Settings</a>
-    </p>
+                            <div class="mb-3">
+                                <div class="flex items-center gap-3">
+                                    <label class="text-xs font-medium text-gray-600">Template:</label>
+                                    
+                                    <!-- Custom Dropdown -->
+                                    <div class="relative flex-1" x-data="{ open: false }">
+                                        <button type="button" 
+                                            @click="open = !open"
+                                            @click.away="open = false"
+                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between">
+                                            <span x-text="selectedTemplateId ? getSelectedTemplateName() : '-- Select a template --'" 
+                                                :class="!selectedTemplateId ? 'text-gray-400' : 'text-gray-900'"></span>
+                                            <svg class="w-4 h-4 text-gray-400 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                            </svg>
+                                        </button>
+                                        
+                                        <!-- Dropdown Options -->
+                                        <div x-show="open" 
+                                            x-transition:enter="transition ease-out duration-100"
+                                            x-transition:enter-start="opacity-0 scale-95"
+                                            x-transition:enter-end="opacity-100 scale-100"
+                                            x-transition:leave="transition ease-in duration-75"
+                                            x-transition:leave-start="opacity-100 scale-100"
+                                            x-transition:leave-end="opacity-0 scale-95"
+                                            class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                            
+                                            <!-- Empty option -->
+                                            <div @click="selectedTemplateId = ''; open = false"
+                                                class="px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 cursor-pointer">
+                                                -- Select a template --
+                                            </div>
+                                            
+                                            <!-- Template options -->
+                                            <template x-for="template in filteredTemplates" :key="template.id">
+                                                <div @click="selectedTemplateId = template.id; loadSelectedTemplate(); open = false"
+                                                    :class="selectedTemplateId == template.id ? 'bg-blue-50' : 'hover:bg-gray-50'"
+                                                    class="px-3 py-2 text-sm cursor-pointer flex items-center justify-between">
+                                                    <span x-text="template.title" class="text-gray-900"></span>
+                                                    <span x-show="template.is_default" class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Default</span>
+                                                </div>
+                                            </template>
+                                            
+                                            <!-- No templates message -->
+                                            <div x-show="filteredTemplates.length === 0" class="px-3 py-2 text-sm text-gray-400 italic">
+                                                No templates available
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="button" 
+                                        @click="resetToDefault()"
+                                        x-show="filteredTemplates.length > 0"
+                                        class="px-3 py-2 text-xs font-medium text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+                                        title="Load default template for selected language">
+                                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                        </svg>
+                                        Reset
+                                    </button>
+                                </div>
+                                
+                                <!-- No templates message -->
+                                <p x-show="filteredTemplates.length === 0 && !loadingTemplates" class="text-xs text-amber-600 mt-2">
+                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                    </svg>
+                                    No templates available for <span x-text="currentLang === 'EN' ? 'English' : 'Arabic'"></span>. 
+                                    <a href="{{ route('settings.index') }}" class="underline hover:text-amber-700">Create one in Settings</a>
+                                </p>
 
-    <!-- Loading indicator -->
-    <p x-show="loadingTemplates" class="text-xs text-gray-500 mt-2">
-        <svg class="animate-spin w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-        </svg>
-        Loading templates...
-    </p>
-</div>
+                                <!-- Loading indicator -->
+                                <p x-show="loadingTemplates" class="text-xs text-gray-500 mt-2">
+                                    <svg class="animate-spin w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    </svg>
+                                    Loading templates...
+                                </p>
+                            </div>
 
                             <!-- Content Editor -->
                             <div class="relative">

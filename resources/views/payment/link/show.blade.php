@@ -144,6 +144,43 @@
             </tbody>
         </table>
 
+        <!-- Payment Items (if available) -->
+        @if($payment->paymentItems && $payment->paymentItems->count() > 0)
+        <div class="mb-8">
+            <h3 class="text-lg font-bold text-gray-800 mb-3 {{ $textAlign }}">{{ __('invoice.payment_items') }}</h3>
+            <div class="overflow-x-auto border border-gray-300 rounded-lg">
+                <table class="w-full text-sm {{ $textAlign }} text-gray-700">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="py-3 px-4 font-semibold {{ $textAlign }}">{{ __('invoice.product_name') }}</th>
+                            <th class="py-3 px-4 font-semibold {{ $textAlign }}">{{ __('invoice.quantity') }}</th>
+                            <th class="py-3 px-4 font-semibold {{ $textAlign }}">{{ __('invoice.unit_price') }}</th>
+                            <th class="py-3 px-4 font-semibold {{ $textAlign }}">{{ __('invoice.extended_amount') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($payment->paymentItems as $item)
+                        <tr class="border-t border-gray-200">
+                            <td class="py-3 px-4">{{ $item->product_name }}</td>
+                            <td class="py-3 px-4">{{ number_format($item->quantity, 2) }}</td>
+                            <td class="py-3 px-4">{{ number_format($item->unit_price, 3) }} {{ $item->currency }}</td>
+                            <td class="py-3 px-4 font-semibold">{{ number_format($item->extended_amount, 3) }} {{ $item->currency }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot class="bg-gray-50 border-t-2 border-gray-300">
+                        <tr>
+                            <td colspan="3" class="py-3 px-4 {{ $textAlignReverse }} font-bold text-gray-800">{{ __('invoice.total') }}:</td>
+                            <td class="py-3 px-4 font-bold text-gray-900">
+                                {{ number_format($payment->paymentItems->sum('extended_amount'), 3) }} {{ $payment->currency }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        @endif
+
         <!-- Notes & Amounts -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start mb-8 mt-10">
             <div class="md:col-span-2">

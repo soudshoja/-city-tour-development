@@ -427,127 +427,6 @@
                     </div>
                 </div>
 
-                <!-- Payment Items (Advanced Mode Only) -->
-                <div x-show="advancedMode" 
-                    x-data="paymentItemsManager()"
-                    x-init="addItem()"
-                    class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Payment Items</label>
-                            <p class="text-xs text-gray-500 mt-1">Add items for this payment. Total will be calculated automatically.</p>
-                        </div>
-                        <button type="button" 
-                            @click="addItem()"
-                            class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                            + Add Item
-                        </button>
-                    </div>
-
-                    <div class="overflow-x-auto border border-gray-300 rounded-lg">
-                        <table class="w-full text-sm">
-                            <thead class="bg-gray-100 border-b border-gray-300">
-                                <tr>
-                                    <th class="px-3 py-2 text-left font-medium text-gray-700">Product Name</th>
-                                    <th class="px-3 py-2 text-left font-medium text-gray-700" style="width: 100px;">Quantity</th>
-                                    <th class="px-3 py-2 text-left font-medium text-gray-700" style="width: 120px;">Unit Price</th>
-                                    <th class="px-3 py-2 text-left font-medium text-gray-700" style="width: 100px;">Currency</th>
-                                    <th class="px-3 py-2 text-left font-medium text-gray-700" style="width: 120px;">Extended Amount</th>
-                                    <th class="px-3 py-2 text-center font-medium text-gray-700" style="width: 60px;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <template x-for="(item, index) in items" :key="index">
-                                    <tr class="border-b border-gray-200 hover:bg-gray-50">
-                                        <td class="px-3 py-2">
-                                            <input type="text" 
-                                                :name="'items[' + index + '][product_name]'" 
-                                                x-model="item.product_name"
-                                                :required="advancedMode"
-                                                placeholder="Enter product name"
-                                                class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
-                                        </td>
-                                        <td class="px-3 py-2">
-                                            <input type="number" 
-                                                :name="'items[' + index + '][quantity]'" 
-                                                x-model="item.quantity"
-                                                @input="calculateExtended(index)"
-                                                :required="advancedMode"
-                                                step="1" 
-                                                min="1"
-                                                placeholder="0"
-                                                class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
-                                        </td>
-                                        <td class="px-3 py-2">
-                                            <input type="number" 
-                                                :name="'items[' + index + '][unit_price]'" 
-                                                x-model="item.unit_price"
-                                                @input="calculateExtended(index)"
-                                                :required="advancedMode"
-                                                step="0.001" 
-                                                min="0"
-                                                placeholder="0.000"
-                                                class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
-                                        </td>
-                                        <td class="px-3 py-2">
-                                            <select :name="'items[' + index + '][currency]'" 
-                                                x-model="item.currency"
-                                                class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none bg-white">
-                                                @foreach ($currencies as $currency)
-                                                <option value="{{ $currency->iso_code }}">{{ $currency->iso_code }}</option>
-                                                @endforeach
-                                            </select>
-                                        </td>
-                                        <td class="px-3 py-2">
-                                            <input type="number" 
-                                                :name="'items[' + index + '][extended_amount]'" 
-                                                x-model="item.extended_amount"
-                                                step="0.001"
-                                                readonly
-                                                class="w-full border border-gray-200 rounded px-2 py-1.5 text-sm bg-gray-50 text-gray-600">
-                                        </td>
-                                        <td class="px-3 py-2 text-center">
-                                            <button type="button" 
-                                                @click="removeItem(index)"
-                                                class="text-red-600 hover:text-red-800 font-medium"
-                                                title="Remove item">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                                </svg>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </template>
-                                <template x-if="items.length === 0">
-                                    <tr>
-                                        <td colspan="6" class="px-3 py-8 text-center text-gray-500">
-                                            No items added. Click "Add Item" to begin.
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                            <tfoot class="bg-gray-50 border-t-2 border-gray-300">
-                                <tr>
-                                    <td colspan="4" class="px-3 py-3 text-right font-semibold text-gray-700">Total Amount:</td>
-                                    <td class="px-3 py-3">
-                                        <span class="font-bold text-gray-900" x-text="totalAmount.toFixed(3)"></span>
-                                    </td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-
-                    <div x-show="items.length === 0" class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                        <p class="text-sm text-amber-800">
-                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                            </svg>
-                            At least one item is required in Advanced mode.
-                        </p>
-                    </div>
-                </div>
-
                 <!-- Notes -->
                 <div>
                     <label for="notes" class="block text-sm font-medium text-gray-700 mb-1.5">Notes (optional)</label>
@@ -610,7 +489,125 @@
                     </div>
 
                     <!-- Advanced Section with left border -->
-                    <div class="border-l-4 border-blue-500 bg-blue-50 rounded-r-lg p-4 space-y-4 shadow-md">
+                    <div class="border-l-4 border-blue-500 bg-blue-50 rounded-r-lg p-4 space-y-6 shadow-md">
+                        
+                        <!-- Payment Items -->
+                        <div x-data="paymentItemsManager()" x-init="addItem()" class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Payment Items</label>
+                                    <p class="text-xs text-gray-500 mt-1">Add items for this payment. Total will be calculated automatically.</p>
+                                </div>
+                                <button type="button" 
+                                    @click="addItem()"
+                                    class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                                    + Add Item
+                                </button>
+                            </div>
+
+                            <div class="overflow-x-auto border border-gray-300 rounded-lg bg-white">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-100 border-b border-gray-300">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left font-medium text-gray-700">Product Name</th>
+                                            <th class="px-3 py-2 text-left font-medium text-gray-700" style="width: 100px;">Quantity</th>
+                                            <th class="px-3 py-2 text-left font-medium text-gray-700" style="width: 120px;">Unit Price</th>
+                                            <th class="px-3 py-2 text-left font-medium text-gray-700" style="width: 100px;">Currency</th>
+                                            <th class="px-3 py-2 text-left font-medium text-gray-700" style="width: 180px;">Extended Amount</th>
+                                            <th class="px-3 py-2 text-center font-medium text-gray-700" style="width: 60px;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="(item, index) in items" :key="index">
+                                            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                                <td class="px-3 py-2">
+                                                    <input type="text" 
+                                                        :name="'items[' + index + '][product_name]'" 
+                                                        x-model="item.product_name"
+                                                        required
+                                                        placeholder="Enter product name"
+                                                        class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <input type="number" 
+                                                        :name="'items[' + index + '][quantity]'" 
+                                                        x-model="item.quantity"
+                                                        @input="calculateExtended(index)"
+                                                        required
+                                                        step="1" 
+                                                        min="1"
+                                                        placeholder="0"
+                                                        class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <input type="number" 
+                                                        :name="'items[' + index + '][unit_price]'" 
+                                                        x-model="item.unit_price"
+                                                        @input="calculateExtended(index)"
+                                                        required
+                                                        step="0.001" 
+                                                        min="0"
+                                                        placeholder="0.000"
+                                                        class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <select :name="'items[' + index + '][currency]'" 
+                                                        x-model="item.currency"
+                                                        class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none bg-white">
+                                                        @foreach ($currencies as $currency)
+                                                        <option value="{{ $currency->iso_code }}">{{ $currency->iso_code }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <input type="number" 
+                                                        :name="'items[' + index + '][extended_amount]'" 
+                                                        x-model="item.extended_amount"
+                                                        step="0.001"
+                                                        readonly
+                                                        class="w-full border border-gray-200 rounded px-2 py-1.5 text-sm bg-gray-50 text-gray-600">
+                                                </td>
+                                                <td class="px-3 py-2 text-center">
+                                                    <button type="button" 
+                                                        @click="removeItem(index)"
+                                                        class="text-red-600 hover:text-red-800 font-medium"
+                                                        title="Remove item">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                        </svg>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                        <template x-if="items.length === 0">
+                                            <tr>
+                                                <td colspan="6" class="px-3 py-8 text-center text-gray-500">
+                                                    No items added. Click "Add Item" to begin.
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                    <tfoot class="bg-gray-50 border-t-2 border-gray-300">
+                                        <tr>
+                                            <td colspan="4" class="px-3 py-3 text-right font-semibold text-gray-700">Total Amount:</td>
+                                            <td class="px-5 py-3">
+                                                <span class="font-bold text-gray-900" x-text="totalAmount.toFixed(3)"></span>
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <div x-show="items.length === 0" class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p class="text-sm text-amber-800">
+                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                    </svg>
+                                    At least one item is required in Advanced mode.
+                                </p>
+                            </div>
+                        </div>
                         
                         <!-- Terms and Condition -->
                         <div x-data="termsConditionManager()" x-init="init()">

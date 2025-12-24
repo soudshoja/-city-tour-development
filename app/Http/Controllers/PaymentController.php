@@ -47,6 +47,7 @@ use App\Models\Account;
 use App\Models\Accountant;
 use App\Models\Branch;
 use App\Models\Payment;
+use App\Models\PaymentItem;
 use App\Models\PaymentMethod;
 use App\Models\Transaction;
 use App\Models\Charge;
@@ -85,7 +86,8 @@ class PaymentController extends Controller
             'paymentMethod',
             'createdBy',
             'tapPayment',
-            'myFatoorahPayment'
+            'myFatoorahPayment',
+            'paymentItems'
         ])->findOrFail($id);
 
         return view('payment.show', compact('payment'));
@@ -2515,7 +2517,7 @@ class PaymentController extends Controller
         $request->validate([
             'payment_gateway' => 'required',
             'payment_method' => 'nullable',
-            'amount' => 'required|numeric',
+            'amount' => 'nullable|numeric',
             'client_id' => 'required|integer|exists:clients,id',
             'agent_id' => 'required|integer|exists:agents,id',
             'invoice_id' => 'nullable',
@@ -2528,7 +2530,31 @@ class PaymentController extends Controller
             'currency' => 'nullable|string|max:3',
             'company_id' => 'nullable|integer|exists:companies,id',
             'language' => 'nullable',
+            'items' => 'nullable|array|min:1',
+            'items.*.product_name' => 'required_with:items|string|max:255',
+            'items.*.quantity' => 'required_with:items|numeric|min:0.01',
+            'items.*.unit_price' => 'required_with:items|numeric|min:0',
+            'items.*.extended_amount' => 'required_with:items|numeric',
+            'items.*.currency' => 'required_with:items|string|max:10',
         ]);
+
+        $isAdvancedMode = $request->has('items') && is_array($request->items) && count($request->items) > 0;
+
+        if ($isAdvancedMode && (!$request->items || count($request->items) === 0)) {
+            Log::error('[PAYMENT LINK] No items provided in advanced mode');
+            return ['status' => 'error', 'message' => 'At least one item is required in Advanced mode'];
+        }
+
+        if (!$isAdvancedMode && !$request->amount) {
+            Log::error('[PAYMENT LINK] No amount provided in quick mode');
+            return ['status' => 'error', 'message' => 'Amount is required in Quick mode'];
+        }
+
+        $totalAmount = $isAdvancedMode 
+            ? collect($request->items)->sum('extended_amount')
+            : $request->amount;
+
+        Log::info('[PAYMENT LINK] Mode: ' . ($isAdvancedMode ? 'Advanced' : 'Quick') . ', Total: ' . $totalAmount);
 
         if (!$request->company_id) {
             $companyId = null;
@@ -2577,20 +2603,20 @@ class PaymentController extends Controller
         $paymentMethodId = (int) $request->payment_method;
         
         if (strtolower($request->payment_gateway) === 'myfatoorah') {
-            $chargeResult = ChargeService::FatoorahCharge($request->amount, $paymentMethodId, $companyId);
+            $chargeResult = ChargeService::FatoorahCharge($totalAmount, $paymentMethodId, $companyId);
         } else if (strtolower($request->payment_gateway) === 'tap') {
 
             $chargeResult = ChargeService::getFee(
                 gatewayName: 'Tap',
-                amount: $request->amount,
+                amount: $totalAmount,
                 methodCode: $paymentMethodId,
                 companyId: $companyId
             );
 
         } else if (strtolower($request->payment_gateway) === 'upayment') {
-            $chargeResult = ChargeService::UPaymentCharge($request->amount, $paymentMethodId, $companyId);
+            $chargeResult = ChargeService::UPaymentCharge($totalAmount, $paymentMethodId, $companyId);
         } else if (strtolower($request->payment_gateway) === 'hesabe') {
-            $chargeResult = ChargeService::HesabeCharge($request->amount, $paymentMethodId, $companyId);
+            $chargeResult = ChargeService::HesabeCharge($totalAmount, $paymentMethodId, $companyId);
         }
 
         $serviceCharge = $chargeResult['fee'] ?? 0;
@@ -2602,9 +2628,9 @@ class PaymentController extends Controller
                 'invoice_reference' => $invoiceReference,
                 'from' => $client->full_name,
                 'pay_to' => $agent->branch->company->name,
-                'currency' => $request->currency ?? 'KWD',
+                'currency' => $request->currency ?? ($isAdvancedMode && !empty($request->items) ? $request->items[0]['currency'] : 'KWD'),
                 'payment_date' => Carbon::now(),
-                'amount' => $request->amount,
+                'amount' => $totalAmount,
                 'service_charge' => $serviceCharge,
                 'payment_gateway' => $request->payment_gateway,
                 'payment_method_id' => $request->payment_method,
@@ -2618,11 +2644,24 @@ class PaymentController extends Controller
             ];
             
             $payment = Payment::create($data);
-            Log::info('Created Payment:', $data);
+            Log::info('[PAYMENT LINK] Created payment', ['payment_id' => $payment->id, 'voucher' => $voucherNumber]);
+
+            if ($isAdvancedMode && !empty($request->items)) {
+                foreach ($request->items as $item) {
+                    $payment->paymentItems()->create([
+                        'product_name' => $item['product_name'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['unit_price'],
+                        'extended_amount' => $item['extended_amount'],
+                        'currency' => $item['currency'],
+                    ]);
+                }
+                Log::info('[PAYMENT LINK] Created ' . count($request->items) . ' payment items for payment ID: ' . $payment->id);
+            }
 
         } catch (Exception $e) {
-            logger('Failed to create payment', [
-                'message' => $e->getMessage(),
+            Log::error('[PAYMENT LINK] Failed to create payment', [
+                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
             return ['status' => 'error', 'message' => $e->getMessage()];
@@ -2667,7 +2706,7 @@ class PaymentController extends Controller
 
     public function paymentShowLink($companyId, $voucherNumber)
     {
-        $payment = Payment::with(['agent.branch.company', 'client'])
+        $payment = Payment::with(['agent.branch.company', 'client', 'paymentItems'])
             ->where('voucher_number', $voucherNumber)
             ->whereHas('agent.branch', fn ($q) => $q->where('company_id', $companyId))
             ->first();
@@ -2687,7 +2726,7 @@ class PaymentController extends Controller
         $locale = $payment->language === 'ARB' ? 'ar' : 'en';
         app()->setLocale($locale);
 
-        $payment = Payment::with('agent', 'client')->where('id', $payment->id)->first();
+        $payment = Payment::with('agent', 'client', 'paymentItems')->where('id', $payment->id)->first();
 
         $fatoorahPayment = $payment->findMyFatoorahPayment();
 
@@ -6695,10 +6734,16 @@ class PaymentController extends Controller
 
         $request->validate([
             'payment_methods' => 'required|array|min:1',
-            'amount' => 'required|numeric',
+            'amount' => 'nullable|numeric',
             'currency' => 'required|string',
             'client_id' => 'required|integer|exists:clients,id',
             'agent_id' => 'required|integer|exists:agents,id',
+            'items' => 'nullable|array|min:1',
+            'items.*.product_name' => 'required_with:items|string|max:255',
+            'items.*.quantity' => 'required_with:items|numeric|min:0.01',
+            'items.*.unit_price' => 'required_with:items|numeric|min:0',
+            'items.*.extended_amount' => 'required_with:items|numeric',
+            'items.*.currency' => 'required_with:items|string|max:10',
         ]);     
 
         $agent = Agent::find($request->input('agent_id'));
@@ -6728,9 +6773,14 @@ class PaymentController extends Controller
             $voucherSequence,
         ) {
             try{
+                $isAdvancedMode = $request->has('items') && is_array($request->items) && count($request->items) > 0;
+                $totalAmount = $isAdvancedMode 
+                    ? collect($request->items)->sum('extended_amount')
+                    : $request->amount;
+
                 $payment = Payment::create([
                     'voucher_number' => $voucherNumber,
-                    'amount' => $request->amount,
+                    'amount' => $totalAmount,
                     'from' => $client->full_name,
                     'pay_to' => $company->name,
                     'currency' => $request->currency,
@@ -6744,11 +6794,22 @@ class PaymentController extends Controller
                     'created_by' => Auth::id(),
                 ]);
 
-                // Extract payment method group IDs from the selected payment methods
+                if ($isAdvancedMode && !empty($request->items)) {
+                    foreach ($request->items as $item) {
+                        $payment->paymentItems()->create([
+                            'product_name' => $item['product_name'],
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $item['unit_price'],
+                            'extended_amount' => $item['extended_amount'],
+                            'currency' => $item['currency'],
+                        ]);
+                    }
+                    Log::info('[MULTI PAYMENT METHOD] Created ' . count($request->items) . ' payment items for payment ID: ' . $payment->id);
+                }
+
                 $paymentMethods = PaymentMethod::whereIn('id', $request->payment_methods)->get();
                 $groupIds = $paymentMethods->pluck('payment_method_group_id')->unique()->filter();
 
-                // Attach payment method groups instead of individual methods
                 $payment->availablePaymentMethodGroups()->attach($groupIds);
 
                 Log::info('[MULTI PAYMENT METHOD] Attached payment method groups to payment ID: ' . $payment->id, [
@@ -6770,8 +6831,8 @@ class PaymentController extends Controller
                 ];
 
             } catch (Exception $e) {
-                Log::error('Error creating multi payment method payment', [
-                    'message' => $e->getMessage(),
+                Log::error('[MULTI PAYMENT METHOD] Failed to create payment', [
+                    'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);
                 return [

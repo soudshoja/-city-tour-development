@@ -215,7 +215,7 @@
                         </div>
 
                         <div class="p-6">
-                            <div id="content-items" class="tab-content">
+                            <div id="content-items" class="tab-content" x-data="paymentItemsEditor()">
                                 @if($payment->paymentItems == null || $payment->paymentItems->isEmpty())
                                 <div class="py-12 text-center">
                                     <svg class="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -225,6 +225,22 @@
                                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">This payment was created in Quick mode without itemized details.</p>
                                 </div>
                                 @else
+                                <div class="mb-4 flex items-center justify-between">
+                                    @if($payment->status !== 'completed')
+                                    <button type="button" 
+                                        @click="toggleEdit()"
+                                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                        <span x-show="!editing">Edit Items</span>
+                                        <span x-show="editing">Cancel</span>
+                                    </button>
+                                    <button type="button" 
+                                        x-show="editing"
+                                        @click="saveItems()"
+                                        class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
+                                        Save Changes
+                                    </button>
+                                    @endif
+                                </div>
                                 <div class="overflow-x-auto">
                                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                         <thead class="bg-gray-50 dark:bg-gray-900">
@@ -234,25 +250,55 @@
                                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Unit Price</th>
                                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Currency</th>
                                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Extended Amount</th>
+                                                <th x-show="editing" class="px-4 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                            @foreach($payment->paymentItems as $item)
-                                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                                                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{{ $item->product_name }}</td>
-                                                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ number_format($item->quantity, 2) }}</td>
-                                                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ number_format($item->unit_price, 3) }}</td>
-                                                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $item->currency }}</td>
-                                                <td class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ number_format($item->extended_amount, 3) }}</td>
-                                            </tr>
-                                            @endforeach
+                                            <template x-for="(item, index) in items" :key="index">
+                                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                                    <td class="px-4 py-3 text-sm">
+                                                        <input x-show="editing" type="text" x-model="item.product_name" class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                                                        <span x-show="!editing" x-text="item.product_name" class="text-gray-900 dark:text-gray-100"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm">
+                                                        <input x-show="editing" type="number" step="1" x-model="item.quantity" @input="calculateExtended(index)" class="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                                                        <span x-show="!editing" x-text="parseFloat(item.quantity).toFixed(2)" class="text-gray-700 dark:text-gray-300"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm">
+                                                        <input x-show="editing" type="number" step="0.001" x-model="item.unit_price" @input="calculateExtended(index)" class="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                                                        <span x-show="!editing" x-text="parseFloat(item.unit_price).toFixed(3)" class="text-gray-700 dark:text-gray-300"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm">
+                                                        <select x-show="editing" x-model="item.currency" class="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                                                            @foreach(\App\Models\Currency::all() as $currency)
+                                                            <option value="{{ $currency->iso_code }}">{{ $currency->iso_code }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                        <span x-show="!editing" x-text="item.currency" class="text-gray-700 dark:text-gray-300"></span>
+                                                    </td>
+                                                    <td class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100" x-text="parseFloat(item.extended_amount).toFixed(3)"></td>
+                                                    <td x-show="editing" class="px-4 py-3 text-center">
+                                                        <button type="button" @click="removeItem(index)" class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                            </svg>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </template>
                                         </tbody>
                                         <tfoot class="bg-gray-100 dark:bg-gray-900">
+                                            <tr x-show="editing">
+                                                <td colspan="6" class="px-4 py-2">
+                                                    <button type="button" @click="addItem()" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
+                                                        + Add Item
+                                                    </button>
+                                                </td>
+                                            </tr>
                                             <tr>
                                                 <td colspan="4" class="px-4 py-3 text-right text-sm font-bold text-gray-800 dark:text-gray-200">Total:</td>
-                                                <td class="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">
-                                                    {{ number_format($payment->paymentItems->sum('extended_amount'), 3) }} {{ $payment->currency }}
-                                                </td>
+                                                <td class="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100" x-text="totalAmount.toFixed(3) + ' {{ $payment->currency }}'"></td>
+                                                <td x-show="editing"></td>
                                             </tr>
                                         </tfoot>
                                     </table>
@@ -790,6 +836,88 @@
             }).catch(err => {
                 console.error('Failed to copy:', err);
             });
+        }
+
+        function paymentItemsEditor() {
+            return {
+                editing: false,
+                items: @json($payment->paymentItems ?? []),
+                originalItems: null,
+
+                toggleEdit() {
+                    this.editing = !this.editing;
+                    if (this.editing) {
+                        this.originalItems = JSON.parse(JSON.stringify(this.items));
+                    } else {
+                        this.items = JSON.parse(JSON.stringify(this.originalItems));
+                    }
+                },
+
+                addItem() {
+                    this.items.push({
+                        id: null,
+                        product_name: '',
+                        quantity: 1,
+                        unit_price: 0,
+                        currency: '{{ $payment->currency }}',
+                        extended_amount: 0
+                    });
+                },
+
+                removeItem(index) {
+                    if (confirm('Are you sure you want to remove this item?')) {
+                        this.items.splice(index, 1);
+                    }
+                },
+
+                calculateExtended(index) {
+                    const item = this.items[index];
+                    item.extended_amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+                },
+
+                get totalAmount() {
+                    return this.items.reduce((sum, item) => sum + parseFloat(item.extended_amount || 0), 0);
+                },
+
+                async saveItems() {
+                    if (this.items.length === 0) {
+                        alert('Please add at least one item.');
+                        return;
+                    }
+
+                    for (let item of this.items) {
+                        if (!item.product_name || !item.quantity || !item.unit_price) {
+                            alert('Please fill all item fields.');
+                            return;
+                        }
+                    }
+
+                    try {
+                        const url = "{{ route('payment.items.update', ['id' => $payment->id]) }}";
+                        const response = await fetch( url , {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({ items: this.items })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            alert('Payment items updated successfully!');
+                            this.editing = false;
+                            window.location.reload();
+                        } else {
+                            alert('Error: ' + (data.message || 'Failed to update items'));
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert('An error occurred while saving items.');
+                    }
+                }
+            }
         }
     </script>
 </x-app-layout>

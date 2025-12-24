@@ -251,7 +251,7 @@
                                                 </td>
                                                 <td class="px-4 py-3 text-sm whitespace-nowrap">
                                                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
-                                                        {{ strtolower($transaction->status) === 'paid' || strtolower($transaction->status) === 'successful' ||strtolower($transaction->status) === 'completed'   ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
+                                                        {{ strtolower($transaction->status) === 'paid' || strtolower($transaction->status) === 'successful' ||strtolower($transaction->status) === 'completed' || strtolower($transaction->status) === 'captured' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
                                                            (strtolower($transaction->status) === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 
                                                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200') }}">
                                                         {{ strtoupper($transaction->status) }}
@@ -271,7 +271,9 @@
                                                 </td>
                                                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                                                     @if($transaction->url)
-                                                    @if(now()->lt($transaction->expiry_date))
+                                                    @if($payment->payment_gateway === 'Tap' && $payment->status === 'completed')
+                                                    <span class="text-gray-400 italic">Completed</span>
+                                                    @elseif(now()->lt($transaction->expiry_date))
                                                     <a href="{{ $transaction->url }}" target="_blank" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline">View</a>
                                                     @else
                                                     <span class="text-gray-400 italic">Expired</span>

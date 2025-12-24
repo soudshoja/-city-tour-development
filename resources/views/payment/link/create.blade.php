@@ -15,7 +15,7 @@
         <!-- Main Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" x-data="{
             advancedMode: false,
-            currentLanguage: 'EN',
+            currentLanguage: 'ARB',
             addClientModal: false,
             importFatoorahModal: false,
             showUploadForm: false,
@@ -32,6 +32,49 @@
                 this.addClientModal = false;
                 this.showUploadForm = false;
                 this.showManualForm = false;
+            },
+            init() {
+                this.$watch('advancedMode', (value) => {
+                    if (value) {
+                        setTimeout(() => {
+                            const itemsManager = this.$el.querySelector('[x-data*=paymentItemsManager]');
+                            if (itemsManager && itemsManager._x_dataStack) {
+                                const manager = itemsManager._x_dataStack[0];
+                                if (manager && manager.items && manager.items.length === 0) {
+                                    manager.addItem();
+                                }
+                            }
+                            
+                            const termsManager = this.$el.querySelector('[x-data*=termsConditionManager]');
+                            if (termsManager && termsManager._x_dataStack) {
+                                const manager = termsManager._x_dataStack[0];
+                                if (manager && !manager.content.trim()) {
+                                    manager.resetToDefault();
+                                }
+                            }
+                        }, 100);
+                    } else {
+                        setTimeout(() => {
+                            const itemsManager = this.$el.querySelector('[x-data*=paymentItemsManager]');
+                            if (itemsManager && itemsManager._x_dataStack) {
+                                const manager = itemsManager._x_dataStack[0];
+                                if (manager && manager.items) {
+                                    manager.items = [];
+                                }
+                            }
+                            
+                            const termsManager = this.$el.querySelector('[x-data*=termsConditionManager]');
+                            if (termsManager && termsManager._x_dataStack) {
+                                const manager = termsManager._x_dataStack[0];
+                                if (manager) {
+                                    manager.content = '';
+                                    manager.selectedTemplateId = '';
+                                    manager.isEdited = false;
+                                }
+                            }
+                        }, 100);
+                    }
+                });
             }
         }">
             
@@ -492,7 +535,7 @@
                     <div class="border-l-4 border-blue-500 bg-blue-50 rounded-r-lg p-4 space-y-6 shadow-md">
                         
                         <!-- Payment Items -->
-                        <div x-data="paymentItemsManager()" x-init="addItem()" class="space-y-4">
+                        <div x-data="paymentItemsManager()" class="space-y-4">
                             <div class="flex items-center justify-between">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Payment Items</label>
@@ -524,7 +567,6 @@
                                                     <input type="text" 
                                                         :name="'items[' + index + '][product_name]'" 
                                                         x-model="item.product_name"
-                                                        required
                                                         placeholder="Enter product name"
                                                         class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
                                                 </td>
@@ -533,7 +575,6 @@
                                                         :name="'items[' + index + '][quantity]'" 
                                                         x-model="item.quantity"
                                                         @input="calculateExtended(index)"
-                                                        required
                                                         step="1" 
                                                         min="1"
                                                         placeholder="0"
@@ -544,7 +585,6 @@
                                                         :name="'items[' + index + '][unit_price]'" 
                                                         x-model="item.unit_price"
                                                         @input="calculateExtended(index)"
-                                                        required
                                                         step="0.001" 
                                                         min="0"
                                                         placeholder="0.000"
@@ -825,10 +865,6 @@ function termsConditionManager() {
                 if (data.success) {
                     this.templates = data.templates;
                     console.log('Loaded templates:', this.templates);
-                    // Auto-select default template if content is empty
-                    if (!this.content.trim()) {
-                        this.resetToDefault();
-                    }
                 }
             } catch (error) {
                 console.error('Error loading templates:', error);

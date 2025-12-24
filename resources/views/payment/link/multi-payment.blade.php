@@ -281,8 +281,8 @@
                         @csrf
                         <input type="hidden" name="payment_id" value="{{ $payment->id }}">
                         <input type="hidden" name="payment_method_id" id="payment_method_input_tnc">
-                        <button type="submit"
-                            :disabled="!agreed"
+                        <button :type="agreed ? 'submit' : 'button'"
+                            @click="if(!agreed) TNCModal = true"
                             :class="agreed ? 'city-light-yellow hover:text-white hover:bg-[#004c9e]' : 'bg-gray-300 text-gray-500 cursor-not-allowed'"
                             class="w-full md:w-auto rounded-full border border-gray-300 px-6 py-2 shadow-md font-semibold transition-colors">
                             {{ __('invoice.pay_now') }}

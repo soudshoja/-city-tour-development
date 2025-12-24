@@ -457,6 +457,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}/details', [PaymentController::class, 'show'])->name('show');
         Route::get('/{id}/partials', [PaymentController::class, 'getPartials'])->name('partials');
         Route::get('/{id}/transactions', [PaymentController::class, 'getTransactions'])->name('transactions');
+        Route::put('/{id}/items', [PaymentController::class, 'updatePaymentItems'])->name('items.update');
         Route::post('/create/{companyId}/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         //Route::match(['get', 'post'], '/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');

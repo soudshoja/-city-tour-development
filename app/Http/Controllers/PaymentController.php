@@ -3482,25 +3482,6 @@ class PaymentController extends Controller
             }
 
             try {
-                // $configService = new GatewayConfigService();
-                // $myfatoorahConfig = $configService->getMyFatoorahConfig();
-
-                // if(!$myfatoorahConfig['status'] || !$myfatoorahConfig['data']) {
-                //     return redirect()->route('payment.failed')->with('error', $myfatoorahConfig['message'] ?? 'MyFatoorah configuration is missing or inactive');
-                // }
-
-                // $myfatoorahConfig = $myfatoorahConfig['data'];
-                // $apiKey  = $myfatoorahConfig['api_key'];
-                // $baseUrl = $myfatoorahConfig['base_url'];
-
-                // $statusResponse = Http::withHeaders([
-                //     'Authorization' => "Bearer $apiKey",
-                //     'Content-Type' => 'application/json',
-                // ])->post("$baseUrl/getPaymentStatus", [
-                //     "Key" => $paymentId,
-                //     "KeyType" => "PaymentId"
-                // ]);
-
                 $myfatoorah = new MyFatoorah();
 
                 $statusResponse = $myfatoorah->getPaymentStatus(type: 'payment' , key: $paymentId);
@@ -3683,8 +3664,6 @@ class PaymentController extends Controller
             $tap = new Tap();
             $response = $tap->getCharge($tapId);
 
-            Log::info('Tap charge response', ['response' => $response]);
-
             if (isset($response['errors'])) {
                 Log::error('Tap charge error', ['errors' => $response['errors']]);
                 return redirect()->route('payment.failed')->with('error', $response['errors'][0]['description'] ?? 'Payment failed.');
@@ -3701,6 +3680,20 @@ class PaymentController extends Controller
             if (!$payment) {
                 Log::error('Payment not found for Tap callback', ['payment_id' => $paymentId]);
                 return redirect()->route('payment.failed')->with('error', 'Payment not found.');
+            }
+
+            $paymentTransaction = $payment->paymentTransactions()->where('reference_number', $tapId)->first();
+
+            if($paymentTransaction) {
+                Log::info("[TAP CALLBACK] Update payment transaction status" ,[
+                    'payment_transaction_id' => $paymentTransaction->id,
+                    'status' => $response['status'],
+                ]);
+
+                $paymentTransaction->status = $response['status'];
+                $paymentTransaction->save();
+            } else {
+                Log::warning('Payment transaction not found for Tap ID', ['tap_id' => $tapId, 'payment_id' => $paymentId]);
             }
 
             $partialId = $response['metadata']['invoice_partial_id'] ?? null;
@@ -3726,7 +3719,7 @@ class PaymentController extends Controller
             if ($response['status'] !== 'CAPTURED') {
                 Log::warning('Tap payment failed or cancelled', ['status' => $response['status'], 'tap_id' => $tapId]);
 
-                Transaction::create([
+                $transaction = Transaction::create([
                     'branch_id' => $payment->agent->branch->id,
                     'company_id' => $payment->agent->branch->company->id,
                     'entity_id' => $payment->agent->branch->company->id,
@@ -3740,6 +3733,11 @@ class PaymentController extends Controller
                     'reference_type' => 'Payment',
                     'transaction_date' => now(),
                 ]);
+
+                if($paymentTransaction) {
+                    $paymentTransaction->transaction_id = $transaction->id;
+                    $paymentTransaction->save();
+                }
 
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
 
@@ -3758,7 +3756,7 @@ class PaymentController extends Controller
                 return redirect()->to($receiptInfo['url'])->with('error', 'Payment failed or cancelled. Please try again or contact support.');
             }
 
-            DB::transaction(function () use ($payment, $response, $process, $partialId) {
+            DB::transaction(function () use ($payment, $response, $process, $partialId, $paymentTransaction) {
                 $finalPaidAmount = $response['amount'] ?? $payment->amount;
 
                 $dateCreated = Carbon::createFromTimestampMs($response['transaction']['date']['created'])->format('Y-m-d H:i:s');
@@ -3976,7 +3974,13 @@ class PaymentController extends Controller
                         'type_reference_id' => $tapAccount->id,
                     ]);
                 }
+
+                if ($paymentTransaction) {
+                    $paymentTransaction->transaction_id = $transaction->id;
+                    $paymentTransaction->save();
+                }
             });
+
             
             // Process TBO booking if applicable (BEFORE sending notification)
             $tboResult = $this->processTBOBookingAfterPayment($payment);

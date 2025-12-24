@@ -28,6 +28,7 @@ use App\Support\PaymentGateway\UPayment;
 use App\Mail\PaymentLinkEmail;
 use Google\Rpc\Context\AttributeContext\Response;
 use App\Http\Traits\NotificationTrait;
+use App\Http\Traits\CurrencyExchangeTrait;
 use App\Http\Controllers\ClientController;
 use App\Enums\ChargeType;
 use App\Models\HesabePayment;
@@ -74,6 +75,7 @@ use Throwable;
 class PaymentController extends Controller
 {
     use NotificationTrait;
+    use CurrencyExchangeTrait;
 
     public function show(int $id)
     {
@@ -2550,12 +2552,6 @@ class PaymentController extends Controller
             return ['status' => 'error', 'message' => 'Amount is required in Quick mode'];
         }
 
-        $totalAmount = $isAdvancedMode 
-            ? collect($request->items)->sum('extended_amount')
-            : $request->amount;
-
-        Log::info('[PAYMENT LINK] Mode: ' . ($isAdvancedMode ? 'Advanced' : 'Quick') . ', Total: ' . $totalAmount);
-
         if (!$request->company_id) {
             $companyId = null;
             $user = Auth::user();
@@ -2602,6 +2598,52 @@ class PaymentController extends Controller
 
         $paymentMethodId = (int) $request->payment_method;
         
+        $totalAmountInKWD = 0;
+        $convertedItems = [];
+
+        if ($isAdvancedMode) {
+            foreach ($request->items as $item) {
+                $itemAmountInKWD = $item['extended_amount'];
+                
+                if (strtoupper($item['currency']) !== 'KWD') {
+                    $conversionResult = $this->convert(
+                        $companyId,
+                        strtoupper($item['currency']),
+                        'KWD',
+                        $item['extended_amount']
+                    );
+
+                    if ($conversionResult['status'] === 'error') {
+                        Log::error('[PAYMENT LINK] Currency conversion failed', [
+                            'from' => $item['currency'],
+                            'to' => 'KWD',
+                            'amount' => $item['extended_amount'],
+                            'error' => $conversionResult['message']
+                        ]);
+                        return ['status' => 'error', 'message' => 'Currency exchange rate not found for ' . $item['currency'] . ' to KWD'];
+                    }
+
+                    $itemAmountInKWD = $conversionResult['converted_amount'];
+                    Log::info('[PAYMENT LINK] Converted item amount', [
+                        'product' => $item['product_name'],
+                        'from_currency' => $item['currency'],
+                        'original_amount' => $item['extended_amount'],
+                        'exchange_rate' => $conversionResult['exchange_rate'],
+                        'kwd_amount' => $itemAmountInKWD
+                    ]);
+                }
+
+                $totalAmountInKWD += $itemAmountInKWD;
+                $convertedItems[] = array_merge($item, ['kwd_amount' => $itemAmountInKWD]);
+            }
+        } else {
+            $totalAmountInKWD = $request->amount;
+        }
+
+        $totalAmount = $totalAmountInKWD;
+
+        Log::info('[PAYMENT LINK] Mode: ' . ($isAdvancedMode ? 'Advanced' : 'Quick') . ', Total: ' . $totalAmount . ' KWD');
+
         if (strtolower($request->payment_gateway) === 'myfatoorah') {
             $chargeResult = ChargeService::FatoorahCharge($totalAmount, $paymentMethodId, $companyId);
         } else if (strtolower($request->payment_gateway) === 'tap') {
@@ -2628,7 +2670,7 @@ class PaymentController extends Controller
                 'invoice_reference' => $invoiceReference,
                 'from' => $client->full_name,
                 'pay_to' => $agent->branch->company->name,
-                'currency' => $request->currency ?? ($isAdvancedMode && !empty($request->items) ? $request->items[0]['currency'] : 'KWD'),
+                'currency' => 'KWD',
                 'payment_date' => Carbon::now(),
                 'amount' => $totalAmount,
                 'service_charge' => $serviceCharge,
@@ -4538,6 +4580,96 @@ class PaymentController extends Controller
         }
 
         return redirect()->route('payment.link.index')->with('success', 'Payment link updated successfully!');
+    }
+
+    public function updatePaymentItems($id, Request $request)
+    {
+        try {
+            $payment = Payment::with('paymentItems')->findOrFail($id);
+
+            if ($payment->status === 'completed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot edit items for completed payments.'
+                ], 403);
+            }
+
+            $validated = $request->validate([
+                'items' => 'required|array|min:1',
+                'items.*.id' => 'nullable|exists:payment_items,id',
+                'items.*.product_name' => 'required|string|max:255',
+                'items.*.quantity' => 'required|numeric|min:0.01',
+                'items.*.unit_price' => 'required|numeric|min:0',
+                'items.*.currency' => 'required|string|max:10',
+                'items.*.extended_amount' => 'required|numeric|min:0',
+            ]);
+
+            DB::beginTransaction();
+
+            $existingItemIds = collect($validated['items'])->pluck('id')->filter();
+            PaymentItem::where('payment_id', $payment->id)
+                ->whereNotIn('id', $existingItemIds)
+                ->delete();
+
+            foreach ($validated['items'] as $itemData) {
+                if (isset($itemData['id'])) {
+                    $item = PaymentItem::find($itemData['id']);
+                    if ($item) {
+                        $item->update([
+                            'product_name' => $itemData['product_name'],
+                            'quantity' => $itemData['quantity'],
+                            'unit_price' => $itemData['unit_price'],
+                            'currency' => $itemData['currency'],
+                            'extended_amount' => $itemData['extended_amount'],
+                        ]);
+                    }
+                } else {
+                    PaymentItem::create([
+                        'payment_id' => $payment->id,
+                        'product_name' => $itemData['product_name'],
+                        'quantity' => $itemData['quantity'],
+                        'unit_price' => $itemData['unit_price'],
+                        'currency' => $itemData['currency'],
+                        'extended_amount' => $itemData['extended_amount'],
+                    ]);
+                }
+            }
+
+            $totalAmount = collect($validated['items'])->sum('extended_amount');
+            $payment->update(['amount' => $totalAmount]);
+
+            DB::commit();
+
+            Log::info('[PAYMENT ITEMS] Updated payment items', [
+                'payment_id' => $payment->id,
+                'items_count' => count($validated['items']),
+                'total_amount' => $totalAmount
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment items updated successfully.'
+            ]);
+
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed.',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('[PAYMENT ITEMS] Failed to update payment items', [
+                'payment_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update payment items.'
+            ], 500);
+        }
     }
 
     public function paymentDeleteLink($paymentId)
@@ -6774,16 +6906,59 @@ class PaymentController extends Controller
         ) {
             try{
                 $isAdvancedMode = $request->has('items') && is_array($request->items) && count($request->items) > 0;
-                $totalAmount = $isAdvancedMode 
-                    ? collect($request->items)->sum('extended_amount')
-                    : $request->amount;
+                
+                $totalAmountInKWD = 0;
+                $convertedItems = [];
+
+                if ($isAdvancedMode) {
+                    foreach ($request->items as $item) {
+                        $itemAmountInKWD = $item['extended_amount'];
+                        
+                        if (strtoupper($item['currency']) !== 'KWD') {
+                            $conversionResult = $this->convert(
+                                $company->id,
+                                strtoupper($item['currency']),
+                                'KWD',
+                                $item['extended_amount']
+                            );
+
+                            if ($conversionResult['status'] === 'error') {
+                                Log::error('[MULTI PAYMENT METHOD] Currency conversion failed', [
+                                    'from' => $item['currency'],
+                                    'to' => 'KWD',
+                                    'amount' => $item['extended_amount'],
+                                    'error' => $conversionResult['message']
+                                ]);
+                                throw new Exception('Currency exchange rate not found for ' . $item['currency'] . ' to KWD');
+                            }
+
+                            $itemAmountInKWD = $conversionResult['converted_amount'];
+                            Log::info('[MULTI PAYMENT METHOD] Converted item amount', [
+                                'product' => $item['product_name'],
+                                'from_currency' => $item['currency'],
+                                'original_amount' => $item['extended_amount'],
+                                'exchange_rate' => $conversionResult['exchange_rate'],
+                                'kwd_amount' => $itemAmountInKWD
+                            ]);
+                        }
+
+                        $totalAmountInKWD += $itemAmountInKWD;
+                        $convertedItems[] = array_merge($item, ['kwd_amount' => $itemAmountInKWD]);
+                    }
+                } else {
+                    $totalAmountInKWD = $request->amount;
+                }
+
+                $totalAmount = $totalAmountInKWD;
+
+                Log::info('[MULTI PAYMENT METHOD] Mode: ' . ($isAdvancedMode ? 'Advanced' : 'Quick') . ', Total: ' . $totalAmount . ' KWD');
 
                 $payment = Payment::create([
                     'voucher_number' => $voucherNumber,
                     'amount' => $totalAmount,
                     'from' => $client->full_name,
                     'pay_to' => $company->name,
-                    'currency' => $request->currency,
+                    'currency' => 'KWD',
                     'payment_gateway' => 'Multi',
                     'status' => 'pending',
                     'client_id' => $client->id,

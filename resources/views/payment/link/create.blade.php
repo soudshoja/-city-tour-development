@@ -15,6 +15,7 @@
         <!-- Main Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" x-data="{
             advancedMode: false,
+            currentLanguage: 'EN',
             addClientModal: false,
             importFatoorahModal: false,
             showUploadForm: false,
@@ -439,12 +440,12 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Invoice Language</label>
                     <p class="text-xs text-gray-500 mb-3">Select the language for the payment voucher sent to client</p>
                     
-                    <div x-data="{ language: '{{ old('language', 'EN') }}' }" class="inline-flex rounded-lg border border-gray-300 p-1 bg-gray-100">
-                        <input type="hidden" name="language" :value="language">
+                    <div class="inline-flex rounded-lg border border-gray-300 p-1 bg-gray-100">
+                        <input type="hidden" name="language" :value="currentLanguage">
                         
                         <button type="button" 
-                            @click="language = 'EN'"
-                            :class="language === 'EN' 
+                            @click="currentLanguage = 'EN'"
+                            :class="currentLanguage === 'EN' 
                                 ? 'bg-white text-gray-900 shadow-sm' 
                                 : 'text-gray-500 hover:text-gray-700'"
                             class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
@@ -452,8 +453,8 @@
                         </button>
                         
                         <button type="button" 
-                            @click="language = 'ARB'"
-                            :class="language === 'ARB' 
+                            @click="currentLanguage = 'ARB'"
+                            :class="currentLanguage === 'ARB' 
                                 ? 'bg-white text-gray-900 shadow-sm' 
                                 : 'text-gray-500 hover:text-gray-700'"
                             class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
@@ -487,42 +488,129 @@
                     </div>
 
                     <!-- Advanced Section with left border -->
-                    <div class="border-l-4 border-blue-500 bg-blue-50 rounded-r-lg p-4 space-y-10 shadow-md">
+                    <div class="border-l-4 border-blue-500 bg-blue-50 rounded-r-lg p-4 space-y-4 shadow-md">
                         
-
                         <!-- Terms and Condition -->
-                        <div x-data="{ 
-                            content: '{{ old('terms_conditions') }}', 
-                            wordCount: 0,
-                            maxWords: 2000,
-                            countWords() {
-                                    const words = this.content.trim() === '' ? [] : this.content.trim().split(/\s+/);
-                                    this.wordCount = words.length;
-                                    
-                                    // If over limit, trim to max words
-                                    if (this.wordCount > this.maxWords) {
-                                        const trimmed = words.slice(0, this.maxWords).join(' ');
-                                        this.$nextTick(() => {
-                                            this.content = trimmed;
-                                            this.wordCount = this.maxWords;
-                                        });
-                                    }
-                                }
-                            }" x-init="countWords()">
-                            <label for="terms_conditions" class="block text-sm font-medium text-gray-700 mb-1.5">Terms and Conditions</label>
+                        <div x-data="termsConditionManager()" x-init="init()">
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Terms and Conditions</label>
                             <p class="text-xs text-gray-500 mb-3">These terms will be displayed to the client before proceeding to payment</p>
 
-                            <textarea 
-                                name="terms_conditions"
-                                id="terms_conditions"
-                                rows="4"
-                                x-model="content"
-                                @input="countWords()"
-                                placeholder="Enter the terms and conditions"
-                                :class="wordCount >= maxWords ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'"
-                                class="block w-full border rounded-lg px-3 py-2.5 text-sm focus:ring-1 outline-none transition-colors resize-none"
-                            ></textarea>
-                            <div class="flex justify-end mt-1.5">
+                            <!-- Template Selector -->
+                           <!-- Template Selector - Custom Dropdown -->
+<div class="mb-3">
+    <div class="flex items-center gap-3">
+        <label class="text-xs font-medium text-gray-600">Template:</label>
+        
+        <!-- Custom Dropdown -->
+        <div class="relative flex-1" x-data="{ open: false }">
+            <button type="button" 
+                @click="open = !open"
+                @click.away="open = false"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between">
+                <span x-text="selectedTemplateId ? getSelectedTemplateName() : '-- Select a template --'" 
+                    :class="!selectedTemplateId ? 'text-gray-400' : 'text-gray-900'"></span>
+                <svg class="w-4 h-4 text-gray-400 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            
+            <!-- Dropdown Options -->
+            <div x-show="open" 
+                x-transition:enter="transition ease-out duration-100"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-75"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95"
+                class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                
+                <!-- Empty option -->
+                <div @click="selectedTemplateId = ''; open = false"
+                    class="px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 cursor-pointer">
+                    -- Select a template --
+                </div>
+                
+                <!-- Template options -->
+                <template x-for="template in filteredTemplates" :key="template.id">
+                    <div @click="selectedTemplateId = template.id; loadSelectedTemplate(); open = false"
+                        :class="selectedTemplateId == template.id ? 'bg-blue-50' : 'hover:bg-gray-50'"
+                        class="px-3 py-2 text-sm cursor-pointer flex items-center justify-between">
+                        <span x-text="template.title" class="text-gray-900"></span>
+                        <span x-show="template.is_default" class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Default</span>
+                    </div>
+                </template>
+                
+                <!-- No templates message -->
+                <div x-show="filteredTemplates.length === 0" class="px-3 py-2 text-sm text-gray-400 italic">
+                    No templates available
+                </div>
+            </div>
+        </div>
+        
+        <button type="button" 
+            @click="resetToDefault()"
+            x-show="filteredTemplates.length > 0"
+            class="px-3 py-2 text-xs font-medium text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+            title="Load default template for selected language">
+            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            Reset
+        </button>
+    </div>
+    
+    <!-- No templates message -->
+    <p x-show="filteredTemplates.length === 0 && !loadingTemplates" class="text-xs text-amber-600 mt-2">
+        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        No templates available for <span x-text="currentLang === 'EN' ? 'English' : 'Arabic'"></span>. 
+        <a href="{{ route('settings.index') }}" class="underline hover:text-amber-700">Create one in Settings</a>
+    </p>
+
+    <!-- Loading indicator -->
+    <p x-show="loadingTemplates" class="text-xs text-gray-500 mt-2">
+        <svg class="animate-spin w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+        Loading templates...
+    </p>
+</div>
+
+                            <!-- Content Editor -->
+                            <div class="relative">
+                                <textarea 
+                                    name="terms_conditions"
+                                    id="terms_conditions"
+                                    rows="6"
+                                    x-model="content"
+                                    @input="countWords(); markAsEdited()"
+                                    placeholder="Enter the terms and conditions"
+                                    :class="wordCount >= maxWords ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'"
+                                    class="block w-full border rounded-lg px-3 py-2.5 text-sm focus:ring-1 outline-none transition-colors resize-none"
+                                ></textarea>
+                                
+                                <!-- Edited indicator -->
+                                <span x-show="isEdited && selectedTemplateId" 
+                                    class="absolute top-2 right-2 px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">
+                                    Edited
+                                </span>
+                            </div>
+
+                            <!-- Footer info -->
+                            <div class="flex justify-between items-center mt-1.5">
+                                <div>
+                                    <p x-show="selectedTemplateId && !isEdited" class="text-xs text-green-600">
+                                        <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        Using template: <span class="font-medium" x-text="getSelectedTemplateName()"></span>
+                                    </p>
+                                    <p x-show="!selectedTemplateId && content.trim() !== ''" class="text-xs text-gray-500">
+                                        Custom content
+                                    </p>
+                                </div>
                                 <p class="text-xs" :class="wordCount >= maxWords ? 'text-red-500 font-medium' : 'text-gray-500'">
                                     <span x-text="wordCount"></span> / <span x-text="maxWords"></span> words
                                     <span x-show="wordCount >= maxWords" class="ml-1">limit reached</span>
@@ -548,6 +636,166 @@
             </form>
         </div>
     </div>
+
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+
+    <script>
+function termsConditionManager() {
+    return {
+        templates: [],
+        loadingTemplates: false,
+        selectedTemplateId: '',
+        content: '{{ old("terms_conditions") }}',
+        originalContent: '',
+        isEdited: false,
+        wordCount: 0,
+        maxWords: 2000,
+        currentLang: 'EN',
+
+        init() {
+            this.countWords();
+            this.loadTemplates();
+            
+            // Get initial language from parent
+            this.currentLang = this.getParentLanguage();
+            
+            // Set up an interval to check for language changes
+            // This is more reliable than $watch for nested scopes
+            setInterval(() => {
+                const parentLang = this.getParentLanguage();
+                if (parentLang !== this.currentLang) {
+                    this.currentLang = parentLang;
+                    this.onLanguageChange();
+                }
+            }, 100);
+        },
+
+        getParentLanguage() {
+            // Try to get from Alpine root data
+            try {
+                // Find the parent element with x-data that has currentLanguage
+                const mainCard = document.querySelector('[x-data*="currentLanguage"]');
+                if (mainCard && mainCard._x_dataStack) {
+                    for (const data of mainCard._x_dataStack) {
+                        if (data.currentLanguage) {
+                            return data.currentLanguage;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('Error getting parent language:', e);
+            }
+            return 'EN';
+        },
+
+        get filteredTemplates() {
+            return this.templates.filter(t => t.language === this.currentLang && t.is_active);
+        },
+
+        async loadTemplates() {
+            this.loadingTemplates = true;
+            try {
+                const response = await fetch('{{ route("terms.templates.index") }}', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.templates = data.templates;
+                    console.log('Loaded templates:', this.templates);
+                    // Auto-select default template if content is empty
+                    if (!this.content.trim()) {
+                        this.resetToDefault();
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading templates:', error);
+            } finally {
+                this.loadingTemplates = false;
+            }
+        },
+
+        onLanguageChange() {
+            console.log('Language changed to:', this.currentLang);
+            this.selectedTemplateId = '';
+            this.isEdited = false;
+            this.resetToDefault();
+        },
+
+        loadSelectedTemplate() {
+            if (!this.selectedTemplateId) return;
+            
+            const template = this.templates.find(t => t.id == this.selectedTemplateId);
+            if (template) {
+                this.content = template.content;
+                this.originalContent = template.content;
+                this.isEdited = false;
+                this.countWords();
+            }
+        },
+
+        resetToDefault() {
+            console.log('Resetting to default for language:', this.currentLang);
+            console.log('Filtered templates:', this.filteredTemplates);
+            
+            const defaultTemplate = this.filteredTemplates.find(t => t.is_default);
+            if (defaultTemplate) {
+                console.log('Found default template:', defaultTemplate.title);
+                this.selectedTemplateId = defaultTemplate.id;
+                this.content = defaultTemplate.content;
+                this.originalContent = defaultTemplate.content;
+                this.isEdited = false;
+                this.countWords();
+            } else if (this.filteredTemplates.length > 0) {
+                const firstTemplate = this.filteredTemplates[0];
+                console.log('Using first template:', firstTemplate.title);
+                this.selectedTemplateId = firstTemplate.id;
+                this.content = firstTemplate.content;
+                this.originalContent = firstTemplate.content;
+                this.isEdited = false;
+                this.countWords();
+            } else {
+                console.log('No templates available for this language');
+                this.selectedTemplateId = '';
+                this.content = '';
+                this.originalContent = '';
+                this.isEdited = false;
+                this.countWords();
+            }
+        },
+
+        markAsEdited() {
+            if (this.selectedTemplateId && this.content !== this.originalContent) {
+                this.isEdited = true;
+            } else if (this.content === this.originalContent) {
+                this.isEdited = false;
+            }
+        },
+
+        getSelectedTemplateName() {
+            const template = this.templates.find(t => t.id == this.selectedTemplateId);
+            return template ? template.title : '';
+        },
+
+        countWords() {
+            const words = this.content.trim() === '' ? [] : this.content.trim().split(/\s+/);
+            this.wordCount = words.length;
+            
+            if (this.wordCount > this.maxWords) {
+                const trimmed = words.slice(0, this.maxWords).join(' ');
+                this.$nextTick(() => {
+                    this.content = trimmed;
+                    this.wordCount = this.maxWords;
+                });
+            }
+        }
+    }
+}
+</script>
 
     <script>
         const clientForm = document.getElementById("client-formTask");

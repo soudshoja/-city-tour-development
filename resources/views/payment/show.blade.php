@@ -216,13 +216,48 @@
 
                         <div class="p-6">
                             <div id="content-items" class="tab-content">
+                                @if($payment->paymentItems == null || $payment->paymentItems->isEmpty())
                                 <div class="py-12 text-center">
                                     <svg class="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
-                                    <p class="text-lg font-medium text-gray-600 dark:text-gray-400">Payment Item Details</p>
-                                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Coming soon...</p>
+                                    <p class="text-lg font-medium text-gray-600 dark:text-gray-400">No Payment Items</p>
+                                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">This payment was created in Quick mode without itemized details.</p>
                                 </div>
+                                @else
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                        <thead class="bg-gray-50 dark:bg-gray-900">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Product Name</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Quantity</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Unit Price</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Currency</th>
+                                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Extended Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                            @foreach($payment->paymentItems as $item)
+                                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{{ $item->product_name }}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ number_format($item->quantity, 2) }}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ number_format($item->unit_price, 3) }}</td>
+                                                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ $item->currency }}</td>
+                                                <td class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100">{{ number_format($item->extended_amount, 3) }}</td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                        <tfoot class="bg-gray-100 dark:bg-gray-900">
+                                            <tr>
+                                                <td colspan="4" class="px-4 py-3 text-right text-sm font-bold text-gray-800 dark:text-gray-200">Total:</td>
+                                                <td class="px-4 py-3 text-sm font-bold text-gray-900 dark:text-gray-100">
+                                                    {{ number_format($payment->paymentItems->sum('extended_amount'), 3) }} {{ $payment->currency }}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                @endif
                             </div>
                             <div id="content-transactions" class="hidden tab-content">
                                 @if($payment->paymentTransactions == null || $payment->paymentTransactions->isEmpty())

@@ -492,7 +492,7 @@
 
                                         <div id="sendOptionsDropdown" class="absolute right-0 left-0 hidden w-full mt-2 origin-top-right bg-white rounded-lg shadow-xl dark:bg-gray-700 ring-1 ring-black ring-opacity-5" style="z-index: 100;">
                                             <div class="py-1" role="menu" aria-orientation="vertical">
-                                                <form action="{{ route('reminder.store') }}" method="POST" class="block">
+                                                <form action="{{ route('resayil.share-payment-link') }}" method="POST" class="block">
                                                     @csrf
                                                     <input type="hidden" name="client_id" value="{{ $payment->client_id }}">
                                                     <input type="hidden" name="payment_id" value="{{ $payment->id }}">
@@ -519,10 +519,10 @@
                                 <div class="pt-3 border-t border-purple-100 dark:border-gray-700">
                                     <form id="reminderForm" action="{{ route('reminder.store') }}" method="POST"
                                         x-data="{ 
-                                            frequency: 'once',
-                                            intervalPreset: 'every3days',
+                                            frequency: 'auto',
+                                            intervalPreset: 'every3hours',
                                             repeatValue: 3,
-                                            repeatUnit: 'days',
+                                            repeatUnit: 'hours',
                                             reminderCount: 3,
                                             loading: false,
                                             sendToClient: true,
@@ -662,6 +662,13 @@
                                                 <div>
                                                     <label class="text-xs text-gray-500 dark:text-gray-400 mb-2 block">Quick Presets</label>
                                                     <div class="flex flex-wrap gap-2">
+                                                        <button type="button" @click="intervalPreset = 'every3hours'; repeatValue = 3; repeatUnit = 'hours'; reminderCount = 3"
+                                                            :class="intervalPreset === 'every3hours' 
+                                                            ? 'border-purple-500 bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400' 
+                                                            : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-gray-300'"
+                                                            class="px-2.5 py-1 text-xs border rounded-md transition-colors">
+                                                            Every 3 hours × 3
+                                                        </button>
                                                         <button type="button" @click="intervalPreset = 'daily'; repeatValue = 1; repeatUnit = 'days'; reminderCount = 3"
                                                             :class="intervalPreset === 'daily' 
                                                             ? 'border-purple-500 bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400' 

@@ -251,7 +251,7 @@
                                                 </td>
                                                 <td class="px-4 py-3 text-sm whitespace-nowrap">
                                                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
-                                                        {{ strtolower($transaction->status) === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
+                                                        {{ strtolower($transaction->status) === 'paid' || strtolower($transaction->status) === 'successful' ||strtolower($transaction->status) === 'completed'   ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
                                                            (strtolower($transaction->status) === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 
                                                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200') }}">
                                                         {{ strtoupper($transaction->status) }}

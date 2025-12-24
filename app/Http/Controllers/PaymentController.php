@@ -5442,6 +5442,8 @@ class PaymentController extends Controller
             $voucherNumber = $data['orderReferenceNumber'];
             $process = $data['variable1'];
 
+            $paymentToken = $data['paymentToken'] ?? null;
+
             $raw = $data['variable2'] ?? null;
             $partialId = $raw ? intval($raw) : null;
             
@@ -5458,6 +5460,46 @@ class PaymentController extends Controller
             $payment->payment_date = $data['paidOn'] ?? now();
             $payment->status = 'completed';
             $payment->save();
+
+
+            if($paymentToken){
+                Log::info('[HESABE] Payment token found in the response', [
+                    'payment_token' => $paymentToken,
+                    'status' => $data['resultCode'] ?? null,
+                ]);
+
+                $paymentTransaction = $payment->paymentTransactions()->where('reference_number', $paymentToken)->first();
+
+                if ($paymentTransaction) {
+                    $hesabe = new Hesabe();
+                    $getPaymentStatus = $hesabe->getPaymentStatus($paymentToken);
+
+                    if ($getPaymentStatus['status'] == true) {
+                        $paymentTransaction->status = $getPaymentStatus['data']['status'] ?? 'Completed';
+                        $paymentTransaction->save();
+
+                        Log::info('[HESABE WEBHOOK] Payment transaction updated to completed', [
+                            'payment_transaction_id' => $paymentTransaction->id,
+                            'status' => $paymentTransaction->status
+                        ]);
+                    }
+
+                    $paymentTransaction->save();
+
+                    Log::info('[HESABE] Payment transaction updated to completed', [
+                        'payment_transaction_id' => $paymentTransaction->id
+                    ]);
+                } else {
+                    Log::warning('[HESABE] Payment transaction not found for the given payment token', [
+                        'payment_token' => $paymentToken
+                    ]);
+                }
+
+            } else {
+                Log::warning('[HESABE] Payment token is not found in the response', [
+                    'response' => $responseData
+                ]);
+            }
 
             $tboResult = $this->processTBOBookingAfterPayment($payment);
             if ($tboResult !== null) {
@@ -5742,6 +5784,8 @@ class PaymentController extends Controller
                 $voucherNumber = $data['orderReferenceNumber'];
                 $process = $data['variable1'] ?? null;
 
+                $paymentToken = $data['paymentToken'] ?? null;
+
                 $raw = $data['variable2'] ?? null;
                 $partialId = $raw ? intval($raw) : null;
                 
@@ -5769,6 +5813,41 @@ class PaymentController extends Controller
                         'message' => 'Payment already processed',
                         'status' => 'success',
                     ], 200);
+                }
+
+                if($paymentToken) {
+
+                    Log::info('[HESABE WEBHOOK] Payment token found in the response', [
+                        'payment_token' => $paymentToken,
+                        'status' => $data['resultCode'] ?? null,
+                    ]);
+
+                    $paymentTransaction = $payment->paymentTransactions()->where('reference_number', $paymentToken)->first();
+
+                    if ($paymentTransaction) {
+                        $hesabe = new Hesabe();
+
+                        $getPaymentStatus = $hesabe->getPaymentStatus($paymentToken);
+
+                        if ($getPaymentStatus['status'] == true) {
+                            $paymentTransaction->status = $getPaymentStatus['data']['status'] ?? 'Completed';
+                            $paymentTransaction->save();
+
+                            Log::info('[HESABE WEBHOOK] Payment transaction updated to completed', [
+                                'payment_transaction_id' => $paymentTransaction->id,
+                                'status' => $paymentTransaction->status
+                            ]);
+                        }
+                    } else {
+                        Log::warning('[HESABE WEBHOOK] Payment transaction not found for the given payment token', [
+                            'payment_token' => $paymentToken
+                        ]);
+                    }
+
+                } else {
+                    Log::warning('[HESABE WEBHOOK] Payment token is not found in the response', [
+                        'response' => $responseData
+                    ]);
                 }
 
                 $payment->payment_reference = $data['transactionId'];
@@ -7013,6 +7092,7 @@ class PaymentController extends Controller
                 'payment_method_id' => $payment->payment_method_id,
                 'invoice_partial_id' => null,
                 'client_phone' => $clientPhone,
+                'type' => 'topup',
             ]);
 
             Log::info('[HESABE] Creating charge via Hesabe helper', ['request' => $requestHesabe->all()]);
@@ -7042,10 +7122,15 @@ class PaymentController extends Controller
                 'payment_status' => $payment->status,
             ]);
 
+            if(!$response['token']){
+                Log::error('[HESABE] Token missing in response', ['response' => $response]);
+                return redirect()->back()->with('error', 'Hesabe response missing token.');
+            }
+
             $paymentGatewayStatus = 'initiate';
             $paymentGatewayUrl = $paymentUrl;
             $paymentGatewayTrackId = null;
-            $paymentGatewayReferenceNumber = null;
+            $paymentGatewayReferenceNumber = $response['token'];
             $paymentGatewayExpiryDate = now()->addDays(2);
 
             // return redirect($paymentUrl);

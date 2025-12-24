@@ -149,23 +149,36 @@ class Tap
 
         return $response;
     }
-    // public function createCharge($req)
-    // {
+    
+    public function calculateExpiryDate($period, $type)
+    {
+        $expiryDate = now();
 
-    //     $response = $this->postRequest('/charges', json_encode($req));
+        switch (strtolower($type)) {
+            case 'minute':
+                $expiryDate->addMinutes($period);
+                break;
+            case 'hour':
+                $expiryDate->addHours($period);
+                break;
+            case 'day':
+                $expiryDate->addDays($period);
+                break;
+            case 'week':
+                $expiryDate->addWeeks($period);
+                break;
+            case 'month':
+                $expiryDate->addMonths($period);
+                break;
+            case 'year':
+                $expiryDate->addYears($period);
+                break;
+            default:
+                // Default to days if type is unrecognized
+                $expiryDate->addMinutes($period);
+                break;
+        }
 
-    //     logger($response);
-
-    //     return $response;
-    // }
-
-    // public function getCharge($chargeId)
-    // {
-
-    //     $response = $this->getRequest('/charges/' . $chargeId);
-
-    //     logger($response);
-
-    //     return $response;
-    // }
+        return $expiryDate;
+    }
 }

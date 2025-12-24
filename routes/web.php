@@ -768,4 +768,5 @@ Route::group([
     Route::delete('/{procedureId}', [SupplierProcedureController::class, 'destroy'])->name('destroy');
 });
 
+Route::get('/hesabe/get-payment/{token}', [PaymentController::class, 'getHesabePayment'])->name('hesabe.get-payment');
 require __DIR__ . '/auth.php';

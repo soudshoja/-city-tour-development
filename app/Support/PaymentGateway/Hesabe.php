@@ -63,6 +63,8 @@ class Hesabe
             'payment_method_id' => 'required|integer|exists:payment_methods,id',
             'invoice_partial_id' => 'nullable',
             'client_phone' => 'nullable|string|max:20',
+            'type' => 'required|in:invoice,topup',
+            // 'payment_transaction_id' => 'nullable|string|max:255',
         ]);
          
         $auth = Auth::user();
@@ -119,11 +121,20 @@ class Hesabe
             /* 'saveCard' => 'boolean',
             'cardId' => 'required|string',
             'authorize' => 'boolean', */            
+            'variable1' => $request->type,
             'version' => '2.0',
             'responseUrl' => route('payment.hesabe.response'),
             'failureUrl' => route('payment.hesabe.failure'),
             'webhookUrl' => route('payment.hesabe.webhook'),
         ];
+
+        if($request->type === 'invoice'){
+            $requestData['variable2'] = (string) $request->invoice_partial_id;
+        }
+
+        // if($request->has('payment_transaction_id')){
+        //     $requestData['variable3'] = $request->payment_transaction_id;
+        // }
 
         Log::info('[HESABE] CheckoutPayment request data', [
             'data' => $requestData,
@@ -184,15 +195,20 @@ class Hesabe
             'success' => true,
             'payment_url' => $url,
             'order_reference' => $orderReference,
+            'token' => $responseData['token'],
         ];
     }
 
     public function getPaymentStatus(string $token)
     {
+        Log::info('[HESABE] GetPaymentStatus request', ['token' => $token]);
+
         $response = Http::withHeaders([
             'accessCode' => $this->accessCode,
             'Accept' => 'application/json',
         ])->get("$this->baseUrl/api/transaction/$token");
+
+        Log::info('[HESABE] GetPaymentStatus response', ['response' => $response->json()]);
     
         return $response;
     }

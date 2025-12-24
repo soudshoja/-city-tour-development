@@ -2405,6 +2405,8 @@ class PaymentController extends Controller
         $users = User::whereIn('id', Payment::select('created_by')->distinct()->pluck('created_by'))->get();
         $status = ['pending', 'initiate', 'completed', 'failed', 'cancelled'];
 
+        $paymentMethodChose = PaymentMethodChose::where('company_id', $companyId)->get();
+
         return view('payment.link.index', compact(
             'payments',
             'clients',
@@ -2413,6 +2415,7 @@ class PaymentController extends Controller
             'users',
             'status',
             'filters',
+            'paymentMethodChose'
         ));
     }
 
@@ -4482,14 +4485,25 @@ class PaymentController extends Controller
         if ($request->agent_id) $payment->agent_id = $request->agent_id;
         if ($request->dial_code) $client->country_code = $request->dial_code;
         if ($request->phone) $client->phone = $request->phone;
-        if ($request->payment_gateway) $payment->payment_gateway = $request->payment_gateway;
-        if ($request->payment_method_id) $payment->payment_method_id = $request->payment_method_id;
         if ($request->amount) $payment->amount = $request->amount;
         if ($request->language) $payment->language = $request->language;
+
+        // Handle payment method based on flow
+        if ($payment->payment_gateway === 'Multi') {
+            // New flow: Multi payment method groups
+            if ($request->has('payment_method_groups') && is_array($request->payment_method_groups)) {
+                // Sync the many-to-many relationship with GROUPS
+                $payment->availablePaymentMethodGroups()->sync($request->payment_method_groups);
+            }
+        } else {
+            // Old flow: Single payment gateway and method
+            if ($request->payment_gateway) $payment->payment_gateway = $request->payment_gateway;
+            if ($request->payment_method_id) $payment->payment_method_id = $request->payment_method_id;
+        }
         
         try {
-            $payment->update();
-            $client->update();
+            $payment->save();
+            $client->save();
         } catch (Exception $e) {
             Log::error('Failed to update payment link', [
                 'payment_id' => $paymentId,

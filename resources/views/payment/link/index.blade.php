@@ -421,7 +421,7 @@
                                                                     placeholder="Phone Number" class="form-input w-full border rounded px-3 py-2" required />
                                                             </div>
                                                         </div>
-                                                        @if ($payment->payment_gateway == 'Multi')
+                                                        @if ($payment->availablePaymentMethodGroups && $payment->availablePaymentMethodGroups->isNotEmpty())
                                                             @php
                                                             $prefill = session('prefill_data');
                                                             $selectedGateway = $prefill['payment_gateway'] ?? old('payment_gateway');
@@ -521,11 +521,28 @@
                                                             </div>
                                                         @endif
                                                         
+                                                        @if($payment->paymentItems && $payment->paymentItems->isNotEmpty())
+                                                        <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                                            <div class="flex items-start gap-3">
+                                                                <svg class="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                                </svg>
+                                                                <div class="flex-1">
+                                                                    <p class="font-semibold text-blue-900 mb-1">Advance Payment Detected</p>
+                                                                    <p class="text-sm text-blue-700 leading-relaxed">
+                                                                        Amount modification is not available here. Please visit the 
+                                                                        <span class="font-semibold underline">payment details page</span> to update the amount.
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        @else
                                                         <div class="mb-4">
                                                             <label for="amount" class="block text-sm font-medium text-gray-700">Amount</label>
                                                             <input type="text" name="amount" id="amount" value="{{ $payment->amount }}"
                                                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
                                                         </div>
+                                                        @endif
 
                                                         <!-- Language -->
                                                         <div class="mb-4">

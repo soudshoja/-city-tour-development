@@ -225,4 +225,59 @@ class ResayilController extends Controller
             return back()->withErrors(['error' => 'Failed to send message.']);
         }
     }
+
+    public function shareReminder(
+        $phone,
+        $country_code,
+        $message,
+        $client_id = null,
+        $agent_id = null,
+        $invoice_id = null
+    ) {   
+        Log::info('Starting to send the reminder through Resayil');
+        Log::info('Phone: ' . $country_code . $phone);
+        Log::info('Message: ' . $message);
+        
+        // Call the message function
+        $response = $this->message(
+            $phone,
+            $country_code,
+            $message,
+            null,   // header
+            null,   // footer
+            null,   // buttons
+            false   // isDummyNumber
+        );
+
+        Log::info('Resayil API Response: ', $response);
+        if ($response['success'] ?? false) {
+            Log::info('Successfully sent the reminder');
+            return [
+                'success' => true,
+                'message' => 'Reminder sent successfully'
+            ];
+        } else {
+            Log::error('Failed to send WhatsApp message via Resayil', [
+                'response' => $response
+            ]);
+
+            $errorMessage = 'Something went wrong while sending the message';
+
+            if (isset($response['status'])) {
+                if ($response['status'] == 400) {
+                    $errorMessage = 'Invalid phone number format';
+                } elseif ($response['status'] == 401) {
+                    $errorMessage = 'Unauthorized access. Check API token';
+                } elseif ($response['status'] == 500) {
+                    $errorMessage = 'Internal server error. Try again later';
+                }
+            }
+
+            return [
+                'success' => false,
+                'error' => $errorMessage,
+                'response' => $response
+            ];
+        }
+    }
 }

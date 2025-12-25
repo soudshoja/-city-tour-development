@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Enums\InvoiceStatus;
+use App\Models\Reminder;
 use InvalidArgumentException;
 
 class Invoice extends Model
@@ -107,5 +108,10 @@ class Invoice extends Model
         $this->amount = $this->invoiceDetails()->sum('task_price');
         $this->sub_amount = $this->invoiceDetails()->sum('task_price');
         $this->save();
+    }
+
+    public function reminders()
+    {
+        return $this->hasMany(Reminder::class, 'invoice_id')   ;
     }
 }

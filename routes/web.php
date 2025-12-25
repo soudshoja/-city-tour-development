@@ -47,6 +47,8 @@ use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ResayilController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SupplierProcedureController;
+use App\Http\Controllers\ReminderController;
+use App\Http\Controllers\TermController;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -452,7 +454,10 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'payment',
         'as' => 'payment.',
     ], function () {
-        // Route::get('/', [PaymentController::class, 'showPaymentPage'])->name('choose')->withoutMiddleware(['auth']);
+        Route::get('/{id}/details', [PaymentController::class, 'show'])->name('show');
+        Route::get('/{id}/partials', [PaymentController::class, 'getPartials'])->name('partials');
+        Route::get('/{id}/transactions', [PaymentController::class, 'getTransactions'])->name('transactions');
+        Route::put('/{id}/items', [PaymentController::class, 'updatePaymentItems'])->name('items.update');
         Route::post('/create/{companyId}/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         //Route::match(['get', 'post'], '/create/{invoiceNumber}', [PaymentController::class, 'create'])->name('create')->withoutMiddleware(['auth']);
         Route::post('/webhook', [PaymentController::class, 'webhook'])->name('webhook');
@@ -492,7 +497,6 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/hesabe-callback', [PaymentController::class, 'handleHesabeResponse'])->name('hesabe.response');
         Route::get('/hesabe-error', [PaymentController::class, 'handleHesabeFailure'])->name('hesabe.failure');
-        Route::post('/hesabe-webhook', [PaymentController::class, 'handleHesabeWebhook'])->name('hesabe.webhook')->withoutMiddleware(['auth']);
 
         Route::get('/knet-response', [PaymentController::class, 'handleKnetResponse'])->name('knet.response')->withoutMiddleware(['auth']);
         Route::get('/knet-error', [PaymentController::class, 'handleKnetError'])->name('knet.error')->withoutMiddleware(['auth']);
@@ -629,6 +633,15 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/toggle-enable/{id}', [PaymentMethodController::class, 'toggleEnable'])->name('toggle-enable');
 
     });
+
+    Route::group([
+        'prefix' => 'reminder',
+        'as' => 'reminder.',
+    ], function () {
+        Route::get('/', [ReminderController::class, 'index'])->name('index');
+        Route::post('/reminders', [ReminderController::class, 'store'])->name('store');
+        Route::post('/reminders/bulk', [ReminderController::class, 'bulk'])->name('bulk');
+    });
 }); // auth middleware end
 
 Route::get('/download-pdf/{path}', function ($path) {
@@ -756,4 +769,20 @@ Route::group([
     Route::delete('/{procedureId}', [SupplierProcedureController::class, 'destroy'])->name('destroy');
 });
 
+Route::group([
+    'prefix' => 'terms',
+    'as' => 'terms.',
+], function() {
+    // Terms Templates
+    Route::prefix('templates')->name('templates.')->group(function () {
+        Route::get('/', [TermController::class, 'index'])->name('index');
+        Route::post('/', [TermController::class, 'store'])->name('store');
+        Route::put('/{id}', [TermController::class, 'update'])->name('update');
+        Route::delete('/{id}', [TermController::class, 'destroy'])->name('destroy');
+        Route::post('/{id}/set-default', [TermController::class, 'setDefault'])->name('set-default');
+        Route::post('/{id}/toggle-active', [TermController::class, 'toggleActive'])->name('toggle-active');
+    });
+});
+
+Route::get('/hesabe/get-payment/{token}', [PaymentController::class, 'getHesabePayment'])->name('hesabe.get-payment');
 require __DIR__ . '/auth.php';

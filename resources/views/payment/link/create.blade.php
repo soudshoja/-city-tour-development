@@ -15,6 +15,7 @@
         <!-- Main Card -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" x-data="{
             advancedMode: false,
+            currentLanguage: 'ARB',
             addClientModal: false,
             importFatoorahModal: false,
             showUploadForm: false,
@@ -31,6 +32,49 @@
                 this.addClientModal = false;
                 this.showUploadForm = false;
                 this.showManualForm = false;
+            },
+            init() {
+                this.$watch('advancedMode', (value) => {
+                    if (value) {
+                        setTimeout(() => {
+                            const itemsManager = this.$el.querySelector('[x-data*=paymentItemsManager]');
+                            if (itemsManager && itemsManager._x_dataStack) {
+                                const manager = itemsManager._x_dataStack[0];
+                                if (manager && manager.items && manager.items.length === 0) {
+                                    manager.addItem();
+                                }
+                            }
+                            
+                            const termsManager = this.$el.querySelector('[x-data*=termsConditionManager]');
+                            if (termsManager && termsManager._x_dataStack) {
+                                const manager = termsManager._x_dataStack[0];
+                                if (manager && !manager.content.trim()) {
+                                    manager.resetToDefault();
+                                }
+                            }
+                        }, 100);
+                    } else {
+                        setTimeout(() => {
+                            const itemsManager = this.$el.querySelector('[x-data*=paymentItemsManager]');
+                            if (itemsManager && itemsManager._x_dataStack) {
+                                const manager = itemsManager._x_dataStack[0];
+                                if (manager && manager.items) {
+                                    manager.items = [];
+                                }
+                            }
+                            
+                            const termsManager = this.$el.querySelector('[x-data*=termsConditionManager]');
+                            if (termsManager && termsManager._x_dataStack) {
+                                const manager = termsManager._x_dataStack[0];
+                                if (manager) {
+                                    manager.content = '';
+                                    manager.selectedTemplateId = '';
+                                    manager.isEdited = false;
+                                }
+                            }
+                        }, 100);
+                    }
+                });
             }
         }">
             
@@ -402,14 +446,15 @@
                 </div>
 
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Amount & Currency (Quick Mode Only) -->
+                <div x-show="!advancedMode" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="amount" class="block text-sm font-medium text-gray-700 mb-1.5">Amount</label>
                         <input type="number" name="amount" id="amount" step="0.001" min="0"
                             value="{{ old('amount') }}"
                             placeholder="0.000"
-                            class="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors"
-                            required>
+                            :required="!advancedMode"
+                            class="block w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors">
                     </div>
                     <div>
                         <label for="currency" class="block text-sm font-medium text-gray-700 mb-1.5">Currency</label>
@@ -439,12 +484,12 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Invoice Language</label>
                     <p class="text-xs text-gray-500 mb-3">Select the language for the payment voucher sent to client</p>
                     
-                    <div x-data="{ language: '{{ old('language', 'EN') }}' }" class="inline-flex rounded-lg border border-gray-300 p-1 bg-gray-100">
-                        <input type="hidden" name="language" :value="language">
+                    <div class="inline-flex rounded-lg border border-gray-300 p-1 bg-gray-100">
+                        <input type="hidden" name="language" :value="currentLanguage">
                         
                         <button type="button" 
-                            @click="language = 'EN'"
-                            :class="language === 'EN' 
+                            @click="currentLanguage = 'EN'"
+                            :class="currentLanguage === 'EN' 
                                 ? 'bg-white text-gray-900 shadow-sm' 
                                 : 'text-gray-500 hover:text-gray-700'"
                             class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
@@ -452,8 +497,8 @@
                         </button>
                         
                         <button type="button" 
-                            @click="language = 'ARB'"
-                            :class="language === 'ARB' 
+                            @click="currentLanguage = 'ARB'"
+                            :class="currentLanguage === 'ARB' 
                                 ? 'bg-white text-gray-900 shadow-sm' 
                                 : 'text-gray-500 hover:text-gray-700'"
                             class="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all">
@@ -487,42 +532,243 @@
                     </div>
 
                     <!-- Advanced Section with left border -->
-                    <div class="border-l-4 border-blue-500 bg-blue-50 rounded-r-lg p-4 space-y-10 shadow-md">
+                    <div class="border-l-4 border-blue-500 bg-blue-50 rounded-r-lg p-4 space-y-6 shadow-md">
                         
+                        <!-- Payment Items -->
+                        <div x-data="paymentItemsManager()" class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Payment Items</label>
+                                    <p class="text-xs text-gray-500 mt-1">Add items for this payment. Total will be calculated automatically.</p>
+                                </div>
+                                <button type="button" 
+                                    @click="addItem()"
+                                    class="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                                    + Add Item
+                                </button>
+                            </div>
 
+                            <div class="overflow-x-auto border border-gray-300 rounded-lg bg-white">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-gray-100 border-b border-gray-300">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left font-medium text-gray-700">Product Name</th>
+                                            <th class="px-3 py-2 text-left font-medium text-gray-700" style="width: 100px;">Quantity</th>
+                                            <th class="px-3 py-2 text-left font-medium text-gray-700" style="width: 120px;">Unit Price</th>
+                                            <th class="px-3 py-2 text-left font-medium text-gray-700" style="width: 100px;">Currency</th>
+                                            <th class="px-3 py-2 text-left font-medium text-gray-700" style="width: 180px;">Extended Amount</th>
+                                            <th class="px-3 py-2 text-center font-medium text-gray-700" style="width: 60px;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="(item, index) in items" :key="index">
+                                            <tr class="border-b border-gray-200 hover:bg-gray-50">
+                                                <td class="px-3 py-2">
+                                                    <input type="text" 
+                                                        :name="'items[' + index + '][product_name]'" 
+                                                        x-model="item.product_name"
+                                                        placeholder="Enter product name"
+                                                        class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <input type="number" 
+                                                        :name="'items[' + index + '][quantity]'" 
+                                                        x-model="item.quantity"
+                                                        @input="calculateExtended(index)"
+                                                        step="1" 
+                                                        min="1"
+                                                        placeholder="0"
+                                                        class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <input type="number" 
+                                                        :name="'items[' + index + '][unit_price]'" 
+                                                        x-model="item.unit_price"
+                                                        @input="calculateExtended(index)"
+                                                        step="0.001" 
+                                                        min="0"
+                                                        placeholder="0.000"
+                                                        class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <select :name="'items[' + index + '][currency]'" 
+                                                        x-model="item.currency"
+                                                        class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none bg-white">
+                                                        @foreach ($currencies as $currency)
+                                                        <option value="{{ $currency->iso_code }}">{{ $currency->iso_code }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <input type="number" 
+                                                        :name="'items[' + index + '][extended_amount]'" 
+                                                        x-model="item.extended_amount"
+                                                        step="0.001"
+                                                        readonly
+                                                        class="w-full border border-gray-200 rounded px-2 py-1.5 text-sm bg-gray-50 text-gray-600">
+                                                </td>
+                                                <td class="px-3 py-2 text-center">
+                                                    <button type="button" 
+                                                        @click="removeItem(index)"
+                                                        class="text-red-600 hover:text-red-800 font-medium"
+                                                        title="Remove item">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                        </svg>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                        <template x-if="items.length === 0">
+                                            <tr>
+                                                <td colspan="6" class="px-3 py-8 text-center text-gray-500">
+                                                    No items added. Click "Add Item" to begin.
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                    <tfoot class="bg-gray-50 border-t-2 border-gray-300">
+                                        <tr>
+                                            <td colspan="4" class="px-3 py-3 text-right font-semibold text-gray-700">Total Amount:</td>
+                                            <td class="px-5 py-3">
+                                                <span class="font-bold text-gray-900" x-text="totalAmount.toFixed(3)"></span>
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <div x-show="items.length === 0" class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p class="text-sm text-amber-800">
+                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                    </svg>
+                                    At least one item is required in Advanced mode.
+                                </p>
+                            </div>
+                        </div>
+                        
                         <!-- Terms and Condition -->
-                        <div x-data="{ 
-                            content: '{{ old('terms_conditions') }}', 
-                            wordCount: 0,
-                            maxWords: 2000,
-                            countWords() {
-                                    const words = this.content.trim() === '' ? [] : this.content.trim().split(/\s+/);
-                                    this.wordCount = words.length;
-                                    
-                                    // If over limit, trim to max words
-                                    if (this.wordCount > this.maxWords) {
-                                        const trimmed = words.slice(0, this.maxWords).join(' ');
-                                        this.$nextTick(() => {
-                                            this.content = trimmed;
-                                            this.wordCount = this.maxWords;
-                                        });
-                                    }
-                                }
-                            }" x-init="countWords()">
-                            <label for="terms_conditions" class="block text-sm font-medium text-gray-700 mb-1.5">Terms and Conditions</label>
+                        <div x-data="termsConditionManager()" x-init="init()">
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Terms and Conditions</label>
                             <p class="text-xs text-gray-500 mb-3">These terms will be displayed to the client before proceeding to payment</p>
 
-                            <textarea 
-                                name="terms_conditions"
-                                id="terms_conditions"
-                                rows="4"
-                                x-model="content"
-                                @input="countWords()"
-                                placeholder="Enter the terms and conditions"
-                                :class="wordCount >= maxWords ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'"
-                                class="block w-full border rounded-lg px-3 py-2.5 text-sm focus:ring-1 outline-none transition-colors resize-none"
-                            ></textarea>
-                            <div class="flex justify-end mt-1.5">
+                            <!-- Template Selector -->
+                            <div class="mb-3">
+                                <div class="flex items-center gap-3">
+                                    <label class="text-xs font-medium text-gray-600">Template:</label>
+                                    
+                                    <!-- Custom Dropdown -->
+                                    <div class="relative flex-1" x-data="{ open: false }">
+                                        <button type="button" 
+                                            @click="open = !open"
+                                            @click.away="open = false"
+                                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-left bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between">
+                                            <span x-text="selectedTemplateId ? getSelectedTemplateName() : '-- Select a template --'" 
+                                                :class="!selectedTemplateId ? 'text-gray-400' : 'text-gray-900'"></span>
+                                            <svg class="w-4 h-4 text-gray-400 transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                            </svg>
+                                        </button>
+                                        
+                                        <!-- Dropdown Options -->
+                                        <div x-show="open" 
+                                            x-transition:enter="transition ease-out duration-100"
+                                            x-transition:enter-start="opacity-0 scale-95"
+                                            x-transition:enter-end="opacity-100 scale-100"
+                                            x-transition:leave="transition ease-in duration-75"
+                                            x-transition:leave-start="opacity-100 scale-100"
+                                            x-transition:leave-end="opacity-0 scale-95"
+                                            class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                                            
+                                            <!-- Empty option -->
+                                            <div @click="selectedTemplateId = ''; open = false"
+                                                class="px-3 py-2 text-sm text-gray-400 hover:bg-gray-50 cursor-pointer">
+                                                -- Select a template --
+                                            </div>
+                                            
+                                            <!-- Template options -->
+                                            <template x-for="template in filteredTemplates" :key="template.id">
+                                                <div @click="selectedTemplateId = template.id; loadSelectedTemplate(); open = false"
+                                                    :class="selectedTemplateId == template.id ? 'bg-blue-50' : 'hover:bg-gray-50'"
+                                                    class="px-3 py-2 text-sm cursor-pointer flex items-center justify-between">
+                                                    <span x-text="template.title" class="text-gray-900"></span>
+                                                    <span x-show="template.is_default" class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Default</span>
+                                                </div>
+                                            </template>
+                                            
+                                            <!-- No templates message -->
+                                            <div x-show="filteredTemplates.length === 0" class="px-3 py-2 text-sm text-gray-400 italic">
+                                                No templates available
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <button type="button" 
+                                        @click="resetToDefault()"
+                                        x-show="filteredTemplates.length > 0"
+                                        class="px-3 py-2 text-xs font-medium text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+                                        title="Load default template for selected language">
+                                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                        </svg>
+                                        Reset
+                                    </button>
+                                </div>
+                                
+                                <!-- No templates message -->
+                                <p x-show="filteredTemplates.length === 0 && !loadingTemplates" class="text-xs text-amber-600 mt-2">
+                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                    </svg>
+                                    No templates available for <span x-text="currentLang === 'EN' ? 'English' : 'Arabic'"></span>. 
+                                    <a href="{{ route('settings.index') }}" class="underline hover:text-amber-700">Create one in Settings</a>
+                                </p>
+
+                                <!-- Loading indicator -->
+                                <p x-show="loadingTemplates" class="text-xs text-gray-500 mt-2">
+                                    <svg class="animate-spin w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    </svg>
+                                    Loading templates...
+                                </p>
+                            </div>
+
+                            <!-- Content Editor -->
+                            <div class="relative">
+                                <textarea 
+                                    name="terms_conditions"
+                                    id="terms_conditions"
+                                    rows="6"
+                                    x-model="content"
+                                    @input="countWords(); markAsEdited()"
+                                    placeholder="Enter the terms and conditions"
+                                    :class="wordCount >= maxWords ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'"
+                                    class="block w-full border rounded-lg px-3 py-2.5 text-sm focus:ring-1 outline-none transition-colors resize-none"
+                                ></textarea>
+                                
+                                <!-- Edited indicator -->
+                                <span x-show="isEdited && selectedTemplateId" 
+                                    class="absolute top-2 right-2 px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">
+                                    Edited
+                                </span>
+                            </div>
+
+                            <!-- Footer info -->
+                            <div class="flex justify-between items-center mt-1.5">
+                                <div>
+                                    <p x-show="selectedTemplateId && !isEdited" class="text-xs text-green-600">
+                                        <svg class="w-3 h-3 inline mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        Using template: <span class="font-medium" x-text="getSelectedTemplateName()"></span>
+                                    </p>
+                                    <p x-show="!selectedTemplateId && content.trim() !== ''" class="text-xs text-gray-500">
+                                        Custom content
+                                    </p>
+                                </div>
                                 <p class="text-xs" :class="wordCount >= maxWords ? 'text-red-500 font-medium' : 'text-gray-500'">
                                     <span x-text="wordCount"></span> / <span x-text="maxWords"></span> words
                                     <span x-show="wordCount >= maxWords" class="ml-1">limit reached</span>
@@ -548,6 +794,196 @@
             </form>
         </div>
     </div>
+
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+
+    <script>
+function termsConditionManager() {
+    return {
+        templates: [],
+        loadingTemplates: false,
+        selectedTemplateId: '',
+        content: '{{ old("terms_conditions") }}',
+        originalContent: '',
+        isEdited: false,
+        wordCount: 0,
+        maxWords: 2000,
+        currentLang: 'EN',
+
+        init() {
+            this.countWords();
+            this.loadTemplates();
+            
+            // Get initial language from parent
+            this.currentLang = this.getParentLanguage();
+            
+            // Set up an interval to check for language changes
+            // This is more reliable than $watch for nested scopes
+            setInterval(() => {
+                const parentLang = this.getParentLanguage();
+                if (parentLang !== this.currentLang) {
+                    this.currentLang = parentLang;
+                    this.onLanguageChange();
+                }
+            }, 100);
+        },
+
+        getParentLanguage() {
+            // Try to get from Alpine root data
+            try {
+                // Find the parent element with x-data that has currentLanguage
+                const mainCard = document.querySelector('[x-data*="currentLanguage"]');
+                if (mainCard && mainCard._x_dataStack) {
+                    for (const data of mainCard._x_dataStack) {
+                        if (data.currentLanguage) {
+                            return data.currentLanguage;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('Error getting parent language:', e);
+            }
+            return 'EN';
+        },
+
+        get filteredTemplates() {
+            return this.templates.filter(t => t.language === this.currentLang && t.is_active);
+        },
+
+        async loadTemplates() {
+            this.loadingTemplates = true;
+            try {
+                const response = await fetch('{{ route("terms.templates.index") }}', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    this.templates = data.templates;
+                    console.log('Loaded templates:', this.templates);
+                }
+            } catch (error) {
+                console.error('Error loading templates:', error);
+            } finally {
+                this.loadingTemplates = false;
+            }
+        },
+
+        onLanguageChange() {
+            console.log('Language changed to:', this.currentLang);
+            this.selectedTemplateId = '';
+            this.isEdited = false;
+            this.resetToDefault();
+        },
+
+        loadSelectedTemplate() {
+            if (!this.selectedTemplateId) return;
+            
+            const template = this.templates.find(t => t.id == this.selectedTemplateId);
+            if (template) {
+                this.content = template.content;
+                this.originalContent = template.content;
+                this.isEdited = false;
+                this.countWords();
+            }
+        },
+
+        resetToDefault() {
+            console.log('Resetting to default for language:', this.currentLang);
+            console.log('Filtered templates:', this.filteredTemplates);
+            
+            const defaultTemplate = this.filteredTemplates.find(t => t.is_default);
+            if (defaultTemplate) {
+                console.log('Found default template:', defaultTemplate.title);
+                this.selectedTemplateId = defaultTemplate.id;
+                this.content = defaultTemplate.content;
+                this.originalContent = defaultTemplate.content;
+                this.isEdited = false;
+                this.countWords();
+            } else if (this.filteredTemplates.length > 0) {
+                const firstTemplate = this.filteredTemplates[0];
+                console.log('Using first template:', firstTemplate.title);
+                this.selectedTemplateId = firstTemplate.id;
+                this.content = firstTemplate.content;
+                this.originalContent = firstTemplate.content;
+                this.isEdited = false;
+                this.countWords();
+            } else {
+                console.log('No templates available for this language');
+                this.selectedTemplateId = '';
+                this.content = '';
+                this.originalContent = '';
+                this.isEdited = false;
+                this.countWords();
+            }
+        },
+
+        markAsEdited() {
+            if (this.selectedTemplateId && this.content !== this.originalContent) {
+                this.isEdited = true;
+            } else if (this.content === this.originalContent) {
+                this.isEdited = false;
+            }
+        },
+
+        getSelectedTemplateName() {
+            const template = this.templates.find(t => t.id == this.selectedTemplateId);
+            return template ? template.title : '';
+        },
+
+        countWords() {
+            const words = this.content.trim() === '' ? [] : this.content.trim().split(/\s+/);
+            this.wordCount = words.length;
+            
+            if (this.wordCount > this.maxWords) {
+                const trimmed = words.slice(0, this.maxWords).join(' ');
+                this.$nextTick(() => {
+                    this.content = trimmed;
+                    this.wordCount = this.maxWords;
+                });
+            }
+        }
+    }
+}
+
+function paymentItemsManager() {
+    return {
+        items: [],
+        defaultCurrency: '{{ $currencies->firstWhere("country.name", "Kuwait")->iso_code ?? "KWD" }}',
+
+        addItem() {
+            this.items.push({
+                product_name: '',
+                quantity: 1,
+                unit_price: 0,
+                currency: this.defaultCurrency,
+                extended_amount: 0
+            });
+        },
+
+        removeItem(index) {
+            this.items.splice(index, 1);
+        },
+
+        calculateExtended(index) {
+            const item = this.items[index];
+            const quantity = parseFloat(item.quantity) || 0;
+            const unitPrice = parseFloat(item.unit_price) || 0;
+            item.extended_amount = (quantity * unitPrice).toFixed(3);
+        },
+
+        get totalAmount() {
+            return this.items.reduce((sum, item) => {
+                return sum + (parseFloat(item.extended_amount) || 0);
+            }, 0);
+        }
+    }
+}
+</script>
 
     <script>
         const clientForm = document.getElementById("client-formTask");

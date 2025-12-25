@@ -110,7 +110,7 @@ class UPayment
             'plugin' => [
                 // 'src' => 'woocommerce',
             ],
-            // 'paymentLinkExpiryInMinutes' => 60,
+            'paymentLinkExpiryInMinutes' => 2880, // 2 days
         ];
 
         Log::info('UPayment Charge Request', ['request' => $requestData]);

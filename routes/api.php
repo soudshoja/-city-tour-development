@@ -47,6 +47,7 @@ Route::delete('/invoice/delete/{id}', [MobileController::class, 'deleteInvoice']
 Route::get('/transaction/{agentId}', [MobileController::class, 'getTransactionByAgentId']);
 
 Route::post('payment/webhook-fatoorah', [PaymentController::class, 'handleWebhookFatoorah']);
+Route::post('payment/hesabe-webhook', [PaymentController::class, 'handleHesabeWebhook'])->name('payment.hesabe.webhook');
 Route::post('payment/importfatoorah', [PaymentController::class, 'importPaidFatoorah'])->name('importfatoorah');
 Route::post('payment/register-tbo-booking', [PaymentController::class, 'registerTBOBookingAsTask'])->name('payment.register.tbo.booking');
 
@@ -145,5 +146,11 @@ Route::group([
 });
 
 Route::post('/automation-supplier', [TaskController::class, 'automationSupplier']);
+
+// Payment API routes for lazy-loaded content
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/payments/{id}/partials', [PaymentController::class, 'getPartials']);
+    Route::get('/payments/{id}/transactions', [PaymentController::class, 'getTransactions']);
+});
 
 require __DIR__ . '/auth.php';

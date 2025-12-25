@@ -191,6 +191,7 @@ class SendReminders extends Command
                 if ($reminder->send_to_agent) {
                     $agentResult = $resayil->shareReminder(
                         $agentPhone,
+                        '',
                         $messageData['agent_message'],
                         $reminder->client_id,
                         $reminder->agent_id,

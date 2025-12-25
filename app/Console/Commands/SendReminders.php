@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Client;
+use App\Models\Agent;
 use App\Http\Controllers\ResayilController;
 use App\Models\Reminder;
 use Carbon\Carbon;
@@ -109,13 +111,7 @@ class SendReminders extends Command
         $resayil = new ResayilController();
         $successCount = 0;
         $failedCount = 0;
-
-        // Hardcoded test phone numbers
-        $clientPhone = '126103085';
-        $clientCountryCode = '+60';
-        $agentPhone = '193058463';
-        $agentCountryCode = '+60';
-
+        
         foreach ($dueReminders as $reminder) {
             $this->info("Processing Reminder ID: {$reminder->id} (Group: {$reminder->group_id})");
             Log::info("Processing reminder ID: {$reminder->id}", [
@@ -127,6 +123,45 @@ class SendReminders extends Command
             ]);
 
             try {
+                $client = Client::where('id', $reminder->client_id)->first();
+                $agent = Agent::where('id', $reminder->agent_id)->first();
+
+                if (!$client) {
+                    $this->error("  ✗ Client not found for reminder ID: {$reminder->id}");
+                    $this->markAsFailed($reminder, 'Client not found');
+                    $failedCount++;
+                    continue;
+                }
+
+                if (!$agent) {
+                    $this->error("  ✗ Agent not found for reminder ID: {$reminder->id}");
+                    $this->markAsFailed($reminder, 'Agent not found');
+                    $failedCount++;
+                    continue;
+                }
+
+                $clientPhone = preg_replace('/[^0-9]/', '', $client->phone ?? '');
+                $clientCountryCode = $client->country_code;
+                
+                $agentPhone = preg_replace('/[^0-9]/', '', $agent->phone_number ?? '');
+
+                if (empty($clientPhone)) {
+                    $this->error("  ✗ Client phone number is missing");
+                    $this->markAsFailed($reminder, 'Client phone number is missing');
+                    $failedCount++;
+                    continue;
+                }
+
+                if (empty($agentPhone)) {
+                    $this->error("  ✗ Agent phone number is missing");
+                    $this->markAsFailed($reminder, 'Agent phone number is missing');
+                    $failedCount++;
+                    continue;
+                }
+
+                $this->info("  Client: {$clientCountryCode}{$clientPhone}");
+                $this->info("  Agent: {$agentPhone}");
+
                 $messageData = $this->buildMessage($reminder);
 
                 if (!$messageData) {
@@ -139,7 +174,6 @@ class SendReminders extends Command
                 $clientResult = ['success' => true];
                 $agentResult = ['success' => true];
 
-                // Send to Client
                 if ($reminder->send_to_client) {
                     $clientResult = $resayil->shareReminder(
                         $clientPhone,
@@ -154,11 +188,10 @@ class SendReminders extends Command
                     $this->info("  → Client: " . ($clientResult['success'] ? '✓ Sent' : '✗ Failed'));
                 }
 
-                // Send to Agent
                 if ($reminder->send_to_agent) {
                     $agentResult = $resayil->shareReminder(
                         $agentPhone,
-                        $agentCountryCode,
+                        '',
                         $messageData['agent_message'],
                         $reminder->client_id,
                         $reminder->agent_id,

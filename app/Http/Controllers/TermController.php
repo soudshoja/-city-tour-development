@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Term;
+USE App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -219,13 +220,15 @@ class TermController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->role->id == \App\Models\Role::ADMIN) {
+        if ($user->role->id == Role::ADMIN) {
             return request()->company_id ?? 1;
-        } elseif ($user->role->id == \App\Models\Role::COMPANY) {
+        } elseif ($user->role->id == Role::COMPANY) {
             return $user->company->id;
-        } elseif ($user->role->id == \App\Models\Role::BRANCH) {
+        } elseif ($user->role->id == Role::BRANCH) {
             return $user->branch->company_id;
-        } elseif ($user->role->id == \App\Models\Role::ACCOUNTANT) {
+        } elseif ($user->role->id == Role::AGENT) {
+            return $user->agent->branch->company->id;
+        } elseif ($user->role->id == Role::ACCOUNTANT) {
             return $user->accountant->branch->company_id;
         }
 

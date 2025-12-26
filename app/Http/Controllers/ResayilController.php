@@ -246,7 +246,6 @@ class ResayilController extends Controller
             null,   // header
             null,   // footer
             null,   // buttons
-            false   // isDummyNumber
         );
 
         Log::info('Resayil API Response: ', $response);

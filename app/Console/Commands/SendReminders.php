@@ -42,6 +42,14 @@ class SendReminders extends Command
 
         try {
             $dueReminders = Reminder::where('status', 'pending')
+                ->where(function ($query) {
+                    $query->whereHas('payment', function ($q) {
+                        $q->where('status', '!=', 'completed');
+                    })
+                    ->orWhereHas('invoice', function ($q) {
+                        $q->where('status', '!=', 'completed');
+                    });
+                })
                 ->where('is_active', true)
                 ->where('scheduled_at', '<=', Carbon::now())
                 ->with(['client', 'agent', 'invoice', 'payment'])
@@ -249,6 +257,10 @@ class SendReminders extends Command
 
     private function buildMessage(Reminder $reminder): ?array
     {
+        Log::info("Building message for reminder ID {$reminder->id}", [
+            'reminder' => $reminder->toArray(),
+        ]);
+
         $additionalInfo = $reminder->message
             ? "\n\nAdditional information regarding this {$reminder->target_type} can be found below:\n{$reminder->message}"
             : '';

@@ -40,7 +40,7 @@ class ResayilController extends Controller
             $phoneNumber = $country_code . $phone;
         }
 
-        if(app()->environment('local') && $isDummyNumber){
+        if(app()->environment() !== 'production' && $isDummyNumber) {
             $phoneNumber = env('PHONE_LOCAL', '+60193058463');
             $message = "This is a test message from local environment.\n\n" . $message;
         }

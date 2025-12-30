@@ -1449,7 +1449,6 @@
                                                                                                 </select>
                                                                                             </div>
                                                                                         </div>
-                                                                                        @if (empty($task->supplier_pay_date))
                                                                                         <div class="flex-1 min-w-0 required-input">
                                                                                             <label for="supplier_pay_date"
                                                                                                 class="block text-sm font-medium text-gray-700">Issued Date</label>
@@ -1457,10 +1456,9 @@
                                                                                                 <input type="date"
                                                                                                     class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
                                                                                                     name="supplier_pay_date"
-                                                                                                    value="{{ old('supplier_pay_date') }}">
+                                                                                                    value="{{  $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '' }}">
                                                                                             </div>
                                                                                         </div>
-                                                                                        @endif
                                                                                     </div>
                                                                                     <div class="flex flex-col sm:flex-row gap-4">
                                                                                         <div class="flex-1">

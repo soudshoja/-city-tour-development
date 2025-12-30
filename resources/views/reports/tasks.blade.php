@@ -2,9 +2,7 @@
     <div class="container mx-auto p-6">
         <h1 class="text-2xl font-bold text-gray-800 mb-6">Tasks Report</h1>
 
-        <!-- Summary Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <!-- Total Tasks Card -->
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
                 <div class="flex items-center justify-between">
                     <div>
@@ -19,7 +17,6 @@
                 </div>
             </div>
 
-            <!-- Total Amount Card -->
             <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
                 <div class="flex items-center justify-between">
                     <div>
@@ -35,7 +32,6 @@
             </div>
         </div>
 
-        <!-- Filter Section -->
         <div class="bg-white rounded-lg shadow-md p-4 mb-4">
             <form method="GET" action="{{ route('reports.tasks') }}" class="space-y-4" id="filterForm">
                 <!-- Date Preset Filter -->
@@ -207,6 +203,13 @@
                         class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500">
                         Clear Filters
                     </a>
+                    <button type="submit" formaction="{{ route('reports.tasks.pdf') }}" formtarget="_blank"
+                        class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Generate PDF
+                    </button>
                 </div>
             </form>
         </div>
@@ -216,7 +219,8 @@
                 <thead>
                     <tr>
                         <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Task Name</th>
-                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Assigned To</th>
+                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Passenger Name</th>
+                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Supplier</th>
                         <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Supplier Pay Date</th>
                         <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Status</th>
                         <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Amount</th>
@@ -226,6 +230,7 @@
                     @forelse($tasks as $task)
                     <tr class="hover:bg-gray-50">
                         <td class="py-2 px-4 border-b">{{ $task->reference }}</td>
+                        <td class="py-2 px-4 border-b">{{ $task->passenger_name ?? 'N/A' }}</td>
                         <td class="py-2 px-4 border-b">{{ $task->supplier->name ?? 'N/A' }}</td>
                         <td class="py-2 px-4 border-b">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : 'N/A' }}</td>
                         <td class="py-2 px-4 border-b">

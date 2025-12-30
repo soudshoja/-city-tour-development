@@ -58,10 +58,58 @@ use iio\libmergepdf\Driver\Fpdi2Driver;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use SebastianBergmann\Type\TrueType;
 
 class TaskController extends Controller
 {
     use NotificationTrait, Converter, CurrencyExchangeTrait;
+
+    public function getTasks(Request $request) : JsonResponse
+    {
+        Gate::authorize('viewAny', Task::class);
+
+        $request->validate([
+            'filter' => 'nullable|array'
+        ]);
+
+        $filter = $request->filter;
+
+        try {
+            $taskQuery = Task::query();
+            
+            if (!empty($filter) && is_array($filter)) {
+                $taskQuery->where(function ($query) use ($filter) {
+                    foreach($filter as $field => $value) {
+                        if (!empty($value)) {
+                            $query->where($field, 'like', '%' . $value . '%');
+                        }
+                    }
+                });
+            }
+            
+            $taskQuery->orderBy('supplier_pay_date', 'desc');
+
+        } catch (Exception $e) {
+            Log::info('Error building task query', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error building task query',
+            ], 400);
+        }
+
+        $tasksTotal = $taskQuery->count();
+
+        $tasks = $taskQuery->paginate(20);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'tasks' => $tasks,
+                'total' => $tasksTotal,
+            ],
+        ]);
+        
+    }
 
     public function index(Request $request): View | RedirectResponse
     {
@@ -3561,20 +3609,6 @@ class TaskController extends Controller
 
         fclose($handle);
         exit();
-    }
-
-    public function fileToTask() {}
-    /**
-     * Get all tasks for a specific agent
-     * @param $agentId
-     * @return array
-     */
-    public function getTasks($agentId)
-    {
-        // get tasks that doesnt have invoice only
-        $tasks = Task::with('agent.branch', 'client', 'invoiceDetail.invoice')->whereDoesntHave('invoiceDetail')->where('agent_id', $agentId)->get();
-
-        return response()->json($tasks);
     }
 
     /**

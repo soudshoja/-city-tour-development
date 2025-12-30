@@ -5704,7 +5704,7 @@ class PaymentController extends Controller
                         $paymentTransaction->status = $getPaymentStatus['data']['status'] ?? 'Completed';
                         $paymentTransaction->save();
 
-                        Log::info('[HESABE WEBHOOK] Payment transaction updated to completed', [
+                        Log::info('[HESABE] Payment transaction updated to completed', [
                             'payment_transaction_id' => $paymentTransaction->id,
                             'status' => $paymentTransaction->status
                         ]);
@@ -5974,89 +5974,85 @@ class PaymentController extends Controller
     {
         Log::info('Hesabe webhook received', ['request' => $request->all()]);
 
-        $configService = new GatewayConfigService();
-        $hesabeConfig = $configService->getHesabeConfig();
+        // Extract webhook data - Hesabe sends unencrypted JSON directly
+        $voucherNumber = $request->input('reference_number');
+        $paymentToken = $request->input('token');
+        $status = $request->input('status');
+        $statusCode = $request->input('status_code');
+        $amount = $request->input('amount');
+        $paymentType = $request->input('payment_type');
+        $serviceType = $request->input('service_type');
+        $datetime = $request->input('datetime');
 
-        if (!$hesabeConfig['status'] || !$hesabeConfig['data']) {
-            Log::error('Hesabe webhook: Configuration is missing or inactive');
-            return response()->json(['error' => 'Configuration error'], 500);
+        if (!$voucherNumber || !$status) {
+            Log::error('Hesabe webhook: Missing required fields', [
+                'reference_number' => $voucherNumber,
+                'status' => $status,
+            ]);
+            return response()->json(['error' => 'Invalid request - missing required fields'], 400);
         }
-        
-        $apiKey = $hesabeConfig['data']['api_key'];
-        $encryptionKey = $hesabeConfig['data']['iv_key'];
-        $response = $request->input('data');
 
-        if (!$response) {
-            Log::error('Hesabe webhook: No data field in request');
-            return response()->json(['error' => 'Invalid request'], 400);
-        }
-
-        $decryptedResponse = HesabeCrypt::decrypt($response, $apiKey, $encryptionKey);
-
-        if ($decryptedResponse === false) {
-            Log::error('Hesabe webhook: Response decryption failed', ['response' => $response]);
-            return response()->json(['error' => 'Decryption failed'], 400);
-        }
-        
-        $responseData = json_decode($decryptedResponse, true);
-        Log::info('Hesabe webhook decrypted data:', ['response' => $responseData]);
-
-        $partialId = null;
+        Log::info('Hesabe webhook data extracted:', [
+            'voucher_number' => $voucherNumber,
+            'payment_token' => $paymentToken,
+            'status' => $status,
+            'status_code' => $statusCode,
+            'amount' => $amount,
+            'payment_type' => $paymentType,
+        ]);
 
         DB::beginTransaction();
         try {
-            if (isset($responseData['status']) && $responseData['status'] == true) {
-                $data = $responseData['response'];
-                $voucherNumber = $data['orderReferenceNumber'];
-                $process = $data['variable1'] ?? null;
+            $payment = Payment::where('voucher_number', $voucherNumber)->first();
 
-                $paymentToken = $data['paymentToken'] ?? null;
+            if (!$payment) {
+                Log::error('Hesabe webhook: Payment record not found', ['voucher_number' => $voucherNumber]);
+                DB::rollback();
+                return response()->json(['error' => 'Payment not found'], 404);
+            }
 
-                $raw = $data['variable2'] ?? null;
-                $partialId = $raw ? intval($raw) : null;
+            // Check if already processed
+            if ($payment->status === 'completed') {
+                Log::info('Hesabe webhook: Payment already processed', [
+                    'payment_id' => $payment->id,
+                    'status' => $payment->status,
+                ]);
+                DB::rollback();
+                return response()->json([
+                    'message' => 'Payment already processed',
+                    'status' => 'success',
+                ], 200);
+            }
+
+            // Determine process type from payment record
+            $process = $payment->invoice ? 'invoice' : 'topup';
+            $partialId = $payment->invoice ? $payment->invoice->invoicePartials()->where('payment_id', $payment->id)->value('id') : null;
+
+            Log::info('Hesabe webhook: Processing payment', [
+                'payment_id' => $payment->id,
+                'process' => $process,
+                'partial_id' => $partialId,
+            ]);
+
+            // Check if payment was successful
+            if (strtoupper($status) === 'SUCCESSFUL' && $statusCode == 1) {
                 
-                Log::info('Extracted Hesabe webhook variable2 (partialId):', ['raw' => $raw, 'parsed' => $partialId]);
-
-                $payment = Payment::where('voucher_number', $voucherNumber)->first();
-
-                if (!$payment) {
-                    Log::error('Hesabe webhook: Payment record not found', ['voucher_number' => $voucherNumber]);
-                    DB::rollback();
-                    return response()->json(['error' => 'Payment not found'], 404);
-                }
-
-                Log::info('Hesabe webhook: Processing successful payment', ['payment_id' => $payment->id]);
-
-                $alreadyProcessed = $payment->status === 'completed';
-                
-                if ($alreadyProcessed) {
-                    Log::info('Hesabe webhook: Payment already processed by callback', [
-                        'payment_id' => $payment->id,
-                        'status' => $payment->status,
-                    ]);
-                    DB::rollback();
-                    return response()->json([
-                        'message' => 'Payment already processed',
-                        'status' => 'success',
-                    ], 200);
-                }
-
-                if($paymentToken) {
-
+                // Update payment transaction if token exists
+                if ($paymentToken) {
                     Log::info('[HESABE WEBHOOK] Payment token found in the response', [
                         'payment_token' => $paymentToken,
-                        'status' => $data['resultCode'] ?? null,
+                        'status' => $status,
                     ]);
 
                     $paymentTransaction = $payment->paymentTransactions()->where('reference_number', $paymentToken)->first();
 
                     if ($paymentTransaction) {
                         $hesabe = new Hesabe();
-
                         $getPaymentStatus = $hesabe->getPaymentStatus($paymentToken);
 
                         if ($getPaymentStatus['status'] == true) {
                             $paymentTransaction->status = $getPaymentStatus['data']['status'] ?? 'Completed';
+                            $paymentTransaction->track_id = $getPaymentStatus['data']['TrackID'] ?? $paymentTransaction->track_id;
                             $paymentTransaction->save();
 
                             Log::info('[HESABE WEBHOOK] Payment transaction updated to completed', [
@@ -6069,19 +6065,15 @@ class PaymentController extends Controller
                             'payment_token' => $paymentToken
                         ]);
                     }
-
-                } else {
-                    Log::warning('[HESABE WEBHOOK] Payment token is not found in the response', [
-                        'response' => $responseData
-                    ]);
                 }
 
-                $payment->payment_reference = $data['transactionId'];
-                $payment->invoice_reference = $data['trackID'];
-                $payment->payment_date = $data['paidOn'] ?? now();
+                $payment->payment_reference = $paymentToken;
+                $payment->invoice_reference = $voucherNumber;
+                $payment->payment_date = $datetime ? \Carbon\Carbon::parse($datetime) : now();
                 $payment->status = 'completed';
                 $payment->save();
 
+                // Process TBO booking if applicable
                 $tboResult = $this->processTBOBookingAfterPayment($payment);
                 if ($tboResult !== null) {
                     if ($tboResult['success']) {
@@ -6093,22 +6085,24 @@ class PaymentController extends Controller
 
                 $payment->refresh();
 
+                // Update Hesabe payment record
                 HesabePayment::updateOrCreate(
                     ['payment_int_id' => $payment->id],
                     [
-                        'status' => $data['resultCode'] ?? null,
-                        'payment_token' => $data['paymentToken'] ?? null,
-                        'payment_id' => $data['paymentId'] ?? null,
-                        'order_reference_number' => $data['orderReferenceNumber'] ?? null,
-                        'auth_code' => $data['auth'] ?? null,
-                        'track_id' => $data['trackID'] ?? null,
-                        'transaction_id' => $data['transactionId'] ?? null,
-                        'invoice_id' => $data['Id'] ?? null,
-                        'paid_on' => $data['paidOn'] ?? null,
-                        'payload' => $responseData,
+                        'status' => $status,
+                        'payment_token' => $paymentToken,
+                        'payment_id' => null,
+                        'order_reference_number' => $voucherNumber,
+                        'auth_code' => null,
+                        'track_id' => $voucherNumber,
+                        'transaction_id' => $paymentToken,
+                        'invoice_id' => null,
+                        'paid_on' => $datetime,
+                        'payload' => $request->all(),
                     ]
                 );
 
+                // Process based on payment type
                 if ($process === 'topup') {
                     Log::info('Hesabe webhook: Processing credit for topup');
                     $clientController = new ClientController();
@@ -6118,7 +6112,7 @@ class PaymentController extends Controller
                     if (isset($addCreditResponse['error'])) {
                         Log::error('Hesabe webhook: Failed to add credit to client', [
                             'message' => $addCreditResponse['error'],
-                            'payment_reference' => $data['transactionId'],
+                            'payment_reference' => $paymentToken,
                         ]);
                         DB::rollback();
                         return response()->json(['error' => $addCreditResponse['error']], 500);
@@ -6130,15 +6124,37 @@ class PaymentController extends Controller
                             'message' => $creditCoa['message'],
                         ]);
                     }
+                } else {
+                    // Process invoice payment
+                    Log::info('Hesabe webhook: Processing invoice payment');
+                    $invoiceCoa = $this->invoiceCOA($payment, $partialId ? [$partialId] : [], floatval($amount));
+                    if (!$invoiceCoa['success']) {
+                        Log::error('Hesabe webhook: Failed to create invoice journal entry', [
+                            'message' => $invoiceCoa['message'],
+                        ]);
+                    }
                 }
 
+                // Send notifications
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
+
+                $this->storeNotification([
+                    'user_id' => $receiptInfo['agent']->user_id,
+                    'title'   => $receiptInfo['title'],
+                    'message' => $receiptInfo['message'],
+                ]);
+
+                (new ResayilController())->message(
+                    $receiptInfo['agent']->phone_number,
+                    $receiptInfo['agent']->country_code,
+                    $receiptInfo['message']
+                );
 
                 DB::commit();
 
                 Log::info('Hesabe webhook: Payment processed successfully', [
                     'payment_id' => $payment->id,
-                    'transaction_id' => $data['transactionId'],
+                    'transaction_id' => $paymentToken,
                 ]);
 
                 return response()->json([
@@ -6147,51 +6163,48 @@ class PaymentController extends Controller
                 ], 200);
 
             } else {
-                
-                Log::error('Hesabe webhook: Payment failed', ['response' => $responseData]);
+                // Payment failed
+                Log::error('Hesabe webhook: Payment failed', [
+                    'status' => $status,
+                    'status_code' => $statusCode,
+                    'voucher_number' => $voucherNumber,
+                ]);
 
-                $voucherNumber = $responseData['response']['orderReferenceNumber'] ?? null;
-                $payment = $voucherNumber ? Payment::where('voucher_number', $voucherNumber)->first() : null;
+                $payment->payment_reference = $paymentToken;
+                $payment->invoice_reference = $voucherNumber;
+                $payment->payment_date = $datetime ? \Carbon\Carbon::parse($datetime) : now();
+                $payment->status = 'failed';
+                $payment->save();
 
-                if ($payment) {
-                    $data = $responseData['response'];
-                    $payment->payment_reference = $data['transactionId'] ?? null;
-                    $payment->invoice_reference = $data['trackID'] ?? null;
-                    $payment->payment_date = $data['paidOn'] ?? now();
-                    $payment->status = 'failed';
-                    $payment->save();
+                HesabePayment::updateOrCreate(
+                    ['payment_int_id' => $payment->id],
+                    [
+                        'status' => $status,
+                        'payment_token' => $paymentToken,
+                        'payment_id' => null,
+                        'order_reference_number' => $voucherNumber,
+                        'auth_code' => null,
+                        'track_id' => $voucherNumber,
+                        'transaction_id' => $paymentToken,
+                        'invoice_id' => null,
+                        'paid_on' => $datetime,
+                        'payload' => $request->all(),
+                    ]
+                );
 
-                    HesabePayment::updateOrCreate(
-                        ['payment_int_id' => $payment->id],
-                        [
-                            'status' => $data['resultCode'] ?? null,
-                            'payment_token' => $data['paymentToken'] ?? null,
-                            'payment_id' => $data['paymentId'] ?? null,
-                            'order_reference_number' => $data['orderReferenceNumber'] ?? null,
-                            'auth_code' => $data['auth'] ?? null,
-                            'track_id' => $data['trackID'] ?? null,
-                            'transaction_id' => $data['transactionId'] ?? null,
-                            'invoice_id' => $data['Id'] ?? null,
-                            'paid_on' => $data['paidOn'] ?? null,
-                            'payload' => $responseData,
-                        ]
-                    );
+                $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
 
-                    $process = $payment->invoice ? 'invoice' : 'topup';
-                    $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
+                $this->storeNotification([
+                    'user_id' => $receiptInfo['agent']->user_id,
+                    'title'   => $receiptInfo['title'],
+                    'message' => $receiptInfo['message'],
+                ]);
 
-                    $this->storeNotification([
-                        'user_id' => $receiptInfo['agent']->user_id,
-                        'title'   => $receiptInfo['title'],
-                        'message' => $receiptInfo['message'],
-                    ]);
-
-                    (new ResayilController())->message(
-                        $receiptInfo['agent']->phone_number,
-                        $receiptInfo['agent']->country_code,
-                        $receiptInfo['message']
-                    );
-                }
+                (new ResayilController())->message(
+                    $receiptInfo['agent']->phone_number,
+                    $receiptInfo['agent']->country_code,
+                    $receiptInfo['message']
+                );
 
                 DB::commit();
 

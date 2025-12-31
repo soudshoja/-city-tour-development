@@ -1449,7 +1449,7 @@
                                                                                                 </select>
                                                                                             </div>
                                                                                         </div>
-                                                                                        @if (empty($task->supplier_pay_date))
+                                                                                        @if (empty($task->supplier_pay_date) || auth()->user()->role_id == \App\Models\Role::ADMIN)
                                                                                         <div class="flex-1 min-w-0 required-input">
                                                                                             <label for="supplier_pay_date"
                                                                                                 class="block text-sm font-medium text-gray-700">Issued Date</label>

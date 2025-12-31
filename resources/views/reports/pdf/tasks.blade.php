@@ -209,20 +209,22 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width: 12%;">Reference</th>
-                    <th style="width: 18%;">Client</th>
-                    <th style="width: 15%;">Supplier</th>
-                    <th style="width: 13%;">Agent</th>
+                    <th style="width: 10%;">Reference</th>
+                    <th style="width: 10%;">Original Reference</th>
+                    <th style="width: 16%;">Client</th>
+                    <th style="width: 14%;">Supplier</th>
+                    <th style="width: 12%;">Agent</th>
                     <th style="width: 10%;">Pay Date</th>
                     <th style="width: 10%;">Issued By</th>
-                    <th style="width: 10%;">Status</th>
-                    <th style="width: 12%;" class="text-right">Amount</th>
+                    <th style="width: 8%;">Status</th>
+                    <th style="width: 10%;" class="text-right">Amount</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($tasks as $index => $task)
                     <tr>
                         <td>{{ $task->reference ?? 'N/A' }}</td>
+                        <td>{{ $task->original_reference ?? 'N/A' }}</td>
                         <td>{{ $task->passenger_name ?? 'N/A' }}</td>
                         <td>{{ $task->supplier->name ?? 'N/A' }}</td>
                         <td>{{ $task->agent->name ?? 'N/A' }}</td>

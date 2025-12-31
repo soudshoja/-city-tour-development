@@ -218,7 +218,8 @@
             <table class="min-w-full bg-white border border-gray-200">
                 <thead>
                     <tr>
-                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Task Name</th>
+                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Task Reference</th>
+                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Original Reference</th>
                         <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Passenger Name</th>
                         <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Supplier</th>
                         <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Supplier Pay Date</th>
@@ -230,6 +231,7 @@
                     @forelse($tasks as $task)
                     <tr class="hover:bg-gray-50">
                         <td class="py-2 px-4 border-b">{{ $task->reference }}</td>
+                        <td class="py-2 px-4 border-b">{{ $task->original_reference ?? 'N/A' }}</td>
                         <td class="py-2 px-4 border-b">{{ $task->passenger_name ?? 'N/A' }}</td>
                         <td class="py-2 px-4 border-b">{{ $task->supplier->name ?? 'N/A' }}</td>
                         <td class="py-2 px-4 border-b">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : 'N/A' }}</td>

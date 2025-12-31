@@ -1642,7 +1642,7 @@ class AirFileParser
                 'passenger_number' => $passengerNumber,
                 'client_name' => $clientName,
                 'ticket_number' => $ticketNumber,
-                'price' => null,
+                'price' => 0.0,
             ];
         }
 
@@ -1662,9 +1662,13 @@ class AirFileParser
                 continue;
             }
 
-            if (isset($passengers[$paxIndex - 1])) {
-                $passengers[$paxIndex - 1]['price'] += $amt;                 // <= accumulate
-                $passengers[$paxIndex - 1]['emd_currency'] ??= $cur;         // <= set once
+            // Handle case where EMD references a passenger that doesn't have an I- line
+            // Accumulate to the first available passenger if the referenced passenger doesn't exist
+            $targetIndex = isset($passengers[$paxIndex - 1]) ? $paxIndex - 1 : 0;
+            
+            if (isset($passengers[$targetIndex])) {
+                $passengers[$targetIndex]['price'] += $amt;                 // <= accumulate
+                $passengers[$targetIndex]['emd_currency'] ??= $cur;         // <= set once
             }
         }
 

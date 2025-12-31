@@ -1457,7 +1457,7 @@
                                                                                                 <input type="date"
                                                                                                     class="border border-gray-300 dark:border-gray-600 p-2 rounded-md w-full text-base"
                                                                                                     name="supplier_pay_date"
-                                                                                                    value="{{ old('supplier_pay_date') }}">
+                                                                                                    value="{{  $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : '' }}">
                                                                                             </div>
                                                                                         </div>
                                                                                         @endif

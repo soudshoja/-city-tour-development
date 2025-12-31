@@ -25,6 +25,7 @@ use App\Models\Invoice;
 use App\Models\InvoicePartial;
 use App\Models\Refund;
 use App\Http\Controllers\CoaController;
+use Exception;
 use Illuminate\Support\Str;
 
 class ReportController extends Controller
@@ -2151,5 +2152,360 @@ class ReportController extends Controller
             'commission' => $commissionTotal,
             'per_invoice' => $perInvoiceRate,
         ];
+    }
+
+    public function tasksReport(Request $request)
+    {
+        $request->validate([
+            'supplier_ids' => 'nullable|array',
+            'supplier_ids.*' => 'integer',
+            'statuses' => 'nullable|array',
+            'statuses.*' => 'string',
+            'issued_by' => 'nullable|array',
+            'issued_by.*' => 'string',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'date_preset' => 'nullable|string',
+        ]);
+
+        $supplierIds = $request->input('supplier_ids', []);
+        $statuses = $request->input('statuses', []);
+        $issuedBy = $request->input('issued_by', []);
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $datePreset = $request->input('date_preset');
+
+        // Handle date presets
+        if ($datePreset && !$dateFrom && !$dateTo) {
+            $now = Carbon::now();
+            switch ($datePreset) {
+                case 'this_week':
+                    $dateFrom = $now->startOfWeek()->toDateString();
+                    $dateTo = $now->endOfWeek()->toDateString();
+                    break;
+                case 'this_month':
+                    $dateFrom = $now->startOfMonth()->toDateString();
+                    $dateTo = $now->endOfMonth()->toDateString();
+                    break;
+                case 'this_year':
+                    $dateFrom = $now->startOfYear()->toDateString();
+                    $dateTo = $now->endOfYear()->toDateString();
+                    break;
+                case 'january':
+                    $dateFrom = $now->month(1)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(1)->endOfMonth()->toDateString();
+                    break;
+                case 'february':
+                    $dateFrom = $now->month(2)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(2)->endOfMonth()->toDateString();
+                    break;
+                case 'march':
+                    $dateFrom = $now->month(3)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(3)->endOfMonth()->toDateString();
+                    break;
+                case 'april':
+                    $dateFrom = $now->month(4)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(4)->endOfMonth()->toDateString();
+                    break;
+                case 'may':
+                    $dateFrom = $now->month(5)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(5)->endOfMonth()->toDateString();
+                    break;
+                case 'june':
+                    $dateFrom = $now->month(6)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(6)->endOfMonth()->toDateString();
+                    break;
+                case 'july':
+                    $dateFrom = $now->month(7)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(7)->endOfMonth()->toDateString();
+                    break;
+                case 'august':
+                    $dateFrom = $now->month(8)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(8)->endOfMonth()->toDateString();
+                    break;
+                case 'september':
+                    $dateFrom = $now->month(9)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(9)->endOfMonth()->toDateString();
+                    break;
+                case 'october':
+                    $dateFrom = $now->month(10)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(10)->endOfMonth()->toDateString();
+                    break;
+                case 'november':
+                    $dateFrom = $now->month(11)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(11)->endOfMonth()->toDateString();
+                    break;
+                case 'december':
+                    $dateFrom = $now->month(12)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(12)->endOfMonth()->toDateString();
+                    break;
+            }
+        }
+
+        try {
+            $taskQuery = Task::with(['supplier', 'agent', 'client']);
+
+            if (!empty($supplierIds) && is_array($supplierIds)) {
+                $taskQuery->whereIn('supplier_id', $supplierIds);
+            }
+            
+            if (!empty($statuses) && is_array($statuses)) {
+                $taskQuery->whereIn('status', $statuses);
+            }
+            
+            if (!empty($issuedBy) && is_array($issuedBy)) {
+                $taskQuery->whereIn('issued_by', $issuedBy);
+            }
+            
+            if ($dateFrom) {
+                $taskQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
+            }
+            
+            if ($dateTo) {
+                $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
+            }
+
+            if (empty($statuses) || !in_array('void', $statuses)) {
+                $voidQuery = Task::where('status', 'void');
+                
+                if (!empty($supplierIds) && is_array($supplierIds)) {
+                    $voidQuery->whereIn('supplier_id', $supplierIds);
+                }
+                
+                if (!empty($issuedBy) && is_array($issuedBy)) {
+                    $voidQuery->whereIn('issued_by', $issuedBy);
+                }
+                
+                if ($dateFrom) {
+                    $voidQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
+                }
+                
+                if ($dateTo) {
+                    $voidQuery->whereDate('supplier_pay_date', '<=', $dateTo);
+                }
+                
+                $voidedTaskReferences = $voidQuery->pluck('reference')->toArray();
+                
+                if (!empty($voidedTaskReferences)) {
+                    $taskQuery->whereNotIn('reference', $voidedTaskReferences);
+                }
+            }
+            
+            $taskQuery->orderBy('supplier_pay_date', 'asc')->orderBy('reference', 'asc');
+
+        } catch (Exception $e) {
+            Log::info('Error building task query', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error building task query',
+            ], 400);
+        }
+
+        $totalTasks = $taskQuery->count();
+        $totalAmount = $taskQuery->sum('total');
+        $tasks = $taskQuery->paginate(20)->withQueryString();
+        
+        $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
+        
+        $availableStatuses = Task::select('status')
+            ->whereNotNull('status')
+            ->distinct()
+            ->orderBy('status')
+            ->pluck('status')
+            ->toArray();
+        
+        $availableIssuedBy = Task::select('issued_by')
+            ->whereNotNull('issued_by')
+            ->distinct()
+            ->orderBy('issued_by')
+            ->pluck('issued_by')
+            ->toArray();
+
+        return view('reports.tasks', compact(
+            'tasks',
+            'totalTasks',
+            'suppliers',
+            'availableStatuses',
+            'availableIssuedBy',
+            'supplierIds',
+            'statuses',
+            'issuedBy',
+            'totalAmount',
+            'dateFrom',
+            'dateTo',
+            'datePreset'
+        ));
+    }
+
+    public function tasksReportPdf(Request $request)
+    {
+        $request->validate([
+            'supplier_ids' => 'nullable|array',
+            'supplier_ids.*' => 'integer',
+            'statuses' => 'nullable|array',
+            'statuses.*' => 'string',
+            'issued_by' => 'nullable|array',
+            'issued_by.*' => 'string',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'date_preset' => 'nullable|string',
+        ]);
+
+        $supplierIds = $request->input('supplier_ids', []);
+        $statuses = $request->input('statuses', []);
+        $issuedBy = $request->input('issued_by', []);
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $datePreset = $request->input('date_preset');
+
+        if ($datePreset && !$dateFrom && !$dateTo) {
+            $now = Carbon::now();
+            switch ($datePreset) {
+                case 'this_week':
+                    $dateFrom = $now->startOfWeek()->toDateString();
+                    $dateTo = $now->endOfWeek()->toDateString();
+                    break;
+                case 'this_month':
+                    $dateFrom = $now->startOfMonth()->toDateString();
+                    $dateTo = $now->endOfMonth()->toDateString();
+                    break;
+                case 'this_year':
+                    $dateFrom = $now->startOfYear()->toDateString();
+                    $dateTo = $now->endOfYear()->toDateString();
+                    break;
+                case 'january':
+                    $dateFrom = $now->month(1)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(1)->endOfMonth()->toDateString();
+                    break;
+                case 'february':
+                    $dateFrom = $now->month(2)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(2)->endOfMonth()->toDateString();
+                    break;
+                case 'march':
+                    $dateFrom = $now->month(3)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(3)->endOfMonth()->toDateString();
+                    break;
+                case 'april':
+                    $dateFrom = $now->month(4)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(4)->endOfMonth()->toDateString();
+                    break;
+                case 'may':
+                    $dateFrom = $now->month(5)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(5)->endOfMonth()->toDateString();
+                    break;
+                case 'june':
+                    $dateFrom = $now->month(6)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(6)->endOfMonth()->toDateString();
+                    break;
+                case 'july':
+                    $dateFrom = $now->month(7)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(7)->endOfMonth()->toDateString();
+                    break;
+                case 'august':
+                    $dateFrom = $now->month(8)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(8)->endOfMonth()->toDateString();
+                    break;
+                case 'september':
+                    $dateFrom = $now->month(9)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(9)->endOfMonth()->toDateString();
+                    break;
+                case 'october':
+                    $dateFrom = $now->month(10)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(10)->endOfMonth()->toDateString();
+                    break;
+                case 'november':
+                    $dateFrom = $now->month(11)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(11)->endOfMonth()->toDateString();
+                    break;
+                case 'december':
+                    $dateFrom = $now->month(12)->startOfMonth()->toDateString();
+                    $dateTo = $now->month(12)->endOfMonth()->toDateString();
+                    break;
+            }
+        }
+
+        try {
+            $taskQuery = Task::with(['supplier', 'agent', 'client']);
+
+            if (!empty($supplierIds) && is_array($supplierIds)) {
+                $taskQuery->whereIn('supplier_id', $supplierIds);
+            }
+            
+            if (!empty($statuses) && is_array($statuses)) {
+                $taskQuery->whereIn('status', $statuses);
+            }
+            
+            if (!empty($issuedBy) && is_array($issuedBy)) {
+                $taskQuery->whereIn('issued_by', $issuedBy);
+            }
+            
+            if ($dateFrom) {
+                $taskQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
+            }
+            
+            if ($dateTo) {
+                $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
+            }
+
+            if (empty($statuses) || !in_array('void', $statuses)) {
+                $voidQuery = Task::where('status', 'void');
+                
+                if (!empty($supplierIds) && is_array($supplierIds)) {
+                    $voidQuery->whereIn('supplier_id', $supplierIds);
+                }
+                
+                if (!empty($issuedBy) && is_array($issuedBy)) {
+                    $voidQuery->whereIn('issued_by', $issuedBy);
+                }
+                
+                if ($dateFrom) {
+                    $voidQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
+                }
+                
+                if ($dateTo) {
+                    $voidQuery->whereDate('supplier_pay_date', '<=', $dateTo);
+                }
+                
+                $voidedTaskReferences = $voidQuery->pluck('reference')->toArray();
+                
+                if (!empty($voidedTaskReferences)) {
+                    $taskQuery->whereNotIn('reference', $voidedTaskReferences);
+                }
+            }
+            
+            $taskQuery->orderBy('supplier_pay_date', 'asc')->orderBy('reference', 'asc');
+
+        } catch (Exception $e) {
+            Log::info('Error building task query for PDF', ['error' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'Error generating PDF');
+        }
+
+    
+        $tasks = $taskQuery->get();
+        $totalTasks = $tasks->count();
+        $totalAmount = $tasks->sum('total');
+
+        $suppliers = Supplier::whereIn('id', $supplierIds)->pluck('name')->toArray();
+        
+        // $filterSummary = [
+        //     'suppliers' => !empty($suppliers) ? implode(', ', $suppliers) : 'All',
+        //     'statuses' => !empty($statuses) ? implode(', ', array_map('ucfirst', $statuses)) : 'All',
+        //     'issued_by' => !empty($issuedBy) ? implode(', ', $issuedBy) : 'All',
+        //     'date_from' => $dateFrom ?? 'N/A',
+        //     'date_to' => $dateTo ?? 'N/A',
+        // ];
+
+        $pdf = Pdf::loadView('reports.pdf.tasks', [
+            'tasks' => $tasks,
+            'totalTasks' => $totalTasks,
+            'totalAmount' => $totalAmount,
+            // 'filterSummary' => $filterSummary,
+            'generatedAt' => now()->format('M d, Y H:i:s'),
+        ])
+        ->setPaper('a4', 'portrait')
+        ->setOptions(['defaultFont' => 'sans-serif']);
+
+        $filename = 'tasks-report-' . now()->format('Y-m-d-His') . '.pdf';
+        return $pdf->download($filename);
     }
 }

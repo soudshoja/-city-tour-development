@@ -552,7 +552,7 @@ class ProcessAirFiles extends Command
 
         try {
             $parser = new AirFileParser($fileRealPath);
-            dd($parser);
+            
             $tasksData = $parser->parseTaskSchema(); // Now returns array of tasks
 
             $this->info("Found " . count($tasksData) . " passenger(s) in file: {$fileName}");

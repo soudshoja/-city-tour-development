@@ -245,7 +245,7 @@
                                 {{ ucfirst($task->status) }}
                             </span>
                         </td>
-                        <td class="py-2 px-4 border-b">{{ number_format($task->total, 3) }}</td>
+                        <td class="py-2 px-4 border-b">{{ number_format(($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0), 3) }} KWD</td>
                     </tr>
                     @empty
                     <tr>

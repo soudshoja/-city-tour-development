@@ -1132,9 +1132,22 @@ class TaskController extends Controller
                     ]);
 
                     if ($totalSurcharge > 0) {
-                        $task->update([
-                            'supplier_surcharge' => $totalSurcharge,
-                        ]);
+                        try {
+                            $task->update([
+                                'supplier_surcharge' => $totalSurcharge,
+                            ]);
+
+                            Log::info('Updated task with total surcharge', [
+                                'task_id' => $task->id,
+                                'total_surcharge' => $task->supplier_surcharge,
+                            ]);
+                        } catch (Exception $e) {
+                            Log::error('Failed to update task with total surcharge', [
+                                'task_id' => $task->id,
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+
                     }
                 }
             }

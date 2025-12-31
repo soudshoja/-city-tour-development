@@ -369,6 +369,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/daily-sales', [ReportController::class, 'dailySalesReport'])->name('daily-sales');
         Route::get('/daily-sales/pdf', [ReportController::class, 'dailySalesPdf'])->name('daily-sales.pdf');
         Route::get('/daily-sales/pdf/download', [ReportController::class, 'dailySalesPdfDownload'])->name('daily-sales.pdf.download');
+        Route::get('/tasks', [ReportController::class, 'tasksReport'])->name('tasks');
+        Route::get('/tasks/pdf', [ReportController::class, 'tasksReportPdf'])->name('tasks.pdf');
     });
 
     // INVOICE

@@ -240,7 +240,7 @@
                                 {{ ucfirst($task->status ?? 'N/A') }}
                             </span>
                         </td>
-                        <td class="text-right">{{ number_format($task->total, 3) }}</td>
+                        <td class="text-right">{{ number_format(($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0), 3) }} KWD</td>
                     </tr>
                 @endforeach
             </tbody>

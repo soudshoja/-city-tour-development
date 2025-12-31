@@ -2192,55 +2192,56 @@ class ReportController extends Controller
                     $dateTo = $now->endOfYear()->toDateString();
                     break;
                 case 'january':
-                    $dateFrom = $now->month(1)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(1)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 1, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 1, 1)->endOfMonth()->toDateString();
                     break;
                 case 'february':
-                    $dateFrom = $now->month(2)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(2)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 2, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 2, 1)->endOfMonth()->toDateString();
                     break;
                 case 'march':
-                    $dateFrom = $now->month(3)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(3)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 3, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 3, 1)->endOfMonth()->toDateString();
                     break;
                 case 'april':
-                    $dateFrom = $now->month(4)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(4)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 4, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 4, 1)->endOfMonth()->toDateString();
                     break;
                 case 'may':
-                    $dateFrom = $now->month(5)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(5)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 5, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 5, 1)->endOfMonth()->toDateString();
                     break;
                 case 'june':
-                    $dateFrom = $now->month(6)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(6)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 6, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 6, 1)->endOfMonth()->toDateString();
                     break;
                 case 'july':
-                    $dateFrom = $now->month(7)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(7)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 7, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 7, 1)->endOfMonth()->toDateString();
                     break;
                 case 'august':
-                    $dateFrom = $now->month(8)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(8)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 8, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 8, 1)->endOfMonth()->toDateString();
                     break;
                 case 'september':
-                    $dateFrom = $now->month(9)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(9)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 9, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 9, 1)->endOfMonth()->toDateString();
                     break;
                 case 'october':
-                    $dateFrom = $now->month(10)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(10)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 10, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 10, 1)->endOfMonth()->toDateString();
                     break;
                 case 'november':
-                    $dateFrom = $now->month(11)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(11)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 11, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 11, 1)->endOfMonth()->toDateString();
                     break;
                 case 'december':
-                    $dateFrom = $now->month(12)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(12)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 12, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 12, 1)->endOfMonth()->toDateString();
                     break;
             }
         }
+
 
         try {
             $taskQuery = Task::with(['supplier', 'agent', 'client']);
@@ -2302,7 +2303,9 @@ class ReportController extends Controller
         }
 
         $totalTasks = $taskQuery->count();
-        $totalAmount = $taskQuery->sum('total');
+        $totalAmount = $taskQuery->get()->sum(function($task) {
+            return ($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0);
+        });
         $tasks = $taskQuery->paginate(20)->withQueryString();
         
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
@@ -2374,52 +2377,52 @@ class ReportController extends Controller
                     $dateTo = $now->endOfYear()->toDateString();
                     break;
                 case 'january':
-                    $dateFrom = $now->month(1)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(1)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 1, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 1, 1)->endOfMonth()->toDateString();
                     break;
                 case 'february':
-                    $dateFrom = $now->month(2)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(2)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 2, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 2, 1)->endOfMonth()->toDateString();
                     break;
                 case 'march':
-                    $dateFrom = $now->month(3)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(3)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 3, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 3, 1)->endOfMonth()->toDateString();
                     break;
                 case 'april':
-                    $dateFrom = $now->month(4)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(4)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 4, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 4, 1)->endOfMonth()->toDateString();
                     break;
                 case 'may':
-                    $dateFrom = $now->month(5)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(5)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 5, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 5, 1)->endOfMonth()->toDateString();
                     break;
                 case 'june':
-                    $dateFrom = $now->month(6)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(6)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 6, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 6, 1)->endOfMonth()->toDateString();
                     break;
                 case 'july':
-                    $dateFrom = $now->month(7)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(7)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 7, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 7, 1)->endOfMonth()->toDateString();
                     break;
                 case 'august':
-                    $dateFrom = $now->month(8)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(8)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 8, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 8, 1)->endOfMonth()->toDateString();
                     break;
                 case 'september':
-                    $dateFrom = $now->month(9)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(9)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 9, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 9, 1)->endOfMonth()->toDateString();
                     break;
                 case 'october':
-                    $dateFrom = $now->month(10)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(10)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 10, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 10, 1)->endOfMonth()->toDateString();
                     break;
                 case 'november':
-                    $dateFrom = $now->month(11)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(11)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 11, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 11, 1)->endOfMonth()->toDateString();
                     break;
                 case 'december':
-                    $dateFrom = $now->month(12)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(12)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 12, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 12, 1)->endOfMonth()->toDateString();
                     break;
             }
         }
@@ -2483,7 +2486,9 @@ class ReportController extends Controller
     
         $tasks = $taskQuery->get();
         $totalTasks = $tasks->count();
-        $totalAmount = $tasks->sum('total');
+        $totalAmount = $tasks->sum(function($task) {
+            return ($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0);
+        });
 
         $suppliers = Supplier::whereIn('id', $supplierIds)->pluck('name')->toArray();
         

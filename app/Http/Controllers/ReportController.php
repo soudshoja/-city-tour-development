@@ -2242,58 +2242,56 @@ class ReportController extends Controller
             }
         }
 
-
         try {
             $taskQuery = Task::with(['supplier', 'agent', 'client']);
 
             if (!empty($supplierIds) && is_array($supplierIds)) {
                 $taskQuery->whereIn('supplier_id', $supplierIds);
             }
-            
+
             if (!empty($statuses) && is_array($statuses)) {
                 $taskQuery->whereIn('status', $statuses);
             }
-            
+
             if (!empty($issuedBy) && is_array($issuedBy)) {
                 $taskQuery->whereIn('issued_by', $issuedBy);
             }
-            
+
             if ($dateFrom) {
                 $taskQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
             }
-            
+
             if ($dateTo) {
                 $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
             }
 
             if (empty($statuses) || !in_array('void', $statuses)) {
                 $voidQuery = Task::where('status', 'void');
-                
+
                 if (!empty($supplierIds) && is_array($supplierIds)) {
                     $voidQuery->whereIn('supplier_id', $supplierIds);
                 }
-                
+
                 if (!empty($issuedBy) && is_array($issuedBy)) {
                     $voidQuery->whereIn('issued_by', $issuedBy);
                 }
-                
+
                 if ($dateFrom) {
                     $voidQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
                 }
-                
+
                 if ($dateTo) {
                     $voidQuery->whereDate('supplier_pay_date', '<=', $dateTo);
                 }
-                
+
                 $voidedTaskReferences = $voidQuery->pluck('reference')->toArray();
-                
+
                 if (!empty($voidedTaskReferences)) {
                     $taskQuery->whereNotIn('reference', $voidedTaskReferences);
                 }
             }
-            
-            $taskQuery->orderBy('supplier_pay_date', 'asc')->orderBy('reference', 'asc');
 
+            $taskQuery->orderBy('supplier_pay_date', 'asc')->orderBy('reference', 'asc');
         } catch (Exception $e) {
             Log::info('Error building task query', ['error' => $e->getMessage()]);
             return response()->json([
@@ -2303,20 +2301,68 @@ class ReportController extends Controller
         }
 
         $totalTasks = $taskQuery->count();
-        $totalAmount = $taskQuery->get()->sum(function($task) {
-            return ($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0);
+
+        $calculationQuery = clone $taskQuery;
+        $allTasks = $calculationQuery->get();
+
+        $debugInfo = $allTasks->map(function ($task) {
+            // For REFUND: use total column directly
+            // For others: calculate from price + tax + surcharge
+            if ($task->status === 'refund') {
+                $amount = $task->total ?? 0;
+            } else {
+                $amount = ($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0);
+            }
+
+            return [
+                'reference' => $task->reference,
+                'status' => $task->status,
+                'price' => $task->price,
+                'tax' => $task->tax,
+                'surcharge' => $task->supplier_surcharge,
+                'total' => $task->total,
+                'calculated_amount' => $amount,
+                'is_refund' => $task->status === 'refund',
+                'final_contribution' => $task->status === 'refund' ? -$amount : $amount,
+            ];
         });
+
+        $totalAmount = $allTasks->sum(function ($task) {
+            // For REFUND: use total column directly
+            // For others: calculate from price + tax + surcharge
+            if ($task->status === 'refund') {
+                $amount = $task->total ?? 0;
+            } else {
+                $amount = ($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0);
+            }
+
+            if ($task->status === 'refund') {
+                return -$amount;
+            }
+
+            return $amount;
+        });
+
         $tasks = $taskQuery->paginate(20)->withQueryString();
-        
+
+        $tasks->getCollection()->transform(function($task) {
+            if ($task->status === 'refund') {
+                $task->display_amount = $task->total ?? 0;
+            } else {
+                $task->display_amount = ($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0);
+            }
+            return $task;
+        });
+
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
-        
+
         $availableStatuses = Task::select('status')
             ->whereNotNull('status')
             ->distinct()
             ->orderBy('status')
             ->pluck('status')
             ->toArray();
-        
+
         $availableIssuedBy = Task::select('issued_by')
             ->whereNotNull('issued_by')
             ->distinct()
@@ -2336,7 +2382,8 @@ class ReportController extends Controller
             'totalAmount',
             'dateFrom',
             'dateTo',
-            'datePreset'
+            'datePreset',
+            'debugInfo'
         ));
     }
 
@@ -2483,11 +2530,32 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Error generating PDF');
         }
 
-    
         $tasks = $taskQuery->get();
+        
+        $tasks->transform(function($task) {
+            if ($task->status === 'refund') {
+                $task->display_amount = $task->total ?? 0;
+            } else {
+                $task->display_amount = ($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0);
+            }
+            return $task;
+        });
+        
         $totalTasks = $tasks->count();
+        
         $totalAmount = $tasks->sum(function($task) {
-            return ($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0);
+            if ($task->status === 'refund') {
+                $amount = $task->total ?? 0;
+            } else {
+                $amount = ($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0);
+            }
+            
+            // Subtract refunds
+            if ($task->status === 'refund') {
+                return -$amount;
+            }
+            
+            return $amount;
         });
 
         $suppliers = Supplier::whereIn('id', $supplierIds)->pluck('name')->toArray();

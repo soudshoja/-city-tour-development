@@ -224,7 +224,8 @@
                         <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Supplier</th>
                         <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Supplier Pay Date</th>
                         <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Status</th>
-                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-left border-b border-gray-200">Amount</th>
+                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-right border-b border-gray-200">Debit</th>
+                        <th class="py-2 px-4 bg-gray-100 text-gray-700 font-semibold text-right border-b border-gray-200">Credit</th>                   
                     </tr>
                 </thead>
                 <tbody>
@@ -245,7 +246,20 @@
                                 {{ ucfirst($task->status) }}
                             </span>
                         </td>
-                        <td class="py-2 px-4 border-b">{{ number_format(($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0), 3) }} KWD</td>
+                        <td class="py-2 px-4 border-b text-right">
+                            @if($task->status !== 'refund')
+                                {{ number_format(($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0), 3) }}
+                            @else
+                                -
+                            @endif
+                        </td>
+                        <td class="py-2 px-4 border-b text-right">
+                            @if($task->status === 'refund')
+                                {{ number_format($task->total ?? 0, 3) }}
+                            @else
+                                -
+                            @endif
+                        </td>                  
                     </tr>
                     @empty
                     <tr>

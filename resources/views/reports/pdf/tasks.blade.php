@@ -209,15 +209,16 @@
         <table>
             <thead>
                 <tr>
-                    <th style="width: 10%;">Reference</th>
-                    <th style="width: 10%;">Original Reference</th>
-                    <th style="width: 16%;">Client</th>
-                    <th style="width: 14%;">Supplier</th>
-                    <th style="width: 12%;">Agent</th>
-                    <th style="width: 10%;">Pay Date</th>
-                    <th style="width: 10%;">Issued By</th>
-                    <th style="width: 8%;">Status</th>
-                    <th style="width: 10%;" class="text-right">Amount</th>
+                    <th style="width: 9%;">Reference</th>
+                    <th style="width: 9%;">Original Reference</th>
+                    <th style="width: 14%;">Client</th>
+                    <th style="width: 12%;">Supplier</th>
+                    <th style="width: 10%;">Agent</th>
+                    <th style="width: 9%;">Pay Date</th>
+                    <th style="width: 9%;">Issued By</th>
+                    <th style="width: 7%;">Status</th>
+                    <th style="width: 10%;">Debit</th>
+                    <th style="width: 11%;">Credit</th>                
                 </tr>
             </thead>
             <tbody>
@@ -240,7 +241,16 @@
                                 {{ ucfirst($task->status ?? 'N/A') }}
                             </span>
                         </td>
-                        <td class="text-right">{{ number_format(($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0), 3) }} KWD</td>
+                        <td class="text-center">
+                            @if($task->status !== 'refund')
+                                {{ number_format(($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0), 3) }}
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            @if($task->status === 'refund')
+                                {{ number_format($task->total ?? 0, 3) }}                        
+                            @endif
+                        </td>                 
                     </tr>
                 @endforeach
             </tbody>

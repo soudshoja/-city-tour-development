@@ -227,6 +227,7 @@
                         exchange_rate: 1,
                         currency: 'KWD',
                         transaction_id: data.journal_entry_ids.join(','),
+                        type_selector: 'account',
                     };
 
                     for (const [key, value] of Object.entries(fields)) {

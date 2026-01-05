@@ -743,7 +743,6 @@ class ReportController extends Controller
         ]);
     }
 
-
     public function getAccounts(Request $request)
     {
         $user = auth()->user();
@@ -2175,7 +2174,10 @@ class ReportController extends Controller
         $dateTo = $request->input('date_to');
         $datePreset = $request->input('date_preset');
 
-        // Handle date presets
+        if (empty($statuses)) {
+            $statuses = ['issued', 'reissued', 'refund', 'payment_voucher'];
+        }
+
         if ($datePreset && !$dateFrom && !$dateTo) {
             $now = Carbon::now();
             switch ($datePreset) {
@@ -2192,55 +2194,61 @@ class ReportController extends Controller
                     $dateTo = $now->endOfYear()->toDateString();
                     break;
                 case 'january':
-                    $dateFrom = $now->month(1)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(1)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 1, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 1, 1)->endOfMonth()->toDateString();
                     break;
                 case 'february':
-                    $dateFrom = $now->month(2)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(2)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 2, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 2, 1)->endOfMonth()->toDateString();
                     break;
                 case 'march':
-                    $dateFrom = $now->month(3)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(3)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 3, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 3, 1)->endOfMonth()->toDateString();
                     break;
                 case 'april':
-                    $dateFrom = $now->month(4)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(4)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 4, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 4, 1)->endOfMonth()->toDateString();
                     break;
                 case 'may':
-                    $dateFrom = $now->month(5)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(5)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 5, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 5, 1)->endOfMonth()->toDateString();
                     break;
                 case 'june':
-                    $dateFrom = $now->month(6)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(6)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 6, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 6, 1)->endOfMonth()->toDateString();
                     break;
                 case 'july':
-                    $dateFrom = $now->month(7)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(7)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 7, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 7, 1)->endOfMonth()->toDateString();
                     break;
                 case 'august':
-                    $dateFrom = $now->month(8)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(8)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 8, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 8, 1)->endOfMonth()->toDateString();
                     break;
                 case 'september':
-                    $dateFrom = $now->month(9)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(9)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 9, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 9, 1)->endOfMonth()->toDateString();
                     break;
                 case 'october':
-                    $dateFrom = $now->month(10)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(10)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 10, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 10, 1)->endOfMonth()->toDateString();
                     break;
                 case 'november':
-                    $dateFrom = $now->month(11)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(11)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 11, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 11, 1)->endOfMonth()->toDateString();
                     break;
                 case 'december':
-                    $dateFrom = $now->month(12)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(12)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 12, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 12, 1)->endOfMonth()->toDateString();
                     break;
             }
         }
+
+        // Check if payment_voucher is included
+        $includePaymentVouchers = in_array('payment_voucher', $statuses);
+
+        // Remove payment_voucher from task statuses filter
+        $taskStatuses = array_diff($statuses, ['payment_voucher']);
 
         try {
             $taskQuery = Task::with(['supplier', 'agent', 'client']);
@@ -2248,51 +2256,51 @@ class ReportController extends Controller
             if (!empty($supplierIds) && is_array($supplierIds)) {
                 $taskQuery->whereIn('supplier_id', $supplierIds);
             }
-            
-            if (!empty($statuses) && is_array($statuses)) {
-                $taskQuery->whereIn('status', $statuses);
+
+            if (!empty($taskStatuses) && is_array($taskStatuses)) {
+                $taskQuery->whereIn('status', $taskStatuses);
             }
-            
+
             if (!empty($issuedBy) && is_array($issuedBy)) {
                 $taskQuery->whereIn('issued_by', $issuedBy);
             }
-            
+
             if ($dateFrom) {
                 $taskQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
             }
-            
+
             if ($dateTo) {
                 $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
             }
 
-            if (empty($statuses) || !in_array('void', $statuses)) {
+            // Only apply void exclusion if void is not explicitly selected
+            if (empty($taskStatuses) || !in_array('void', $taskStatuses)) {
                 $voidQuery = Task::where('status', 'void');
-                
+
                 if (!empty($supplierIds) && is_array($supplierIds)) {
                     $voidQuery->whereIn('supplier_id', $supplierIds);
                 }
-                
+
                 if (!empty($issuedBy) && is_array($issuedBy)) {
                     $voidQuery->whereIn('issued_by', $issuedBy);
                 }
-                
+
                 if ($dateFrom) {
                     $voidQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
                 }
-                
+
                 if ($dateTo) {
                     $voidQuery->whereDate('supplier_pay_date', '<=', $dateTo);
                 }
-                
+
                 $voidedTaskReferences = $voidQuery->pluck('reference')->toArray();
-                
+
                 if (!empty($voidedTaskReferences)) {
                     $taskQuery->whereNotIn('reference', $voidedTaskReferences);
                 }
             }
-            
-            $taskQuery->orderBy('supplier_pay_date', 'asc')->orderBy('reference', 'asc');
 
+            $allTasks = $taskQuery->get();
         } catch (Exception $e) {
             Log::info('Error building task query', ['error' => $e->getMessage()]);
             return response()->json([
@@ -2301,19 +2309,103 @@ class ReportController extends Controller
             ], 400);
         }
 
-        $totalTasks = $taskQuery->count();
-        $totalAmount = $taskQuery->sum('total');
-        $tasks = $taskQuery->paginate(20)->withQueryString();
-        
+        $mergedData = collect();
+
+        foreach ($allTasks as $task) {
+            $debit = 0;
+            $credit = 0;
+
+            if ($task->status === 'refund') {
+                $credit = $task->total ?? 0;
+            } else {
+                $debit = ($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0);
+            }
+
+            $mergedData->push((object)[
+                'type' => 'task',
+                'date' => $task->supplier_pay_date,
+                'reference' => $task->reference,
+                'original_reference' => $task->original_reference,
+                'passenger_name' => $task->passenger_name,
+                'supplier_name' => $task->supplier->name ?? 'N/A',
+                'status' => $task->status,
+                'debit' => $debit,
+                'credit' => $credit,
+            ]);
+        }
+
+        if ($includePaymentVouchers) {
+            try {
+                $transactionQuery = Transaction::where('reference_number', 'LIKE', 'PV-%');
+
+                if ($dateFrom) {
+                    $transactionQuery->whereDate('transaction_date', '>=', $dateFrom);
+                }
+
+                if ($dateTo) {
+                    $transactionQuery->whereDate('transaction_date', '<=', $dateTo);
+                }
+
+                $allTransactions = $transactionQuery->get();
+
+                foreach ($allTransactions as $transaction) {
+                    $mergedData->push((object)[
+                        'type' => 'transaction',
+                        'date' => $transaction->transaction_date,
+                        'reference' => $transaction->reference_number,
+                        'original_reference' => null,
+                        'passenger_name' => $transaction->name . ($transaction->description ? ' - ' . $transaction->description : ''),
+                        'supplier_name' => 'Payment Voucher',
+                        'status' => 'payment_voucher',
+                        'debit' => 0,
+                        'credit' => $transaction->amount ?? 0,
+                    ]);
+                }
+            } catch (Exception $e) {
+                Log::info('Error fetching PV transactions', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // Sort by date, then by reference
+        $mergedData = $mergedData->sortBy([
+            ['date', 'asc'],
+            ['reference', 'asc'],
+        ])->values();
+
+        // Calculate totals
+        $totalTasks = $allTasks->count();
+        $totalDebit = $mergedData->sum('debit');
+        $totalCredit = $mergedData->sum('credit');
+        $netBalance = $totalDebit - $totalCredit;
+
+        // Manual pagination
+        $perPage = 20;
+        $currentPage = request()->get('page', 1);
+        $offset = ($currentPage - 1) * $perPage;
+
+        $paginatedData = $mergedData->slice($offset, $perPage)->values();
+
+        $tasks = new \Illuminate\Pagination\LengthAwarePaginator(
+            $paginatedData,
+            $mergedData->count(),
+            $perPage,
+            $currentPage,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
         $suppliers = Supplier::orderBy('name')->get(['id', 'name']);
-        
+
+        // Get available statuses from tasks + add payment_voucher
         $availableStatuses = Task::select('status')
             ->whereNotNull('status')
             ->distinct()
             ->orderBy('status')
             ->pluck('status')
             ->toArray();
-        
+
+        // Add payment_voucher to available statuses
+        $availableStatuses[] = 'payment_voucher';
+
         $availableIssuedBy = Task::select('issued_by')
             ->whereNotNull('issued_by')
             ->distinct()
@@ -2330,7 +2422,9 @@ class ReportController extends Controller
             'supplierIds',
             'statuses',
             'issuedBy',
-            'totalAmount',
+            'netBalance',
+            'totalDebit',
+            'totalCredit',
             'dateFrom',
             'dateTo',
             'datePreset'
@@ -2358,6 +2452,10 @@ class ReportController extends Controller
         $dateTo = $request->input('date_to');
         $datePreset = $request->input('date_preset');
 
+        if (empty($statuses)) {
+            $statuses = ['issued', 'reissued', 'refund', 'payment_voucher'];
+        }
+
         if ($datePreset && !$dateFrom && !$dateTo) {
             $now = Carbon::now();
             switch ($datePreset) {
@@ -2374,55 +2472,63 @@ class ReportController extends Controller
                     $dateTo = $now->endOfYear()->toDateString();
                     break;
                 case 'january':
-                    $dateFrom = $now->month(1)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(1)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 1, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 1, 1)->endOfMonth()->toDateString();
                     break;
                 case 'february':
-                    $dateFrom = $now->month(2)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(2)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 2, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 2, 1)->endOfMonth()->toDateString();
                     break;
                 case 'march':
-                    $dateFrom = $now->month(3)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(3)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 3, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 3, 1)->endOfMonth()->toDateString();
                     break;
                 case 'april':
-                    $dateFrom = $now->month(4)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(4)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 4, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 4, 1)->endOfMonth()->toDateString();
                     break;
                 case 'may':
-                    $dateFrom = $now->month(5)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(5)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 5, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 5, 1)->endOfMonth()->toDateString();
                     break;
                 case 'june':
-                    $dateFrom = $now->month(6)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(6)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 6, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 6, 1)->endOfMonth()->toDateString();
                     break;
                 case 'july':
-                    $dateFrom = $now->month(7)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(7)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 7, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 7, 1)->endOfMonth()->toDateString();
                     break;
                 case 'august':
-                    $dateFrom = $now->month(8)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(8)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 8, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 8, 1)->endOfMonth()->toDateString();
                     break;
                 case 'september':
-                    $dateFrom = $now->month(9)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(9)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 9, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 9, 1)->endOfMonth()->toDateString();
                     break;
                 case 'october':
-                    $dateFrom = $now->month(10)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(10)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 10, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 10, 1)->endOfMonth()->toDateString();
                     break;
                 case 'november':
-                    $dateFrom = $now->month(11)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(11)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 11, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 11, 1)->endOfMonth()->toDateString();
                     break;
                 case 'december':
-                    $dateFrom = $now->month(12)->startOfMonth()->toDateString();
-                    $dateTo = $now->month(12)->endOfMonth()->toDateString();
+                    $dateFrom = Carbon::create($now->year, 12, 1)->toDateString();
+                    $dateTo = Carbon::create($now->year, 12, 1)->endOfMonth()->toDateString();
                     break;
             }
         }
+
+        // Check if payment_voucher is included
+        $includePaymentVouchers = in_array('payment_voucher', $statuses);
+        
+        // Remove payment_voucher from task statuses filter
+        $taskStatuses = array_diff($statuses, ['payment_voucher']);
+
+        $mergedData = collect();
 
         try {
             $taskQuery = Task::with(['supplier', 'agent', 'client']);
@@ -2430,79 +2536,137 @@ class ReportController extends Controller
             if (!empty($supplierIds) && is_array($supplierIds)) {
                 $taskQuery->whereIn('supplier_id', $supplierIds);
             }
-            
-            if (!empty($statuses) && is_array($statuses)) {
-                $taskQuery->whereIn('status', $statuses);
+
+            if (!empty($taskStatuses) && is_array($taskStatuses)) {
+                $taskQuery->whereIn('status', $taskStatuses);
             }
-            
+
             if (!empty($issuedBy) && is_array($issuedBy)) {
                 $taskQuery->whereIn('issued_by', $issuedBy);
             }
-            
+
             if ($dateFrom) {
                 $taskQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
             }
-            
+
             if ($dateTo) {
                 $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
             }
 
-            if (empty($statuses) || !in_array('void', $statuses)) {
+            // Only apply void exclusion if void is not explicitly selected
+            if (empty($taskStatuses) || !in_array('void', $taskStatuses)) {
                 $voidQuery = Task::where('status', 'void');
-                
+
                 if (!empty($supplierIds) && is_array($supplierIds)) {
                     $voidQuery->whereIn('supplier_id', $supplierIds);
                 }
-                
+
                 if (!empty($issuedBy) && is_array($issuedBy)) {
                     $voidQuery->whereIn('issued_by', $issuedBy);
                 }
-                
+
                 if ($dateFrom) {
                     $voidQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
                 }
-                
+
                 if ($dateTo) {
                     $voidQuery->whereDate('supplier_pay_date', '<=', $dateTo);
                 }
-                
+
                 $voidedTaskReferences = $voidQuery->pluck('reference')->toArray();
-                
+
                 if (!empty($voidedTaskReferences)) {
                     $taskQuery->whereNotIn('reference', $voidedTaskReferences);
                 }
             }
-            
-            $taskQuery->orderBy('supplier_pay_date', 'asc')->orderBy('reference', 'asc');
+
+            $allTasks = $taskQuery->get();
+
+            foreach ($allTasks as $task) {
+                $debit = 0;
+                $credit = 0;
+
+                if ($task->status === 'refund') {
+                    $credit = $task->total ?? 0;
+                } else {
+                    $debit = ($task->price ?? 0) + ($task->tax ?? 0) + ($task->supplier_surcharge ?? 0);
+                }
+
+                $mergedData->push((object)[
+                    'type' => 'task',
+                    'date' => $task->supplier_pay_date,
+                    'reference' => $task->reference,
+                    'original_reference' => $task->original_reference,
+                    'passenger_name' => $task->passenger_name,
+                    'supplier_name' => $task->supplier->name ?? 'N/A',
+                    'agent_name' => $task->agent->name ?? 'N/A',
+                    'issued_by' => $task->issued_by,
+                    'status' => $task->status,
+                    'debit' => $debit,
+                    'credit' => $credit,
+                ]);
+            }
 
         } catch (Exception $e) {
             Log::info('Error building task query for PDF', ['error' => $e->getMessage()]);
             return redirect()->back()->with('error', 'Error generating PDF');
         }
 
-    
-        $tasks = $taskQuery->get();
-        $totalTasks = $tasks->count();
-        $totalAmount = $tasks->sum('total');
+        if ($includePaymentVouchers) {
+            try {
+                $transactionQuery = Transaction::where('reference_number', 'LIKE', 'PV-%');
 
-        $suppliers = Supplier::whereIn('id', $supplierIds)->pluck('name')->toArray();
-        
-        // $filterSummary = [
-        //     'suppliers' => !empty($suppliers) ? implode(', ', $suppliers) : 'All',
-        //     'statuses' => !empty($statuses) ? implode(', ', array_map('ucfirst', $statuses)) : 'All',
-        //     'issued_by' => !empty($issuedBy) ? implode(', ', $issuedBy) : 'All',
-        //     'date_from' => $dateFrom ?? 'N/A',
-        //     'date_to' => $dateTo ?? 'N/A',
-        // ];
+                if ($dateFrom) {
+                    $transactionQuery->whereDate('transaction_date', '>=', $dateFrom);
+                }
+
+                if ($dateTo) {
+                    $transactionQuery->whereDate('transaction_date', '<=', $dateTo);
+                }
+
+                $allTransactions = $transactionQuery->get();
+
+                foreach ($allTransactions as $transaction) {
+                    $mergedData->push((object)[
+                        'type' => 'transaction',
+                        'date' => $transaction->transaction_date,
+                        'reference' => $transaction->reference_number,
+                        'original_reference' => null,
+                        'passenger_name' => $transaction->name . ($transaction->description ? ' - ' . $transaction->description : ''),
+                        'supplier_name' => 'Payment Voucher',
+                        'agent_name' => 'N/A',
+                        'issued_by' => 'N/A',
+                        'status' => 'payment_voucher',
+                        'debit' => 0,
+                        'credit' => $transaction->amount ?? 0,
+                    ]);
+                }
+            } catch (Exception $e) {
+                Log::info('Error fetching PV transactions for PDF', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // Sort by date, then by reference
+        $mergedData = $mergedData->sortBy([
+            ['date', 'asc'],
+            ['reference', 'asc'],
+        ])->values();
+
+        // Calculate totals (tasks only for count)
+        $totalTasks = $allTasks->count();
+        $totalDebit = $mergedData->sum('debit');
+        $totalCredit = $mergedData->sum('credit');
+        $netBalance = $totalDebit - $totalCredit;
 
         $pdf = Pdf::loadView('reports.pdf.tasks', [
-            'tasks' => $tasks,
+            'tasks' => $mergedData,
             'totalTasks' => $totalTasks,
-            'totalAmount' => $totalAmount,
-            // 'filterSummary' => $filterSummary,
+            'totalDebit' => $totalDebit,
+            'totalCredit' => $totalCredit,
+            'netBalance' => $netBalance,
             'generatedAt' => now()->format('M d, Y H:i:s'),
         ])
-        ->setPaper('a4', 'portrait')
+        ->setPaper('a4', 'landscape')
         ->setOptions(['defaultFont' => 'sans-serif']);
 
         $filename = 'tasks-report-' . now()->format('Y-m-d-His') . '.pdf';

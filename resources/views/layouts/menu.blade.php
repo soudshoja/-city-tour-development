@@ -255,11 +255,11 @@
             </a>
             </menuitem>
             @endcan
-            @can('viewReconcile', 'App\Models\Report')
+          <!--   @can('viewReconcile', 'App\Models\Report')
             <menuitem><a href="{{ route('reports.acc-reconcile') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Acc Reconcile</a>
             </menuitem>
-            @endcan
+            @endcan -->
             @can('viewProfitLoss', 'App\Models\Report')
             <menuitem><a href="{{ route('reports.profit-loss') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Profit & Loss</a>

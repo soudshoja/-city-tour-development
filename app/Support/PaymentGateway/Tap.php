@@ -67,6 +67,9 @@ class Tap
             'source' => [
                 'id' => $paymentMethod,
             ],
+            'merchant' => [
+                'id' => '23428929'
+            ],
             'description' => $request->input('description'),
             'metadata' => [
                 'invoice_number' => $request->input('invoice_number'),

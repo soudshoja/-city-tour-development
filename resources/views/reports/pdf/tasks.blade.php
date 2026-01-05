@@ -34,38 +34,6 @@
             color: #666;
         }
 
-        .summary-box {
-            background: #f7f7f7;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-        }
-
-        .summary-grid {
-            display: table;
-            width: 100%;
-        }
-
-        .summary-row {
-            display: table-row;
-        }
-
-        .summary-cell {
-            display: table-cell;
-            padding: 4px 8px;
-            vertical-align: top;
-        }
-
-        .summary-label {
-            font-weight: bold;
-            color: #333;
-            width: 120px;
-        }
-
-        .summary-value {
-            color: #555;
-        }
-
         .stats {
             display: table;
             width: 100%;
@@ -129,6 +97,11 @@
             background: #f9f9f9;
         }
 
+        /* Payment voucher row styling */
+        tbody tr.pv-row {
+            background: #f3e8ff !important;
+        }
+
         .text-right {
             text-align: right;
         }
@@ -160,6 +133,11 @@
             color: #721c24;
         }
 
+        .status-payment_voucher {
+            background: #e9d5ff;
+            color: #6b21a8;
+        }
+
         .status-other {
             background: #d1ecf1;
             color: #0c5460;
@@ -172,10 +150,6 @@
             font-size: 8px;
             color: #666;
             text-align: center;
-        }
-
-        .page-break {
-            page-break-after: always;
         }
 
         .no-data {
@@ -199,8 +173,16 @@
                 <div class="stat-value">{{ number_format($totalTasks) }}</div>
             </div>
             <div class="stat-cell">
-                <div class="stat-label">Total Amount</div>
-                <div class="stat-value">{{ number_format($totalAmount, 3) }} KWD</div>
+                <div class="stat-label">Total Debit</div>
+                <div class="stat-value">{{ number_format($totalDebit, 3) }} KWD</div>
+            </div>
+            <div class="stat-cell">
+                <div class="stat-label">Total Credit</div>
+                <div class="stat-value">{{ number_format($totalCredit, 3) }} KWD</div>
+            </div>
+            <div class="stat-cell">
+                <div class="stat-label">Balance</div>
+                <div class="stat-value">{{ number_format($netBalance, 3) }} KWD</div>
             </div>
         </div>
     </div>
@@ -210,47 +192,62 @@
             <thead>
                 <tr>
                     <th style="width: 10%;">Reference</th>
-                    <th style="width: 10%;">Original Reference</th>
-                    <th style="width: 16%;">Client</th>
-                    <th style="width: 14%;">Supplier</th>
-                    <th style="width: 12%;">Agent</th>
-                    <th style="width: 10%;">Pay Date</th>
-                    <th style="width: 10%;">Issued By</th>
+                    <th style="width: 10%;">Original Ref</th>
+                    <th style="width: 18%;">Client/Name</th>
+                    <th style="width: 12%;">Supplier</th>
+                    <th style="width: 10%;">Agent</th>
+                    <th style="width: 9%;">Pay Date</th>
+                    <th style="width: 8%;">Issued By</th>
                     <th style="width: 8%;">Status</th>
-                    <th style="width: 10%;" class="text-right">Amount</th>
+                    <th style="width: 7%;">Debit</th>
+                    <th style="width: 8%;">Credit</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach($tasks as $index => $task)
-                    <tr>
+                @foreach($tasks as $task)
+                    <tr class="{{ $task->type === 'transaction' ? 'pv-row' : '' }}">
                         <td>{{ $task->reference ?? 'N/A' }}</td>
                         <td>{{ $task->original_reference ?? 'N/A' }}</td>
                         <td>{{ $task->passenger_name ?? 'N/A' }}</td>
-                        <td>{{ $task->supplier->name ?? 'N/A' }}</td>
-                        <td>{{ $task->agent->name ?? 'N/A' }}</td>
-                        <td class="text-center">{{ $task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : 'N/A' }}</td>
+                        <td>{{ $task->supplier_name ?? 'N/A' }}</td>
+                        <td>{{ $task->agent_name ?? 'N/A' }}</td>
+                        <td class="text-center">{{ $task->date ? \Carbon\Carbon::parse($task->date)->format('Y-m-d') : 'N/A' }}</td>
                         <td>{{ $task->issued_by ?? 'N/A' }}</td>
                         <td class="text-center">
                             <span class="status-badge 
                                 @if($task->status === 'completed') status-completed
                                 @elseif($task->status === 'pending') status-pending
                                 @elseif(in_array($task->status, ['cancelled', 'void'])) status-void
+                                @elseif($task->status === 'payment_voucher') status-payment_voucher
                                 @else status-other
                                 @endif">
-                                {{ ucfirst($task->status ?? 'N/A') }}
+                                {{ $task->status === 'payment_voucher' ? 'Payment' : ucfirst($task->status ?? 'N/A') }}
                             </span>
                         </td>
-                        <td class="text-right">{{ number_format($task->total, 3) }}</td>
+                        <td class="text-right">
+                            @if($task->debit > 0)
+                                {{ number_format($task->debit, 3) }}
+                            @else
+                                -
+                            @endif
+                        </td>
+                        <td class="text-right">
+                            @if($task->credit > 0)
+                                {{ number_format($task->credit, 3) }}
+                            @else
+                                -
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
     @else
-        <div class="no-data">No tasks found matching the selected filters.</div>
+        <div class="no-data">No records found matching the selected filters.</div>
     @endif
 
     <div class="footer">
-        <div>Total Tasks: {{ number_format($totalTasks) }} | Total Amount: {{ number_format($totalAmount, 3) }} KWD</div>
+        <div>Total Tasks: {{ number_format($totalTasks) }} | Debit: {{ number_format($totalDebit, 3) }} KWD | Credit: {{ number_format($totalCredit, 3) }} KWD | Net: {{ number_format($totalAmount, 3) }} KWD</div>
         <div style="margin-top: 3px;">This report was automatically generated on {{ $generatedAt }}</div>
     </div>
 </body>

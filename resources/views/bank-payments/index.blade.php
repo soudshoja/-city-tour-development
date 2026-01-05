@@ -83,7 +83,7 @@
                                                 {{ $bankpayment->name }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
-                                                {{ \Carbon\Carbon::parse($bankpayment->date)->format('Y-m-d') }}
+                                                {{ \Carbon\Carbon::parse($bankpayment->transaction_date)->format('Y-m-d') }}
                                             </td>
                                             <td class="p-3 text-sm font-semibold text-gray-500">
                                                 {{ $bankpayment->description }}

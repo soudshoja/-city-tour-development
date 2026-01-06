@@ -2250,61 +2250,133 @@ class ReportController extends Controller
         // Remove payment_voucher from task statuses filter
         $taskStatuses = array_diff($statuses, ['payment_voucher']);
 
+        // Check if void/confirmed were selected
+        $voidSelected = in_array('void', $taskStatuses);
+        $confirmedSelected = in_array('confirmed', $taskStatuses);
+
+        $mainStatuses = array_diff($taskStatuses, ['void', 'confirmed']);
+
         try {
-            $taskQuery = Task::with(['supplier', 'agent', 'client']);
+            $allTasks = collect();
 
-            if (!empty($supplierIds) && is_array($supplierIds)) {
-                $taskQuery->whereIn('supplier_id', $supplierIds);
-            }
+            if (!empty($mainStatuses)) {
+                $taskQuery = Task::with(['supplier', 'agent', 'client'])
+                    ->whereIn('status', $mainStatuses);
 
-            if (!empty($taskStatuses) && is_array($taskStatuses)) {
-                $taskQuery->whereIn('status', $taskStatuses);
-            }
+                if (!empty($supplierIds) && is_array($supplierIds)) {
+                    $taskQuery->whereIn('supplier_id', $supplierIds);
+                }
 
-            if (!empty($issuedBy) && is_array($issuedBy)) {
-                $taskQuery->whereIn('issued_by', $issuedBy);
-            }
+                if (!empty($issuedBy) && is_array($issuedBy)) {
+                    $taskQuery->whereIn('issued_by', $issuedBy);
+                }
 
-            if ($dateFrom) {
-                $taskQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
-            }
+                if ($dateFrom) {
+                    $taskQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
+                }
 
-            if ($dateTo) {
-                $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
-            }
+                if ($dateTo) {
+                    $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
+                }
 
-            // Only apply void and confirmed exclusion if void is not explicitly selected
-            $excludeStatuses = ['void', 'confirmed'];
-
-            foreach ($excludeStatuses as $excludeStatus) {
-                if (empty($taskStatuses) || !in_array($excludeStatus, $taskStatuses)) {
-                    $excludeQuery = Task::where('status', $excludeStatus);
+                // Apply void exclusion (hide issued/reissued that have matching void)
+                // Skip if void is selected
+                if (!$voidSelected) {
+                    $voidQuery = Task::where('status', 'void');
 
                     if (!empty($supplierIds) && is_array($supplierIds)) {
-                        $excludeQuery->whereIn('supplier_id', $supplierIds);
+                        $voidQuery->whereIn('supplier_id', $supplierIds);
                     }
 
                     if (!empty($issuedBy) && is_array($issuedBy)) {
-                        $excludeQuery->whereIn('issued_by', $issuedBy);
+                        $voidQuery->whereIn('issued_by', $issuedBy);
                     }
 
-                    if ($dateFrom) {
-                        $excludeQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
-                    }
+                    $voidedTaskReferences = $voidQuery->pluck('reference')->toArray();
 
-                    if ($dateTo) {
-                        $excludeQuery->whereDate('supplier_pay_date', '<=', $dateTo);
-                    }
-
-                    $excludedReferences = $excludeQuery->pluck('reference')->toArray();
-
-                    if (!empty($excludedReferences)) {
-                        $taskQuery->whereNotIn('reference', $excludedReferences);
+                    if (!empty($voidedTaskReferences)) {
+                        $taskQuery->whereNotIn('reference', $voidedTaskReferences);
                     }
                 }
+
+                // Apply confirmed exclusion (hide issued/reissued that have matching confirmed)
+                // Skip if confirmed is selected
+                if (!$confirmedSelected) {
+                    $confirmedQuery = Task::where('status', 'confirmed');
+
+                    if (!empty($supplierIds) && is_array($supplierIds)) {
+                        $confirmedQuery->whereIn('supplier_id', $supplierIds);
+                    }
+
+                    if (!empty($issuedBy) && is_array($issuedBy)) {
+                        $confirmedQuery->whereIn('issued_by', $issuedBy);
+                    }
+
+                    $confirmedTaskReferences = $confirmedQuery->pluck('reference')->toArray();
+
+                    if (!empty($confirmedTaskReferences)) {
+                        $taskQuery->whereNotIn('reference', $confirmedTaskReferences);
+                    }
+                }
+
+                $allTasks = $taskQuery->get();
             }
 
-            $allTasks = $taskQuery->get();
+            $issuedReissuedReferences = Task::whereIn('status', ['issued', 'reissued'])
+                ->when(!empty($supplierIds), fn($q) => $q->whereIn('supplier_id', $supplierIds))
+                ->when(!empty($issuedBy), fn($q) => $q->whereIn('issued_by', $issuedBy))
+                ->pluck('reference')
+                ->toArray();
+
+            if ($voidSelected) {
+                $voidOnlyQuery = Task::with(['supplier', 'agent', 'client'])
+                    ->where('status', 'void')
+                    ->whereNotIn('reference', $issuedReissuedReferences);
+
+                if (!empty($supplierIds) && is_array($supplierIds)) {
+                    $voidOnlyQuery->whereIn('supplier_id', $supplierIds);
+                }
+
+                if (!empty($issuedBy) && is_array($issuedBy)) {
+                    $voidOnlyQuery->whereIn('issued_by', $issuedBy);
+                }
+
+                if ($dateFrom) {
+                    $voidOnlyQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
+                }
+
+                if ($dateTo) {
+                    $voidOnlyQuery->whereDate('supplier_pay_date', '<=', $dateTo);
+                }
+
+                $voidOnlyTasks = $voidOnlyQuery->get();
+                $allTasks = $allTasks->merge($voidOnlyTasks);
+            }
+
+            if ($confirmedSelected) {
+                $confirmedOnlyQuery = Task::with(['supplier', 'agent', 'client'])
+                    ->where('status', 'confirmed')
+                    ->whereNotIn('reference', $issuedReissuedReferences);
+
+                if (!empty($supplierIds) && is_array($supplierIds)) {
+                    $confirmedOnlyQuery->whereIn('supplier_id', $supplierIds);
+                }
+
+                if (!empty($issuedBy) && is_array($issuedBy)) {
+                    $confirmedOnlyQuery->whereIn('issued_by', $issuedBy);
+                }
+
+                if ($dateFrom) {
+                    $confirmedOnlyQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
+                }
+
+                if ($dateTo) {
+                    $confirmedOnlyQuery->whereDate('supplier_pay_date', '<=', $dateTo);
+                }
+
+                $confirmedOnlyTasks = $confirmedOnlyQuery->get();
+                $allTasks = $allTasks->merge($confirmedOnlyTasks);
+            }
         } catch (Exception $e) {
             Log::info('Error building task query', ['error' => $e->getMessage()]);
             return response()->json([
@@ -2528,67 +2600,138 @@ class ReportController extends Controller
 
         // Check if payment_voucher is included
         $includePaymentVouchers = in_array('payment_voucher', $statuses);
-        
+
         // Remove payment_voucher from task statuses filter
         $taskStatuses = array_diff($statuses, ['payment_voucher']);
+
+        $voidSelected = in_array('void', $taskStatuses);
+        $confirmedSelected = in_array('confirmed', $taskStatuses);
+
+        $mainStatuses = array_diff($taskStatuses, ['void', 'confirmed']);
 
         $mergedData = collect();
 
         try {
-            $taskQuery = Task::with(['supplier', 'agent', 'client']);
+            $allTasks = collect();
 
-            if (!empty($supplierIds) && is_array($supplierIds)) {
-                $taskQuery->whereIn('supplier_id', $supplierIds);
-            }
+            if (!empty($mainStatuses)) {
+                $taskQuery = Task::with(['supplier', 'agent', 'client'])
+                    ->whereIn('status', $mainStatuses);
 
-            if (!empty($taskStatuses) && is_array($taskStatuses)) {
-                $taskQuery->whereIn('status', $taskStatuses);
-            }
+                if (!empty($supplierIds) && is_array($supplierIds)) {
+                    $taskQuery->whereIn('supplier_id', $supplierIds);
+                }
 
-            if (!empty($issuedBy) && is_array($issuedBy)) {
-                $taskQuery->whereIn('issued_by', $issuedBy);
-            }
+                if (!empty($issuedBy) && is_array($issuedBy)) {
+                    $taskQuery->whereIn('issued_by', $issuedBy);
+                }
 
-            if ($dateFrom) {
-                $taskQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
-            }
+                if ($dateFrom) {
+                    $taskQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
+                }
 
-            if ($dateTo) {
-                $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
-            }
+                if ($dateTo) {
+                    $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
+                }
 
-            // Only apply void and confirmed exclusion if not explicitly selected
-            $excludeStatuses = ['void', 'confirmed'];
-
-            foreach ($excludeStatuses as $excludeStatus) {
-                if (empty($taskStatuses) || !in_array($excludeStatus, $taskStatuses)) {
-                    $excludeQuery = Task::where('status', $excludeStatus);
+                // Apply void exclusion (hide issued/reissued that have matching void)
+                // Skip if void is selected
+                if (!$voidSelected) {
+                    $voidQuery = Task::where('status', 'void');
 
                     if (!empty($supplierIds) && is_array($supplierIds)) {
-                        $excludeQuery->whereIn('supplier_id', $supplierIds);
+                        $voidQuery->whereIn('supplier_id', $supplierIds);
                     }
 
                     if (!empty($issuedBy) && is_array($issuedBy)) {
-                        $excludeQuery->whereIn('issued_by', $issuedBy);
+                        $voidQuery->whereIn('issued_by', $issuedBy);
                     }
 
-                    if ($dateFrom) {
-                        $excludeQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
-                    }
+                    $voidedTaskReferences = $voidQuery->pluck('reference')->toArray();
 
-                    if ($dateTo) {
-                        $excludeQuery->whereDate('supplier_pay_date', '<=', $dateTo);
-                    }
-
-                    $excludedReferences = $excludeQuery->pluck('reference')->toArray();
-
-                    if (!empty($excludedReferences)) {
-                        $taskQuery->whereNotIn('reference', $excludedReferences);
+                    if (!empty($voidedTaskReferences)) {
+                        $taskQuery->whereNotIn('reference', $voidedTaskReferences);
                     }
                 }
+
+                // Apply confirmed exclusion (hide issued/reissued that have matching confirmed)
+                // Skip if confirmed is selected
+                if (!$confirmedSelected) {
+                    $confirmedQuery = Task::where('status', 'confirmed');
+
+                    if (!empty($supplierIds) && is_array($supplierIds)) {
+                        $confirmedQuery->whereIn('supplier_id', $supplierIds);
+                    }
+
+                    if (!empty($issuedBy) && is_array($issuedBy)) {
+                        $confirmedQuery->whereIn('issued_by', $issuedBy);
+                    }
+
+                    $confirmedTaskReferences = $confirmedQuery->pluck('reference')->toArray();
+
+                    if (!empty($confirmedTaskReferences)) {
+                        $taskQuery->whereNotIn('reference', $confirmedTaskReferences);
+                    }
+                }
+
+                $allTasks = $taskQuery->get();
             }
 
-            $allTasks = $taskQuery->get();
+            $issuedReissuedReferences = Task::whereIn('status', ['issued', 'reissued'])
+                ->when(!empty($supplierIds), fn($q) => $q->whereIn('supplier_id', $supplierIds))
+                ->when(!empty($issuedBy), fn($q) => $q->whereIn('issued_by', $issuedBy))
+                ->pluck('reference')
+                ->toArray();
+
+            if ($voidSelected) {
+                $voidOnlyQuery = Task::with(['supplier', 'agent', 'client'])
+                    ->where('status', 'void')
+                    ->whereNotIn('reference', $issuedReissuedReferences);
+
+                if (!empty($supplierIds) && is_array($supplierIds)) {
+                    $voidOnlyQuery->whereIn('supplier_id', $supplierIds);
+                }
+
+                if (!empty($issuedBy) && is_array($issuedBy)) {
+                    $voidOnlyQuery->whereIn('issued_by', $issuedBy);
+                }
+
+                if ($dateFrom) {
+                    $voidOnlyQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
+                }
+
+                if ($dateTo) {
+                    $voidOnlyQuery->whereDate('supplier_pay_date', '<=', $dateTo);
+                }
+
+                $voidOnlyTasks = $voidOnlyQuery->get();
+                $allTasks = $allTasks->merge($voidOnlyTasks);
+            }
+
+            if ($confirmedSelected) {
+                $confirmedOnlyQuery = Task::with(['supplier', 'agent', 'client'])
+                    ->where('status', 'confirmed')
+                    ->whereNotIn('reference', $issuedReissuedReferences);
+
+                if (!empty($supplierIds) && is_array($supplierIds)) {
+                    $confirmedOnlyQuery->whereIn('supplier_id', $supplierIds);
+                }
+
+                if (!empty($issuedBy) && is_array($issuedBy)) {
+                    $confirmedOnlyQuery->whereIn('issued_by', $issuedBy);
+                }
+
+                if ($dateFrom) {
+                    $confirmedOnlyQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
+                }
+
+                if ($dateTo) {
+                    $confirmedOnlyQuery->whereDate('supplier_pay_date', '<=', $dateTo);
+                }
+
+                $confirmedOnlyTasks = $confirmedOnlyQuery->get();
+                $allTasks = $allTasks->merge($confirmedOnlyTasks);
+            }
 
             foreach ($allTasks as $task) {
                 $debit = 0;
@@ -2614,7 +2757,6 @@ class ReportController extends Controller
                     'credit' => $credit,
                 ]);
             }
-
         } catch (Exception $e) {
             Log::info('Error building task query for PDF', ['error' => $e->getMessage()]);
             return redirect()->back()->with('error', 'Error generating PDF');
@@ -2660,7 +2802,7 @@ class ReportController extends Controller
             ['reference', 'asc'],
         ])->values();
 
-        // Calculate totals (tasks only for count)
+        // Calculate totals
         $totalTasks = $allTasks->count();
         $totalDebit = $mergedData->sum('debit');
         $totalCredit = $mergedData->sum('credit');
@@ -2674,8 +2816,8 @@ class ReportController extends Controller
             'netBalance' => $netBalance,
             'generatedAt' => now()->format('M d, Y H:i:s'),
         ])
-        ->setPaper('a4', 'landscape')
-        ->setOptions(['defaultFont' => 'sans-serif']);
+            ->setPaper('a4', 'landscape')
+            ->setOptions(['defaultFont' => 'sans-serif']);
 
         $filename = 'tasks-report-' . now()->format('Y-m-d-His') . '.pdf';
         return $pdf->download($filename);

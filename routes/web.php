@@ -180,6 +180,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/bulk-update', [TaskController::class, 'bulkUpdate'])->name('bulkUpdate');
         Route::post('/store-manual', [TaskController::class, 'storeManualHotel'])->name('store.manual');
         Route::put('/update-financial/{task}', [TaskController::class, 'updateAdminFinancial'])->name('update.financial');
+        Route::post('/{task}/switch-invoice', [TaskController::class, 'switchInvoiceTask'])->name('switchInvoice');
     });
 
     // SUPPLIERS

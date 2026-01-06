@@ -5445,4 +5445,144 @@ class TaskController extends Controller
         ], 200);
         
     }
+
+    public function switchInvoiceTask(Request $request, Task $task): RedirectResponse
+    {
+        $user = Auth::user();
+
+        Log::info('[TASK] Switch invoice task request', [
+            'user_id' => $user->id,
+            'user_role' => $user->role_id,
+            'task_id' => $task->id,
+            'task_reference' => $task->reference,
+            'task_status' => $task->status,
+            'original_task_id' => $task->original_task_id,
+        ]);
+
+        if (!$task->originalTask) {
+            Log::warning('[TASK] Switch invoice failed - no original task', [
+                'task_id' => $task->id,
+            ]);
+            return back()->with('error', 'This task does not have an original task linked.');
+        }
+
+        if ($task->status !== 'issued') {
+            Log::warning('[TASK] Switch invoice failed - task not issued', [
+                'task_id' => $task->id,
+                'task_status' => $task->status,
+            ]);
+            return back()->with('error', 'Only issued tasks can be switched.');
+        }
+
+        if ($task->originalTask->status !== 'confirmed') {
+            Log::warning('[TASK] Switch invoice failed - original task not confirmed', [
+                'task_id' => $task->id,
+                'original_task_id' => $task->originalTask->id,
+                'original_task_status' => $task->originalTask->status,
+            ]);
+            return back()->with('error', 'Original task must be in confirmed status.');
+        }
+
+        $originalTask = $task->originalTask;
+        $invoiceDetail = $originalTask->invoiceDetail;
+
+        if (!$invoiceDetail) {
+            Log::warning('[TASK] Switch invoice failed - no invoice on original task', [
+                'task_id' => $task->id,
+                'original_task_id' => $originalTask->id,
+            ]);
+            return back()->with('error', 'Original task does not have an invoice.');
+        }
+
+        if ($task->invoiceDetail) {
+            Log::warning('[TASK] Switch invoice failed - task already has invoice', [
+                'task_id' => $task->id,
+                'existing_invoice_detail_id' => $task->invoiceDetail->id,
+            ]);
+            return back()->with('error', 'This task already has an invoice linked.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $invoice = $invoiceDetail->invoice;
+            $oldSupplierPrice = $invoiceDetail->supplier_price ?? 0;
+            $newSupplierPrice = $task->total ?? 0;
+            $taskPrice = $invoiceDetail->task_price ?? 0;
+            $oldMarkup = $invoiceDetail->markup_price ?? 0;
+            $newMarkup = $taskPrice - $newSupplierPrice;
+            $oldProfit = $taskPrice - $oldSupplierPrice;
+            $newProfit = $newMarkup;
+            $isPaidInvoice = $invoice->status === 'paid';
+
+            Log::info('[TASK] Switch invoice - updating invoice detail', [
+                'invoice_detail_id' => $invoiceDetail->id,
+                'invoice_number' => $invoice->invoice_number ?? null,
+                'invoice_status' => $invoice->status,
+                'old_task_id' => $originalTask->id,
+                'new_task_id' => $task->id,
+                'task_price' => $taskPrice,
+                'old_supplier_price' => $oldSupplierPrice,
+                'new_supplier_price' => $newSupplierPrice,
+                'old_markup' => $oldMarkup,
+                'new_markup' => $newMarkup,
+                'old_profit' => $oldProfit,
+                'new_profit' => $newProfit,
+                'profit_change' => $newProfit - $oldProfit,
+                'is_loss' => $newProfit < 0,
+            ]);
+
+            // Update InvoiceDetail with new task_id, supplier_price, and markup_price
+            $invoiceDetail->update([
+                'task_id' => $task->id,
+                'supplier_price' => $newSupplierPrice,
+                'markup_price' => $newMarkup,
+            ]);
+
+            // Update JournalEntry task_id if this invoice has payments
+            $journalEntriesUpdated = 0;
+            if ($isPaidInvoice) {
+                $journalEntries = JournalEntry::where('invoice_detail_id', $invoiceDetail->id)
+                    ->where('task_id', $originalTask->id)
+                    ->get();
+
+                foreach ($journalEntries as $journalEntry) {
+                    Log::info('[TASK] Switch invoice - updating journal entry task_id', [
+                        'journal_entry_id' => $journalEntry->id,
+                        'old_task_id' => $journalEntry->task_id,
+                        'new_task_id' => $task->id,
+                    ]);
+
+                    $journalEntry->update(['task_id' => $task->id]);
+                    $journalEntriesUpdated++;
+                }
+            }
+
+            DB::commit();
+
+            Log::info('[TASK] Switch invoice success', [
+                'invoice_detail_id' => $invoiceDetail->id,
+                'invoice_number' => $invoice->invoice_number ?? null,
+                'old_task_id' => $originalTask->id,
+                'new_task_id' => $task->id,
+                'user_id' => $user->id,
+                'journal_entries_updated' => $journalEntriesUpdated,
+                'profit_impact' => $newProfit - $oldProfit,
+            ]);
+
+            return back()->with('success', 'Invoice has been switched to the issued task successfully.');
+        } catch (Exception $e) {
+            DB::rollBack();
+
+            Log::error('[TASK] Switch invoice failed - exception', [
+                'task_id' => $task->id,
+                'original_task_id' => $originalTask->id,
+                'invoice_detail_id' => $invoiceDetail->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->with('error', 'Failed to switch invoice: ' . $e->getMessage());
+        }
+    }
 }

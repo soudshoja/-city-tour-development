@@ -33,6 +33,8 @@
         'tnc_read_agree' => 'I have read and agree to the',
         'tnc_title' => 'Terms and Conditions',
         'tnc_subtitle' => 'Please read carefully before proceeding with your payment',
+        'tnc_agreed' => 'This payment is abide by the ',
+        'tnc_agreed_2' => ' agreed upon at the time of payment',
         'agree' => 'I Agree',
         'close' => 'Close',
 

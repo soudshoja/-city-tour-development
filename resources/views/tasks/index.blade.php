@@ -1196,6 +1196,7 @@
                                                                             </a>
                                                                         </li>
                                                                         @endif
+                                                                        @include('tasks.partial.confirm-issue', ['task' => $task])
                                                                     </ul>
                                                                 </div>
                                                             </template>

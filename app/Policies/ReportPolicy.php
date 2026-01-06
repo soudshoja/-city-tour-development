@@ -21,12 +21,13 @@ class ReportPolicy
 
     public function viewPayableSupplier(User $user) 
     {
-if ($user->hasRole('accountant')) {
+        if ($user->hasRole('accountant')) {
             return false;
         }
 
         return $user->can('view payable');
     }
+
     public function viewReconcile(User $user)
     {
         return $user->can('view reconcile report');
@@ -50,5 +51,10 @@ if ($user->hasRole('accountant')) {
     public function viewDailySales(User $user)
     {
         return $user->can('view daily sales');
+    }
+
+    public function viewTaskReport(User $user)
+    {
+        return $user->can('view task report');
     }
 }

@@ -2273,30 +2273,34 @@ class ReportController extends Controller
                 $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
             }
 
-            // Only apply void exclusion if void is not explicitly selected
-            if (empty($taskStatuses) || !in_array('void', $taskStatuses)) {
-                $voidQuery = Task::where('status', 'void');
+            // Only apply void and confirmed exclusion if void is not explicitly selected
+            $excludeStatuses = ['void', 'confirmed'];
 
-                if (!empty($supplierIds) && is_array($supplierIds)) {
-                    $voidQuery->whereIn('supplier_id', $supplierIds);
-                }
+            foreach ($excludeStatuses as $excludeStatus) {
+                if (empty($taskStatuses) || !in_array($excludeStatus, $taskStatuses)) {
+                    $excludeQuery = Task::where('status', $excludeStatus);
 
-                if (!empty($issuedBy) && is_array($issuedBy)) {
-                    $voidQuery->whereIn('issued_by', $issuedBy);
-                }
+                    if (!empty($supplierIds) && is_array($supplierIds)) {
+                        $excludeQuery->whereIn('supplier_id', $supplierIds);
+                    }
 
-                if ($dateFrom) {
-                    $voidQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
-                }
+                    if (!empty($issuedBy) && is_array($issuedBy)) {
+                        $excludeQuery->whereIn('issued_by', $issuedBy);
+                    }
 
-                if ($dateTo) {
-                    $voidQuery->whereDate('supplier_pay_date', '<=', $dateTo);
-                }
+                    if ($dateFrom) {
+                        $excludeQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
+                    }
 
-                $voidedTaskReferences = $voidQuery->pluck('reference')->toArray();
+                    if ($dateTo) {
+                        $excludeQuery->whereDate('supplier_pay_date', '<=', $dateTo);
+                    }
 
-                if (!empty($voidedTaskReferences)) {
-                    $taskQuery->whereNotIn('reference', $voidedTaskReferences);
+                    $excludedReferences = $excludeQuery->pluck('reference')->toArray();
+
+                    if (!empty($excludedReferences)) {
+                        $taskQuery->whereNotIn('reference', $excludedReferences);
+                    }
                 }
             }
 
@@ -2553,30 +2557,34 @@ class ReportController extends Controller
                 $taskQuery->whereDate('supplier_pay_date', '<=', $dateTo);
             }
 
-            // Only apply void exclusion if void is not explicitly selected
-            if (empty($taskStatuses) || !in_array('void', $taskStatuses)) {
-                $voidQuery = Task::where('status', 'void');
+            // Only apply void and confirmed exclusion if not explicitly selected
+            $excludeStatuses = ['void', 'confirmed'];
 
-                if (!empty($supplierIds) && is_array($supplierIds)) {
-                    $voidQuery->whereIn('supplier_id', $supplierIds);
-                }
+            foreach ($excludeStatuses as $excludeStatus) {
+                if (empty($taskStatuses) || !in_array($excludeStatus, $taskStatuses)) {
+                    $excludeQuery = Task::where('status', $excludeStatus);
 
-                if (!empty($issuedBy) && is_array($issuedBy)) {
-                    $voidQuery->whereIn('issued_by', $issuedBy);
-                }
+                    if (!empty($supplierIds) && is_array($supplierIds)) {
+                        $excludeQuery->whereIn('supplier_id', $supplierIds);
+                    }
 
-                if ($dateFrom) {
-                    $voidQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
-                }
+                    if (!empty($issuedBy) && is_array($issuedBy)) {
+                        $excludeQuery->whereIn('issued_by', $issuedBy);
+                    }
 
-                if ($dateTo) {
-                    $voidQuery->whereDate('supplier_pay_date', '<=', $dateTo);
-                }
+                    if ($dateFrom) {
+                        $excludeQuery->whereDate('supplier_pay_date', '>=', $dateFrom);
+                    }
 
-                $voidedTaskReferences = $voidQuery->pluck('reference')->toArray();
+                    if ($dateTo) {
+                        $excludeQuery->whereDate('supplier_pay_date', '<=', $dateTo);
+                    }
 
-                if (!empty($voidedTaskReferences)) {
-                    $taskQuery->whereNotIn('reference', $voidedTaskReferences);
+                    $excludedReferences = $excludeQuery->pluck('reference')->toArray();
+
+                    if (!empty($excludedReferences)) {
+                        $taskQuery->whereNotIn('reference', $excludedReferences);
+                    }
                 }
             }
 

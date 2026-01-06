@@ -190,7 +190,7 @@
                         name="selected_payment_method"
                         id="payment_method_{{ $method->id }}"
                         value="{{ $method->id }}"
-                        data-final-amount="{{ number_format($method->final_amount, 2, '.', '') }}"
+                        data-final-amount="{{ number_format($method->final_amount, 3, '.', '') }}"
                         {{ $index === 0 ? 'checked' : '' }}
                         {{ !$method->is_active ? 'disabled' : '' }}
                         class="w-4 h-4 text-blue-600 focus:ring-blue-500 {{ $marginStart }}">
@@ -208,7 +208,47 @@
         </div>
         @endif
 
-        <!-- Notes & Amounts -->
+        @if ($payment->terms_conditions && $payment->status === 'completed')
+        <!-- tnc modal -->
+        <div class="mt-6 text-sm text-gray-600 {{ $textAlign }}" x-data="{ TNCPreviewModal: false }">
+            <span>
+                {{ __('invoice.tnc_agreed') }}
+            </span>
+            <span type="button" @click="TNCPreviewModal = true" class="text-blue-600 hover:underline font-medium cursor-pointer">
+                {{ __('invoice.tnc_title') }}
+            </span>
+            <span>
+                {{ __('invoice.tnc_agreed_2') }}
+            </span>
+            <!-- Modal -->
+            <div x-show="TNCPreviewModal" x-cloak
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                @click.away="TNCPreviewModal = false">
+                <div class="bg-white rounded-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col shadow-2xl">
+                    <div class="px-6 pt-5 pb-4 flex items-start justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">{{ __('invoice.tnc_title') }}</h3>
+                            <p class="text-xs text-gray-500 italic mt-0.5">{{ __('invoice.tnc_subtitle') }}</p>
+                        </div>
+                        <button type="button" @click="TNCPreviewModal = false" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="px-6 py-4 overflow-y-auto flex-1 border-t border-gray-200">
+                        <div class="prose prose-sm text-gray-600 whitespace-pre-wrap">{{ $payment->terms_conditions }}</div>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
+                        <button type="button" @click="TNCPreviewModal = false" class="px-4 py-2 text-sm bg-gray-100 text-gray-600 font-medium rounded-full shadow-md hover:text-gray-800">
+                            {{ __('invoice.close') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start mb-8 mt-10">
             <div class="md:col-span-2">
                 @if ($payment->status === 'completed')
@@ -231,32 +271,32 @@
                 @endif
             </div>
 
+            @php
+                if ($payment->status === 'completed') {
+                    $formattedAmount = number_format($payment->amount + $payment->service_charge, 3) . ' ' . $payment->currency;
+                } else {
+                    $hasAvailablePaymentMethods = $payment->availablePaymentMethods && $payment->availablePaymentMethods->isNotEmpty();
+                    $displayAmount = $hasAvailablePaymentMethods 
+                        ? $payment->availablePaymentMethods->first()->final_amount 
+                        : $payment->amount + $payment->service_charge;
+                    $formattedAmount = number_format($displayAmount, 3) . ' ' . $payment->currency;
+                }
+            @endphp
+
             <div class="md:col-span-1 w-full text-sm">
                 <div class="flex justify-between py-2 border-b border-gray-200">
                     <span>{{ __('invoice.amount') }}:</span>
-                    <span id="display-amount">
-                        @if ($payment->availablePaymentMethods && $payment->availablePaymentMethods->isNotEmpty())
-                            {{ number_format($payment->availablePaymentMethods->first()->final_amount, 2) }} {{ $payment->currency }}
-                        @else
-                            {{ number_format($payment->amount, 2) }} {{ $payment->currency }}
-                        @endif
-                    </span>
+                    <span id="display-amount">{{ $formattedAmount }}</span>
                 </div>
                 <div class="flex justify-between items-center py-2 font-bold text-gray-800">
                     <span>{{ __('invoice.total') }}:</span>
-                    <span id="total-amount">
-                        @if ($payment->availablePaymentMethods && $payment->availablePaymentMethods->isNotEmpty())
-                            {{ number_format($payment->availablePaymentMethods->first()->final_amount, 2) }} {{ $payment->currency }}
-                        @else
-                            {{ number_format($payment->amount, 2) }} {{ $payment->currency }}
-                        @endif
-                    </span>
+                    <span id="total-amount">{{ $formattedAmount }}</span>
                 </div>
             </div>
         </div>
 
         <!-- TnC & Pay Now -->
-        @if (!empty($payment->terms_conditions) && $payment->status != 'completed')
+        @if ($payment->terms_conditions && $payment->status != 'completed')
         <div class="md:col-span-3 w-full mt-2" x-data="{ TNCModal: false, agreed: false }">
             <div class="rounded-xl p-4">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

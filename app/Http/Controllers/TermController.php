@@ -13,9 +13,15 @@ class TermController extends Controller
     /**
      * Get all templates for the current company (JSON for Alpine.js)
      */
-    public function index()
+    public function index(Request $request)
     {
-        $companyId = $this->getCompanyId();
+        $request->validate([
+            'company_id' => 'nullable|exists:companies,id',
+        ]); 
+    
+        $companyId = $this->getCompanyId($request);
+
+        $request = $request->all();
 
         $templates = Term::with('creator')
             ->where('company_id', $companyId)
@@ -40,6 +46,7 @@ class TermController extends Controller
         return response()->json([
             'success' => true,
             'templates' => $templates,
+            'request' => $request,
         ]);
     }
 
@@ -216,12 +223,12 @@ class TermController extends Controller
     /**
      * Get company ID based on user role
      */
-    private function getCompanyId()
+    private function getCompanyId(?Request $request = null)
     {
         $user = Auth::user();
 
         if ($user->role->id == Role::ADMIN) {
-            return request()->company_id ?? 1;
+            return $request->input('company_id', 1);
         } elseif ($user->role->id == Role::COMPANY) {
             return $user->company->id;
         } elseif ($user->role->id == Role::BRANCH) {

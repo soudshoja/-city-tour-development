@@ -1,36 +1,6 @@
 <x-app-layout>
     <div x-data="{ showFilter: false }">
         <!-- Page Heading -->
-        @if(auth()->user()->role_id == \App\Models\Role::ADMIN)
-        <div class="p-2 bg-gray-500 text-white rounded shadow mb-4 flex items-center justify-between">
-            <div class="grid">
-                <h1 class="text-xl font-semibold">Admin View</h1>
-                <p class="text-sm">You have access to all transactions across all companies.</p>
-            </div>
-
-            <form method="GET" action="{{ route('coa.transaction') }}">
-                @foreach(request()->except('company_id','page') as $key => $val)
-                    @if(is_array($val))
-                        @foreach($val as $v)
-                            <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
-                        @endforeach
-                    @else
-                        <input type="hidden" name="{{ $key }}" value="{{ $val }}">
-                    @endif
-                @endforeach
-                <select name="company_id"
-                        class="form-select w-fit py-2 px-6 border rounded-md bg-white text-gray-800"
-                        onchange="this.form.submit()">
-                    <option value="">Select Company</option>
-                    @foreach($companies as $companySelect)
-                        <option value="{{ $companySelect->id }}" {{ $companySelect->id == $company->id ? 'selected' : '' }}>
-                            {{ $companySelect->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </form>
-        </div>
-        @endif
         <div class="flex justify-between items-center gap-5 my-3 mb-4">
             <div class="flex items-center space-x-4">
                 <div class="p-3 DarkBGcolor rounded-full shadow-md flex items-center justify-center heartbeat">
@@ -202,18 +172,19 @@
                 </div>
 
                 <!-- Export Button -->
-                <button class="dark:text-white flex px-5 py-3 gap-2 city-light-yellow rounded-lg BoxShadow items-center text-xs md:text-sm">
+                <!-- <button class="dark:text-white flex px-5 py-3 gap-2 city-light-yellow rounded-lg BoxShadow items-center text-xs md:text-sm">
                     <svg class="w-4 h-4 md:w-5 md:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                         <path fill="currentColor"
                             d="M8.71 7.71L11 5.41V15a1 1 0 0 0 2 0V5.41l2.29 2.3a1 1 0 0 0 1.42 0a1 1 0 0 0 0-1.42l-4-4a1 1 0 0 0-.33-.21a1 1 0 0 0-.76 0a1 1 0 0 0-.33.21l-4 4a1 1 0 1 0 1.42 1.42M21 14a1 1 0 0 0-1 1v4a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-4a1 1 0 0 0-2 0v4a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3v-4a1 1 0 0 0-1-1" />
                     </svg>
                     <span class="text-xs md:text-sm">Export</span>
-                </button>
+                </button> -->
             </div>
         </div>
 
         <!-- Transaction List -->
-        <div class="panel overflow-x-auto max-h-screen mt-4">
+        <div class="bg-white rounded-lg shadow-sm dark:bg-gray-800">
+            <x-admin-card title="transactions" :companyId="request('company_id')" />
             @if ($transactions->isEmpty())
             <div class="text-center text-gray-600 py-20">
                 <h3 class="text-lg font-semibold">No transactions found</h3>
@@ -222,7 +193,7 @@
                 class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700">Reset Filter</a>
             </div>
             @else
-            <div class="relative max-h-[90vh] overflow-y-auto rounded-lg shadow">
+            <div class="relative p-4 max-h-[90vh] overflow-y-auto rounded-lg shadow">
                 <table class="min-w-full bg-white">
                     <thead class="bg-gray-200 sticky top-0 z-20">
                         <tr>

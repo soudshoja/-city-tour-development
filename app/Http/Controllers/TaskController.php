@@ -202,6 +202,16 @@ class TaskController extends Controller
             return redirect()->back()->with('error', 'User not authorized to view tasks.');
         }
 
+        $confirmedIssuedTask = (clone $query)->where('status', 'confirmed')
+            ->whereDoesntHave('invoiceDetail')
+            ->whereHas('linkedTask', function ($q) {
+                $q->where('status', 'issued');
+            })->pluck('id')->toArray();
+
+        // filter out the confirmed tasks from the query
+        $query->whereNotIn('id', $confirmedIssuedTask);
+
+
         if (!$companyId) {
             return redirect()->back()->with('error', 'Company not found for the user.');
         }
@@ -987,15 +997,35 @@ class TaskController extends Controller
             'enabled' => $request->enabled ?? false
         ]);
 
-        // Handle original task for non-issued statuses
+        // Handle original task for non-issued statuses (reissued, refund, void, emd -> issued/reissued)
         if (in_array($request->status, ['reissued', 'refund', 'void', 'emd'])) {
             $originalTask = Task::where('reference', $request->original_reference)
                 ->orWhere('reference', $request->reference)
+                ->where('passenger_name', $request->passenger_name)
                 ->where('company_id', $request->company_id)
                 ->whereIn('status', ['issued', 'reissued'])
                 ->first();
             if ($originalTask) {
                 $request->merge(['original_task_id' => $originalTask->id]);
+            }
+        }
+
+        // Handle linking issued tasks to their confirmed task (issued -> confirmed)
+        if ($request->status === 'issued') {
+            $passengerName = $request->client_name ?? $request->passenger_name;
+            $confirmedTask = Task::where('reference', $request->reference)
+                ->where('company_id', $request->company_id)
+                ->where('status', 'confirmed')
+                ->where('passenger_name', $passengerName)
+                ->first();
+            
+            if ($confirmedTask) {
+                $request->merge(['original_task_id' => $confirmedTask->id]);
+                Log::info('[TASK] Linked issued task to confirmed task', [
+                    'issued_reference' => $request->reference,
+                    'passenger_name' => $passengerName,
+                    'confirmed_task_id' => $confirmedTask->id,
+                ]);
             }
         }
 

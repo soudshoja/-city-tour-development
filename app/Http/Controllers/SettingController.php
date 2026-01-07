@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\Setting;
 use Database\Seeders\SettingSeeder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class SettingController extends Controller
 {
@@ -15,22 +16,31 @@ class SettingController extends Controller
         SettingSeeder::run(); // Ensure settings are seeded on controller instantiation
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        if(!(Auth()->user()->role_id = Role::ADMIN || Auth()->user()->role_id = Role::SUPER_ADMIN)) {
-            return redirect()->route('dashboard')->with('error', 'You do not have permission to access settings.');
-        }
+        Gate::authorize('viewAny', Setting::class);
+
+        $request->validate([
+            'company_id' => 'nullable|exists:companies,id',
+        ]);
+
+        $companyId = $request->input('company_id', 1);
 
         Setting::all()->each(function ($setting) {
             $setting->value = $setting->value; // Ensure value is cast correctly
         });
 
-        $settings = Setting::all()->keyBy('key');
+        $settings = Setting::where('company_id', $companyId)
+            ->get();
 
-        view()->share('settings', $settings);
-        view()->share('invoiceExpiryDefault', $settings->get('invoice_expiry_days', 5)->value);
+        $invoiceExpiryDefault = $settings->firstWhere('key', 'invoice_expiry_days')->value ?? 30;
+        $isAdmin = auth()->user()->role_id == Role::ADMIN && auth()->user()->hasRole('admin');
 
-        return view('settings.index');
+        return view('settings.index', compact(
+            'invoiceExpiryDefault',
+            'isAdmin',
+            'companyId'
+        ));
     }
 
     public function updateInvoiceExpiry(Request $request)

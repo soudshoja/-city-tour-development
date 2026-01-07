@@ -459,7 +459,7 @@
                                     </div>
 
                                     @if ($invoice->status === 'unpaid')
-                                    <span x-show="paymentType" class="text-xs text-blue-500 ml-2 cursor-pointer" @click="showModalType = true">
+                                    <span x-show="paymentType && hasInvoicePartials" class="text-xs text-blue-500 ml-2 cursor-pointer" @click="showModalType = true">
                                         (Change Type)
                                     </span>
                                     @elseif ($invoice->status === 'partial')
@@ -476,27 +476,37 @@
                                     <div class="bg-white rounded-lg shadow-lg p-6 w-[28rem] border border-gray-200 space-y-5">
                                         <div class="flex justify-between items-center">
                                             <h2 class="text-xl font-bold text-gray-800">Change Payment Type</h2>
-                                            <button type="button" @click="showModalType = false"
+                                            <button type="button" @click="closeTypeModal()"
                                                 class="text-gray-400 hover:text-red-500 text-2xl leading-none">&times;</button>
                                         </div>
 
                                         <div class="space-y-3">
-                                            <p class="text-sm text-gray-700 text-center">Are you sure you want to change payment type of this invoice?</p>
+                                            <p class="text-sm text-gray-700 text-center">
+                                                This invoice already has payment records. Changing the payment type will affect existing records.
+                                            </p>
+                                            <div class="flex justify-center items-center gap-2 text-sm text-gray-600">
+                                                <span>Current:</span>
+                                                <strong class="text-green-600" x-text="paymentType ? paymentType.charAt(0).toUpperCase() + paymentType.slice(1) : 'N/A'"></strong>
+                                                <span>→</span>
+                                                <span>New:</span>
+                                                <strong class="text-blue-600" x-text="pendingPaymentType ? pendingPaymentType.charAt(0).toUpperCase() + pendingPaymentType.slice(1) : ''"></strong>
+                                            </div>
                                         </div>
 
                                         <form method="POST" action="{{ route('invoice.update-type') }}" class="flex justify-between items-center pt-3 w-full">
                                             @csrf
                                             <input type="hidden" name="invoice_id" value="{{ $invoice->id }}">
+                                            <input type="hidden" name="new_payment_type" :value="pendingPaymentType">
 
                                             <button type="button"
                                                 class="text-gray-600 text-sm px-4 py-2 border rounded-full shadow-md hover:bg-gray-100"
-                                                @click="showModalType = false">
+                                                @click="closeTypeModal()">
                                                 Cancel
                                             </button>
 
                                             <button type="submit"
                                                 class="text-white bg-blue-600 text-sm px-4 py-2 rounded-full shadow-md hover:bg-blue-700">
-                                                Confirm
+                                                Confirm Change
                                             </button>
                                         </form>
                                     </div>
@@ -536,7 +546,7 @@
                                                         <span class="font-semibold">{{ $invoice->currency }} {{ number_format($partial->amount, 2) }}</span>
                                                     </div>
 
-                                                   <!-- Gateway Selection -->
+                                                <!-- Gateway Selection -->
                                                     <div class="mb-2">
                                                         <label class="block text-sm font-medium text-gray-700 mb-1">Payment Gateway</label>
                                                         <select 
@@ -568,110 +578,113 @@
                                                             @endforeach
                                                         </select>
                                                     </div>
-                                                @endforeach
 
-                                                @if(!$unpaidPartial)
-                                                    <p class="text-sm text-gray-500 italic">No unpaid partials found for this invoice.</p>
-                                                @endif
-                                            </div>
+                                                    <div class="flex justify-end">
+                                                        <button type="submit"
+                                                            class="text-white bg-blue-600 text-xs px-3 py-1.5 rounded-full shadow-md hover:bg-blue-700">
+                                                            Update
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            @endforeach
 
-                                            <!-- Footer -->
-                                            <div class="flex justify-between items-center pt-3">
-                                                <button type="button"
-                                                    class="text-gray-600 text-sm px-4 py-2 border rounded-full shadow-md hover:bg-gray-100"
-                                                    @click="showModalGateway = false">
-                                                    Close
-                                                </button>
+                                            @if($unpaidPartial->isEmpty())
+                                                <p class="text-sm text-gray-500 italic">No unpaid partials found for this invoice.</p>
+                                            @endif
+                                        </div>
 
-                                                <button type="submit"
-                                                    class="text-white bg-blue-600 text-sm px-4 py-2 rounded-full shadow-md hover:bg-blue-700">
-                                                    Update Gateway
-                                                </button>
-                                            </div>
-
-                                        </form>
+                                        <!-- Footer -->
+                                        <div class="flex justify-end items-center pt-3">
+                                            <button type="button"
+                                                class="text-gray-600 text-sm px-4 py-2 border rounded-full shadow-md hover:bg-gray-100"
+                                                @click="showModalGateway = false">
+                                                Close
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
-                            </div>
-
-                            <input type="hidden" id="paymentTypeSaved" name="payment_type_saved"
-                                value="{{ $invoice->payment_type }}">
-                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
-                                <div x-data="{ clientCreditModal: false, generateInvoiceWithCreditModal: false }">
-                                    @php
-                                    $balanceCredit = \App\Models\Credit::getTotalCreditsByClient($selectedClient->id);
-                                    @endphp
-                                    @if ($invoice->amount <= $balanceCredit)
-                                        <button type="button" onclick="showModal('credit')" id="payment_type_credit" name="payment_type"
-                                        class="rounded-full flex flex-col items-center justify-center w-full
-                                        px-4 py-2 border border-gray-300 
-                                        bg-white text-gray-700 transition gap-2 
-                                        hover:bg-green-500 hover:text-white hover:shadow-xl"
-                                        {{ $invoice->amount > $balanceCredit ? 'disabled' : '' }}>
-                                        <span class="font-medium">{{ $selectedClient->first_name }}:
-                                            KWD {{ $balanceCredit }}</span>
-                                        @if ($invoice->amount > $balanceCredit)
-                                        <span class="text-red-500">Credit Limit Exceeded</span>
-                                        @endif
-                                        </button>
-                                        <div id="clientCreditModal"
-                                            class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
-                                            <div class="bg-white rounded-lg p-6 shadow-lg">
-                                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Are you sure you want to proceed with this payment?</h2>
-                                                <p class="text-gray-600">The client has a credit limit of
-                                                    {{ $balanceCredit }} KWD.
-                                                </p>
-                                                <p>
-                                                    <span>After payment: {{ $balanceCredit }} - {{ $invoice->amount }} =
-                                                        {{ $balanceCredit - $invoice->amount }} KWD</span>
-                                                </p>
-                                                <div class="mt-4 flex justify-end">
-                                                    <button @click="savePartial('credit')"
-                                                        class="mr-2 px-4 py-2 bg-blue-500 text-white rounded">Proceed</button>
-                                                    <button onclick="hideModal()"
-                                                        class="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
-                                                </div>
-                                            </div>
-
-                                        </div>
-                                        @else
-                                        @if ($creditUsed && $creditUsed->amount < 0)
-                                            <a target="_blank" href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}"><button
-                                                type="button"
-                                                class="rounded-full flex flex-col items-center justify-center w-full
-                                            px-4 py-2 border border-gray-300 
-                                            bg-green-500 text-white shadow-xl">
-                                                <span>Credit {{ number_format(abs($creditUsed->amount), 2) ?? 0 }}
-                                                    KWD
-                                                    has
-                                                    been utilized.
-                                                </span>
-                                                <span>Current balance of credit for {{ $selectedClient->first_name }}:
-                                                    {{ $balanceCredit }} KWD</span>
-                                            </button></a>
-                                            @else
-                                            @if ($balanceCredit > 0 && $invoice->payment_type == '')
-                                            <button type="button" @click="generateInvoiceWithCreditModal = true"
-                                                class="rounded-full flex flex-col items-center justify-center w-full
+                                <input type="hidden" id="paymentTypeSaved" name="payment_type_saved"
+                                    value="{{ $invoice->payment_type }}">
+                                    
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
+                                    <!-- Client Credit Section -->
+                                    <div x-data="{ clientCreditModal: false, generateInvoiceWithCreditModal: false }">
+                                        @php
+                                        $balanceCredit = \App\Models\Credit::getTotalCreditsByClient($selectedClient->id);
+                                        @endphp
+                                        @if ($invoice->amount <= $balanceCredit)
+                                            <button type="button" onclick="showModal('credit')" id="payment_type_credit" name="payment_type"
+                                            class="rounded-full flex flex-col items-center justify-center w-full
                                             px-4 py-2 border border-gray-300 
                                             bg-white text-gray-700 transition gap-2 
-                                            hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                                <span> Still Paying With Client Credit?</span>
-                                                <span> Current balance of credit for {{ $selectedClient->first_name }}:
-                                                    {{ $balanceCredit }} KWD</span>
+                                            hover:bg-green-500 hover:text-white hover:shadow-xl"
+                                            {{ $invoice->amount > $balanceCredit ? 'disabled' : '' }}>
+                                            <span class="font-medium">{{ $selectedClient->first_name }}:
+                                                KWD {{ $balanceCredit }}</span>
+                                            @if ($invoice->amount > $balanceCredit)
+                                            <span class="text-red-500">Credit Limit Exceeded</span>
+                                            @endif
                                             </button>
-                                            @else
-                                            <button type="button"
-                                                class="rounded-full flex flex-col items-center justify-center w-full
-                                            px-4 py-2 border border-gray-300 
-                                            bg-white text-gray-700 transition gap-2 shadow">
+                                            <div id="clientCreditModal"
+                                                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
+                                                <div class="bg-white rounded-lg p-6 shadow-lg">
+                                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Are you sure you want to proceed with this payment?</h2>
+                                                    <p class="text-gray-600">The client has a credit limit of
+                                                        {{ $balanceCredit }} KWD.
+                                                    </p>
+                                                    <p>
+                                                        <span>After payment: {{ $balanceCredit }} - {{ $invoice->amount }} =
+                                                            {{ $balanceCredit - $invoice->amount }} KWD</span>
+                                                    </p>
+                                                    <div class="mt-4 flex justify-end">
+                                                        <button @click="savePartial('credit')"
+                                                            class="mr-2 px-4 py-2 bg-blue-500 text-white rounded">Proceed</button>
+                                                        <button onclick="hideModal()"
+                                                            class="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
+                                                    </div>
+                                                </div>
 
-                                                <span>Current balance of credit for {{ $selectedClient->first_name }}:
-                                                    {{ $balanceCredit }} KWD</span>
-                                            </button>
+                                            </div>
+                                        @else
+                                            @if ($creditUsed && $creditUsed->amount < 0)
+                                                <a target="_blank" href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}"><button
+                                                    type="button"
+                                                    class="rounded-full flex flex-col items-center justify-center w-full
+                                                px-4 py-2 border border-gray-300 
+                                                bg-green-500 text-white shadow-xl">
+                                                    <span>Credit {{ number_format(abs($creditUsed->amount), 2) ?? 0 }}
+                                                        KWD
+                                                        has
+                                                        been utilized.
+                                                    </span>
+                                                    <span>Current balance of credit for {{ $selectedClient->first_name }}:
+                                                        {{ $balanceCredit }} KWD</span>
+                                                </button></a>
+                                            @else
+                                                @if ($balanceCredit > 0 && $invoice->payment_type == '')
+                                                <button type="button" @click="generateInvoiceWithCreditModal = true"
+                                                    class="rounded-full flex flex-col items-center justify-center w-full
+                                                px-4 py-2 border border-gray-300 
+                                                bg-white text-gray-700 transition gap-2 
+                                                hover:bg-green-500 hover:text-white hover:shadow-xl">
+                                                    <span> Still Paying With Client Credit?</span>
+                                                    <span> Current balance of credit for {{ $selectedClient->first_name }}:
+                                                        {{ $balanceCredit }} KWD</span>
+                                                </button>
+                                                @else
+                                                <button type="button"
+                                                    class="rounded-full flex flex-col items-center justify-center w-full
+                                                px-4 py-2 border border-gray-300 
+                                                bg-white text-gray-700 transition gap-2 shadow">
+
+                                                    <span>Current balance of credit for {{ $selectedClient->first_name }}:
+                                                        {{ $balanceCredit }} KWD</span>
+                                                </button>
+                                                @endif
                                             @endif
-                                            @endif
+                                            
+                                            <!-- Generate Invoice With Credit Modal -->
                                             <div x-cloak x-show="generateInvoiceWithCreditModal"
                                                 class="fixed inset-0 flex items-center justify-center z-50 bg-gray-800 bg-opacity-75 transition-opacity">
                                                 <div class="min-h-40 min-w-40 p-7 bg-white rounded shadow"
@@ -699,18 +712,6 @@
                                                             @csrf
 
                                                             <div class="space-y-4 mb-6">
-                                                                <!-- Option 1 -->
-                                                                {{-- <label
-                                                            class="flex items-center p-3 border border-gray-300 rounded hover:bg-gray-100 transition"
-                                                            :class="{ 'bg-gray-100': option === 'generate_yes' }">
-                                                            <input type="radio" name="selected_option"
-                                                                value="generate_yes"
-                                                                class="form-radio h-5 w-5 text-blue-600 mr-3"
-                                                                x-model="option">
-                                                            <span class="text-gray-800 text-base">[Yes] Generate new
-                                                                invoice to topup the remaining balance.</span>
-                                                        </label> --}}
-
                                                                 <!-- Option 2 -->
                                                                 <label
                                                                     class="flex items-center p-3 border border-gray-300 rounded hover:bg-gray-100 transition"
@@ -788,463 +789,459 @@
                                                     </main>
                                                 </div>
                                             </div>
-                                            @endif
-                                </div>
-                                <!-- <div
-                                    class="rounded-full flex items-center justify-center 
-                                        peer-checked:ring-2 peer-checked:ring-blue-500 
-                                        peer-checked:bg-green-500
-                                        peer-checked:text-white
-                                        px-4 py-2 border border-gray-300 
-                                        bg-white text-gray-700 transition gap-2 
-                                        {{ $invoice->amount > $balanceCredit ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-500 hover:text-white hover:shadow-xl' }}">
-                                    <span class="font-medium">{{ $selectedClient->first_name }}: KWD {{ $balanceCredit }}</span>
-                                </div> -->
-
-                                <!-- Full Payment Tab -->
-                                <label class="cursor-pointer rounded-full shadow">
-                                    <input type="radio" id="payment_type_full" name="payment_type" value="full"
-                                        onclick="hideModal()" hidden class="peer"
-                                        {{ $invoice->payment_type == 'full' ? 'checked' : '' }} />
-                                    <div
-                                        class="rounded-full flex items-center justify-center 
-                                        peer-checked:ring-2 peer-checked:ring-blue-500 
-                                        peer-checked:bg-green-500
-                                        peer-checked:text-white
-                                        px-4 py-2 border border-gray-300 
-                                        bg-white text-gray-700 transition gap-2 
-                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                        <span class="font-medium">Full Payment</span>
+                                        @endif
                                     </div>
-                                </label>
 
-                                <!-- Partial Payment Tab -->
-                                <label class="cursor-pointer rounded-full shadow">
-                                    <input type="radio" id="payment_type_partial" name="payment_type" value="partial"
-                                        onclick="showModal('partial')" hidden class="peer"
-                                        {{ $invoice->payment_type == 'partial' ? 'checked' : '' }} />
-                                    <div
-                                        class="rounded-full flex items-center justify-center 
-                                        peer-checked:ring-2 peer-checked:ring-blue-500 
-                                        peer-checked:bg-green-500
-                                        peer-checked:text-white
-                                        px-4 py-2 border border-gray-300 
-                                        bg-white text-gray-700 transition gap-2 
-                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                        <span class="font-medium">Partial Payment</span>
-                                    </div>
-                                </label>
-
-                                <!-- Split Payment Tab -->
-                                <label class="cursor-pointer rounded-full shadow">
-                                    <input type="radio" id="payment_type_split" name="payment_type" value="split"
-                                        onclick="showModal('split')" hidden class="peer"
-                                        {{ $invoice->payment_type == 'split' ? 'checked' : '' }} />
-                                    <div
-                                        class="rounded-full flex items-center justify-center 
-                                        peer-checked:ring-2 peer-checked:ring-blue-500 
-                                        peer-checked:bg-green-500
-                                        peer-checked:text-white
-                                        px-4 py-2 border border-gray-300 
-                                        bg-white text-gray-700 transition gap-2 
-                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                        <span class="font-medium">Split Payment</span>
-                                    </div>
-                                </label>
-
-                                <!-- Cash Payment Tab -->
-                                <label class="cursor-pointer rounded-full shadow">
-                                    <input type="radio" id="payment_type_cash" name="payment_type" value="cash" hidden class="peer"
-                                        {{ $invoice->payment_type == 'cash' ? 'checked' : '' }} />
-                                    <div
-                                        class="rounded-full flex items-center justify-center 
-                                        peer-checked:ring-2 peer-checked:ring-blue-500 
-                                        peer-checked:bg-green-500
-                                        peer-checked:text-white
-                                        px-4 py-2 border border-gray-300 
-                                        bg-white text-gray-700 transition gap-2 
-                                        hover:bg-green-500 hover:text-white hover:shadow-xl"
-                                        title="Client owes cash payment. Invoice remains unpaid until receipt voucher is processed by accountant.">
-                                        <span class="font-medium">Cash Payment</span>
-                                    </div>
-                                </label>
-
-                                <!-- Import Payment -->
-                                <label class="cursor-pointer rounded-full shadow">
-                                    <input type="radio" id="payment_type_import" name="payment_type" value="import"
-                                        onclick="showModal('import')" hidden class="peer" />
-                                    <div
-                                        class="rounded-full flex items-center justify-center 
-                                        peer-checked:ring-2 peer-checked:ring-blue-500 
-                                        peer-checked:bg-green-500
-                                        peer-checked:text-white
-                                        px-4 py-2 border border-gray-300 
-                                        bg-white text-gray-700 transition gap-2 
-                                        hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                        <span id="openImportModalBtn" class="font-medium">Import Payment</span>
-                                    </div>
-                                </label>
-                            </div>
-                            @if(empty($invoice->payment_type))
-                           <!-- Modal -->
-                            <div id="importModal"
-                                class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50 hidden">
-                                <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl overflow-y-auto" style="max-height: 90vh;">
-                                        <!-- Header -->
-                                        <div class="flex items-center justify-between mb-6">
-                                            <div>
-                                                <h2 class="text-xl font-bold text-gray-800">Import Payment</h2>
-                                                <p class="text-gray-600 italic text-xs mt-1">
-                                                Import a payment from a Payment Gateway or from a paid Receipt Voucher
-                                                </p>
-                                            </div>
-                                            <button id="closeImportModalBtn" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">&times;</button>
+                                    <!-- Full Payment Tab -->
+                                    <label class="rounded-full shadow transition-all duration-200"
+                                        :class="isTypeLocked('full') ? 'cursor-not-allowed' : 'cursor-pointer'"
+                                        @click="handlePaymentTypeClick('full', $event)">
+                                        <input type="radio" id="payment_type_full" name="payment_type" value="full"
+                                            onclick="hideModal()" hidden class="peer"
+                                            {{ $invoice->payment_type == 'full' ? 'checked' : '' }}
+                                            :disabled="isTypeLocked('full')" />
+                                        <div class="rounded-full flex items-center justify-center 
+                                            peer-checked:ring-2 peer-checked:ring-blue-500 
+                                            peer-checked:bg-green-500 peer-checked:text-white
+                                            px-4 py-2 border border-gray-300 
+                                            bg-white text-gray-700 transition gap-2"
+                                            :class="isTypeLocked('full') ? 'bg-gray-100 text-gray-400 border-gray-200' : 'hover:bg-green-500 hover:text-white hover:shadow-xl'">
+                                            <span class="font-medium">Full Payment</span>
                                         </div>
+                                    </label>
 
-                                        <!-- Form -->
-                                        <form id="importForm"
-                                            action="{{ route('payment.link.import.payment') }}"
-                                            method="POST"
-                                            class="space-y-4"
-                                            x-data="{ source: 'placeholder', gateway: '' }"
-                                            x-effect="
-                                                // reset fields when source changes
-                                                if (source !== 'gateway') { gateway=''; }
-                                                if (source !== 'receipt') { $refs.receiptRef && ($refs.receiptRef.value=''); }
-                                            ">
-                                            @csrf
-
-                                            <!-- Source -->
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">Import From</label>
-                                                <select name="source" x-model="source"
-                                                        class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                                        required>
-                                                <option value="placeholder" selected disabled>Select an option</option>
-                                                <option value="gateway">Payment Gateway</option>
-                                                <option value="receipt">Receipt Voucher</option>
-                                                </select>
-                                            </div>
-
-                                            <!-- Payment Gateway section -->
-                                            <div x-show="source === 'gateway'" x-cloak>
-                                                <div class="mt-4">
-                                                <label for="gateway" class="block text-sm font-medium text-gray-700 mb-1">
-                                                    Payment Gateway
-                                                </label>
-                                                <select name="gateway" id="gateway" x-model="gateway"
-                                                        class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                                        :required="source === 'gateway'">
-                                                    <option value="" selected disabled hidden>Select Payment Gateway</option>
-                                                    @foreach($can_import as $gateway)
-                                                    <option value="{{ strtolower($gateway->name) }}">{{ $gateway->name }}</option>
-                                                    @endforeach
-                                                </select>
-                                                </div>
-
-                                                <!-- MyFatoorah -->
-                                                <div x-show="gateway === 'myfatoorah'" class="mt-4" x-cloak>
-                                                    <label for="import_invoice_id" class="block text-sm font-medium text-gray-700 mb-1">
-                                                        Existing Invoice ID
-                                                    </label>
-                                                    <input type="text" name="import_invoice_id" id="import_invoice_id"
-                                                            class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                                            placeholder="Enter invoice ID"
-                                                            :required="source === 'gateway' && gateway === 'myfatoorah'">
-                                                </div>
-
-                                                <!-- Hesabe -->
-                                                <div x-show="gateway === 'hesabe'" class="mt-4" x-cloak>
-                                                    <label for="import_order_reference" class="block text-sm font-medium text-gray-700 mb-1">
-                                                        Existing Order Reference
-                                                    </label>
-                                                    <input type="text" name="import_order_reference" id="import_order_reference"
-                                                            class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                                                            placeholder="Enter order reference"
-                                                            :required="source === 'gateway' && gateway === 'hesabe'">
-                                                </div>
-                                            </div>
-
-                                            <!-- Receipt Voucher section -->
-                                            <div x-show="source === 'receipt'" x-cloak>
-                                                <div class="mt-4">
-                                                    <label for="receipt_reference" class="block text-sm font-medium text-gray-700 mb-1">
-                                                        Receipt Reference
-                                                    </label>
-
-
-                                                    <x-searchable-dropdown
-                                                        name="receipt"
-                                                        :items="$receiptVoucher
-                                                            ->filter(fn($r) => $r->transaction)
-                                                            ->map(fn($r) => [
-                                                                'id'   => $r->transaction->reference_number, 
-                                                                'name' => $r->transaction->reference_number 
-                                                                            .' — KWD '.number_format((float)$r->amount, 2),
-                                                            ])"
-                                                        :placeholder="'Select Receipt Voucher'"
-                                                        :selectedName="old('receipt') ?? ($selectedReceiptRef ?? null)"
-                                                        x-model="receipt"
-                                                    />
-
-                                                </div>
-                                            </div>
-
-                                            <!-- Success -->
-                                            <div id="successBox" class="hidden p-3 bg-green-50 border border-green-200 rounded-md text-green-800 text-sm"></div>
-
-                                            <!-- Error -->
-                                            <div id="errorBox" class="hidden p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm"></div>
-
-                                            <!-- Loading -->
-                                            <div id="loadingBox"
-                                                class="hidden p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-800 text-sm flex items-center">
-                                                <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-blue-800" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                                    viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                                        stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor"
-                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                                Processing import...
-                                            </div>
-
-                                            <!-- Buttons -->
-                                            <div class="flex justify-between pt-4 mt-4">
-                                                <button type="button" id="cancelImport"
-                                                        class="w-32 shadow-md border border-gray-200 hover:bg-gray-400 font-semibold py-2 rounded-full text-sm transition duration-150">
-                                                Cancel
-                                                </button>
-                                                <button type="submit" id="submitImportBtn"
-                                                        class="w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-full text-sm shadow-md transition duration-150">
-                                                Import
-                                                </button>
-                                            </div>
-                                        </form>
-                                </div>
-                            </div>
-                            @endif
-
-                            @if($invoice->status !== 'paid')
-                            <!-- Payment Gateway Section -->
-                            <section id="payment_gateway_section" class="mb-6" x-data="{ paymentType: '{{ $invoice->payment_type ?? '' }}' }" x-show="paymentType === '' || paymentType === 'full'" x-cloak>
-                                @php
-                                $selectedGateway = optional($invoice->invoicePartials->first())->payment_gateway ?? '';
-                                $selectedMethod = optional($invoice->invoicePartials->first())->payment_method ?? '';
-                                @endphp
-                                <div id="payment_gateway_dropdowns">
-                                    <div x-data="{ 
-                                        selectedGateway: '{{ $selectedGateway }}', 
-                                        selectedMethod: '{{ $selectedMethod }}', 
-                                        paymentType: '{{ $invoice->payment_type ?? '' }}',
-                                        }">
-                                        <div class="mt-4">
-                                            <div class="flex items-center justify-between">
-                                                <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
-                                                <span 
-                                                    x-show="paymentType !== ''" 
-                                                    class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
-                                                    @click="window.updateGateway && window.updateGateway()"
-                                                >
-                                                    (Change)
-                                                </span>
-                                            </div>
-                                            <select id="payment_gateway_option" name="payment_gateway_option"
-                                                class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
-                                                <option value="">Choose a Payment Gateway</option>
-                                                @foreach ($paymentGateways as $gateway)
-                                                <option value="{{ $gateway->name }}" {{ $selectedGateway === $gateway->name ? 'selected' : '' }}>
-                                                    {{ $gateway->name }}
-                                                </option>
-                                                @endforeach
-                                            </select>
+                                    <!-- Partial Payment Tab -->
+                                    <label class="rounded-full shadow transition-all duration-200"
+                                        :class="isTypeLocked('partial') ? 'cursor-not-allowed' : 'cursor-pointer'"
+                                        @click="handlePaymentTypeClick('partial', $event)">
+                                        <input type="radio" id="payment_type_partial" name="payment_type" value="partial"
+                                            onclick="showModal('partial')" hidden class="peer"
+                                            {{ $invoice->payment_type == 'partial' ? 'checked' : '' }}
+                                            :disabled="isTypeLocked('partial')" />
+                                        <div class="rounded-full flex items-center justify-center 
+                                            peer-checked:ring-2 peer-checked:ring-blue-500 
+                                            peer-checked:bg-green-500 peer-checked:text-white
+                                            px-4 py-2 border border-gray-300 
+                                            bg-white text-gray-700 transition gap-2"
+                                            :class="isTypeLocked('partial') ? 'bg-gray-100 text-gray-400 border-gray-200' : 'hover:bg-green-500 hover:text-white hover:shadow-xl'">
+                                            <span class="font-medium">Partial Payment</span>
                                         </div>
+                                    </label>
 
-                                        <div
-                                            class="block">
+                                    <!-- Split Payment Tab -->
+                                    <label class="rounded-full shadow transition-all duration-200"
+                                        :class="isTypeLocked('split') ? 'cursor-not-allowed' : 'cursor-pointer'"
+                                        @click="handlePaymentTypeClick('split', $event)">
+                                        <input type="radio" id="payment_type_split" name="payment_type" value="split"
+                                            onclick="showModal('split')" hidden class="peer"
+                                            {{ $invoice->payment_type == 'split' ? 'checked' : '' }}
+                                            :disabled="isTypeLocked('split')" />
+                                        <div class="rounded-full flex items-center justify-center 
+                                            peer-checked:ring-2 peer-checked:ring-blue-500 
+                                            peer-checked:bg-green-500 peer-checked:text-white
+                                            px-4 py-2 border border-gray-300 
+                                            bg-white text-gray-700 transition gap-2"
+                                            :class="isTypeLocked('split') ? 'bg-gray-100 text-gray-400 border-gray-200' : 'hover:bg-green-500 hover:text-white hover:shadow-xl'">
+                                            <span class="font-medium">Split Payment</span>
+                                        </div>
+                                    </label>
 
-                                            @foreach($paymentGateways as $gateway)
-                                                @php
-                                                    $companyMethods = $gateway->methods->where('company_id', $invoice->agent->branch->company_id);
-                                                @endphp
-                                                @if($companyMethods->isNotEmpty())
-                                                <template x-if="selectedGateway.toLowerCase() === '{{ strtolower($gateway->name) }}'">
-                                                    <div class="mt-4" x-cloak x-transition>
-                                                        <label for="payment-method-{{ strtolower($gateway->name) }}" class="block text-sm font-medium text-gray-700">Payment Method</label>
-                                                        <select name="payment_method" id="payment_method_full"
-                                                            class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" 
-                                                            x-model="selectedMethod"
-                                                            @change="calculateSubtotal()">
-                                                            @if($companyMethods->count() > 1)
-                                                            <option value="">Select Payment Method</option>
-                                                            @endif
-                                                            @foreach ($companyMethods as $method)
-                                                            <option value="{{ $method->id }}" {{ $selectedMethod == $method->id ? 'selected' : '' }}>
-                                                                {{ $method->english_name }}
-                                                            </option>
-                                                            @endforeach
+                                    <!-- Cash Payment Tab -->
+                                    <label class="rounded-full shadow transition-all duration-200"
+                                        :class="isTypeLocked('cash') ? 'cursor-not-allowed' : 'cursor-pointer'"
+                                        @click="handlePaymentTypeClick('cash', $event)">
+                                        <input type="radio" id="payment_type_cash" name="payment_type" value="cash" 
+                                            hidden class="peer"
+                                            {{ $invoice->payment_type == 'cash' ? 'checked' : '' }}
+                                            :disabled="isTypeLocked('cash')" />
+                                        <div class="rounded-full flex items-center justify-center 
+                                            peer-checked:ring-2 peer-checked:ring-blue-500 
+                                            peer-checked:bg-green-500 peer-checked:text-white
+                                            px-4 py-2 border border-gray-300 
+                                            bg-white text-gray-700 transition gap-2"
+                                            :class="isTypeLocked('cash') ? 'bg-gray-100 text-gray-400 border-gray-200' : 'hover:bg-green-500 hover:text-white hover:shadow-xl'"
+                                            title="Client owes cash payment. Invoice remains unpaid until receipt voucher is processed by accountant.">
+                                            <span class="font-medium">Cash Payment</span>
+                                        </div>
+                                    </label>
+
+                                    <!-- Import Payment -->
+                                    <label class="rounded-full shadow transition-all duration-200"
+                                        :class="isTypeLocked('import') ? 'cursor-not-allowed' : 'cursor-pointer'"
+                                        @click="handlePaymentTypeClick('import', $event)">
+                                        <input type="radio" id="payment_type_import" name="payment_type" value="import"
+                                            onclick="showModal('import')" hidden class="peer"
+                                            :disabled="isTypeLocked('import')" />
+                                        <div class="rounded-full flex items-center justify-center 
+                                            peer-checked:ring-2 peer-checked:ring-blue-500 
+                                            peer-checked:bg-green-500 peer-checked:text-white
+                                            px-4 py-2 border border-gray-300 
+                                            bg-white text-gray-700 transition gap-2"
+                                            :class="isTypeLocked('import') ? 'bg-gray-100 text-gray-400 border-gray-200' : 'hover:bg-green-500 hover:text-white hover:shadow-xl'">
+                                            <span id="openImportModalBtn" class="font-medium">Import Payment</span>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                @if(empty($invoice->payment_type))
+                                <!-- Modal -->
+                                    <div id="importModal"
+                                        class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-50 hidden">
+                                        <div class="bg-white rounded-lg p-6 w-full max-w-lg shadow-xl overflow-y-auto" style="max-height: 90vh;">
+                                                <!-- Header -->
+                                                <div class="flex items-center justify-between mb-6">
+                                                    <div>
+                                                        <h2 class="text-xl font-bold text-gray-800">Import Payment</h2>
+                                                        <p class="text-gray-600 italic text-xs mt-1">
+                                                        Import a payment from a Payment Gateway or from a paid Receipt Voucher
+                                                        </p>
+                                                    </div>
+                                                    <button id="closeImportModalBtn" class="text-gray-400 hover:text-red-500 text-2xl leading-none ml-4">&times;</button>
+                                                </div>
+
+                                                <!-- Form -->
+                                                <form id="importForm"
+                                                    action="{{ route('payment.link.import.payment') }}"
+                                                    method="POST"
+                                                    class="space-y-4"
+                                                    x-data="{ source: 'placeholder', gateway: '' }"
+                                                    x-effect="
+                                                        // reset fields when source changes
+                                                        if (source !== 'gateway') { gateway=''; }
+                                                        if (source !== 'receipt') { $refs.receiptRef && ($refs.receiptRef.value=''); }
+                                                    ">
+                                                    @csrf
+
+                                                    <!-- Source -->
+                                                    <div>
+                                                        <label class="block text-sm font-medium text-gray-700 mb-1">Import From</label>
+                                                        <select name="source" x-model="source"
+                                                                class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                                required>
+                                                        <option value="placeholder" selected disabled>Select an option</option>
+                                                        <option value="gateway">Payment Gateway</option>
+                                                        <option value="receipt">Receipt Voucher</option>
                                                         </select>
                                                     </div>
-                                                </template>
-                                                @endif
-                                            @endforeach
-                                        </div>
-                                        <input type="hidden" name="payment_method" :value="selectedMethod">
 
-                                        <!-- Auto Payment Notification -->
-                                        <div class="mt-4" id="auto_payment_notification" style="display: none;">
-                                            <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                                <div class="flex items-center">
-                                                    <svg class="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
-                                                    </svg>
-                                                    <p class="text-sm text-blue-800 font-medium">Auto Payment Enabled</p>
-                                                </div>
-                                                <p class="text-xs text-blue-700 mt-1">This payment gateway will automatically mark the invoice as paid when processing full payment.</p>
-                                            </div>
-                                        </div>
+                                                    <!-- Payment Gateway section -->
+                                                    <div x-show="source === 'gateway'" x-cloak>
+                                                        <div class="mt-4">
+                                                        <label for="gateway" class="block text-sm font-medium text-gray-700 mb-1">
+                                                            Payment Gateway
+                                                        </label>
+                                                        <select name="gateway" id="gateway" x-model="gateway"
+                                                                class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                                :required="source === 'gateway'">
+                                                            <option value="" selected disabled hidden>Select Payment Gateway</option>
+                                                            @foreach($can_import as $gateway)
+                                                            <option value="{{ strtolower($gateway->name) }}">{{ $gateway->name }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                        </div>
 
-                                        <!-- Hidden input for invoice charge (always present for calculations) -->
-                                        <input type="hidden" id="invoice_charge" name="invoice_charge" value="{{ $invoice->invoice_charge }}">
+                                                        <!-- MyFatoorah -->
+                                                        <div x-show="gateway === 'myfatoorah'" class="mt-4" x-cloak>
+                                                            <label for="import_invoice_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                                                Existing Invoice ID
+                                                            </label>
+                                                            <input type="text" name="import_invoice_id" id="import_invoice_id"
+                                                                    class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                                    placeholder="Enter invoice ID"
+                                                                    :required="source === 'gateway' && gateway === 'myfatoorah'">
+                                                        </div>
 
-                                        <!-- Invoice Charge Section (Initially Hidden) -->
-                                        @if($invoiceCharges->count() > 0)
-                                        <div id="invoice_charge_section" class="mt-4" style="display: none;">
-                                            <h2 id="invoice_charge_title" class="text-lg font-semibold mb-3 text-gray-700">Invoice Charge</h2>
-                                            <div class="mb-3">
-                                                <label class="block text-sm font-medium text-gray-700 mb-1">Charge Amount:</label>
-                                                <input type="number" id="invoice_charge_amount_input" name="invoice_charge_amount_input"
-                                                    class="form-input" step="0.01" min="0" value="{{ $invoice->invoice_charge }}"
-                                                    placeholder="Enter charge amount">
-                                                <input type="hidden" id="invoice_charge_amount" name="invoice_charge_amount" value="{{ $invoice->invoice_charge }}">
-                                            </div>
-                                        </div>
-                                        @endif
+                                                        <!-- Hesabe -->
+                                                        <div x-show="gateway === 'hesabe'" class="mt-4" x-cloak>
+                                                            <label for="import_order_reference" class="block text-sm font-medium text-gray-700 mb-1">
+                                                                Existing Order Reference
+                                                            </label>
+                                                            <input type="text" name="import_order_reference" id="import_order_reference"
+                                                                    class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                                                                    placeholder="Enter order reference"
+                                                                    :required="source === 'gateway' && gateway === 'hesabe'">
+                                                        </div>
+                                                    </div>
 
-                                        <!-- External URL Field -->
-                                        <div class="mt-4" id="external_url_section" style="display: none;">
-                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">External Payment URL (Optional)</h2>
-                                            <input type="url" id="external_url" name="external_url"
-                                                class="border border-gray-300 p-2 rounded w-full"
-                                                placeholder="Enter payment gateway URL (optional)"
-                                                value="{{ $invoice->external_url ?? '' }}">
-                                            <p class="text-sm text-gray-500 mt-1">Optionally provide an external payment gateway URL for this invoice</p>
-                                        </div>
-                                    </div>
-                                    <div id="payment-response-message" class="hidden mt-4 text-sm font-semibold rounded px-4 py-2"></div>
-                                </div>
-                                <div class="mt-4">
-                                    <button id="update-invoice-btn" type="button"
-                                        class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
-                                        city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow
-                                        hover:bg-[#f7b14f] hover:shadow-xl hover:text-black transition">
+                                                    <!-- Receipt Voucher section -->
+                                                    <div x-show="source === 'receipt'" x-cloak>
+                                                        <div class="mt-4">
+                                                            <label for="receipt_reference" class="block text-sm font-medium text-gray-700 mb-1">
+                                                                Receipt Reference
+                                                            </label>
 
-                                        <span id="button-icon-full" class="mr-2 inline-block">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                                xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0">
-                                                <path
-                                                    d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
-                                                    fill="currentColor" />
-                                                <path
-                                                    d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
-                                                    fill="currentColor" />
-                                            </svg>
-                                        </span>
 
-                                        <span id="button-text-full">Save Payment</span>
-                                    </button>
+                                                            <x-searchable-dropdown
+                                                                name="receipt"
+                                                                :items="$receiptVoucher
+                                                                    ->filter(fn($r) => $r->transaction)
+                                                                    ->map(fn($r) => [
+                                                                        'id'   => $r->transaction->reference_number, 
+                                                                        'name' => $r->transaction->reference_number 
+                                                                                    .' — KWD '.number_format((float)$r->amount, 2),
+                                                                    ])"
+                                                                :placeholder="'Select Receipt Voucher'"
+                                                                :selectedName="old('receipt') ?? ($selectedReceiptRef ?? null)"
+                                                                x-model="receipt"
+                                                            />
 
-                                </div>
-                            </section>
-                            @endif
+                                                        </div>
+                                                    </div>
 
-                            <!-- Added Buttons/Links Section -->
-                            <section id="additional-actions" class="mt-6">
-                                <div class="flex flex-wrap gap-4">
-                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">Share Invoice</h2>
-                                    <!-- Share Buttons -->
-                                    <div class="flex items-center gap-2 w-full">
-                                        <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}"
-                                            method="POST" onsubmit="showSpinner()">
-                                            @csrf
-                                            <!-- Assuming you have a $client object or list -->
-                                            <input type="hidden" name="client_id" id="clientid"
-                                                value="{{ $client->id ?? '' }}">
-                                            <input type="hidden" name="invoiceNumber" value="{{ $invoiceNumber }}">
+                                                    <!-- Success -->
+                                                    <div id="successBox" class="hidden p-3 bg-green-50 border border-green-200 rounded-md text-green-800 text-sm"></div>
 
-                                            <button id="submitButton" type="submit"
-                                                class="w-full flex items-center justify-center py-3 px-5 text-xs text-white btn-success rounded-full">
-                                                <span id="buttonText">Share via WhatsApp</span>
-                                                <span id="spinner" class="hidden ml-2">
-                                                    <svg class="w-4 h-4 animate-spin text-white"
-                                                        xmlns="http://www.w3.org/2000/svg" fill="none"
-                                                        viewBox="0 0 24 24">
-                                                        <circle class="opacity-25" cx="12" cy="12" r="10"
-                                                            stroke="currentColor" stroke-width="4"></circle>
+                                                    <!-- Error -->
+                                                    <div id="errorBox" class="hidden p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm"></div>
+
+                                                    <!-- Loading -->
+                                                    <div id="loadingBox"
+                                                        class="hidden p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-800 text-sm flex items-center">
+                                                        <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-blue-800" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                                            viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                                                stroke-width="4"></circle>
                                                         <path class="opacity-75" fill="currentColor"
-                                                            d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
-                                                    </svg>
-                                                </span>
-                                            </button>
-                                        </form>
+                                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                        </svg>
+                                                        Processing import...
+                                                    </div>
 
-                                        <button onclick="shareViaEmail()"
-                                            class="w-full items-center py-3 px-5 text-sm text-white btn-info rounded-full ">
-                                            Share via Email
-                                        </button>
-
+                                                    <!-- Buttons -->
+                                                    <div class="flex justify-between pt-4 mt-4">
+                                                        <button type="button" id="cancelImport"
+                                                                class="w-32 shadow-md border border-gray-200 hover:bg-gray-400 font-semibold py-2 rounded-full text-sm transition duration-150">
+                                                        Cancel
+                                                        </button>
+                                                        <button type="submit" id="submitImportBtn"
+                                                                class="w-32 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-full text-sm shadow-md transition duration-150">
+                                                        Import
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                        </div>
                                     </div>
-                                    <div class="my-2 flex items-center w-full">
-                                        <a target="_blank" href="{{ route('invoice.proforma', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}"
-                                            class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 bg-blue-500 hover:bg-blue-700">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                                <polyline points="14,2 14,8 20,8" />
-                                                <line x1="16" y1="13" x2="8" y2="13" />
-                                                <line x1="16" y1="17" x2="8" y2="17" />
-                                                <polyline points="10,9 9,9 8,9" />
-                                            </svg>
-                                            Proforma Invoice
-                                        </a>
-                                    </div>
-                                    <button onclick="copyLink()"
-                                        class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                            viewBox="0 0 24 24">
-                                            <g fill="none" stroke="#ffff" stroke-linecap="round"
-                                                stroke-linejoin="round" stroke-width="1.5">
-                                                <path
-                                                    d="M16.75 5.75a3 3 0 0 0-3-3h-6.5a3 3 0 0 0-3 3v9.5a3 3 0 0 0 3 3h6.5a3 3 0 0 0 3-3z" />
-                                                <path d="M19.75 6.75v8.5a6 6 0 0 1-6 6h-5.5" />
-                                            </g>
-                                        </svg>
-                                        Copy Link
-                                    </button>
-                                    @if($invoice->payment_type !== 'cash')
-                                    <a target="_blank" href="{{ route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}"
-                                        class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
-                                            <path opacity="0.5"
-                                                d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z"
-                                                stroke="currentColor" stroke-width="1.5"></path>
-                                            <path
-                                                d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z"
-                                                stroke="currentColor" stroke-width="1.5"></path>
-                                        </svg>
-                                        View
-                                    </a>
                                     @endif
 
-                                    <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to
-                                        clipboard!</p>
-                                </div>
-                            </section>
+                                    @if($invoice->status !== 'paid')
+                                    <!-- Payment Gateway Section -->
+                                    <section id="payment_gateway_section" class="mb-6" x-data="{ paymentType: '{{ $invoice->payment_type ?? '' }}' }" x-show="paymentType === '' || paymentType === 'full'" x-cloak>
+                                        @php
+                                        $selectedGateway = optional($invoice->invoicePartials->first())->payment_gateway ?? '';
+                                        $selectedMethod = optional($invoice->invoicePartials->first())->payment_method ?? '';
+                                        @endphp
+                                        <div id="payment_gateway_dropdowns">
+                                            <div x-data="{ 
+                                                selectedGateway: '{{ $selectedGateway }}', 
+                                                selectedMethod: '{{ $selectedMethod }}', 
+                                                paymentType: '{{ $invoice->payment_type ?? '' }}',
+                                                }">
+                                                <div class="mt-4">
+                                                    <div class="flex items-center justify-between">
+                                                        <h2 class="text-lg font-semibold mb-3 text-gray-700">Choose Payment Gateway</h2>
+                                                        <span 
+                                                            x-show="paymentType !== ''" 
+                                                            class="text-xs text-blue-500 ml-2 mb-2 cursor-pointer"
+                                                            @click="window.updateGateway && window.updateGateway()"
+                                                        >
+                                                            (Change)
+                                                        </span>
+                                                    </div>
+                                                    <select id="payment_gateway_option" name="payment_gateway_option"
+                                                        class="border border-gray-300 p-2 rounded w-full" x-model="selectedGateway">
+                                                        <option value="">Choose a Payment Gateway</option>
+                                                        @foreach ($paymentGateways as $gateway)
+                                                        <option value="{{ $gateway->name }}" {{ $selectedGateway === $gateway->name ? 'selected' : '' }}>
+                                                            {{ $gateway->name }}
+                                                        </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
 
+                                                <div
+                                                    class="block">
 
+                                                    @foreach($paymentGateways as $gateway)
+                                                        @php
+                                                            $companyMethods = $gateway->methods->where('company_id', $invoice->agent->branch->company_id);
+                                                        @endphp
+                                                        @if($companyMethods->isNotEmpty())
+                                                        <template x-if="selectedGateway.toLowerCase() === '{{ strtolower($gateway->name) }}'">
+                                                            <div class="mt-4" x-cloak x-transition>
+                                                                <label for="payment-method-{{ strtolower($gateway->name) }}" class="block text-sm font-medium text-gray-700">Payment Method</label>
+                                                                <select name="payment_method" id="payment_method_full"
+                                                                    class="p-2 mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                                                                    x-model="selectedMethod"
+                                                                    @change="calculateSubtotal()">
+                                                                    @if($companyMethods->count() > 1)
+                                                                    <option value="">Select Payment Method</option>
+                                                                    @endif
+                                                                    @foreach ($companyMethods as $method)
+                                                                    <option value="{{ $method->id }}" {{ $selectedMethod == $method->id ? 'selected' : '' }}>
+                                                                        {{ $method->english_name }}
+                                                                    </option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </div>
+                                                        </template>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                                <input type="hidden" name="payment_method" :value="selectedMethod">
+
+                                                <!-- Auto Payment Notification -->
+                                                <div class="mt-4" id="auto_payment_notification" style="display: none;">
+                                                    <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                                        <div class="flex items-center">
+                                                            <svg class="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                                            </svg>
+                                                            <p class="text-sm text-blue-800 font-medium">Auto Payment Enabled</p>
+                                                        </div>
+                                                        <p class="text-xs text-blue-700 mt-1">This payment gateway will automatically mark the invoice as paid when processing full payment.</p>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Hidden input for invoice charge (always present for calculations) -->
+                                                <input type="hidden" id="invoice_charge" name="invoice_charge" value="{{ $invoice->invoice_charge }}">
+
+                                                <!-- Invoice Charge Section (Initially Hidden) -->
+                                                @if($invoiceCharges->count() > 0)
+                                                <div id="invoice_charge_section" class="mt-4" style="display: none;">
+                                                    <h2 id="invoice_charge_title" class="text-lg font-semibold mb-3 text-gray-700">Invoice Charge</h2>
+                                                    <div class="mb-3">
+                                                        <label class="block text-sm font-medium text-gray-700 mb-1">Charge Amount:</label>
+                                                        <input type="number" id="invoice_charge_amount_input" name="invoice_charge_amount_input"
+                                                            class="form-input" step="0.01" min="0" value="{{ $invoice->invoice_charge }}"
+                                                            placeholder="Enter charge amount">
+                                                        <input type="hidden" id="invoice_charge_amount" name="invoice_charge_amount" value="{{ $invoice->invoice_charge }}">
+                                                    </div>
+                                                </div>
+                                                @endif
+
+                                                <!-- External URL Field -->
+                                                <div class="mt-4" id="external_url_section" style="display: none;">
+                                                    <h2 class="text-lg font-semibold mb-3 text-gray-700">External Payment URL (Optional)</h2>
+                                                    <input type="url" id="external_url" name="external_url"
+                                                        class="border border-gray-300 p-2 rounded w-full"
+                                                        placeholder="Enter payment gateway URL (optional)"
+                                                        value="{{ $invoice->external_url ?? '' }}">
+                                                    <p class="text-sm text-gray-500 mt-1">Optionally provide an external payment gateway URL for this invoice</p>
+                                                </div>
+                                            </div>
+                                            <div id="payment-response-message" class="hidden mt-4 text-sm font-semibold rounded px-4 py-2"></div>
+                                        </div>
+                                        <div class="mt-4">
+                                            <button id="update-invoice-btn" type="button"
+                                                class="w-full inline-flex items-center justify-center text-sm text-black font-semibold
+                                                city-light-yellow hover:text-[#004c9e] py-4 rounded-full shadow city-light-yellow
+                                                hover:bg-[#f7b14f] hover:shadow-xl hover:text-black transition">
+
+                                                <span id="button-icon-full" class="mr-2 inline-block">
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                                        xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0">
+                                                        <path
+                                                            d="M17.657 6.343a8 8 0 11-11.314 0L4.929 5.03a9.998 9.998 0 1014.142 0l-1.414 1.314z"
+                                                            fill="currentColor" />
+                                                        <path
+                                                            d="M11.25 8V4.75a.75.75 0 011.5 0V8h2.25a.75.75 0 010 1.5H12.75V12a.75.75 0 01-1.5 0V9.5H9a.75.75 0 010-1.5h2.25z"
+                                                            fill="currentColor" />
+                                                    </svg>
+                                                </span>
+
+                                                <span id="button-text-full">Save Payment</span>
+                                            </button>
+
+                                        </div>
+                                    </section>
+                                    @endif
+
+                                    <!-- Added Buttons/Links Section -->
+                                    <section id="additional-actions" class="mt-6">
+                                        <div class="flex flex-wrap gap-4">
+                                            <h2 class="text-lg font-semibold mb-3 text-gray-700">Share Invoice</h2>
+                                            <!-- Share Buttons -->
+                                            <div class="flex items-center gap-2 w-full">
+                                                <form id="whatsappForm" action="{{ route('resayil.share-invoice-link') }}"
+                                                    method="POST" onsubmit="showSpinner()">
+                                                    @csrf
+                                                    <!-- Assuming you have a $client object or list -->
+                                                    <input type="hidden" name="client_id" id="clientid"
+                                                        value="{{ $client->id ?? '' }}">
+                                                    <input type="hidden" name="invoiceNumber" value="{{ $invoiceNumber }}">
+
+                                                    <button id="submitButton" type="submit"
+                                                        class="w-full flex items-center justify-center py-3 px-5 text-xs text-white btn-success rounded-full">
+                                                        <span id="buttonText">Share via WhatsApp</span>
+                                                        <span id="spinner" class="hidden ml-2">
+                                                            <svg class="w-4 h-4 animate-spin text-white"
+                                                                xmlns="http://www.w3.org/2000/svg" fill="none"
+                                                                viewBox="0 0 24 24">
+                                                                <circle class="opacity-25" cx="12" cy="12" r="10"
+                                                                    stroke="currentColor" stroke-width="4"></circle>
+                                                                <path class="opacity-75" fill="currentColor"
+                                                                    d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"></path>
+                                                            </svg>
+                                                        </span>
+                                                    </button>
+                                                </form>
+
+                                                <button onclick="shareViaEmail()"
+                                                    class="w-full items-center py-3 px-5 text-sm text-white btn-info rounded-full ">
+                                                    Share via Email
+                                                </button>
+
+                                            </div>
+                                            <div class="my-2 flex items-center w-full">
+                                                <a target="_blank" href="{{ route('invoice.proforma', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}"
+                                                    class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 bg-blue-500 hover:bg-blue-700">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                        <polyline points="14,2 14,8 20,8" />
+                                                        <line x1="16" y1="13" x2="8" y2="13" />
+                                                        <line x1="16" y1="17" x2="8" y2="17" />
+                                                        <polyline points="10,9 9,9 8,9" />
+                                                    </svg>
+                                                    Proforma Invoice
+                                                </a>
+                                            </div>
+                                            <button onclick="copyLink()"
+                                                class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                    viewBox="0 0 24 24">
+                                                    <g fill="none" stroke="#ffff" stroke-linecap="round"
+                                                        stroke-linejoin="round" stroke-width="1.5">
+                                                        <path
+                                                            d="M16.75 5.75a3 3 0 0 0-3-3h-6.5a3 3 0 0 0-3 3v9.5a3 3 0 0 0 3 3h6.5a3 3 0 0 0 3-3z" />
+                                                        <path d="M19.75 6.75v8.5a6 6 0 0 1-6 6h-5.5" />
+                                                    </g>
+                                                </svg>
+                                                Copy Link
+                                            </button>
+                                            @if($invoice->payment_type !== 'cash')
+                                            <a target="_blank" href="{{ route('invoice.show', ['companyId' => $companyId, 'invoiceNumber' => $invoiceNumber]) }}"
+                                                class="py-3 px-5 w-full inline-flex items-center justify-center text-sm text-white rounded-full gap-2 DarkBGcolor">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2">
+                                                    <path opacity="0.5"
+                                                        d="M3.27489 15.2957C2.42496 14.1915 2 13.6394 2 12C2 10.3606 2.42496 9.80853 3.27489 8.70433C4.97196 6.49956 7.81811 4 12 4C16.1819 4 19.028 6.49956 20.7251 8.70433C21.575 9.80853 22 10.3606 22 12C22 13.6394 21.575 14.1915 20.7251 15.2957C19.028 17.5004 16.1819 20 12 20C7.81811 20 4.97196 17.5004 3.27489 15.2957Z"
+                                                        stroke="currentColor" stroke-width="1.5"></path>
+                                                    <path
+                                                        d="M15 12C15 13.6569 13.6569 15 12 15C10.3431 15 9 13.6569 9 12C9 10.3431 10.3431 9 12 9C13.6569 9 15 10.3431 15 12Z"
+                                                        stroke="currentColor" stroke-width="1.5"></path>
+                                                </svg>
+                                                View
+                                            </a>
+                                            @endif
+
+                                            <p id="copyFeedback" class="mt-2 text-sm text-green-600 hidden">Link copied to
+                                                clipboard!</p>
+                                        </div>
+                                    </section>
+                            </div>
                         </div>
-
                     </div>
+
                     <div class="panel">
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-1">
 
@@ -4450,16 +4447,66 @@
             return {
                 showModalType: false,
                 showModalGateway: false,
-                paymentType: '{{ $invoice->payment_type }}',
+                paymentType: '{{ $invoice->payment_type ?? '' }}',
+                hasInvoicePartials: {{ $invoice->invoicePartials->count() > 0 ? 'true' : 'false' }},
+                pendingPaymentType: null,
                 paymentGateways: @js($paymentGateways),
                 allPaymentMethods: @js($paymentMethods),
                 invoicePartials: [],
 
-                // 🔸 Open Gateway Modal
+                initData() {
+                    // Initialize from hidden input if needed
+                    const savedType = document.getElementById('paymentTypeSaved')?.value || '';
+                    if (savedType) {
+                        this.paymentType = savedType;
+                    }
+                },
+
+                // Check if payment type can be changed directly (no existing partials)
+                canChangeType() {
+                    return !this.paymentType || !this.hasInvoicePartials;
+                },
+
+                // Check if a specific type is locked
+                isTypeLocked(type) {
+                    // If no payment type set or no partials, nothing is locked
+                    if (!this.paymentType || !this.hasInvoicePartials) {
+                        return false;
+                    }
+                    // Lock all types except the current one
+                    return this.paymentType !== type;
+                },
+
+                // Handle payment type click
+                handlePaymentTypeClick(type, event) {
+                    // If same type as current, allow normal behavior
+                    if (this.paymentType === type) {
+                        return true;
+                    }
+
+                    // If locked (has existing payment type and partials), show modal
+                    if (this.isTypeLocked(type)) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        this.pendingPaymentType = type;
+                        this.showModalType = true;
+                        return false;
+                    }
+
+                    // Otherwise allow normal behavior
+                    return true;
+                },
+
+                // Open Gateway Modal
                 openGatewayModal() {
                     this.showModalGateway = true;
                 },
 
+                // Close modals and reset
+                closeTypeModal() {
+                    this.showModalType = false;
+                    this.pendingPaymentType = null;
+                }
             }
         }
 

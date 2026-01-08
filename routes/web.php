@@ -49,6 +49,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SupplierProcedureController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\TermController;
+use App\Http\Controllers\SystemSettingController;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -101,6 +102,18 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/edit/{userId}', [AdminUsersController::class, 'editRole'])->name('users.edit');
         Route::put('/update-role', [AdminUsersController::class, 'storeRole'])->name('users.role');
         Route::put('/{user}/update-info', [AdminUsersController::class, 'updateInfo'])->name('users.updateInfo');
+    });
+
+    Route::group([
+        'prefix' => 'system-settings',
+        'as' => 'system-settings.',
+    ], function () {
+        Route::get('/', [SystemSettingController::class, 'index'])->name('index');
+        Route::post('/send-test-email', [SystemSettingController::class, 'sendTestEmail'])->name('send-test-email');
+        Route::get('/preview-email', [SystemSettingController::class, 'previewEmail'])->name('preview-email');
+        Route::post('/send-whatsapp-pdf', [SystemSettingController::class, 'sendWhatsAppPdf'])->name('send-whatsapp-pdf');
+        Route::get('/download-pdf', [SystemSettingController::class, 'downloadPdf'])->name('download-pdf');
+        Route::post('/save-tab', [SystemSettingController::class, 'saveTab'])->name('save-tab');
     });
 
     // Agents list

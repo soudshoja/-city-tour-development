@@ -4068,9 +4068,8 @@ class PaymentController extends Controller
                 }
             });
 
-            
-            // Process TBO booking if applicable (BEFORE sending notification)
             $tboResult = $this->processTBOBookingAfterPayment($payment);
+
             if ($tboResult !== null) {
                 if ($tboResult['success']) {
                     Log::info('TBO booking processed successfully via Tap callback', $tboResult);
@@ -4079,20 +4078,25 @@ class PaymentController extends Controller
                 }
             }
             
-            // Reload payment to get updated hotel booking with confirmation_no
             $payment->refresh();
             
             $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
-            $this->storeNotificationWithEmail([
+
+            $storeNotificationData = [
                 'user_id' => $receiptInfo['agent']->user_id,
                 'title'   => $receiptInfo['title'],
                 'message' => $receiptInfo['message'],
-                'type' => NotificationEmailTypeEnum::PAYMENT,
-                'payment' => [
-                    'id' => $payment->id,
-                    'type' => PaymentMailTypeEnum::PAYMENT_SUCCESS
-                ]
-            ]);
+            ];
+
+            if($payment->invoice){
+                $storeNotificationData['type'] = 'invoice';
+                $storeNotificationData['invoice'] = $payment->invoice;
+            } else {
+                $storeNotificationData['type'] = 'payment';
+                $storeNotificationData['payment'] = $payment;
+            }
+            
+            $this->storeNotificationWithSendingPdf($storeNotificationData);
 
             (new ResayilController())->message(
                 $receiptInfo['agent']->phone_number,
@@ -5133,7 +5137,6 @@ class PaymentController extends Controller
                 }
             }
 
-            // Process TBO booking if applicable (BEFORE sending notification)
             $tboResult = $this->processTBOBookingAfterPayment($payment);
             if ($tboResult !== null) {
                 if ($tboResult['success']) {
@@ -5143,18 +5146,28 @@ class PaymentController extends Controller
                 }
             }
 
-            // Reload payment to get updated hotel booking with confirmation_no
             $payment->refresh();
 
-            // Send notifications
             $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
             $agent = $receiptInfo['agent'];
 
-            $this->storeNotification([
+            $storeNotificationData = [
                 'user_id' => $agent->user_id,
                 'title'   => $receiptInfo['title'],
                 'message' => $receiptInfo['message'],
-            ]);
+            ];
+
+            if($payment->invoice){
+                $storeNotificationData['type'] = 'invoice';
+                $storeNotificationData['invoice'] = $payment->invoice;
+            } else {
+                $storeNotificationData['type'] = 'payment';
+                $storeNotificationData['payment'] = $payment;
+            }
+
+            Log::info('[MYFATOORAH] Storing notification with PDF for agent ID: ' . $agent->id, $storeNotificationData);
+
+            $this->storeNotificationWithSendingPdf($storeNotificationData);
 
             (new ResayilController())->message(
                 $agent->phone_number,
@@ -5257,11 +5270,22 @@ class PaymentController extends Controller
                 ]);
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'failed', $partialId);
 
-                $this->storeNotification([
+                $storeNotificationData = [
                     'user_id' => $receiptInfo['agent']->user_id,
                     'title'   => $receiptInfo['title'],
                     'message' => $receiptInfo['message'],
-                ]);
+                    'type' => $process ?? 'payment',
+                ];
+
+                if($process === 'invoice' && $payment->invoice){
+                    $storeNotificationData['invoice'] = $payment->invoice;
+                } else {
+                    $storeNotificationData['payment'] = $payment;
+                }
+
+                Log::info('[UPAYMENT] Storing notification for failed payment for agent ID: ' . $receiptInfo['agent']->id, $storeNotificationData);
+
+                $this->storeNotification($storeNotificationData);
 
                 (new ResayilController())->message(
                     $receiptInfo['agent']->phone_number,
@@ -5835,11 +5859,23 @@ class PaymentController extends Controller
 
             $agent = $payment->agent;
 
-            $this->storeNotification([
+            $storeNotificationData = [
                 'user_id' => $agent->user_id,
                 'title' => $receiptInfo['title'],
                 'message' => $receiptInfo['message'],
-            ]);
+            ];
+
+            if($payment->invoice){
+                $storeNotificationData['type'] = 'invoice';
+                $storeNotificationData['invoice'] = $payment->invoice;
+            } else {
+                $storeNotificationData['type'] = 'payment';
+                $storeNotificationData['payment'] = $payment;
+            }
+
+            Log::info('[MYFATOORAH] Storing notification with PDF for agent ID: ' . $agent->id, $storeNotificationData);
+
+            $this->storeNotificationWithSendingPdf($storeNotificationData);
 
             (new ResayilController())->message(
                 $agent->phone_number,
@@ -6143,14 +6179,25 @@ class PaymentController extends Controller
                     }
                 }
 
-                // Send notifications
                 $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
-
-                $this->storeNotification([
+                
+                $storeNotificationData = [
                     'user_id' => $receiptInfo['agent']->user_id,
-                    'title'   => $receiptInfo['title'],
+                    'title' => $receiptInfo['title'],
                     'message' => $receiptInfo['message'],
-                ]);
+                ];
+
+                if ($payment->invoice) {
+                    $storeNotificationData['type'] = 'invoice';
+                    $storeNotificationData['invoice'] = $payment->invoice;
+                } else {
+                    $storeNotificationData['type'] = 'payment';
+                    $storeNotificationData['payment'] = $payment;
+                }
+
+                Log::info('Hesabe webhook: Storing notification', $storeNotificationData);
+
+                $this->storeNotificationWithSendingPdf($storeNotificationData);
 
                 (new ResayilController())->message(
                     $receiptInfo['agent']->phone_number,

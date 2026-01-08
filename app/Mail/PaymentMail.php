@@ -43,7 +43,7 @@ class PaymentMail extends Mailable
 
             case PaymentMailTypeEnum::PAYMENT_SUCCESS:
                 $subject = 'Payment Successful';
-                $view = 'email.payment.success';
+                $view = 'payment.pdf.success';
                 $data = [
                     'payment' => $payment,
                 ];

@@ -1,10 +1,16 @@
 <?php
 
 namespace App\Http\Traits;
+
+use App\Http\Controllers\ResayilController;
 use App\Models\Notification;
 use App\Models\Role;
 use App\Models\Agent;
+use App\Models\Payment;
+use App\Services\PaymentReceiptService;
+use Exception;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 trait NotificationTrait
 {
@@ -119,7 +125,28 @@ trait NotificationTrait
         return $userIds;
     }
 
-    public function storeNotificationWithSendingPdf(){
+    public function storeNotificationWithSendingPdf($data): void
+    {
+        $this->storeNotification($data);
 
+        if (!empty($data['payment']) && $data['payment'] instanceof Payment) {
+            $payment = $data['payment'];
+            
+            $service = new PaymentReceiptService();
+            $result = $service->generateAndSendPdf($payment);
+            
+            if ($result['success']) {
+                Log::info('[NotificationTrait] PDF sent successfully via PaymentReceiptService', [
+                    'payment_id' => $payment->id,
+                    'file_id' => $result['file_id'],
+                    'was_cached' => $result['was_cached']
+                ]);
+            } else {
+                Log::warning('[NotificationTrait] PDF sending failed (non-blocking)', [
+                    'payment_id' => $payment->id,
+                    'error' => $result['error']
+                ]);
+            }
+        }
     }
 }

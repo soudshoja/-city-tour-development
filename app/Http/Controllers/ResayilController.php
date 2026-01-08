@@ -169,26 +169,21 @@ class ResayilController extends Controller
     public function document(
         $phone,
         $country_code,
-        $filePath,
-        $filename = 'document.pdf',
+        $filePath = null,
         $caption = null,
         $isDummyNumber = true,
         $fileId = null
     ) {
-
         if ($fileId) {
-            // Check if file_id is still valid
             $fileInfo = $this->getFileInfo($fileId);
             
             if ($fileInfo['success'] && ($fileInfo['is_active'] ?? false)) {
-                // File is still active, use it
                 $uploadResult = [
                     'success' => true,
                     'file_id' => $fileId,
                     'was_reuploaded' => false
                 ];
             } else {
-                // File is not active, need to upload new one
                 Log::info("File {$fileId} is not active, uploading new file");
                 $uploadResult = $this->uploadFile($filePath);
                 $uploadResult['was_reuploaded'] = true;
@@ -237,28 +232,27 @@ class ResayilController extends Controller
                 'error' => $response->body(),
                 'status' => $response->status()
             ];
-        } else {
-            $data = json_decode($response, true);
-            Log::debug('Resayil Document API Response:', $data ?? []);
-
-            if (!empty($data['status']) && in_array($data['status'], ['queued', 'sent', 'delivered'])) {
-                $result = ['success' => true];
-                
-                // If we reuploaded the file, include the new file info
-                if ($uploadResult['was_reuploaded'] ?? false) {
-                    $result['new_file_id'] = $uploadResult['file_id'];
-                    $result['expires_at'] = $uploadResult['expires_at'] ?? null;
-                    $result['created_at'] = $uploadResult['created_at'] ?? null;
-                }
-                
-                return $result;
-            }
-
-            return [
-                'success' => false,
-                'response' => $data
-            ];
         }
+
+        $data = json_decode($response, true);
+        Log::debug('Resayil Document API Response:', $data ?? []);
+
+        if (!empty($data['status']) && in_array($data['status'], ['queued', 'sent', 'delivered'])) {
+            $result = ['success' => true];
+            
+            if ($uploadResult['was_reuploaded'] ?? false) {
+                $result['new_file_id'] = $uploadResult['file_id'];
+                $result['expires_at'] = $uploadResult['expires_at'] ?? null;
+                $result['created_at'] = $uploadResult['created_at'] ?? null;
+            }
+            
+            return $result;
+        }
+
+        return [
+            'success' => false,
+            'response' => $data
+        ];
     }
 
     public function handleWebhook(Request $request)
@@ -266,8 +260,6 @@ class ResayilController extends Controller
         Log::debug('Resayil Webhook Received:', $request->all());
 
         $phone = $request->input('phone') ?? $request->input('messages.0.from');
-
-        // Check if this is a media (image) message
         $message = $request->input('messages.0');
         
         if ($message && $message['type'] === 'image') {
@@ -276,7 +268,6 @@ class ResayilController extends Controller
             $caption = $message['image']['caption'] ?? null;
 
             if ($mediaId) {
-                // Save to DB
                 IncomingMedia::create([
                     'phone' => $phone,
                     'media_id' => $mediaId,
@@ -288,8 +279,6 @@ class ResayilController extends Controller
                 Log::info("Saved incoming image from {$phone} with media ID {$mediaId}");
             }
         }
-
-        // Your existing message + button reply handling here ...
 
         return response()->json(['message' => 'Webhook received successfully']);
     }
@@ -408,15 +397,7 @@ class ResayilController extends Controller
         Log::info('Phone: ' . $country_code . $phone);
         Log::info('Message: ' . $message);
         
-        // Call the message function
-        $response = $this->message(
-            $phone,
-            $country_code,
-            $message,
-            null,   // header
-            null,   // footer
-            null,   // buttons
-        );
+        $response = $this->message($phone, $country_code, $message);
 
         Log::info('Resayil API Response: ', $response);
         if ($response['success'] ?? false) {
@@ -425,28 +406,28 @@ class ResayilController extends Controller
                 'success' => true,
                 'message' => 'Reminder sent successfully'
             ];
-        } else {
-            Log::error('Failed to send WhatsApp message via Resayil', [
-                'response' => $response
-            ]);
-
-            $errorMessage = 'Something went wrong while sending the message';
-
-            if (isset($response['status'])) {
-                if ($response['status'] == 400) {
-                    $errorMessage = 'Invalid phone number format';
-                } elseif ($response['status'] == 401) {
-                    $errorMessage = 'Unauthorized access. Check API token';
-                } elseif ($response['status'] == 500) {
-                    $errorMessage = 'Internal server error. Try again later';
-                }
-            }
-
-            return [
-                'success' => false,
-                'error' => $errorMessage,
-                'response' => $response
-            ];
         }
+
+        Log::error('Failed to send WhatsApp message via Resayil', [
+            'response' => $response
+        ]);
+
+        $errorMessage = 'Something went wrong while sending the message';
+
+        if (isset($response['status'])) {
+            if ($response['status'] == 400) {
+                $errorMessage = 'Invalid phone number format';
+            } elseif ($response['status'] == 401) {
+                $errorMessage = 'Unauthorized access. Check API token';
+            } elseif ($response['status'] == 500) {
+                $errorMessage = 'Internal server error. Try again later';
+            }
+        }
+
+        return [
+            'success' => false,
+            'error' => $errorMessage,
+            'response' => $response
+        ];
     }
 }

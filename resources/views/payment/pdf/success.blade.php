@@ -342,10 +342,6 @@
                         <td class="label">Client Name</td>
                         <td class="value">{{ $payment->client->full_name }}</td>
                     </tr>
-                    <tr>
-                        <td class="label">Payment Gateway</td>
-                        <td class="value">{{ $payment->payment_gateway }}</td>
-                    </tr>
                     @if($payment->paymentMethod)
                     <tr>
                         <td class="label">Payment Method</td>

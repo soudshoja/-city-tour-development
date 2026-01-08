@@ -126,13 +126,43 @@ class ResayilController extends Controller
         if (!empty($data[0]['id'])) {
             return [
                 'success' => true,
-                'file_id' => $data[0]['id']
+                'file_id' => $data[0]['id'],
+                'expires_at' => $data[0]['expiresAt'] ?? null,
+                'created_at' => $data[0]['createdAt'] ?? null,
+                'file_data' => $data[0]
             ];
         }
 
         return [
             'success' => false,
             'response' => $data
+        ];
+    }
+
+    public function getFileInfo($fileId)
+    {
+        $url = config('services.resayil.base_url') . config('services.resayil.version') . "/files/{$fileId}";
+
+        $response = Http::withHeaders([
+            'Token' => $this->token,
+        ])->get($url);
+
+        if ($response->failed()) {
+            Log::error("Error getting file info from Resayil: {$response->body()}");
+            return [
+                'success' => false,
+                'error' => $response->body(),
+                'status' => $response->status()
+            ];
+        }
+
+        $data = $response->json();
+        Log::debug('Resayil File Info Response:', $data ?? []);
+
+        return [
+            'success' => true,
+            'data' => $data,
+            'is_active' => ($data['status'] ?? null) === 'active'
         ];
     }
 
@@ -143,8 +173,30 @@ class ResayilController extends Controller
         $filename = 'document.pdf',
         $caption = null,
         $isDummyNumber = true,
+        $fileId = null
     ) {
-        $uploadResult = $this->uploadFile($filePath);
+
+        if ($fileId) {
+            // Check if file_id is still valid
+            $fileInfo = $this->getFileInfo($fileId);
+            
+            if ($fileInfo['success'] && ($fileInfo['is_active'] ?? false)) {
+                // File is still active, use it
+                $uploadResult = [
+                    'success' => true,
+                    'file_id' => $fileId,
+                    'was_reuploaded' => false
+                ];
+            } else {
+                // File is not active, need to upload new one
+                Log::info("File {$fileId} is not active, uploading new file");
+                $uploadResult = $this->uploadFile($filePath);
+                $uploadResult['was_reuploaded'] = true;
+            }
+        } else {
+            $uploadResult = $this->uploadFile($filePath);
+            $uploadResult['was_reuploaded'] = true;
+        }
         
         if (!($uploadResult['success'] ?? false)) {
             return $uploadResult;
@@ -190,7 +242,16 @@ class ResayilController extends Controller
             Log::debug('Resayil Document API Response:', $data ?? []);
 
             if (!empty($data['status']) && in_array($data['status'], ['queued', 'sent', 'delivered'])) {
-                return ['success' => true];
+                $result = ['success' => true];
+                
+                // If we reuploaded the file, include the new file info
+                if ($uploadResult['was_reuploaded'] ?? false) {
+                    $result['new_file_id'] = $uploadResult['file_id'];
+                    $result['expires_at'] = $uploadResult['expires_at'] ?? null;
+                    $result['created_at'] = $uploadResult['created_at'] ?? null;
+                }
+                
+                return $result;
             }
 
             return [

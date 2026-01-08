@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\PaymentMailTypeEnum;
 use App\Mail\PaymentMail;
 use App\Models\Payment;
+use App\Models\PaymentFile;
 use App\Policies\SystemSettingPolicy;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -74,25 +75,68 @@ class SystemSettingController extends Controller
             ->findOrFail($request->payment_id);
 
         try {
-            $pdf = Pdf::loadView('email.payment.success', ['payment' => $payment]);
-            
-            $filename = "payment_receipt_{$payment->voucher_number}.pdf";
-            $path = "temp/{$filename}";
-            
-            Storage::disk('public')->put($path, $pdf->output());
-            
-            $filePath = storage_path("app/public/{$path}");
+            // Check if we have a valid cached file_id
+            $paymentFile = PaymentFile::where('payment_id', $payment->id)
+                ->where('expiry_date', '>', now())
+                ->first();
 
+            $fileId = null;
+            $filePath = null;
+            
+            if (!$paymentFile) {
+                // No valid cache, generate PDF and upload
+                $pdf = Pdf::loadView('email.payment.success', ['payment' => $payment]);
+                
+                $filename = "payment_receipt_{$payment->voucher_number}.pdf";
+                $path = "temp/{$filename}";
+                
+                Storage::disk('public')->put($path, $pdf->output());
+                
+                $filePath = storage_path("app/public/{$path}");
+            } else {
+                $fileId = $paymentFile->file_id;
+                
+                // Generate PDF in case file is no longer active
+                $pdf = Pdf::loadView('email.payment.success', ['payment' => $payment]);
+                
+                $filename = "payment_receipt_{$payment->voucher_number}.pdf";
+                $path = "temp/{$filename}";
+                
+                Storage::disk('public')->put($path, $pdf->output());
+                
+                $filePath = storage_path("app/public/{$path}");
+            }
+
+            // Send WhatsApp message (ResayilController will verify file_id validity)
             $resayil = new ResayilController();
             $response = $resayil->document(
                 $request->phone,
                 $request->country_code,
                 $filePath,
-                $filename,
-                "Payment Receipt - {$payment->voucher_number}"
+                "payment_receipt_{$payment->voucher_number}.pdf",
+                "Payment Receipt - {$payment->voucher_number}",
+                true,
+                $fileId
             );
 
-            Storage::disk('public')->delete($path);
+            // Clean up temp file
+            if ($filePath && Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+            }
+
+            // If document method returned new file info (re-uploaded), save it
+            if (($response['success'] ?? false) && isset($response['new_file_id'])) {
+                $newFileId = $response['new_file_id'];
+                $expiresAt = $response['expires_at'] ?? null;
+                
+                if ($expiresAt) {
+                    PaymentFile::create([
+                        'payment_id' => $payment->id,
+                        'file_id' => $newFileId,
+                        'expiry_date' => \Carbon\Carbon::parse($expiresAt)
+                    ]);
+                }
+            }
 
             if ($response['success'] ?? false) {
                 return back()->with('success', "PDF sent successfully via WhatsApp to {$request->country_code}{$request->phone}");

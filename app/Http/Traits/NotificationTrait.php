@@ -71,7 +71,7 @@ trait NotificationTrait
                 return Notification::where('user_id', $user->id)->where('status', 'read')->where('close', 0)->latest()->limit(10)->get();
             default:
                 return [];
-    }
+        }
     }
 
     public function getUnreadNotifications()
@@ -117,5 +117,9 @@ trait NotificationTrait
         $userIds = array_merge($agentUserIds, [$user->id]);
 
         return $userIds;
+    }
+
+    public function storeNotificationWithSendingPdf(){
+
     }
 }

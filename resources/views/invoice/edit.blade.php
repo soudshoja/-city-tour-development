@@ -614,18 +614,23 @@
                                         $balanceCredit = \App\Models\Credit::getTotalCreditsByClient($selectedClient->id);
                                         @endphp
                                         @if ($invoice->amount <= $balanceCredit)
-                                            <button type="button" onclick="showModal('credit')" id="payment_type_credit" name="payment_type"
-                                            class="rounded-full flex flex-col items-center justify-center w-full
-                                            px-4 py-2 border border-gray-300 
-                                            bg-white text-gray-700 transition gap-2 
-                                            hover:bg-green-500 hover:text-white hover:shadow-xl"
-                                            {{ $invoice->amount > $balanceCredit ? 'disabled' : '' }}>
-                                            <span class="font-medium">{{ $selectedClient->first_name }}:
-                                                KWD {{ $balanceCredit }}</span>
-                                            @if ($invoice->amount > $balanceCredit)
-                                            <span class="text-red-500">Credit Limit Exceeded</span>
-                                            @endif
-                                            </button>
+                                            <!-- Credit can cover full invoice -->
+                                            <label class="rounded-full shadow transition-all duration-200 block"
+                                                :class="isTypeLocked('credit') ? 'cursor-not-allowed' : 'cursor-pointer'"
+                                                @click="handlePaymentTypeClick('credit', $event)">
+                                                <button type="button" 
+                                                    @click="if(!isTypeLocked('credit')) { showModal('credit') }"
+                                                    class="rounded-full flex flex-col items-center justify-center w-full
+                                                        px-4 py-2 border border-gray-300 transition gap-2
+                                                        bg-white text-gray-700"
+                                                    :class="isTypeLocked('credit') 
+                                                        ? 'cursor-not-allowed' 
+                                                        : 'hover:bg-green-500 hover:text-white hover:shadow-xl cursor-pointer'">
+                                                    <span class="font-medium">{{ $selectedClient->first_name }}: KWD {{ $balanceCredit }}</span>
+                                                </button>
+                                            </label>
+                                            
+                                            <!-- Credit Modal -->
                                             <div id="clientCreditModal"
                                                 class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
                                                 <div class="bg-white rounded-lg p-6 shadow-lg">
@@ -644,43 +649,46 @@
                                                             class="mr-2 px-4 py-2 bg-gray-300 text-gray-700 rounded">Cancel</button>
                                                     </div>
                                                 </div>
-
                                             </div>
+                                            
                                         @else
                                             @if ($creditUsed && $creditUsed->amount < 0)
-                                                <a target="_blank" href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}"><button
-                                                    type="button"
-                                                    class="rounded-full flex flex-col items-center justify-center w-full
-                                                px-4 py-2 border border-gray-300 
-                                                bg-green-500 text-white shadow-xl">
-                                                    <span>Credit {{ number_format(abs($creditUsed->amount), 2) ?? 0 }}
-                                                        KWD
-                                                        has
-                                                        been utilized.
-                                                    </span>
-                                                    <span>Current balance of credit for {{ $selectedClient->first_name }}:
-                                                        {{ $balanceCredit }} KWD</span>
-                                                </button></a>
+                                                <!-- Credit already used - no locking needed, just display -->
+                                                <a target="_blank" href="{{ route('invoice.show', ['companyId' => $invoice->agent->branch->company_id, 'invoiceNumber' => $invoice->invoice_number])}}">
+                                                    <button type="button"
+                                                        class="rounded-full flex flex-col items-center justify-center w-full
+                                                            px-4 py-2 border border-gray-300 
+                                                            bg-green-500 text-white shadow-xl">
+                                                        <span>Credit {{ number_format(abs($creditUsed->amount), 2) ?? 0 }} KWD has been utilized.</span>
+                                                        <span>Current balance of credit for {{ $selectedClient->first_name }}: {{ $balanceCredit }} KWD</span>
+                                                    </button>
+                                                </a>
                                             @else
                                                 @if ($balanceCredit > 0 && $invoice->payment_type == '')
-                                                <button type="button" @click="generateInvoiceWithCreditModal = true"
-                                                    class="rounded-full flex flex-col items-center justify-center w-full
-                                                px-4 py-2 border border-gray-300 
-                                                bg-white text-gray-700 transition gap-2 
-                                                hover:bg-green-500 hover:text-white hover:shadow-xl">
-                                                    <span> Still Paying With Client Credit?</span>
-                                                    <span> Current balance of credit for {{ $selectedClient->first_name }}:
-                                                        {{ $balanceCredit }} KWD</span>
-                                                </button>
+                                                    <!-- Partial credit available - apply locking -->
+                                                    <label class="rounded-full shadow transition-all duration-200 block"
+                                                        :class="isTypeLocked('credit') ? 'cursor-not-allowed' : 'cursor-pointer'"
+                                                        @click="handlePaymentTypeClick('credit', $event)">
+                                                        <button type="button" 
+                                                            @click="if(!isTypeLocked('credit')) { generateInvoiceWithCreditModal = true }"
+                                                            class="rounded-full flex flex-col items-center justify-center w-full
+                                                                px-4 py-2 border border-gray-300 transition gap-2
+                                                                bg-white text-gray-700"
+                                                            :class="isTypeLocked('credit') 
+                                                                ? 'cursor-not-allowed' 
+                                                                : 'hover:bg-green-500 hover:text-white hover:shadow-xl cursor-pointer'">
+                                                            <span>Still Paying With Client Credit?</span>
+                                                            <span>Current balance of credit for {{ $selectedClient->first_name }}: {{ $balanceCredit }} KWD</span>
+                                                        </button>
+                                                    </label>
                                                 @else
-                                                <button type="button"
-                                                    class="rounded-full flex flex-col items-center justify-center w-full
-                                                px-4 py-2 border border-gray-300 
-                                                bg-white text-gray-700 transition gap-2 shadow">
-
-                                                    <span>Current balance of credit for {{ $selectedClient->first_name }}:
-                                                        {{ $balanceCredit }} KWD</span>
-                                                </button>
+                                                    <!-- Just display credit balance - no interaction -->
+                                                    <button type="button"
+                                                        class="rounded-full flex flex-col items-center justify-center w-full
+                                                            px-4 py-2 border border-gray-300 
+                                                            bg-white text-gray-700 transition gap-2 shadow cursor-default">
+                                                        <span>Current balance of credit for {{ $selectedClient->first_name }}: {{ $balanceCredit }} KWD</span>
+                                                    </button>
                                                 @endif
                                             @endif
                                             

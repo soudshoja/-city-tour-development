@@ -71,6 +71,26 @@
             </div>
         </div>
 
+        <div id="fileStatusContainer" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div class="flex items-start gap-3">
+                <svg id="fileStatusIcon" class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="flex-1">
+                    <h4 id="fileStatusTitle" class="text-sm font-semibold text-blue-900 mb-1">File Status</h4>
+                    <div id="fileStatusContent" class="text-sm text-blue-800">
+                        <div class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Checking file status...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             <div>
@@ -148,6 +168,90 @@
         if (countryCode) {
             document.getElementById('countryCode').value = countryCode;
         }
+
+        // Check file status
+        checkFileStatus(id);
+    }
+
+    function checkFileStatus(paymentId) {
+        const container = document.getElementById('fileStatusContainer');
+        const content = document.getElementById('fileStatusContent');
+        
+        // Show loading state
+        container.classList.remove('hidden');
+        content.innerHTML = `
+            <div class="flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Checking file status...</span>
+            </div>
+        `;
+
+        // Make AJAX request
+        fetch('{{ route("system-settings.check-file-status") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ payment_id: paymentId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            let html = `<p class="mb-2">${data.message}</p>`;
+            
+            if (data.has_file) {
+                const statusColor = data.is_active ? 'text-green-700' : 'text-orange-700';
+                const statusBadge = data.is_active 
+                    ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Active</span>'
+                    : '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">' + (data.status || 'Inactive') + '</span>';
+                
+                html += `
+                    <div class="mt-3 space-y-2 text-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium">Status:</span>
+                            ${statusBadge}
+                        </div>
+                        <div><span class="font-medium">File ID:</span> <code class="px-1.5 py-0.5 bg-gray-100 rounded">${data.file_id}</code></div>
+                        ${data.file_data.filename ? `<div><span class="font-medium">Filename:</span> ${data.file_data.filename}</div>` : ''}
+                        ${data.file_data.size ? `<div><span class="font-medium">Size:</span> ${(data.file_data.size / 1024).toFixed(2)} KB</div>` : ''}
+                        ${data.file_data.deliveries !== undefined ? `<div><span class="font-medium">Deliveries:</span> ${data.file_data.deliveries}</div>` : ''}
+                        <div><span class="font-medium">Cached at:</span> ${new Date(data.created_at).toLocaleString()}</div>
+                        <div><span class="font-medium">Expires at:</span> ${new Date(data.expiry_date).toLocaleString()}</div>
+                    </div>
+                `;
+            }
+            
+            content.innerHTML = html;
+            
+            // Update container, icon, and title colors based on status
+            const icon = document.getElementById('fileStatusIcon');
+            const title = document.getElementById('fileStatusTitle');
+            
+            if (data.is_active) {
+                container.className = 'bg-green-50 border border-green-200 rounded-lg p-4 mb-4';
+                icon.className = 'w-5 h-5 text-green-600 mt-0.5 flex-shrink-0';
+                title.className = 'text-sm font-semibold text-green-900 mb-1';
+                content.className = 'text-sm text-green-800';
+            } else if (data.has_file) {
+                container.className = 'bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4';
+                icon.className = 'w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0';
+                title.className = 'text-sm font-semibold text-orange-900 mb-1';
+                content.className = 'text-sm text-orange-800';
+            } else {
+                container.className = 'bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4';
+                icon.className = 'w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0';
+                title.className = 'text-sm font-semibold text-blue-900 mb-1';
+                content.className = 'text-sm text-blue-800';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking file status:', error);
+            content.innerHTML = '<p class="text-red-700">Error checking file status. Please try again.</p>';
+            container.className = 'bg-red-50 border border-red-200 rounded-lg p-4 mb-4';
+        });
     }
 
     function downloadPdf() {

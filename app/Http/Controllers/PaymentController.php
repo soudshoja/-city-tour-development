@@ -31,6 +31,9 @@ use App\Http\Traits\NotificationTrait;
 use App\Http\Traits\CurrencyExchangeTrait;
 use App\Http\Controllers\ClientController;
 use App\Enums\ChargeType;
+use App\Enums\NotificationEmailTypeEnum;
+use App\Enums\PaymentMailTypeEnum;
+use App\Http\Traits\EmailNotificationTrait;
 use App\Models\HesabePayment;
 use App\Models\UpaymentPayment;
 use App\Models\InvoiceDetail;
@@ -74,7 +77,7 @@ use Throwable;
 
 class PaymentController extends Controller
 {
-    use NotificationTrait;
+    use NotificationTrait, EmailNotificationTrait;
     use CurrencyExchangeTrait;
 
     public function show(int $id)
@@ -4080,10 +4083,15 @@ class PaymentController extends Controller
             $payment->refresh();
             
             $receiptInfo = $this->publicReceiptNotice($payment, $process, 'success', $partialId);
-            $this->storeNotification([
+            $this->storeNotificationWithEmail([
                 'user_id' => $receiptInfo['agent']->user_id,
                 'title'   => $receiptInfo['title'],
                 'message' => $receiptInfo['message'],
+                'type' => NotificationEmailTypeEnum::PAYMENT,
+                'payment' => [
+                    'id' => $payment->id,
+                    'type' => PaymentMailTypeEnum::PAYMENT_SUCCESS
+                ]
             ]);
 
             (new ResayilController())->message(

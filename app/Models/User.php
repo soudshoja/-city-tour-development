@@ -29,6 +29,10 @@ class User extends Authenticatable implements MustVerifyEmail
         'two_factor_expires_at',
     ];
 
+    protected $cast = [
+        'role_id' => 'integer',
+    ];
+
     /**
      * The attributes that should be hidden for serialization.
      *

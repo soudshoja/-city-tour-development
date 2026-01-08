@@ -91,6 +91,115 @@ class ResayilController extends Controller
         }
     }
 
+    public function uploadFile($filePath)
+    {
+        $url = config('services.resayil.base_url') . config('services.resayil.version') . '/files';
+
+        if (!file_exists($filePath)) {
+            Log::error("File not found for upload: {$filePath}");
+            return [
+                'success' => false,
+                'error' => 'File not found'
+            ];
+        }
+
+        $response = Http::withHeaders([
+            'Token' => $this->token,
+        ])->attach(
+            'file',
+            file_get_contents($filePath),
+            basename($filePath)
+        )->post($url);
+
+        if ($response->failed()) {
+            Log::error("Error uploading file to Resayil: {$response->body()}");
+            return [
+                'success' => false,
+                'error' => $response->body(),
+                'status' => $response->status()
+            ];
+        }
+
+        $data = $response->json();
+        Log::debug('Resayil File Upload Response:', $data ?? []);
+
+        if (!empty($data[0]['id'])) {
+            return [
+                'success' => true,
+                'file_id' => $data[0]['id']
+            ];
+        }
+
+        return [
+            'success' => false,
+            'response' => $data
+        ];
+    }
+
+    public function document(
+        $phone,
+        $country_code,
+        $filePath,
+        $filename = 'document.pdf',
+        $caption = null,
+        $isDummyNumber = true,
+    ) {
+        $uploadResult = $this->uploadFile($filePath);
+        
+        if (!($uploadResult['success'] ?? false)) {
+            return $uploadResult;
+        }
+
+        $fileId = $uploadResult['file_id'];
+        $url = $this->url . 'messages';
+
+        if (str_starts_with($phone, '+')) {
+            $phoneNumber = $phone;
+        } else {
+            $phoneNumber = $country_code . $phone;
+        }
+
+        if (app()->environment() !== 'production' && $isDummyNumber) {
+            $phoneNumber = env('PHONE_LOCAL', '+60193058463');
+        }
+
+        $payload = [
+            'phone' => $phoneNumber,
+            'message' => $caption,
+            'media' => [
+                'file' => $fileId,
+            ],
+        ];
+
+        Log::debug('Sending document to Resayil:', $payload);
+
+        $response = Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'Token' => $this->token,
+        ])->post($url, $payload);
+
+        if ($response->failed()) {
+            Log::error("Error in sending document via Resayil: {$response->body()}");
+            return [
+                'success' => false,
+                'error' => $response->body(),
+                'status' => $response->status()
+            ];
+        } else {
+            $data = json_decode($response, true);
+            Log::debug('Resayil Document API Response:', $data ?? []);
+
+            if (!empty($data['status']) && in_array($data['status'], ['queued', 'sent', 'delivered'])) {
+                return ['success' => true];
+            }
+
+            return [
+                'success' => false,
+                'response' => $data
+            ];
+        }
+    }
+
     public function handleWebhook(Request $request)
     {
         Log::debug('Resayil Webhook Received:', $request->all());

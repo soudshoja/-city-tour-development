@@ -22,6 +22,7 @@ use App\Models\Role;
 use App\Models\Branch;
 use App\Models\Agent;
 use App\Policies\AccountPolicy;
+use App\Policies\SystemSettingPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -44,6 +45,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Task::class, TaskPolicy::class);
         Gate::policy(CoaCategory::class, COAPolicy::class);
 
+        Gate::define('manage-system-settings', [SystemSettingPolicy::class, 'viewAny']);
+        Gate::define('manage-email-tester', [SystemSettingPolicy::class, 'manageEmailTester']);
         
         // Register event listeners
         Event::listen(

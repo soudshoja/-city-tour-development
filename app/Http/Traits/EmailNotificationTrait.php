@@ -2,10 +2,12 @@
 
 namespace App\Http\Traits;
 
+use App\Enums\NotificationEmailTypeEnum;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\NotificationMail;
 use App\Mail\AutoBillMail;
+use App\Mail\PaymentMail;
 
 trait EmailNotificationTrait
 {
@@ -29,8 +31,24 @@ trait EmailNotificationTrait
             if ($toEmail) {
                 $type = $data['type'] ?? 'default';
                 switch ($type) {
-                    case 'autobill':
+                    case NotificationEmailTypeEnum::AUTOBILL:
+
+                        Log::info('[Notification] Sending AutoBill email.');
+
                         $mailable = new AutoBillMail($data, $company);
+                        break;
+                    case NotificationEmailTypeEnum::PAYMENT:
+
+                        Log::info('[Notification] Sending Payment email.');
+
+                        $paymentId = $data['payment']['id'] ?? null;
+                        $paymentMailType = $data['payment']['type'] ?? null;
+
+                        if(!$paymentId || !$paymentMailType) {
+                            throw new \Exception('Payment ID or Payment Mail Type is missing for payment email.');
+                        }
+
+                        $mailable = new PaymentMail($paymentId, $paymentMailType);
                         break;
 
                     default:

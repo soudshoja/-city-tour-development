@@ -323,6 +323,14 @@
             <menuitem>
             <a href="{{ route('settings.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Settings</a>
+            <menu class="flex px-2">
+                <menuitem>
+                <a href="{{ route('system-settings.index') }}"
+                    class="text-xs justify-center text-center   px-4 py-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                    System Setting
+                </a>
+                </menuitem>
+            </menu>
             </menuitem>
             @endif
             @can('viewAny', App\Models\Supplier::class)
@@ -352,7 +360,7 @@
             <a href="{{ route('exchange.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Currency
                 Exchange</a>
-            <menu class="flex space-x-2">
+            <menu class="flex px-2">
                 <menuitem>
                 <a href="{{ route('exchange.histories.all') }}"
                     class="text-xs justify-center text-center   px-4 py-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition">

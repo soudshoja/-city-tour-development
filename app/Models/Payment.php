@@ -144,4 +144,9 @@ class Payment extends Model
     {
         return $this->hasMany(PaymentItem::class, 'payment_id');
     }
+
+    public function paymentFiles()
+    {
+        return $this->hasMany(PaymentFile::class, 'payment_id');
+    }
 }

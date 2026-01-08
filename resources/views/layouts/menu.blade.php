@@ -323,6 +323,7 @@
             <menuitem>
             <a href="{{ route('settings.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Settings</a>
+            @can('manage-system-settings')
             <menu class="flex px-2">
                 <menuitem>
                 <a href="{{ route('system-settings.index') }}"
@@ -331,6 +332,7 @@
                 </a>
                 </menuitem>
             </menu>
+            @endcan
             </menuitem>
             @endif
             @can('viewAny', App\Models\Supplier::class)

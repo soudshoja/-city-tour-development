@@ -16,7 +16,7 @@ class SystemSettingController extends Controller
 {
     public function index()
     {
-        Gate::authorize('manage-email-tester');
+        Gate::authorize('manage-system-settings');
 
         $payments = Payment::with(['client', 'agent'])
             ->where('status', 'completed')

@@ -75,7 +75,6 @@ class SystemSettingController extends Controller
             ->findOrFail($request->payment_id);
 
         try {
-            // Check if we have a valid cached file_id
             $paymentFile = PaymentFile::where('payment_id', $payment->id)
                 ->where('expiry_date', '>', now())
                 ->first();
@@ -169,5 +168,65 @@ class SystemSettingController extends Controller
         session(['system_settings_active_tab' => $request->tab]);
 
         return response()->json(['success' => true]);
+    }
+
+    public function checkFileStatus(Request $request)
+    {
+        Gate::authorize('manage-system-settings');
+
+        $request->validate([
+            'payment_id' => 'required|exists:payments,id',
+        ]);
+
+        $payment = Payment::findOrFail($request->payment_id);
+
+        $paymentFile = PaymentFile::where('payment_id', $payment->id)
+            ->where('expiry_date', '>', now())
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if (!$paymentFile) {
+            return response()->json([
+                'has_file' => false,
+                'message' => 'No file uploaded yet. Will upload new file on send.',
+                'status' => 'none'
+            ]);
+        }
+
+        $resayil = new ResayilController();
+        $fileInfo = $resayil->getFileInfo($paymentFile->file_id);
+
+        if (!($fileInfo['success'] ?? false)) {
+            return response()->json([
+                'has_file' => true,
+                'file_id' => $paymentFile->file_id,
+                'status' => 'error',
+                'message' => 'Could not verify file status with Resayil API. Will re-upload on send.',
+                'expiry_date' => $paymentFile->expiry_date->format('Y-m-d H:i:s'),
+                'created_at' => $paymentFile->created_at->format('Y-m-d H:i:s')
+            ]);
+        }
+
+        $fileData = $fileInfo['data'] ?? [];
+        $isActive = $fileInfo['is_active'] ?? false;
+
+        return response()->json([
+            'has_file' => true,
+            'file_id' => $paymentFile->file_id,
+            'status' => $fileData['status'] ?? 'unknown',
+            'is_active' => $isActive,
+            'message' => $isActive 
+                ? '✓ File is active in Resayil. Will reuse existing file on send.' 
+                : '⚠ File is not active. Will upload new file on send.',
+            'expiry_date' => $paymentFile->expiry_date->format('Y-m-d H:i:s'),
+            'created_at' => $paymentFile->created_at->format('Y-m-d H:i:s'),
+            'file_data' => [
+                'filename' => $fileData['filename'] ?? null,
+                'size' => $fileData['size'] ?? null,
+                'mime' => $fileData['mime'] ?? null,
+                'last_access' => $fileData['lastAccessAt'] ?? null,
+                'deliveries' => $fileData['stats']['deliveries'] ?? 0,
+            ]
+        ]);
     }
 }

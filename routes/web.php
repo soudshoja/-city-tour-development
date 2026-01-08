@@ -114,6 +114,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/send-whatsapp-pdf', [SystemSettingController::class, 'sendWhatsAppPdf'])->name('send-whatsapp-pdf');
         Route::get('/download-pdf', [SystemSettingController::class, 'downloadPdf'])->name('download-pdf');
         Route::post('/save-tab', [SystemSettingController::class, 'saveTab'])->name('save-tab');
+        Route::post('/check-file-status', [SystemSettingController::class, 'checkFileStatus'])->name('check-file-status');
     });
 
     // Agents list

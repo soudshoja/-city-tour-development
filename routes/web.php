@@ -635,6 +635,10 @@ Route::middleware(['auth'])->group(function () {
         ], function () {
             Route::post('/update-expiry', [SettingController::class, 'updateInvoiceExpiry'])->name('update-expiry');
         });
+
+        Route::post('/save-tab', [SettingController::class, 'saveTab'])->name('save-tab');
+        Route::get('/charges', [SettingController::class, 'getCharges'])->name('charges');
+        Route::get('/payment-methods', [SettingController::class, 'getPaymentMethods'])->name('payment-methods');
     });
 
     //Payment Method

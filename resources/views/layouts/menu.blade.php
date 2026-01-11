@@ -69,8 +69,9 @@
             </menuitem>
             @endcan
             @can('viewAny', 'App\Models\Charge')
-            <menuitem><a href="{{ route('charges.index') }}"
-                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Manage Charges</a>
+            <menuitem><div
+                data-tooltip="This feature has been relocated to Settings."
+                class="rounded-lg shadow-lg text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow cursor-not-allowed">Manage Charges</div>
             </menuitem>
             @endcan
             <!-- @can('viewAny', 'App\Models\Account')

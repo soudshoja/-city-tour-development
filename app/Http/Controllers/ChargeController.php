@@ -147,7 +147,7 @@ class ChargeController extends Controller
             ->first();
 
         if ($childCoaPaymentGateway) {
-            return redirect()->route('charges.index')->withErrors(['name' => 'Please change the charges name.']);
+            return redirect()->back()->withErrors(['name' => 'Please change the charges name.']);
         }
 
         // Fetch COA for Payment Gateway (Assets)
@@ -276,7 +276,7 @@ class ChargeController extends Controller
             ]);
         }        
 
-        return redirect()->route('charges.index')->with('success', 'Charge created successfully!');
+        return redirect()->back()->with('success', 'Charge created successfully!');
     }
 
     public function edit($id)
@@ -349,7 +349,7 @@ class ChargeController extends Controller
 
                 DB::commit();
 
-                return redirect()->route('charges.index')->with('success', 'Charges updated successfully!');
+                return redirect()->back()->with('success', 'Charges updated successfully!');
             } catch (Exception $e) {
                 DB::rollBack();
                 return redirect()->back()->withInput()->with('error', $e->getMessage());
@@ -380,14 +380,14 @@ class ChargeController extends Controller
 
                 DB::commit();
 
-                return redirect()->route('charges.index')->with('success', 'Gateway charges updated successfully!');
+                return redirect()->back()->with('success', 'Gateway charges updated successfully!');
             } catch (Exception $e) {
                 DB::rollBack();
                 return redirect()->back()->withInput()->with('error', $e->getMessage());
             }
         }
 
-        return redirect()->route('charges.index')->with('error', 'You do not have permission to update this gateway.');
+        return redirect()->back()->with('error', 'You do not have permission to update this gateway.');
     }
 
     public function destroy($id)
@@ -439,7 +439,7 @@ class ChargeController extends Controller
         $charge = Charge::findOrFail($id);
 
         if (!$charge) {
-            return redirect()->route('charges.index')->with('error', 'Charge not found.');
+            return redirect()->back()->with('error', 'Charge not found.');
         }
 
         if (Gate::allows('updateCredentials', $charge)) {
@@ -466,7 +466,7 @@ class ChargeController extends Controller
                 return redirect()->back()->withInput()->with('error', 'Something went wrong while updating credentials.');
             }
 
-            return redirect()->route('charges.index')->with('success', 'Gateway credentials updated.');
+            return redirect()->back()->with('success', 'Gateway credentials updated.');
         } elseif (Gate::allows('toggleActive', $charge)) {
             $request->validate([
                 'is_active' => 'nullable|boolean',

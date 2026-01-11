@@ -7,6 +7,7 @@ USE App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\Mime\DraftEmail;
 
 class TermController extends Controller
 {
@@ -62,7 +63,7 @@ class TermController extends Controller
             'is_default' => 'nullable|boolean',
         ]);
 
-        $companyId = $this->getCompanyId();
+        $companyId = $this->getCompanyId($request);
 
         $template = Term::create([
             'company_id' => $companyId,
@@ -103,10 +104,7 @@ class TermController extends Controller
             'language' => 'required|in:EN,ARB',
         ]);
 
-        $companyId = $this->getCompanyId();
-
-        $template = Term::where('company_id', $companyId)
-            ->findOrFail($id);
+        $template = Term::findOrFail($id);
 
         $oldLanguage = $template->language;
 
@@ -159,10 +157,7 @@ class TermController extends Controller
      */
     public function destroy($id)
     {
-        $companyId = $this->getCompanyId();
-
-        $template = Term::where('company_id', $companyId)
-            ->findOrFail($id);
+        $template = Term::findOrFail($id);
 
         $wasDefault = $template->is_default;
         $language = $template->language; // Store the language
@@ -191,10 +186,7 @@ class TermController extends Controller
      */
     public function setDefault($id)
     {
-        $companyId = $this->getCompanyId();
-
-        $template = Term::where('company_id', $companyId)
-            ->findOrFail($id);
+        $template = Term::findOrFail($id);
 
         $template->setAsDefault();
 
@@ -208,10 +200,7 @@ class TermController extends Controller
      */
     public function toggleActive($id)
     {
-        $companyId = $this->getCompanyId();
-
-        $template = Term::where('company_id', $companyId)
-            ->findOrFail($id);
+        $template = Term::findOrFail($id);
 
         $template->update(['is_active' => !$template->is_active]);
 

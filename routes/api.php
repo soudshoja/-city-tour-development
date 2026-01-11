@@ -145,6 +145,7 @@ Route::group([
     Route::delete('/reservation/{reservationId}', [MagicHolidayService::class, 'cancelReservation'])->name('magic-holiday.cancel-reservation');
 });
 
+Route::post('/find-agent', [TaskController::class, 'findAgent']);
 Route::post('/automation-supplier', [TaskController::class, 'automationSupplier']);
 
 // Payment API routes for lazy-loaded content

@@ -110,7 +110,7 @@ class PaymentMethodController extends Controller
 
             DB::commit();
 
-            return redirect()->route('charges.index')->with('success', 'Child Method charge successfully updated!');
+            return redirect()->back()->with('success', 'Child Method charge successfully updated!');
         } catch (Exception $e) {
             DB::rollback();
             return redirect()->back()->withInput()->with('error', $e->getMessage());
@@ -127,7 +127,7 @@ class PaymentMethodController extends Controller
 
             DB::commit();
 
-            return redirect()->route('charges.index')->with('success', 'Child Method charge successfully deleted!');
+            return redirect()->back()->with('success', 'Child Method charge successfully deleted!');
         } catch (Exception $e) {
             DB::rollback();
             return response()->json(['error' => $e->getMessage()], 500);

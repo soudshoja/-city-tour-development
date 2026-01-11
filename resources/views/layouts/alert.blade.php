@@ -81,3 +81,10 @@
     <p></p>
     <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
 </div>
+
+<div
+    id="custom-success-ajax-alert"
+    class="absolute top-8 right-24 z-10 flex items-center justify-between rounded shadow bg-green-500 p-3.5 text-white hidden" role="alert">
+    <p></p>
+    <button class="ml-4 bg-transparent font-semibold" onclick="this.parentElement.remove()">X</button>
+</div>

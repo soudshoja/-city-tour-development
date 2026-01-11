@@ -5184,6 +5184,37 @@ class TaskController extends Controller
         ], 200);
     }
 
+    public function findAgent(Request $request) 
+    {
+        $phoneNumber = $request->input('data.fromNumber');
+
+        if (!$phoneNumber) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Phone number is required',
+            ]);
+        }
+
+        $agent = Agent::where('phone_number', $phoneNumber)->first();
+
+        if ($agent) {
+            return response()->json([
+                'status' => 'success',
+                'message' => "Phone number is within the database. Agent detected: " . $agent->name,
+            ], 200);
+        }
+        
+        Log::info("The phone number is not within the database. Supplier agent detected: " . $phoneNumber);
+
+        return response()->json(array_merge(
+            $request->all(),
+                [
+                    'status' => 'error',
+                    'message' => 'Phone number is not within the database. Supplier agent detected',
+                ]
+        ), 200);
+    }
+
     public function automationSupplier(Request $request) 
     {
         $request->validate([

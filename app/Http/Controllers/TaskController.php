@@ -3805,6 +3805,16 @@ class TaskController extends Controller
                 Log::info('Created hotel with ID: ' . $hotel->id);
             }
 
+            $roomNumber = $data['room_number'] ?? null;
+            if (is_array($roomNumber)) {
+                $roomNumber = implode(', ', array_filter($roomNumber));
+            }
+
+            $roomDetails = $data['room_details'] ?? null;
+            if (is_array($roomDetails)) {
+                $roomDetails = implode(', ', array_filter($roomDetails));
+            }
+            
             $hotelDetails = [
                 'hotel_id' => $hotel->id,
                 'check_in' => isset($data['check_in']) ? Carbon::parse($data['check_in']) : null,

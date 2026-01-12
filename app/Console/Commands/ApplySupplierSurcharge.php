@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Task;
 use App\Models\Supplier;
 use App\Models\InvoiceDetail;
+use App\Models\JournalEntry;
+use App\Models\Agent;
 use Exception;
 
 class ApplySupplierSurcharge extends Command
@@ -28,6 +30,10 @@ class ApplySupplierSurcharge extends Command
     private $skippedTasks = [];
     private $integrityIssues = [];
     private $alreadyAppliedTasks = [];
+    
+    // Add journal tracking arrays
+    private $journalUpdates = [];
+    private $journalNotFound = [];
 
     public function handle()
     {
@@ -164,6 +170,7 @@ class ApplySupplierSurcharge extends Command
                 ]);
             } else {
                 $task->supplier_surcharge = $surchargeAmount;
+                $task->total = $oldPrice + $oldTax + $surchargeAmount;
                 $task->save();
 
                 $newTotal = $task->total;
@@ -209,6 +216,110 @@ class ApplySupplierSurcharge extends Command
                     'task_price' => $detail->task_price
                 ]);
             }
+            
+            $agentCommission = $this->calculateCommission($task);
+            
+            $commisionAccount = [
+                73 => 'debit',
+                43 => 'credit',
+            ];
+
+            foreach ($commisionAccount as $accountId => $field) {
+                $entries = JournalEntry::where('task_id', $task->id)
+                    ->where('account_id', $accountId)
+                    ->get();
+
+                if ($entries->isEmpty()) {
+                    Log::info("No journal entry found with account {$accountId} task ID: {$task->id}");
+                    $this->journalNotFound[] = [
+                        'task_id' => $task->id,
+                        'account_id' => $accountId,
+                    ];
+                    continue;
+                }
+
+                foreach ($entries as $entry) {
+                    $oldAmount = $entry->amount;
+                    $oldValue = $entry->$field;
+
+                    $entry->amount = $agentCommission;
+                    $entry->$field = $agentCommission;
+                    $entry->save();
+
+                    // Track journal updates
+                    $this->journalUpdates[] = [
+                        'task_id' => $task->id,
+                        'journal_entry_id' => $entry->id,
+                        'account_id' => $accountId,
+                        'field' => $field,
+                        'old_amount' => $oldAmount,
+                        'new_amount' => $agentCommission,
+                        'old_value' => $oldValue,
+                        'new_value' => $agentCommission,
+                    ];
+
+                    Log::info("Task {$task->id}: Updated Journal Entry {$entry->id}", [
+                        'journal_entry_id' => $entry->id,
+                        'account_id' => $accountId,
+                        'field_updated' => $field,
+                        'old_amount' => $oldAmount,
+                        'new_amount' => $entry->amount,
+                        "old_{$field}" => $oldValue,
+                        "new_{$field}" => $entry->$field,
+                    ]);
+                }
+            
+            }
+            
+            $taskAccount = [
+                107 => 'credit',
+                280 => 'debit',
+            ];
+
+            foreach ($taskAccount as $accountId => $field) {
+                $entries = JournalEntry::where('task_id', $task->id)
+                ->where('account_id', $accountId)
+                ->get();
+
+                if ($entries->isEmpty()) {
+                    Log::info("No journal entry found with account {$accountId} task ID: {$task->id}");
+                    $this->journalNotFound[] = [
+                        'task_id' => $task->id,
+                        'account_id' => $accountId,
+                    ];
+                    continue;
+                }
+
+                foreach ($entries as $entry) {
+                    $oldAmount = $entry->amount;
+                    $oldValue = $entry->$field;
+
+                    $entry->amount = $task->total;
+                    $entry->$field = $task->total;
+                    $entry->save();
+
+                    $this->journalUpdates[] = [
+                        'task_id' => $task->id,
+                        'journal_entry_id' => $entry->id,
+                        'account_id' => $accountId,
+                        'field' => $field,
+                        'old_amount' => $oldAmount,
+                        'new_amount' => $task->total,
+                        'old_value' => $oldValue,
+                        'new_value' => $task->total,
+                    ];
+
+                    Log::info("Task {$task->id}: Updated Journal Entry {$entry->id}", [
+                        'journal_entry_id' => $entry->id,
+                        'account_id' => $accountId,
+                        'field_updated' => $field,
+                        'old_amount' => $oldAmount,
+                        'new_amount' => $entry->amount,
+                        "old_{$field}" => $oldValue,
+                        "new_{$field}" => $entry->$field,
+                    ]);
+                }
+            }
         }
     }
 
@@ -242,23 +353,31 @@ class ApplySupplierSurcharge extends Command
         $this->info("Total processed: {$this->processedCount}");
         $this->info("Newly applied: {$this->successCount}");
         $this->info("Already applied (updated field): {$this->alreadyAppliedCount}");
+        $this->info("Journal entries updated: " . count($this->journalUpdates));
         $this->warn("Skipped: {$this->skippedCount}");
+        $this->warn("Journal entries not found: " . count($this->journalNotFound));
         $this->error("Integrity issues: {$this->integrityIssuesCount}");
+
+        $journalByTask = collect($this->journalUpdates)->groupBy('task_id');
 
         if (!empty($this->successTasks)) {
             $this->newLine();
             $this->info('Newly Applied Tasks:');
             $this->table(
-                ['Task ID', 'Price', 'Tax', 'Old Surcharge', 'New Surcharge', 'Old Total', 'New Total'],
-                collect($this->successTasks)->map(function ($task) {
+                ['Task ID', 'Old Total', 'New Total', 'Old Debit (73)', 'New Debit (73)', 'Old Credit (43)', 'New Credit (43)'],
+                collect($this->successTasks)->map(function ($task) use ($journalByTask) {
+                    $taskJournals = $journalByTask->get($task['task_id'], collect());
+                    $journal73 = $taskJournals->firstWhere('account_id', 73);
+                    $journal43 = $taskJournals->firstWhere('account_id', 43);
+
                     return [
                         'Task ID' => $task['task_id'],
-                        'Price' => number_format($task['price'], 2),
-                        'Tax' => number_format($task['tax'], 2),
-                        'Old Surcharge' => number_format($task['old_surcharge'], 2),
-                        'New Surcharge' => number_format($task['new_surcharge'], 2),
-                        'Old Total' => number_format($task['old_total'], 2),
-                        'New Total' => number_format($task['new_total'], 2)
+                        'Old Total' => number_format($task['old_total'], 3),
+                        'New Total' => number_format($task['new_total'], 3),
+                        'Old Journal Commission-Expenses' => $journal73 ? number_format($journal73['old_value'] ?? 0, 3) : '-',
+                        'New Journal Commission-Expenses' => $journal73 ? number_format($journal73['new_value'], 3) : '-',
+                        'Old Journal Commission-Liabilities' => $journal43 ? number_format($journal43['old_value'] ?? 0, 3) : '-',
+                        'New Journal Commission-Liabilities' => $journal43 ? number_format($journal43['new_value'], 3) : '-',
                     ];
                 })->toArray()
             );
@@ -268,15 +387,19 @@ class ApplySupplierSurcharge extends Command
             $this->newLine();
             $this->info('Already Applied (Field Updated):');
             $this->table(
-                ['Task ID', 'Price', 'Tax', 'Old Surcharge', 'New Surcharge', 'Total'],
-                collect($this->alreadyAppliedTasks)->map(function ($task) {
+                ['Task ID', 'Total', 'Old Debit (73)', 'New Debit (73)', 'Old Credit (43)', 'New Credit (43)'],
+                collect($this->alreadyAppliedTasks)->map(function ($task) use ($journalByTask) {
+                    $taskJournals = $journalByTask->get($task['task_id'], collect());
+                    $journal73 = $taskJournals->firstWhere('account_id', 73);
+                    $journal43 = $taskJournals->firstWhere('account_id', 43);
+
                     return [
                         'Task ID' => $task['task_id'],
-                        'Price' => number_format($task['price'], 2),
-                        'Tax' => number_format($task['tax'], 2),
-                        'Old Surcharge' => number_format($task['old_surcharge'], 2),
-                        'New Surcharge' => number_format($task['new_surcharge'], 2),
-                        'Total' => number_format($task['total'], 2)
+                        'Total' => number_format($task['total'], 3),
+                        'Old Journal Commission-Expenses' => $journal73 ? number_format($journal73['old_value'] ?? 0, 3) : '-',
+                        'New Journal Commission-Expenses' => $journal73 ? number_format($journal73['new_value'], 3) : '-',
+                        'Old Journal Commission-Liabilities' => $journal43 ? number_format($journal43['old_value'] ?? 0, 3) : '-',
+                        'New Journal Commission-Liabilities' => $journal43 ? number_format($journal43['new_value'], 3) : '-',
                     ];
                 })->toArray()
             );
@@ -290,12 +413,12 @@ class ApplySupplierSurcharge extends Command
                 collect($this->integrityIssues)->map(function ($issue) {
                     return [
                         'Task ID' => $issue['task_id'],
-                        'Price' => number_format($issue['price'], 2),
-                        'Tax' => number_format($issue['tax'], 2),
-                        'Surcharge' => number_format($issue['supplier_surcharge'], 2),
-                        'Total' => number_format($issue['total'], 2),
-                        'Expected' => number_format($issue['expected_with_surcharge'], 2),
-                        'Difference' => number_format($issue['difference'], 2)
+                        'Price' => number_format($issue['price'], 3),
+                        'Tax' => number_format($issue['tax'], 3),
+                        'Surcharge' => number_format($issue['supplier_surcharge'] ?? 0, 3),
+                        'Total' => number_format($issue['total'], 3),
+                        'Expected' => number_format($issue['expected_with_surcharge'], 3),
+                        'Difference' => number_format($issue['difference'], 3)
                     ];
                 })->toArray()
             );
@@ -314,8 +437,49 @@ class ApplySupplierSurcharge extends Command
             'total_processed' => $this->processedCount,
             'newly_applied' => $this->successCount,
             'already_applied' => $this->alreadyAppliedCount,
+            'journal_updated' => count($this->journalUpdates),
+            'journal_not_found' => count($this->journalNotFound),
             'skipped' => $this->skippedCount,
             'integrity_issues' => $this->integrityIssuesCount
         ]);
+    }
+
+    private function calculateCommission($task)
+    {   
+        $agent = Agent::where('id', $task->agent_id)->first();
+        if (!$agent) {
+            Log::info("Task {$task->id}: No agent found. Skipping commission calculation.");
+            return 0;
+        }
+
+        if (in_array($agent->type_id, [2, 3])) {
+            $sellingPrice = $task->invoiceDetail->task_price ?? 0;
+            $supplierPrice = $task->total ?? 0;
+            $rate = $agent->commission ?? 0.15;
+            $commission = $rate * ($sellingPrice - $supplierPrice);
+
+            Log::info("Task {$task->id}: Commission calculated", [
+                'agent_id' => $agent->id,
+                'agent_name' => $agent->name,
+                'agent_type_id' => $agent->type_id,
+                'selling_price' => $sellingPrice,
+                'supplier_price' => $supplierPrice,
+                'markup' => $sellingPrice - $supplierPrice,
+                'rate' => $rate,
+                'commission' => $commission,
+                'formula' => "{$rate} * ({$sellingPrice} - {$supplierPrice}) = {$commission}",
+            ]);
+        } else {
+            $commission = 0;
+
+            Log::info("Task {$task->id}: Commission is 0. Agent type not eligible", [
+                'agent_id' => $agent->id,
+                'agent_name' => $agent->name,
+                'agent_type_id' => $agent->type_id,
+                'eligible_types' => [2, 3],
+            ]);
+        }
+
+        return $commission;
     }
 }

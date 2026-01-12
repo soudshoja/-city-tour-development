@@ -220,7 +220,7 @@ class PaymentReceiptService
      */
     private function generatePdf(Payment $payment): string
     {
-        $pdf = Pdf::loadView('payment.pdf.success', ['payment' => $payment]);
+        $pdf = Pdf::loadView('payment.pdf.success', ['payment' => $payment, 'isPdf' => true]);
         
         $filename = "payment_receipt_{$payment->voucher_number}.pdf";
         $path = "temp/{$filename}";

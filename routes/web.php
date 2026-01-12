@@ -421,6 +421,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}', [InvoiceController::class, 'split'])->name('split')->withoutMiddleware(['auth']);
         Route::get('/partial/{invoiceNumber}/{clientId}/{partialId}/arabic', [InvoiceController::class, 'splitarabic'])->name('split-arabic')->withoutMiddleware(['auth']);
         Route::post('/client-credit', [InvoiceController::class, 'createInvoiceLinkWithClientCredit'])->name('client-credit');
+        Route::post('/{companyId}/{invoiceNumber}/send-email', [InvoiceController::class, 'sendInvoiceEmail'])->name('send-email');
 
         Route::get('/{invoiceNumber}', function () {
             return redirect()->route('invoice.show', ['companyId' => 1, 'invoiceNumber' => request()->invoiceNumber]);

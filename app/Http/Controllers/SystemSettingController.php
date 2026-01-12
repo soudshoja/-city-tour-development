@@ -95,7 +95,7 @@ class SystemSettingController extends Controller
         $payment = Payment::with(['client', 'agent.branch.company', 'paymentItems', 'paymentMethod'])
             ->findOrFail($request->payment_id);
 
-        $pdf = Pdf::loadView('payment.pdf.success', ['payment' => $payment]);
+        $pdf = Pdf::loadView('payment.pdf.success', ['payment' => $payment, 'isPdf' => true]);
         
         return $pdf->download("payment_receipt_{$payment->voucher_number}.pdf");
     }

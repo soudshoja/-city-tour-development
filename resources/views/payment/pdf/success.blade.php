@@ -3,432 +3,244 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Successful</title>
+    <title>Payment Voucher {{ $payment->voucher_number }}</title>
+    @if($isPdf ?? false)
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @page {
+            margin: 25px;
         }
         body {
-            font-family: Arial, Helvetica, sans-serif;
-            background-color: #f3f4f6;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background-color: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-        .success-banner {
-            background: linear-gradient(to right, #1b3f20, #1d832a);
-            color: #ffffff;
-            padding: 12px 24px;
-            text-align: center;
-        }
-        .success-banner h1 {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 0;
-            display: inline;
-        }
-        .success-banner .checkmark {
-            width: 28px;
-            height: 28px;
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 10px;
-            vertical-align: middle;
-        }
-        .success-banner .checkmark svg {
-            width: 16px;
-            height: 16px;
-        }
-        .content {
-            padding: 16px 20px;
-        }
-        .header {
-            display: table;
-            width: 100%;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-        }
-        .header-cell {
-            display: table-cell;
-            width: 33.33%;
-            vertical-align: middle;
-        }
-        .header-left {
-            text-align: left;
-        }
-        .header-center {
-            text-align: center;
-        }
-        .header-center h2 {
-            font-size: 20px;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 4px;
-        }
-        .header-center p {
-            font-size: 14px;
-            color: #6b7280;
-        }
-        .header-right {
-            text-align: right;
-        }
-        .company-logo img {
-            max-height: 50px;
-            width: auto;
-        }
-        .billing-section {
-            display: table;
-            width: 100%;
-            margin-bottom: 16px;
-        }
-        .billing-box {
-            display: table-cell;
-            width: 50%;
-            vertical-align: top;
-        }
-        .billing-box h3 {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .billing-box p {
-            font-size: 14px;
-            color: #6b7280;
-            margin-bottom: 4px;
-        }
-        .billing-box a {
-            color: #2563eb;
-            text-decoration: none;
-        }
-        .billing-box a:hover {
-            text-decoration: underline;
-        }
-        .details-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 16px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .details-table th {
-            background-color: #f9fafb;
-            padding: 8px 12px;
-            text-align: left;
-            font-size: 14px;
-            font-weight: 600;
-            color: #1f2937;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .details-table td {
-            padding: 8px 12px;
-            font-size: 13px;
-            color: #4b5563;
-        }
-        .details-table tr:last-child td {
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .details-table .label {
-            font-weight: 500;
-            color: #374151;
-        }
-        .details-table .value {
-            text-align: right;
-        }
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 24px;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .items-table th {
-            background-color: #f9fafb;
-            padding: 12px 16px;
-            text-align: left;
-            font-size: 13px;
-            font-weight: 600;
-            color: #374151;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .items-table td {
-            padding: 12px 16px;
-            font-size: 14px;
-            color: #4b5563;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .items-table tfoot td {
-            background-color: #f9fafb;
-            font-weight: 700;
-            color: #1f2937;
-            border-top: 2px solid #e5e7eb;
-        }
-        .amount-wrapper {
-            display: table;
-            width: 100%;
-            margin-bottom: 16px;
-        }
-        .amount-left {
-            display: table-cell;
-            width: 50%;
-            vertical-align: middle;
-        }
-        .amount-right {
-            display: table-cell;
-            width: 50%;
-            vertical-align: top;
-        }
-        .amount-summary {
-            border-radius: 8px;
-            padding: 16px 20px;
-            width: 250px;
-            margin-left: auto;
-        }
-        .amount-row {
-            font-size: 16px;
-            display: table;
-            width: 100%;
-            padding: 8px 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .amount-row:last-child {
-            border-bottom: none;
-            padding-top: 8px;
-        }
-        .amount-row .label {
-            display: table-cell;
-            font-size: 14px;
-            color: #6b7280;
-        }
-        .amount-row .value {
-            display: table-cell;
-            text-align: right;
-            font-size: 14px;
-            color: #1f2937;
-            font-weight: 600;
-        }
-        .amount-row.total .label,
-        .amount-row.total .value {
-            font-weight: 700;
-            color: #1f2937;
-        }
-        .paid-badge {
-            display: inline-block;
-            background-color: #dcfce7;
-            color: #166534;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 16px;
-        }
-        .footer {
-            text-align: center;
-            padding: 16px 20px;
-            background-color: #f9fafb;
-            border-top: 1px solid #e5e7eb;
-        }
-        .footer p {
-            font-size: 12px;
-            color: #6b7280;
-            margin-bottom: 4px;
-        }
-        .footer a {
-            color: #2563eb;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .footer a:hover {
-            text-decoration: underline;
-        }
-        .section-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 12px;
-        }
-        @media only screen and (max-width: 600px) {
-            body {
-                padding: 10px;
-            }
-            .content {
-                padding: 20px;
-            }
-            .billing-box {
-                display: block;
-                width: 100%;
-                margin-bottom: 20px;
-            }
-            .details-table td,
-            .details-table th,
-            .items-table td,
-            .items-table th {
-                padding: 10px 12px;
-            }
+            font-family: DejaVu Sans, Arial, sans-serif;
+            font-size: 11px;
         }
     </style>
+    @endif
 </head>
 
-<body>
-    <div class="container">
-        <div class="success-banner">
-            <span class="checkmark">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                </svg>
-            </span>
-            <h1>Payment Successful</h1>
-        </div>
+<body style="margin:0;padding:0;font-family:{{ ($isPdf ?? false) ? 'DejaVu Sans,' : '' }}Arial,Helvetica,sans-serif;background-color:{{ ($isPdf ?? false) ? '#ffffff' : '#f5f5f5' }};">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:{{ ($isPdf ?? false) ? '#ffffff' : '#f5f5f5' }};">
+        <tr>
+            <td align="center" style="padding:{{ ($isPdf ?? false) ? '0' : '30px 20px' }};">
+                <table role="presentation" width="{{ ($isPdf ?? false) ? '100%' : '700' }}" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.1);' }}">
 
-        <div class="content">
-            <div class="header">
-                <div class="header-cell header-left">
-                    @if($payment->agent->branch->company->logo)
-                    <div class="company-logo">
-                        <img src="{{ asset('storage/' . $payment->agent->branch->company->logo) }}" alt="Company Logo">
-                    </div>
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #166534 0%, #15803d 50%, #22c55e 100%);padding:{{ ($isPdf ?? false) ? '12px 25px' : '16px 40px' }};text-align:center;{{ ($isPdf ?? false) ? '' : 'border-radius:4px 4px 0 0;' }}">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td align="center">
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                                            <tr>
+                                                <td style="vertical-align:middle;padding-right:10px;">
+                                                    <div style="width:{{ ($isPdf ?? false) ? '24px' : '32px' }};height:{{ ($isPdf ?? false) ? '24px' : '32px' }};background-color:rgba(255,255,255,0.2);border-radius:50%;text-align:center;line-height:{{ ($isPdf ?? false) ? '24px' : '32px' }};">
+                                                        <span style="color:#ffffff;font-size:{{ ($isPdf ?? false) ? '14px' : '18px' }};font-weight:bold;">&#10003;</span>
+                                                    </div>
+                                                </td>
+                                                <td style="vertical-align:middle;">
+                                                    <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '16px' : '22px' }};font-weight:bold;color:#ffffff;letter-spacing:1px;">Payment Successful</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding:{{ ($isPdf ?? false) ? '20px 25px' : '30px 40px' }};border-bottom:3px solid #166534;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td width="50%" valign="top">
+                                        @if($payment->agent->branch->company->logo)
+                                            @if($isPdf ?? false)
+                                                <img src="{{ storage_path('app/public/' . $payment->agent->branch->company->logo) }}" alt="{{ $payment->agent->branch->company->name ?? 'Company' }}" style="max-height:50px;max-width:150px;margin-bottom:10px;">
+                                            @else
+                                                <img src="{{ asset('storage/' . $payment->agent->branch->company->logo) }}" alt="{{ $payment->agent->branch->company->name ?? 'Company' }}" style="max-height:60px;max-width:180px;margin-bottom:15px;">
+                                            @endif
+                                        @endif
+                                        <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '16px' : '20px' }};font-weight:bold;color:#166534;">{{ $payment->agent->branch->company->name ?? 'Company' }}</p>
+                                        <p style="margin:5px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">{{ $payment->agent->branch->company->address ?? '' }}</p>
+                                        <p style="margin:3px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">{{ $payment->agent->branch->company->phone ?? '' }}</p>
+                                        <p style="margin:3px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">{{ $payment->agent->branch->company->email ?? '' }}</p>
+                                    </td>
+                                    <td width="50%" valign="top" align="right">
+                                        <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '28px' : '34px' }};font-weight:bold;color:#166534;">PAYMENT VOUCHER</p>
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top:{{ ($isPdf ?? false) ? '10px' : '15px' }};margin-left:auto;">
+                                            <tr>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 10px 3px 0' : '4px 15px 4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">Voucher #:</td>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 0' : '4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};font-weight:bold;color:#333;">{{ $payment->voucher_number }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 10px 3px 0' : '4px 15px 4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">Date:</td>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 0' : '4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;">{{ $payment->created_at->format('d/m/Y') }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 10px 3px 0' : '4px 15px 4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">Time:</td>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 0' : '4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;">{{ $payment->created_at->format('H:i') }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 10px 3px 0' : '4px 15px 4px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">Status:</td>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '3px 0' : '4px 0' }};">
+                                                    <span style="display:inline-block;padding:3px {{ ($isPdf ?? false) ? '8px' : '12px' }};background-color:#dcfce7;color:#166534;font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};font-weight:bold;border-radius:12px;text-transform:uppercase;">PAID</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding:{{ ($isPdf ?? false) ? '15px 25px' : '25px 40px' }};">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td width="50%" valign="top">
+                                        <p style="margin:0 0 {{ ($isPdf ?? false) ? '6px' : '10px' }} 0;font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};font-weight:bold;color:#166534;text-transform:uppercase;letter-spacing:1px;">Bill To</p>
+                                        <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '12px' : '15px' }};font-weight:bold;color:#333;text-transform:uppercase;">{{ $payment->client->full_name ?? 'N/A' }}</p>
+                                        <p style="margin:{{ ($isPdf ?? false) ? '3px' : '5px' }} 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">{{ $payment->client->email ?? 'N/A' }}</p>
+                                        <p style="margin:3px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">{{ $payment->client->country_code ?? '+965' }}{{ $payment->client->phone ?? 'N/A' }}</p>
+                                    </td>
+                                    <td width="50%" valign="top" style="text-align:right;">
+                                        <p style="margin:0 0 {{ ($isPdf ?? false) ? '6px' : '10px' }} 0;font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};font-weight:bold;color:#166534;text-transform:uppercase;letter-spacing:1px;">Agent</p>
+                                        <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '12px' : '15px' }};font-weight:bold;color:#333;text-transform:uppercase;">{{ $payment->agent->name ?? 'N/A' }}</p>
+                                        <p style="margin:{{ ($isPdf ?? false) ? '3px' : '5px' }} 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">{{ $payment->agent->email ?? 'N/A' }}</p>
+                                        <p style="margin:3px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">{{ $payment->agent->phone_number ?? 'N/A' }}</p>
+                                        @if($payment->agent->branch ?? null)
+                                            <p style="margin:3px 0 0 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">Branch: {{ $payment->agent->branch->name ?? 'N/A' }}</p>
+                                        @endif
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="padding:0 {{ ($isPdf ?? false) ? '25px 15px 25px' : '40px 25px 40px' }};">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e0e0e0;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;overflow:hidden;' }}">
+                                <tr>
+                                    <th colspan="2" style="background-color:#166534;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};font-weight:bold;color:#fff;text-align:left;text-transform:uppercase;letter-spacing:1px;">Payment Details</th>
+                                </tr>
+                                <tr style="background-color:#ffffff;">
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;border-bottom:1px solid #e0e0e0;width:40%;">Client Name</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $payment->client->full_name ?? 'N/A' }}</td>
+                                </tr>
+                                @if($payment->paymentMethod)
+                                <tr style="background-color:#f9fafb;">
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;border-bottom:1px solid #e0e0e0;">Payment Method</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $payment->paymentMethod->english_name ?? '-' }}</td>
+                                </tr>
+                                @endif
+                                @if($payment->payment_gateway)
+                                <tr style="background-color:#ffffff;">
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;border-bottom:1px solid #e0e0e0;">Payment Gateway</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $payment->payment_gateway ?? '-' }}</td>
+                                </tr>
+                                @endif
+                                @if(!empty($payment->payment_reference))
+                                <tr style="background-color:#f9fafb;">
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;border-bottom:1px solid #e0e0e0;">Payment Reference</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $payment->payment_reference }}</td>
+                                </tr>
+                                @endif
+                                @if(!empty($invoiceRef))
+                                <tr style="background-color:#ffffff;">
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;border-bottom:1px solid #e0e0e0;">Invoice Reference</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $invoiceRef }}</td>
+                                </tr>
+                                @endif
+                            </table>
+                        </td>
+                    </tr>
+
+                    @if($payment->paymentItems && $payment->paymentItems->count() > 0)
+                    <tr>
+                        <td style="padding:0 {{ ($isPdf ?? false) ? '25px 15px 25px' : '40px 25px 40px' }};">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e0e0e0;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;overflow:hidden;' }}">
+                                <tr>
+                                    <th style="background-color:#166534;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:left;text-transform:uppercase;width:30px;">#</th>
+                                    <th style="background-color:#166534;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:left;text-transform:uppercase;">Product Name</th>
+                                    <th style="background-color:#166534;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:center;text-transform:uppercase;width:{{ ($isPdf ?? false) ? '50px' : '70px' }};">Qty</th>
+                                    <th style="background-color:#166534;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:right;text-transform:uppercase;width:{{ ($isPdf ?? false) ? '80px' : '100px' }};">Unit Price</th>
+                                    <th style="background-color:#166534;padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};font-weight:bold;color:#fff;text-align:right;text-transform:uppercase;width:{{ ($isPdf ?? false) ? '100px' : '120px' }};">Amount</th>
+                                </tr>
+                                @foreach($payment->paymentItems as $index => $item)
+                                @php
+                                    $bgColor = $index % 2 === 0 ? '#ffffff' : '#f9fafb';
+                                @endphp
+                                <tr style="background-color:{{ $bgColor }};">
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;">{{ $index + 1 }}</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $item->product_name }}</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;text-align:center;">{{ number_format($item->quantity, 2) }}</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;text-align:right;">{{ number_format($item->unit_price, 3) }} {{ $item->currency }}</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;text-align:right;font-weight:bold;">{{ number_format($item->extended_amount, 3) }} {{ $item->currency }}</td>
+                                </tr>
+                                @endforeach
+                                <tr style="background-color:#f9fafb;">
+                                    <td colspan="4" style="padding:{{ ($isPdf ?? false) ? '10px' : '14px 15px' }};font-size:{{ ($isPdf ?? false) ? '11px' : '14px' }};font-weight:bold;color:#333;text-align:right;border-top:2px solid #166534;">Items Total:</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '10px' : '14px 15px' }};font-size:{{ ($isPdf ?? false) ? '11px' : '14px' }};font-weight:bold;color:#166534;text-align:right;border-top:2px solid #166534;white-space:nowrap;">{{ number_format($payment->paymentItems->sum('extended_amount'), 3) }} {{ $payment->currency }}</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
                     @endif
-                </div>
-                <div class="header-cell header-center">
-                    <h2>Payment Voucher</h2>
-                    <p><strong>{{ $payment->voucher_number }}</strong></p>
-                    <p>Date: {{ $payment->created_at->format('d M Y') }}</p>
-                </div>
-                <div class="header-cell header-right"></div>
-            </div>
 
-            <!-- Billing Section -->
-            <div class="billing-section">
-                <div class="billing-box">
-                    <h3>Billed To</h3>
-                    <p><strong>{{ $payment->client->full_name }}</strong></p>
-                    <p><a href="mailto:{{ $payment->client->email }}">{{ $payment->client->email }}</a></p>
-                    <p>{{ $payment->client->country_code }}{{ $payment->client->phone }}</p>
-                </div>
-                <div class="billing-box" style="text-align: right;">
-                    <h3>{{ $payment->agent->branch->company->name }}</h3>
-                    <p>{{ $payment->agent->branch->company->address }}</p>
-                    <p><a href="mailto:{{ $payment->agent->branch->company->email }}">{{ $payment->agent->branch->company->email }}</a></p>
-                    <p>{{ $payment->agent->branch->company->phone }}</p>
-                </div>
-            </div>
+                    <tr>
+                        <td style="padding:0 {{ ($isPdf ?? false) ? '25px 20px 25px' : '40px 30px 40px' }};">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td width="50%" valign="middle">
+                                        <span style="display:inline-block;padding:{{ ($isPdf ?? false) ? '6px 16px' : '8px 24px' }};background-color:#dcfce7;color:#166534;font-size:{{ ($isPdf ?? false) ? '12px' : '14px' }};font-weight:bold;border-radius:20px;text-transform:uppercase;letter-spacing:1px;">
+                                            PAID
+                                        </span>
+                                    </td>
+                                    <td width="50%" valign="top">
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-left:auto;min-width:{{ ($isPdf ?? false) ? '180px' : '220px' }};background-color:#f9fafb;{{ ($isPdf ?? false) ? '' : 'border-radius:8px;' }}padding:{{ ($isPdf ?? false) ? '12px' : '16px' }};">
+                                            <tr>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '4px 15px 4px 0' : '6px 20px 6px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;text-align:right;">Amount:</td>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '4px 0' : '6px 0' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;text-align:right;font-weight:bold;">{{ number_format($payment->amount, 3) }} {{ $payment->currency }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="2" style="padding:{{ ($isPdf ?? false) ? '6px' : '10px' }} 0 0 0;border-top:2px solid #166534;"></td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '6px 15px 6px 0' : '8px 20px 8px 0' }};font-size:{{ ($isPdf ?? false) ? '12px' : '16px' }};font-weight:bold;color:#166534;text-align:right;">Total Paid:</td>
+                                                <td style="padding:{{ ($isPdf ?? false) ? '6px 0' : '8px 0' }};font-size:{{ ($isPdf ?? false) ? '14px' : '18px' }};font-weight:bold;color:#166534;text-align:right;">{{ number_format($payment->amount, 3) }} {{ $payment->currency }}</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
 
-            <!-- Payment Details Table -->
-            <table class="details-table">
-                <thead>
                     <tr>
-                        <th colspan="2">Payment Details</th>
+                        <td style="padding:{{ ($isPdf ?? false) ? '15px 25px' : '25px 40px' }};background-color:#f9fafb;border-top:1px solid #e0e0e0;">
+                            <p style="margin:0 0 {{ ($isPdf ?? false) ? '6px' : '10px' }} 0;font-size:{{ ($isPdf ?? false) ? '10px' : '12px' }};color:#666;text-align:center;">
+                                If you have any questions about this payment, please contact:
+                            </p>
+                            <p style="margin:0 0 {{ ($isPdf ?? false) ? '4px' : '8px' }} 0;font-size:{{ ($isPdf ?? false) ? '11px' : '13px' }};color:#333;text-align:center;font-weight:bold;">
+                                {{ $payment->agent->name ?? 'Agent' }}
+                            </p>
+                            <p style="margin:0 0 {{ ($isPdf ?? false) ? '4px' : '8px' }} 0;font-size:{{ ($isPdf ?? false) ? '10px' : '12px' }};text-align:center;">
+                                <a href="mailto:{{ $payment->agent->email }}" style="color:#166534;text-decoration:none;">{{ $payment->agent->email ?? '' }}</a>
+                                @if($payment->agent->phone_number)
+                                    <span style="color:#999;"> | </span>
+                                    <span style="color:#666;">{{ $payment->agent->phone_number }}</span>
+                                @endif
+                            </p>
+                            <p style="margin:{{ ($isPdf ?? false) ? '12px' : '16px' }} 0 0 0;font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#999;text-align:center;">
+                                This is an automated email from {{ $payment->agent->branch->company->name ?? 'Company' }}
+                            </p>
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="label">Client Name</td>
-                        <td class="value">{{ $payment->client->full_name }}</td>
-                    </tr>
-                    @if($payment->paymentMethod)
-                    <tr>
-                        <td class="label">Payment Method</td>
-                        <td class="value">{{ $payment->paymentMethod->english_name ?? '-' }}</td>
-                    </tr>
-                    @endif
-                    @if(!empty($payment->payment_reference))
-                    <tr>
-                        <td class="label">Payment Reference</td>
-                        <td class="value">{{ $payment->payment_reference }}</td>
-                    </tr>
-                    @endif
-                    @if(!empty($invoiceRef))
-                    <tr>
-                        <td class="label">Invoice Reference</td>
-                        <td class="value">{{ $invoiceRef }}</td>
-                    </tr>
-                    @endif
-                </tbody>
-            </table>
 
-            <!-- Payment Items (if available) -->
-            @if($payment->paymentItems && $payment->paymentItems->count() > 0)
-            <h3 class="section-title">Payment Items</h3>
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>Product Name</th>
-                        <th>Qty</th>
-                        <th>Unit Price</th>
-                        <th style="text-align: right;">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($payment->paymentItems as $item)
-                    <tr>
-                        <td>{{ $item->product_name }}</td>
-                        <td>{{ number_format($item->quantity, 2) }}</td>
-                        <td>{{ number_format($item->unit_price, 3) }} {{ $item->currency }}</td>
-                        <td style="text-align: right; font-weight: 600;">{{ number_format($item->extended_amount, 3) }} {{ $item->currency }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="3" style="text-align: right;">Total:</td>
-                        <td style="text-align: right;">{{ number_format($payment->paymentItems->sum('extended_amount'), 3) }} {{ $payment->currency }}</td>
-                    </tr>
-                </tfoot>
-            </table>
-            @endif
-
-            <!-- Amount Summary -->
-            <div class="amount-wrapper">
-                <div class="amount-left">
-                    <span class="paid-badge">PAID</span>
-                </div>
-                <div class="amount-right">
-                    <div class="amount-summary">
-                        <div class="amount-row">
-                            <span class="label">Amount:</span>
-                            <span class="value">{{ number_format($payment->amount, 3) }} {{ $payment->currency }}</span>
-                        </div>
-                        <div class="amount-row total">
-                            <span class="label">Total:</span>
-                            <span class="value">{{ number_format($payment->amount, 3) }} {{ $payment->currency }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            <p>If you have any questions about this payment, please contact:</p>
-            <p>
-                <strong>{{ $payment->agent->name }}</strong><br>
-                <a href="mailto:{{ $payment->agent->email }}">{{ $payment->agent->email }}</a>
-                @if($payment->agent->phone_number)
-                <br>{{ $payment->agent->phone_number }}
-                @endif
-            </p>
-            <p style="margin-top: 16px; font-size: 12px; color: #9ca3af;">
-                This is an automated email from {{ $payment->agent->branch->company->name }}
-            </p>
-        </div>
-    </div>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 
 </html>

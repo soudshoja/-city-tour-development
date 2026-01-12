@@ -65,6 +65,7 @@ class ApplySupplierSurcharge extends Command
 
             $tasks = Task::where('supplier_id', 1)
                 ->where('issued_by', 'KWIKT2843')
+                ->whereIn('status', ['issued', 'reissued'])
                 ->get();
 
             if ($tasks->isEmpty()) {

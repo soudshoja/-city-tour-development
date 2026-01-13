@@ -50,4 +50,9 @@ class InvoicePartial extends Model
     {
         return $this->belongsTo(Charge::class, 'charge_id');
     }
+
+    public function paymentApplications()
+    {
+        return $this->hasMany(PaymentApplication::class, 'invoice_partial_id');
+    }
 }
